@@ -1,0 +1,15 @@
+sudo: false
+language: python
+python:
+- '3.4'
+
+install:
+- pip install -r requirements_for_test.txt
+
+script:
+- ./scripts/run_tests.sh
+
+notifications:
+  slack:
+    rooms:
+      secure: MMDS75tBOitrK4FXShmUjRB687GtCnVKvq0640Q4pWXaqBVVojQ2p9GlYYpFHxTmG7DhvPBjlq6MaTH41mwJwjO3y7cH2iWL69KbFX2PvjOk+zwIzdzIi29uhs9aOhhILvomT0HY2PPjLnHkrcrBszYG7LYvac+eqnzAdOlzSAozazfAGI1IUF3UdcZX4awLgv027WnxC2CXm/ZY7l1xsLwxtACKIC0CS2fB0fgK7BJfFOKTjvj60gKx15ffR2gRVMNklYaW2VuaATT/VMeLJjYVoWeHkOIqW5yqKBelWQfWXIivmDfhL0zPk69sm51w3sQkzJxsr67rzjdpUx8WqFtin/CCIHwDJluOmIRD8rWZSgQf5LQUPy+gsUvSyoeebuh/hA7I8x7hYvmiptCVDi8mBjVFxfSSODQscJii61QDraOCrJYqWWabHPY4TeqHw7HqAgHBidHquowsZWuxyfhCMaRQLS72HTWKWNkK44+y8v1E+TomYmTvFg4ZSLFkievmhxsR5FUewbXjQ64zKw3oBT56H2queCLJ7MiLZNvza239T4/lqPIcF7YrOhrce3ozONviWtoYldq9NNPQSkObw0NdTi7PkY4xF2Nw6MaDWuIAhmkRIJNC3JdadkJ8ZdzztRdYhUjp/6L42oLaOcsJdE99URUhtj9GWaLGyK0=
