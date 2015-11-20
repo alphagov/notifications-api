@@ -1,5 +1,9 @@
-https://travis-ci.org/alphagov/notify-notifications-api.svg
+https://travis-ci.org/alphagov/notifications-api.svg
 
-# notify-notifications-api
+# notifications-api
 Notifications api
-Application for the notification api
+Application for the notification api.
+
+Read and write notifications/status queue.
+Get and update notification status.
+
