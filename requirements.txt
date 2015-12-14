@@ -1,3 +1,5 @@
 Flask==0.10.1
 Flask-Script==2.0.5
 PyJWT==1.4.0
+
+git+https://github.com/alphagov/notifications-python-client.git@0.0.2#egg=notifications-python-client==0.0.2
