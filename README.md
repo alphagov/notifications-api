@@ -7,4 +7,4 @@ Application for the notification api.
 Read and write notifications/status queue.
 Get and update notification status.
 
-mkvirtualenv -p /usr/local/bin/python3 notify-api
+mkvirtualenv -p /usr/local/bin/python3 notifications-api
