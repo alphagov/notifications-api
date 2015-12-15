@@ -1,8 +1,11 @@
 import os
 
 from flask._compat import string_types
-from flask import Flask
+from flask import Flask, _request_ctx_stack
+from werkzeug.local import LocalProxy
 from config import configs
+
+api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 
 
 def create_app(config_name):
