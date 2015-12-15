@@ -80,7 +80,7 @@ def test_should_allow_valid_token(notify_api):
             'Authorization': 'Bearer {}'.format(token)
         }
     )
-    assert response.status_code == 201
+    assert response.status_code == 200
 
 
 def test_should_allow_valid_token_with_post_body(notify_api):
