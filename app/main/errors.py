@@ -1,6 +1,6 @@
 from flask import jsonify
 
-from . import main
+from app.main import main
 
 
 @main.app_errorhandler(400)

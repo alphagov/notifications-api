@@ -11,5 +11,5 @@ main = Blueprint('main', __name__)
 main.before_request(requires_auth)
 
 
-from .views import notifications, index
-from . import errors
+from app.main.views import notifications, index
+from app.main import errors

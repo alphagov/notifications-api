@@ -1,5 +1,5 @@
 from flask import request, jsonify, _request_ctx_stack
-from client.jwt import decode_jwt_token, get_token_issuer
+from client.authentication import decode_jwt_token, get_token_issuer
 from client.errors import TokenDecodeError, TokenRequestError, TokenExpiredError, TokenPayloadError
 
 

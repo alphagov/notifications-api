@@ -1,5 +1,5 @@
 from flask import json
-from client.jwt import create_jwt_token
+from client.authentication import create_jwt_token
 
 
 def test_should_not_allow_request_with_no_token(notify_api):
