@@ -19,6 +19,9 @@ def create_app(config_name):
     from .main import main as main_blueprint
     application.register_blueprint(main_blueprint)
 
+    from .status import status as status_blueprint
+    application.register_blueprint(status_blueprint)
+
     return application
 
 
