@@ -34,5 +34,6 @@ deploy:
   deployment_group: notifications_admin_deployment_group
   on: *2
 before_deploy:
+- zip -r notifications-api *
 - mkdir -p dpl_cd_upload
 - mv notifications-api.zip dpl_cd_upload/notifications-api.zip
