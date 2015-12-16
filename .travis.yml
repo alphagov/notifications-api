@@ -31,7 +31,7 @@ deploy:
   key: notifications-api.zip
   bundle_type: zip
   application: notifications-api
-  deployment_group: notifications_admin_deployment_group
+  deployment_group: notifications_api_deployment_group
   on: *2
 before_deploy:
 - zip -r notifications-api *
