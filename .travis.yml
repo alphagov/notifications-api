@@ -14,3 +14,26 @@ notifications:
   slack:
     rooms:
       secure: vCmpAjdXkprqGzSnQzcco1lNiFuj/nRQdlVTGSnvg2HEqZUM5vzmWtQYw3WNS/bcgbVxV/nLgza17cdsmFqOuaZll4kDM0swnmk17eynImAHPFF/flGsNcw4oRV7WzWrq7j1TvGzJzxJkHYOjJFk0iMLM7+P76sWHI6Oa5NHQYH2l7a4hqzqmuUKaloHeZX/Ro2RmFE+/t/SfNr0pmtTRO4CfLfPUdUs9D8Mx0cyc1Z9Ke4Cq+R2Lsp8BwH0nye6pb9cI4h1YmUY/Xt8O1Z0QbncHZviWojSB2vV0V5WQPzqjjseAznJ1depK/LPOlRHlqddkEbGK28rDwsxbzY1q3DCZZiZZTXBD80HyNr/J4rfRAXhoCafwR57cqqIQ7G/fb5A/ckUM8TFKqUPh7wvu67OAiSWJmO78C8fumF3HxcoGp7DQOQPFLtWGuCfh2zjI9WbUhiHQwWl9/9qpgMEuXH7LOJAzgQbEp1A7XRmT2GupYEkGdFMwT8ojp8OXds08diEy1FNonWAtFZs8pO92urK862pCRB8WRQZWMjpcnif1Ht4QtwYFO9iVp5ygReTEoFuiQPMAypCVCzKgHe/W8LX55xzSnlUQqDU2NzN37LfC4ctS1h3BfIIU5KP9PmdgkKRUWcrFE3eMXPG36OdU4hRj4FMURzmAOZYhaSXuP8=
+deploy:
+- provider: s3
+  access_key_id: AKIAI37IS2VAC5PJHHDA
+  secret_access_key: &1
+    secure: InYKT+1AIz88zv8/yrXWRQTUCJmmrEPM3zuJzX5G8mmoAI1mR5lis0RV+NadGb8fVATVPQ21SoGRUF7OVa7luk7MSw+4gNdB7yMeBPQ/maZK45utvNPE+7LrsXVXNgUi43rs64EywnXd30/xPMUoqzs8ut6Kj4f438g8DRQoWXLbFZkAmVsoEj0xKZMarUiF70Mskt8pF0N3AxHNpk4tEX08wo8dkI74KSqoiO0wwrnByZWIXJiqYEk3vWnWpUVIMJVZPYCnWkXeqL2jIJNWSDs5u6t10ximj8tbgvtHVJSdplCzPckMNDde8vmvrkjwGXvhj6eyHdh/BcMYuCs+sl+2k9YEOXaVsJTvh6sjlWg9UmY0G/i3wkkoRL59XDHADIVAXUhJxrpkreCuMFCJCBYSRd9pErZIXBRMnL6Kj9N2biwXIP/uMFOEeNJAwqBKrdjKLcrSdu6pvrh+EdXuqGHHYmO5ExBG+avGk/Z6lMEMenxVO1mh5Pd9KRf0eT4FjmQ6eZpj3Ya1m41WACDL9fAvUAsRsRZnjswnrY8dviey044kWzQ0+WIJItt/2kmWSaYkjZZx8hsn6Wn0U/Fha6GL7lR/KOLf6g+x/zzT/NZc1cCbZHDGsTraKdPscLUK5uEfbovbKuGB1AC0+NfCdo+Wq/VaGClAx1fByMUabbE=
+  local_dir: dpl_cd_upload
+  skip_cleanup: true
+  on: &2
+    repo: alphagov/notifications-api
+  bucket: notifications-api-codedeploy
+  upload_dir: latest
+- provider: codedeploy
+  access_key_id: AKIAI37IS2VAC5PJHHDA
+  secret_access_key: *1
+  bucket: notifications-api-codedeploy
+  key: latest/notifications-api.zip
+  bundle_type: zip
+  application: notifications-api
+  deployment_group: notifications_api_deployment_group
+  on: *2
+before_deploy:
+- mkdir -p dpl_cd_upload
+- mv yes dpl_cd_upload/notifications-api.zip
