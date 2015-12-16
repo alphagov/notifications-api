@@ -18,22 +18,21 @@ deploy:
 - provider: s3
   access_key_id: AKIAI37IS2VAC5PJHHDA
   secret_access_key: &1
-    secure: InYKT+1AIz88zv8/yrXWRQTUCJmmrEPM3zuJzX5G8mmoAI1mR5lis0RV+NadGb8fVATVPQ21SoGRUF7OVa7luk7MSw+4gNdB7yMeBPQ/maZK45utvNPE+7LrsXVXNgUi43rs64EywnXd30/xPMUoqzs8ut6Kj4f438g8DRQoWXLbFZkAmVsoEj0xKZMarUiF70Mskt8pF0N3AxHNpk4tEX08wo8dkI74KSqoiO0wwrnByZWIXJiqYEk3vWnWpUVIMJVZPYCnWkXeqL2jIJNWSDs5u6t10ximj8tbgvtHVJSdplCzPckMNDde8vmvrkjwGXvhj6eyHdh/BcMYuCs+sl+2k9YEOXaVsJTvh6sjlWg9UmY0G/i3wkkoRL59XDHADIVAXUhJxrpkreCuMFCJCBYSRd9pErZIXBRMnL6Kj9N2biwXIP/uMFOEeNJAwqBKrdjKLcrSdu6pvrh+EdXuqGHHYmO5ExBG+avGk/Z6lMEMenxVO1mh5Pd9KRf0eT4FjmQ6eZpj3Ya1m41WACDL9fAvUAsRsRZnjswnrY8dviey044kWzQ0+WIJItt/2kmWSaYkjZZx8hsn6Wn0U/Fha6GL7lR/KOLf6g+x/zzT/NZc1cCbZHDGsTraKdPscLUK5uEfbovbKuGB1AC0+NfCdo+Wq/VaGClAx1fByMUabbE=
+    secure: Ztj8D7S7YQAarbdF7T0XFRNDTzop/vrPdZL5e07L7c5TwXqr3Dy2ZcKDZMCDTkjgsx7cVu5OhtRtG/+k2FbfQqDrvyYI6jssSIokTdWdXLVdbtI4BqgEcoxouLgOIgAdqV1BzqfDVPiu9GUIlDIT1f/VjU3sRQGw5ioWXvwYkdzuqI+bXir8/Y1Vzcupqn7BoP2iyhB3FZ4HxHUjqau1g2g++17jfFgIghg6zaAuLWB3raGjWo6H+BvieZqIma0p643rs39fXjr8lIfvP8FGlKSTXzQX2+KGSjdTJx64KRSdO9iFuiedL1dkSbEXNebh2Q9M1FDdWmrO6PsgRFtQI0Kgy/3CATqlEEOjgPjBSyDIfzPGE+HBDyTId1hy2u/0BekDQRfJeCikV8ebcWRTjyr+j2EvUhhmDDQrZusyz25UA7IuurVEPVT/mzAEFseu4dMcKTlmk4Jo8eFqcrtyLcFpH7QPCwwIj7MjUlzwepvgxuhGR/UHIMDH7R8QLVuT3beE+AyumyJb0QHt4yLlg6WHxaK5ayNQBVm20yD64dRKQsEMvdewVz9fLhoa4sV5PNqBn0yghdiKnQA2XynBen8hEbpuraN/wvX9z+STMoR/fG33X2XwAn3f08qO1RzMy4mxsq75tkD8yR8i/JAMtawARuBzSk3asXol/EtwlbQ=
   local_dir: dpl_cd_upload
   skip_cleanup: true
   on: &2
     repo: alphagov/notifications-api
   bucket: notifications-api-codedeploy
-  upload_dir: latest
 - provider: codedeploy
   access_key_id: AKIAI37IS2VAC5PJHHDA
   secret_access_key: *1
   bucket: notifications-api-codedeploy
-  key: latest/notifications-api.zip
+  key: notifications-api.zip
   bundle_type: zip
   application: notifications-api
-  deployment_group: notifications_api_deployment_group
+  deployment_group: notifications_admin_deployment_group
   on: *2
 before_deploy:
 - mkdir -p dpl_cd_upload
-- mv yes dpl_cd_upload/notifications-api.zip
+- mv notifications-api.zip dpl_cd_upload/notifications-api.zip
