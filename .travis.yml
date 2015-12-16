@@ -21,6 +21,7 @@ deploy:
     secure: Ztj8D7S7YQAarbdF7T0XFRNDTzop/vrPdZL5e07L7c5TwXqr3Dy2ZcKDZMCDTkjgsx7cVu5OhtRtG/+k2FbfQqDrvyYI6jssSIokTdWdXLVdbtI4BqgEcoxouLgOIgAdqV1BzqfDVPiu9GUIlDIT1f/VjU3sRQGw5ioWXvwYkdzuqI+bXir8/Y1Vzcupqn7BoP2iyhB3FZ4HxHUjqau1g2g++17jfFgIghg6zaAuLWB3raGjWo6H+BvieZqIma0p643rs39fXjr8lIfvP8FGlKSTXzQX2+KGSjdTJx64KRSdO9iFuiedL1dkSbEXNebh2Q9M1FDdWmrO6PsgRFtQI0Kgy/3CATqlEEOjgPjBSyDIfzPGE+HBDyTId1hy2u/0BekDQRfJeCikV8ebcWRTjyr+j2EvUhhmDDQrZusyz25UA7IuurVEPVT/mzAEFseu4dMcKTlmk4Jo8eFqcrtyLcFpH7QPCwwIj7MjUlzwepvgxuhGR/UHIMDH7R8QLVuT3beE+AyumyJb0QHt4yLlg6WHxaK5ayNQBVm20yD64dRKQsEMvdewVz9fLhoa4sV5PNqBn0yghdiKnQA2XynBen8hEbpuraN/wvX9z+STMoR/fG33X2XwAn3f08qO1RzMy4mxsq75tkD8yR8i/JAMtawARuBzSk3asXol/EtwlbQ=
   local_dir: dpl_cd_upload
   skip_cleanup: true
+  region: eu-west-1
   on: &2
     repo: alphagov/notifications-api
   bucket: notifications-api-codedeploy
@@ -32,6 +33,7 @@ deploy:
   bundle_type: zip
   application: notifications-api
   deployment_group: notifications_api_deployment_group
+  region: eu-west-1
   on: *2
 before_deploy:
 - zip -r notifications-api *
