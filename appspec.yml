@@ -9,6 +9,10 @@ hooks:
       location: scripts/aws_install_dependencies.sh
       runas: root
       timeout: 300
+    -
+      location: scripts/aws_change_ownership.sh
+      runas: root
+      timeout: 300
   ApplicationStart:
     -
       location: scripts/aws_start_app.sh
