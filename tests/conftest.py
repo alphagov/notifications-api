@@ -1,7 +1,13 @@
 import pytest
 import mock
-from app import create_app
+import os
 from config import configs
+from alembic.command import upgrade
+from alembic.config import Config
+from flask.ext.migrate import Migrate, MigrateCommand
+from flask.ext.script import Manager
+
+from app import create_app, db
 
 
 @pytest.fixture(scope='session')
@@ -15,6 +21,27 @@ def notify_api(request):
 
     request.addfinalizer(teardown)
     return app
+
+
+@pytest.fixture(scope='session')
+def notify_db(notify_api, request):
+    Migrate(notify_api, db)
+    Manager(db, MigrateCommand)
+    BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+    ALEMBIC_CONFIG = os.path.join(BASE_DIR, 'migrations')
+    config = Config(ALEMBIC_CONFIG + '/alembic.ini')
+    config.set_main_option("script_location", ALEMBIC_CONFIG)
+
+    with notify_api.app_context():
+        upgrade(config, 'head')
+
+    def teardown():
+        db.session.remove()
+        db.drop_all()
+        db.engine.execute("drop table alembic_version")
+        db.get_engine(notify_api).dispose()
+
+    request.addfinalizer(teardown)
 
 
 @pytest.fixture(scope='function')
