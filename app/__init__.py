@@ -4,6 +4,8 @@ from flask._compat import string_types
 from flask import Flask, _request_ctx_stack
 from werkzeug.local import LocalProxy
 from config import configs
+from utils import logging
+
 
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 
@@ -15,6 +17,8 @@ def create_app(config_name):
     application.config.from_object(configs[config_name])
 
     init_app(application)
+
+    logging.init_app(application)
 
     from .main import main as main_blueprint
     application.register_blueprint(main_blueprint)
