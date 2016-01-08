@@ -15,7 +15,7 @@ class Development(Config):
 
 class Test(Config):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/notification_api_test'
+    SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/test_notification_api'
 
 
 class Live(Config):

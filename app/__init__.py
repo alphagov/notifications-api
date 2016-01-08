@@ -10,7 +10,6 @@ from utils import logging
 
 db = SQLAlchemy()
 
-
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 
 

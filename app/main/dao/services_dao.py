@@ -6,11 +6,11 @@ from app import db
 from app.models import Service
 
 
-def create_new_service(service_name,
-                       user,
-                       limit=1000,
-                       active=False,
-                       restricted=True):
+def create_service(service_name,
+                   user,
+                   limit=1000,
+                   active=False,
+                   restricted=True):
     service = Service(name=service_name,
                       created_at=datetime.now(),
                       limit=limit,
@@ -22,7 +22,10 @@ def create_new_service(service_name,
     return service.id
 
 
-def get_services(user, service_id=None):
+def get_services(service_id=None, user_id=None):
+    # TODO need better mapping from function params to sql query.
     if service_id:
-        return Service.query.filter_by(user=user, service_id=service_id).one()
-    return Service.query.filter_by(user=user).all()
+        return Service.query.filter_by(id=service_id).one()
+    elif user_id:
+        return Service.query.filter(Service.users.any(id=user_id)).all()
+    return Service.query.all()

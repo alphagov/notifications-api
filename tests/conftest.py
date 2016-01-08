@@ -6,8 +6,9 @@ from alembic.command import upgrade
 from alembic.config import Config
 from flask.ext.migrate import Migrate, MigrateCommand
 from flask.ext.script import Manager
-
+from sqlalchemy.schema import MetaData
 from app import create_app, db
+from app import models
 
 
 @pytest.fixture(scope='session')
@@ -33,6 +34,10 @@ def notify_db(notify_api, request):
     config.set_main_option("script_location", ALEMBIC_CONFIG)
 
     with notify_api.app_context():
+        # TODO this next line shouldn't be needed,
+        # but cannot work out the import order to
+        # remove it.
+        db.create_all()
         upgrade(config, 'head')
 
     def teardown():
@@ -41,6 +46,18 @@ def notify_db(notify_api, request):
         db.engine.execute("drop table alembic_version")
         db.get_engine(notify_api).dispose()
 
+    request.addfinalizer(teardown)
+
+
+@pytest.fixture(scope='function')
+def notify_db_session(request):
+    def teardown():
+        db.session.remove()
+        for tbl in reversed(meta.sorted_tables):
+            if tbl.fullname not in ['roles']:
+                db.engine.execute(tbl.delete())
+
+    meta = MetaData(bind=db.engine, reflect=True)
     request.addfinalizer(teardown)
 
 
