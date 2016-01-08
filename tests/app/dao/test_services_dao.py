@@ -1,4 +1,4 @@
-from app.main.dao.services_dao import (create_service, get_services)
+from app.dao.services_dao import (create_service, get_services)
 from tests.app.conftest import sample_service as create_sample_service
 from app.models import Service
 

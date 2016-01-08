@@ -1,4 +1,6 @@
-from app.main.dao.users_dao import (create_user, get_users)
+from sqlalchemy.exc import DataError
+from sqlalchemy.orm.exc import NoResultFound
+from app.dao.users_dao import (create_user, get_users)
 from tests.app.conftest import sample_user as create_sample_user
 from app.models import User
 
@@ -28,3 +30,19 @@ def test_get_user(notify_api, notify_db, notify_db_session):
                                       notify_db_session,
                                       email=email)
     assert get_users(user_id=another_user.id).email_address == email
+
+
+def test_get_user_not_exists(notify_api, notify_db, notify_db_session):
+    try:
+        get_users(user_id="12345")
+        pytest.fail("NoResultFound exception not thrown.")
+    except:
+        pass
+
+
+def test_get_user_invalid_id(notify_api, notify_db, notify_db_session):
+    try:
+        get_users(user_id="blah")
+        pytest.fail("DataError exception not thrown.")
+    except DataError:
+        pass

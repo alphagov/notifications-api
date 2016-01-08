@@ -1,6 +1,6 @@
 import pytest
-from app.main.dao.users_dao import (create_user, get_users)
-from app.main.dao.services_dao import (create_service, get_services)
+from app.dao.users_dao import (create_user, get_users)
+from app.dao.services_dao import (create_service, get_services)
 
 
 @pytest.fixture(scope='function')
