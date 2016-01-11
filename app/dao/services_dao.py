@@ -1,31 +1,32 @@
+import json
 from datetime import datetime
 
 from sqlalchemy.orm import load_only
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import db
 from app.models import Service
 
 
-def create_service(service_name,
-                   user,
-                   limit=1000,
-                   active=False,
-                   restricted=True):
-    service = Service(name=service_name,
-                      created_at=datetime.now(),
-                      limit=limit,
-                      active=active,
-                      restricted=restricted)
+# Should I use SQLAlchemyError?
+class DAOException(SQLAlchemyError):
+    pass
+
+
+def create_model_service(service):
+    users_list = getattr(service, 'users', [])
+    if not users_list:
+        error_msg = {'users': 'Missing data for required attribute'}
+        raise DAOException(json.dumps(error_msg))
     db.session.add(service)
-    service.users.append(user)
     db.session.commit()
-    return service.id
 
 
-def get_services(service_id=None, user_id=None):
+def get_model_services(service_id=None, user_id=None):
     # TODO need better mapping from function params to sql query.
     if user_id and service_id:
-        return Service.query.filter(Service.users.any(id=user_id), id=service_id).one()
+        return Service.query.filter(
+            Service.users.any(id=user_id), id=service_id).one()
     elif service_id:
         return Service.query.filter_by(id=service_id).one()
     elif user_id:

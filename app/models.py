@@ -1,4 +1,5 @@
 from . import db
+import datetime
 
 
 def filter_null_value_fields(obj):
@@ -12,22 +13,18 @@ class User(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     email_address = db.Column(db.String(255), nullable=False, index=True, unique=True)
-    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False)
-    updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
-
-    # def serialize(self):
-    #     serialized = {
-    #         'id': self.id,
-    #         'name': self.name,
-    #         'emailAddress': self.email_address,
-    #         'locked': self.failed_login_count > current_app.config['MAX_FAILED_LOGIN_COUNT'],
-    #         'createdAt': self.created_at.strftime(DATETIME_FORMAT),
-    #         'updatedAt': self.updated_at.strftime(DATETIME_FORMAT),
-    #         'role': self.role,
-    #         'passwordChangedAt': self.password_changed_at.strftime(DATETIME_FORMAT),
-    #         'failedLoginCount': self.failed_login_count
-    #     }
-    #     return filter_null_value_fields(serialized)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=False,
+        default=datetime.datetime.now)
+    updated_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True,
+        onupdate=datetime.datetime.now)
 
 
 user_to_service = db.Table(
@@ -43,21 +40,22 @@ class Service(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=False,
+        default=datetime.datetime.now)
+    updated_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True,
+        onupdate=datetime.datetime.now)
     active = db.Column(db.Boolean, index=False, unique=False, nullable=False)
     limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False)
-    users = db.relationship('User', secondary=user_to_service, backref=db.backref('user_to_service', lazy='dynamic'))
+    users = db.relationship(
+        'User',
+        secondary=user_to_service,
+        backref=db.backref('user_to_service', lazy='dynamic'))
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
-
-    # def serialize(self):
-    #     serialized = {
-    #         'id': self.id,
-    #         'name': self.name,
-    #         'createdAt': self.created_at.strftime(DATETIME_FORMAT),
-    #         'active': self.active,
-    #         'restricted': self.restricted,
-    #         'limit': self.limit,
-    #         'user': self.users.serialize()
-    #     }
-
-    #     return filter_null_value_fields(serialized)

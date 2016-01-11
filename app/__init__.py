@@ -3,12 +3,14 @@ import os
 from flask._compat import string_types
 from flask import Flask, _request_ctx_stack
 from flask.ext.sqlalchemy import SQLAlchemy
+from flask_marshmallow import Marshmallow
 from werkzeug.local import LocalProxy
 from config import configs
 from utils import logging
 
 
 db = SQLAlchemy()
+ma = Marshmallow()
 
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 
@@ -20,6 +22,7 @@ def create_app(config_name):
     application.config.from_object(configs[config_name])
 
     db.init_app(application)
+    ma.init_app(application)
     init_app(application)
 
     logging.init_app(application)

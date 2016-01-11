@@ -1,4 +1,6 @@
-from app.dao.services_dao import (create_service, get_services)
+import pytest
+from app.dao.services_dao import (
+    create_model_service, get_model_services, DAOException)
 from tests.app.conftest import sample_service as create_sample_service
 from app.models import Service
 
@@ -6,10 +8,17 @@ from app.models import Service
 def test_create_service(notify_api, notify_db, notify_db_session, sample_user):
     assert Service.query.count() == 0
     service_name = 'Sample Service'
-    service_id = create_service(service_name, sample_user)
+    data = {
+        'name': service_name,
+        'users': [sample_user],
+        'limit': 1000,
+        'active': False,
+        'restricted': False}
+    service = Service(**data)
+    create_model_service(service)
     assert Service.query.count() == 1
     assert Service.query.first().name == service_name
-    assert Service.query.first().id == service_id
+    assert Service.query.first().id == service.id
 
 
 def test_get_services(notify_api, notify_db, notify_db_session, sample_user):
@@ -17,14 +26,14 @@ def test_get_services(notify_api, notify_db, notify_db_session, sample_user):
                                            notify_db_session,
                                            user=sample_user)
     assert Service.query.count() == 1
-    assert len(get_services()) == 1
+    assert len(get_model_services()) == 1
     service_name = "Another service"
     sample_service = create_sample_service(notify_db,
                                            notify_db_session,
                                            service_name=service_name,
                                            user=sample_user)
     assert Service.query.count() == 2
-    assert len(get_services()) == 2
+    assert len(get_model_services()) == 2
 
 
 def test_get_user_service(notify_api, notify_db, notify_db_session, sample_user):
@@ -34,5 +43,22 @@ def test_get_user_service(notify_api, notify_db, notify_db_session, sample_user)
                                            notify_db_session,
                                            service_name=service_name,
                                            user=sample_user)
-    assert get_services(service_id=sample_service.id).name == service_name
+    assert get_model_services(service_id=sample_service.id).name == service_name
     assert Service.query.count() == 1
+
+
+def test_missing_user_attribute(notify_api, notify_db, notify_db_session):
+    assert Service.query.count() == 0
+    try:
+        service_name = 'Sample Service'
+        data = {
+            'name': service_name,
+            'limit': 1000,
+            'active': False,
+            'restricted': False}
+
+        service = Service(**data)
+        create_model_service(service)
+        pytest.fail("DAOException not thrown")
+    except DAOException as e:
+        assert "Missing data for required attribute" in str(e)
