@@ -12,7 +12,9 @@ from app import db
 # TODO auth to be added
 @user.route('/', methods=['POST'])
 def create_user():
-    user = user_schema.load(request.get_json()).data
+    user, errors = user_schema.load(request.get_json())
+    if errors:
+        return jsonify(result="error", message=errors), 400
     save_model_user(user)
     return jsonify(data=user_schema.dump(user).data), 201
 
@@ -28,6 +30,8 @@ def update_user(user_id):
         return jsonify(result="error", message="User not found"), 404
     # TODO there has got to be a better way to do the next three lines
     update_user, errors = user_schema.load(request.get_json())
+    if errors:
+        return jsonify(result="error", message=errors), 400
     update_dict, errors = user_schema.dump(update_user)
     # TODO FIX ME
     # Remove update_service model which is added to db.session
@@ -45,7 +49,7 @@ def get_user(user_id=None):
     except DataError:
         return jsonify(result="error", message="Invalid user id"), 400
     except NoResultFound:
-        return jsonify(result="error", message="User doesn't exist"), 404
+        return jsonify(result="error", message="User not found"), 404
     result = users_schema.dump(users) if isinstance(users, list) else user_schema.dump(users)
     return jsonify(data=result.data)
 
@@ -59,13 +63,13 @@ def get_service_by_user_id(user_id, service_id=None):
     except DataError:
         return jsonify(result="error", message="Invalid user id"), 400
     except NoResultFound:
-        return jsonify(result="error", message="User doesn't exist"), 400
+        return jsonify(result="error", message="User not found"), 404
 
     try:
         services = get_model_services(user_id=user.id, service_id=service_id)
     except DataError:
         return jsonify(result="error", message="Invalid service id"), 400
     except NoResultFound:
-        return jsonify(result="error", message="Service doesn't exist"), 404
-    result = services_schema.dump(services) if isinstance(services, list) else service_schema.dump(services)
-    return jsonify(data=result.data)
+        return jsonify(result="error", message="Service not found"), 404
+    services, errors = services_schema.dump(services) if isinstance(services, list) else service_schema.dump(services)
+    return jsonify(data=services)

@@ -24,7 +24,7 @@ def get_model_services(service_id=None, user_id=None):
     # TODO need better mapping from function params to sql query.
     if user_id and service_id:
         return Service.query.filter(
-            Service.users.any(id=user_id), id=service_id).one()
+            Service.users.any(id=user_id)).filter_by(id=service_id).one()
     elif service_id:
         return Service.query.filter_by(id=service_id).one()
     elif user_id:

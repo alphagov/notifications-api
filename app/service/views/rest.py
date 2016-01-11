@@ -13,6 +13,8 @@ from app.schemas import (services_schema, service_schema)
 def create_service():
     # TODO what exceptions get passed from schema parsing?
     service, errors = service_schema.load(request.get_json())
+    if errors:
+        return jsonify(result="error", message=errors), 400
     # I believe service is already added to the session but just needs a
     # db.session.commit
     save_model_service(service)
@@ -30,6 +32,8 @@ def update_service(service_id):
         return jsonify(result="error", message="Service not found"), 404
     # TODO there has got to be a better way to do the next three lines
     update_service, errors = service_schema.load(request.get_json())
+    if errors:
+        return jsonify(result="error", message=errors), 400
     update_dict, errors = service_schema.dump(update_service)
     # TODO FIX ME
     # Remove update_service model which is added to db.session
