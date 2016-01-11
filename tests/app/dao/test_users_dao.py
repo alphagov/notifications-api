@@ -1,6 +1,6 @@
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
-from app.dao.users_dao import (create_model_user, get_model_users)
+from app.dao.users_dao import (save_model_user, get_model_users)
 from tests.app.conftest import sample_user as create_sample_user
 from app.models import User
 
@@ -8,7 +8,7 @@ from app.models import User
 def test_create_user(notify_api, notify_db, notify_db_session):
     email = 'notify@digital.cabinet-office.gov.uk'
     user = User(**{'email_address': email})
-    create_model_user(user)
+    save_model_user(user)
     assert User.query.count() == 1
     assert User.query.first().email_address == email
     assert User.query.first().id == user.id

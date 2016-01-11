@@ -54,4 +54,20 @@ def test_post_user(notify_api, notify_db, notify_db_session):
 
 
 def test_put_user(notify_api, notify_db, notify_db_session, sample_user):
-    pass
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            assert User.query.count() == 1
+            new_email = 'new@digital.cabinet-office.gov.uk'
+            data = {
+                'email_address': new_email}
+            headers = [('Content-Type', 'application/json')]
+            resp = client.put(
+                url_for('user.update_user', user_id=sample_user.id),
+                data=json.dumps(data),
+                headers=headers)
+            assert resp.status_code == 200
+            assert User.query.count() == 1
+            user = User.query.first()
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert json_resp['data']['email_address'] == new_email
+            assert json_resp['data']['id'] == user.id

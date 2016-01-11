@@ -1,5 +1,5 @@
 import json
-from app.models import Service
+from app.models import (Service, User)
 from flask import url_for
 
 
@@ -58,4 +58,30 @@ def test_post_service(notify_api, notify_db, notify_db_session, sample_user):
 
 
 def test_put_service(notify_api, notify_db, notify_db_session, sample_service):
-    pass
+    """
+    Tests Put endpoint '/<service_id' to edit a service.
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            assert Service.query.count() == 1
+            sample_user = User.query.first()
+            old_service = Service.query.first()
+            new_name = 'updated service'
+            data = {
+                'name': new_name,
+                'users': [sample_user.id],
+                'limit': 1000,
+                'restricted': False,
+                'active': False}
+            headers = [('Content-Type', 'application/json')]
+            resp = client.put(
+                url_for('service.update_service', service_id=old_service.id),
+                data=json.dumps(data),
+                headers=headers)
+            assert Service.query.count() == 1
+            assert resp.status_code == 200
+            updated_service = Service.query.first()
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert json_resp['data']['name'] == updated_service.name
+            assert json_resp['data']['limit'] == updated_service.limit
+            assert updated_service.name == new_name

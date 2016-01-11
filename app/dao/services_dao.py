@@ -1,24 +1,22 @@
 import json
 from datetime import datetime
-
 from sqlalchemy.orm import load_only
-from sqlalchemy.exc import SQLAlchemyError
-
+from . import DAOException
 from app import db
 from app.models import Service
 
 
-# Should I use SQLAlchemyError?
-class DAOException(SQLAlchemyError):
-    pass
-
-
-def create_model_service(service):
-    users_list = getattr(service, 'users', [])
+def save_model_service(service, update_dict=None):
+    users_list = update_dict.get('users', []) if update_dict else getattr(service, 'users', [])
     if not users_list:
         error_msg = {'users': 'Missing data for required attribute'}
         raise DAOException(json.dumps(error_msg))
-    db.session.add(service)
+    if update_dict:
+        del update_dict['id']
+        del update_dict['users']
+        db.session.query(Service).filter_by(id=service.id).update(update_dict)
+    else:
+        db.session.add(service)
     db.session.commit()
 
 

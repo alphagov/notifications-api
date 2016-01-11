@@ -1,6 +1,6 @@
 import pytest
 from app.dao.services_dao import (
-    create_model_service, get_model_services, DAOException)
+    save_model_service, get_model_services, DAOException)
 from tests.app.conftest import sample_service as create_sample_service
 from app.models import Service
 
@@ -15,7 +15,7 @@ def test_create_service(notify_api, notify_db, notify_db_session, sample_user):
         'active': False,
         'restricted': False}
     service = Service(**data)
-    create_model_service(service)
+    save_model_service(service)
     assert Service.query.count() == 1
     assert Service.query.first().name == service_name
     assert Service.query.first().id == service.id
@@ -58,7 +58,7 @@ def test_missing_user_attribute(notify_api, notify_db, notify_db_session):
             'restricted': False}
 
         service = Service(**data)
-        create_model_service(service)
+        save_model_service(service)
         pytest.fail("DAOException not thrown")
     except DAOException as e:
         assert "Missing data for required attribute" in str(e)

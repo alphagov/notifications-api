@@ -13,17 +13,6 @@ class UserSchema(ma.ModelSchema):
         model = models.User
         exclude = ("updated_at", "created_at", "user_to_service")
 
-    def make_object(self, data):
-        # TODO possibly override to handle instance creation
-        return super(UserSchema, self).make_object(data)
-
-    # def dump(self, obj, many=None, update_fields=True, **kwargs):
-    #     retval = super(UserSchema, self).dump(
-    #         obj, many=many, update_fields=update_fields, **kwargs)
-    #     if not many and 'email_address' not in retval.data:
-    #         retval.data['email_address'] = obj.email_address
-    #     return retval
-
 
 # TODO process users list, to return a list of user.id
 # Should that list be restricted by the auth parsed??
@@ -31,10 +20,6 @@ class ServiceSchema(ma.ModelSchema):
     class Meta:
         model = models.Service
         exclude = ("updated_at", "created_at")
-
-    def make_object(self, data):
-        # TODO possibly override to handle instance creation
-        return super(ServiceSchema, self).make_object(data)
 
 
 user_schema = UserSchema()

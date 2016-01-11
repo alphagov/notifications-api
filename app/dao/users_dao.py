@@ -1,13 +1,17 @@
 from datetime import datetime
-
+from . import DAOException
 from sqlalchemy.orm import load_only
 
 from app import db
 from app.models import User
 
 
-def create_model_user(usr):
-    db.session.add(usr)
+def save_model_user(usr, update_dict={}):
+    if update_dict:
+        del update_dict['id']
+        db.session.query(User).filter_by(id=usr.id).update(update_dict)
+    else:
+        db.session.add(usr)
     db.session.commit()
 
 

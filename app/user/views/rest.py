@@ -2,24 +2,37 @@ from flask import (jsonify, request)
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 from app.dao.services_dao import get_model_services
-from app.dao.users_dao import (get_model_users, create_model_user)
+from app.dao.users_dao import (get_model_users, save_model_user)
 from app.schemas import (
     user_schema, users_schema, service_schema, services_schema)
 from .. import user
+from app import db
 
 
 # TODO auth to be added
 @user.route('/', methods=['POST'])
 def create_user():
     user = user_schema.load(request.get_json()).data
-    create_model_user(user)
+    save_model_user(user)
     return jsonify(data=user_schema.dump(user).data), 201
 
 
 # TODO auth to be added
 @user.route('/<int:user_id>', methods=['PUT'])
 def update_user(user_id):
-    user = get_model_users(user_id=user_id)
+    try:
+        user = get_model_users(user_id=user_id)
+    except DataError:
+        return jsonify(result="error", message="Invalid user id"), 400
+    except NoResultFound:
+        return jsonify(result="error", message="User not found"), 404
+    # TODO there has got to be a better way to do the next three lines
+    update_user, errors = user_schema.load(request.get_json())
+    update_dict, errors = user_schema.dump(update_user)
+    # TODO FIX ME
+    # Remove update_service model which is added to db.session
+    db.session.rollback()
+    save_model_user(user, update_dict=update_dict)
     return jsonify(data=user_schema.dump(user).data)
 
 
