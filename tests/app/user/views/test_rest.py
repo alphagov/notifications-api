@@ -97,6 +97,28 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_user):
             assert json_resp['data']['id'] == user.id
 
 
+def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_user):
+    """
+    Tests PUT endpoint '/' to update a user doesn't exist.
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            assert User.query.count() == 1
+            new_email = 'new@digital.cabinet-office.gov.uk'
+            data = {
+                'email_address': new_email}
+            headers = [('Content-Type', 'application/json')]
+            resp = client.put(
+                url_for('user.update_user', user_id="123"),
+                data=json.dumps(data),
+                headers=headers)
+            assert resp.status_code == 404
+            assert User.query.count() == 1
+            user = User.query.first()
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert user.email_address != new_email
+
+
 def test_put_user_missing_email(notify_api, notify_db, notify_db_session, sample_user):
     """
     Tests PUT endpoint '/' missing attribute email.
@@ -198,6 +220,9 @@ def test_get_user_service_service_not_exists(notify_api, notify_db, notify_db_se
 
 
 def test_delete_user(notify_api, notify_db, notify_db_session, sample_user):
+    """
+    Tests DELETE endpoint '/<user_id>' delete user.
+    """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             user = User.query.first()
@@ -207,3 +232,17 @@ def test_delete_user(notify_api, notify_db, notify_db_session, sample_user):
             assert resp.status_code == 202
             json_resp = json.loads(resp.get_data(as_text=True))
             assert User.query.count() == 0
+
+
+def test_delete_user_not_exists(notify_api, notify_db, notify_db_session, sample_user):
+    """
+    Tests DELETE endpoint '/<user_id>' delete user.
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            user = User.query.first()
+            resp = client.delete(
+                url_for('user.update_user', user_id="123"),
+                headers=[('Content-Type', 'application/json')])
+            assert resp.status_code == 404
+            assert User.query.count() == 1

@@ -142,6 +142,29 @@ def test_put_service(notify_api, notify_db, notify_db_session, sample_service):
             assert updated_service.name == new_name
 
 
+def test_put_service_not_exists(notify_api, notify_db, notify_db_session, sample_service):
+    """
+    Tests PUT endpoint '/<service_id>' service doesn't exist.
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            sample_user = sample_service.users[0]
+            new_name = 'updated service'
+            data = {
+                'name': new_name,
+                'users': [sample_user.id],
+                'limit': 1000,
+                'restricted': False,
+                'active': False}
+            resp = client.put(
+                url_for('service.update_service', service_id="123"),
+                data=data,
+                headers=[('Content-Type', 'application/json')])
+            assert resp.status_code == 404
+            assert Service.query.first().name == sample_service.name
+            assert Service.query.first().name != new_name
+
+
 def test_put_service_add_user(notify_api, notify_db, notify_db_session, sample_service):
     """
     Tests PUT endpoint '/<service_id>' add user to the service.
@@ -211,7 +234,10 @@ def test_put_service_remove_user(notify_api, notify_db, notify_db_session, sampl
             assert another_user.id in json_resp['data']['users']
 
 
-def test_delete_user(notify_api, notify_db, notify_db_session, sample_service):
+def test_delete_service(notify_api, notify_db, notify_db_session, sample_service):
+    """
+    Tests DELETE endpoint '/<service_id>' delete service.
+    """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service = Service.query.first()
@@ -220,4 +246,18 @@ def test_delete_user(notify_api, notify_db, notify_db_session, sample_service):
                 headers=[('Content-Type', 'application/json')])
             assert resp.status_code == 202
             json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp['data']['name'] == sample_service.name
             assert Service.query.count() == 0
+
+
+def test_delete_service_not_exists(notify_api, notify_db, notify_db_session, sample_service):
+    """
+    Tests DELETE endpoint '/<service_id>' delete service doesn't exist.
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            resp = client.delete(
+                url_for('service.update_service', service_id="123"),
+                headers=[('Content-Type', 'application/json')])
+            assert resp.status_code == 404
+            assert Service.query.count() == 1
