@@ -34,10 +34,6 @@ def notify_db(notify_api, request):
     config.set_main_option("script_location", ALEMBIC_CONFIG)
 
     with notify_api.app_context():
-        # TODO this next line shouldn't be needed,
-        # but cannot work out the import order to
-        # remove it.
-        db.create_all()
         upgrade(config, 'head')
 
     def teardown():

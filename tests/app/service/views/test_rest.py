@@ -88,6 +88,7 @@ def test_post_service_multiple_users(notify_api, notify_db, notify_db_session, s
             assert json_resp['data']['limit'] == service.limit
             assert len(service.users) == 2
 
+
 def test_post_service_without_users_attribute(notify_api, notify_db, notify_db_session):
     """
     Tests POST endpoint '/' to create a service without 'users' attribute.
@@ -208,6 +209,3 @@ def test_put_service_remove_user(notify_api, notify_db, notify_db_session, sampl
             assert len(json_resp['data']['users']) == 1
             assert sample_user.id not in json_resp['data']['users']
             assert another_user.id in json_resp['data']['users']
-
-
-
