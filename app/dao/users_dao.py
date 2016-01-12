@@ -15,6 +15,11 @@ def save_model_user(usr, update_dict={}):
     db.session.commit()
 
 
+def delete_model_user(user):
+    db.session.delete(user)
+    db.session.commit()
+
+
 def get_model_users(user_id=None):
     if user_id:
         return User.query.filter_by(id=user_id).one()

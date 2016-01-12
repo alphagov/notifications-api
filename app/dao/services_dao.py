@@ -30,6 +30,11 @@ def save_model_service(service, update_dict=None):
     db.session.commit()
 
 
+def delete_model_service(service):
+    db.session.delete(service)
+    db.session.commit()
+
+
 def get_model_services(service_id=None, user_id=None):
     # TODO need better mapping from function params to sql query.
     if user_id and service_id:

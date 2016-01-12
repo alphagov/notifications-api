@@ -209,3 +209,15 @@ def test_put_service_remove_user(notify_api, notify_db, notify_db_session, sampl
             assert len(json_resp['data']['users']) == 1
             assert sample_user.id not in json_resp['data']['users']
             assert another_user.id in json_resp['data']['users']
+
+
+def test_delete_user(notify_api, notify_db, notify_db_session, sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            service = Service.query.first()
+            resp = client.delete(
+                url_for('service.update_service', service_id=service.id),
+                headers=[('Content-Type', 'application/json')])
+            assert resp.status_code == 202
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert Service.query.count() == 0
