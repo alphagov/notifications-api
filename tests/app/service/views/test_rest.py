@@ -209,3 +209,5 @@ def test_put_service_remove_user(notify_api, notify_db, notify_db_session, sampl
             assert sample_user.id not in json_resp['data']['users']
             assert another_user.id in json_resp['data']['users']
 
+
+
