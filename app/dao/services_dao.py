@@ -3,18 +3,28 @@ from datetime import datetime
 from sqlalchemy.orm import load_only
 from . import DAOException
 from app import db
-from app.models import Service
+from app.models import (Service, User)
 
 
 def save_model_service(service, update_dict=None):
     users_list = update_dict.get('users', []) if update_dict else getattr(service, 'users', [])
     if not users_list:
-        error_msg = {'users': 'Missing data for required attribute'}
+        error_msg = {'users': ['Missing data for required attribute']}
         raise DAOException(json.dumps(error_msg))
     if update_dict:
-        del update_dict['id']
-        del update_dict['users']
-        db.session.query(Service).filter_by(id=service.id).update(update_dict)
+        # Make sure the update_dict doesn't contain conflicting
+        update_dict.pop('id', None)
+        update_dict.pop('users', None)
+        # TODO optimize this algorithm
+        new_users = User.query.filter(User.id.in_(users_list)).all()
+        for x in service.users:
+            if x in new_users:
+                new_users.remove(x)
+            else:
+                service.users.remove(x)
+        for x in new_users:
+            service.users.append(x)
+        Service.query.filter_by(id=service.id).update(update_dict)
     else:
         db.session.add(service)
     db.session.commit()

@@ -3,6 +3,7 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 from app.dao.services_dao import (save_model_service, get_model_services)
 from app.dao.users_dao import get_model_users
+from app.dao import DAOException
 from .. import service
 from app import db
 from app.schemas import (services_schema, service_schema)
@@ -17,7 +18,10 @@ def create_service():
         return jsonify(result="error", message=errors), 400
     # I believe service is already added to the session but just needs a
     # db.session.commit
-    save_model_service(service)
+    try:
+        save_model_service(service)
+    except DAOException as e:
+        return jsonify(result="error", message=str(e)), 400
     return jsonify(data=service_schema.dump(service).data), 201
 
 
@@ -31,14 +35,17 @@ def update_service(service_id):
     except NoResultFound:
         return jsonify(result="error", message="Service not found"), 404
     # TODO there has got to be a better way to do the next three lines
-    update_service, errors = service_schema.load(request.get_json())
+    upd_serv, errors = service_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
-    update_dict, errors = service_schema.dump(update_service)
+    update_dict, errors = service_schema.dump(upd_serv)
     # TODO FIX ME
     # Remove update_service model which is added to db.session
     db.session.rollback()
-    save_model_service(service, update_dict=update_dict)
+    try:
+        save_model_service(service, update_dict=update_dict)
+    except DAOException as e:
+        return jsonify(result="error", message=str(e)), 400
     return jsonify(data=service_schema.dump(service).data)
 
 
