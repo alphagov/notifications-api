@@ -2,10 +2,15 @@ import os
 
 from flask._compat import string_types
 from flask import Flask, _request_ctx_stack
+from flask.ext.sqlalchemy import SQLAlchemy
+from flask_marshmallow import Marshmallow
 from werkzeug.local import LocalProxy
 from config import configs
 from utils import logging
 
+
+db = SQLAlchemy()
+ma = Marshmallow()
 
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 
@@ -16,15 +21,23 @@ def create_app(config_name):
     application.config['NOTIFY_API_ENVIRONMENT'] = config_name
     application.config.from_object(configs[config_name])
 
+    db.init_app(application)
+    ma.init_app(application)
     init_app(application)
 
     logging.init_app(application)
 
     from .main import main as main_blueprint
+    from .service import service as service_blueprint
+    from .user import user as user_blueprint
     application.register_blueprint(main_blueprint)
+    application.register_blueprint(service_blueprint, url_prefix='/service')
+    application.register_blueprint(user_blueprint, url_prefix='/user')
 
     from .status import status as status_blueprint
     application.register_blueprint(status_blueprint)
+
+    from app import models
 
     return application
 

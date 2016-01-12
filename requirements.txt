@@ -1,6 +1,14 @@
 Flask==0.10.1
 Flask-Script==2.0.5
+Flask-Migrate==1.3.1
+Flask-SQLAlchemy==2.0
+psycopg2==2.6.1
+SQLAlchemy==1.0.5
+SQLAlchemy-Utils==0.30.5
 PyJWT==1.4.0
+marshmallow==2.4.2
+marshmallow-sqlalchemy==0.8.0
+flask-marshmallow==0.6.2
 
 git+https://github.com/alphagov/notifications-python-client.git@0.1.5#egg=notifications-python-client==0.1.5
 
