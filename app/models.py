@@ -59,3 +59,29 @@ class Service(db.Model):
         secondary=user_to_service,
         backref=db.backref('user_to_service', lazy='dynamic'))
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
+
+
+TEMPLATE_TYPES = ['sms', 'email', 'letter']
+
+
+class Template(db.Model):
+    __tablename__ = 'templates'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    template_type = db.Column(db.Enum(*TEMPLATE_TYPES, name='template_type'), nullable=False)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=False,
+        default=datetime.datetime.now)
+    updated_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True,
+        onupdate=datetime.datetime.now)
+    content = db.Column(db.Text, index=False, unique=False, nullable=False)
+    service_id = db.Column(db.BigInteger, db.ForeignKey('services.id'), index=True, unique=False)
+    service = db.relationship('Service', backref=db.backref('templates', lazy='dynamic'))

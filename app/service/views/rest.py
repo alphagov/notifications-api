@@ -67,3 +67,58 @@ def get_service(service_id=None):
         return jsonify(result="error", message="Service not found"), 404
     data, errors = services_schema.dump(services) if isinstance(services, list) else service_schema.dump(services)
     return jsonify(data=data)
+
+
+# TODO auth to be added.
+@service.route('/<int:service_id>/template/', methods=['POST'])
+def create_template():
+    try:
+        service = get_model_services(service_id=service_id)
+    except DataError:
+        return jsonify(result="error", message="Invalid service id"), 400
+    except NoResultFound:
+        return jsonify(result="error", message="Service not found"), 404
+    template, errors = template_schema.load(request.get_json())
+    if errors:
+        return jsonify(result="error", message=errors), 400
+    template.service = service
+    # I believe service is already added to the session but just needs a
+    # db.session.commit
+    save_model_template(template)
+    return jsonify(data=template_schema.dump(template).data), 201
+
+
+# TODO auth to be added
+@service.route('/<int:service_id>/template/<int:template_id>', methods=['PUT', 'DELETE'])
+def update_template(service_id, template_id):
+    try:
+        service = get_model_services(service_id=service_id)
+    except DataError:
+        return jsonify(result="error", message="Invalid service id"), 400
+    except NoResultFound:
+        return jsonify(result="error", message="Service not found"), 404
+    try:
+        template = get_model_templates(template_id=template_id)
+    except DataError:
+        return jsonify(result="error", message="Invalid template id"), 400
+    except NoResultFound:
+        return jsonify(result="error", message="Template not found"), 404
+    if request.method == 'DELETE':
+        status_code = 202
+        delete_model_template(template)
+    else:
+        status_code = 200
+        # TODO there has got to be a better way to do the next three lines
+        upd_temp, errors = template_schema.load(request.get_json())
+        if errors:
+            return jsonify(result="error", message=errors), 400
+        upd_temp.service = service
+        update_dict, errors = template_schema.dump(upd_temp)
+        # TODO FIX ME
+        # Remove update_temp model which is added to db.session
+        db.session.rollback()
+        try:
+            save_model_template(template, update_dict=update_dict)
+        except DAOException as e:
+            return jsonify(result="error", message=str(e)), 400
+    return jsonify(data=service_template.dump(template).data), status_code
