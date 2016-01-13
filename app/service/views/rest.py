@@ -113,8 +113,9 @@ def delete_token(service_id):
         return jsonify(result="error", message="Token not found"), 404
 
 
-def _generate_token():
-    token = uuid.uuid4()
+def _generate_token(token=None):
+    if not token:
+        token = uuid.uuid4()
     serializer = URLSafeSerializer(current_app.config.get('SECRET_KEY'))
     return serializer.dumps(str(token), current_app.config.get('DANGEROUS_SALT'))
 

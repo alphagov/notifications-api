@@ -318,6 +318,15 @@ def test_delete_token(notify_api, notify_db, notify_db_session, sample_service):
             assert len(Token.query.all()) == 0
 
 
+def test_token_generated_can_be_read_again(notify_api):
+    from app.service.views.rest import (_generate_token, _get_token)
+    import uuid
+    with notify_api.test_request_context():
+        token = str(uuid.uuid4())
+        signed_token = _generate_token(token=token)
+        assert token == _get_token(signed_token)
+
+
 def test_create_template(notify_api, notify_db, notify_db_session, sample_service):
     """
     Tests POST endpoint '/<service_id>/template' a template can be created
