@@ -61,8 +61,8 @@ class Service(db.Model):
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
 
 
-class ApiToken(db.Model):
-    __tablename__ = 'api_tokens'
+class Token(db.Model):
+    __tablename__ = 'tokens'
 
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String, unique=True, nullable=False)

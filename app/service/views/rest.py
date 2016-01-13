@@ -1,13 +1,20 @@
-from flask import (jsonify, request)
+import uuid
+from datetime import datetime
+from flask import (jsonify, request, current_app)
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 from app.dao.services_dao import (
     save_model_service, get_model_services, delete_model_service)
+from app.dao.tokens_dao import (save_token_model, get_model_tokens, delete_model_token)
+from app.dao.users_dao import get_model_users
 from app.dao.templates_dao import (
     save_model_template, get_model_templates)
 from app.dao import DAOException
 from .. import service
 from app import db
+from app.schemas import (services_schema, service_schema, token_schema)
+from app.models import Token
+from itsdangerous import URLSafeSerializer
 from app.schemas import (
     services_schema, service_schema, template_schema, templates_schema)
 
@@ -73,8 +80,48 @@ def get_service(service_id=None):
 
 # TODO auth to be added
 @service.route('/<int:service_id>/token', methods=['POST'])
-def create_token():
-    request.get_json()
+def create_token(service_id=None):
+    try:
+        service = get_model_services(service_id=service_id)
+    except DataError:
+        return jsonify(result="error", message="Invalid service id"), 400
+    except NoResultFound:
+        return jsonify(result="error", message="Service not found"), 404
+
+    token = _generate_token()
+    try:
+        try:
+            service_token = get_model_tokens(service_id=service_id)
+            save_token_model(service_token, update_dict={'id': service_token.id,
+                                                         'token': service_token.token,
+                                                         'expiry_date': datetime.now()})
+        except NoResultFound:
+            pass
+        save_token_model(Token(service_id=service_id, token=token))
+    except DAOException as e:
+        return jsonify(result='error', message=str(e)), 400
+    return jsonify(token=str(token)), 201
+
+
+@service.route('/<int:service_id>/token', methods=['DELETE'])
+def delete_token(service_id):
+    try:
+        token = get_model_tokens(service_id=service_id)
+        delete_model_token(token)
+        return jsonify(data=token_schema.dump(token).data), 202
+    except NoResultFound:
+        return jsonify(result="error", message="Token not found"), 404
+
+
+def _generate_token():
+    token = uuid.uuid4()
+    serializer = URLSafeSerializer(current_app.config.get('SECRET_KEY'))
+    return serializer.dumps(str(token), current_app.config.get('DANGEROUS_SALT'))
+
+
+def _get_token(token):
+    serializer = URLSafeSerializer(current_app.config.get('SECRET_KEY'))
+    return serializer.loads(token, salt=current_app.config.get('DANGEROUS_SALT'))
 
 
 # TODO auth to be added.
