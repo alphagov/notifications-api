@@ -19,10 +19,18 @@ class UserSchema(ma.ModelSchema):
 class ServiceSchema(ma.ModelSchema):
     class Meta:
         model = models.Service
-        exclude = ("updated_at", "created_at")
+        exclude = ("updated_at", "created_at", "templates")
+
+
+class TemplateSchema(ma.ModelSchema):
+    class Meta:
+        model = models.Template
+        exclude = ("updated_at", "created_at", "service_id")
 
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
 service_schema = ServiceSchema()
 services_schema = ServiceSchema(many=True)
+template_schema = TemplateSchema()
+templates_schema = TemplateSchema(many=True)

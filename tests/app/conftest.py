@@ -1,7 +1,8 @@
 import pytest
-from app.models import (User, Service)
+from app.models import (User, Service, Template)
 from app.dao.users_dao import (save_model_user, get_model_users)
 from app.dao.services_dao import save_model_service
+from app.dao.templates_dao import save_model_template
 
 
 @pytest.fixture(scope='function')
@@ -29,3 +30,23 @@ def sample_service(notify_db,
     service = Service(**data)
     save_model_service(service)
     return service
+
+
+@pytest.fixture(scope='function')
+def sample_template(notify_db,
+                    notify_db_session,
+                    template_name="Template Name",
+                    template_type="sms",
+                    content="This is a template",
+                    service=None):
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
+    data = {
+        'name': template_name,
+        'template_type': template_type,
+        'content': content,
+        'service': service
+    }
+    template = Template(**data)
+    save_model_template(template)
+    return template
