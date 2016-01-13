@@ -5,7 +5,6 @@ from app.dao.services_dao import (
     save_model_service, get_model_services, delete_model_service)
 from app.dao.templates_dao import (
     save_model_template, get_model_templates)
-from app.dao.users_dao import get_model_users
 from app.dao import DAOException
 from .. import service
 from app import db
@@ -70,6 +69,12 @@ def get_service(service_id=None):
         return jsonify(result="error", message="Service not found"), 404
     data, errors = services_schema.dump(services) if isinstance(services, list) else service_schema.dump(services)
     return jsonify(data=data)
+
+
+# TODO auth to be added
+@service.route('/<int:service_id>/token', methods=['POST'])
+def create_token():
+    request.get_json()
 
 
 # TODO auth to be added.

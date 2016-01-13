@@ -61,6 +61,15 @@ class Service(db.Model):
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
 
 
+class ApiToken(db.Model):
+    __tablename__ = 'api_tokens'
+
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String, unique=True, nullable=False)
+    service_id = db.Column(db.Integer, db.ForeignKey('services.id'), index=True, nullable=False)
+    expiry_date = db.Column(db.DateTime)
+
+
 TEMPLATE_TYPES = ['sms', 'email', 'letter']
 
 

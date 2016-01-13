@@ -28,9 +28,15 @@ class TemplateSchema(ma.ModelSchema):
         exclude = ("updated_at", "created_at", "service_id")
 
 
+class ApiTokenSchema(ma.ModelSchema):
+    class Meta:
+        model = models.ApiToken
+
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
 service_schema = ServiceSchema()
 services_schema = ServiceSchema(many=True)
+api_token_schema = ApiTokenSchema()
+api_tokens_schema = ApiTokenSchema(many=True)
 template_schema = TemplateSchema()
 templates_schema = TemplateSchema(many=True)
