@@ -7,7 +7,6 @@ from app.models import (Service, User)
 
 
 def save_model_service(service, update_dict=None):
-    print(update_dict)
     users_list = update_dict.get('users', []) if update_dict else getattr(service, 'users', [])
     if not users_list:
         error_msg = {'users': ['Missing data for required attribute']}
