@@ -65,8 +65,9 @@ class Token(db.Model):
     __tablename__ = 'tokens'
 
     id = db.Column(db.Integer, primary_key=True)
-    token = db.Column(db.String, unique=True, nullable=False)
+    token = db.Column(db.String(255), unique=True, nullable=False)
     service_id = db.Column(db.Integer, db.ForeignKey('services.id'), index=True, nullable=False)
+    service = db.relationship('Service', backref=db.backref('tokens', lazy='dynamic'))
     expiry_date = db.Column(db.DateTime)
 
 
