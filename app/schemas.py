@@ -25,7 +25,7 @@ class ServiceSchema(ma.ModelSchema):
 class TemplateSchema(ma.ModelSchema):
     class Meta:
         model = models.Template
-        exclude = ("updated_at", "created_at")
+        exclude = ("updated_at", "created_at", "service_id")
 
 
 user_schema = UserSchema()

@@ -3,11 +3,14 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 from app.dao.services_dao import (
     save_model_service, get_model_services, delete_model_service)
+from app.dao.templates_dao import (
+    save_model_template, get_model_templates)
 from app.dao.users_dao import get_model_users
 from app.dao import DAOException
 from .. import service
 from app import db
-from app.schemas import (services_schema, service_schema)
+from app.schemas import (
+    services_schema, service_schema, template_schema, templates_schema)
 
 
 # TODO auth to be added.
@@ -71,7 +74,7 @@ def get_service(service_id=None):
 
 # TODO auth to be added.
 @service.route('/<int:service_id>/template/', methods=['POST'])
-def create_template():
+def create_template(service_id):
     try:
         service = get_model_services(service_id=service_id)
     except DataError:
@@ -121,4 +124,4 @@ def update_template(service_id, template_id):
             save_model_template(template, update_dict=update_dict)
         except DAOException as e:
             return jsonify(result="error", message=str(e)), 400
-    return jsonify(data=service_template.dump(template).data), status_code
+    return jsonify(data=template_schema.dump(template).data), status_code

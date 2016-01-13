@@ -8,7 +8,10 @@ from app.models import (Template, Service)
 
 def save_model_template(template, update_dict=None):
     if update_dict:
+        update_dict.pop('id', None)
+        service_id = update_dict.pop('service')
         Template.query.filter_by(id=template.id).update(update_dict)
+        template.service = Service.query.get(service_id)
     else:
         db.session.add(template)
     db.session.commit()
@@ -23,7 +26,7 @@ def get_model_templates(template_id=None, service_id=None):
     # TODO need better mapping from function params to sql query.
     if template_id and service_id:
         return Template.query.filter_by(
-            id=template_id, service=Service.get(service_id)).one()
+            id=template_id, service=Service.query.get(service_id)).one()
     elif template_id:
         return Template.query.filter_by(id=template_id).one()
     elif service_id:
