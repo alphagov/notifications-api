@@ -57,6 +57,7 @@ def test_post_service(notify_api, notify_db, notify_db_session, sample_user):
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['data']['name'] == service.name
             assert json_resp['data']['limit'] == service.limit
+            assert json_resp['token'] is not None
 
 
 def test_post_service_multiple_users(notify_api, notify_db, notify_db_session, sample_user):
@@ -263,10 +264,11 @@ def test_delete_service_not_exists(notify_api, notify_db, notify_db_session, sam
             assert Service.query.count() == 1
 
 
-def test_create_token_should_return_token_when_successful(notify_api, notify_db, notify_db_session, sample_service):
+def test_renew_token_should_return_token_when_service_does_not_have_a_valid_token(notify_api, notify_db,
+                                                                                  notify_db_session, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            response = client.post(url_for('service.create_token', service_id=sample_service.id),
+            response = client.post(url_for('service.renew_token', service_id=sample_service.id),
                                    headers=[('Content-Type', 'application/json')])
             assert response.status_code == 201
             assert response.get_data is not None
@@ -274,17 +276,17 @@ def test_create_token_should_return_token_when_successful(notify_api, notify_db,
             assert saved_token.service_id == sample_service.id
 
 
-def test_create_token_should_expire_the_old_token_and_create_a_new_token(notify_api, notify_db, notify_db_session,
-                                                                         sample_service):
+def test_renew_token_should_expire_the_old_token_and_create_a_new_token(notify_api, notify_db, notify_db_session,
+                                                                        sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            response = client.post(url_for('service.create_token', service_id=sample_service.id),
+            response = client.post(url_for('service.renew_token', service_id=sample_service.id),
                                    headers=[('Content-Type', 'application/json')])
             assert response.status_code == 201
             assert len(Token.query.all()) == 1
             saved_token = Token.query.first()
 
-            response = client.post(url_for('service.create_token', service_id=sample_service.id),
+            response = client.post(url_for('service.renew_token', service_id=sample_service.id),
                                    headers=[('Content-Type', 'application/json')])
             assert response.status_code == 201
             all_tokens = Token.query.all()
@@ -301,21 +303,40 @@ def test_create_token_should_return_error_when_service_does_not_exist(notify_api
                                                                       sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            response = client.post(url_for('service.create_token', service_id=123),
+            response = client.post(url_for('service.renew_token', service_id=123),
                                    headers=[('Content-Type', 'application/json')])
             assert response.status_code == 404
 
 
-def test_delete_token(notify_api, notify_db, notify_db_session, sample_service):
+def test_revoke_token_should_expire_token_for_service(notify_api, notify_db, notify_db_session, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            client.post(url_for('service.create_token', service_id=sample_service.id),
+            client.post(url_for('service.renew_token', service_id=sample_service.id),
                         headers=[('Content-Type', 'application/json')])
+            assert len(Token.query.all()) == 1
+            response = client.post(url_for('service.revoke_token', service_id=sample_service.id))
+            assert response.status_code == 202
             all_tokens = Token.query.all()
             assert len(all_tokens) == 1
-            response = client.delete(url_for('service.delete_token', service_id=sample_service.id))
-            assert response.status_code == 202
+            assert all_tokens[0].expiry_date is not None
+
+
+def test_create_service_should_create_new_token_for_service(notify_api, notify_db, notify_db_session, sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = {
+                'name': 'created service',
+                'users': [sample_user.id],
+                'limit': 1000,
+                'restricted': False,
+                'active': False}
+            headers = [('Content-Type', 'application/json')]
             assert len(Token.query.all()) == 0
+            resp = client.post(url_for('service.create_service'),
+                               data=json.dumps(data),
+                               headers=headers)
+            assert resp.status_code == 201
+            assert len(Token.query.all()) == 1
 
 
 def test_token_generated_can_be_read_again(notify_api):

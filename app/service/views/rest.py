@@ -5,7 +5,7 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 from app.dao.services_dao import (
     save_model_service, get_model_services, delete_model_service)
-from app.dao.tokens_dao import (save_token_model, get_model_tokens, delete_model_token)
+from app.dao.tokens_dao import (save_token_model, get_model_tokens)
 from app.dao.users_dao import get_model_users
 from app.dao.templates_dao import (
     save_model_template, get_model_templates)
@@ -30,9 +30,11 @@ def create_service():
     # db.session.commit
     try:
         save_model_service(service)
+        token = str(uuid.uuid4())
+        save_token_model(Token(service_id=service.id, token=_generate_token(token)))
     except DAOException as e:
         return jsonify(result="error", message=str(e)), 400
-    return jsonify(data=service_schema.dump(service).data), 201
+    return jsonify(data=service_schema.dump(service).data, token=token), 201
 
 
 # TODO auth to be added
@@ -79,8 +81,8 @@ def get_service(service_id=None):
 
 
 # TODO auth to be added
-@service.route('/<int:service_id>/token', methods=['POST'])
-def create_token(service_id=None):
+@service.route('/<int:service_id>/token/renew', methods=['POST'])
+def renew_token(service_id=None):
     try:
         service = get_model_services(service_id=service_id)
     except DataError:
@@ -90,27 +92,31 @@ def create_token(service_id=None):
 
     token = _generate_token()
     try:
-        try:
-            service_token = get_model_tokens(service_id=service_id)
-            save_token_model(service_token, update_dict={'id': service_token.id,
-                                                         'token': service_token.token,
-                                                         'expiry_date': datetime.now()})
-        except NoResultFound:
-            pass
+        service_token = get_model_tokens(service_id=service_id, raise_=False)
+        if service_token:
+            # expire existing token
+            save_token_model(service_token, update_dict={'id': service_token.id, 'expiry_date': datetime.now()})
+        # create a new one
         save_token_model(Token(service_id=service_id, token=token))
     except DAOException as e:
         return jsonify(result='error', message=str(e)), 400
-    return jsonify(token=str(token)), 201
+    unsigned_token = str(_get_token(token))
+    return jsonify(data=unsigned_token), 201
 
 
-@service.route('/<int:service_id>/token', methods=['DELETE'])
-def delete_token(service_id):
+@service.route('/<int:service_id>/token/revoke', methods=['POST'])
+def revoke_token(service_id):
     try:
-        token = get_model_tokens(service_id=service_id)
-        delete_model_token(token)
-        return jsonify(data=token_schema.dump(token).data), 202
+        service = get_model_services(service_id=service_id)
+    except DataError:
+        return jsonify(result="error", message="Invalid service id"), 400
     except NoResultFound:
-        return jsonify(result="error", message="Token not found"), 404
+        return jsonify(result="error", message="Service not found"), 404
+
+    service_token = get_model_tokens(service_id=service_id, raise_=False)
+    if service_token:
+        save_token_model(service_token, update_dict={'id': service_token.id, 'expiry_date': datetime.now()})
+    return jsonify(data=token_schema.dump(service_token)), 202
 
 
 def _generate_token(token=None):
