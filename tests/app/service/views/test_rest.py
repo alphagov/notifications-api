@@ -292,6 +292,33 @@ def test_create_template(notify_api, notify_db, notify_db_session, sample_servic
             assert json_resp['data']['content'] == template_content
 
 
+def test_create_template_service_not_exists(notify_api, notify_db, notify_db_session, sample_service):
+    """
+    Tests POST endpoint '/<service_id>/template' a template can be created
+    from a service.
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            assert Template.query.count() == 0
+            template_name = "template name"
+            template_type = "sms"
+            template_content = "This is a template"
+            data = {
+                'name': template_name,
+                'template_type': template_type,
+                'content': template_content,
+                'service': sample_service.id
+            }
+            resp = client.post(
+                url_for('service.create_template', service_id="123"),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json')])
+            assert resp.status_code == 404
+            assert Template.query.count() == 0
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert "Service not found" in json_resp['message']
+
+
 def test_update_template(notify_api, notify_db, notify_db_session, sample_template):
     """
     Tests PUT endpoint '/<service_id>/template/<template_id>' a template can be
@@ -384,3 +411,33 @@ def test_update_template_template_not_exists(notify_api, notify_db, notify_db_se
             json_resp = json.loads(resp.get_data(as_text=True))
             assert "Template not found" in json_resp['message']
             assert template_name != sample_template.name
+
+
+def test_create_template_unicode_content(notify_api, notify_db, notify_db_session, sample_service):
+    """
+    Tests POST endpoint '/<service_id>/template/<template_id>' a template is
+    created and the content encoding is respected after saving and loading
+    from the db.
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            assert Template.query.count() == 0
+            template_name = "template name"
+            template_type = "sms"
+            template_content = 'Россия'
+            data = {
+                'name': template_name,
+                'template_type': template_type,
+                'content': template_content,
+                'service': sample_service.id
+            }
+            resp = client.post(
+                url_for('service.create_template', service_id=sample_service.id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json')])
+            assert resp.status_code == 201
+            assert Template.query.count() == 1
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert json_resp['data']['name'] == template_name
+            assert json_resp['data']['template_type'] == template_type
+            assert json_resp['data']['content'] == template_content
