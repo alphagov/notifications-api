@@ -26,7 +26,7 @@ def get_model_templates(template_id=None, service_id=None):
     # TODO need better mapping from function params to sql query.
     if template_id and service_id:
         return Template.query.filter_by(
-            id=template_id, service=Service.query.get(service_id)).one()
+            id=template_id, service_id=service_id).one()
     elif template_id:
         return Template.query.filter_by(id=template_id).one()
     elif service_id:
