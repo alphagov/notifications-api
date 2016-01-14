@@ -8,7 +8,7 @@ Create Date: 2016-01-13 17:07:49.061776
 
 # revision identifiers, used by Alembic.
 revision = '0003_create_tokens'
-down_revision = '0001_initialise_data'
+down_revision = '0002_add_templates'
 
 from alembic import op
 import sqlalchemy as sa
