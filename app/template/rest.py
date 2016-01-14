@@ -1,16 +1,12 @@
-from flask import (jsonify, request)
+from flask import Blueprint
+from flask import (jsonify)
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
-from app.dao.templates_dao import get_model_templates
-from app.dao.services_dao import get_model_services
-from app.schemas import (template_schema, templates_schema)
-from app import db
 
-from flask import (jsonify, request)
-from sqlalchemy.exc import DataError
-from sqlalchemy.orm.exc import NoResultFound
-from . import template
-from app import db
+from app.dao.templates_dao import get_model_templates
+from app.schemas import (template_schema, templates_schema)
+
+template = Blueprint('template', __name__)
 
 
 # I am going to keep these for admin like operations

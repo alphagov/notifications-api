@@ -6,8 +6,11 @@ from app.dao.users_dao import (
     get_model_users, save_model_user, delete_model_user)
 from app.schemas import (
     user_schema, users_schema, service_schema, services_schema)
-from .. import user
 from app import db
+
+
+from flask import Blueprint
+user = Blueprint('user', __name__)
 
 
 # TODO auth to be added
