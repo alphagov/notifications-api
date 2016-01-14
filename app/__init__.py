@@ -27,19 +27,15 @@ def create_app(config_name):
 
     logging.init_app(application)
 
-    from .main import main as main_blueprint
     from .service import service as service_blueprint
     from .user import user as user_blueprint
     from .template import template as template_blueprint
-    application.register_blueprint(main_blueprint)
     application.register_blueprint(service_blueprint, url_prefix='/service')
     application.register_blueprint(user_blueprint, url_prefix='/user')
     application.register_blueprint(template_blueprint, url_prefix="/template")
 
     from .status import status as status_blueprint
     application.register_blueprint(status_blueprint)
-
-    from app import models
 
     return application
 
