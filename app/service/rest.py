@@ -14,10 +14,11 @@ from app.dao.tokens_dao import (save_model_token, get_model_tokens, get_unsigned
 from app.models import Token
 from app.schemas import (
     services_schema, service_schema, template_schema)
-from .. import service
+
+from flask import Blueprint
+service = Blueprint('service', __name__)
 
 
-# TODO auth to be added.
 @service.route('/', methods=['POST'])
 def create_service():
     # TODO what exceptions get passed from schema parsing?

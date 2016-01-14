@@ -1,10 +1,11 @@
 from flask import jsonify
 
-from app.status import status
+from flask import Blueprint
+status = Blueprint('status', __name__)
 
 
 @status.route('/_status')
-def status():
+def show_status():
     return jsonify(
         status="ok",
     ), 200

@@ -24,18 +24,16 @@ def create_app(config_name):
     db.init_app(application)
     ma.init_app(application)
     init_app(application)
-
     logging.init_app(application)
 
-    from .service import service as service_blueprint
-    from .user import user as user_blueprint
-    from .template import template as template_blueprint
+    from app.service.rest import service as service_blueprint
+    from app.user.rest import user as user_blueprint
+    from app.template.rest import template as template_blueprint
+    from app.status.healthcheck import status as status_blueprint
     application.register_blueprint(service_blueprint, url_prefix='/service')
     application.register_blueprint(user_blueprint, url_prefix='/user')
     application.register_blueprint(template_blueprint, url_prefix="/template")
-
-    from .status import status as status_blueprint
-    application.register_blueprint(status_blueprint)
+    application.register_blueprint(status_blueprint, url_prefix='/status')
 
     return application
 
