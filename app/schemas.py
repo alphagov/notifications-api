@@ -31,6 +31,8 @@ class TemplateSchema(ma.ModelSchema):
 class TokenSchema(ma.ModelSchema):
     class Meta:
         model = models.Token
+        exclude = ["service"]
+
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)

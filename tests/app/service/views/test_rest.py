@@ -1,8 +1,10 @@
 import json
-from app.models import (Service, User, Token, Template)
-from app.dao.services_dao import save_model_service
-from tests.app.conftest import sample_user as create_sample_user
+
 from flask import url_for
+
+from app.dao.services_dao import save_model_service
+from app.models import (Service, User, Token, Template)
+from tests.app.conftest import sample_user as create_sample_user
 
 
 def test_get_service_list(notify_api, notify_db, notify_db_session, sample_service):
@@ -308,13 +310,11 @@ def test_create_token_should_return_error_when_service_does_not_exist(notify_api
             assert response.status_code == 404
 
 
-def test_revoke_token_should_expire_token_for_service(notify_api, notify_db, notify_db_session, sample_service):
+def test_revoke_token_should_expire_token_for_service(notify_api, notify_db, notify_db_session, sample_token):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            client.post(url_for('service.renew_token', service_id=sample_service.id),
-                        headers=[('Content-Type', 'application/json')])
             assert len(Token.query.all()) == 1
-            response = client.post(url_for('service.revoke_token', service_id=sample_service.id))
+            response = client.post(url_for('service.revoke_token', service_id=sample_token.service_id))
             assert response.status_code == 202
             all_tokens = Token.query.all()
             assert len(all_tokens) == 1
@@ -337,15 +337,6 @@ def test_create_service_should_create_new_token_for_service(notify_api, notify_d
                                headers=headers)
             assert resp.status_code == 201
             assert len(Token.query.all()) == 1
-
-
-def test_token_generated_can_be_read_again(notify_api):
-    from app.service.views.rest import (_generate_token, _get_token)
-    import uuid
-    with notify_api.test_request_context():
-        token = str(uuid.uuid4())
-        signed_token = _generate_token(token=token)
-        assert token == _get_token(signed_token)
 
 
 def test_create_template(notify_api, notify_db, notify_db_session, sample_service):

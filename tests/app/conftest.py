@@ -1,8 +1,9 @@
 import pytest
-from app.models import (User, Service, Template)
-from app.dao.users_dao import (save_model_user, get_model_users)
+from app.models import (User, Service, Template, Token)
+from app.dao.users_dao import (save_model_user)
 from app.dao.services_dao import save_model_service
 from app.dao.templates_dao import save_model_template
+from app.dao.tokens_dao import save_model_token
 
 
 @pytest.fixture(scope='function')
@@ -50,3 +51,16 @@ def sample_template(notify_db,
     template = Template(**data)
     save_model_template(template)
     return template
+
+
+@pytest.fixture(scope='function')
+def sample_token(notify_db,
+                 notify_db_session,
+                 service=None):
+    import uuid
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
+    data = {'service_id': service.id}
+    token = Token(**data)
+    save_model_token(token)
+    return token
