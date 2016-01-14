@@ -46,6 +46,13 @@ def init_app(app):
         if key in os.environ:
             app.config[key] = convert_to_boolean(os.environ[key])
 
+    @app.before_request
+    def required_authentication():
+        from app.authentication import auth
+        error = auth.requires_auth()
+        if error:
+            return error
+
 
 def convert_to_boolean(value):
     """Turn strings to bools if they look like them
