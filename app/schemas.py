@@ -25,13 +25,18 @@ class ServiceSchema(ma.ModelSchema):
 class TemplateSchema(ma.ModelSchema):
     class Meta:
         model = models.Template
-        exclude = ("updated_at", "created_at", "service_id")
+        exclude = ("updated_at", "created_at", "service_id", "jobs")
 
 
 class TokenSchema(ma.ModelSchema):
     class Meta:
         model = models.Token
         exclude = ["service"]
+
+
+class JobSchema(ma.ModelSchema):
+    class Meta:
+        model = models.Job
 
 
 user_schema = UserSchema()
@@ -42,3 +47,5 @@ template_schema = TemplateSchema()
 templates_schema = TemplateSchema(many=True)
 token_schema = TokenSchema()
 tokens_schema = TokenSchema(many=True)
+job_schema = JobSchema()
+jobs_schema = JobSchema(many=True)

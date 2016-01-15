@@ -7,8 +7,8 @@ def save_job(job):
     db.session.commit()
 
 
-def get_job_by_id(id):
-    return Job.query.get(id)
+def get_job_by_id(job_id):
+    return Job.query.filter_by(id=job_id).one()
 
 
 def get_jobs_by_service(service_id):

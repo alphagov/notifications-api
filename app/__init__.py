@@ -30,10 +30,13 @@ def create_app(config_name):
     from app.user.rest import user as user_blueprint
     from app.template.rest import template as template_blueprint
     from app.status.healthcheck import status as status_blueprint
+    from app.job.rest import job as job_blueprint
+
     application.register_blueprint(service_blueprint, url_prefix='/service')
     application.register_blueprint(user_blueprint, url_prefix='/user')
     application.register_blueprint(template_blueprint, url_prefix="/template")
     application.register_blueprint(status_blueprint, url_prefix='/status')
+    application.register_blueprint(job_blueprint, url_prefix='/job')
 
     return application
 
