@@ -1,9 +1,11 @@
 import pytest
-from app.models import (User, Service, Template, Token)
+from app.models import (User, Service, Template, Token, Job)
 from app.dao.users_dao import (save_model_user)
 from app.dao.services_dao import save_model_service
 from app.dao.templates_dao import save_model_template
 from app.dao.tokens_dao import save_model_token
+from app.dao.jobs_dao import save_job
+import uuid
 
 
 @pytest.fixture(scope='function')
@@ -57,10 +59,30 @@ def sample_template(notify_db,
 def sample_token(notify_db,
                  notify_db_session,
                  service=None):
-    import uuid
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     data = {'service_id': service.id}
     token = Token(**data)
     save_model_token(token)
     return token
+
+
+@pytest.fixture(scope='function')
+def sample_job(notify_db,
+               notify_db_session,
+               service=None,
+               template=None):
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
+    if template is None:
+        template = sample_template(notify_db, notify_db_session,
+                                   service=service)
+    data = {
+        'id': uuid.uuid4(),
+        'service_id': service.id,
+        'template_id': template.id,
+        'original_file_name': 'some.csv'
+    }
+    job = Job(**data)
+    save_job(job)
+    return job
