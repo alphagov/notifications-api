@@ -1,18 +1,20 @@
 import json
 import uuid
-
 from flask import url_for
 
+from tests import create_authorization_header
 from tests.app.conftest import sample_job as create_job
 
 
 def test_get_jobs(notify_api, notify_db, notify_db_session, sample_template):
-
     _setup_jobs(notify_db, notify_db_session, sample_template)
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            response = client.get(url_for('job.get_job'))
+            auth_header = create_authorization_header(service_id=sample_template.service.id,
+                                                      path=url_for('job.get_job'),
+                                                      method='GET')
+            response = client.get(url_for('job.get_job'), headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
             assert len(resp_json['data']) == 5
@@ -23,7 +25,10 @@ def test_get_job_with_invalid_id_returns400(notify_api, notify_db,
                                             sample_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            response = client.get(url_for('job.get_job', job_id='invalid_id'))
+            auth_header = create_authorization_header(service_id=sample_template.service.id,
+                                                      path=url_for('job.get_job', job_id='invalid_id'),
+                                                      method='GET')
+            response = client.get(url_for('job.get_job', job_id='invalid_id'), headers=[auth_header])
             assert response.status_code == 400
             resp_json = json.loads(response.get_data(as_text=True))
             assert resp_json == {'message': 'Invalid job id',
@@ -36,11 +41,13 @@ def test_get_job_with_unknown_id_returns404(notify_api, notify_db,
     random_id = str(uuid.uuid4())
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            response = client.get(url_for('job.get_job', job_id=random_id))
+            auth_header = create_authorization_header(service_id=sample_template.service.id,
+                                                      path=url_for('job.get_job', job_id=random_id),
+                                                      method='GET')
+            response = client.get(url_for('job.get_job', job_id=random_id), headers=[auth_header])
             assert response.status_code == 404
             resp_json = json.loads(response.get_data(as_text=True))
-            assert resp_json == {'message': 'Job not found', 'result':
-                                 'error'}
+            assert resp_json == {'message': 'Job not found', 'result': 'error'}
 
 
 def test_get_job_by_id(notify_api, notify_db, notify_db_session,
@@ -48,7 +55,10 @@ def test_get_job_by_id(notify_api, notify_db, notify_db_session,
     job_id = str(sample_job.id)
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            response = client.get(url_for('job.get_job', job_id=job_id))
+            auth_header = create_authorization_header(service_id=sample_job.service.id,
+                                                      path=url_for('job.get_job', job_id=job_id),
+                                                      method='GET')
+            response = client.get(url_for('job.get_job', job_id=job_id), headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
             assert resp_json['data']['id'] == job_id
@@ -65,9 +75,13 @@ def test_post_job(notify_api, notify_db, notify_db_session, sample_template):
         'template': template_id,
         'original_file_name': original_file_name
     }
-    headers = [('Content-Type', 'application/json')]
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            auth_header = create_authorization_header(service_id=sample_template.service.id,
+                                                      path=url_for('job.create_job'),
+                                                      method='POST',
+                                                      request_body=json.dumps(data))
+            headers = [('Content-Type', 'application/json'), auth_header]
             response = client.post(
                 url_for('job.create_job'),
                 data=json.dumps(data),
