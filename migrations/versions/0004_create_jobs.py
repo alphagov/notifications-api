@@ -1,6 +1,6 @@
 """empty message
 
-Revision ID: c929d81b9e4a
+Revision ID: 0004_create_jobs
 Revises: 0003_create_tokens
 Create Date: 2016-01-15 10:12:02.381160
 
