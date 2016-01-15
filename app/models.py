@@ -108,6 +108,7 @@ class Job(db.Model):
     service_id = db.Column(db.BigInteger, db.ForeignKey('services.id'), index=True, unique=False)
     service = db.relationship('Service', backref=db.backref('jobs', lazy='dynamic'))
     template_id = db.Column(db.BigInteger, db.ForeignKey('templates.id'), index=True, unique=False)
+    template = db.relationship('Template', backref=db.backref('jobs', lazy='dynamic'))
     created_at = db.Column(
         db.DateTime,
         index=False,
