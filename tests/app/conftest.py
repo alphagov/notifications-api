@@ -44,6 +44,7 @@ def sample_template(notify_db,
                     service=None):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
+    sample_token(notify_db, notify_db_session, service=service)
     data = {
         'name': template_name,
         'template_type': template_type,
@@ -86,3 +87,12 @@ def sample_job(notify_db,
     job = Job(**data)
     save_job(job)
     return job
+
+@pytest.fixture(scope='function')
+def sample_admin_service_id(notify_db, notify_db_session):
+    admin_user = sample_user(notify_db, notify_db_session, email="notify_admin@digital.cabinet-office.gov.uk")
+    admin_service = sample_service(notify_db, notify_db_session, service_name="Sample Admin Service", user=admin_user)
+    data = {'service_id': admin_service.id}
+    token = Token(**data)
+    save_model_token(token)
+    return admin_service.id

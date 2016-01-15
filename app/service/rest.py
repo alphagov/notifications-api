@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flask import (jsonify, request)
+from flask import (jsonify, request, current_app)
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
