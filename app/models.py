@@ -1,6 +1,8 @@
 from . import db
 import datetime
 
+from sqlalchemy.dialects.postgresql import UUID
+
 
 def filter_null_value_fields(obj):
     return dict(
@@ -95,3 +97,26 @@ class Template(db.Model):
     content = db.Column(db.Text, index=False, unique=False, nullable=False)
     service_id = db.Column(db.BigInteger, db.ForeignKey('services.id'), index=True, unique=False)
     service = db.relationship('Service', backref=db.backref('templates', lazy='dynamic'))
+
+
+class Job(db.Model):
+
+    __tablename__ = 'jobs'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    original_file_name = db.Column(db.String, nullable=False)
+    service_id = db.Column(db.BigInteger, db.ForeignKey('services.id'), index=True, unique=False)
+    service = db.relationship('Service', backref=db.backref('jobs', lazy='dynamic'))
+    template_id = db.Column(db.BigInteger, db.ForeignKey('templates.id'), index=True, unique=False)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=False,
+        default=datetime.datetime.now)
+    updated_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True,
+        onupdate=datetime.datetime.now)
