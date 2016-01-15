@@ -22,7 +22,7 @@ job = Blueprint('job', __name__)
 
 
 @job.route('/<job_id>', methods=['GET'])
-@job.route('/', methods=['GET'])
+@job.route('', methods=['GET'])
 def get_job(job_id=None):
     if job_id:
         try:
@@ -39,7 +39,7 @@ def get_job(job_id=None):
         return jsonify(data=data)
 
 
-@job.route('/', methods=['POST'])
+@job.route('', methods=['POST'])
 def create_job():
     job, errors = job_schema.load(request.get_json())
     if errors:
