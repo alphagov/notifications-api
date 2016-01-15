@@ -19,7 +19,7 @@ from flask import Blueprint
 service = Blueprint('service', __name__)
 
 
-@service.route('/', methods=['POST'])
+@service.route('', methods=['POST'])
 def create_service():
     # TODO what exceptions get passed from schema parsing?
     service, errors = service_schema.load(request.get_json())

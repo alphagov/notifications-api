@@ -14,7 +14,7 @@ user = Blueprint('user', __name__)
 
 
 # TODO auth to be added
-@user.route('/', methods=['POST'])
+@user.route('', methods=['POST'])
 def create_user():
     user, errors = user_schema.load(request.get_json())
     if errors:
