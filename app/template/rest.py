@@ -13,7 +13,7 @@ template = Blueprint('template', __name__)
 # Permissions should restrict who can access this endpoint
 # TODO auth to be added.
 @template.route('/<int:template_id>', methods=['GET'])
-@template.route('/', methods=['GET'])
+@template.route('', methods=['GET'])
 def get_template(template_id=None):
     try:
         templates = get_model_templates(template_id=template_id)
