@@ -78,10 +78,15 @@ def sample_job(notify_db,
     if template is None:
         template = sample_template(notify_db, notify_db_session,
                                    service=service)
+    job_id = uuid.uuid4()
+    bucket_name = 'service-{}-notify'.format(service.id)
+    file_name = '{}.csv'.format(job_id)
     data = {
         'id': uuid.uuid4(),
         'service_id': service.id,
         'template_id': template.id,
+        'bucket_name': bucket_name,
+        'file_name': file_name,
         'original_file_name': 'some.csv'
     }
     job = Job(**data)

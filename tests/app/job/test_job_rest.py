@@ -69,11 +69,15 @@ def test_post_job(notify_api, notify_db, notify_db_session, sample_template):
     template_id = sample_template.id
     service_id = sample_template.service.id
     original_file_name = 'thisisatest.csv'
+    bucket_name = 'service-{}-notify'.format(service_id)
+    file_name = '{}.csv'.format(job_id)
     data = {
         'id': str(job_id),
         'service': service_id,
         'template': template_id,
-        'original_file_name': original_file_name
+        'original_file_name': original_file_name,
+        'bucket_name': bucket_name,
+        'file_name': file_name,
     }
     with notify_api.test_request_context():
         with notify_api.test_client() as client:

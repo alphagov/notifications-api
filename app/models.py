@@ -105,6 +105,8 @@ class Job(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True)
     original_file_name = db.Column(db.String, nullable=False)
+    bucket_name = db.Column(db.String, nullable=False)
+    file_name = db.Column(db.String, nullable=False)
     service_id = db.Column(db.BigInteger, db.ForeignKey('services.id'), index=True, unique=False)
     service = db.relationship('Service', backref=db.backref('jobs', lazy='dynamic'))
     template_id = db.Column(db.BigInteger, db.ForeignKey('templates.id'), index=True, unique=False)
