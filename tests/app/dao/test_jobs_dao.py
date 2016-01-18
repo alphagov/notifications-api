@@ -2,9 +2,9 @@ import uuid
 
 from app.dao.jobs_dao import (
     save_job,
-    get_job_by_id,
+    get_job,
     get_jobs_by_service,
-    get_jobs
+    _get_jobs
 )
 
 from app.models import Job
@@ -35,17 +35,39 @@ def test_save_job(notify_db, notify_db_session, sample_template):
 
 
 def test_get_job_by_id(notify_db, notify_db_session, sample_job):
-    job_from_db = get_job_by_id(sample_job.id)
+    job_from_db = get_job(sample_job.service.id, sample_job.id)
     assert sample_job == job_from_db
 
 
-def test_get_jobs_for_service(notify_db, notify_db_session, sample_job):
+def test_get_jobs_for_service(notify_db, notify_db_session, sample_template):
 
-    service_id = sample_job.service_id
-    job_from_db = get_jobs_by_service(service_id)
+    from tests.app.conftest import sample_job as create_job
+    from tests.app.conftest import sample_service as create_service
+    from tests.app.conftest import sample_template as create_template
+    from tests.app.conftest import sample_user as create_user
 
-    assert len(job_from_db) == 1
-    assert sample_job == job_from_db[0]
+    one_job = create_job(notify_db, notify_db_session, sample_template.service,
+                         sample_template)
+
+    other_user = create_user(notify_db, notify_db_session,
+                             email="test@digital.cabinet-office.gov.uk")
+    other_service = create_service(notify_db, notify_db_session,
+                                   user=other_user)
+    other_template = create_template(notify_db, notify_db_session,
+                                     service=other_service)
+    other_job = create_job(notify_db, notify_db_session, service=other_service,
+                           template=other_template)
+
+    one_job_from_db = get_jobs_by_service(one_job.service_id)
+    other_job_from_db = get_jobs_by_service(other_job.service_id)
+
+    assert len(one_job_from_db) == 1
+    assert one_job == one_job_from_db[0]
+
+    assert len(other_job_from_db) == 1
+    assert other_job == other_job_from_db[0]
+
+    assert one_job_from_db != other_job_from_db
 
 
 def test_get_all_jobs(notify_db, notify_db_session, sample_template):
@@ -55,5 +77,5 @@ def test_get_all_jobs(notify_db, notify_db_session, sample_template):
                    notify_db_session,
                    sample_template.service,
                    sample_template)
-    jobs_from_db = get_jobs()
+    jobs_from_db = _get_jobs()
     assert len(jobs_from_db) == 5
