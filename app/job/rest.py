@@ -9,8 +9,8 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.jobs_dao import (
     save_job,
-    get_job_by_id,
-    get_jobs
+    get_job,
+    get_jobs_by_service
 )
 
 from app.schemas import (
@@ -18,15 +18,15 @@ from app.schemas import (
     jobs_schema
 )
 
-job = Blueprint('job', __name__)
+job = Blueprint('job', __name__, url_prefix='/service/<int:service_id>/job')
 
 
 @job.route('/<job_id>', methods=['GET'])
 @job.route('', methods=['GET'])
-def get_job(job_id=None):
+def get_job_for_service(service_id, job_id=None):
     if job_id:
         try:
-            job = get_job_by_id(job_id)
+            job = get_job(service_id, job_id)
             data, errors = job_schema.dump(job)
             return jsonify(data=data)
         except DataError:
@@ -34,13 +34,13 @@ def get_job(job_id=None):
         except NoResultFound:
             return jsonify(result="error", message="Job not found"), 404
     else:
-        jobs = get_jobs()
+        jobs = get_jobs_by_service(service_id)
         data, errors = jobs_schema.dump(jobs)
         return jsonify(data=data)
 
 
 @job.route('', methods=['POST'])
-def create_job():
+def create_job(service_id):
     job, errors = job_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400

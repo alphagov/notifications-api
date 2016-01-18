@@ -9,12 +9,15 @@ from tests.app.conftest import sample_job as create_job
 def test_get_jobs(notify_api, notify_db, notify_db_session, sample_template):
     _setup_jobs(notify_db, notify_db_session, sample_template)
 
+    service_id = sample_template.service.id
+
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            auth_header = create_authorization_header(service_id=sample_template.service.id,
-                                                      path=url_for('job.get_job'),
+            path = url_for('job.get_job_for_service', service_id=service_id)
+            auth_header = create_authorization_header(service_id=service_id,
+                                                      path=path,
                                                       method='GET')
-            response = client.get(url_for('job.get_job'), headers=[auth_header])
+            response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
             assert len(resp_json['data']) == 5
@@ -23,12 +26,14 @@ def test_get_jobs(notify_api, notify_db, notify_db_session, sample_template):
 def test_get_job_with_invalid_id_returns400(notify_api, notify_db,
                                             notify_db_session,
                                             sample_template):
+    service_id = sample_template.service.id
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            path = url_for('job.get_job_for_service', job_id='invalid_id', service_id=service_id)
             auth_header = create_authorization_header(service_id=sample_template.service.id,
-                                                      path=url_for('job.get_job', job_id='invalid_id'),
+                                                      path=path,
                                                       method='GET')
-            response = client.get(url_for('job.get_job', job_id='invalid_id'), headers=[auth_header])
+            response = client.get(path, headers=[auth_header])
             assert response.status_code == 400
             resp_json = json.loads(response.get_data(as_text=True))
             assert resp_json == {'message': 'Invalid job id',
@@ -39,12 +44,14 @@ def test_get_job_with_unknown_id_returns404(notify_api, notify_db,
                                             notify_db_session,
                                             sample_template):
     random_id = str(uuid.uuid4())
+    service_id = sample_template.service.id
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            path = url_for('job.get_job_for_service', job_id=random_id, service_id=service_id)
             auth_header = create_authorization_header(service_id=sample_template.service.id,
-                                                      path=url_for('job.get_job', job_id=random_id),
+                                                      path=path,
                                                       method='GET')
-            response = client.get(url_for('job.get_job', job_id=random_id), headers=[auth_header])
+            response = client.get(path, headers=[auth_header])
             assert response.status_code == 404
             resp_json = json.loads(response.get_data(as_text=True))
             assert resp_json == {'message': 'Job not found', 'result': 'error'}
@@ -53,12 +60,14 @@ def test_get_job_with_unknown_id_returns404(notify_api, notify_db,
 def test_get_job_by_id(notify_api, notify_db, notify_db_session,
                        sample_job):
     job_id = str(sample_job.id)
+    service_id = sample_job.service.id
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            path = url_for('job.get_job_for_service', job_id=job_id, service_id=service_id)
             auth_header = create_authorization_header(service_id=sample_job.service.id,
-                                                      path=url_for('job.get_job', job_id=job_id),
+                                                      path=path,
                                                       method='GET')
-            response = client.get(url_for('job.get_job', job_id=job_id), headers=[auth_header])
+            response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
             assert resp_json['data']['id'] == job_id
@@ -81,13 +90,14 @@ def test_post_job(notify_api, notify_db, notify_db_session, sample_template):
     }
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            path = url_for('job.create_job', service_id=service_id)
             auth_header = create_authorization_header(service_id=sample_template.service.id,
-                                                      path=url_for('job.create_job'),
+                                                      path=path,
                                                       method='POST',
                                                       request_body=json.dumps(data))
             headers = [('Content-Type', 'application/json'), auth_header]
             response = client.post(
-                url_for('job.create_job'),
+                path,
                 data=json.dumps(data),
                 headers=headers)
     assert response.status_code == 201

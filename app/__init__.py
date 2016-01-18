@@ -36,7 +36,7 @@ def create_app(config_name):
     application.register_blueprint(user_blueprint, url_prefix='/user')
     application.register_blueprint(template_blueprint, url_prefix="/template")
     application.register_blueprint(status_blueprint, url_prefix='/status')
-    application.register_blueprint(job_blueprint, url_prefix='/job')
+    application.register_blueprint(job_blueprint)
 
     return application
 
