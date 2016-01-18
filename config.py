@@ -12,7 +12,7 @@ class Development(Config):
     DEBUG = True
     SECRET_KEY = 'secret-key'
     DANGEROUS_SALT = 'dangerous-salt'
-
+    ADMIN_USER_EMAIL_ADDRESS = 'dev-notify-admin@digital.cabinet-office.gov.uk'
 
 class Test(Config):
     DEBUG = True
