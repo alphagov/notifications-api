@@ -14,6 +14,7 @@ class Development(Config):
     DANGEROUS_SALT = 'dangerous-salt'
     ADMIN_USER_EMAIL_ADDRESS = 'dev-notify-admin@digital.cabinet-office.gov.uk'
 
+
 class Test(Config):
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/test_notification_api'

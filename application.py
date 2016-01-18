@@ -1,12 +1,9 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-
 import os
-
 from flask.ext.script import Manager, Server
 from flask.ext.migrate import Migrate, MigrateCommand
-
 from app import create_app, db
 
 application = create_app(os.getenv('NOTIFY_API_ENVIRONMENT') or 'development')
@@ -39,7 +36,7 @@ def create_admin_user_service():
     users_dao.save_model_user(user)
 
     service = Service(**{'name': 'Notify Service Admin',
-                         'users':[user],
+                         'users': [user],
                          'limit': 1000,
                          'active': True,
                          'restricted': True})
