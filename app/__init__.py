@@ -1,5 +1,6 @@
 import os
 
+from flask import request, url_for
 from flask._compat import string_types
 from flask import Flask, _request_ctx_stack
 from flask.ext.sqlalchemy import SQLAlchemy
@@ -53,10 +54,11 @@ def init_app(app, config_overrides):
 
     @app.before_request
     def required_authentication():
-        from app.authentication import auth
-        error = auth.requires_auth()
-        if error:
-            return error
+        if request.path != url_for('status.show_status'):
+            from app.authentication import auth
+            error = auth.requires_auth()
+            if error:
+                return error
 
 
 def convert_to_boolean(value):
