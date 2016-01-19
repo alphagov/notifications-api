@@ -11,7 +11,7 @@ from marshmallow import post_load
 class UserSchema(ma.ModelSchema):
     class Meta:
         model = models.User
-        exclude = ("updated_at", "created_at", "user_to_service")
+        exclude = ("updated_at", "created_at", "user_to_service", "_password")
 
 
 # TODO process users list, to return a list of user.id

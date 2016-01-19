@@ -12,7 +12,14 @@ import uuid
 def sample_user(notify_db,
                 notify_db_session,
                 email="notify@digital.cabinet-office.gov.uk"):
-    user = User(**{'email_address': email})
+    data = {
+        'name': 'Test User',
+        'email_address': email,
+        'password': 'password',
+        'mobile_number': '+44 7700 900986',
+        'state': 'active'
+    }
+    user = User(**data)
     save_model_user(user)
     return user
 
