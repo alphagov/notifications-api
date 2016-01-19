@@ -1,6 +1,5 @@
 from . import ma
 from . import models
-from marshmallow import post_load
 
 # TODO I think marshmallow provides a better integration and error handling.
 # Would be better to replace functionality in dao with the marshmallow supported
@@ -19,7 +18,7 @@ class UserSchema(ma.ModelSchema):
 class ServiceSchema(ma.ModelSchema):
     class Meta:
         model = models.Service
-        exclude = ("updated_at", "created_at", "tokens", "templates", "jobs")
+        exclude = ("updated_at", "created_at", "api_keys", "templates", "jobs")
 
 
 class TemplateSchema(ma.ModelSchema):
@@ -28,10 +27,10 @@ class TemplateSchema(ma.ModelSchema):
         exclude = ("updated_at", "created_at", "service_id", "jobs")
 
 
-class TokenSchema(ma.ModelSchema):
+class ApiKeySchema(ma.ModelSchema):
     class Meta:
-        model = models.Token
-        exclude = ["service"]
+        model = models.ApiKey
+        exclude = ("service", "secret", "expiry_date")
 
 
 class JobSchema(ma.ModelSchema):
@@ -45,7 +44,7 @@ service_schema = ServiceSchema()
 services_schema = ServiceSchema(many=True)
 template_schema = TemplateSchema()
 templates_schema = TemplateSchema(many=True)
-token_schema = TokenSchema()
-tokens_schema = TokenSchema(many=True)
+api_key_schema = ApiKeySchema()
+api_keys_schema = ApiKeySchema(many=True)
 job_schema = JobSchema()
 jobs_schema = JobSchema(many=True)

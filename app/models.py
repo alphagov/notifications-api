@@ -85,13 +85,14 @@ class Service(db.Model):
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
 
 
-class Token(db.Model):
-    __tablename__ = 'tokens'
+class ApiKey(db.Model):
+    __tablename__ = 'api_key'
 
     id = db.Column(db.Integer, primary_key=True)
-    token = db.Column(db.String(255), unique=True, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    secret = db.Column(db.String(255), unique=True, nullable=False)
     service_id = db.Column(db.Integer, db.ForeignKey('services.id'), index=True, nullable=False)
-    service = db.relationship('Service', backref=db.backref('tokens', lazy='dynamic'))
+    service = db.relationship('Service', backref=db.backref('api_keys', lazy='dynamic'))
     expiry_date = db.Column(db.DateTime)
 
 
