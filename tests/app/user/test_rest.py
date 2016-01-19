@@ -152,7 +152,7 @@ def test_post_user_missing_attribute_password(notify_api, notify_db, notify_db_s
             assert resp.status_code == 400
             assert User.query.count() == 1
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert {'error': 'password missing'} == json_resp['message']
+            assert {'password': ['Missing data for required field.']} == json_resp['message']
 
 
 def test_put_user(notify_api, notify_db, notify_db_session, sample_user, sample_admin_service_id):

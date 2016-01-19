@@ -19,7 +19,8 @@ def create_user():
     user, errors = user_schema.load(request.get_json())
     req_json = request.get_json()
     if not req_json.get('password'):
-        return jsonify(result="error", message={'error': 'password missing'}), 400
+        errors = {'password': ['Missing data for required field.']}
+        return jsonify(result="error", message=errors), 400
     if errors:
         return jsonify(result="error", message=errors), 400
 
@@ -41,6 +42,8 @@ def update_user(user_id):
         status_code = 202
         delete_model_user(user)
     else:
+        # TODO removed some validation checking by using load
+        # which will need to be done in another way
         status_code = 200
         db.session.rollback()
         save_model_user(user, update_dict=request.get_json())
