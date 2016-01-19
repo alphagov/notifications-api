@@ -8,7 +8,7 @@ Create Date: 2016-01-19 10:50:46.269618
 
 # revision identifiers, used by Alembic.
 revision = '0007_change_to_api_keys'
-down_revision = '0005_add_job_details'
+down_revision = '0006_add_user_details'
 
 from alembic import op
 import sqlalchemy as sa
