@@ -13,8 +13,8 @@ itsdangerous==0.24
 Flask-Bcrypt==0.6.2
 credstash==1.8.0
 
-git+https://github.com/alphagov/notifications-python-client.git@0.1.5#egg=notifications-python-client==0.1.5
+git+https://github.com/alphagov/notifications-python-client.git@0.1.8#egg=notifications-python-client==0.1.8
 
 git+https://github.com/alphagov/notifications-utils.git@0.0.3#egg=notifications-utils==0.0.3
 
-git+https://github.com/alphagov/notify-api-client.git@0.1.8#egg=notify-api-client==0.1.8
+git+https://github.com/alphagov/notify-api-client.git@0.1.6#egg=notify-api-client==0.1.6
