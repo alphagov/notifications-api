@@ -11,7 +11,7 @@ def test_get_notifications(
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch(
-                'app.notify_alpha_client.fetch_notifications',
+                'app.notify_alpha_client.fetch_notification_by_id',
                 return_value={
                     'notifications': [
                         {
@@ -24,11 +24,11 @@ def test_get_notifications(
 
             auth_header = create_authorization_header(
                 service_id=sample_admin_service_id,
-                path=url_for('notifications.get_notifications'),
+                path=url_for('notifications.get_notifications', notification_id=123),
                 method='GET')
 
             response = client.get(
-                url_for('notifications.get_notifications'),
+                url_for('notifications.get_notifications', notification_id=123),
                 headers=[auth_header])
 
             json_resp = json.loads(response.get_data(as_text=True))
@@ -36,7 +36,7 @@ def test_get_notifications(
             assert len(json_resp['notifications']) == 1
             assert json_resp['notifications'][0]['id'] == 'my_id'
             assert json_resp['notifications'][0]['notification'] == 'some notify'
-            assert notify_alpha_client.fetch_notifications.called
+            notify_alpha_client.fetch_notification_by_id.assert_called_with("123")
 
 
 def test_get_notifications_empty_result(
@@ -47,7 +47,7 @@ def test_get_notifications_empty_result(
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch(
-                'app.notify_alpha_client.fetch_notifications',
+                'app.notify_alpha_client.fetch_notification_by_id',
                 return_value={
                     'notifications': [
                     ]
@@ -56,17 +56,17 @@ def test_get_notifications_empty_result(
 
             auth_header = create_authorization_header(
                 service_id=sample_admin_service_id,
-                path=url_for('notifications.get_notifications'),
+                path=url_for('notifications.get_notifications', notification_id=123),
                 method='GET')
 
             response = client.get(
-                url_for('notifications.get_notifications'),
+                url_for('notifications.get_notifications', notification_id=123),
                 headers=[auth_header])
 
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 200
             assert len(json_resp['notifications']) == 0
-            assert notify_alpha_client.fetch_notifications.called
+            notify_alpha_client.fetch_notification_by_id.assert_called_with("123")
 
 
 def test_should_reject_if_no_phone_numbers(

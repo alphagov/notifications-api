@@ -12,9 +12,9 @@ mobile_regex = re.compile("^\\+44[\\d]{10}$")
 notifications = Blueprint('notifications', __name__)
 
 
-@notifications.route('/', methods=['GET'])
-def get_notifications():
-    return jsonify(notify_alpha_client.fetch_notifications()), 200
+@notifications.route('/<notification_id>', methods=['GET'])
+def get_notifications(notification_id):
+    return jsonify(notify_alpha_client.fetch_notification_by_id(notification_id)), 200
 
 
 @notifications.route('/sms', methods=['POST'])
