@@ -14,7 +14,6 @@ class Development(Config):
     DEBUG = True
     SECRET_KEY = 'secret-key'
     DANGEROUS_SALT = 'dangerous-salt'
-    ADMIN_USER_EMAIL_ADDRESS = 'dev-notify-admin@digital.cabinet-office.gov.uk'
     ADMIN_CLIENT_USER_NAME = 'dev-notify-admin'
     ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
 
