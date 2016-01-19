@@ -105,7 +105,7 @@ def sample_job(notify_db,
 def sample_admin_service_id(notify_db, notify_db_session):
     admin_user = sample_user(notify_db, notify_db_session, email="notify_admin@digital.cabinet-office.gov.uk")
     admin_service = sample_service(notify_db, notify_db_session, service_name="Sample Admin Service", user=admin_user)
-    data = {'service_id': admin_service.id, 'name': 'sample admin key'}
+    data = {'service': admin_service, 'name': 'sample admin key'}
     api_key = ApiKey(**data)
     save_model_api_key(api_key)
     return admin_service.id

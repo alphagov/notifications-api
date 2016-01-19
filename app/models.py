@@ -92,7 +92,7 @@ class ApiKey(db.Model):
     name = db.Column(db.String(255), nullable=False)
     secret = db.Column(db.String(255), unique=True, nullable=False)
     service_id = db.Column(db.Integer, db.ForeignKey('services.id'), index=True, nullable=False)
-    service = db.relationship('Service', backref=db.backref('api_key', lazy='dynamic'))
+    service = db.relationship('Service', backref=db.backref('api_keys', lazy='dynamic'))
     expiry_date = db.Column(db.DateTime)
 
 

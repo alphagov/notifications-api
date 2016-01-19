@@ -78,7 +78,7 @@ def get_service(service_id=None):
 @service.route('/<int:service_id>/api-key/renew', methods=['POST'])
 def renew_api_key(service_id=None):
     try:
-        get_model_services(service_id=service_id)
+        service = get_model_services(service_id=service_id)
     except DataError:
         return jsonify(result="error", message="Invalid service id"), 400
     except NoResultFound:
@@ -92,7 +92,7 @@ def renew_api_key(service_id=None):
         # create a new one
         # TODO: what validation should be done here?
         secret_name = request.get_json()['name']
-        save_model_api_key(ApiKey(service_id=service_id, name=secret_name))
+        save_model_api_key(ApiKey(service=service, name=secret_name))
     except DAOException as e:
         return jsonify(result='error', message=str(e)), 400
     unsigned_api_key = get_unsigned_secret(service_id)

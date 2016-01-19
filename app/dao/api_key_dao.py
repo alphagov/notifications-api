@@ -7,7 +7,8 @@ from app.models import ApiKey
 
 def save_model_api_key(api_key, update_dict={}):
     if update_dict:
-        del update_dict['id']
+        if update_dict['id']:
+            del update_dict['id']
         db.session.query(ApiKey).filter_by(id=api_key.id).update(update_dict)
     else:
         api_key.secret = _generate_secret()
