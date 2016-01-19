@@ -5,6 +5,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.api_key_dao import (save_model_api_key,
                                  get_model_api_keys,
+                                 get_unsigned_secrets,
                                  get_unsigned_secret,
                                  _generate_secret,
                                  _get_secret)
@@ -60,10 +61,20 @@ def test_should_return_api_key_for_service(notify_api, notify_db, notify_db_sess
     assert api_key == sample_api_key
 
 
-def test_should_return_unsigned_api_key_for_service_id(notify_api,
-                                                       notify_db,
-                                                       notify_db_session,
-                                                       sample_api_key):
-    unsigned_api_key = get_unsigned_secret(sample_api_key.service_id)
+def test_should_return_unsigned_api_keys_for_service_id(notify_api,
+                                                        notify_db,
+                                                        notify_db_session,
+                                                        sample_api_key):
+    unsigned_api_key = get_unsigned_secrets(sample_api_key.service_id)
+    assert len(unsigned_api_key) == 1
+    assert sample_api_key.secret != unsigned_api_key[0]
+    assert unsigned_api_key[0] == _get_secret(sample_api_key.secret)
+
+
+def test_get_unsigned_secret_returns_key(notify_api,
+                                         notify_db,
+                                         notify_db_session,
+                                         sample_api_key):
+    unsigned_api_key = get_unsigned_secret(sample_api_key.id)
     assert sample_api_key.secret != unsigned_api_key
     assert unsigned_api_key == _get_secret(sample_api_key.secret)
