@@ -11,6 +11,8 @@ class Config(object):
     SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/notification_api'
     NOTIFY_DATA_API_URL = os.getenv('NOTIFY_API_URL', "http://localhost:6001")
     NOTIFY_DATA_API_AUTH_TOKEN = os.getenv('NOTIFY_API_TOKEN', "dev-token")
+    ADMIN_CLIENT_USER_NAME = None
+    ADMIN_CLIENT_SECRET = None
 
 
 class Development(Config):
@@ -18,6 +20,8 @@ class Development(Config):
     SECRET_KEY = 'secret-key'
     DANGEROUS_SALT = 'dangerous-salt'
     ADMIN_USER_EMAIL_ADDRESS = 'dev-notify-admin@digital.cabinet-office.gov.uk'
+    ADMIN_CLIENT_USER_NAME = 'dev-notify-admin'
+    ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
 
 
 class Test(Config):
@@ -25,6 +29,8 @@ class Test(Config):
     SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/test_notification_api'
     SECRET_KEY = 'secret-key'
     DANGEROUS_SALT = 'dangerous-salt'
+    ADMIN_CLIENT_USER_NAME = 'dev-notify-admin'
+    ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
 
 
 class Live(Config):
