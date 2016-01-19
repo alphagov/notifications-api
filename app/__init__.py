@@ -15,7 +15,7 @@ ma = Marshmallow()
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 
 
-def create_app(config_name):
+def create_app(config_name, config_overrides=None):
     application = Flask(__name__)
 
     application.config['NOTIFY_API_ENVIRONMENT'] = config_name
@@ -23,7 +23,7 @@ def create_app(config_name):
 
     db.init_app(application)
     ma.init_app(application)
-    init_app(application)
+    init_app(application, config_overrides)
     logging.init_app(application)
 
     from app.service.rest import service as service_blueprint
@@ -41,10 +41,15 @@ def create_app(config_name):
     return application
 
 
-def init_app(app):
+def init_app(app, config_overrides):
     for key, value in app.config.items():
         if key in os.environ:
             app.config[key] = convert_to_boolean(os.environ[key])
+
+    if config_overrides:
+        for key in app.config.keys():
+            if key in config_overrides:
+                    app.config[key] = config_overrides[key]
 
     @app.before_request
     def required_authentication():
