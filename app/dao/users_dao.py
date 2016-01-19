@@ -8,7 +8,8 @@ from app.models import User
 
 def save_model_user(usr, update_dict={}):
     if update_dict:
-        del update_dict['id']
+        if update_dict.get('id'):
+            del update_dict['id']
         db.session.query(User).filter_by(id=usr.id).update(update_dict)
     else:
         db.session.add(usr)

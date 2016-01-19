@@ -26,10 +26,10 @@ def list_routes():
 def create_admin_user_service():
     """
     Convience method to create a admin user and service
-    :return: API token for admin service
+    :return: API secret for admin service
     """
-    from app.models import User, Service, Token
-    from app.dao import tokens_dao, users_dao, services_dao
+    from app.models import User, Service, ApiKey
+    from app.dao import api_key_dao, users_dao, services_dao
     from flask import current_app
 
     user = User(**{'email_address': current_app.config['ADMIN_USER_EMAIL_ADDRESS']})
@@ -41,9 +41,9 @@ def create_admin_user_service():
                          'active': True,
                          'restricted': True})
     services_dao.save_model_service(service)
-    token = Token(**{'service_id': service.id})
-    tokens_dao.save_model_token(token)
-    print('Token: {}'.format(tokens_dao.get_unsigned_token(service.id)))
+    api_key = ApiKey(**{'service_id': service.id, 'name': 'Admin API KEY (temporary)'})
+    api_key_dao.save_model_api_key(api_key)
+    print('ApiKey: {}'.format(api_key_dao.get_unsigned_secret(service.id)))
 
 
 if __name__ == '__main__':

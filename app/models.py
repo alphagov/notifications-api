@@ -2,6 +2,10 @@ from . import db
 import datetime
 
 from sqlalchemy.dialects.postgresql import UUID
+from app.encryption import (
+    hashpw,
+    check_hash
+)
 
 
 def filter_null_value_fields(obj):
@@ -14,6 +18,7 @@ class User(db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, nullable=False, index=True, unique=False)
     email_address = db.Column(db.String(255), nullable=False, index=True, unique=True)
     created_at = db.Column(
         db.DateTime,
@@ -27,6 +32,23 @@ class User(db.Model):
         unique=False,
         nullable=True,
         onupdate=datetime.datetime.now)
+    _password = db.Column(db.String, index=False, unique=False, nullable=False)
+    mobile_number = db.Column(db.String, index=False, unique=False, nullable=False)
+    password_changed_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
+    logged_in_at = db.Column(db.DateTime, nullable=True)
+    failed_login_count = db.Column(db.Integer, nullable=False, default=0)
+    state = db.Column(db.String, nullable=False, default='pending')
+
+    @property
+    def password(self):
+        raise AttributeError("Password not readable")
+
+    @password.setter
+    def password(self, password):
+        self._password = hashpw(password)
+
+    def check_password(self, password):
+        return check_hash(password, self._password)
 
 
 user_to_service = db.Table(
@@ -63,13 +85,14 @@ class Service(db.Model):
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
 
 
-class Token(db.Model):
-    __tablename__ = 'tokens'
+class ApiKey(db.Model):
+    __tablename__ = 'api_key'
 
     id = db.Column(db.Integer, primary_key=True)
-    token = db.Column(db.String(255), unique=True, nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    secret = db.Column(db.String(255), unique=True, nullable=False)
     service_id = db.Column(db.Integer, db.ForeignKey('services.id'), index=True, nullable=False)
-    service = db.relationship('Service', backref=db.backref('tokens', lazy='dynamic'))
+    service = db.relationship('Service', backref=db.backref('api_keys', lazy='dynamic'))
     expiry_date = db.Column(db.DateTime)
 
 

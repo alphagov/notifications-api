@@ -19,7 +19,17 @@ def test_get_user_list(notify_api, notify_db, notify_db_session, sample_user, sa
             assert response.status_code == 200
             json_resp = json.loads(response.get_data(as_text=True))
             assert len(json_resp['data']) == 2
-            assert {"email_address": sample_user.email_address, "id": sample_user.id} in json_resp['data']
+            expected = {
+                "name": "Test User",
+                "email_address": sample_user.email_address,
+                "id": sample_user.id,
+                "mobile_number": "+44 7700 900986",
+                "password_changed_at": None,
+                "logged_in_at": None,
+                "state": "active",
+                "failed_login_count": 0
+            }
+            assert expected in json_resp['data']
 
 
 def test_get_user(notify_api, notify_db, notify_db_session, sample_user, sample_admin_service_id):
@@ -36,7 +46,17 @@ def test_get_user(notify_api, notify_db, notify_db_session, sample_user, sample_
                               headers=[header])
             assert resp.status_code == 200
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp['data'] == {"email_address": sample_user.email_address, "id": sample_user.id}
+            expected = {
+                "name": "Test User",
+                "email_address": sample_user.email_address,
+                "id": sample_user.id,
+                "mobile_number": "+44 7700 900986",
+                "password_changed_at": None,
+                "logged_in_at": None,
+                "state": "active",
+                "failed_login_count": 0
+            }
+            assert json_resp['data'] == expected
 
 
 def test_post_user(notify_api, notify_db, notify_db_session, sample_admin_service_id):
@@ -46,8 +66,16 @@ def test_post_user(notify_api, notify_db, notify_db_session, sample_admin_servic
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             assert User.query.count() == 1
-            data = {'email_address': 'user@digital.cabinet-office.gov.uk'}
-
+            data = {
+                "name": "Test User",
+                "email_address": "user@digital.cabinet-office.gov.uk",
+                "password": "password",
+                "mobile_number": "+44 7700 900986",
+                "password_changed_at": None,
+                "logged_in_at": None,
+                "state": "active",
+                "failed_login_count": 0
+            }
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
                                                       path=url_for('user.create_user'),
                                                       method='POST',
@@ -73,7 +101,14 @@ def test_post_user_missing_attribute_email(notify_api, notify_db, notify_db_sess
         with notify_api.test_client() as client:
             assert User.query.count() == 1
             data = {
-                'blah': 'blah.blah'}
+                "name": "Test User",
+                "password": "password",
+                "mobile_number": "+44 7700 900986",
+                "password_changed_at": None,
+                "logged_in_at": None,
+                "state": "active",
+                "failed_login_count": 0
+            }
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
                                                       path=url_for('user.create_user'),
                                                       method='POST',
@@ -89,6 +124,37 @@ def test_post_user_missing_attribute_email(notify_api, notify_db, notify_db_sess
             assert {'email_address': ['Missing data for required field.']} == json_resp['message']
 
 
+def test_post_user_missing_attribute_password(notify_api, notify_db, notify_db_session, sample_admin_service_id):
+    """
+    Tests POST endpoint '/' missing attribute password.
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            assert User.query.count() == 1
+            data = {
+                "name": "Test User",
+                "email_address": "user@digital.cabinet-office.gov.uk",
+                "mobile_number": "+44 7700 900986",
+                "password_changed_at": None,
+                "logged_in_at": None,
+                "state": "active",
+                "failed_login_count": 0
+            }
+            auth_header = create_authorization_header(service_id=sample_admin_service_id,
+                                                      path=url_for('user.create_user'),
+                                                      method='POST',
+                                                      request_body=json.dumps(data))
+            headers = [('Content-Type', 'application/json'), auth_header]
+            resp = client.post(
+                url_for('user.create_user'),
+                data=json.dumps(data),
+                headers=headers)
+            assert resp.status_code == 400
+            assert User.query.count() == 1
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert {'password': ['Missing data for required field.']} == json_resp['message']
+
+
 def test_put_user(notify_api, notify_db, notify_db_session, sample_user, sample_admin_service_id):
     """
     Tests PUT endpoint '/' to update a user.
@@ -98,7 +164,8 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_user, sample_
             assert User.query.count() == 2
             new_email = 'new@digital.cabinet-office.gov.uk'
             data = {
-                'email_address': new_email}
+                'email_address': new_email
+            }
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
                                                       path=url_for('user.update_user', user_id=sample_user.id),
                                                       method='PUT',
@@ -112,9 +179,18 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_user, sample_
             assert User.query.count() == 2
             user = User.query.filter_by(email_address=new_email).first()
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp['data'] == {'email_address': new_email, 'id': user.id}
+            expected = {
+                "name": "Test User",
+                "email_address": new_email,
+                "mobile_number": "+44 7700 900986",
+                "password_changed_at": None,
+                "id": user.id,
+                "logged_in_at": None,
+                "state": "active",
+                "failed_login_count": 0
+            }
+            assert json_resp['data'] == expected
             assert json_resp['data']['email_address'] == new_email
-            assert json_resp['data']['id'] == user.id
 
 
 def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_user, sample_admin_service_id):
@@ -142,33 +218,6 @@ def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_us
             assert json_resp == {'result': 'error', 'message': 'User not found'}
             assert user == sample_user
             assert user.email_address != new_email
-
-
-def test_put_user_missing_email(notify_api, notify_db, notify_db_session, sample_user, sample_admin_service_id):
-    """
-    Tests PUT endpoint '/' missing attribute email.
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            assert User.query.count() == 2
-            new_email = 'new@digital.cabinet-office.gov.uk'
-            data = {
-                'blah': new_email}
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('user.update_user', user_id=sample_user.id),
-                                                      method='PUT',
-                                                      request_body=json.dumps(data))
-            headers = [('Content-Type', 'application/json'), auth_header]
-            resp = client.put(
-                url_for('user.update_user', user_id=sample_user.id),
-                data=json.dumps(data),
-                headers=headers)
-            assert resp.status_code == 400
-            assert User.query.count() == 2
-            user = User.query.get(sample_user.id)
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert user.email_address == sample_user.email_address
-            assert {'email_address': ['Missing data for required field.']} == json_resp['message']
 
 
 def test_get_user_services(notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id):
@@ -280,7 +329,18 @@ def test_delete_user(notify_api, notify_db, notify_db_session, sample_user, samp
             assert resp.status_code == 202
             json_resp = json.loads(resp.get_data(as_text=True))
             assert User.query.count() == 1
-            assert json_resp['data'] == {'id': sample_user.id, 'email_address': sample_user.email_address}
+            expected = {
+                "name": "Test User",
+                "email_address": sample_user.email_address,
+                "mobile_number": "+44 7700 900986",
+                "password_changed_at": None,
+                "id": sample_user.id,
+                "logged_in_at": None,
+                "state": "active",
+                "failed_login_count": 0
+
+            }
+            assert json_resp['data'] == expected
 
 
 def test_delete_user_not_exists(notify_api, notify_db, notify_db_session, sample_user, sample_admin_service_id):

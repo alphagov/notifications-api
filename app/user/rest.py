@@ -17,8 +17,14 @@ user = Blueprint('user', __name__)
 @user.route('', methods=['POST'])
 def create_user():
     user, errors = user_schema.load(request.get_json())
+    req_json = request.get_json()
+    if not req_json.get('password'):
+        errors = {'password': ['Missing data for required field.']}
+        return jsonify(result="error", message=errors), 400
     if errors:
         return jsonify(result="error", message=errors), 400
+
+    user.password = req_json.get('password')
     save_model_user(user)
     return jsonify(data=user_schema.dump(user).data), 201
 
@@ -36,16 +42,11 @@ def update_user(user_id):
         status_code = 202
         delete_model_user(user)
     else:
+        # TODO removed some validation checking by using load
+        # which will need to be done in another way
         status_code = 200
-        # TODO there has got to be a better way to do the next three lines
-        update_user, errors = user_schema.load(request.get_json())
-        if errors:
-            return jsonify(result="error", message=errors), 400
-        update_dict, errors = user_schema.dump(update_user)
-        # TODO FIX ME
-        # Remove update_service model which is added to db.session
         db.session.rollback()
-        save_model_user(user, update_dict=update_dict)
+        save_model_user(user, update_dict=request.get_json())
     return jsonify(data=user_schema.dump(user).data), status_code
 
 

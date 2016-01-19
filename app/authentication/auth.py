@@ -2,7 +2,7 @@ from flask import request, jsonify, _request_ctx_stack
 from client.authentication import decode_jwt_token, get_token_issuer
 from client.errors import TokenDecodeError, TokenRequestError, TokenExpiredError, TokenPayloadError
 
-from app.dao.tokens_dao import get_unsigned_token
+from app.dao.api_key_dao import get_unsigned_secret
 
 
 def authentication_response(message, code):
@@ -48,5 +48,5 @@ def requires_auth():
 def fetch_client(client):
     return {
         "client": client,
-        "secret": get_unsigned_token(client)
+        "secret": get_unsigned_secret(client)
     }

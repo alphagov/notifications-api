@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flask import (jsonify, request, current_app)
+from flask import (jsonify, request)
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -10,8 +10,8 @@ from app.dao.services_dao import (
     save_model_service, get_model_services, delete_model_service)
 from app.dao.templates_dao import (
     save_model_template, get_model_templates, delete_model_template)
-from app.dao.tokens_dao import (save_model_token, get_model_tokens, get_unsigned_token)
-from app.models import Token
+from app.dao.api_key_dao import (save_model_api_key, get_model_api_keys, get_unsigned_secret)
+from app.models import ApiKey
 from app.schemas import (
     services_schema, service_schema, template_schema)
 
@@ -29,13 +29,11 @@ def create_service():
     # db.session.commit
     try:
         save_model_service(service)
-        save_model_token(Token(service_id=service.id))
     except DAOException as e:
         return jsonify(result="error", message=str(e)), 400
-    return jsonify(data=service_schema.dump(service).data, token=get_unsigned_token(service.id)), 201
+    return jsonify(data=service_schema.dump(service).data), 201
 
 
-# TODO auth to be added
 @service.route('/<int:service_id>', methods=['PUT', 'DELETE'])
 def update_service(service_id):
     try:
@@ -64,7 +62,6 @@ def update_service(service_id):
     return jsonify(data=service_schema.dump(service).data), status_code
 
 
-# TODO auth to be added.
 @service.route('/<int:service_id>', methods=['GET'])
 @service.route('/', methods=['GET'])
 def get_service(service_id=None):
@@ -78,31 +75,32 @@ def get_service(service_id=None):
     return jsonify(data=data)
 
 
-# TODO auth to be added
-@service.route('/<int:service_id>/token/renew', methods=['POST'])
-def renew_token(service_id=None):
+@service.route('/<int:service_id>/api-key/renew', methods=['POST'])
+def renew_api_key(service_id=None):
     try:
-        get_model_services(service_id=service_id)
+        service = get_model_services(service_id=service_id)
     except DataError:
         return jsonify(result="error", message="Invalid service id"), 400
     except NoResultFound:
         return jsonify(result="error", message="Service not found"), 404
 
     try:
-        service_token = get_model_tokens(service_id=service_id, raise_=False)
-        if service_token:
-            # expire existing token
-            save_model_token(service_token, update_dict={'id': service_token.id, 'expiry_date': datetime.now()})
+        service_api_key = get_model_api_keys(service_id=service_id, raise_=False)
+        if service_api_key:
+            # expire existing api_key
+            save_model_api_key(service_api_key, update_dict={'id': service_api_key.id, 'expiry_date': datetime.now()})
         # create a new one
-        save_model_token(Token(service_id=service_id))
+        # TODO: what validation should be done here?
+        secret_name = request.get_json()['name']
+        save_model_api_key(ApiKey(service=service, name=secret_name))
     except DAOException as e:
         return jsonify(result='error', message=str(e)), 400
-    unsigned_token = get_unsigned_token(service_id)
-    return jsonify(data=unsigned_token), 201
+    unsigned_api_key = get_unsigned_secret(service_id)
+    return jsonify(data=unsigned_api_key), 201
 
 
-@service.route('/<int:service_id>/token/revoke', methods=['POST'])
-def revoke_token(service_id):
+@service.route('/<int:service_id>/api-key/revoke', methods=['POST'])
+def revoke_api_key(service_id):
     try:
         get_model_services(service_id=service_id)
     except DataError:
@@ -110,13 +108,12 @@ def revoke_token(service_id):
     except NoResultFound:
         return jsonify(result="error", message="Service not found"), 404
 
-    service_token = get_model_tokens(service_id=service_id, raise_=False)
-    if service_token:
-        save_model_token(service_token, update_dict={'id': service_token.id, 'expiry_date': datetime.now()})
+    service_api_key = get_model_api_keys(service_id=service_id, raise_=False)
+    if service_api_key:
+        save_model_api_key(service_api_key, update_dict={'id': service_api_key.id, 'expiry_date': datetime.now()})
     return jsonify(), 202
 
 
-# TODO auth to be added.
 @service.route('/<int:service_id>/template/', methods=['POST'])
 def create_template(service_id):
     try:
@@ -135,7 +132,6 @@ def create_template(service_id):
     return jsonify(data=template_schema.dump(template).data), 201
 
 
-# TODO auth to be added
 @service.route('/<int:service_id>/template/<int:template_id>', methods=['PUT', 'DELETE'])
 def update_template(service_id, template_id):
     try:

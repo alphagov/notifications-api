@@ -1,7 +1,7 @@
 import json
 from flask import url_for
 from app.dao.services_dao import save_model_service
-from app.models import (Service, Token, Template)
+from app.models import (Service, ApiKey, Template)
 from tests import create_authorization_header
 from tests.app.conftest import sample_user as create_sample_user
 
@@ -70,7 +70,6 @@ def test_post_service(notify_api, notify_db, notify_db_session, sample_user, sam
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['data']['name'] == service.name
             assert json_resp['data']['limit'] == service.limit
-            assert json_resp['token'] is not None
 
 
 def test_post_service_multiple_users(notify_api, notify_db, notify_db_session, sample_user, sample_admin_service_id):
@@ -311,76 +310,84 @@ def test_delete_service_not_exists(notify_api, notify_db, notify_db_session, sam
             assert Service.query.count() == 2
 
 
-def test_renew_token_should_return_token_when_service_does_not_have_a_valid_token(notify_api, notify_db,
-                                                                                  notify_db_session,
-                                                                                  sample_service,
-                                                                                  sample_admin_service_id):
+def test_renew_api_key_should_create_new_api_key_for_service(notify_api, notify_db,
+                                                             notify_db_session,
+                                                             sample_service,
+                                                             sample_admin_service_id):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            data = {'name': 'some secret name'}
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.renew_token', service_id=sample_service.id),
-                                                      method='POST')
-            response = client.post(url_for('service.renew_token', service_id=sample_service.id),
+                                                      path=url_for('service.renew_api_key',
+                                                                   service_id=sample_service.id),
+                                                      method='POST',
+                                                      request_body=json.dumps(data))
+            response = client.post(url_for('service.renew_api_key', service_id=sample_service.id),
+                                   data=json.dumps(data),
                                    headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 201
             assert response.get_data is not None
-            saved_token = Token.query.filter_by(service_id=sample_service.id).first()
-            assert saved_token.service_id == sample_service.id
+            saved_api_key = ApiKey.query.filter_by(service_id=sample_service.id).first()
+            assert saved_api_key.service_id == sample_service.id
+            assert saved_api_key.name == 'some secret name'
 
 
-def test_renew_token_should_expire_the_old_token_and_create_a_new_token(notify_api, notify_db, notify_db_session,
-                                                                        sample_token, sample_admin_service_id):
+def test_renew_api_key_should_expire_the_old_api_key_and_create_a_new_api_key(notify_api, notify_db, notify_db_session,
+                                                                              sample_api_key, sample_admin_service_id):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            assert Token.query.count() == 2
+            assert ApiKey.query.count() == 2
+            data = {'name': 'some secret name'}
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.renew_token',
-                                                                   service_id=sample_token.service_id),
-                                                      method='POST')
+                                                      path=url_for('service.renew_api_key',
+                                                                   service_id=sample_api_key.service_id),
+                                                      method='POST',
+                                                      request_body=json.dumps(data))
 
-            response = client.post(url_for('service.renew_token', service_id=sample_token.service_id),
+            response = client.post(url_for('service.renew_api_key', service_id=sample_api_key.service_id),
+                                   data=json.dumps(data),
                                    headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 201
-            assert Token.query.count() == 3
-            all_tokens = Token.query.filter_by(service_id=sample_token.service_id).all()
-            for x in all_tokens:
-                if x.id == sample_token.id:
+            assert ApiKey.query.count() == 3
+            all_api_keys = ApiKey.query.filter_by(service_id=sample_api_key.service_id).all()
+            for x in all_api_keys:
+                if x.id == sample_api_key.id:
                     assert x.expiry_date is not None
                 else:
                     assert x.expiry_date is None
-                    assert x.token is not sample_token.token
+                    assert x.secret is not sample_api_key.secret
 
 
-def test_create_token_should_return_error_when_service_does_not_exist(notify_api, notify_db, notify_db_session,
-                                                                      sample_service, sample_admin_service_id):
+def test_renew_api_key_should_return_error_when_service_does_not_exist(notify_api, notify_db, notify_db_session,
+                                                                       sample_service, sample_admin_service_id):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.renew_token', service_id="123"),
+                                                      path=url_for('service.renew_api_key', service_id="123"),
                                                       method='POST')
-            response = client.post(url_for('service.renew_token', service_id=123),
+            response = client.post(url_for('service.renew_api_key', service_id=123),
                                    headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 404
 
 
-def test_revoke_token_should_expire_token_for_service(notify_api, notify_db, notify_db_session,
-                                                      sample_token, sample_admin_service_id):
+def test_revoke_api_key_should_expire_api_key_for_service(notify_api, notify_db, notify_db_session,
+                                                          sample_api_key, sample_admin_service_id):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            assert Token.query.count() == 2
+            assert ApiKey.query.count() == 2
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.revoke_token',
-                                                                   service_id=sample_token.service_id),
+                                                      path=url_for('service.revoke_api_key',
+                                                                   service_id=sample_api_key.service_id),
                                                       method='POST')
-            response = client.post(url_for('service.revoke_token', service_id=sample_token.service_id),
+            response = client.post(url_for('service.revoke_api_key', service_id=sample_api_key.service_id),
                                    headers=[auth_header])
             assert response.status_code == 202
-            tokens_for_service = Token.query.filter_by(service_id=sample_token.service_id).first()
-            assert tokens_for_service.expiry_date is not None
+            api_keys_for_service = ApiKey.query.filter_by(service_id=sample_api_key.service_id).first()
+            assert api_keys_for_service.expiry_date is not None
 
 
-def test_create_service_should_create_new_token_for_service(notify_api, notify_db, notify_db_session, sample_user,
-                                                            sample_admin_service_id):
+def test_create_service_should_create_new_service_for_user(notify_api, notify_db, notify_db_session, sample_user,
+                                                           sample_admin_service_id):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
@@ -394,12 +401,10 @@ def test_create_service_should_create_new_token_for_service(notify_api, notify_d
                                                       method='POST',
                                                       request_body=json.dumps(data))
             headers = [('Content-Type', 'application/json'), auth_header]
-            assert Token.query.count() == 1
             resp = client.post(url_for('service.create_service'),
                                data=json.dumps(data),
                                headers=headers)
             assert resp.status_code == 201
-            assert Token.query.count() == 2
 
 
 def test_create_template(notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id):
