@@ -8,7 +8,13 @@ from app.models import User
 
 def test_create_user(notify_api, notify_db, notify_db_session):
     email = 'notify@digital.cabinet-office.gov.uk'
-    user = User(**{'email_address': email})
+    data = {
+        'name': 'Test User',
+        'email_address': email,
+        'password': 'password',
+        'mobile_number': '+44 7700 900986'
+    }
+    user = User(**data)
     save_model_user(user)
     assert User.query.count() == 1
     assert User.query.first().email_address == email
