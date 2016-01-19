@@ -1,9 +1,9 @@
 import pytest
-from app.models import (User, Service, Template, Token, Job)
+from app.models import (User, Service, Template, ApiKey, Job)
 from app.dao.users_dao import (save_model_user)
 from app.dao.services_dao import save_model_service
 from app.dao.templates_dao import save_model_template
-from app.dao.tokens_dao import save_model_token
+from app.dao.api_key_dao import save_model_api_key
 from app.dao.jobs_dao import save_job
 import uuid
 
@@ -51,7 +51,7 @@ def sample_template(notify_db,
                     service=None):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
-    sample_token(notify_db, notify_db_session, service=service)
+    sample_api_key(notify_db, notify_db_session, service=service)
     data = {
         'name': template_name,
         'template_type': template_type,
@@ -64,15 +64,15 @@ def sample_template(notify_db,
 
 
 @pytest.fixture(scope='function')
-def sample_token(notify_db,
-                 notify_db_session,
-                 service=None):
+def sample_api_key(notify_db,
+                   notify_db_session,
+                   service=None):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
-    data = {'service_id': service.id}
-    token = Token(**data)
-    save_model_token(token)
-    return token
+    data = {'service_id': service.id, 'name': service.name}
+    api_key = ApiKey(**data)
+    save_model_api_key(api_key)
+    return api_key
 
 
 @pytest.fixture(scope='function')
@@ -105,7 +105,7 @@ def sample_job(notify_db,
 def sample_admin_service_id(notify_db, notify_db_session):
     admin_user = sample_user(notify_db, notify_db_session, email="notify_admin@digital.cabinet-office.gov.uk")
     admin_service = sample_service(notify_db, notify_db_session, service_name="Sample Admin Service", user=admin_user)
-    data = {'service_id': admin_service.id}
-    token = Token(**data)
-    save_model_token(token)
+    data = {'service_id': admin_service.id, 'name': 'sample admin key'}
+    api_key = ApiKey(**data)
+    save_model_api_key(api_key)
     return admin_service.id
