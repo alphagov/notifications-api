@@ -24,7 +24,6 @@ def requires_auth():
     try:
         auth_token = auth_header[7:]
         api_client = fetch_client(get_token_issuer(auth_token))
-
         if api_client is None:
             authentication_response("Invalid credentials", 403)
 

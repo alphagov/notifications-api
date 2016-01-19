@@ -351,10 +351,10 @@ def test_delete_user_not_exists(notify_api, notify_db, notify_db_session, sample
         with notify_api.test_client() as client:
             assert User.query.count() == 2
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('user.update_user', user_id='123'),
+                                                      path=url_for('user.update_user', user_id='99999'),
                                                       method='DELETE')
             resp = client.delete(
-                url_for('user.update_user', user_id="123"),
+                url_for('user.update_user', user_id="99999"),
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 404
             assert User.query.count() == 2
