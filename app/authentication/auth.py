@@ -47,7 +47,14 @@ def requires_auth():
 
 
 def fetch_client(client):
-    return {
-        "client": client,
-        "secret": get_unsigned_secret(client)
-    }
+    from flask import current_app
+    if client == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
+        return {
+            "client": client,
+            "secret": current_app.config.get('ADMIN_CLIENT_SECRET')
+        }
+    else:
+        return {
+            "client": client,
+            "secret": get_unsigned_secret(client)
+        }
