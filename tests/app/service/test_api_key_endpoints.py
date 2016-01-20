@@ -43,12 +43,15 @@ def test_revoke_should_expire_api_key_for_service(notify_api, notify_db, notify_
         with notify_api.test_client() as client:
             assert ApiKey.query.count() == 1
             auth_header = create_authorization_header(path=url_for('service.revoke_api_key',
-                                                                   service_id=sample_api_key.service_id),
+                                                                   service_id=sample_api_key.service_id,
+                                                                   api_key_id=sample_api_key.id),
                                                       method='POST')
-            response = client.post(url_for('service.revoke_api_key', service_id=sample_api_key.service_id),
+            response = client.post(url_for('service.revoke_api_key',
+                                           service_id=sample_api_key.service_id,
+                                           api_key_id=sample_api_key.id),
                                    headers=[auth_header])
             assert response.status_code == 202
-            api_keys_for_service = ApiKey.query.filter_by(service_id=sample_api_key.service_id).first()
+            api_keys_for_service = ApiKey.query.get(sample_api_key.id)
             assert api_keys_for_service.expiry_date is not None
 
 
