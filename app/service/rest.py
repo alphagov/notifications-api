@@ -96,18 +96,16 @@ def renew_api_key(service_id=None):
     return jsonify(data=unsigned_api_key), 201
 
 
-@service.route('/<int:service_id>/api-key/revoke', methods=['POST'])
-def revoke_api_key(service_id):
+@service.route('/<int:service_id>/api-key/revoke/<int:api_key_id>', methods=['POST'])
+def revoke_api_key(service_id, api_key_id):
     try:
-        get_model_services(service_id=service_id)
+        service_api_key = get_model_api_keys(service_id=service_id, id=api_key_id)
     except DataError:
-        return jsonify(result="error", message="Invalid service id"), 400
+        return jsonify(result="error", message="Invalid  api key for service"), 400
     except NoResultFound:
-        return jsonify(result="error", message="Service not found"), 404
+        return jsonify(result="error", message="Api key not found for service"), 404
 
-    service_api_key = get_model_api_keys(service_id=service_id, raise_=False)
-    if service_api_key:
-        save_model_api_key(service_api_key, update_dict={'id': service_api_key.id, 'expiry_date': datetime.now()})
+    save_model_api_key(service_api_key, update_dict={'id': service_api_key.id, 'expiry_date': datetime.utcnow()})
     return jsonify(), 202
 
 

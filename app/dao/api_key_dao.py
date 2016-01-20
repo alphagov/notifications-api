@@ -16,18 +16,10 @@ def save_model_api_key(api_key, update_dict={}):
     db.session.commit()
 
 
-def get_model_api_keys(service_id=None, raise_=True):
-    """
-    :param raise_: when True query api_keys using one() which will raise NoResultFound exception
-                   when False query api_keys usong first() which will return None and not raise an exception.
-    """
-    if service_id:
-        # If expiry date is None the api_key is active
-        if raise_:
-            return ApiKey.query.filter_by(service_id=service_id, expiry_date=None).one()
-        else:
-            return ApiKey.query.filter_by(service_id=service_id, expiry_date=None).first()
-    return ApiKey.query.filter_by().all()
+def get_model_api_keys(service_id, id=None):
+    if id:
+        return ApiKey.query.filter_by(id=id, service_id=service_id, expiry_date=None).one()
+    return ApiKey.query.filter_by(service_id=service_id).all()
 
 
 def get_unsigned_secrets(service_id):
