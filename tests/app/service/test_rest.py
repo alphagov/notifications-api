@@ -1,4 +1,6 @@
 import json
+from collections import Set
+
 from flask import url_for
 from app.dao.services_dao import save_model_service
 from app.models import (Service, ApiKey, Template)
@@ -229,7 +231,8 @@ def test_put_service_add_user(notify_api, notify_db, notify_db_session, sample_s
             assert len(json_resp['data']['users']) == 2
             assert sample_user.id in json_resp['data']['users']
             assert another_user.id in json_resp['data']['users']
-            assert updated_service.users == [sample_user, another_user]
+            assert len(updated_service.users) == 2
+            assert set(updated_service.users) == set([sample_user, another_user])
 
 
 def test_put_service_remove_user(notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id):
