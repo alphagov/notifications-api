@@ -30,7 +30,7 @@ class TemplateSchema(ma.ModelSchema):
 class ApiKeySchema(ma.ModelSchema):
     class Meta:
         model = models.ApiKey
-        exclude = ("service", "secret", "expiry_date")
+        exclude = ("service", "secret")
 
 
 class JobSchema(ma.ModelSchema):

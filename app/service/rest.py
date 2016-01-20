@@ -13,7 +13,7 @@ from app.dao.templates_dao import (
 from app.dao.api_key_dao import (save_model_api_key, get_model_api_keys, get_unsigned_secret)
 from app.models import ApiKey
 from app.schemas import (
-    services_schema, service_schema, template_schema)
+    services_schema, service_schema, template_schema, api_keys_schema)
 
 from flask import Blueprint
 service = Blueprint('service', __name__)
@@ -107,6 +107,23 @@ def revoke_api_key(service_id, api_key_id):
 
     save_model_api_key(service_api_key, update_dict={'id': service_api_key.id, 'expiry_date': datetime.utcnow()})
     return jsonify(), 202
+
+
+@service.route('/<int:service_id>/api-key', methods=['GET'])
+def get_api_keys(service_id):
+    try:
+        service = get_model_services(service_id=service_id)
+    except DataError:
+        return jsonify(result="error", message="Invalid service id"), 400
+    except NoResultFound:
+        return jsonify(result="error", message="Service not found"), 404
+
+    try:
+        api_keys = get_model_api_keys(service_id=service_id)
+    except DAOException as e:
+        return jsonify(result='error', message=str(e)), 400
+
+    return jsonify(apiKeys=api_keys_schema.dump(api_keys).data), 200
 
 
 @service.route('/<int:service_id>/template', methods=['POST'])
