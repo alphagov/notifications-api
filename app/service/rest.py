@@ -109,7 +109,7 @@ def revoke_api_key(service_id, api_key_id):
     return jsonify(), 202
 
 
-@service.route('/<int:service_id>/api-key', methods=['GET'])
+@service.route('/<int:service_id>/api-keys', methods=['GET'])
 def get_api_keys(service_id):
     try:
         service = get_model_services(service_id=service_id)
