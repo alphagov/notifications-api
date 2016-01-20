@@ -13,11 +13,11 @@ from flask import Blueprint
 user = Blueprint('user', __name__)
 
 
-# TODO auth to be added
 @user.route('', methods=['POST'])
 def create_user():
     user, errors = user_schema.load(request.get_json())
     req_json = request.get_json()
+    # TODO password policy, what is valid password
     if not req_json.get('password'):
         errors = {'password': ['Missing data for required field.']}
         return jsonify(result="error", message=errors), 400
@@ -29,7 +29,6 @@ def create_user():
     return jsonify(data=user_schema.dump(user).data), 201
 
 
-# TODO auth to be added
 @user.route('/<int:user_id>', methods=['PUT', 'DELETE'])
 def update_user(user_id):
     try:
@@ -50,7 +49,27 @@ def update_user(user_id):
     return jsonify(data=user_schema.dump(user).data), status_code
 
 
-# TODO auth to be added.
+@user.route('/<int:user_id>/verify/password', methods=['POST'])
+def verify_user_password(user_id):
+    try:
+        user = get_model_users(user_id=user_id)
+    except DataError:
+        return jsonify(result="error", message="Invalid user id"), 400
+    except NoResultFound:
+        return jsonify(result="error", message="User not found"), 404
+    text_pwd = None
+    try:
+        text_pwd = request.get_json()['password']
+    except KeyError:
+        return jsonify(
+            result="error",
+            message={'password': ['Required field missing data']}), 400
+    if user.check_password(text_pwd):
+        return jsonify(), 204
+    else:
+        return jsonify(result='error', message={'password': ['Incorrect password']}), 400
+
+
 @user.route('/<int:user_id>', methods=['GET'])
 @user.route('/', methods=['GET'])
 def get_user(user_id=None):
@@ -64,7 +83,6 @@ def get_user(user_id=None):
     return jsonify(data=result.data)
 
 
-# TODO auth to be added
 @user.route('/<int:user_id>/service', methods=['GET'])
 @user.route('/<int:user_id>/service/<int:service_id>', methods=['GET'])
 def get_service_by_user_id(user_id, service_id=None):
