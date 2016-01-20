@@ -20,7 +20,6 @@ def get_notifications(notification_id):
 @notifications.route('/sms', methods=['POST'])
 def create_sms_notification():
     notification = request.get_json()['notification']
-
     errors = {}
     to_errors = validate_to(notification)
     message_errors = validate_message(notification)
@@ -32,13 +31,28 @@ def create_sms_notification():
 
     if errors:
         return jsonify(result="error", message=errors), 400
-
-    return jsonify(notify_alpha_client.send_sms(mobile_number=notification['to'], message=notification['message'])), 200
+    return jsonify(notify_alpha_client.send_sms(
+        mobile_number=notification['to'],
+        message=notification['message'])), 200
 
 
 @notifications.route('/email', methods=['POST'])
 def create_email_notification():
-    return jsonify(id=123)
+    notification = request.get_json()['notification']
+    errors = {}
+    for k in ['to', 'from', 'subject', 'message']:
+        k_error = validate_required_and_something(notification, k)
+        if k_error:
+            errors.update(k_error)
+
+    if errors:
+        return jsonify(result="error", message=errors), 400
+
+    return jsonify(notify_alpha_client.send_email(
+        notification['to'],
+        notification['message'],
+        notification['from'],
+        notification['subject']))
 
 
 def validate_to(json_body):
@@ -71,3 +85,10 @@ def validate_message(json_body):
             "message": errors
         }
     return None
+
+
+def validate_required_and_something(json_body, field):
+    errors = []
+    if field not in json_body and json_body[field]:
+        errors.append('Required data for field.')
+    return {field: errors} if errors else None
