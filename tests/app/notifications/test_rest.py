@@ -296,3 +296,58 @@ def test_should_allow_valid_message(
             assert response.status_code == 200
             assert json_resp['notification']['id'] == 100
             notify_alpha_client.send_sms.assert_called_with(mobile_number='+441234123123', message='valid')
+
+
+def test_send_email_valid_data(notify_api,
+                               notify_db,
+                               notify_db_session,
+                               sample_service,
+                               sample_admin_service_id,
+                               mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            to_address = "to@notify.com"
+            from_address = "from@notify.com"
+            subject = "This is the subject"
+            message = "This is the message"
+            mocker.patch(
+                'app.notify_alpha_client.send_email',
+                return_value={
+                    "notification": {
+                        "createdAt": "2015-11-03T09:37:27.414363Z",
+                        "id": 100,
+                        "jobId": 65,
+                        "subject": subject,
+                        "message": message,
+                        "method": "email",
+                        "status": "created",
+                        "to": to_address,
+                        "from": from_address
+                    }
+                }
+            )
+            data = {
+                'notification': {
+                    'to': to_address,
+                    'from': from_address,
+                    'subject': subject,
+                    'message': message
+                }
+            }
+            auth_header = create_authorization_header(
+                service_id=sample_admin_service_id,
+                request_body=json.dumps(data),
+                path=url_for('notifications.create_email_notification'),
+                method='POST')
+
+            response = client.post(
+                url_for('notifications.create_email_notification'),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
+            assert json_resp['notification']['id'] == 100
+            notify_alpha_client.send_email.assert_called_with(
+                to_address, message, from_address, subject)

@@ -63,7 +63,7 @@ def update_service(service_id):
 
 
 @service.route('/<int:service_id>', methods=['GET'])
-@service.route('/', methods=['GET'])
+@service.route('', methods=['GET'])
 def get_service(service_id=None):
     try:
         services = get_model_services(service_id=service_id)
@@ -114,7 +114,7 @@ def revoke_api_key(service_id):
     return jsonify(), 202
 
 
-@service.route('/<int:service_id>/template/', methods=['POST'])
+@service.route('/<int:service_id>/template', methods=['POST'])
 def create_template(service_id):
     try:
         service = get_model_services(service_id=service_id)
