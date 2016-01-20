@@ -85,10 +85,6 @@ def renew_api_key(service_id=None):
         return jsonify(result="error", message="Service not found"), 404
 
     try:
-        service_api_key = get_model_api_keys(service_id=service_id, raise_=False)
-        if service_api_key:
-            # expire existing api_key
-            save_model_api_key(service_api_key, update_dict={'id': service_api_key.id, 'expiry_date': datetime.now()})
         # create a new one
         # TODO: what validation should be done here?
         secret_name = request.get_json()['name']

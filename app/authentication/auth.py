@@ -57,7 +57,7 @@ def fetch_client(client):
     if client == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
         return {
             "client": client,
-            "secret": current_app.config.get('ADMIN_CLIENT_SECRET')
+            "secret": [current_app.config.get('ADMIN_CLIENT_SECRET')]
         }
     else:
         return {
