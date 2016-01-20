@@ -1,8 +1,10 @@
 import json
+from datetime import timedelta, datetime
 
 from flask import url_for
 
 from app.models import ApiKey
+from dao.api_key_dao import save_model_api_key
 from tests import create_authorization_header
 
 
@@ -82,3 +84,26 @@ def test_api_key_should_create_multiple_new_api_key_for_service(notify_api, noti
             assert response2.status_code == 201
             assert response2.get_data != response.get_data
             assert ApiKey.query.count() == 2
+
+
+def test_get_api_keys_should_return_all_keys_for_service(notify_api, notify_db,
+                                                         notify_db_session,
+                                                         sample_api_key):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            api_key2 = ApiKey(**{'service_id': sample_api_key.service_id, 'name': 'second_api_key'})
+            api_key3 = ApiKey(**{'service_id': sample_api_key.service_id, 'name': 'third_api_key',
+                                 'expiry_date': datetime.utcnow() + timedelta(hours=-1)})
+            save_model_api_key(api_key2)
+            save_model_api_key(api_key3)
+            assert ApiKey.query.count() == 3
+
+            auth_header = create_authorization_header(path=url_for('service.get_api_keys',
+                                                                   service_id=sample_api_key.service_id),
+                                                      method='GET')
+            response = client.get(url_for('service.get_api_keys',
+                                          service_id=sample_api_key.service_id),
+                                  headers=[('Content-Type', 'application/json'), auth_header])
+            assert response.status_code == 200
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert len(json_resp['apiKeys']) == 3
