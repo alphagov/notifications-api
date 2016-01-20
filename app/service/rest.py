@@ -123,7 +123,7 @@ def get_api_keys(service_id):
     except DAOException as e:
         return jsonify(result='error', message=str(e)), 400
 
-    return jsonify(apiKeys=api_keys_schema.dump(api_keys)), 200
+    return jsonify(apiKeys=api_keys_schema.dump(api_keys).data), 200
 
 
 @service.route('/<int:service_id>/template', methods=['POST'])
