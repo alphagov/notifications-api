@@ -30,12 +30,20 @@ def get_model_api_keys(service_id=None, raise_=True):
     return ApiKey.query.filter_by().all()
 
 
-def get_unsigned_secret(service_id):
+def get_unsigned_secrets(service_id):
     """
-    There should only be one valid api_keys for each service.
     This method can only be exposed to the Authentication of the api calls.
     """
-    api_key = ApiKey.query.filter_by(service_id=service_id, expiry_date=None).one()
+    api_keys = ApiKey.query.filter_by(service_id=service_id, expiry_date=None).all()
+    keys = [_get_secret(x.secret) for x in api_keys]
+    return keys
+
+
+def get_unsigned_secret(key_id):
+    """
+    This method can only be exposed to the Authentication of the api calls.
+    """
+    api_key = ApiKey.query.filter_by(id=key_id, expiry_date=None).one()
     return _get_secret(api_key.secret)
 
 

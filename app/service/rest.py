@@ -75,7 +75,7 @@ def get_service(service_id=None):
     return jsonify(data=data)
 
 
-@service.route('/<int:service_id>/api-key/renew', methods=['POST'])
+@service.route('/<int:service_id>/api-key', methods=['POST'])
 def renew_api_key(service_id=None):
     try:
         service = get_model_services(service_id=service_id)
@@ -85,17 +85,14 @@ def renew_api_key(service_id=None):
         return jsonify(result="error", message="Service not found"), 404
 
     try:
-        service_api_key = get_model_api_keys(service_id=service_id, raise_=False)
-        if service_api_key:
-            # expire existing api_key
-            save_model_api_key(service_api_key, update_dict={'id': service_api_key.id, 'expiry_date': datetime.now()})
         # create a new one
         # TODO: what validation should be done here?
         secret_name = request.get_json()['name']
-        save_model_api_key(ApiKey(service=service, name=secret_name))
+        key = ApiKey(service=service, name=secret_name)
+        save_model_api_key(key)
     except DAOException as e:
         return jsonify(result='error', message=str(e)), 400
-    unsigned_api_key = get_unsigned_secret(service_id)
+    unsigned_api_key = get_unsigned_secret(key.id)
     return jsonify(data=unsigned_api_key), 201
 
 
