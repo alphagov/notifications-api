@@ -146,3 +146,34 @@ class Job(db.Model):
         unique=False,
         nullable=True,
         onupdate=datetime.datetime.now)
+
+
+class VerifyCode(db.Model):
+    __tablename__ = 'verify_codes'
+
+    code_types = ['email', 'sms']
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=False)
+    user = db.relationship('User', backref=db.backref('verify_codes', lazy='dynamic'))
+    _code = db.Column(db.String, nullable=False)
+    code_type = db.Column(db.Enum(*code_types, name='verify_code_types'), index=False, unique=False, nullable=False)
+    expiry_datetime = db.Column(db.DateTime, nullable=False)
+    code_used = db.Column(db.Boolean, default=False)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=False,
+        default=datetime.datetime.now)
+
+    @property
+    def code(self):
+        raise AttributeError("Code not readable")
+
+    @code.setter
+    def code(self, cde):
+        self._code = hashpw(cde)
+
+    def check_code(self, cde):
+        return check_hash(cde, self._code)
