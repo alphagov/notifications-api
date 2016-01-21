@@ -110,7 +110,8 @@ def revoke_api_key(service_id, api_key_id):
 
 
 @service.route('/<int:service_id>/api-keys', methods=['GET'])
-def get_api_keys(service_id):
+@service.route('/<int:service_id>/api-keys/<int:key_id>', methods=['GET'])
+def get_api_keys(service_id, key_id=None):
     try:
         service = get_model_services(service_id=service_id)
     except DataError:
@@ -119,9 +120,14 @@ def get_api_keys(service_id):
         return jsonify(result="error", message="Service not found"), 404
 
     try:
-        api_keys = get_model_api_keys(service_id=service_id)
+        if key_id:
+            api_keys = [get_model_api_keys(service_id=service_id, id=key_id)]
+        else:
+            api_keys = get_model_api_keys(service_id=service_id)
     except DAOException as e:
         return jsonify(result='error', message=str(e)), 400
+    except NoResultFound:
+        return jsonify(result="error", message="API key not found"), 404
 
     return jsonify(apiKeys=api_keys_schema.dump(api_keys).data), 200
 

@@ -113,3 +113,21 @@ def test_get_api_keys_should_return_all_keys_for_service(notify_api, notify_db,
             assert response.status_code == 200
             json_resp = json.loads(response.get_data(as_text=True))
             assert len(json_resp['apiKeys']) == 3
+
+
+def test_get_api_keys_should_return_one_key_for_service(notify_api, notify_db,
+                                                        notify_db_session,
+                                                        sample_api_key):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(path=url_for('service.get_api_keys',
+                                                                   service_id=sample_api_key.service_id,
+                                                                   key_id=sample_api_key.id),
+                                                      method='GET')
+            response = client.get(url_for('service.get_api_keys',
+                                          service_id=sample_api_key.service_id,
+                                          key_id=sample_api_key.id),
+                                  headers=[('Content-Type', 'application/json'), auth_header])
+            assert response.status_code == 200
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert len(json_resp['apiKeys']) == 1
