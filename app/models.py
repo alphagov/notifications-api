@@ -1,6 +1,7 @@
+from sqlalchemy import UniqueConstraint
+
 from . import db
 import datetime
-
 from sqlalchemy.dialects.postgresql import UUID
 from app.encryption import (
     hashpw,
@@ -95,6 +96,10 @@ class ApiKey(db.Model):
     service = db.relationship('Service', backref=db.backref('api_keys', lazy='dynamic'))
     expiry_date = db.Column(db.DateTime)
 
+    __table_args__ = (
+        UniqueConstraint('service_id', 'name', name='uix_service_to_key_name'),
+    )
+
 
 TEMPLATE_TYPES = ['sms', 'email', 'letter']
 
@@ -123,7 +128,6 @@ class Template(db.Model):
 
 
 class Job(db.Model):
-
     __tablename__ = 'jobs'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True)
