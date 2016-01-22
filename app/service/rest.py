@@ -13,7 +13,7 @@ from app.dao.templates_dao import (
 from app.dao.api_key_dao import (save_model_api_key, get_model_api_keys, get_unsigned_secret)
 from app.models import ApiKey
 from app.schemas import (
-    services_schema, service_schema, template_schema, api_keys_schema)
+    services_schema, service_schema, template_schema, templates_schema, api_keys_schema)
 
 from flask import Blueprint
 service = Blueprint('service', __name__)
@@ -183,3 +183,21 @@ def update_template(service_id, template_id):
         except DAOException as e:
             return jsonify(result="error", message=str(e)), 400
     return jsonify(data=template_schema.dump(template).data), status_code
+
+
+@service.route('/<int:service_id>/template/<int:template_id>', methods=['GET'])
+@service.route('/<int:service_id>/template', methods=['GET'])
+def get_service_template(service_id, template_id=None):
+    try:
+        templates = get_model_templates(service_id=service_id, template_id=template_id)
+    except DataError:
+        return jsonify(result="error", message="Invalid template id"), 400
+    except NoResultFound:
+        return jsonify(result="error", message="Template not found"), 404
+    if isinstance(templates, list):
+        data, errors = templates_schema.dump(templates)
+    else:
+        data, errors = template_schema.dump(templates)
+    if errors:
+        return jsonify(result="error", message=str(errors))
+    return jsonify(data=data)
