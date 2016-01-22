@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import (jsonify, request)
+from flask import (jsonify, request, abort)
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 from app.dao.services_dao import get_model_services
@@ -69,7 +69,7 @@ def verify_user_password(user_id):
             result="error",
             message={'password': ['Required field missing data']}), 400
     if user.check_password(txt_pwd):
-        return jsonify(), 204
+        return jsonify(''), 204
     else:
         return jsonify(result='error', message={'password': ['Incorrect password']}), 400
 
@@ -102,7 +102,7 @@ def verify_user_code(user_id):
     if datetime.now() > code.expiry_datetime or code.code_used:
         return jsonify(result="error", message="Code has expired"), 400
     use_user_code(code.id)
-    return jsonify(), 204
+    return jsonify(''), 204
 
 
 @user.route('/<int:user_id>/code/', methods=['POST'])
@@ -133,7 +133,7 @@ def send_user_code(user_id):
             'Verification code')
     else:
         abort(500)
-    return jsonify(), 204
+    return jsonify(''), 204
 
 
 @user.route('/<int:user_id>', methods=['GET'])
