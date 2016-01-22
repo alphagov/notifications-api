@@ -65,8 +65,9 @@ def update_service(service_id):
 @service.route('/<int:service_id>', methods=['GET'])
 @service.route('', methods=['GET'])
 def get_service(service_id=None):
+    user_id = request.args.get('user_id', None)
     try:
-        services = get_model_services(service_id=service_id)
+        services = get_model_services(service_id=service_id, user_id=user_id)
     except DataError:
         return jsonify(result="error", message="Invalid service id"), 400
     except NoResultFound:
