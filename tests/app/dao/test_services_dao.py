@@ -2,6 +2,7 @@ import pytest
 from app.dao.services_dao import (
     save_model_service, get_model_services, DAOException, delete_model_service)
 from tests.app.conftest import sample_service as create_sample_service
+from tests.app.conftest import sample_user as create_sample_user
 from app.models import Service
 
 
@@ -45,6 +46,23 @@ def test_get_user_service(notify_api, notify_db, notify_db_session, sample_user)
                                            user=sample_user)
     assert get_model_services(service_id=sample_service.id).name == service_name
     assert Service.query.count() == 1
+
+
+def test_get_services_for_user(notify_api, notify_db, notify_db_session, sample_service):
+    assert Service.query.count() == 1
+    service_name = "Random service"
+    second_user = create_sample_user(notify_db, notify_db_session, 'an@other.gov.uk')
+    create_sample_service(notify_db, notify_db_session, service_name='another service', user=second_user)
+
+    sample_service = create_sample_service(notify_db,
+                                           notify_db_session,
+                                           service_name=service_name,
+                                           user=sample_service.users[0])
+    assert Service.query.count() == 3
+    services = get_model_services(user_id=sample_service.users[0].id)
+    assert len(services) == 2
+    assert service_name in [x.name for x in services]
+    assert 'Sample service' in [x.name for x in services]
 
 
 def test_missing_user_attribute(notify_api, notify_db, notify_db_session):
