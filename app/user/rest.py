@@ -137,7 +137,7 @@ def send_user_code(user_id):
 
 
 @user.route('/<int:user_id>', methods=['GET'])
-@user.route('/', methods=['GET'])
+@user.route('', methods=['GET'])
 def get_user(user_id=None):
     try:
         users = get_model_users(user_id=user_id)

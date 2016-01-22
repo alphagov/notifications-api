@@ -73,3 +73,16 @@ def test_get_unsigned_secret_returns_key(notify_api,
     unsigned_api_key = get_unsigned_secret(sample_api_key.id)
     assert sample_api_key.secret != unsigned_api_key
     assert unsigned_api_key == _get_secret(sample_api_key.secret)
+
+
+def test_should_not_allow_duplicate_key_names_per_service(notify_api,
+                                                          notify_db,
+                                                          notify_db_session,
+                                                          sample_api_key):
+    api_key = ApiKey(
+        **{'id': sample_api_key.id + 1, 'service_id': sample_api_key.service_id, 'name': sample_api_key.name})
+    try:
+        save_model_api_key(api_key)
+        fail("should throw IntegrityError")
+    except:
+        pass

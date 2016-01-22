@@ -6,6 +6,7 @@ from app.dao.services_dao import save_model_service
 from app.models import (Service, ApiKey, Template)
 from tests import create_authorization_header
 from tests.app.conftest import sample_user as create_sample_user
+from tests.app.conftest import sample_service as create_sample_service
 
 
 def test_get_service_list(notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id):
@@ -43,6 +44,26 @@ def test_get_service(notify_api, notify_db, notify_db_session, sample_service, s
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['data']['name'] == sample_service.name
             assert json_resp['data']['id'] == sample_service.id
+
+
+def test_get_service_for_user(notify_api, notify_db, notify_db_session, sample_service):
+    second_user = create_sample_user(notify_db, notify_db_session, 'an@other.gov.uk')
+    create_sample_service(notify_db, notify_db_session, service_name='Second Service', user=second_user)
+    create_sample_service(notify_db, notify_db_session, service_name='Another Service', user=sample_service.users[0])
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(
+                path='/service',
+                method='GET')
+            resp = client.get('/service?user_id={}'.format(sample_service.users[0].id),
+                              headers=[auth_header])
+            assert resp.status_code == 200
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert len(json_resp['data']) == 2
+            print(x for x in json_resp['data'])
+            assert 'Another Service' in [x.get('name') for x in json_resp['data']]
+            assert 'Sample service' in [x.get('name') for x in json_resp['data']]
+            assert 'Second Service' not in [x.get('name') for x in json_resp['data']]
 
 
 def test_post_service(notify_api, notify_db, notify_db_session, sample_user, sample_admin_service_id):
@@ -547,3 +568,51 @@ def test_create_template_unicode_content(notify_api, notify_db, notify_db_sessio
             assert json_resp['data']['name'] == template_name
             assert json_resp['data']['template_type'] == template_type
             assert json_resp['data']['content'] == template_content
+
+
+def test_get_template_list(notify_api, notify_db, notify_db_session, sample_template):
+    """
+    Tests GET endpoint '/' to retrieve entire template list.
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(
+                service_id=sample_template.service_id,
+                path=url_for(
+                    'service.get_service_template',
+                    service_id=sample_template.service_id),
+                method='GET')
+            response = client.get(
+                url_for(
+                    'service.get_service_template',
+                    service_id=sample_template.service_id),
+                headers=[auth_header])
+            assert response.status_code == 200
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert len(json_resp['data']) == 1
+            assert json_resp['data'][0]['name'] == sample_template.name
+            assert json_resp['data'][0]['id'] == sample_template.id
+
+
+def test_get_template(notify_api, notify_db, notify_db_session, sample_template):
+    """
+    Tests GET endpoint '/<template_id>' to retrieve a single template.
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(
+                service_id=sample_template.service_id,
+                path=url_for(
+                    'service.get_service_template',
+                    template_id=sample_template.id,
+                    service_id=sample_template.service_id),
+                method='GET')
+            resp = client.get(url_for(
+                'service.get_service_template',
+                template_id=sample_template.id,
+                service_id=sample_template.service_id),
+                headers=[auth_header])
+            assert resp.status_code == 200
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert json_resp['data']['name'] == sample_template.name
+            assert json_resp['data']['id'] == sample_template.id

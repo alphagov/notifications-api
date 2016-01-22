@@ -31,5 +31,5 @@ def get_model_templates(template_id=None, service_id=None):
     elif template_id:
         return Template.query.filter_by(id=template_id).one()
     elif service_id:
-        return Template.query.filter_by(service=Service.query.get(service_id)).one()
+        return Template.query.filter_by(service=Service.query.get(service_id)).all()
     return Template.query.all()

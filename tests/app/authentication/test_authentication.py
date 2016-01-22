@@ -76,7 +76,17 @@ def test_should_allow_valid_token(notify_api, notify_db, notify_db_session, samp
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             token = __create_get_token(sample_api_key.service_id)
-            response = client.get(url_for('service.get_service'),
+            response = client.get(url_for('service.get_service', service_id=sample_api_key.service_id),
+                                  headers={'Authorization': 'Bearer {}'.format(token)})
+            assert response.status_code == 200
+
+
+def test_should_allow_valid_token_for_request_with_path_params(notify_api, notify_db, notify_db_session,
+                                                               sample_api_key):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            token = __create_get_token(sample_api_key.service_id)
+            response = client.get(url_for('service.get_service', service_id=sample_api_key.service_id),
                                   headers={'Authorization': 'Bearer {}'.format(token)})
             assert response.status_code == 200
 
@@ -89,7 +99,7 @@ def test_should_allow_valid_token_when_service_has_multiple_keys(notify_api, not
             api_key = ApiKey(**data)
             save_model_api_key(api_key)
             token = __create_get_token(sample_api_key.service_id)
-            response = client.get(url_for('service.get_service'),
+            response = client.get(url_for('service.get_service', service_id=sample_api_key.service_id),
                                   headers={'Authorization': 'Bearer {}'.format(token)})
             assert response.status_code == 200
 
@@ -205,10 +215,16 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
 
 
 def __create_get_token(service_id):
-    return create_jwt_token(request_method="GET",
-                            request_path=url_for('service.get_service'),
-                            secret=get_unsigned_secrets(service_id)[0],
-                            client_id=service_id)
+    if service_id:
+        return create_jwt_token(request_method="GET",
+                                request_path=url_for('service.get_service', service_id=service_id),
+                                secret=get_unsigned_secrets(service_id)[0],
+                                client_id=service_id)
+    else:
+        return create_jwt_token(request_method="GET",
+                                request_path=url_for('service.get_service'),
+                                secret=get_unsigned_secrets(service_id)[0],
+                                client_id=service_id)
 
 
 def __create_post_token(service_id, request_body):
