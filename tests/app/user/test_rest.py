@@ -203,12 +203,12 @@ def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_us
             new_email = 'new@digital.cabinet-office.gov.uk'
             data = {'email_address': new_email}
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('user.update_user', user_id="123"),
+                                                      path=url_for('user.update_user', user_id="9999"),
                                                       method='PUT',
                                                       request_body=json.dumps(data))
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.put(
-                url_for('user.update_user', user_id="123"),
+                url_for('user.update_user', user_id="9999"),
                 data=json.dumps(data),
                 headers=headers)
             assert resp.status_code == 404
