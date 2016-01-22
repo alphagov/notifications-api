@@ -16,7 +16,7 @@ def sample_user(notify_db,
         'name': 'Test User',
         'email_address': email,
         'password': 'password',
-        'mobile_number': '+44 7700 900986',
+        'mobile_number': '+447700900986',
         'state': 'active'
     }
     usr = User.query.filter_by(email_address=email).first()
@@ -77,8 +77,10 @@ def sample_service(notify_db,
         'limit': 1000,
         'active': False,
         'restricted': False}
-    service = Service(**data)
-    save_model_service(service)
+    service = Service.query.filter_by(name=service_name).first()
+    if not service:
+        service = Service(**data)
+        save_model_service(service)
     return service
 
 

@@ -12,7 +12,7 @@ def test_create_user(notify_api, notify_db, notify_db_session):
         'name': 'Test User',
         'email_address': email,
         'password': 'password',
-        'mobile_number': '+44 7700 900986'
+        'mobile_number': '+447700900986'
     }
     user = User(**data)
     save_model_user(user)
