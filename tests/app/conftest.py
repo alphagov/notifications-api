@@ -1,6 +1,6 @@
 import pytest
-from app.models import (User, Service, Template, ApiKey, Job)
-from app.dao.users_dao import (save_model_user)
+from app.models import (User, Service, Template, ApiKey, Job, VerifyCode)
+from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import save_model_service
 from app.dao.templates_dao import save_model_template
 from app.dao.api_key_dao import save_model_api_key
@@ -16,12 +16,52 @@ def sample_user(notify_db,
         'name': 'Test User',
         'email_address': email,
         'password': 'password',
-        'mobile_number': '+44 7700 900986',
+        'mobile_number': '+447700900986',
         'state': 'active'
     }
-    user = User(**data)
-    save_model_user(user)
-    return user
+    usr = User.query.filter_by(email_address=email).first()
+    if not usr:
+        usr = User(**data)
+        save_model_user(usr)
+    return usr
+
+
+def create_code(notify_db, notify_db_session, code_type, usr=None, code=None):
+    if code is None:
+        code = create_secret_code()
+    if usr is None:
+        usr = sample_user(notify_db, notify_db_session)
+    return create_user_code(usr, code, code_type), code
+
+
+@pytest.fixture(scope='function')
+def sample_email_code(notify_db,
+                      notify_db_session,
+                      code=None,
+                      code_type="email",
+                      usr=None):
+    code, txt_code = create_code(notify_db,
+                                 notify_db_session,
+                                 code_type,
+                                 usr=usr,
+                                 code=code)
+    code.txt_code = txt_code
+    return code
+
+
+@pytest.fixture(scope='function')
+def sample_sms_code(notify_db,
+                    notify_db_session,
+                    code=None,
+                    code_type="sms",
+                    usr=None):
+    code, txt_code = create_code(notify_db,
+                                 notify_db_session,
+                                 code_type,
+                                 usr=usr,
+                                 code=code)
+    code.txt_code = txt_code
+    return code
 
 
 @pytest.fixture(scope='function')
@@ -37,8 +77,10 @@ def sample_service(notify_db,
         'limit': 1000,
         'active': False,
         'restricted': False}
-    service = Service(**data)
-    save_model_service(service)
+    service = Service.query.filter_by(name=service_name).first()
+    if not service:
+        service = Service(**data)
+        save_model_service(service)
     return service
 
 

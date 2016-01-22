@@ -23,7 +23,7 @@ def test_get_user_list(notify_api, notify_db, notify_db_session, sample_user, sa
                 "name": "Test User",
                 "email_address": sample_user.email_address,
                 "id": sample_user.id,
-                "mobile_number": "+44 7700 900986",
+                "mobile_number": "+447700900986",
                 "password_changed_at": None,
                 "logged_in_at": None,
                 "state": "active",
@@ -50,7 +50,7 @@ def test_get_user(notify_api, notify_db, notify_db_session, sample_user, sample_
                 "name": "Test User",
                 "email_address": sample_user.email_address,
                 "id": sample_user.id,
-                "mobile_number": "+44 7700 900986",
+                "mobile_number": "+447700900986",
                 "password_changed_at": None,
                 "logged_in_at": None,
                 "state": "active",
@@ -70,7 +70,7 @@ def test_post_user(notify_api, notify_db, notify_db_session, sample_admin_servic
                 "name": "Test User",
                 "email_address": "user@digital.cabinet-office.gov.uk",
                 "password": "password",
-                "mobile_number": "+44 7700 900986",
+                "mobile_number": "+447700900986",
                 "password_changed_at": None,
                 "logged_in_at": None,
                 "state": "active",
@@ -103,7 +103,7 @@ def test_post_user_missing_attribute_email(notify_api, notify_db, notify_db_sess
             data = {
                 "name": "Test User",
                 "password": "password",
-                "mobile_number": "+44 7700 900986",
+                "mobile_number": "+447700900986",
                 "password_changed_at": None,
                 "logged_in_at": None,
                 "state": "active",
@@ -134,7 +134,7 @@ def test_post_user_missing_attribute_password(notify_api, notify_db, notify_db_s
             data = {
                 "name": "Test User",
                 "email_address": "user@digital.cabinet-office.gov.uk",
-                "mobile_number": "+44 7700 900986",
+                "mobile_number": "+447700900986",
                 "password_changed_at": None,
                 "logged_in_at": None,
                 "state": "active",
@@ -182,7 +182,7 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_user, sample_
             expected = {
                 "name": "Test User",
                 "email_address": new_email,
-                "mobile_number": "+44 7700 900986",
+                "mobile_number": "+447700900986",
                 "password_changed_at": None,
                 "id": user.id,
                 "logged_in_at": None,
@@ -203,12 +203,12 @@ def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_us
             new_email = 'new@digital.cabinet-office.gov.uk'
             data = {'email_address': new_email}
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('user.update_user', user_id="123"),
+                                                      path=url_for('user.update_user', user_id="9999"),
                                                       method='PUT',
                                                       request_body=json.dumps(data))
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.put(
-                url_for('user.update_user', user_id="123"),
+                url_for('user.update_user', user_id="9999"),
                 data=json.dumps(data),
                 headers=headers)
             assert resp.status_code == 404
@@ -333,7 +333,7 @@ def test_delete_user(notify_api, notify_db, notify_db_session, sample_user, samp
             expected = {
                 "name": "Test User",
                 "email_address": sample_user.email_address,
-                "mobile_number": "+44 7700 900986",
+                "mobile_number": "+447700900986",
                 "password_changed_at": None,
                 "id": sample_user.id,
                 "logged_in_at": None,
@@ -359,76 +359,3 @@ def test_delete_user_not_exists(notify_api, notify_db, notify_db_session, sample
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 404
             assert User.query.count() == 2
-
-
-def test_user_verify_password(notify_api,
-                              notify_db,
-                              notify_db_session,
-                              sample_user,
-                              sample_admin_service_id):
-    """
-    Tests POST endpoint '/<user_id>/verify/password'
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = json.dumps({'password': 'password'})
-            auth_header = create_authorization_header(
-                service_id=sample_admin_service_id,
-                path=url_for('user.verify_user_password', user_id=sample_user.id),
-                method='POST',
-                request_body=data)
-            resp = client.post(
-                url_for('user.verify_user_password', user_id=sample_user.id),
-                data=data,
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 204
-
-
-def test_user_verify_password_invalid_password(notify_api,
-                                               notify_db,
-                                               notify_db_session,
-                                               sample_user,
-                                               sample_admin_service_id):
-    """
-    Tests POST endpoint '/<user_id>/verify/password' invalid endpoint.
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = json.dumps({'password': 'bad password'})
-            auth_header = create_authorization_header(
-                service_id=sample_admin_service_id,
-                path=url_for('user.verify_user_password', user_id=sample_user.id),
-                method='POST',
-                request_body=data)
-            resp = client.post(
-                url_for('user.verify_user_password', user_id=sample_user.id),
-                data=data,
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 400
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert 'Incorrect password' in json_resp['message']['password']
-
-
-def test_user_verify_password_missing_password(notify_api,
-                                               notify_db,
-                                               notify_db_session,
-                                               sample_user,
-                                               sample_admin_service_id):
-    """
-    Tests POST endpoint '/<user_id>/verify/password' missing password.
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = json.dumps({'bingo': 'bongo'})
-            auth_header = create_authorization_header(
-                service_id=sample_admin_service_id,
-                path=url_for('user.verify_user_password', user_id=sample_user.id),
-                method='POST',
-                request_body=data)
-            resp = client.post(
-                url_for('user.verify_user_password', user_id=sample_user.id),
-                data=data,
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 400
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert 'Required field missing data' in json_resp['message']['password']

@@ -10,7 +10,9 @@ from . import models
 class UserSchema(ma.ModelSchema):
     class Meta:
         model = models.User
-        exclude = ("updated_at", "created_at", "user_to_service", "_password")
+        exclude = (
+            "updated_at", "created_at", "user_to_service",
+            "_password", "verify_codes")
 
 
 # TODO process users list, to return a list of user.id
@@ -38,6 +40,12 @@ class JobSchema(ma.ModelSchema):
         model = models.Job
 
 
+class VerifyCodeSchema(ma.ModelSchema):
+    class Meta:
+        model = models.VerifyCode
+        exclude = ('user', "_code", "expiry_datetime", "code_used", "created_at")
+
+
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)
 service_schema = ServiceSchema()
@@ -48,3 +56,4 @@ api_key_schema = ApiKeySchema()
 api_keys_schema = ApiKeySchema(many=True)
 job_schema = JobSchema()
 jobs_schema = JobSchema(many=True)
+verify_code_schema = VerifyCodeSchema()

@@ -1,6 +1,7 @@
 from tests import create_authorization_header
 from flask import url_for, json
 from app import notify_alpha_client
+from app.models import Service
 
 
 def test_get_notifications(
@@ -82,7 +83,7 @@ def test_should_reject_if_no_phone_numbers(
             )
             data = {
                 'notification': {
-                    'message': "my message"
+                    'template': "my message"
                 }
             }
             auth_header = create_authorization_header(
@@ -97,12 +98,9 @@ def test_should_reject_if_no_phone_numbers(
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            print(json_resp)
             assert response.status_code == 400
             assert json_resp['result'] == 'error'
-            assert len(json_resp['message']) == 1
-            assert len(json_resp['message']['to']) == 1
-            assert json_resp['message']['to'][0] == 'required'
+            assert 'Required data missing' in json_resp['message']['to'][0]
             assert not notify_alpha_client.send_sms.called
 
 
@@ -120,7 +118,7 @@ def test_should_reject_bad_phone_numbers(
             data = {
                 'notification': {
                     'to': 'invalid',
-                    'message': "my message"
+                    'template': "my message"
                 }
             }
             auth_header = create_authorization_header(
@@ -135,16 +133,13 @@ def test_should_reject_bad_phone_numbers(
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            print(json_resp)
             assert response.status_code == 400
             assert json_resp['result'] == 'error'
-            assert len(json_resp['message']) == 1
-            assert len(json_resp['message']['to']) == 1
-            assert json_resp['message']['to'][0] == 'invalid phone number, must be of format +441234123123'
+            assert 'invalid phone number, must be of format +441234123123' in json_resp['message']['to']
             assert not notify_alpha_client.send_sms.called
 
 
-def test_should_reject_missing_message(
+def test_should_reject_missing_template(
         notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id, mocker):
     """
     Tests GET endpoint '/' to retrieve entire service list.
@@ -174,31 +169,90 @@ def test_should_reject_missing_message(
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 400
             assert json_resp['result'] == 'error'
-            assert len(json_resp['message']) == 1
-            assert len(json_resp['message']['message']) == 1
-            assert json_resp['message']['message'][0] == 'required'
+            assert 'Required data missing' in json_resp['message']['template']
             assert not notify_alpha_client.send_sms.called
 
 
-def test_should_reject_too_short_message(
-        notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id, mocker):
+def test_send_template_content(notify_api,
+                               notify_db,
+                               notify_db_session,
+                               sample_api_key,
+                               sample_template,
+                               sample_user,
+                               mocker):
     """
-    Tests GET endpoint '/' to retrieve entire service list.
+    Test POST endpoint '/sms' with service notification.
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch(
                 'app.notify_alpha_client.send_sms',
-                return_value='success'
+                return_value={
+                    "notification": {
+                        "createdAt": "2015-11-03T09:37:27.414363Z",
+                        "id": 100,
+                        "jobId": 65,
+                        "message": sample_template.content,
+                        "method": "sms",
+                        "status": "created",
+                        "to": sample_user.mobile_number
+                    }
+                }
             )
             data = {
                 'notification': {
-                    'to': '+441234123123',
-                    'message': ''
+                    'to': sample_user.mobile_number,
+                    'template': sample_template.id
                 }
             }
             auth_header = create_authorization_header(
-                service_id=sample_admin_service_id,
+                service_id=sample_template.service.id,
+                request_body=json.dumps(data),
+                path=url_for('notifications.create_sms_notification'),
+                method='POST')
+
+            response = client.post(
+                url_for('notifications.create_sms_notification'),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
+            assert json_resp['notification']['id'] == 100
+            notify_alpha_client.send_sms.assert_called_with(
+                mobile_number=sample_user.mobile_number,
+                message=sample_template.content)
+
+
+def test_send_notification_restrict_mobile(notify_api,
+                                           notify_db,
+                                           notify_db_session,
+                                           sample_api_key,
+                                           sample_template,
+                                           sample_user,
+                                           mocker):
+    """
+    Test POST endpoint '/sms' with service notification with mobile number
+    not in restricted list.
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            Service.query.filter_by(
+                id=sample_template.service.id).update({'restricted': True})
+            invalid_mob = '+449999999999'
+            mocker.patch(
+                'app.notify_alpha_client.send_sms',
+                return_value={}
+            )
+            data = {
+                'notification': {
+                    'to': invalid_mob,
+                    'template': sample_template.id
+                }
+            }
+            assert invalid_mob != sample_user.mobile_number
+            auth_header = create_authorization_header(
+                service_id=sample_template.service.id,
                 request_body=json.dumps(data),
                 path=url_for('notifications.create_sms_notification'),
                 method='POST')
@@ -210,54 +264,13 @@ def test_should_reject_too_short_message(
 
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 400
-            assert json_resp['result'] == 'error'
-            assert len(json_resp['message']) == 1
-            assert len(json_resp['message']['message']) == 1
-            assert json_resp['message']['message'][0] == 'Invalid length. [1 - 160]'
-            assert not notify_alpha_client.send_sms.called
-
-
-def test_should_reject_too_long_message(
-        notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id, mocker):
-    """
-    Tests GET endpoint '/' to retrieve entire service list.
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            mocker.patch(
-                'app.notify_alpha_client.send_sms',
-                return_value='success'
-            )
-            data = {
-                'notification': {
-                    'to': '+441234123123',
-                    'message': '1' * 161
-                }
-            }
-            auth_header = create_authorization_header(
-                service_id=sample_admin_service_id,
-                request_body=json.dumps(data),
-                path=url_for('notifications.create_sms_notification'),
-                method='POST')
-
-            response = client.post(
-                url_for('notifications.create_sms_notification'),
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
-
-            json_resp = json.loads(response.get_data(as_text=True))
-            assert response.status_code == 400
-            assert json_resp['result'] == 'error'
-            assert len(json_resp['message']) == 1
-            assert len(json_resp['message']['message']) == 1
-            assert json_resp['message']['message'][0] == 'Invalid length. [1 - 160]'
-            assert not notify_alpha_client.send_sms.called
+            assert 'Invalid phone number for restricted service' in json_resp['message']['to']
 
 
 def test_should_allow_valid_message(
         notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id, mocker):
     """
-    Tests GET endpoint '/' to retrieve entire service list.
+    Tests POST endpoint '/sms' with notifications-admin notification.
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -278,11 +291,10 @@ def test_should_allow_valid_message(
             data = {
                 'notification': {
                     'to': '+441234123123',
-                    'message': 'valid'
+                    'template': 'valid'
                 }
             }
             auth_header = create_authorization_header(
-                service_id=sample_admin_service_id,
                 request_body=json.dumps(data),
                 path=url_for('notifications.create_sms_notification'),
                 method='POST')
@@ -336,7 +348,6 @@ def test_send_email_valid_data(notify_api,
                 }
             }
             auth_header = create_authorization_header(
-                service_id=sample_admin_service_id,
                 request_body=json.dumps(data),
                 path=url_for('notifications.create_email_notification'),
                 method='POST')
