@@ -182,6 +182,9 @@ def test_user_verify_password_invalid_password(notify_api,
                 path=url_for('user.verify_user_password', user_id=sample_user.id),
                 method='POST',
                 request_body=data)
+
+            assert sample_user.failed_login_count == 0
+
             resp = client.post(
                 url_for('user.verify_user_password', user_id=sample_user.id),
                 data=data,
@@ -189,6 +192,7 @@ def test_user_verify_password_invalid_password(notify_api,
             assert resp.status_code == 400
             json_resp = json.loads(resp.get_data(as_text=True))
             assert 'Incorrect password' in json_resp['message']['password']
+            assert sample_user.failed_login_count == 1
 
 
 def test_user_verify_password_missing_password(notify_api,
