@@ -1,4 +1,4 @@
-https://travis-ci.org/alphagov/notifications-api.svg
+![](https://travis-ci.org/alphagov/notifications-api.svg)
 
 # notifications-api
 Notifications api
