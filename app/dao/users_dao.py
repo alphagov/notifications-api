@@ -62,3 +62,9 @@ def get_model_users(user_id=None):
     if user_id:
         return User.query.filter_by(id=user_id).one()
     return User.query.filter_by().all()
+
+
+def increment_failed_login_count(user):
+    user.failed_login_count += 1
+    db.session.add(user)
+    db.session.commit()

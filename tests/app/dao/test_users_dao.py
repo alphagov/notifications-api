@@ -1,7 +1,14 @@
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
+
+import pytest
 from app.dao.users_dao import (
-    save_model_user, get_model_users, delete_model_user)
+    save_model_user,
+    get_model_users,
+    delete_model_user,
+    increment_failed_login_count
+)
+
 from tests.app.conftest import sample_user as create_sample_user
 from app.models import User
 
@@ -60,3 +67,10 @@ def test_delete_users(notify_api, notify_db, notify_db_session, sample_user):
     assert User.query.count() == 1
     delete_model_user(sample_user)
     assert User.query.count() == 0
+
+
+def test_increment_failed_login_should_increment_failed_logins(notify_api, notify_db, notify_db_session, sample_user):
+    assert User.query.count() == 1
+    assert sample_user.failed_login_count == 0
+    increment_failed_login_count(sample_user)
+    assert sample_user.failed_login_count == 1
