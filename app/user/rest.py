@@ -106,7 +106,7 @@ def verify_user_code(user_id):
     return jsonify(''), 204
 
 
-@user.route('/<int:user_id>/code/', methods=['POST'])
+@user.route('/<int:user_id>/code', methods=['POST'])
 def send_user_code(user_id):
     try:
         user = get_model_users(user_id=user_id)
