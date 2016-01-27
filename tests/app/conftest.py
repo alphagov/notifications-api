@@ -78,7 +78,8 @@ def sample_service(notify_db,
         'users': [user],
         'limit': 1000,
         'active': False,
-        'restricted': False}
+        'restricted': False,
+        'queue_name': str(uuid.uuid4())}
     service = Service.query.filter_by(name=service_name).first()
     if not service:
         service = Service(**data)
@@ -158,7 +159,7 @@ def sample_admin_service_id(notify_db, notify_db_session):
 @pytest.fixture(scope='function')
 def mock_notify_client_send_sms(mocker):
     def _send(mobile_number, message):
-        return jsonify('sms sent'), 200
+        pass
 
     mock_class = mocker.patch('app.notify_alpha_client.send_sms', side_effect=_send)
     return mock_class

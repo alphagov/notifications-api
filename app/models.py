@@ -86,6 +86,7 @@ class Service(db.Model):
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
     queue_name = db.Column(UUID(as_uuid=True))
 
+
 class ApiKey(db.Model):
     __tablename__ = 'api_key'
 

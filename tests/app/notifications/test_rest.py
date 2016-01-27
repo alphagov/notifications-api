@@ -1,3 +1,6 @@
+import boto3
+import moto
+
 from tests import create_authorization_header
 from flask import url_for, json
 from app import notify_alpha_client
@@ -70,6 +73,7 @@ def test_get_notifications_empty_result(
             notify_alpha_client.fetch_notification_by_id.assert_called_with("123")
 
 
+@moto.mock_sqs
 def test_should_reject_if_no_phone_numbers(
         notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id, mocker):
     """
@@ -77,6 +81,7 @@ def test_should_reject_if_no_phone_numbers(
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            set_up_mock_queue()
             mocker.patch(
                 'app.notify_alpha_client.send_sms',
                 return_value='success'
@@ -104,6 +109,7 @@ def test_should_reject_if_no_phone_numbers(
             assert not notify_alpha_client.send_sms.called
 
 
+@moto.mock_sqs
 def test_should_reject_bad_phone_numbers(
         notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id, mocker):
     """
@@ -111,6 +117,7 @@ def test_should_reject_bad_phone_numbers(
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            set_up_mock_queue()
             mocker.patch(
                 'app.notify_alpha_client.send_sms',
                 return_value='success'
@@ -139,6 +146,7 @@ def test_should_reject_bad_phone_numbers(
             assert not notify_alpha_client.send_sms.called
 
 
+@moto.mock_sqs
 def test_should_reject_missing_template(
         notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id, mocker):
     """
@@ -146,6 +154,7 @@ def test_should_reject_missing_template(
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            set_up_mock_queue()
             mocker.patch(
                 'app.notify_alpha_client.send_sms',
                 return_value='success'
@@ -173,6 +182,7 @@ def test_should_reject_missing_template(
             assert not notify_alpha_client.send_sms.called
 
 
+@moto.mock_sqs
 def test_send_template_content(notify_api,
                                notify_db,
                                notify_db_session,
@@ -185,6 +195,7 @@ def test_send_template_content(notify_api,
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            set_up_mock_queue()
             mocker.patch(
                 'app.notify_alpha_client.send_sms',
                 return_value={
@@ -224,6 +235,7 @@ def test_send_template_content(notify_api,
                 message=sample_template.content)
 
 
+@moto.mock_sqs
 def test_send_notification_restrict_mobile(notify_api,
                                            notify_db,
                                            notify_db_session,
@@ -237,6 +249,7 @@ def test_send_notification_restrict_mobile(notify_api,
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            set_up_mock_queue()
             Service.query.filter_by(
                 id=sample_template.service.id).update({'restricted': True})
             invalid_mob = '+449999999999'
@@ -267,13 +280,15 @@ def test_send_notification_restrict_mobile(notify_api,
             assert 'Invalid phone number for restricted service' in json_resp['message']['to']
 
 
+@moto.mock_sqs
 def test_should_allow_valid_message(
-        notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id, mocker):
+        notify_api, notify_db, notify_db_session, sample_service, mocker):
     """
     Tests POST endpoint '/sms' with notifications-admin notification.
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            set_up_mock_queue()
             mocker.patch(
                 'app.notify_alpha_client.send_sms',
                 return_value={
@@ -307,7 +322,7 @@ def test_should_allow_valid_message(
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 200
             assert json_resp['notification']['id'] == 100
-            notify_alpha_client.send_sms.assert_called_with(mobile_number='+441234123123', message='valid')
+            notify_alpha_client.send_sms.assert_called_with(mobile_number='+441234123123', message="valid")
 
 
 def test_send_email_valid_data(notify_api,
@@ -318,7 +333,6 @@ def test_send_email_valid_data(notify_api,
                                mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             to_address = "to@notify.com"
             from_address = "from@notify.com"
             subject = "This is the subject"
@@ -362,3 +376,16 @@ def test_send_email_valid_data(notify_api,
             assert json_resp['notification']['id'] == 100
             notify_alpha_client.send_email.assert_called_with(
                 to_address, message, from_address, subject)
+
+
+@moto.mock_sqs
+def test_add_notification_to_queue(notify_api, notify_db, notify_db_session, sample_service):
+    set_up_mock_queue()
+    from app.notifications.rest import _add_notification_to_queue
+    _add_notification_to_queue('some message', sample_service, 'sms', '+447515349060')
+
+
+def set_up_mock_queue():
+    # set up mock queue
+    boto3.setup_default_session(region_name='eu-west-1')
+    conn = boto3.resource('sqs')
