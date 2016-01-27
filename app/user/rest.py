@@ -5,12 +5,10 @@ from sqlalchemy.orm.exc import NoResultFound
 from app.dao.services_dao import get_model_services
 from app.dao.users_dao import (
     get_model_users, save_model_user, delete_model_user,
-    create_user_code, get_user_code, use_user_code, increment_failed_login_count,
-    create_secret_code)
+    create_user_code, get_user_code, use_user_code, increment_failed_login_count)
 from app.schemas import (
-    user_schema, users_schema, service_schema, services_schema,
-    verify_code_schema)
-from app import db
+    user_schema, users_schema, service_schema, services_schema)
+from app import db, notify_alpha_client
 from flask import Blueprint
 
 
@@ -114,22 +112,26 @@ def send_user_code(user_id):
         return jsonify(result="error", message="Invalid user id"), 400
     except NoResultFound:
         return jsonify(result="error", message="User not found"), 404
-    text_pwd = None
-    verify_code, errors = verify_code_schema.load(request.get_json())
-    if errors:
-        return jsonify(result="error", message=errors), 400
-    code = create_user_code(
-        user, create_secret_code(), verify_code.code_type)
+
+    try:
+        verify_code = request.get_json()
+    except KeyError:
+        return jsonify(result='error', message='Malformed json'), 400
+
+    from app.dao.users_dao import create_secret_code
+    secret_code = create_secret_code()
+    create_user_code(user, secret_code, verify_code['code_type'])
     # TODO this will need to fixed up when we stop using
     # notify_alpha_client
-    if verify_code.code_type == 'sms':
+    if verify_code['code_type'] == 'sms':
         notify_alpha_client.send_sms(
             mobile_number=user.mobile_number,
-            message=code.code)
-    elif verify_code.code_type == 'email':
+            message=secret_code)
+    elif verify_code['code_type'] == 'email':
+        email = user.email_address if 'to' not in verify_code else verify_code['to']
         notify_alpha_client.send_email(
-            user.email_address,
-            code.code,
+            email,
+            secret_code,
             'notify@digital.cabinet-office.gov.uk',
             'Verification code')
     else:

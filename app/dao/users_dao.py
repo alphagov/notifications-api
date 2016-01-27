@@ -1,11 +1,8 @@
 import random
 from datetime import (datetime, timedelta)
-from . import DAOException
-from sqlalchemy.orm import load_only
 
 from app import db
 from app.models import (User, VerifyCode)
-from app.encryption import hashpw
 
 
 def create_secret_code():
