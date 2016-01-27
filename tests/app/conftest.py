@@ -1,4 +1,6 @@
 import pytest
+from flask import jsonify
+
 from app.models import (User, Service, Template, ApiKey, Job, VerifyCode)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import save_model_service
@@ -156,7 +158,7 @@ def sample_admin_service_id(notify_db, notify_db_session):
 @pytest.fixture(scope='function')
 def mock_notify_client_send_sms(mocker):
     def _send(mobile_number, message):
-        pass
+        return jsonify('sms sent'), 200
 
     mock_class = mocker.patch('app.notify_alpha_client.send_sms', side_effect=_send)
     return mock_class
