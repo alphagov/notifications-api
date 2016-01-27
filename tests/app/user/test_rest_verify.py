@@ -231,6 +231,32 @@ def test_send_user_code_for_sms(notify_api,
                                                                 message='11111')
 
 
+def test_send_user_code_for_sms_with_optional_to_field(notify_api,
+                                                       notify_db,
+                                                       notify_db_session,
+                                                       sample_sms_code,
+                                                       mock_notify_client_send_sms,
+                                                       mock_secret_code):
+    """
+   Tests POST endpoint '/<user_id>/code' successful sms with optional to field
+   """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = json.dumps({'code_type': 'sms', 'to': '+441119876757'})
+            auth_header = create_authorization_header(
+                path=url_for('user.send_user_code', user_id=sample_sms_code.user.id),
+                method='POST',
+                request_body=data)
+            resp = client.post(
+                url_for('user.send_user_code', user_id=sample_sms_code.user.id),
+                data=data,
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            assert resp.status_code == 204
+            mock_notify_client_send_sms.assert_called_once_with(mobile_number='+441119876757',
+                                                                message='11111')
+
+
 def test_send_user_code_for_email(notify_api,
                                   notify_db,
                                   notify_db_session,

@@ -124,8 +124,9 @@ def send_user_code(user_id):
     # TODO this will need to fixed up when we stop using
     # notify_alpha_client
     if verify_code['code_type'] == 'sms':
+        mobile = user.mobile_number if 'to' not in verify_code else verify_code['to']
         notify_alpha_client.send_sms(
-            mobile_number=user.mobile_number,
+            mobile_number=mobile,
             message=secret_code)
     elif verify_code['code_type'] == 'email':
         email = user.email_address if 'to' not in verify_code else verify_code['to']
