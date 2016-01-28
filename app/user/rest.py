@@ -4,8 +4,15 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 from app.dao.services_dao import get_model_services
 from app.dao.users_dao import (
-    get_model_users, save_model_user, delete_model_user,
-    create_user_code, get_user_code, use_user_code, increment_failed_login_count)
+    get_model_users,
+    save_model_user,
+    delete_model_user,
+    create_user_code,
+    get_user_code,
+    use_user_code,
+    increment_failed_login_count,
+    reset_failed_login_count
+)
 from app.schemas import (
     user_schema, users_schema, service_schema, services_schema,
     verify_code_schema, user_schema_load_json)
@@ -72,6 +79,7 @@ def verify_user_password(user_id):
             result="error",
             message={'password': ['Required field missing data']}), 400
     if user.check_password(txt_pwd):
+        reset_failed_login_count(user)
         return jsonify({}), 204
     else:
         increment_failed_login_count(user)

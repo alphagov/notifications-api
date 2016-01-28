@@ -68,3 +68,10 @@ def increment_failed_login_count(user):
     user.failed_login_count += 1
     db.session.add(user)
     db.session.commit()
+
+
+def reset_failed_login_count(user):
+    if user.failed_login_count > 0:
+        user.failed_login_count = 0
+        db.session.add(user)
+        db.session.commit()

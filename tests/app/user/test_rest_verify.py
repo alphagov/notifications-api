@@ -182,6 +182,45 @@ def test_user_verify_password_invalid_password(notify_api,
             assert sample_user.failed_login_count == 1
 
 
+def test_user_verify_password_valid_password_resets_failed_logins(notify_api,
+                                                                  notify_db,
+                                                                  notify_db_session,
+                                                                  sample_user):
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = json.dumps({'password': 'bad password'})
+            auth_header = create_authorization_header(
+                path=url_for('user.verify_user_password', user_id=sample_user.id),
+                method='POST',
+                request_body=data)
+
+            assert sample_user.failed_login_count == 0
+
+            resp = client.post(
+                url_for('user.verify_user_password', user_id=sample_user.id),
+                data=data,
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert resp.status_code == 400
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert 'Incorrect password' in json_resp['message']['password']
+
+            assert sample_user.failed_login_count == 1
+
+            data = json.dumps({'password': 'password'})
+            auth_header = create_authorization_header(
+                path=url_for('user.verify_user_password', user_id=sample_user.id),
+                method='POST',
+                request_body=data)
+            resp = client.post(
+                url_for('user.verify_user_password', user_id=sample_user.id),
+                data=data,
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            assert resp.status_code == 204
+            assert sample_user.failed_login_count == 0
+
+
 def test_user_verify_password_missing_password(notify_api,
                                                notify_db,
                                                notify_db_session,
