@@ -164,7 +164,9 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_user, sample_
             assert User.query.count() == 2
             new_email = 'new@digital.cabinet-office.gov.uk'
             data = {
-                'email_address': new_email
+                'name': sample_user.name,
+                'email_address': new_email,
+                'mobile_number': sample_user.mobile_number
             }
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
                                                       path=url_for('user.update_user', user_id=sample_user.id),
@@ -191,6 +193,50 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_user, sample_
             }
             assert json_resp['data'] == expected
             assert json_resp['data']['email_address'] == new_email
+
+
+def test_put_user_update_password(notify_api,
+                                  notify_db,
+                                  notify_db_session,
+                                  sample_user,
+                                  sample_admin_service_id):
+    """
+    Tests PUT endpoint '/' to update a user including their password.
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            assert User.query.count() == 2
+            new_password = '1234567890'
+            data = {
+                'name': sample_user.name,
+                'email_address': sample_user.email_address,
+                'mobile_number': sample_user.mobile_number,
+                'password': new_password
+            }
+            auth_header = create_authorization_header(service_id=sample_admin_service_id,
+                                                      path=url_for('user.update_user', user_id=sample_user.id),
+                                                      method='PUT',
+                                                      request_body=json.dumps(data))
+            headers = [('Content-Type', 'application/json'), auth_header]
+            resp = client.put(
+                url_for('user.update_user', user_id=sample_user.id),
+                data=json.dumps(data),
+                headers=headers)
+            assert resp.status_code == 200
+            assert User.query.count() == 2
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert json_resp['data']['password_changed_at'] is not None
+            data = {'password': new_password}
+            auth_header = create_authorization_header(service_id=sample_admin_service_id,
+                                                      path=url_for('user.verify_user_password', user_id=sample_user.id),
+                                                      method='POST',
+                                                      request_body=json.dumps(data))
+            headers = [('Content-Type', 'application/json'), auth_header]
+            resp = client.post(
+                url_for('user.verify_user_password', user_id=sample_user.id),
+                data=json.dumps(data),
+                headers=headers)
+            assert resp.status_code == 204
 
 
 def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_user, sample_admin_service_id):

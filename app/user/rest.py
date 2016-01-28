@@ -7,7 +7,8 @@ from app.dao.users_dao import (
     get_model_users, save_model_user, delete_model_user,
     create_user_code, get_user_code, use_user_code, increment_failed_login_count)
 from app.schemas import (
-    user_schema, users_schema, service_schema, services_schema, verify_code_schema)
+    user_schema, users_schema, service_schema, services_schema,
+    verify_code_schema, user_schema_load_json)
 from app import db, notify_alpha_client
 from flask import Blueprint
 
@@ -20,14 +21,12 @@ def create_user():
     user, errors = user_schema.load(request.get_json())
     req_json = request.get_json()
     # TODO password policy, what is valid password
-    if not req_json.get('password'):
-        errors = {'password': ['Missing data for required field.']}
+    if not req_json.get('password', None):
+        errors.update({'password': ['Missing data for required field.']})
         return jsonify(result="error", message=errors), 400
     if errors:
         return jsonify(result="error", message=errors), 400
-
-    user.password = req_json.get('password')
-    save_model_user(user)
+    save_model_user(user, pwd=req_json.get('password'))
     return jsonify(data=user_schema.dump(user).data), 201
 
 
@@ -43,11 +42,17 @@ def update_user(user_id):
         status_code = 202
         delete_model_user(user)
     else:
-        # TODO removed some validation checking by using load
-        # which will need to be done in another way
+        req_json = request.get_json()
+        update_dct, errors = user_schema_load_json.load(req_json)
+        pwd = req_json.get('password', None)
+        # TODO password validation, it is already done on the admin app
+        # but would be good to have the same validation here.
+        if pwd is not None and not pwd:
+            errors.update({'password': ['Invalid data for field']})
+        if errors:
+            return jsonify(result="error", message=errors), 400
         status_code = 200
-        db.session.rollback()
-        save_model_user(user, update_dict=request.get_json())
+        save_model_user(user, update_dict=update_dct, pwd=pwd)
     return jsonify(data=user_schema.dump(user).data), status_code
 
 
@@ -67,7 +72,7 @@ def verify_user_password(user_id):
             result="error",
             message={'password': ['Required field missing data']}), 400
     if user.check_password(txt_pwd):
-        return jsonify(''), 204
+        return jsonify({}), 204
     else:
         increment_failed_login_count(user)
         return jsonify(result='error', message={'password': ['Incorrect password']}), 400
@@ -101,7 +106,7 @@ def verify_user_code(user_id):
     if datetime.now() > code.expiry_datetime or code.code_used:
         return jsonify(result="error", message="Code has expired"), 400
     use_user_code(code.id)
-    return jsonify(''), 204
+    return jsonify({}), 204
 
 
 @user.route('/<int:user_id>/code', methods=['POST'])
@@ -138,7 +143,7 @@ def send_user_code(user_id):
             'Verification code')
     else:
         abort(500)
-    return jsonify(''), 204
+    return jsonify({}), 204
 
 
 @user.route('/<int:user_id>', methods=['GET'])

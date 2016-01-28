@@ -9,7 +9,10 @@ def create_secret_code():
     return ''.join(map(str, random.sample(range(9), 5)))
 
 
-def save_model_user(usr, update_dict={}):
+def save_model_user(usr, update_dict={}, pwd=None):
+    if pwd:
+        usr.password = pwd
+        usr.password_changed_at = datetime.now()
     if update_dict:
         if update_dict.get('id'):
             del update_dict['id']
