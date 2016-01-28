@@ -138,7 +138,8 @@ def _add_notification_to_queue(template_id, service, msg_type, to):
     q = boto3.resource('sqs', region_name=current_app.config['AWS_REGION']).create_queue(
         QueueName=str(service.queue_name))
     import uuid
-    notification = json.dumps({'message_id': str(uuid.uuid4()),
+    message_id = str(uuid.uuid4())
+    notification = json.dumps({'message_id': message_id,
                                'service_id': service.id,
                                'to': to,
                                'message_type': msg_type,
@@ -147,5 +148,6 @@ def _add_notification_to_queue(template_id, service, msg_type, to):
     encrypted = serializer.dumps(notification, current_app.config.get('DANGEROUS_SALT'))
     q.send_message(MessageBody=encrypted,
                    MessageAttributes={'type': {'StringValue': msg_type, 'DataType': 'String'},
+                                      'message_id': {'StringValue': message_id, 'DataType': 'String'},
                                       'service_id': {'StringValue': str(service.id), 'DataType': 'String'},
                                       'template_id': {'StringValue': str(template_id), 'DataType': 'String'}})
