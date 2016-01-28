@@ -1,5 +1,6 @@
 from . import ma
 from . import models
+from marshmallow import post_load
 
 # TODO I think marshmallow provides a better integration and error handling.
 # Would be better to replace functionality in dao with the marshmallow supported
@@ -8,11 +9,27 @@ from . import models
 
 
 class UserSchema(ma.ModelSchema):
+
+    def __init__(self, *args, load_json=False, **kwargs):
+        self.load_json = load_json
+        super(UserSchema, self).__init__(*args, **kwargs)
+
     class Meta:
         model = models.User
         exclude = (
             "updated_at", "created_at", "user_to_service",
             "_password", "verify_codes")
+
+    @post_load
+    def make_instance(self, data):
+        """Deserialize data to an instance of the model. Update an existing row
+        if specified in `self.instance` or loaded by primary key(s) in the data;
+        else create a new row.
+        :param data: Data to deserialize.
+        """
+        if self.load_json:
+            return data
+        return super(UserSchema, self).make_instance(data)
 
 
 # TODO process users list, to return a list of user.id
@@ -47,6 +64,7 @@ class VerifyCodeSchema(ma.ModelSchema):
 
 
 user_schema = UserSchema()
+user_schema_load_json = UserSchema(load_json=True)
 users_schema = UserSchema(many=True)
 service_schema = ServiceSchema()
 services_schema = ServiceSchema(many=True)
