@@ -42,7 +42,7 @@ def create_sms_notification():
         return jsonify(notify_alpha_client.send_sms(mobile_number=to, message=content)), 200
 
     else:
-        to, restricted_errors = validate_to_for_service(notification, api_user['client'])
+        to, restricted_errors = validate_to_for_service(to, api_user['client'])
         if restricted_errors['restricted']:
             errors.update(restricted_errors)
 
