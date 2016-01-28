@@ -28,9 +28,6 @@ def create_service():
     # I believe service is already added to the session but just needs a
     # db.session.commit
     try:
-        # add service name to here or in dao?
-        import uuid
-        service.queue_name = uuid.uuid4()
         save_model_service(service)
     except DAOException as e:
         return jsonify(result="error", message=str(e)), 400
