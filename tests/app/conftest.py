@@ -1,4 +1,6 @@
 import pytest
+from flask import jsonify
+
 from app.models import (User, Service, Template, ApiKey, Job, VerifyCode)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import save_model_service
@@ -76,7 +78,8 @@ def sample_service(notify_db,
         'users': [user],
         'limit': 1000,
         'active': False,
-        'restricted': False}
+        'restricted': False,
+        'queue_name': str(uuid.uuid4())}
     service = Service.query.filter_by(name=service_name).first()
     if not service:
         service = Service(**data)

@@ -1,3 +1,5 @@
+import uuid
+
 from sqlalchemy import UniqueConstraint
 
 from . import db
@@ -84,6 +86,7 @@ class Service(db.Model):
         secondary=user_to_service,
         backref=db.backref('user_to_service', lazy='dynamic'))
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
+    queue_name = db.Column(UUID(as_uuid=True), default=uuid.uuid4)
 
 
 class ApiKey(db.Model):

@@ -14,6 +14,8 @@ class Config(object):
     ADMIN_CLIENT_USER_NAME = None
     ADMIN_CLIENT_SECRET = None
 
+    AWS_REGION = 'eu-west-1'
+
 
 class Development(Config):
     DEBUG = True

@@ -93,6 +93,7 @@ def test_post_service(notify_api, notify_db, notify_db_session, sample_user, sam
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['data']['name'] == service.name
             assert json_resp['data']['limit'] == service.limit
+            assert service.queue_name is not None
 
 
 def test_post_service_multiple_users(notify_api, notify_db, notify_db_session, sample_user, sample_admin_service_id):

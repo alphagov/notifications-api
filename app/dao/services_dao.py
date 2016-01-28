@@ -35,13 +35,15 @@ def delete_model_service(service):
     db.session.commit()
 
 
-def get_model_services(service_id=None, user_id=None):
+def get_model_services(service_id=None, user_id=None, _raise=True):
     # TODO need better mapping from function params to sql query.
     if user_id and service_id:
         return Service.query.filter(
             Service.users.any(id=user_id)).filter_by(id=service_id).one()
     elif service_id:
-        return Service.query.filter_by(id=service_id).one()
+        result = Service.query.filter_by(id=service_id).one() if _raise else Service.query.filter_by(
+            id=service_id).first()
+        return result
     elif user_id:
         return Service.query.filter(Service.users.any(id=user_id)).all()
     return Service.query.all()
