@@ -13,7 +13,8 @@ from app.dao.templates_dao import (
 from app.dao.api_key_dao import (save_model_api_key, get_model_api_keys, get_unsigned_secret)
 from app.models import ApiKey
 from app.schemas import (
-    services_schema, service_schema, template_schema, templates_schema, api_keys_schema)
+    services_schema, service_schema, template_schema, templates_schema,
+    api_keys_schema, service_schema_load_json, template_schema_load_json)
 
 from flask import Blueprint
 service = Blueprint('service', __name__)
@@ -47,14 +48,9 @@ def update_service(service_id):
         delete_model_service(service)
     else:
         status_code = 200
-        # TODO there has got to be a better way to do the next three lines
-        upd_serv, errors = service_schema.load(request.get_json())
+        update_dict, errors = service_schema_load_json.load(request.get_json())
         if errors:
             return jsonify(result="error", message=errors), 400
-        update_dict, errors = service_schema.dump(upd_serv)
-        # TODO FIX ME
-        # Remove update_service model which is added to db.session
-        db.session.rollback()
         try:
             save_model_service(service, update_dict=update_dict)
         except DAOException as e:
@@ -170,15 +166,9 @@ def update_template(service_id, template_id):
         delete_model_template(template)
     else:
         status_code = 200
-        # TODO there has got to be a better way to do the next three lines
-        upd_temp, errors = template_schema.load(request.get_json())
+        update_dict, errors = template_schema_load_json.load(request.get_json())
         if errors:
             return jsonify(result="error", message=errors), 400
-        upd_temp.service = service
-        update_dict, errors = template_schema.dump(upd_temp)
-        # TODO FIX ME
-        # Remove update_temp model which is added to db.session
-        db.session.rollback()
         try:
             save_model_template(template, update_dict=update_dict)
         except DAOException as e:

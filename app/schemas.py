@@ -8,17 +8,11 @@ from marshmallow import post_load
 # http://marshmallow.readthedocs.org/en/latest/api_reference.html
 
 
-class UserSchema(ma.ModelSchema):
+class BaseSchema(ma.ModelSchema):
 
     def __init__(self, *args, load_json=False, **kwargs):
         self.load_json = load_json
-        super(UserSchema, self).__init__(*args, **kwargs)
-
-    class Meta:
-        model = models.User
-        exclude = (
-            "updated_at", "created_at", "user_to_service",
-            "_password", "verify_codes")
+        super(BaseSchema, self).__init__(*args, **kwargs)
 
     @post_load
     def make_instance(self, data):
@@ -29,35 +23,46 @@ class UserSchema(ma.ModelSchema):
         """
         if self.load_json:
             return data
-        return super(UserSchema, self).make_instance(data)
+        return super(BaseSchema, self).make_instance(data)
 
 
-# TODO process users list, to return a list of user.id
-# Should that list be restricted by the auth parsed??
-class ServiceSchema(ma.ModelSchema):
+class UserSchema(BaseSchema):
+
+    class Meta:
+        model = models.User
+        exclude = (
+            "updated_at", "created_at", "user_to_service",
+            "_password", "verify_codes")
+
+
+class ServiceSchema(BaseSchema):
+
     class Meta:
         model = models.Service
         exclude = ("updated_at", "created_at", "api_keys", "templates", "jobs", "queue_name")
 
 
-class TemplateSchema(ma.ModelSchema):
+class TemplateSchema(BaseSchema):
+
     class Meta:
         model = models.Template
         exclude = ("updated_at", "created_at", "service_id", "jobs")
 
 
-class ApiKeySchema(ma.ModelSchema):
+class ApiKeySchema(BaseSchema):
+
     class Meta:
         model = models.ApiKey
         exclude = ("service", "secret")
 
 
-class JobSchema(ma.ModelSchema):
+class JobSchema(BaseSchema):
+
     class Meta:
         model = models.Job
 
 
-class VerifyCodeSchema(ma.ModelSchema):
+class VerifyCodeSchema(BaseSchema):
     class Meta:
         model = models.VerifyCode
         exclude = ('user', "_code", "expiry_datetime", "code_used", "created_at")
@@ -67,11 +72,15 @@ user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
 users_schema = UserSchema(many=True)
 service_schema = ServiceSchema()
+service_schema_load_json = ServiceSchema(load_json=True)
 services_schema = ServiceSchema(many=True)
 template_schema = TemplateSchema()
+template_schema_load_json = TemplateSchema(load_json=True)
 templates_schema = TemplateSchema(many=True)
 api_key_schema = ApiKeySchema()
+api_key_schema_load_json = ApiKeySchema(load_json=True)
 api_keys_schema = ApiKeySchema(many=True)
 job_schema = JobSchema()
+job_schema_load_json = JobSchema(load_json=True)
 jobs_schema = JobSchema(many=True)
 verify_code_schema = VerifyCodeSchema()
