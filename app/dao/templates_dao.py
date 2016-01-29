@@ -9,9 +9,9 @@ from app.models import (Template, Service)
 def save_model_template(template, update_dict=None):
     if update_dict:
         update_dict.pop('id', None)
-        service_id = update_dict.pop('service')
+        service = update_dict.pop('service')
         Template.query.filter_by(id=template.id).update(update_dict)
-        template.service = Service.query.get(service_id)
+        template.service = service
     else:
         db.session.add(template)
     db.session.commit()

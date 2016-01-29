@@ -16,13 +16,12 @@ def save_model_service(service, update_dict=None):
         update_dict.pop('id', None)
         update_dict.pop('users', None)
         # TODO optimize this algorithm
-        new_users = User.query.filter(User.id.in_(users_list)).all()
-        for x in service.users:
-            if x in new_users:
-                new_users.remove(x)
-            else:
+        for i, x in enumerate(service.users):
+            if x not in users_list:
                 service.users.remove(x)
-        for x in new_users:
+            else:
+                users_list.remove(x)
+        for x in users_list:
             service.users.append(x)
         Service.query.filter_by(id=service.id).update(update_dict)
     else:

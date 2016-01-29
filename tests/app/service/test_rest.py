@@ -270,7 +270,7 @@ def test_put_service_remove_user(notify_api, notify_db, notify_db_session, sampl
                 "new@digital.cabinet-office.gov.uk")
             data = {
                 'name': sample_service.name,
-                'users': [sample_user.id, another_user.id],
+                'users': [sample_user, another_user],
                 'limit': sample_service.limit,
                 'restricted': sample_service.restricted,
                 'active': sample_service.active}
