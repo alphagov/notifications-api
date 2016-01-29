@@ -1,4 +1,6 @@
 import os
+import re
+import ast
 
 from flask import request, url_for
 from flask._compat import string_types
@@ -116,3 +118,22 @@ def convert_to_number(value):
         return float(value) if "." in value else int(value)
     except (TypeError, ValueError):
         return value
+
+
+def get_api_version():
+    _version_re = re.compile(r'__version__\s+=\s+(.*)')
+    version = 'n/a'
+    dir_path = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(dir_path, 'version.py'), 'rb') as f:
+        version = str(ast.literal_eval(_version_re.search(
+            f.read().decode('utf-8')).group(1)))
+    return version
+
+
+def get_db_version():
+    try:
+        query = 'SELECT version_num FROM alembic_version'
+        full_name = db.session.execute(query).fetchone()[0]
+        return full_name.split('_')[0]
+    except:
+        return 'n/a'

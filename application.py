@@ -4,7 +4,7 @@ from __future__ import print_function
 import os
 from flask.ext.script import Manager, Server
 from flask.ext.migrate import Migrate, MigrateCommand
-from app import create_app, db
+from app import (create_app, db, get_api_version, get_db_version)
 
 application = create_app(os.getenv('NOTIFY_API_ENVIRONMENT') or 'development')
 manager = Manager(application)
@@ -20,6 +20,22 @@ def list_routes():
     """List URLs of all application routes."""
     for rule in sorted(application.url_map.iter_rules(), key=lambda r: r.rule):
         print("{:10} {}".format(", ".join(rule.methods - set(['OPTIONS', 'HEAD'])), rule.rule))
+
+
+@manager.command
+def api_version():
+    """
+    Retrieve the version of the api.
+    """
+    return get_api_version()
+
+
+@manager.command
+def db_version():
+    """
+    Retrieve the db version.
+    """
+    return get_db_version()
 
 
 if __name__ == '__main__':
