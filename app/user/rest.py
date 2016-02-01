@@ -15,8 +15,8 @@ from app.dao.users_dao import (
 )
 from app.schemas import (
     user_schema, users_schema, service_schema, services_schema,
-    verify_code_schema, user_schema_load_json)
-from app import db, notify_alpha_client
+    request_verify_code_schema, user_schema_load_json)
+from app import notify_alpha_client
 from flask import Blueprint
 
 
@@ -126,24 +126,22 @@ def send_user_code(user_id):
     except NoResultFound:
         return jsonify(result="error", message="User not found"), 404
 
-    request_json = request.get_json()
-
-    verify_code, errors = verify_code_schema.load(request_json)
+    verify_code, errors = request_verify_code_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
 
     from app.dao.users_dao import create_secret_code
     secret_code = create_secret_code()
-    create_user_code(user, secret_code, verify_code.code_type)
+    create_user_code(user, secret_code, verify_code.get('code_type'))
     # TODO this will need to fixed up when we stop using
     # notify_alpha_client
-    if verify_code.code_type == 'sms':
-        mobile = user.mobile_number if 'to' not in request_json else request_json['to']
+    if verify_code.get('code_type') == 'sms':
+        mobile = user.mobile_number if verify_code.get('to', None) is None else verify_code.get('to')
         notify_alpha_client.send_sms(
             mobile_number=mobile,
             message=secret_code)
-    elif verify_code.code_type == 'email':
-        email = user.email_address if 'to' not in request_json else request_json['to']
+    elif verify_code.get('code_type') == 'email':
+        email = user.email_address if verify_code.get('to', None) is None else verify_code.get('to')
         notify_alpha_client.send_email(
             email,
             secret_code,

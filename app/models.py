@@ -155,16 +155,18 @@ class Job(db.Model):
         onupdate=datetime.datetime.now)
 
 
+VERIFY_CODE_TYPES = ['email', 'sms']
+
+
 class VerifyCode(db.Model):
     __tablename__ = 'verify_codes'
-
-    code_types = ['email', 'sms']
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=False)
     user = db.relationship('User', backref=db.backref('verify_codes', lazy='dynamic'))
     _code = db.Column(db.String, nullable=False)
-    code_type = db.Column(db.Enum(*code_types, name='verify_code_types'), index=False, unique=False, nullable=False)
+    code_type = db.Column(db.Enum(*VERIFY_CODE_TYPES, name='verify_code_types'),
+                          index=False, unique=False, nullable=False)
     expiry_datetime = db.Column(db.DateTime, nullable=False)
     code_used = db.Column(db.Boolean, default=False)
     created_at = db.Column(
