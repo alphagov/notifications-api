@@ -32,5 +32,5 @@ def limit_exceeded(e):
 
 @main.app_errorhandler(500)
 def internal_server_error(e):
-	current_app.logger.exception(e)
+    current_app.logger.exception(e)
     return jsonify(error="Internal error"), 500
