@@ -60,7 +60,7 @@ class JobSchema(BaseSchema):
 
 class RequestVerifyCodeSchema(ma.Schema):
     def verify_code_type(self):
-        if self not in ['sms', 'email']:
+        if self not in models.VERIFY_CODE_TYPES:
             raise ValidationError('Invalid code type')
 
     code_type = fields.Str(required=True, validate=verify_code_type)
