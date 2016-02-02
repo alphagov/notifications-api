@@ -1,3 +1,5 @@
+import boto3
+import moto
 import json
 import uuid
 from flask import url_for
@@ -73,7 +75,8 @@ def test_get_job_by_id(notify_api, notify_db, notify_db_session,
             assert resp_json['data']['id'] == job_id
 
 
-def test_post_job(notify_api, notify_db, notify_db_session, sample_template):
+@moto.mock_sqs
+def test_create_job(notify_api, notify_db, notify_db_session, sample_template):
     job_id = uuid.uuid4()
     template_id = sample_template.id
     service_id = sample_template.service.id
@@ -88,6 +91,7 @@ def test_post_job(notify_api, notify_db, notify_db_session, sample_template):
         'bucket_name': bucket_name,
         'file_name': file_name,
     }
+
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             path = url_for('job.create_job', service_id=service_id)
@@ -108,6 +112,15 @@ def test_post_job(notify_api, notify_db, notify_db_session, sample_template):
     assert resp_json['data']['service'] == str(service_id)
     assert resp_json['data']['template'] == template_id
     assert resp_json['data']['original_file_name'] == original_file_name
+
+    boto3.setup_default_session(region_name='eu-west-1')
+    q = boto3.resource('sqs').get_queue_by_name(QueueName='notify-jobs-queue')
+    messages = q.receive_messages()
+    assert len(messages) == 1
+
+    expected_message = json.loads(messages[0].body)
+    assert expected_message['job_id'] == str(job_id)
+    assert expected_message['service_id'] == str(service_id)
 
 
 def _setup_jobs(notify_db, notify_db_session, template, number_of_jobs=5):

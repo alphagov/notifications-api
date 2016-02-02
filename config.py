@@ -15,6 +15,7 @@ class Config(object):
     ADMIN_CLIENT_SECRET = None
 
     AWS_REGION = 'eu-west-1'
+    NOTIFY_JOB_QUEUE = os.getenv('NOTIFY_JOB_QUEUE', 'notify-jobs-queue')
 
 
 class Development(Config):
