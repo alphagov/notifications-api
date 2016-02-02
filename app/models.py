@@ -129,6 +129,9 @@ class Template(db.Model):
     service = db.relationship('Service', backref=db.backref('templates', lazy='dynamic'))
 
 
+JOB_STATUS_TYPES = ['pending', 'in progress', 'finished']
+
+
 class Job(db.Model):
     __tablename__ = 'jobs'
 
@@ -152,6 +155,7 @@ class Job(db.Model):
         unique=False,
         nullable=True,
         onupdate=datetime.datetime.now)
+    status = db.Column(db.Enum(*JOB_STATUS_TYPES, name='job_status_types'), nullable=False, default='pending')
 
 
 VERIFY_CODE_TYPES = ['email', 'sms']

@@ -1,7 +1,11 @@
+import boto3
+import json
+
 from flask import (
     Blueprint,
     jsonify,
-    request
+    request,
+    current_app
 )
 
 from sqlalchemy.exc import DataError
@@ -46,6 +50,18 @@ def create_job(service_id):
         return jsonify(result="error", message=errors), 400
     try:
         save_job(job)
+        _enqueue_job(job)
     except Exception as e:
         return jsonify(result="error", message=str(e)), 500
     return jsonify(data=job_schema.dump(job).data), 201
+
+
+def _enqueue_job(job):
+    aws_region = current_app.config['AWS_REGION']
+    queue_name = current_app.config['NOTIFY_JOB_QUEUE']
+
+    queue = boto3.resource('sqs', region_name=aws_region).create_queue(QueueName=queue_name)
+    job_json = json.dumps({'job_id': str(job.id),  'service_id': str(job.service.id)})
+    queue.send_message(MessageBody=job_json,
+                       MessageAttributes={'job_id': {'StringValue': str(job.id), 'DataType': 'String'},
+                                          'service_id': {'StringValue': str(job.service.id), 'DataType': 'String'}})
