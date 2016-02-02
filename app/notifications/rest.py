@@ -136,11 +136,11 @@ def validate_required_and_something(json_body, field):
 
 def _add_notification_to_queue(template_id, service, msg_type, to):
     q = boto3.resource('sqs', region_name=current_app.config['AWS_REGION']).create_queue(
-        QueueName=str(service.queue_name))
+        QueueName=str(service.id))
     import uuid
     message_id = str(uuid.uuid4())
     notification = json.dumps({'message_id': message_id,
-                               'service_id': service.id,
+                               'service_id': str(service.id),
                                'to': to,
                                'message_type': msg_type,
                                'template_id': template_id})

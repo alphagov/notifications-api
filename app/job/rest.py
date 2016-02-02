@@ -18,7 +18,7 @@ from app.schemas import (
     jobs_schema
 )
 
-job = Blueprint('job', __name__, url_prefix='/service/<int:service_id>/job')
+job = Blueprint('job', __name__, url_prefix='/service/<service_id>/job')
 
 
 @job.route('/<job_id>', methods=['GET'])

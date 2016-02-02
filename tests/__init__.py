@@ -6,7 +6,7 @@ from app.dao.api_key_dao import get_unsigned_secrets
 
 def create_authorization_header(path, method, request_body=None, service_id=None):
     if service_id:
-        client_id = service_id
+        client_id = str(service_id)
         secret = get_unsigned_secrets(service_id)[0]
     else:
         client_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')

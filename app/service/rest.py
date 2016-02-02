@@ -35,7 +35,7 @@ def create_service():
     return jsonify(data=service_schema.dump(service).data), 201
 
 
-@service.route('/<int:service_id>', methods=['PUT', 'DELETE'])
+@service.route('/<service_id>', methods=['PUT', 'DELETE'])
 def update_service(service_id):
     try:
         service = get_model_services(service_id=service_id)
@@ -58,7 +58,7 @@ def update_service(service_id):
     return jsonify(data=service_schema.dump(service).data), status_code
 
 
-@service.route('/<int:service_id>', methods=['GET'])
+@service.route('/<service_id>', methods=['GET'])
 @service.route('', methods=['GET'])
 def get_service(service_id=None):
     user_id = request.args.get('user_id', None)
@@ -72,7 +72,7 @@ def get_service(service_id=None):
     return jsonify(data=data)
 
 
-@service.route('/<int:service_id>/api-key', methods=['POST'])
+@service.route('/<service_id>/api-key', methods=['POST'])
 def renew_api_key(service_id=None):
     try:
         service = get_model_services(service_id=service_id)
@@ -93,7 +93,7 @@ def renew_api_key(service_id=None):
     return jsonify(data=unsigned_api_key), 201
 
 
-@service.route('/<int:service_id>/api-key/revoke/<int:api_key_id>', methods=['POST'])
+@service.route('/<service_id>/api-key/revoke/<int:api_key_id>', methods=['POST'])
 def revoke_api_key(service_id, api_key_id):
     try:
         service_api_key = get_model_api_keys(service_id=service_id, id=api_key_id)
@@ -106,8 +106,8 @@ def revoke_api_key(service_id, api_key_id):
     return jsonify(), 202
 
 
-@service.route('/<int:service_id>/api-keys', methods=['GET'])
-@service.route('/<int:service_id>/api-keys/<int:key_id>', methods=['GET'])
+@service.route('/<service_id>/api-keys', methods=['GET'])
+@service.route('/<service_id>/api-keys/<int:key_id>', methods=['GET'])
 def get_api_keys(service_id, key_id=None):
     try:
         service = get_model_services(service_id=service_id)
@@ -129,7 +129,7 @@ def get_api_keys(service_id, key_id=None):
     return jsonify(apiKeys=api_keys_schema.dump(api_keys).data), 200
 
 
-@service.route('/<int:service_id>/template', methods=['POST'])
+@service.route('/<service_id>/template', methods=['POST'])
 def create_template(service_id):
     try:
         service = get_model_services(service_id=service_id)
@@ -147,7 +147,7 @@ def create_template(service_id):
     return jsonify(data=template_schema.dump(template).data), 201
 
 
-@service.route('/<int:service_id>/template/<int:template_id>', methods=['PUT', 'DELETE'])
+@service.route('/<service_id>/template/<int:template_id>', methods=['PUT', 'DELETE'])
 def update_template(service_id, template_id):
     try:
         service = get_model_services(service_id=service_id)
@@ -176,8 +176,8 @@ def update_template(service_id, template_id):
     return jsonify(data=template_schema.dump(template).data), status_code
 
 
-@service.route('/<int:service_id>/template/<int:template_id>', methods=['GET'])
-@service.route('/<int:service_id>/template', methods=['GET'])
+@service.route('/<service_id>/template/<int:template_id>', methods=['GET'])
+@service.route('/<service_id>/template', methods=['GET'])
 def get_service_template(service_id, template_id=None):
     try:
         templates = get_model_templates(service_id=service_id, template_id=template_id)

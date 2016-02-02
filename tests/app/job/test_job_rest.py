@@ -82,7 +82,7 @@ def test_post_job(notify_api, notify_db, notify_db_session, sample_template):
     file_name = '{}.csv'.format(job_id)
     data = {
         'id': str(job_id),
-        'service': service_id,
+        'service': str(service_id),
         'template': template_id,
         'original_file_name': original_file_name,
         'bucket_name': bucket_name,
@@ -105,7 +105,7 @@ def test_post_job(notify_api, notify_db, notify_db_session, sample_template):
     resp_json = json.loads(response.get_data(as_text=True))
 
     assert resp_json['data']['id'] == str(job_id)
-    assert resp_json['data']['service'] == service_id
+    assert resp_json['data']['service'] == str(service_id)
     assert resp_json['data']['template'] == template_id
     assert resp_json['data']['original_file_name'] == original_file_name
 

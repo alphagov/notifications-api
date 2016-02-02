@@ -315,7 +315,7 @@ def test_get_user_service(notify_api, notify_db, notify_db_session, sample_servi
             assert resp.status_code == 200
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['data']['name'] == another_name
-            assert json_resp['data']['id'] == another_service.id
+            assert json_resp['data']['id'] == str(another_service.id)
 
 
 def test_get_user_service_user_not_exists(notify_api, notify_db, notify_db_session, sample_service,
@@ -348,12 +348,14 @@ def test_get_user_service_service_not_exists(notify_api, notify_db, notify_db_se
         with notify_api.test_client() as client:
             user = User.query.first()
             assert Service.query.count() == 2
+            import uuid
+            missing_service_id = uuid.uuid4()
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
                                                       path=url_for('user.get_service_by_user_id', user_id=user.id,
-                                                                   service_id="12323423"),
+                                                                   service_id=missing_service_id),
                                                       method='GET')
             resp = client.get(
-                url_for('user.get_service_by_user_id', user_id=user.id, service_id="12323423"),
+                url_for('user.get_service_by_user_id', user_id=user.id, service_id=missing_service_id),
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 404
             json_resp = json.loads(resp.get_data(as_text=True))

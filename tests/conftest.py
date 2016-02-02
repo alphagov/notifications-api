@@ -38,6 +38,7 @@ def notify_db(notify_api, request):
 
     def teardown():
         db.session.remove()
+        db.engine.execute("drop sequence services_id_seq cascade")
         db.drop_all()
         db.engine.execute("drop table alembic_version")
         db.get_engine(notify_api).dispose()
