@@ -34,9 +34,12 @@ def test_api_key_should_return_error_when_service_does_not_exist(notify_api, not
                                                                  sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            auth_header = create_authorization_header(path=url_for('service.renew_api_key', service_id="123"),
+            import uuid
+            missing_service_id = uuid.uuid4()
+            auth_header = create_authorization_header(path=url_for('service.renew_api_key',
+                                                                   service_id=missing_service_id),
                                                       method='POST')
-            response = client.post(url_for('service.renew_api_key', service_id=123),
+            response = client.post(url_for('service.renew_api_key', service_id=missing_service_id),
                                    headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 404
 

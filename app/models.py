@@ -1,7 +1,6 @@
 import uuid
 
-from sqlalchemy import UniqueConstraint
-
+from sqlalchemy import UniqueConstraint, Sequence
 from . import db
 import datetime
 from sqlalchemy.dialects.postgresql import UUID
@@ -58,14 +57,15 @@ user_to_service = db.Table(
     'user_to_service',
     db.Model.metadata,
     db.Column('user_id', db.Integer, db.ForeignKey('users.id')),
-    db.Column('service_id', db.Integer, db.ForeignKey('services.id'))
+    db.Column('service_id', UUID(as_uuid=True), db.ForeignKey('services.id'))
 )
 
 
 class Service(db.Model):
     __tablename__ = 'services'
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    old_id = db.Column(db.Integer, Sequence('services_id_seq'), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     created_at = db.Column(
         db.DateTime,
@@ -86,7 +86,6 @@ class Service(db.Model):
         secondary=user_to_service,
         backref=db.backref('user_to_service', lazy='dynamic'))
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
-    queue_name = db.Column(UUID(as_uuid=True), default=uuid.uuid4)
 
 
 class ApiKey(db.Model):
@@ -95,7 +94,7 @@ class ApiKey(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     secret = db.Column(db.String(255), unique=True, nullable=False)
-    service_id = db.Column(db.Integer, db.ForeignKey('services.id'), index=True, nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service', backref=db.backref('api_keys', lazy='dynamic'))
     expiry_date = db.Column(db.DateTime)
 
@@ -126,7 +125,7 @@ class Template(db.Model):
         nullable=True,
         onupdate=datetime.datetime.now)
     content = db.Column(db.Text, index=False, unique=False, nullable=False)
-    service_id = db.Column(db.BigInteger, db.ForeignKey('services.id'), index=True, unique=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
     service = db.relationship('Service', backref=db.backref('templates', lazy='dynamic'))
 
 
@@ -137,7 +136,7 @@ class Job(db.Model):
     original_file_name = db.Column(db.String, nullable=False)
     bucket_name = db.Column(db.String, nullable=False)
     file_name = db.Column(db.String, nullable=False)
-    service_id = db.Column(db.BigInteger, db.ForeignKey('services.id'), index=True, unique=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
     service = db.relationship('Service', backref=db.backref('jobs', lazy='dynamic'))
     template_id = db.Column(db.BigInteger, db.ForeignKey('templates.id'), index=True, unique=False)
     template = db.relationship('Template', backref=db.backref('jobs', lazy='dynamic'))

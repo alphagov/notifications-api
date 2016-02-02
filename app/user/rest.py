@@ -166,7 +166,7 @@ def get_user(user_id=None):
 
 
 @user.route('/<int:user_id>/service', methods=['GET'])
-@user.route('/<int:user_id>/service/<int:service_id>', methods=['GET'])
+@user.route('/<int:user_id>/service/<service_id>', methods=['GET'])
 def get_service_by_user_id(user_id, service_id=None):
     try:
         user = get_model_users(user_id=user_id)

@@ -78,8 +78,7 @@ def sample_service(notify_db,
         'users': [user],
         'limit': 1000,
         'active': False,
-        'restricted': False,
-        'queue_name': str(uuid.uuid4())}
+        'restricted': False}
     service = Service.query.filter_by(name=service_name).first()
     if not service:
         service = Service(**data)
