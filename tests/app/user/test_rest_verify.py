@@ -1,4 +1,5 @@
 import json
+import moto
 from datetime import (datetime, timedelta)
 from flask import url_for
 
@@ -55,9 +56,11 @@ def test_user_verify_code_sms_missing_code(notify_api,
             assert not VerifyCode.query.first().code_used
 
 
+@moto.mock_sqs
 def test_user_verify_code_email(notify_api,
                                 notify_db,
                                 notify_db_session,
+                                sqs_client_conn,
                                 sample_email_code):
     """
     Tests POST endpoint '/<user_id>/verify/code'
@@ -244,10 +247,12 @@ def test_user_verify_password_missing_password(notify_api,
             assert 'Required field missing data' in json_resp['message']['password']
 
 
+@moto.mock_sqs
 def test_send_user_code_for_sms(notify_api,
                                 notify_db,
                                 notify_db_session,
                                 sample_sms_code,
+                                sqs_client_conn,
                                 mock_notify_client_send_sms,
                                 mock_secret_code):
     """
@@ -270,10 +275,12 @@ def test_send_user_code_for_sms(notify_api,
                                                                 message='11111')
 
 
+@moto.mock_sqs
 def test_send_user_code_for_sms_with_optional_to_field(notify_api,
                                                        notify_db,
                                                        notify_db_session,
                                                        sample_sms_code,
+                                                       sqs_client_conn,
                                                        mock_notify_client_send_sms,
                                                        mock_secret_code):
     """
@@ -296,10 +303,12 @@ def test_send_user_code_for_sms_with_optional_to_field(notify_api,
                                                                 message='11111')
 
 
+@moto.mock_sqs
 def test_send_user_code_for_email(notify_api,
                                   notify_db,
                                   notify_db_session,
                                   sample_email_code,
+                                  sqs_client_conn,
                                   mock_notify_client_send_email,
                                   mock_secret_code):
     """
@@ -323,10 +332,12 @@ def test_send_user_code_for_email(notify_api,
                                                                   'Verification code')
 
 
+@moto.mock_sqs
 def test_send_user_code_for_email_uses_optional_to_field(notify_api,
                                                          notify_db,
                                                          notify_db_session,
                                                          sample_email_code,
+                                                         sqs_client_conn,
                                                          mock_notify_client_send_email,
                                                          mock_secret_code):
     """
@@ -351,16 +362,13 @@ def test_send_user_code_for_email_uses_optional_to_field(notify_api,
 
 
 def test_request_verify_code_schema_invalid_code_type(notify_api, notify_db, notify_db_session, sample_user):
-    import json
     from app.schemas import request_verify_code_schema
     data = json.dumps({'code_type': 'not_sms'})
     code, error = request_verify_code_schema.loads(data)
-    assert code == {}
     assert error == {'code_type': ['Invalid code type']}
 
 
 def test_request_verify_code_schema_with_to(notify_api, notify_db, notify_db_session, sample_user):
-    import json
     from app.schemas import request_verify_code_schema
     data = json.dumps({'code_type': 'sms', 'to': 'some@one.gov.uk'})
     code, error = request_verify_code_schema.loads(data)
