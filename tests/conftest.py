@@ -1,6 +1,7 @@
 import pytest
 import mock
 import os
+import boto3
 from config import configs
 from alembic.command import upgrade
 from alembic.config import Config
@@ -70,3 +71,9 @@ def os_environ(request):
     request.addfinalizer(env_patch.stop)
 
     return env_patch.start()
+
+
+@pytest.fixture(scope='function')
+def sqs_client_conn(request):
+    boto3.setup_default_session(region_name='eu-west-1')
+    return boto3.resource('sqs')

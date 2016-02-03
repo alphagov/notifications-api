@@ -7,10 +7,11 @@ from flask import (
     request,
     current_app
 )
-from itsdangerous import URLSafeSerializer
-from app import notify_alpha_client
-from app import api_user
+from app import (notify_alpha_client, api_user)
+from app.aws_sqs import add_notification_to_queue
 from app.dao import (templates_dao, services_dao)
+from app.schemas import (
+    email_notification_schema, sms_admin_notification_schema, sms_template_notification_schema)
 import re
 
 mobile_regex = re.compile("^\\+44[\\d]{10}$")
@@ -25,129 +26,38 @@ def get_notifications(notification_id):
 
 @notifications.route('/sms', methods=['POST'])
 def create_sms_notification():
-    notification = request.get_json()['notification']
-    errors = {}
-    to, to_errors = validate_to(notification)
-    if to_errors['to']:
-        errors.update(to_errors)
+    resp_json = request.get_json()
 
     # TODO: should create a different endpoint for the admin client to send verify codes.
     if api_user['client'] == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
-        content, content_errors = validate_content_for_admin_client(notification)
-        if content_errors['content']:
-            errors.update(content_errors)
+        notification, errors = sms_admin_notification_schema.load(resp_json)
         if errors:
             return jsonify(result="error", message=errors), 400
-
-        return jsonify(notify_alpha_client.send_sms(mobile_number=to, message=content)), 200
-
+        template_id = 'admin'
+        message = notification['content']
     else:
-        to, restricted_errors = validate_to_for_service(to, api_user['client'])
-        if restricted_errors['restricted']:
-            errors.update(restricted_errors)
-
-        template, template_errors = validate_template(notification, api_user['client'])
-        if template_errors['template']:
-            errors.update(template_errors)
+        notification, errors = sms_template_notification_schema.load(resp_json)
         if errors:
             return jsonify(result="error", message=errors), 400
+        template_id = notification['template']
+        message = notification['template']
 
-        # add notification to the queue
-        service = services_dao.get_model_services(api_user['client'], _raise=False)
-        _add_notification_to_queue(template.id, service, 'sms', to)
-        return jsonify(notify_alpha_client.send_sms(mobile_number=to, message=template.content)), 200
+    add_notification_to_queue(api_user['client'], template_id, 'sms', notification)
+    return jsonify(notify_alpha_client.send_sms(
+        mobile_number=notification['to'], message=message)), 200
 
 
 @notifications.route('/email', methods=['POST'])
 def create_email_notification():
-    notification = request.get_json()['notification']
-    errors = {}
-    for k in ['to', 'from', 'subject', 'message']:
-        k_error = validate_required_and_something(notification, k)
-        if k_error:
-            errors.update(k_error)
-
+    resp_json = request.get_json()
+    notification, errors = email_notification_schema.load(resp_json)
     if errors:
         return jsonify(result="error", message=errors), 400
-
+    # At the moment we haven't hooked up
+    # template handling for sending email notifications.
+    add_notification_to_queue(api_user['client'], "admin", 'email', notification)
     return jsonify(notify_alpha_client.send_email(
-        notification['to'],
-        notification['message'],
-        notification['from'],
+        notification['to_address'],
+        notification['body'],
+        notification['from_address'],
         notification['subject']))
-
-
-def validate_to_for_service(mob, service_id):
-    errors = {"restricted": []}
-    service = services_dao.get_model_services(service_id=service_id)
-    if service.restricted:
-        valid = False
-        for usr in service.users:
-            if mob == usr.mobile_number:
-                valid = True
-                break
-        if not valid:
-            errors['restricted'].append('Invalid phone number for restricted service')
-    return mob, errors
-
-
-def validate_to(json_body):
-    errors = {"to": []}
-    mob = json_body.get('to', None)
-    if not mob:
-        errors['to'].append('Required data missing')
-    else:
-        if not mobile_regex.match(mob):
-            errors['to'].append('invalid phone number, must be of format +441234123123')
-    return mob, errors
-
-
-def validate_template(json_body, service_id):
-    errors = {"template": []}
-    template_id = json_body.get('template', None)
-    template = ''
-    if not template_id:
-        errors['template'].append('Required data missing')
-    else:
-        try:
-            template = templates_dao.get_model_templates(
-                template_id=json_body['template'],
-                service_id=service_id)
-        except:
-            errors['template'].append("Unable to load template.")
-    return template, errors
-
-
-def validate_content_for_admin_client(json_body):
-    errors = {"content": []}
-    content = json_body.get('template', None)
-    if not content:
-        errors['content'].append('Required content')
-
-    return content, errors
-
-
-def validate_required_and_something(json_body, field):
-    errors = []
-    if field not in json_body and json_body[field]:
-        errors.append('Required data for field.')
-    return {field: errors} if errors else None
-
-
-def _add_notification_to_queue(template_id, service, msg_type, to):
-    q = boto3.resource('sqs', region_name=current_app.config['AWS_REGION']).create_queue(
-        QueueName=str(service.id))
-    import uuid
-    message_id = str(uuid.uuid4())
-    notification = json.dumps({'message_id': message_id,
-                               'service_id': str(service.id),
-                               'to': to,
-                               'message_type': msg_type,
-                               'template_id': template_id})
-    serializer = URLSafeSerializer(current_app.config.get('SECRET_KEY'))
-    encrypted = serializer.dumps(notification, current_app.config.get('DANGEROUS_SALT'))
-    q.send_message(MessageBody=encrypted,
-                   MessageAttributes={'type': {'StringValue': msg_type, 'DataType': 'String'},
-                                      'message_id': {'StringValue': message_id, 'DataType': 'String'},
-                                      'service_id': {'StringValue': str(service.id), 'DataType': 'String'},
-                                      'template_id': {'StringValue': str(template_id), 'DataType': 'String'}})

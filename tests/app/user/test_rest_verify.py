@@ -351,11 +351,9 @@ def test_send_user_code_for_email_uses_optional_to_field(notify_api,
 
 
 def test_request_verify_code_schema_invalid_code_type(notify_api, notify_db, notify_db_session, sample_user):
-    import json
     from app.schemas import request_verify_code_schema
     data = json.dumps({'code_type': 'not_sms'})
     code, error = request_verify_code_schema.loads(data)
-    assert code == {}
     assert error == {'code_type': ['Invalid code type']}
 
 
