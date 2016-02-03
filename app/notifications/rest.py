@@ -12,9 +12,6 @@ from app.aws_sqs import add_notification_to_queue
 from app.dao import (templates_dao, services_dao)
 from app.schemas import (
     email_notification_schema, sms_admin_notification_schema, sms_template_notification_schema)
-import re
-
-mobile_regex = re.compile("^\\+44[\\d]{10}$")
 
 notifications = Blueprint('notifications', __name__)
 

@@ -2,7 +2,6 @@ import re
 from flask_marshmallow.fields import fields
 from . import ma
 from . import models
-from marshmallow_sqlalchemy.fields import Related
 from marshmallow import (post_load, ValidationError, validates, validates_schema)
 
 mobile_regex = re.compile("^\\+44[\\d]{10}$")
