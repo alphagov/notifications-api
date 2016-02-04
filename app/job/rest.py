@@ -61,7 +61,15 @@ def _enqueue_job(job):
     queue_name = current_app.config['NOTIFY_JOB_QUEUE']
 
     queue = boto3.resource('sqs', region_name=aws_region).create_queue(QueueName=queue_name)
-    job_json = json.dumps({'job_id': str(job.id),  'service_id': str(job.service.id)})
+    data = {
+        'job_id': str(job.id),
+        'service_id': str(job.service.id),
+        'template_id': job.template_id,
+        'bucket_name': job.bucket_name
+    }
+    job_json = json.dumps(data)
     queue.send_message(MessageBody=job_json,
                        MessageAttributes={'job_id': {'StringValue': str(job.id), 'DataType': 'String'},
-                                          'service_id': {'StringValue': str(job.service.id), 'DataType': 'String'}})
+                                          'service_id': {'StringValue': str(job.service.id), 'DataType': 'String'},
+                                          'template_id': {'StringValue': str(job.template_id), 'DataType': 'Number'},
+                                          'bucket_name': {'StringValue': job.bucket_name, 'DataType': 'String'}})
