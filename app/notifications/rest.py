@@ -1,17 +1,14 @@
-import json
-
-import boto3
 from flask import (
     Blueprint,
     jsonify,
-    request,
-    current_app
+    request
 )
+
 from app import (notify_alpha_client, api_user)
 from app.aws_sqs import add_notification_to_queue
-from app.dao import (templates_dao, services_dao)
+from app.dao import (templates_dao)
 from app.schemas import (
-    email_notification_schema, sms_admin_notification_schema, sms_template_notification_schema)
+    email_notification_schema, sms_template_notification_schema)
 
 notifications = Blueprint('notifications', __name__)
 
@@ -25,21 +22,15 @@ def get_notifications(notification_id):
 def create_sms_notification():
     resp_json = request.get_json()
 
-    # TODO: should create a different endpoint for the admin client to send verify codes.
-    if api_user['client'] == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
-        notification, errors = sms_admin_notification_schema.load(resp_json)
-        if errors:
-            return jsonify(result="error", message=errors), 400
-        template_id = 'admin'
-        message = notification['content']
-    else:
-        notification, errors = sms_template_notification_schema.load(resp_json)
-        if errors:
-            return jsonify(result="error", message=errors), 400
-        template_id = notification['template']
-        message = notification['template']
+    notification, errors = sms_template_notification_schema.load(resp_json)
+    if errors:
+        return jsonify(result="error", message=errors), 400
+    template_id = notification['template']
+    # TODO: remove once beta is reading notifications from the queue
+    message = templates_dao.get_model_templates(template_id).content
 
     add_notification_to_queue(api_user['client'], template_id, 'sms', notification)
+    # TODO: remove once beta is reading notifications from the queue
     return jsonify(notify_alpha_client.send_sms(
         mobile_number=notification['to'], message=message)), 200
 

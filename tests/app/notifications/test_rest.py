@@ -136,86 +136,6 @@ def test_should_reject_bad_phone_numbers(
             assert not notify_alpha_client.send_sms.called
 
 
-def test_should_reject_missing_content(
-        notify_api, notify_db, notify_db_session, mocker):
-    """
-    Tests GET endpoint '/' to retrieve entire service list.
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            mocker.patch(
-                'app.notify_alpha_client.send_sms',
-                return_value='success'
-            )
-            data = {
-                'to': '+441234123123'
-            }
-            auth_header = create_authorization_header(
-                request_body=json.dumps(data),
-                path=url_for('notifications.create_sms_notification'),
-                method='POST')
-
-            response = client.post(
-                url_for('notifications.create_sms_notification'),
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
-
-            json_resp = json.loads(response.get_data(as_text=True))
-            assert response.status_code == 400
-            assert json_resp['result'] == 'error'
-            assert 'Missing data for required field.' in json_resp['message']['content']
-            assert not notify_alpha_client.send_sms.called
-
-
-@moto.mock_sqs
-def test_send_template_content(notify_api,
-                               notify_db,
-                               notify_db_session,
-                               sqs_client_conn,
-                               mocker):
-    """
-    Test POST endpoint '/sms' with service notification.
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            mobile = '+447719087678'
-            msg = 'Message content'
-            mocker.patch(
-                'app.notify_alpha_client.send_sms',
-                return_value={
-                    "notification": {
-                        "createdAt": "2015-11-03T09:37:27.414363Z",
-                        "id": 100,
-                        "jobId": 65,
-                        "message": msg,
-                        "method": "sms",
-                        "status": "created",
-                        "to": mobile
-                    }
-                }
-            )
-            data = {
-                'to': mobile,
-                'content': msg
-            }
-            auth_header = create_authorization_header(
-                request_body=json.dumps(data),
-                path=url_for('notifications.create_sms_notification'),
-                method='POST')
-
-            response = client.post(
-                url_for('notifications.create_sms_notification'),
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
-
-            json_resp = json.loads(response.get_data(as_text=True))
-            assert response.status_code == 200
-            assert json_resp['notification']['id'] == 100
-            notify_alpha_client.send_sms.assert_called_with(
-                mobile_number=mobile,
-                message=msg)
-
-
 def test_send_notification_restrict_mobile(notify_api,
                                            notify_db,
                                            notify_db_session,
@@ -306,6 +226,8 @@ def test_should_allow_valid_message(notify_api,
                                     notify_db,
                                     notify_db_session,
                                     sqs_client_conn,
+                                    sample_user,
+                                    sample_template,
                                     mocker):
     """
     Tests POST endpoint '/sms' with notifications-admin notification.
@@ -322,13 +244,13 @@ def test_should_allow_valid_message(notify_api,
                         "message": "valid",
                         "method": "sms",
                         "status": "created",
-                        "to": "+449999999999"
+                        "to": sample_user.mobile_number
                     }
                 }
             )
             data = {
                 'to': '+441234123123',
-                'content': 'valid'
+                'template': sample_template.id
             }
             auth_header = create_authorization_header(
                 request_body=json.dumps(data),
@@ -343,7 +265,8 @@ def test_should_allow_valid_message(notify_api,
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 200
             assert json_resp['notification']['id'] == 100
-            notify_alpha_client.send_sms.assert_called_with(mobile_number='+441234123123', message="valid")
+            notify_alpha_client.send_sms.assert_called_with(mobile_number='+441234123123',
+                                                            message=sample_template.content)
 
 
 @moto.mock_sqs
