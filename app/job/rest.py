@@ -8,6 +8,7 @@ from flask import (
     current_app
 )
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -19,7 +20,8 @@ from app.dao.jobs_dao import (
 
 from app.schemas import (
     job_schema,
-    jobs_schema
+    jobs_schema,
+    job_schema_load_json
 )
 
 job = Blueprint('job', __name__, url_prefix='/service/<service_id>/job')
@@ -54,6 +56,19 @@ def create_job(service_id):
     except Exception as e:
         return jsonify(result="error", message=str(e)), 500
     return jsonify(data=job_schema.dump(job).data), 201
+
+
+@job.route('/<job_id>', methods=['PUT'])
+def update_job(service_id, job_id):
+    job = get_job(service_id, job_id)
+    update_dict, errors = job_schema_load_json.load(request.get_json())
+    if errors:
+        return jsonify(result="error", message=errors), 400
+    try:
+        save_job(job, update_dict=update_dict)
+    except Exception as e:
+        return jsonify(result="error", message=str(e)), 400
+    return jsonify(data=job_schema.dump(job).data), 200
 
 
 def _enqueue_job(job):

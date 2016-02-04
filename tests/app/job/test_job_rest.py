@@ -125,6 +125,44 @@ def test_create_job(notify_api, notify_db, notify_db_session, sample_template):
     assert expected_message['bucket_name'] == bucket_name
 
 
+def test_get_update_job_status(notify_api,
+                               notify_db,
+                               notify_db_session,
+                               sample_job):
+
+    assert sample_job.status == 'pending'
+
+    job_id = str(sample_job.id)
+    service_id = str(sample_job.service.id)
+
+    update_data = {
+        'id': job_id,
+        'service': service_id,
+        'template': sample_job.template.id,
+        'bucket_name': sample_job.bucket_name,
+        'file_name': sample_job.file_name,
+        'original_file_name': sample_job.original_file_name,
+        'status': 'in progress'
+    }
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = url_for('job.update_job', service_id=service_id, job_id=job_id)
+
+            auth_header = create_authorization_header(service_id=service_id,
+                                                      path=path,
+                                                      method='PUT',
+                                                      request_body=json.dumps(update_data))
+
+            headers = [('Content-Type', 'application/json'), auth_header]
+
+            response = client.put(path, headers=headers, data=json.dumps(update_data))
+
+            assert response.status_code == 200
+            resp_json = json.loads(response.get_data(as_text=True))
+            assert resp_json['data']['status'] == 'in progress'
+
+
 def _setup_jobs(notify_db, notify_db_session, template, number_of_jobs=5):
     for i in range(number_of_jobs):
         create_job(notify_db, notify_db_session, service=template.service,
