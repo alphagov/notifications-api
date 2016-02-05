@@ -1,4 +1,5 @@
 import uuid
+import json
 
 from app.dao.jobs_dao import (
     save_job,
@@ -79,3 +80,23 @@ def test_get_all_jobs(notify_db, notify_db_session, sample_template):
                    sample_template)
     jobs_from_db = _get_jobs()
     assert len(jobs_from_db) == 5
+
+
+def test_update_job(notify_db, notify_db_session, sample_job):
+    assert sample_job.status == 'pending'
+
+    update_dict = {
+        'id': sample_job.id,
+        'service': sample_job.service.id,
+        'template': sample_job.template.id,
+        'bucket_name': sample_job.bucket_name,
+        'file_name': sample_job.file_name,
+        'original_file_name': sample_job.original_file_name,
+        'status': 'in progress'
+    }
+
+    save_job(sample_job, update_dict=update_dict)
+
+    job_from_db = Job.query.get(sample_job.id)
+
+    assert job_from_db.status == 'in progress'
