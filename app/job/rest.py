@@ -60,6 +60,7 @@ def create_job(service_id):
 
 @job.route('/<job_id>', methods=['PUT'])
 def update_job(service_id, job_id):
+
     job = get_job(service_id, job_id)
     update_dict, errors = job_schema_load_json.load(request.get_json())
     if errors:
@@ -77,14 +78,19 @@ def _enqueue_job(job):
 
     queue = boto3.resource('sqs', region_name=aws_region).create_queue(QueueName=queue_name)
     data = {
-        'job_id': str(job.id),
+        'id': str(job.id),
         'service_id': str(job.service.id),
-        'template_id': job.template_id,
-        'bucket_name': job.bucket_name
+        'template_id': job.template.id,
+        'bucket_name': job.bucket_name,
+        'file_name': job.file_name,
+        'original_file_name': job.original_file_name
     }
     job_json = json.dumps(data)
     queue.send_message(MessageBody=job_json,
-                       MessageAttributes={'job_id': {'StringValue': str(job.id), 'DataType': 'String'},
-                                          'service_id': {'StringValue': str(job.service.id), 'DataType': 'String'},
-                                          'template_id': {'StringValue': str(job.template_id), 'DataType': 'Number'},
-                                          'bucket_name': {'StringValue': job.bucket_name, 'DataType': 'String'}})
+                       MessageAttributes={'id': {'StringValue': str(job.id), 'DataType': 'String'},
+                                          'service': {'StringValue': str(job.service.id), 'DataType': 'String'},
+                                          'template': {'StringValue': str(job.template.id), 'DataType': 'String'},
+                                          'bucket_name': {'StringValue': job.bucket_name, 'DataType': 'String'},
+                                          'file_name': {'StringValue': job.file_name, 'DataType': 'String'},
+                                          'original_file_name': {'StringValue': job.original_file_name,
+                                                                 'DataType': 'String'}})
