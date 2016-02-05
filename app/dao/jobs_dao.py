@@ -4,13 +4,13 @@ from app.models import Job
 
 def save_job(job, update_dict={}):
     if update_dict:
-        update_dict.pop('id')
-        update_dict.pop('service')
-        update_dict.pop('template')
+        update_dict.pop('id', None)
+        update_dict.pop('service', None)
+        update_dict.pop('template', None)
         Job.query.filter_by(id=job.id).update(update_dict)
     else:
         db.session.add(job)
-        db.session.commit()
+    db.session.commit()
 
 
 def get_job(service_id, job_id):
