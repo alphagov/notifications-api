@@ -7,7 +7,9 @@ from flask import current_app
 def add_notification_to_queue(service_id, template_id, type_, notification):
     q = boto3.resource(
         'sqs', region_name=current_app.config['AWS_REGION']
-    ).create_queue(QueueName=str(service_id))
+    ).create_queue(QueueName="{}_{}".format(
+        current_app.config['NOTIFICATION_QUEUE_PREFIX'],
+        str(service_id)))
     message_id = str(uuid.uuid4())
     serializer = URLSafeSerializer(current_app.config.get('SECRET_KEY'))
     encrypted = serializer.dumps(notification, current_app.config.get('DANGEROUS_SALT'))

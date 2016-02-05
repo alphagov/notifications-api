@@ -16,6 +16,8 @@ class Config(object):
 
     AWS_REGION = 'eu-west-1'
     NOTIFY_JOB_QUEUE = os.getenv('NOTIFY_JOB_QUEUE', 'notify-jobs-queue')
+    # Notification Queue names are a combination of a prefx plus a name
+    NOTIFICATION_QUEUE_PREFIX = 'notification'
 
 
 class Development(Config):
