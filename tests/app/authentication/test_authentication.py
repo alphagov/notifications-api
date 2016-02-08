@@ -214,6 +214,26 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
             assert data['error'] == 'Invalid token: signature'
 
 
+def test_authentication_returns_error_when_api_client_has_no_secrets(notify_api,
+                                                                     notify_db,
+                                                                     notify_db_session):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            api_secret = notify_api.config.get('ADMIN_CLIENT_SECRET')
+            token = create_jwt_token(request_method="GET",
+                                     request_path=url_for('service.get_service'),
+                                     secret=api_secret,
+                                     client_id=notify_api.config.get('ADMIN_CLIENT_USER_NAME')
+                                     )
+            notify_api.config['ADMIN_CLIENT_SECRET'] = ''
+            response = client.get(url_for('service.get_service'),
+                                  headers={'Authorization': 'Bearer {}'.format(token)})
+            assert response.status_code == 403
+            error_message = json.loads(response.get_data())
+            assert error_message['error'] == 'Invalid token: signature'
+            notify_api.config['ADMIN_CLIENT_SECRET'] = api_secret
+
+
 def __create_get_token(service_id):
     if service_id:
         return create_jwt_token(request_method="GET",

@@ -29,7 +29,6 @@ def requires_auth():
     if api_client is None:
         authentication_response("Invalid credentials", 403)
 
-    errors_resp = None
     for secret in api_client['secret']:
         try:
             decode_jwt_token(
@@ -49,10 +48,6 @@ def requires_auth():
             errors_resp = authentication_response("Invalid token: payload", 403)
         except TokenDecodeError:
             errors_resp = authentication_response("Invalid token: signature", 403)
-
-    if errors_resp is None:
-        # If we got this far with out any errors then the api client has no secrets
-        errors_resp = authentication_response("Invalid token: api client has no secrets", 403)
 
     return errors_resp
 
