@@ -120,8 +120,8 @@ def test_create_job(notify_api, notify_db, notify_db_session, sample_template):
 
     expected_message = json.loads(messages[0].body)
     assert expected_message['id'] == str(job_id)
-    assert expected_message['service_id'] == str(service_id)
-    assert expected_message['template_id'] == template_id
+    assert expected_message['service'] == str(service_id)
+    assert expected_message['template'] == template_id
     assert expected_message['bucket_name'] == bucket_name
 
 

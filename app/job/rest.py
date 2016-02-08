@@ -79,8 +79,8 @@ def _enqueue_job(job):
     queue = boto3.resource('sqs', region_name=aws_region).create_queue(QueueName=queue_name)
     data = {
         'id': str(job.id),
-        'service_id': str(job.service.id),
-        'template_id': job.template.id,
+        'service': str(job.service.id),
+        'template': job.template.id,
         'bucket_name': job.bucket_name,
         'file_name': job.file_name,
         'original_file_name': job.original_file_name
