@@ -149,7 +149,7 @@ def send_user_code(user_id):
             'from_address': 'notify@digital.cabinet-office.gov.uk',
             'subject': 'Verification code',
             'body': secret_code}
-        add_notification_to_queue(api_user['client'], 'admin', 'sms', notification)
+        add_notification_to_queue(api_user['client'], 'admin', 'email', notification)
         notify_alpha_client.send_email(
             email,
             secret_code,
