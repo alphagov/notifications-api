@@ -1,4 +1,5 @@
 import moto
+import uuid
 
 from tests import create_authorization_header
 from flask import url_for, json
@@ -320,3 +321,90 @@ def test_send_email_valid_data(notify_api,
             assert json_resp['notification']['id'] == 100
             notify_alpha_client.send_email.assert_called_with(
                 to_address, message, from_address, subject)
+
+
+@moto.mock_sqs
+def test_valid_message_with_service_id(notify_api,
+                                       notify_db,
+                                       notify_db_session,
+                                       sqs_client_conn,
+                                       sample_user,
+                                       sample_template,
+                                       mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch(
+                'app.notify_alpha_client.send_sms',
+                return_value={
+                    "notification": {
+                        "createdAt": "2015-11-03T09:37:27.414363Z",
+                        "id": 100,
+                        "jobId": 65,
+                        "message": "valid",
+                        "method": "sms",
+                        "status": "created",
+                        "to": sample_user.mobile_number
+                    }
+                }
+            )
+            job_id = uuid.uuid4()
+            service_id = sample_template.service.id
+            url = url_for('notifications.create_sms_for_service', service_id=service_id)
+            data = {
+                'to': '+441234123123',
+                'template': sample_template.id,
+                'job': job_id
+            }
+            auth_header = create_authorization_header(
+                request_body=json.dumps(data),
+                path=url,
+                method='POST')
+
+            response = client.post(
+                url,
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
+            assert json_resp['notification']['id'] == 100
+            notify_alpha_client.send_sms.assert_called_with(mobile_number='+441234123123',
+                                                            message=sample_template.content)
+
+
+@moto.mock_sqs
+def test_message_with_incorrect_service_id_should_fail(notify_api,
+                                                       notify_db,
+                                                       notify_db_session,
+                                                       sqs_client_conn,
+                                                       sample_user,
+                                                       sample_template,
+                                                       mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            job_id = uuid.uuid4()
+            invalid_service_id = uuid.uuid4()
+
+            url = url_for('notifications.create_sms_for_service', service_id=invalid_service_id)
+
+            data = {
+                'to': '+441234123123',
+                'template': sample_template.id,
+                'job': job_id
+            }
+
+            auth_header = create_authorization_header(
+                request_body=json.dumps(data),
+                path=url,
+                method='POST')
+
+            response = client.post(
+                url,
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 400
+            expected_error = 'Invalid template: id {} for service id: {}'.format(sample_template.id,
+                                                                                 invalid_service_id)
+            assert json_resp['message'] == expected_error

@@ -13,6 +13,8 @@ class Config(object):
     NOTIFY_DATA_API_AUTH_TOKEN = os.getenv('NOTIFY_API_TOKEN', "dev-token")
     ADMIN_CLIENT_USER_NAME = None
     ADMIN_CLIENT_SECRET = None
+    DELIVERY_CLIENT_USER_NAME = None
+    DELIVERY_CLIENT_SECRET = None
 
     AWS_REGION = 'eu-west-1'
     NOTIFY_JOB_QUEUE = os.getenv('NOTIFY_JOB_QUEUE', 'notify-jobs-queue')
@@ -26,15 +28,12 @@ class Development(Config):
     DANGEROUS_SALT = 'dangerous-salt'
     ADMIN_CLIENT_USER_NAME = 'dev-notify-admin'
     ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
+    DELIVERY_CLIENT_USER_NAME = 'dev-notify-delivery'
+    DELIVERY_CLIENT_SECRET = 'dev-notify-secret-key'
 
 
-class Test(Config):
-    DEBUG = True
+class Test(Development):
     SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/test_notification_api'
-    SECRET_KEY = 'secret-key'
-    DANGEROUS_SALT = 'dangerous-salt'
-    ADMIN_CLIENT_USER_NAME = 'dev-notify-admin'
-    ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
 
 
 class Live(Config):

@@ -1,3 +1,5 @@
+import uuid
+
 from flask import (
     Blueprint,
     jsonify,
@@ -49,3 +51,33 @@ def create_email_notification():
         notification['body'],
         notification['from_address'],
         notification['subject']))
+
+
+@notifications.route('/sms/service/<service_id>', methods=['POST'])
+def create_sms_for_service(service_id):
+
+    resp_json = request.get_json()
+
+    notification, errors = sms_template_notification_schema.load(resp_json)
+    if errors:
+        return jsonify(result="error", message=errors), 400
+
+    template_id = notification['template']
+    job_id = notification['job']
+
+    # TODO: job/job_id is in notification and can used to update job status
+
+    # TODO: remove once beta is reading notifications from the queue
+    template = templates_dao.get_model_templates(template_id)
+
+    if template.service.id != uuid.UUID(service_id):
+        message = "Invalid template: id {} for service id: {}".format(template.id, service_id)
+        return jsonify(result="error", message=message), 400
+
+    # Actual client is delivery app, but this is sent on behalf of service
+    add_notification_to_queue(service_id, template_id, 'sms', notification)
+
+    # TODO: remove once beta is reading notifications from the queue
+    content = template.content
+    return jsonify(notify_alpha_client.send_sms(
+        mobile_number=notification['to'], message=content)), 200
