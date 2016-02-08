@@ -58,6 +58,11 @@ def fetch_client(client):
             "client": client,
             "secret": [current_app.config.get('ADMIN_CLIENT_SECRET')]
         }
+    elif client == current_app.config.get('DELIVERY_CLIENT_USER_NAME'):
+        return {
+            "client": client,
+            "secret": [current_app.config.get('DELIVERY_CLIENT_SECRET')]
+        }
     else:
         return {
             "client": client,

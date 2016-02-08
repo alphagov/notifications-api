@@ -90,6 +90,7 @@ class SmsNotificationSchema(NotificationSchema):
 
 class SmsTemplateNotificationSchema(SmsNotificationSchema):
     template = fields.Int(required=True)
+    job = fields.String()
 
     @validates('template')
     def validate_template(self, value):
