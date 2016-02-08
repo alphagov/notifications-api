@@ -13,8 +13,6 @@ def add_notification_to_queue(service_id, template_id, type_, notification):
     message_id = str(uuid.uuid4())
     serializer = URLSafeSerializer(current_app.config.get('SECRET_KEY'))
     encrypted = serializer.dumps(notification, current_app.config.get('DANGEROUS_SALT'))
-    print("add_notification_to_queue")
-    print(type_)
     q.send_message(MessageBody=encrypted,
                    MessageAttributes={'type': {'StringValue': type_, 'DataType': 'String'},
                                       'message_id': {'StringValue': message_id, 'DataType': 'String'},
