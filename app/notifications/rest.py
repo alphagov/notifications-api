@@ -31,7 +31,7 @@ def create_sms_notification():
 
     add_notification_to_queue(api_user['client'], notification['template'], 'sms', notification)
     # TODO data to be returned
-    return jsonify({}), 200
+    return jsonify({}), 204
 
 
 @notifications.route('/email', methods=['POST'])
@@ -42,7 +42,7 @@ def create_email_notification():
         return jsonify(result="error", message=errors), 400
     add_notification_to_queue(api_user['client'], "admin", 'email', notification)
     # TODO data to be returned
-    return jsonify({}), 200
+    return jsonify({}), 204
 
 
 @notifications.route('/sms/service/<service_id>', methods=['POST'])
@@ -68,4 +68,4 @@ def create_sms_for_service(service_id):
 
     add_notification_to_queue(service_id, template_id, 'sms', notification)
     # TODO data to be returned
-    return jsonify({}), 200
+    return jsonify({}), 204
