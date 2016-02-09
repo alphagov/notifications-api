@@ -157,24 +157,6 @@ def sample_admin_service_id(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def mock_notify_client_send_sms(mocker):
-    def _send(mobile_number, message):
-        pass
-
-    mock_class = mocker.patch('app.notify_alpha_client.send_sms', side_effect=_send)
-    return mock_class
-
-
-@pytest.fixture(scope='function')
-def mock_notify_client_send_email(mocker):
-    def _send(email_address, message, from_address, subject):
-        pass
-
-    mock_class = mocker.patch('app.notify_alpha_client.send_email', side_effect=_send)
-    return mock_class
-
-
-@pytest.fixture(scope='function')
 def mock_secret_code(mocker):
     def _create():
         return '11111'

@@ -17,7 +17,7 @@ from app.dao.users_dao import (
 from app.schemas import (
     user_schema, users_schema, service_schema, services_schema,
     request_verify_code_schema, user_schema_load_json)
-from app import (notify_alpha_client, api_user)
+from app import api_user
 
 
 user = Blueprint('user', __name__)
@@ -133,15 +133,10 @@ def send_user_code(user_id):
     from app.dao.users_dao import create_secret_code
     secret_code = create_secret_code()
     create_user_code(user, secret_code, verify_code.get('code_type'))
-    # TODO this will need to fixed up when we stop using
-    # notify_alpha_client
     if verify_code.get('code_type') == 'sms':
         mobile = user.mobile_number if verify_code.get('to', None) is None else verify_code.get('to')
         notification = {'to': mobile, 'content': secret_code}
         add_notification_to_queue(api_user['client'], 'admin', 'sms', notification)
-        notify_alpha_client.send_sms(
-            mobile_number=mobile,
-            message=secret_code)
     elif verify_code.get('code_type') == 'email':
         email = user.email_address if verify_code.get('to', None) is None else verify_code.get('to')
         notification = {
@@ -150,11 +145,6 @@ def send_user_code(user_id):
             'subject': 'Verification code',
             'body': secret_code}
         add_notification_to_queue(api_user['client'], 'admin', 'email', notification)
-        notify_alpha_client.send_email(
-            email,
-            secret_code,
-            notification['from_address'],
-            notification['subject'])
     else:
         abort(500)
     return jsonify({}), 204
