@@ -202,9 +202,9 @@ def sample_notification(notify_db,
     data = {
         'id': notificaton_id,
         'to': to,
-        'job_id': job.id,
-        'service_id': service.id,
-        'template_id': template.id
+        'job': job,
+        'service': service,
+        'template': template
     }
     notification = Notification(**data)
     save_notification(notification)

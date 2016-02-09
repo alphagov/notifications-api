@@ -15,13 +15,12 @@ def test_save_notification(notify_db, notify_db_session, sample_template, sample
 
     notification_id = uuid.uuid4()
     to = '+44709123456'
-    job_id = sample_job.id
     data = {
         'id': notification_id,
         'to': to,
-        'job_id': job_id,
-        'service_id': sample_template.service.id,
-        'template_id': sample_template.id
+        'job': sample_job,
+        'service': sample_template.service,
+        'template': sample_template
     }
 
     notification = Notification(**data)
@@ -33,9 +32,9 @@ def test_save_notification(notify_db, notify_db_session, sample_template, sample
 
     assert data['id'] == notification_from_db.id
     assert data['to'] == notification_from_db.to
-    assert data['job_id'] == notification_from_db.job_id
-    assert data['service_id'] == notification_from_db.service_id
-    assert data['template_id'] == notification_from_db.template_id
+    assert data['job'] == notification_from_db.job
+    assert data['service'] == notification_from_db.service
+    assert data['template'] == notification_from_db.template
     assert 'sent' == notification_from_db.status
 
 
@@ -63,8 +62,8 @@ def test_update_notification(notify_db, notify_db_session, sample_notification):
 
     update_dict = {
         'id': sample_notification.id,
-        'service_id': sample_notification.service_id,
-        'template_id': sample_notification.template_id,
+        'service': sample_notification.service,
+        'template': sample_notification.template,
         'job': sample_notification.job,
         'status': 'failed'
     }
