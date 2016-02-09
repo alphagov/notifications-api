@@ -1,5 +1,3 @@
-import uuid
-
 from app.models import Notification
 
 from app.dao.notifications_dao import (
@@ -12,11 +10,8 @@ from app.dao.notifications_dao import (
 def test_save_notification(notify_db, notify_db_session, sample_template, sample_job):
 
     assert Notification.query.count() == 0
-
-    notification_id = uuid.uuid4()
     to = '+44709123456'
     data = {
-        'id': notification_id,
         'to': to,
         'job': sample_job,
         'service': sample_template.service,
@@ -27,10 +22,8 @@ def test_save_notification(notify_db, notify_db_session, sample_template, sample
     save_notification(notification)
 
     assert Notification.query.count() == 1
-
-    notification_from_db = Notification.query.get(notification_id)
-
-    assert data['id'] == notification_from_db.id
+    notification_from_db = Notification.query.all()[0]
+    assert notification_from_db.id
     assert data['to'] == notification_from_db.to
     assert data['job'] == notification_from_db.job
     assert data['service'] == notification_from_db.service

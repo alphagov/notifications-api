@@ -219,10 +219,8 @@ def test_get_notifications(notify_api, notify_db, notify_db_session, sample_job)
 
 def test_add_notification(notify_api, notify_db, notify_db_session, sample_job):
 
-    notificaton_id = uuid.uuid4()
     to = '+44709123456'
     data = {
-        'id': str(notificaton_id),
         'to': to,
         'job': str(sample_job.id),
         'service': str(sample_job.service.id),
@@ -245,7 +243,7 @@ def test_add_notification(notify_api, notify_db, notify_db_session, sample_job):
 
             resp_json = json.loads(response.get_data(as_text=True))
 
-            assert data['id'] == resp_json['data']['id']
+            assert resp_json['data']['id']
             assert data['to'] == resp_json['data']['to']
             assert data['service'] == resp_json['data']['service']
             assert data['template'] == resp_json['data']['template']

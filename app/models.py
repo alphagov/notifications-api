@@ -198,7 +198,7 @@ class Notification(db.Model):
 
     __tablename__ = 'notifications'
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     to = db.Column(db.String, nullable=False)
     job_id = db.Column(UUID(as_uuid=True), db.ForeignKey('jobs.id'), index=True, unique=False, nullable=False)
     job = db.relationship('Job', backref=db.backref('notifications', lazy='dynamic'))
