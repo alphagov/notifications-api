@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 
 class Config(object):
@@ -16,6 +17,25 @@ class Config(object):
 
     AWS_REGION = 'eu-west-1'
     NOTIFY_JOB_QUEUE = os.getenv('NOTIFY_JOB_QUEUE', 'notify-jobs-queue')
+
+    BROKER_URL = 'amqp://guest:guest@localhost:5672//'
+    BROKER_TRANSPORT_OPTIONS = {
+        'region': 'eu-west-1',
+        'polling_interval': 10,  # 1 second
+        'visibility_timeout': 3600,  # 1 hour
+        'queue_name_prefix': 'NOTIFY-CELERY-TEST-'
+    }
+    CELERY_ENABLE_UTC = True,
+    CELERY_TIMEZONE = 'Europe/London'
+    CELERY_ACCEPT_CONTENT = ['json']
+    CELERY_TASK_SERIALIZER = 'json'
+    CELERYBEAT_SCHEDULE = {
+        'refresh-queues': {
+            'task': 'refresh-services',
+            'schedule': timedelta(seconds=5)
+        }
+    }
+    CELERY_IMPORTS = ('app.celery.tasks',)
 
 
 class Development(Config):
@@ -36,6 +56,10 @@ class Test(Config):
 
 
 class Live(Config):
+    SECRET_KEY = 'secret-key'
+    DANGEROUS_SALT = 'dangerous-salt'
+    ADMIN_CLIENT_USER_NAME = 'dev-notify-admin'
+    ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
     pass
 
 

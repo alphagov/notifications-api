@@ -12,6 +12,7 @@ from app import notify_alpha_client
 from app import api_user
 from app.dao import (templates_dao, services_dao)
 import re
+from app import celery
 
 mobile_regex = re.compile("^\\+44[\\d]{10}$")
 
@@ -21,6 +22,15 @@ notifications = Blueprint('notifications', __name__)
 @notifications.route('/<notification_id>', methods=['GET'])
 def get_notifications(notification_id):
     return jsonify(notify_alpha_client.fetch_notification_by_id(notification_id)), 200
+
+
+@celery.task(name="make-sms", bind="True")
+def send_sms(self, to, template):
+    print('Executing task id {0.id}, args: {0.args!r} kwargs: {0.kwargs!r}'.format(self.request))
+    from time import sleep
+    sleep(0.5)
+    print('finished')
+    #notify_alpha_client.send_sms(mobile_number=to, message=template)
 
 
 @notifications.route('/sms', methods=['POST'])
@@ -54,8 +64,9 @@ def create_sms_notification():
 
         # add notification to the queue
         service = services_dao.get_model_services(api_user['client'], _raise=False)
-        _add_notification_to_queue(template.id, service, 'sms', to)
-        return jsonify(notify_alpha_client.send_sms(mobile_number=to, message=template.content)), 200
+        #_add_notification_to_queue(template.id, service, 'sms', to)
+        send_sms.apply_async((to, template.content), queue=str(service.id))
+        return jsonify(success=True)  # notify_alpha_client.send_sms(mobile_number=to, message=template.content)), 200
 
 
 @notifications.route('/email', methods=['POST'])
@@ -151,3 +162,4 @@ def _add_notification_to_queue(template_id, service, msg_type, to):
                                       'message_id': {'StringValue': message_id, 'DataType': 'String'},
                                       'service_id': {'StringValue': str(service.id), 'DataType': 'String'},
                                       'template_id': {'StringValue': str(template_id), 'DataType': 'String'}})
+

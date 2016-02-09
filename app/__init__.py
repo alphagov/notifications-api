@@ -11,12 +11,13 @@ from werkzeug.local import LocalProxy
 from config import configs
 from utils import logging
 from notify_client import NotifyAPIClient
+from app.celery.celery import NotifyCelery
 
 
 db = SQLAlchemy()
 ma = Marshmallow()
 notify_alpha_client = NotifyAPIClient()
-
+celery = NotifyCelery()
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 
 
@@ -31,6 +32,8 @@ def create_app(config_name, config_overrides=None):
     init_app(application, config_overrides)
     logging.init_app(application)
     notify_alpha_client.init_app(application)
+
+    celery.init_app(application)
 
     from app.service.rest import service as service_blueprint
     from app.user.rest import user as user_blueprint
@@ -73,6 +76,7 @@ def init_app(app, config_overrides):
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
         return response
+
 
 
 def convert_to_boolean(value):
