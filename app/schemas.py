@@ -129,6 +129,12 @@ class EmailNotificationSchema(NotificationSchema):
     body = fields.Str(load_from="message", dump_to='message', required=True)
 
 
+class NotificationStatusSchema(BaseSchema):
+
+    class Meta:
+        model = models.Notification
+
+
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
 users_schema = UserSchema(many=True)
@@ -148,3 +154,6 @@ request_verify_code_schema = RequestVerifyCodeSchema()
 sms_admin_notification_schema = SmsAdminNotificationSchema()
 sms_template_notification_schema = SmsTemplateNotificationSchema()
 email_notification_schema = EmailNotificationSchema()
+notification_status_schema = NotificationStatusSchema()
+notifications_status_schema = NotificationStatusSchema(many=True)
+notification_status_schema_load_json = NotificationStatusSchema(load_json=True)
