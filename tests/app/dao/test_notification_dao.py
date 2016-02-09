@@ -5,7 +5,7 @@ from app.models import Notification
 from app.dao.notifications_dao import (
     save_notification,
     get_notification,
-    get_notifications_by_job
+    get_notifications
 )
 
 
@@ -39,7 +39,9 @@ def test_save_notification(notify_db, notify_db_session, sample_template, sample
 
 
 def test_get_notification_for_job(notify_db, notify_db_session, sample_notification):
-    notifcation_from_db = get_notification(sample_notification.job_id, sample_notification.id)
+    notifcation_from_db = get_notification(sample_notification.service.id,
+                                           sample_notification.job_id,
+                                           sample_notification.id)
     assert sample_notification == notifcation_from_db
 
 
@@ -53,7 +55,7 @@ def test_get_all_notifications_for_job(notify_db, notify_db_session, sample_job)
                             template=sample_job.template,
                             job=sample_job)
 
-    notifcations_from_db = get_notifications_by_job(sample_job.id)
+    notifcations_from_db = get_notifications(sample_job.service.id, sample_job.id)
     assert len(notifcations_from_db) == 5
 
 
@@ -61,10 +63,10 @@ def test_update_notification(notify_db, notify_db_session, sample_notification):
     assert sample_notification.status == 'sent'
 
     update_dict = {
-        'id': sample_notification.id,
-        'service': sample_notification.service,
-        'template': sample_notification.template,
-        'job': sample_notification.job,
+        'id': str(sample_notification.id),
+        'service': str(sample_notification.service.id),
+        'template': sample_notification.template.id,
+        'job': str(sample_notification.job.id),
         'status': 'failed'
     }
 
