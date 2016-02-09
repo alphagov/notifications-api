@@ -30,22 +30,24 @@ class Development(Config):
     ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
     DELIVERY_CLIENT_USER_NAME = 'dev-notify-delivery'
     DELIVERY_CLIENT_SECRET = 'dev-notify-secret-key'
+    NOTIFICATION_QUEUE_PREFIX = 'notification_development'
 
 
 class Test(Development):
     SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/test_notification_api'
+    NOTIFICATION_QUEUE_PREFIX = 'notification_test'
 
 
 class Preview(Config):
-    pass
+    NOTIFICATION_QUEUE_PREFIX = 'notification_preview'
 
 
 class Staging(Config):
-    pass
+    NOTIFICATION_QUEUE_PREFIX = 'notification_staging'
 
 
 class Live(Config):
-    pass
+    NOTIFICATION_QUEUE_PREFIX = 'notification_live'
 
 
 configs = {
