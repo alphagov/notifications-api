@@ -1,5 +1,5 @@
 from flask import current_app
-from client.authentication import create_jwt_token
+from notifications_python_client.authentication import create_jwt_token
 
 from app.dao.api_key_dao import get_unsigned_secrets
 

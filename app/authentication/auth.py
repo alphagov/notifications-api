@@ -1,6 +1,6 @@
 from flask import request, jsonify, _request_ctx_stack, current_app
-from client.authentication import decode_jwt_token, get_token_issuer
-from client.errors import TokenDecodeError, TokenRequestError, TokenExpiredError, TokenPayloadError
+from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
+from notifications_python_client.errors import TokenDecodeError, TokenRequestError, TokenExpiredError, TokenPayloadError
 from app.dao.api_key_dao import get_unsigned_secrets
 
 
