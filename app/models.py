@@ -189,3 +189,32 @@ class VerifyCode(db.Model):
 
     def check_code(self, cde):
         return check_hash(cde, self._code)
+
+
+NOTIFICATION_STATUS_TYPES = ['sent', 'failed']
+
+
+class Notification(db.Model):
+
+    __tablename__ = 'notifications'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    to = db.Column(db.String, nullable=False)
+    job_id = db.Column(UUID(as_uuid=True), db.ForeignKey('jobs.id'), index=True, unique=False, nullable=False)
+    job = db.relationship('Job', backref=db.backref('notifications', lazy='dynamic'))
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False)
+    template_id = db.Column(db.BigInteger, db.ForeignKey('templates.id'), index=True, unique=False)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=False,
+        default=datetime.datetime.now)
+    updated_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True,
+        onupdate=datetime.datetime.now)
+    status = db.Column(
+        db.Enum(*NOTIFICATION_STATUS_TYPES, name='notification_status_types'), nullable=False, default='sent')

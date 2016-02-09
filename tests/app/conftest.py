@@ -1,12 +1,13 @@
 import pytest
 from flask import jsonify
 
-from app.models import (User, Service, Template, ApiKey, Job, VerifyCode)
+from app.models import (User, Service, Template, ApiKey, Job, VerifyCode, Notification)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import save_model_service
 from app.dao.templates_dao import save_model_template
 from app.dao.api_key_dao import save_model_api_key
 from app.dao.jobs_dao import save_job
+from app.dao.notifications_dao import save_notification
 import uuid
 
 
@@ -180,3 +181,31 @@ def mock_secret_code(mocker):
 
     mock_class = mocker.patch('app.dao.users_dao.create_secret_code', side_effect=_create)
     return mock_class
+
+
+@pytest.fixture(scope='function')
+def sample_notification(notify_db,
+                        notify_db_session,
+                        service=None,
+                        template=None,
+                        job=None):
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
+    if template is None:
+        template = sample_template(notify_db, notify_db_session, service=service)
+    if job is None:
+        job = sample_job(notify_db, notify_db_session, service=service, template=template)
+
+    notificaton_id = uuid.uuid4()
+    to = '+44709123456'
+
+    data = {
+        'id': notificaton_id,
+        'to': to,
+        'job_id': job.id,
+        'service_id': service.id,
+        'template_id': template.id
+    }
+    notification = Notification(**data)
+    save_notification(notification)
+    return notification
