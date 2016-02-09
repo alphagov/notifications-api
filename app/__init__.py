@@ -10,12 +10,10 @@ from flask_marshmallow import Marshmallow
 from werkzeug.local import LocalProxy
 from config import configs
 from utils import logging
-from notify_client import NotifyAPIClient
 
 
 db = SQLAlchemy()
 ma = Marshmallow()
-notify_alpha_client = NotifyAPIClient()
 
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 
@@ -30,7 +28,6 @@ def create_app(config_name, config_overrides=None):
     ma.init_app(application)
     init_app(application, config_overrides)
     logging.init_app(application)
-    notify_alpha_client.init_app(application)
 
     from app.service.rest import service as service_blueprint
     from app.user.rest import user as user_blueprint

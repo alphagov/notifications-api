@@ -17,7 +17,7 @@ from app.dao.users_dao import (
 from app.schemas import (
     user_schema, users_schema, service_schema, services_schema,
     request_verify_code_schema, user_schema_load_json)
-from app import (notify_alpha_client, api_user)
+from app import api_user
 
 
 user = Blueprint('user', __name__)

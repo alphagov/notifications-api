@@ -3,7 +3,6 @@ import uuid
 
 from tests import create_authorization_header
 from flask import url_for, json
-from app import notify_alpha_client
 from app.models import Service
 
 

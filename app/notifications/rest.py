@@ -6,7 +6,7 @@ from flask import (
     request
 )
 
-from app import (notify_alpha_client, api_user)
+from app import api_user
 from app.aws_sqs import add_notification_to_queue
 from app.dao import (templates_dao)
 from app.schemas import (
