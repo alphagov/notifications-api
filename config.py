@@ -36,12 +36,22 @@ class Test(Development):
     SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/test_notification_api'
 
 
+class Preview(Config):
+    pass
+
+
+class Staging(Config):
+    pass
+
+
 class Live(Config):
     pass
 
 
 configs = {
     'development': Development,
+    'preview': Preview,
+    'staging': Staging,
     'test': Test,
     'live': Live,
 }
