@@ -199,7 +199,8 @@ def test_should_allow_valid_message(notify_api,
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
 
-            assert response.status_code == 204
+            assert response.status_code == 201
+            assert json.loads(response.data)['notification_id'] is not None
 
 
 @moto.mock_sqs
@@ -232,7 +233,8 @@ def test_send_email_valid_data(notify_api,
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
 
-            assert response.status_code == 204
+            assert response.status_code == 201
+            assert json.loads(response.data)['notification_id'] is not None
 
 
 @moto.mock_sqs
@@ -263,7 +265,8 @@ def test_valid_message_with_service_id(notify_api,
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
 
-            assert response.status_code == 204
+            assert response.status_code == 201
+            assert json.loads(response.data)['notification_id'] is not None
 
 
 @moto.mock_sqs
