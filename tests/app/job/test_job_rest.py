@@ -251,6 +251,41 @@ def test_add_notification(notify_api, notify_db, notify_db_session, sample_job):
             assert 'sent' == resp_json['data']['status']
 
 
+def test_add_notification_with_id(notify_api, notify_db, notify_db_session, sample_job):
+    notification_id = str(uuid.uuid4())
+    to = '+44709123456'
+    data = {
+        'id': notification_id,
+        'to': to,
+        'job': str(sample_job.id),
+        'service': str(sample_job.service.id),
+        'template': sample_job.template.id
+    }
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = url_for('job.create_notification_for_job',
+                           service_id=sample_job.service.id,
+                           job_id=sample_job.id)
+
+            auth_header = create_authorization_header(service_id=sample_job.service.id,
+                                                      path=path,
+                                                      method='POST',
+                                                      request_body=json.dumps(data))
+
+            headers = [('Content-Type', 'application/json'), auth_header]
+
+            response = client.post(path, headers=headers, data=json.dumps(data))
+
+            resp_json = json.loads(response.get_data(as_text=True))
+
+            assert resp_json['data']['id'] == notification_id
+            assert data['to'] == resp_json['data']['to']
+            assert data['service'] == resp_json['data']['service']
+            assert data['template'] == resp_json['data']['template']
+            assert data['job'] == resp_json['data']['job']
+            assert 'sent' == resp_json['data']['status']
+
+
 def test_update_notification(notify_api, notify_db, notify_db_session, sample_notification):
 
     assert sample_notification.status == 'sent'
