@@ -31,6 +31,28 @@ def test_save_notification(notify_db, notify_db_session, sample_template, sample
     assert 'sent' == notification_from_db.status
 
 
+def test_save_notification_no_job_id(notify_db, notify_db_session, sample_template):
+
+    assert Notification.query.count() == 0
+    to = '+44709123456'
+    data = {
+        'to': to,
+        'service': sample_template.service,
+        'template': sample_template
+    }
+
+    notification = Notification(**data)
+    save_notification(notification)
+
+    assert Notification.query.count() == 1
+    notification_from_db = Notification.query.all()[0]
+    assert notification_from_db.id
+    assert data['to'] == notification_from_db.to
+    assert data['service'] == notification_from_db.service
+    assert data['template'] == notification_from_db.template
+    assert 'sent' == notification_from_db.status
+
+
 def test_get_notification_for_job(notify_db, notify_db_session, sample_notification):
     notifcation_from_db = get_notification(sample_notification.service.id,
                                            sample_notification.job_id,
