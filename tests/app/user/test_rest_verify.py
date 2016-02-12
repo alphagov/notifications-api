@@ -1,4 +1,5 @@
 import json
+import moto
 from datetime import (datetime, timedelta)
 from flask import url_for
 
@@ -55,9 +56,11 @@ def test_user_verify_code_sms_missing_code(notify_api,
             assert not VerifyCode.query.first().code_used
 
 
+@moto.mock_sqs
 def test_user_verify_code_email(notify_api,
                                 notify_db,
                                 notify_db_session,
+                                sqs_client_conn,
                                 sample_email_code):
     """
     Tests POST endpoint '/<user_id>/verify/code'
@@ -244,11 +247,12 @@ def test_user_verify_password_missing_password(notify_api,
             assert 'Required field missing data' in json_resp['message']['password']
 
 
+@moto.mock_sqs
 def test_send_user_code_for_sms(notify_api,
                                 notify_db,
                                 notify_db_session,
                                 sample_sms_code,
-                                mock_notify_client_send_sms,
+                                sqs_client_conn,
                                 mock_secret_code):
     """
    Tests POST endpoint '/<user_id>/code' successful sms
@@ -266,15 +270,14 @@ def test_send_user_code_for_sms(notify_api,
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             assert resp.status_code == 204
-            mock_notify_client_send_sms.assert_called_once_with(mobile_number=sample_sms_code.user.mobile_number,
-                                                                message='11111')
 
 
+@moto.mock_sqs
 def test_send_user_code_for_sms_with_optional_to_field(notify_api,
                                                        notify_db,
                                                        notify_db_session,
                                                        sample_sms_code,
-                                                       mock_notify_client_send_sms,
+                                                       sqs_client_conn,
                                                        mock_secret_code):
     """
    Tests POST endpoint '/<user_id>/code' successful sms with optional to field
@@ -292,15 +295,14 @@ def test_send_user_code_for_sms_with_optional_to_field(notify_api,
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             assert resp.status_code == 204
-            mock_notify_client_send_sms.assert_called_once_with(mobile_number='+441119876757',
-                                                                message='11111')
 
 
+@moto.mock_sqs
 def test_send_user_code_for_email(notify_api,
                                   notify_db,
                                   notify_db_session,
                                   sample_email_code,
-                                  mock_notify_client_send_email,
+                                  sqs_client_conn,
                                   mock_secret_code):
     """
    Tests POST endpoint '/<user_id>/code' successful email
@@ -317,17 +319,14 @@ def test_send_user_code_for_email(notify_api,
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 204
-            mock_notify_client_send_email.assert_called_once_with(sample_email_code.user.email_address,
-                                                                  '11111',
-                                                                  'notify@digital.cabinet-office.gov.uk',
-                                                                  'Verification code')
 
 
+@moto.mock_sqs
 def test_send_user_code_for_email_uses_optional_to_field(notify_api,
                                                          notify_db,
                                                          notify_db_session,
                                                          sample_email_code,
-                                                         mock_notify_client_send_email,
+                                                         sqs_client_conn,
                                                          mock_secret_code):
     """
    Tests POST endpoint '/<user_id>/code' successful email with included in body
@@ -344,23 +343,16 @@ def test_send_user_code_for_email_uses_optional_to_field(notify_api,
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 204
-            mock_notify_client_send_email.assert_called_once_with('different@email.gov.uk',
-                                                                  '11111',
-                                                                  'notify@digital.cabinet-office.gov.uk',
-                                                                  'Verification code')
 
 
 def test_request_verify_code_schema_invalid_code_type(notify_api, notify_db, notify_db_session, sample_user):
-    import json
     from app.schemas import request_verify_code_schema
     data = json.dumps({'code_type': 'not_sms'})
     code, error = request_verify_code_schema.loads(data)
-    assert code == {}
     assert error == {'code_type': ['Invalid code type']}
 
 
 def test_request_verify_code_schema_with_to(notify_api, notify_db, notify_db_session, sample_user):
-    import json
     from app.schemas import request_verify_code_schema
     data = json.dumps({'code_type': 'sms', 'to': 'some@one.gov.uk'})
     code, error = request_verify_code_schema.loads(data)

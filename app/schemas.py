@@ -1,7 +1,10 @@
+import re
 from flask_marshmallow.fields import fields
 from . import ma
 from . import models
-from marshmallow import post_load, ValidationError
+from marshmallow import (post_load, ValidationError, validates, validates_schema)
+
+mobile_regex = re.compile("^\\+44[\\d]{10}$")
 
 
 # TODO I think marshmallow provides a better integration and error handling.
@@ -59,12 +62,77 @@ class JobSchema(BaseSchema):
 
 
 class RequestVerifyCodeSchema(ma.Schema):
-    def verify_code_type(self):
-        if self not in models.VERIFY_CODE_TYPES:
+
+    code_type = fields.Str(required=True)
+    to = fields.Str(required=False)
+
+    @validates('code_type')
+    def validate_code_type(self, code):
+        if code not in models.VERIFY_CODE_TYPES:
             raise ValidationError('Invalid code type')
 
-    code_type = fields.Str(required=True, validate=verify_code_type)
-    to = fields.Str(required=False)
+
+# TODO main purpose to be added later
+# when processing templates, template will be
+# common for all notifications.
+class NotificationSchema(ma.Schema):
+    pass
+
+
+class SmsNotificationSchema(NotificationSchema):
+    to = fields.Str(required=True)
+
+    @validates('to')
+    def validate_to(self, value):
+        if not mobile_regex.match(value):
+            raise ValidationError('Invalid phone number, must be of format +441234123123')
+
+
+class SmsTemplateNotificationSchema(SmsNotificationSchema):
+    template = fields.Int(required=True)
+    job = fields.String()
+
+    @validates('template')
+    def validate_template(self, value):
+        if not models.Template.query.filter_by(id=value).first():
+            # TODO is this message consistent with what marshmallow
+            # would normally produce.
+            raise ValidationError('Template not found')
+
+    @validates_schema
+    def validate_schema(self, data):
+        """
+        Validate the to field is valid for this template
+        """
+        template_id = data.get('template', None)
+        template = models.Template.query.filter_by(id=template_id).first()
+        if template:
+            service = template.service
+            if service.restricted:
+                valid = False
+                for usr in service.users:
+                    if data['to'] == usr.mobile_number:
+                        valid = True
+                        break
+                if not valid:
+                    raise ValidationError('Invalid phone number for restricted service', 'restricted')
+
+
+class SmsAdminNotificationSchema(SmsNotificationSchema):
+    content = fields.Str(required=True)
+
+
+class EmailNotificationSchema(NotificationSchema):
+    to_address = fields.Str(load_from="to", dump_to='to', required=True)
+    from_address = fields.Str(load_from="from", dump_to='from', required=True)
+    subject = fields.Str(required=True)
+    body = fields.Str(load_from="message", dump_to='message', required=True)
+
+
+class NotificationStatusSchema(BaseSchema):
+
+    class Meta:
+        model = models.Notification
 
 
 user_schema = UserSchema()
@@ -83,3 +151,9 @@ job_schema = JobSchema()
 job_schema_load_json = JobSchema(load_json=True)
 jobs_schema = JobSchema(many=True)
 request_verify_code_schema = RequestVerifyCodeSchema()
+sms_admin_notification_schema = SmsAdminNotificationSchema()
+sms_template_notification_schema = SmsTemplateNotificationSchema()
+email_notification_schema = EmailNotificationSchema()
+notification_status_schema = NotificationStatusSchema()
+notifications_status_schema = NotificationStatusSchema(many=True)
+notification_status_schema_load_json = NotificationStatusSchema(load_json=True)

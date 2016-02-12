@@ -23,7 +23,6 @@ def delete_model_template(template):
 
 
 def get_model_templates(template_id=None, service_id=None):
-    temp = Template.query.first()
     # TODO need better mapping from function params to sql query.
     if template_id and service_id:
         return Template.query.filter_by(

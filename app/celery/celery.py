@@ -15,7 +15,3 @@ class NotifyCelery(Celery):
                 with app.app_context():
                     return TaskBase.__call__(self, *args, **kwargs)
         self.Task = ContextTask
-
-
-
-

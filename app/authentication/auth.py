@@ -1,10 +1,11 @@
-from flask import request, jsonify, _request_ctx_stack
-from client.authentication import decode_jwt_token, get_token_issuer
-from client.errors import TokenDecodeError, TokenRequestError, TokenExpiredError, TokenPayloadError
+from flask import request, jsonify, _request_ctx_stack, current_app
+from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
+from notifications_python_client.errors import TokenDecodeError, TokenRequestError, TokenExpiredError, TokenPayloadError
 from app.dao.api_key_dao import get_unsigned_secrets
 
 
 def authentication_response(message, code):
+    current_app.logger.info(message)
     return jsonify(
         error=message
     ), code
@@ -27,8 +28,7 @@ def requires_auth():
         return authentication_response("Invalid token: signature", 403)
     if api_client is None:
         authentication_response("Invalid credentials", 403)
-    # If the api_client does not have any secrets return response saying that
-    errors_resp = authentication_response("Invalid token: api client has no secrets", 403)
+
     for secret in api_client['secret']:
         try:
             decode_jwt_token(
@@ -53,11 +53,15 @@ def requires_auth():
 
 
 def fetch_client(client):
-    from flask import current_app
     if client == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
         return {
             "client": client,
             "secret": [current_app.config.get('ADMIN_CLIENT_SECRET')]
+        }
+    elif client == current_app.config.get('DELIVERY_CLIENT_USER_NAME'):
+        return {
+            "client": client,
+            "secret": [current_app.config.get('DELIVERY_CLIENT_SECRET')]
         }
     else:
         return {
