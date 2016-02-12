@@ -1,4 +1,5 @@
 import re
+from flask import current_app
 from flask_marshmallow.fields import fields
 from . import ma
 from . import models
@@ -102,12 +103,15 @@ class SmsTemplateNotificationSchema(SmsNotificationSchema):
     @validates_schema
     def validate_schema(self, data):
         """
-        Validate the to field is valid for this template
+        Validate the to field is valid for this notification
         """
+        from app import api_user
         template_id = data.get('template', None)
         template = models.Template.query.filter_by(id=template_id).first()
         if template:
             service = template.service
+            # Validate restricted service,
+            # restricted services can only send to one of its users.
             if service.restricted:
                 valid = False
                 for usr in service.users:
@@ -116,6 +120,11 @@ class SmsTemplateNotificationSchema(SmsNotificationSchema):
                         break
                 if not valid:
                     raise ValidationError('Invalid phone number for restricted service', 'restricted')
+            # Assert the template is valid for the service which made the request.
+            service = api_user['client']
+            if service != current_app.config.get('ADMIN_CLIENT_USER_NAME'):
+                if template.service != models.Service.query.filter_by(id=service).first():
+                    raise ValidationError('Invalid template', 'restricted')
 
 
 class SmsAdminNotificationSchema(SmsNotificationSchema):

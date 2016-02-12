@@ -4,6 +4,8 @@ import uuid
 from tests import create_authorization_header
 from flask import url_for, json
 from app.models import Service
+from tests.app.conftest import sample_service as create_sample_service
+from tests.app.conftest import sample_template as create_sample_template
 
 
 def test_get_notifications(
@@ -170,6 +172,38 @@ def test_send_notification_invalid_template_id(notify_api,
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 400
             assert 'Template not found' in json_resp['message']['template']
+
+
+@moto.mock_sqs
+def test_should_not_allow_template_from_other_service(notify_api,
+                                                      notify_db,
+                                                      notify_db_session,
+                                                      sample_template,
+                                                      sample_admin_service_id,
+                                                      mocker):
+    """
+    Tests POST endpoint '/sms' with notifications.
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = {
+                'to': '+441234123123',
+                'template': sample_template.id
+            }
+            auth_header = create_authorization_header(
+                service_id=sample_admin_service_id,
+                request_body=json.dumps(data),
+                path=url_for('notifications.create_sms_notification'),
+                method='POST')
+
+            response = client.post(
+                url_for('notifications.create_sms_notification'),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 400
+            assert 'Invalid template' in json_resp['message']['restricted']
 
 
 @moto.mock_sqs
