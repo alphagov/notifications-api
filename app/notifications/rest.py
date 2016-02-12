@@ -29,9 +29,8 @@ def create_sms_notification():
     if errors:
         return jsonify(result="error", message=errors), 400
 
-    add_notification_to_queue(api_user['client'], notification['template'], 'sms', notification)
-    # TODO data to be returned
-    return jsonify({}), 204
+    notification_id = add_notification_to_queue(api_user['client'], notification['template'], 'sms', notification)
+    return jsonify({'notification_id': notification_id}), 201
 
 
 @notifications.route('/email', methods=['POST'])
@@ -40,9 +39,8 @@ def create_email_notification():
     notification, errors = email_notification_schema.load(resp_json)
     if errors:
         return jsonify(result="error", message=errors), 400
-    add_notification_to_queue(api_user['client'], "admin", 'email', notification)
-    # TODO data to be returned
-    return jsonify({}), 204
+    notification_id = add_notification_to_queue(api_user['client'], "admin", 'email', notification)
+    return jsonify({'notification_id': notification_id}), 201
 
 
 @notifications.route('/sms/service/<service_id>', methods=['POST'])
@@ -66,6 +64,5 @@ def create_sms_for_service(service_id):
         message = "Invalid template: id {} for service id: {}".format(template.id, service_id)
         return jsonify(result="error", message=message), 400
 
-    add_notification_to_queue(service_id, template_id, 'sms', notification)
-    # TODO data to be returned
-    return jsonify({}), 204
+    notification_id = add_notification_to_queue(service_id, template_id, 'sms', notification)
+    return jsonify({'notification_id': notification_id}), 201
