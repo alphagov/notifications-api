@@ -122,9 +122,9 @@ class SmsTemplateNotificationSchema(SmsNotificationSchema):
                     raise ValidationError('Invalid phone number for restricted service', 'restricted')
             # Assert the template is valid for the service which made the request.
             service = api_user['client']
-            if service != current_app.config.get('ADMIN_CLIENT_USER_NAME'):
-                if template.service != models.Service.query.filter_by(id=service).first():
-                    raise ValidationError('Invalid template', 'restricted')
+            if (service != current_app.config.get('ADMIN_CLIENT_USER_NAME') and
+               template.service != models.Service.query.filter_by(id=service).first()):
+                raise ValidationError('Invalid template', 'restricted')
 
 
 class SmsAdminNotificationSchema(SmsNotificationSchema):
