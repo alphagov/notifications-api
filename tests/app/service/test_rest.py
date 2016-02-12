@@ -10,33 +10,31 @@ from tests.app.conftest import sample_user as create_sample_user
 from tests.app.conftest import sample_service as create_sample_service
 
 
-def test_get_service_list(notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id):
+def test_get_service_list(notify_api, notify_db, notify_db_session, sample_service):
     """
     Tests GET endpoint '/' to retrieve entire service list.
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.get_service'),
+            auth_header = create_authorization_header(path=url_for('service.get_service'),
                                                       method='GET')
             response = client.get(url_for('service.get_service'),
                                   headers=[auth_header])
             assert response.status_code == 200
             json_resp = json.loads(response.get_data(as_text=True))
             # TODO assert correct json returned
-            assert len(json_resp['data']) == 2
+            assert len(json_resp['data']) == 1
             assert json_resp['data'][0]['name'] == sample_service.name
             assert json_resp['data'][0]['id'] == str(sample_service.id)
 
 
-def test_get_service(notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id):
+def test_get_service(notify_api, notify_db, notify_db_session, sample_service):
     """
     Tests GET endpoint '/<service_id>' to retrieve a single service.
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.get_service', service_id=sample_service.id),
+            auth_header = create_authorization_header(path=url_for('service.get_service', service_id=sample_service.id),
                                                       method='GET')
             resp = client.get(url_for('service.get_service',
                                       service_id=sample_service.id),
@@ -67,21 +65,20 @@ def test_get_service_for_user(notify_api, notify_db, notify_db_session, sample_s
             assert 'Second Service' not in [x.get('name') for x in json_resp['data']]
 
 
-def test_post_service(notify_api, notify_db, notify_db_session, sample_user, sample_admin_service_id):
+def test_post_service(notify_api, notify_db, notify_db_session, sample_user):
     """
     Tests POST endpoint '/' to create a service.
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            assert Service.query.count() == 1
+            assert Service.query.count() == 0
             data = {
                 'name': 'created service',
                 'users': [sample_user.id],
                 'limit': 1000,
                 'restricted': False,
                 'active': False}
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.create_service'),
+            auth_header = create_authorization_header(path=url_for('service.create_service'),
                                                       method='POST',
                                                       request_body=json.dumps(data))
             headers = [('Content-Type', 'application/json'), auth_header]
@@ -96,7 +93,7 @@ def test_post_service(notify_api, notify_db, notify_db_session, sample_user, sam
             assert json_resp['data']['limit'] == service.limit
 
 
-def test_post_service_multiple_users(notify_api, notify_db, notify_db_session, sample_user, sample_admin_service_id):
+def test_post_service_multiple_users(notify_api, notify_db, notify_db_session, sample_user):
     """
     Tests POST endpoint '/' to create a service with multiple users.
     """
@@ -106,15 +103,14 @@ def test_post_service_multiple_users(notify_api, notify_db, notify_db_session, s
                 notify_db,
                 notify_db_session,
                 "new@digital.cabinet-office.gov.uk")
-            assert Service.query.count() == 1
+            assert Service.query.count() == 0
             data = {
                 'name': 'created service',
                 'users': [sample_user.id, another_user.id],
                 'limit': 1000,
                 'restricted': False,
                 'active': False}
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.create_service'),
+            auth_header = create_authorization_header(path=url_for('service.create_service'),
                                                       method='POST',
                                                       request_body=json.dumps(data))
             headers = [('Content-Type', 'application/json'), auth_header]
@@ -130,20 +126,19 @@ def test_post_service_multiple_users(notify_api, notify_db, notify_db_session, s
             assert len(service.users) == 2
 
 
-def test_post_service_without_users_attribute(notify_api, notify_db, notify_db_session, sample_admin_service_id):
+def test_post_service_without_users_attribute(notify_api, notify_db, notify_db_session):
     """
     Tests POST endpoint '/' to create a service without 'users' attribute.
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            assert Service.query.count() == 1
+            assert Service.query.count() == 0
             data = {
                 'name': 'created service',
                 'limit': 1000,
                 'restricted': False,
                 'active': False}
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.create_service'),
+            auth_header = create_authorization_header(path=url_for('service.create_service'),
                                                       method='POST',
                                                       request_body=json.dumps(data))
             headers = [('Content-Type', 'application/json'), auth_header]
@@ -152,18 +147,18 @@ def test_post_service_without_users_attribute(notify_api, notify_db, notify_db_s
                 data=json.dumps(data),
                 headers=headers)
             assert resp.status_code == 400
-            assert Service.query.count() == 1
+            assert Service.query.count() == 0
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['message'] == '{"users": ["Missing data for required attribute"]}'
 
 
-def test_put_service(notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id):
+def test_put_service(notify_api, notify_db, notify_db_session, sample_service):
     """
     Tests PUT endpoint '/<service_id>' to edit a service.
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            assert Service.query.count() == 2
+            assert Service.query.count() == 1
             new_name = 'updated service'
             data = {
                 'name': new_name,
@@ -171,8 +166,7 @@ def test_put_service(notify_api, notify_db, notify_db_session, sample_service, s
                 'limit': 1000,
                 'restricted': False,
                 'active': False}
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.update_service',
+            auth_header = create_authorization_header(path=url_for('service.update_service',
                                                                    service_id=sample_service.id),
                                                       method='PUT',
                                                       request_body=json.dumps(data))
@@ -181,7 +175,7 @@ def test_put_service(notify_api, notify_db, notify_db_session, sample_service, s
                 url_for('service.update_service', service_id=sample_service.id),
                 data=json.dumps(data),
                 headers=headers)
-            assert Service.query.count() == 2
+            assert Service.query.count() == 1
             assert resp.status_code == 200
             updated_service = Service.query.get(sample_service.id)
             json_resp = json.loads(resp.get_data(as_text=True))
@@ -190,7 +184,7 @@ def test_put_service(notify_api, notify_db, notify_db_session, sample_service, s
             assert updated_service.name == new_name
 
 
-def test_put_service_not_exists(notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id):
+def test_put_service_not_exists(notify_api, notify_db, notify_db_session, sample_service):
     """
     Tests PUT endpoint '/<service_id>' service doesn't exist.
     """
@@ -205,8 +199,7 @@ def test_put_service_not_exists(notify_api, notify_db, notify_db_session, sample
                 'restricted': False,
                 'active': False}
             missing_service_id = uuid.uuid4()
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.update_service',
+            auth_header = create_authorization_header(path=url_for('service.update_service',
                                                                    service_id=missing_service_id),
                                                       method='PUT',
                                                       request_body=json.dumps(data))
@@ -219,13 +212,13 @@ def test_put_service_not_exists(notify_api, notify_db, notify_db_session, sample
             assert Service.query.first().name != new_name
 
 
-def test_put_service_add_user(notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id):
+def test_put_service_add_user(notify_api, notify_db, notify_db_session, sample_service):
     """
     Tests PUT endpoint '/<service_id>' add user to the service.
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            assert Service.query.count() == 2
+            assert Service.query.count() == 1
             another_user = create_sample_user(
                 notify_db,
                 notify_db_session,
@@ -238,8 +231,7 @@ def test_put_service_add_user(notify_api, notify_db, notify_db_session, sample_s
                 'limit': 1000,
                 'restricted': False,
                 'active': False}
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.update_service',
+            auth_header = create_authorization_header(path=url_for('service.update_service',
                                                                    service_id=sample_service.id),
                                                       method='PUT',
                                                       request_body=json.dumps(data))
@@ -248,7 +240,7 @@ def test_put_service_add_user(notify_api, notify_db, notify_db_session, sample_s
                 url_for('service.update_service', service_id=sample_service.id),
                 data=json.dumps(data),
                 headers=headers)
-            assert Service.query.count() == 2
+            assert Service.query.count() == 1
             assert resp.status_code == 200
             updated_service = Service.query.get(sample_service.id)
             json_resp = json.loads(resp.get_data(as_text=True))
@@ -259,7 +251,7 @@ def test_put_service_add_user(notify_api, notify_db, notify_db_session, sample_s
             assert set(updated_service.users) == set([sample_user, another_user])
 
 
-def test_put_service_remove_user(notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id):
+def test_put_service_remove_user(notify_api, notify_db, notify_db_session, sample_service):
     """
     Tests PUT endpoint '/<service_id>' add user to the service.
     """
@@ -277,11 +269,10 @@ def test_put_service_remove_user(notify_api, notify_db, notify_db_session, sampl
                 'restricted': sample_service.restricted,
                 'active': sample_service.active}
             save_model_service(sample_service, update_dict=data)
-            assert Service.query.count() == 2
+            assert Service.query.count() == 1
             data['users'] = [another_user.id]
 
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.update_service',
+            auth_header = create_authorization_header(path=url_for('service.update_service',
                                                                    service_id=sample_service.id),
                                                       method='PUT',
                                                       request_body=json.dumps(data))
@@ -290,7 +281,7 @@ def test_put_service_remove_user(notify_api, notify_db, notify_db_session, sampl
                 url_for('service.update_service', service_id=sample_service.id),
                 data=json.dumps(data),
                 headers=headers)
-            assert Service.query.count() == 2
+            assert Service.query.count() == 1
             assert resp.status_code == 200
             updated_service = Service.query.get(sample_service.id)
             json_resp = json.loads(resp.get_data(as_text=True))
@@ -301,14 +292,13 @@ def test_put_service_remove_user(notify_api, notify_db, notify_db_session, sampl
             assert another_user in updated_service.users
 
 
-def test_delete_service(notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id):
+def test_delete_service(notify_api, notify_db, notify_db_session, sample_service):
     """
     Tests DELETE endpoint '/<service_id>' delete service.
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.update_service',
+            auth_header = create_authorization_header(path=url_for('service.update_service',
                                                                    service_id=sample_service.id),
                                                       method='DELETE')
             resp = client.delete(
@@ -317,40 +307,38 @@ def test_delete_service(notify_api, notify_db, notify_db_session, sample_service
             assert resp.status_code == 202
             json_resp = json.loads(resp.get_data(as_text=True))
             json_resp['data']['name'] == sample_service.name
-            assert Service.query.count() == 1
+            assert Service.query.count() == 0
 
 
-def test_delete_service_not_exists(notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id):
+def test_delete_service_not_exists(notify_api, notify_db, notify_db_session, sample_service):
     """
     Tests DELETE endpoint '/<service_id>' delete service doesn't exist.
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            assert Service.query.count() == 2
+            assert Service.query.count() == 1
             missing_service_id = uuid.uuid4()
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.update_service',
+            auth_header = create_authorization_header(path=url_for('service.update_service',
                                                                    service_id=missing_service_id),
                                                       method='DELETE')
             resp = client.delete(
                 url_for('service.update_service', service_id=missing_service_id),
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 404
-            assert Service.query.count() == 2
+            assert Service.query.count() == 1
 
 
-def test_create_service_should_create_new_service_for_user(notify_api, notify_db, notify_db_session, sample_user,
-                                                           sample_admin_service_id):
+def test_create_service_should_create_new_service_for_user(notify_api, notify_db, notify_db_session, sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            assert Service.query.count() == 0
             data = {
                 'name': 'created service',
                 'users': [sample_user.id],
                 'limit': 1000,
                 'restricted': False,
                 'active': False}
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.create_service'),
+            auth_header = create_authorization_header(path=url_for('service.create_service'),
                                                       method='POST',
                                                       request_body=json.dumps(data))
             headers = [('Content-Type', 'application/json'), auth_header]
@@ -358,9 +346,10 @@ def test_create_service_should_create_new_service_for_user(notify_api, notify_db
                                data=json.dumps(data),
                                headers=headers)
             assert resp.status_code == 201
+            assert Service.query.count() == 1
 
 
-def test_create_template(notify_api, notify_db, notify_db_session, sample_service, sample_admin_service_id):
+def test_create_template(notify_api, notify_db, notify_db_session, sample_service):
     """
     Tests POST endpoint '/<service_id>/template' a template can be created
     from a service.
@@ -377,8 +366,7 @@ def test_create_template(notify_api, notify_db, notify_db_session, sample_servic
                 'content': template_content,
                 'service': str(sample_service.id)
             }
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.create_template',
+            auth_header = create_authorization_header(path=url_for('service.create_template',
                                                                    service_id=sample_service.id),
                                                       method='POST',
                                                       request_body=json.dumps(data))
@@ -394,8 +382,7 @@ def test_create_template(notify_api, notify_db, notify_db_session, sample_servic
             assert json_resp['data']['content'] == template_content
 
 
-def test_create_template_service_not_exists(notify_api, notify_db, notify_db_session, sample_service,
-                                            sample_admin_service_id):
+def test_create_template_service_not_exists(notify_api, notify_db, notify_db_session, sample_service):
     """
     Tests POST endpoint '/<service_id>/template' a template can be created
     from a service.
@@ -413,8 +400,7 @@ def test_create_template_service_not_exists(notify_api, notify_db, notify_db_ses
                 'service': str(sample_service.id)
             }
             missing_service_id = uuid.uuid4()
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.create_template',
+            auth_header = create_authorization_header(path=url_for('service.create_template',
                                                                    service_id=missing_service_id),
                                                       method='POST',
                                                       request_body=json.dumps(data))
@@ -428,7 +414,7 @@ def test_create_template_service_not_exists(notify_api, notify_db, notify_db_ses
             assert "Service not found" in json_resp['message']
 
 
-def test_update_template(notify_api, notify_db, notify_db_session, sample_template, sample_admin_service_id):
+def test_update_template(notify_api, notify_db, notify_db_session, sample_template):
     """
     Tests PUT endpoint '/<service_id>/template/<template_id>' a template can be
     updated.
@@ -447,8 +433,7 @@ def test_update_template(notify_api, notify_db, notify_db_session, sample_templa
                 'content': template_content,
                 'service': str(sample_service.id)
             }
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.update_template',
+            auth_header = create_authorization_header(path=url_for('service.update_template',
                                                                    service_id=sample_service.id,
                                                                    template_id=sample_template.id),
                                                       method='PUT',
@@ -469,7 +454,7 @@ def test_update_template(notify_api, notify_db, notify_db_session, sample_templa
 
 
 def test_update_template_service_not_exists(notify_api, notify_db, notify_db_session,
-                                            sample_template, sample_admin_service_id):
+                                            sample_template):
     """
     Tests PUT endpoint '/<service_id>/template/<template_id>' a 404 if service
     doesn't exist.
@@ -487,8 +472,7 @@ def test_update_template_service_not_exists(notify_api, notify_db, notify_db_ses
                 'service': str(sample_template.service_id)
             }
             missing_service_id = uuid.uuid4()
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.update_template',
+            auth_header = create_authorization_header(path=url_for('service.update_template',
                                                                    service_id=missing_service_id,
                                                                    template_id=sample_template.id),
                                                       method='PUT',
@@ -506,7 +490,7 @@ def test_update_template_service_not_exists(notify_api, notify_db, notify_db_ses
 
 
 def test_update_template_template_not_exists(notify_api, notify_db, notify_db_session,
-                                             sample_template, sample_admin_service_id):
+                                             sample_template):
     """
     Tests PUT endpoint '/<service_id>/template/<template_id>' a 404 if template
     doesn't exist.
@@ -524,8 +508,7 @@ def test_update_template_template_not_exists(notify_api, notify_db, notify_db_se
                 'content': template_content,
                 'service': str(sample_service.id)
             }
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.update_template',
+            auth_header = create_authorization_header(path=url_for('service.update_template',
                                                                    service_id=sample_service.id,
                                                                    template_id="123"),
                                                       method='PUT',
@@ -542,8 +525,7 @@ def test_update_template_template_not_exists(notify_api, notify_db, notify_db_se
             assert template_name != sample_template.name
 
 
-def test_create_template_unicode_content(notify_api, notify_db, notify_db_session, sample_service,
-                                         sample_admin_service_id):
+def test_create_template_unicode_content(notify_api, notify_db, notify_db_session, sample_service):
     """
     Tests POST endpoint '/<service_id>/template/<template_id>' a template is
     created and the content encoding is respected after saving and loading
@@ -561,8 +543,7 @@ def test_create_template_unicode_content(notify_api, notify_db, notify_db_sessio
                 'content': template_content,
                 'service': str(sample_service.id)
             }
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('service.create_template',
+            auth_header = create_authorization_header(path=url_for('service.create_template',
                                                                    service_id=sample_service.id),
                                                       method='POST',
                                                       request_body=json.dumps(data))
