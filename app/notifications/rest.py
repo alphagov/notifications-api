@@ -11,6 +11,7 @@ from app.aws_sqs import add_notification_to_queue
 from app.dao import (templates_dao)
 from app.schemas import (
     email_notification_schema, sms_template_notification_schema)
+from app import celery
 
 notifications = Blueprint('notifications', __name__)
 
@@ -21,6 +22,14 @@ def get_notifications(notification_id):
     return jsonify({'id': notification_id}), 200
 
 
+@celery.task(name="make-sms", bind="True")
+def send_sms(self):
+    print('Executing task id {0.id}, args: {0.args!r} kwargs: {0.kwargs!r}'.format(self.request))
+    from time import sleep
+    sleep(0.5)
+    print('finished')
+
+
 @notifications.route('/sms', methods=['POST'])
 def create_sms_notification():
     resp_json = request.get_json()
@@ -29,6 +38,7 @@ def create_sms_notification():
     if errors:
         return jsonify(result="error", message=errors), 400
 
+    send_sms.delay()
     add_notification_to_queue(api_user['client'], notification['template'], 'sms', notification)
     # TODO data to be returned
     return jsonify({}), 204
