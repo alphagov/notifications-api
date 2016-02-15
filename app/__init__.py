@@ -12,12 +12,14 @@ from config import configs
 from utils import logging
 from notify_client import NotifyAPIClient
 from app.celery.celery import NotifyCelery
-
+from app.clients.sms.twilio import TwilioClient
 
 db = SQLAlchemy()
 ma = Marshmallow()
 notify_alpha_client = NotifyAPIClient()
 celery = NotifyCelery()
+twilio_client = TwilioClient()
+
 
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 
@@ -32,7 +34,7 @@ def create_app(config_name, config_overrides=None):
     ma.init_app(application)
     init_app(application, config_overrides)
     logging.init_app(application)
-
+    twilio_client.init_app(application)
     celery.init_app(application)
 
     from app.service.rest import service as service_blueprint

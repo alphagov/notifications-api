@@ -3,17 +3,23 @@ import uuid
 from flask import (
     Blueprint,
     jsonify,
-    request
-)
+    request,
+    current_app)
+from itsdangerous import URLSafeSerializer
 
 from app import api_user
 from app.aws_sqs import add_notification_to_queue
 from app.dao import (templates_dao)
 from app.schemas import (
     email_notification_schema, sms_template_notification_schema)
-from app import celery
+from app.celery.tasks import send_sms
+
 
 notifications = Blueprint('notifications', __name__)
+
+
+def create_notification_id():
+    return str(uuid.uuid4())
 
 
 @notifications.route('/<notification_id>', methods=['GET'])
@@ -22,24 +28,25 @@ def get_notifications(notification_id):
     return jsonify({'id': notification_id}), 200
 
 
-@celery.task(name="make-sms", bind="True")
-def send_sms(self):
-    print('Executing task id {0.id}, args: {0.args!r} kwargs: {0.kwargs!r}'.format(self.request))
-    from time import sleep
-    sleep(0.5)
-    print('finished')
-
-
 @notifications.route('/sms', methods=['POST'])
 def create_sms_notification():
+    serializer = URLSafeSerializer(current_app.config.get('SECRET_KEY'))
+
     resp_json = request.get_json()
 
     notification, errors = sms_template_notification_schema.load(resp_json)
     if errors:
         return jsonify(result="error", message=errors), 400
 
-    send_sms.delay()
-    notification_id = add_notification_to_queue(api_user['client'], notification['template'], 'sms', notification)
+    notification_id = create_notification_id()
+    encrypted_notification = serializer.dumps(notification, current_app.config.get('DANGEROUS_SALT'))
+
+    send_sms.apply_async((
+        api_user['client'],
+        notification_id,
+        encrypted_notification,
+        current_app.config.get('SECRET_KEY'),
+        current_app.config.get('DANGEROUS_SALT')))
     return jsonify({'notification_id': notification_id}), 201
 
 

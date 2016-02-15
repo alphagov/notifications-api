@@ -22,7 +22,7 @@ class Config(object):
     # Notification Queue names are a combination of a prefx plus a name
     NOTIFICATION_QUEUE_PREFIX = 'notification'
 
-    BROKER_URL = 'amqp://guest:guest@localhost:5672//'
+    BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {
         'region': 'eu-west-1',
         'polling_interval': 10,  # 1 second
@@ -33,13 +33,16 @@ class Config(object):
     CELERY_TIMEZONE = 'Europe/London'
     CELERY_ACCEPT_CONTENT = ['json']
     CELERY_TASK_SERIALIZER = 'json'
-    CELERYBEAT_SCHEDULE = {
-        'refresh-queues': {
-            'task': 'refresh-services',
-            'schedule': timedelta(seconds=5)
-        }
-    }
+    # CELERYBEAT_SCHEDULE = {
+    #     'refresh-queues': {
+    #         'task': 'refresh-services',
+    #         'schedule': timedelta(seconds=5)
+    #     }
+    # }
     CELERY_IMPORTS = ('app.celery.tasks',)
+    TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
+    TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
+    TWILIO_NUMBER = os.getenv('TWILIO_NUMBER')
 
 
 class Development(Config):
