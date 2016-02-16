@@ -24,4 +24,5 @@ export NOTIFICATION_QUEUE_PREFIX='notification_development[-unique-to-environmen
 
 export SECRET_KEY = 'secret-key'
 export SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/notification_api'
+export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.works'
 ```
