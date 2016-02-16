@@ -34,4 +34,5 @@ createdb notification_api
 createdb test_notification_api
 
 # Upgrade databases
+source environment.sh
 python application.py db upgrade
