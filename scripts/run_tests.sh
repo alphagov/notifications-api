@@ -9,6 +9,8 @@
 
 set -o pipefail
 
+source environment_test.sh
+
 function display_result {
   RESULT=$1
   EXIT_STATUS=$2

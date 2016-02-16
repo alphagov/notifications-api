@@ -6,7 +6,7 @@ from flask.ext.script import Manager, Server
 from flask.ext.migrate import Migrate, MigrateCommand
 from app import (create_app, db, get_api_version, get_db_version)
 
-application = create_app(os.getenv('NOTIFY_API_ENVIRONMENT') or 'development')
+application = create_app()
 manager = Manager(application)
 port = int(os.environ.get('PORT', 6011))
 manager.add_command("runserver", Server(host='0.0.0.0', port=port))
