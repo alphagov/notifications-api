@@ -1,12 +1,12 @@
 from itsdangerous import URLSafeSerializer
-from app import celery, twilio_client, db
+from app import notify_celery, twilio_client, db
 from app.clients.sms.twilio import TwilioClientException
 from app.dao.templates_dao import get_model_templates
 from app.models import Notification
 from flask import current_app
 
 
-@celery.task(name="send-sms", bind="True")
+@notify_celery.task(name="send-sms", bind="True")
 def send_sms(service_id, notification_id, encrypted_notification, secret_key, salt):
     serializer = URLSafeSerializer(secret_key)
 

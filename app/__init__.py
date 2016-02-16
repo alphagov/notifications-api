@@ -17,7 +17,7 @@ from app.clients.sms.twilio import TwilioClient
 db = SQLAlchemy()
 ma = Marshmallow()
 notify_alpha_client = NotifyAPIClient()
-celery = NotifyCelery()
+notify_celery = NotifyCelery()
 twilio_client = TwilioClient()
 
 
@@ -35,7 +35,7 @@ def create_app(config_name, config_overrides=None):
     ma.init_app(application)
     logging.init_app(application)
     twilio_client.init_app(application)
-    celery.init_app(application)
+    notify_celery.init_app(application)
 
     from app.service.rest import service as service_blueprint
     from app.user.rest import user as user_blueprint

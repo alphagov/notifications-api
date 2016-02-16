@@ -39,11 +39,14 @@ def get_notifications(notification_id):
 def create_sms_notification():
     serializer = URLSafeSerializer(current_app.config.get('SECRET_KEY'))
 
-    resp_json = request.get_json()
-
-    notification, errors = sms_template_notification_schema.load(resp_json)
+    notification, errors = sms_template_notification_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
+
+    try:
+        templates_dao.get_model_templates(template_id=notification['template'], service_id=api_user['client'])
+    except NoResultFound:
+        return jsonify(result="error", message={'template': ['Template not found']}), 400
 
     notification_id = create_notification_id()
     encrypted_notification = serializer.dumps(notification, current_app.config.get('DANGEROUS_SALT'))
