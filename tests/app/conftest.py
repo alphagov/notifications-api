@@ -9,6 +9,7 @@ from app.dao.jobs_dao import save_job
 from app.dao.notifications_dao import save_notification
 import uuid
 
+
 @pytest.fixture(scope='function')
 def service_factory(notify_db, notify_db_session):
     class ServiceFactory(object):
