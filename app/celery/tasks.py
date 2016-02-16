@@ -1,12 +1,12 @@
-from itsdangerous import URLSafeSerializer
 from app import notify_celery, twilio_client, db, encryption
 from app.clients.sms.twilio import TwilioClientException
 from app.dao.templates_dao import get_model_templates
+from app.dao.notifications_dao import save_notification
 from app.models import Notification
 from flask import current_app
 
 
-@notify_celery.task(name="send-sms", bind="True")
+@notify_celery.task(name="send-sms")
 def send_sms(service_id, notification_id, encrypted_notification):
     notification = encryption.decrypt(encrypted_notification)
     template = get_model_templates(notification['template'])
@@ -14,7 +14,7 @@ def send_sms(service_id, notification_id, encrypted_notification):
     status = 'sent'
 
     try:
-        twilio_client.send_sms(notification, template.content)
+        twilio_client.send_sms(notification['to'], template.content)
     except TwilioClientException as e:
         current_app.logger.info(e)
         status = 'failed'
@@ -27,5 +27,4 @@ def send_sms(service_id, notification_id, encrypted_notification):
         status=status
     )
 
-    db.session.add(notification_db_object)
-    db.session.commit()
+    save_notification(notification_db_object)

@@ -3,11 +3,9 @@ import uuid
 from flask import (
     Blueprint,
     jsonify,
-    request,
-    current_app
+    request
 )
 
-from itsdangerous import URLSafeSerializer
 from app import api_user, encryption
 from app.aws_sqs import add_notification_to_queue
 from app.dao import (templates_dao, notifications_dao)

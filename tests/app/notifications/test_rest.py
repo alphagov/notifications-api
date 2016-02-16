@@ -5,7 +5,6 @@ from tests import create_authorization_header
 from flask import json
 from app.models import Service
 from app.dao.templates_dao import get_model_templates
-from mock import ANY
 
 
 def test_get_notification_by_id(notify_api, sample_notification):
