@@ -4,16 +4,20 @@ from flask import (
     Blueprint,
     jsonify,
     request,
-    current_app)
-from itsdangerous import URLSafeSerializer
+    current_app
+)
 
+from itsdangerous import URLSafeSerializer
 from app import api_user
 from app.aws_sqs import add_notification_to_queue
-from app.dao import (templates_dao)
+from app.dao import (templates_dao, notifications_dao)
 from app.schemas import (
-    email_notification_schema, sms_template_notification_schema)
+    email_notification_schema,
+    sms_template_notification_schema,
+    notification_status_schema
+)
 from app.celery.tasks import send_sms
-
+from sqlalchemy.orm.exc import NoResultFound
 
 notifications = Blueprint('notifications', __name__)
 
@@ -22,10 +26,13 @@ def create_notification_id():
     return str(uuid.uuid4())
 
 
-@notifications.route('/<notification_id>', methods=['GET'])
+@notifications.route('/<string:notification_id>', methods=['GET'])
 def get_notifications(notification_id):
-    # TODO return notification id details
-    return jsonify({'id': notification_id}), 200
+    try:
+        notification = notifications_dao.get_notification(api_user['client'], notification_id)
+        return jsonify({'notification': notification_status_schema.dump(notification).data}), 200
+    except NoResultFound:
+        return jsonify(result="error", message="not found"), 404
 
 
 @notifications.route('/sms', methods=['POST'])

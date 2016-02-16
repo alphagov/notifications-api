@@ -141,7 +141,7 @@ class EmailNotificationSchema(NotificationSchema):
 class NotificationStatusSchema(BaseSchema):
 
     class Meta:
-        model = models.Notification
+        model = models.Noti∫~fication
 
 
 user_schema = UserSchema()

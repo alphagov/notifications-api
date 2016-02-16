@@ -4,46 +4,49 @@ import uuid
 from tests import create_authorization_header
 from flask import url_for, json
 from app.models import Service
-from tests.app.conftest import sample_service as create_sample_service
-from tests.app.conftest import sample_template as create_sample_template
 
 
 def test_get_notifications(
-        notify_api, notify_db, notify_db_session, sample_api_key, mocker):
+        notify_api, notify_db, notify_db_session, sample_api_key, sample_notification):
     """
     Tests GET endpoint '/' to retrieve entire service list.
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header(
-                service_id=sample_api_key.service_id,
-                path=url_for('notifications.get_notifications', notification_id=123),
+                service_id=sample_notification.service_id,
+                path='/notifications/{}'.format(sample_notification.id),
                 method='GET')
 
             response = client.get(
-                url_for('notifications.get_notifications', notification_id=123),
+                '/notifications/{}'.format(sample_notification.id),
                 headers=[auth_header])
 
+            notification = json.loads(response.get_data(as_text=True))['notification']
+            assert notification['status'] == 'sent'
+            assert notification['template'] == sample_notification.template.id
+            assert notification['to'] == '+44709123456'
+            assert notification['service'] == str(sample_notification.service_id)
             assert response.status_code == 200
 
 
 def test_get_notifications_empty_result(
         notify_api, notify_db, notify_db_session, sample_api_key, mocker):
-    """
-    Tests GET endpoint '/' to retrieve entire service list.
-    """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+
+            id = uuid.uuid4()
+
             auth_header = create_authorization_header(
                 service_id=sample_api_key.service_id,
-                path=url_for('notifications.get_notifications', notification_id=123),
+                path=url_for('notifications.get_notifications', notification_id=id),
                 method='GET')
 
             response = client.get(
-                url_for('notifications.get_notifications', notification_id=123),
+                url_for('notifications.get_notifications', notification_id=id),
                 headers=[auth_header])
 
-            assert response.status_code == 200
+            assert response.status_code == 404
 
 
 def test_create_sms_should_reject_if_no_phone_numbers(

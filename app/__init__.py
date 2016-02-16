@@ -30,9 +30,9 @@ def create_app(config_name, config_overrides=None):
     application.config['NOTIFY_API_ENVIRONMENT'] = config_name
     application.config.from_object(configs[config_name])
 
+    init_app(application, config_overrides)
     db.init_app(application)
     ma.init_app(application)
-    init_app(application, config_overrides)
     logging.init_app(application)
     twilio_client.init_app(application)
     celery.init_app(application)
