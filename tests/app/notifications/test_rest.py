@@ -200,6 +200,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.send_sms.apply_async')
+            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             data = {
                 'to': '+441234123123',
@@ -222,9 +223,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 (str(sample_template.service_id),
                  notification_id,
-                 ANY,
-                 notify_api.config['SECRET_KEY'],
-                 notify_api.config['DANGEROUS_SALT'])
+                 "something_encrypted")
             )
             assert response.status_code == 201
             assert notification_id

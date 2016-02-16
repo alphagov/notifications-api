@@ -8,7 +8,7 @@ from flask import (
 )
 
 from itsdangerous import URLSafeSerializer
-from app import api_user
+from app import api_user, encryption
 from app.aws_sqs import add_notification_to_queue
 from app.dao import (templates_dao, notifications_dao)
 from app.schemas import (
@@ -37,8 +37,6 @@ def get_notifications(notification_id):
 
 @notifications.route('/sms', methods=['POST'])
 def create_sms_notification():
-    serializer = URLSafeSerializer(current_app.config.get('SECRET_KEY'))
-
     notification, errors = sms_template_notification_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
@@ -49,14 +47,11 @@ def create_sms_notification():
         return jsonify(result="error", message={'template': ['Template not found']}), 400
 
     notification_id = create_notification_id()
-    encrypted_notification = serializer.dumps(notification, current_app.config.get('DANGEROUS_SALT'))
 
     send_sms.apply_async((
         api_user['client'],
         notification_id,
-        encrypted_notification,
-        current_app.config.get('SECRET_KEY'),
-        current_app.config.get('DANGEROUS_SALT')))
+        encryption.encrypt(notification)))
     return jsonify({'notification_id': notification_id}), 201
 
 
