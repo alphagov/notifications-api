@@ -3,60 +3,27 @@ import os
 
 class Config(object):
     DEBUG = False
-    NOTIFY_LOG_LEVEL = 'DEBUG'
+    ADMIN_CLIENT_USER_NAME = os.environ['ADMIN_CLIENT_USER_NAME']
+    ADMIN_CLIENT_SECRET = os.environ['ADMIN_CLIENT_SECRET']
+    AWS_REGION = os.environ['AWS_REGION']
+    DANGEROUS_SALT = os.environ['DANGEROUS_SALT']
+    DELIVERY_CLIENT_USER_NAME = os.environ['DELIVERY_CLIENT_USER_NAME']
+    DELIVERY_CLIENT_SECRET = os.environ['DELIVERY_CLIENT_SECRET']
     NOTIFY_APP_NAME = 'api'
     NOTIFY_LOG_PATH = '/var/log/notify/application.log'
-    SQLALCHEMY_COMMIT_ON_TEARDOWN = False
-    SQLALCHEMY_RECORD_QUERIES = True
-    SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/notification_api'
-    NOTIFY_DATA_API_URL = os.getenv('NOTIFY_API_URL', "http://localhost:6001")
-    NOTIFY_DATA_API_AUTH_TOKEN = os.getenv('NOTIFY_API_TOKEN', "dev-token")
-    ADMIN_CLIENT_USER_NAME = None
-    ADMIN_CLIENT_SECRET = None
-    DELIVERY_CLIENT_USER_NAME = None
-    DELIVERY_CLIENT_SECRET = None
-
-    AWS_REGION = 'eu-west-1'
-    NOTIFY_JOB_QUEUE = os.getenv('NOTIFY_JOB_QUEUE', 'notify-jobs-queue')
+    NOTIFY_JOB_QUEUE = os.environ['NOTIFY_JOB_QUEUE']
     # Notification Queue names are a combination of a prefx plus a name
-    NOTIFICATION_QUEUE_PREFIX = 'notification'
-    VERIFY_CODE_FROM_EMAIL_ADDRESS = 'notify@digital.cabinet-office.gov.uk'
+    NOTIFICATION_QUEUE_PREFIX = os.environ['NOTIFICATION_QUEUE_PREFIX']
+    SECRET_KEY = os.environ['SECRET_KEY']
+    SQLALCHEMY_COMMIT_ON_TEARDOWN = False
+    SQLALCHEMY_DATABASE_URI = os.environ['SQLALCHEMY_DATABASE_URI']
+    SQLALCHEMY_RECORD_QUERIES = True
+    VERIFY_CODE_FROM_EMAIL_ADDRESS=os.environ['VERIFY_CODE_FROM_EMAIL_ADDRESS']
 
 
 class Development(Config):
     DEBUG = True
-    SECRET_KEY = 'secret-key'
-    DANGEROUS_SALT = 'dangerous-salt'
-    ADMIN_CLIENT_USER_NAME = 'dev-notify-admin'
-    ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
-    DELIVERY_CLIENT_USER_NAME = 'dev-notify-delivery'
-    DELIVERY_CLIENT_SECRET = 'dev-notify-secret-key'
-    NOTIFICATION_QUEUE_PREFIX = 'notification_development'
-    VERIFY_CODE_FROM_EMAIL_ADDRESS = 'notify-tests-preview@digital.cabinet-office.gov.uk'
 
 
 class Test(Development):
-    SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/test_notification_api'
-    NOTIFICATION_QUEUE_PREFIX = 'notification_test'
-
-
-class Preview(Config):
-    NOTIFICATION_QUEUE_PREFIX = 'notification_preview'
-    VERIFY_CODE_FROM_EMAIL_ADDRESS = 'notify-tests-preview@digital.cabinet-office.gov.uk'
-
-
-class Staging(Config):
-    NOTIFICATION_QUEUE_PREFIX = 'notification_staging'
-
-
-class Live(Config):
-    NOTIFICATION_QUEUE_PREFIX = 'notification_live'
-
-
-configs = {
-    'development': Development,
-    'preview': Preview,
-    'staging': Staging,
-    'test': Test,
-    'live': Live,
-}
+    pass

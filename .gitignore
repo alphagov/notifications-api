@@ -61,3 +61,4 @@ target/
 
 # Mac
 *.DS_Store
+environment.sh

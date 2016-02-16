@@ -114,7 +114,7 @@ def test_create_job(notify_api, notify_db, notify_db_session, sample_template):
     assert resp_json['data']['original_file_name'] == original_file_name
 
     boto3.setup_default_session(region_name='eu-west-1')
-    q = boto3.resource('sqs').get_queue_by_name(QueueName='notify-jobs-queue')
+    q = boto3.resource('sqs').get_queue_by_name(QueueName=notify_api.config['NOTIFY_JOB_QUEUE'])
     messages = q.receive_messages()
     assert len(messages) == 1
 
