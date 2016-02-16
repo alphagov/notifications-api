@@ -20,6 +20,7 @@ class Config(object):
     NOTIFY_JOB_QUEUE = os.getenv('NOTIFY_JOB_QUEUE', 'notify-jobs-queue')
     # Notification Queue names are a combination of a prefx plus a name
     NOTIFICATION_QUEUE_PREFIX = 'notification'
+    VERIFY_CODE_FROM_EMAIL_ADDRESS = 'notify@digital.cabinet-office.gov.uk'
 
 
 class Development(Config):
@@ -31,6 +32,7 @@ class Development(Config):
     DELIVERY_CLIENT_USER_NAME = 'dev-notify-delivery'
     DELIVERY_CLIENT_SECRET = 'dev-notify-secret-key'
     NOTIFICATION_QUEUE_PREFIX = 'notification_development'
+    VERIFY_CODE_FROM_EMAIL_ADDRESS = 'notify-tests-preview@digital.cabinet-office.gov.uk'
 
 
 class Test(Development):
@@ -40,6 +42,7 @@ class Test(Development):
 
 class Preview(Config):
     NOTIFICATION_QUEUE_PREFIX = 'notification_preview'
+    VERIFY_CODE_FROM_EMAIL_ADDRESS = 'notify-tests-preview@digital.cabinet-office.gov.uk'
 
 
 class Staging(Config):

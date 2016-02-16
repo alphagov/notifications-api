@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import (jsonify, request, abort, Blueprint)
+from flask import (jsonify, request, abort, Blueprint, current_app)
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 from app.dao.services_dao import get_model_services
@@ -141,7 +141,7 @@ def send_user_code(user_id):
         email = user.email_address if verify_code.get('to', None) is None else verify_code.get('to')
         notification = {
             'to_address': email,
-            'from_address': 'notify@digital.cabinet-office.gov.uk',
+            'from_address': current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
             'subject': 'Verification code',
             'body': secret_code}
         add_notification_to_queue(api_user['client'], 'admin', 'email', notification)
