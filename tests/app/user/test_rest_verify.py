@@ -294,17 +294,14 @@ def test_send_user_code_for_sms_with_optional_to_field(notify_api,
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             assert resp.status_code == 204
-            encrpyted = encryption.encrypt({'to': '+441119876757', 'secret_code': '11111'})
-            app.celery.tasks.send_sms_code.apply_async.assert_called_once_with([encrpyted], queue='sms_code')
+            encrypted = encryption.encrypt({'to': '+441119876757', 'secret_code': '11111'})
+            app.celery.tasks.send_sms_code.apply_async.assert_called_once_with([encrypted], queue='sms_code')
 
 
-@moto.mock_sqs
 def test_send_user_code_for_email(notify_api,
-                                  notify_db,
-                                  notify_db_session,
                                   sample_email_code,
-                                  sqs_client_conn,
-                                  mock_secret_code):
+                                  mock_secret_code,
+                                  mock_celery_send_email_code):
     """
    Tests POST endpoint '/<user_id>/code' successful email
    """
@@ -320,15 +317,18 @@ def test_send_user_code_for_email(notify_api,
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 204
+            notification = {'to_address': sample_email_code.user.email_address,
+                            'from_address': notify_api.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
+                            'subject': 'Verification code',
+                            'body': 11111}
+            encrypted = encryption.encrypt([notification])
+            app.celery.tasks.send_email_code.apply_async.assert_called_once_with([encrypted], queue='email_code')
 
 
-@moto.mock_sqs
 def test_send_user_code_for_email_uses_optional_to_field(notify_api,
-                                                         notify_db,
-                                                         notify_db_session,
                                                          sample_email_code,
-                                                         sqs_client_conn,
-                                                         mock_secret_code):
+                                                         mock_secret_code,
+                                                         mock_celery_send_email_code):
     """
    Tests POST endpoint '/<user_id>/code' successful email with included in body
    """
@@ -344,6 +344,13 @@ def test_send_user_code_for_email_uses_optional_to_field(notify_api,
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 204
+            notification = json.dumps({'to_address': 'different@email.gov.uk',
+                            'from_address': 'no-reply@notify.works',
+                            'subject': 'Verification code',
+                            'body': '11111'})
+
+            encrypted = encryption.encrypt([notification])
+            app.celery.tasks.send_email_code.apply_async.assert_called_once_with([encrypted], queue='email_code')
 
 
 def test_request_verify_code_schema_invalid_code_type(notify_api, notify_db, notify_db_session, sample_user):

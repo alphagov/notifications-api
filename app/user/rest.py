@@ -5,7 +5,6 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app import encryption
 from app.dao.services_dao import get_model_services
-from app.aws_sqs import add_notification_to_queue
 from app.dao.users_dao import (
     get_model_users,
     save_model_user,
@@ -19,8 +18,7 @@ from app.dao.users_dao import (
 from app.schemas import (
     user_schema, users_schema, service_schema, services_schema,
     request_verify_code_schema, user_schema_load_json)
-from app import api_user
-from app.celery.tasks import send_sms_code
+from app.celery.tasks import (send_sms_code, send_email_code)
 
 user = Blueprint('user', __name__)
 
@@ -141,12 +139,13 @@ def send_user_code(user_id):
         send_sms_code.apply_async([encryption.encrypt(notification)], queue='sms_code')
     elif verify_code.get('code_type') == 'email':
         email = user.email_address if verify_code.get('to', None) is None else verify_code.get('to')
-        notification = {
+        import json
+        notification = json.dumps({
             'to_address': email,
             'from_address': current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
             'subject': 'Verification code',
-            'body': secret_code}
-        add_notification_to_queue(api_user['client'], 'admin', 'email', notification)
+            'body': secret_code})
+        send_email_code.apply_async([encryption.encrypt(notification)], queue='email_code')
     else:
         abort(500)
     return jsonify({}), 204
