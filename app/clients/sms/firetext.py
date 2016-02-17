@@ -40,7 +40,7 @@ class FiretextClient(SmsClient):
             response.raise_for_status()
         except RequestException as e:
             api_error = HTTPError.create(e)
-            print(
+            logger.error(
                 "API {} request on {} failed with {} '{}'".format(
                     "POST",
                     "https://www.firetext.co.uk/api/sendsms",

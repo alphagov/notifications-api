@@ -1,4 +1,5 @@
-from app import notify_celery, encryption, firetext_client
+from app import notify_celery, encryption, firetext_client, aws_ses_client
+from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
 from app.dao.templates_dao import get_model_templates
 from app.dao.notifications_dao import save_notification
@@ -37,6 +38,20 @@ def send_sms_code(encrypted_notification):
     notification = encryption.decrypt(encrypted_notification)
 
     try:
-        firetext_client.send_sms(notification['to'], notification['secret_code'])
+        response = firetext_client.send_sms(notification['to'], notification['secret_code'])
+        current_app.logger.info(response)
     except FiretextClientException as e:
-        current_app.logger.debug(e)
+        current_app.logger.error(e)
+
+
+@notify_celery.task(name='send-email-code')
+def send_email_code(encrypted_notification):
+    content = encryption.decrypt(encrypted_notification)
+
+    try:
+        aws_ses_client.send_email(content['from_address'],
+                                  content['to_address'],
+                                  content['subject'],
+                                  content['body'])
+    except AwsSesClientException as e:
+        current_app.logger.error(e)
