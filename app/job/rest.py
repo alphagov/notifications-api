@@ -47,6 +47,9 @@ def get_job_for_service(service_id, job_id=None):
             return jsonify(result="error", message="Invalid job id"), 400
         except NoResultFound:
             return jsonify(result="error", message="Job not found"), 404
+        except Exception as e:
+            current_app.logger.exception(e)
+            return jsonify(result="error", message=str(e)), 500
     else:
         jobs = get_jobs_by_service(service_id)
         data, errors = jobs_schema.dump(jobs)
@@ -62,6 +65,7 @@ def create_job(service_id):
         save_job(job)
         _enqueue_job(job)
     except Exception as e:
+        current_app.logger.exception(e)
         return jsonify(result="error", message=str(e)), 500
     return jsonify(data=job_schema.dump(job).data), 201
 
@@ -76,7 +80,8 @@ def update_job(service_id, job_id):
     try:
         save_job(job, update_dict=update_dict)
     except Exception as e:
-        return jsonify(result="error", message=str(e)), 400
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
     return jsonify(data=job_schema.dump(job).data), 200
 
 
@@ -91,6 +96,7 @@ def create_notification_for_job(service_id, job_id):
     try:
         save_notification(notification)
     except Exception as e:
+        current_app.logger.exception(e)
         return jsonify(result="error", message=str(e)), 500
     return jsonify(data=notification_status_schema.dump(notification).data), 201
 
@@ -107,6 +113,9 @@ def get_notification_for_job(service_id, job_id, notification_id=None):
             return jsonify(result="error", message="Invalid notification id"), 400
         except NoResultFound:
             return jsonify(result="error", message="Notification not found"), 404
+        except Exception as e:
+            current_app.logger.exception(e)
+            return jsonify(result="error", message=str(e)), 500
     else:
         notifications = get_notifications(service_id, job_id)
         data, errors = notifications_status_schema.dump(notifications)
@@ -124,7 +133,8 @@ def update_notification_for_job(service_id, job_id, notification_id):
     try:
         save_notification(notification, update_dict=update_dict)
     except Exception as e:
-        return jsonify(result="error", message=str(e)), 400
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
 
     return jsonify(data=job_schema.dump(notification).data), 200
 

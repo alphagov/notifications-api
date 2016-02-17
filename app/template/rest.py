@@ -1,5 +1,9 @@
-from flask import Blueprint
-from flask import (jsonify)
+from flask import (
+    Blueprint,
+    jsonify,
+    current_app
+)
+
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -21,6 +25,9 @@ def get_template(template_id=None):
         return jsonify(result="error", message="Invalid template id"), 400
     except NoResultFound:
         return jsonify(result="error", message="Template not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
     if isinstance(templates, list):
         data, errors = templates_schema.dump(templates)
     else:

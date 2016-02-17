@@ -1,9 +1,9 @@
 import json
-from datetime import datetime
-from sqlalchemy.orm import load_only
-from . import DAOException
+
+from app.dao import DAOException
+
 from app import db
-from app.models import (Service, User)
+from app.models import Service
 
 
 def save_model_service(service, update_dict=None):
