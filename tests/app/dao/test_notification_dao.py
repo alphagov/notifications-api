@@ -3,7 +3,8 @@ from app.models import Notification
 from app.dao.notifications_dao import (
     save_notification,
     get_notification,
-    get_notifications
+    get_notification_for_job,
+    get_notifications_for_job
 )
 
 
@@ -31,6 +32,13 @@ def test_save_notification(notify_db, notify_db_session, sample_template, sample
     assert 'sent' == notification_from_db.status
 
 
+def test_get_notification(notify_db, notify_db_session, sample_notification):
+    notifcation_from_db = get_notification(
+        sample_notification.service.id,
+        sample_notification.id)
+    assert sample_notification == notifcation_from_db
+
+
 def test_save_notification_no_job_id(notify_db, notify_db_session, sample_template):
 
     assert Notification.query.count() == 0
@@ -54,9 +62,10 @@ def test_save_notification_no_job_id(notify_db, notify_db_session, sample_templa
 
 
 def test_get_notification_for_job(notify_db, notify_db_session, sample_notification):
-    notifcation_from_db = get_notification(sample_notification.service.id,
-                                           sample_notification.job_id,
-                                           sample_notification.id)
+    notifcation_from_db = get_notification_for_job(
+        sample_notification.service.id,
+        sample_notification.job_id,
+        sample_notification.id)
     assert sample_notification == notifcation_from_db
 
 
@@ -70,7 +79,7 @@ def test_get_all_notifications_for_job(notify_db, notify_db_session, sample_job)
                             template=sample_job.template,
                             job=sample_job)
 
-    notifcations_from_db = get_notifications(sample_job.service.id, sample_job.id)
+    notifcations_from_db = get_notifications_for_job(sample_job.service.id, sample_job.id)
     assert len(notifcations_from_db) == 5
 
 
