@@ -31,6 +31,10 @@ from app.schemas import (
 job = Blueprint('job', __name__, url_prefix='/service/<service_id>/job')
 
 
+from app.errors import register_errors
+register_errors(job)
+
+
 @job.route('/<job_id>', methods=['GET'])
 @job.route('', methods=['GET'])
 def get_job_for_service(service_id, job_id=None):
@@ -54,11 +58,10 @@ def create_job(service_id):
     job, errors = job_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
-    try:
-        save_job(job)
-        _enqueue_job(job)
-    except Exception as e:
-        return jsonify(result="error", message=str(e)), 500
+
+    save_job(job)
+    _enqueue_job(job)
+
     return jsonify(data=job_schema.dump(job).data), 201
 
 
@@ -69,10 +72,9 @@ def update_job(service_id, job_id):
     update_dict, errors = job_schema_load_json.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
-    try:
-        save_job(job, update_dict=update_dict)
-    except Exception as e:
-        return jsonify(result="error", message=str(e)), 400
+
+    save_job(job, update_dict=update_dict)
+
     return jsonify(data=job_schema.dump(job).data), 200
 
 
@@ -84,10 +86,9 @@ def create_notification_for_job(service_id, job_id):
     notification, errors = notification_status_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
-    try:
-        notifications_dao.save_notification(notification)
-    except Exception as e:
-        return jsonify(result="error", message=str(e)), 500
+
+    notifications_dao.save_notification(notification)
+
     return jsonify(data=notification_status_schema.dump(notification).data), 201
 
 
@@ -117,10 +118,8 @@ def update_notification_for_job(service_id, job_id, notification_id):
 
     if errors:
         return jsonify(result="error", message=errors), 400
-    try:
-        notifications_dao.save_notification(notification, update_dict=update_dict)
-    except Exception as e:
-        return jsonify(result="error", message=str(e)), 400
+
+    notifications_dao.save_notification(notification, update_dict=update_dict)
 
     return jsonify(data=job_schema.dump(notification).data), 200
 

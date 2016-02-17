@@ -19,6 +19,9 @@ from sqlalchemy.orm.exc import NoResultFound
 
 notifications = Blueprint('notifications', __name__)
 
+from app.errors import register_errors
+register_errors(notifications)
+
 
 def create_notification_id():
     return str(uuid.uuid4())
