@@ -1,20 +1,20 @@
-import pytest
-import mock
 import os
+
 import boto3
-from config import configs
+import mock
+import pytest
 from alembic.command import upgrade
 from alembic.config import Config
 from flask.ext.migrate import Migrate, MigrateCommand
 from flask.ext.script import Manager
 from sqlalchemy.schema import MetaData
+
 from app import create_app, db
-from app import models
 
 
 @pytest.fixture(scope='session')
 def notify_api(request):
-    app = create_app('test')
+    app = create_app()
     ctx = app.app_context()
     ctx.push()
 
