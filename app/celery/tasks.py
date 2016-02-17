@@ -1,5 +1,5 @@
-from app import notify_celery, twilio_client, encryption, firetext_client
-from app.clients.sms.twilio import TwilioClientException
+from app import notify_celery, encryption, firetext_client
+from app.clients.sms.firetext import FiretextClientException
 from app.dao.templates_dao import get_model_templates
 from app.dao.notifications_dao import save_notification
 from app.models import Notification
@@ -23,9 +23,8 @@ def send_sms(service_id, notification_id, encrypted_notification):
         save_notification(notification_db_object)
 
         try:
-            twilio_client.send_sms(notification['to'], template.content)
             firetext_client.send_sms(notification['to'], template.content)
-        except TwilioClientException as e:
+        except FiretextClientException as e:
             current_app.logger.debug(e)
             save_notification(notification_db_object, {"status": "failed"})
 

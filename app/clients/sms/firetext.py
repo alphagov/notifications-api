@@ -19,7 +19,6 @@ class FiretextClient(SmsClient):
 
     def init_app(self, config, *args, **kwargs):
         super(SmsClient, self).__init__(*args, **kwargs)
-        print(config.config)
         self.api_key = config.config.get('FIRETEXT_API_KEY')
         self.from_number = config.config.get('FIRETEXT_NUMBER')
 
@@ -31,8 +30,6 @@ class FiretextClient(SmsClient):
             "to": to.replace('+', ''),
             "message": content
         }
-
-        print(data)
 
         try:
             response = request(
