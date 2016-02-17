@@ -1,5 +1,4 @@
 import os
-from datetime import timedelta
 
 
 class Config(object):
@@ -26,7 +25,7 @@ class Config(object):
         'region': 'eu-west-1',
         'polling_interval': 10,  # 1 second
         'visibility_timeout': 3600,  # 1 hour
-        'queue_name_prefix': 'NOTIFY-CELERY-TEST-'
+        'queue_name_prefix': 'preview'
     }
     CELERY_ENABLE_UTC = True,
     CELERY_TIMEZONE = 'Europe/London'

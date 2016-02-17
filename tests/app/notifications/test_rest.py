@@ -30,7 +30,6 @@ def test_get_notification_by_id(notify_api, sample_notification):
 def test_get_notifications_empty_result(notify_api, sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             missing_notification_id = uuid.uuid4()
             auth_header = create_authorization_header(
                 service_id=sample_api_key.service_id,
@@ -222,7 +221,8 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 (str(sample_template.service_id),
                  notification_id,
-                 "something_encrypted")
+                 "something_encrypted"),
+                queue="sms"
             )
             assert response.status_code == 201
             assert notification_id
