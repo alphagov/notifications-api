@@ -8,12 +8,14 @@ from werkzeug.local import LocalProxy
 from utils import logging
 from app.celery.celery import NotifyCelery
 from app.clients.sms.twilio import TwilioClient
+from app.clients.sms.firetext import FiretextClient
 from app.encryption import Encryption
 
 db = SQLAlchemy()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
 twilio_client = TwilioClient()
+firetext_client = FiretextClient()
 encryption = Encryption()
 
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
@@ -30,6 +32,7 @@ def create_app():
     init_app(application)
     logging.init_app(application)
     twilio_client.init_app(application)
+    firetext_client.init_app(application)
     notify_celery.init_app(application)
     encryption.init_app(application)
 
