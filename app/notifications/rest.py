@@ -49,7 +49,8 @@ def create_sms_notification():
     send_sms.apply_async((
         api_user['client'],
         notification_id,
-        encryption.encrypt(notification)))
+        encryption.encrypt(notification)),
+        queue='sms')
     return jsonify({'notification_id': notification_id}), 201
 
 
