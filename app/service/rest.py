@@ -1,11 +1,16 @@
 from datetime import datetime
 
-from flask import (jsonify, request)
+from flask import (
+    jsonify,
+    request,
+    current_app
+)
+
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import db
 from app.dao import DAOException
+
 from app.dao.services_dao import (
     save_model_service, get_model_services, delete_model_service)
 from app.dao.templates_dao import (
@@ -32,6 +37,9 @@ def create_service():
         save_model_service(service)
     except DAOException as e:
         return jsonify(result="error", message=str(e)), 400
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
     return jsonify(data=service_schema.dump(service).data), 201
 
 
@@ -43,6 +51,9 @@ def update_service(service_id):
         return jsonify(result="error", message="Invalid service id"), 400
     except NoResultFound:
         return jsonify(result="error", message="Service not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
     if request.method == 'DELETE':
         status_code = 202
         delete_model_service(service)
@@ -53,8 +64,9 @@ def update_service(service_id):
             return jsonify(result="error", message=errors), 400
         try:
             save_model_service(service, update_dict=update_dict)
-        except DAOException as e:
-            return jsonify(result="error", message=str(e)), 400
+        except Exception as e:
+            current_app.logger.exception(e)
+            return jsonify(result="error", message=str(e)), 500
     return jsonify(data=service_schema.dump(service).data), status_code
 
 
@@ -68,6 +80,9 @@ def get_service(service_id=None):
         return jsonify(result="error", message="Invalid service id"), 400
     except NoResultFound:
         return jsonify(result="error", message="Service not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
     data, errors = services_schema.dump(services) if isinstance(services, list) else service_schema.dump(services)
     return jsonify(data=data)
 
@@ -80,6 +95,9 @@ def renew_api_key(service_id=None):
         return jsonify(result="error", message="Invalid service id"), 400
     except NoResultFound:
         return jsonify(result="error", message="Service not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
 
     try:
         # create a new one
@@ -87,8 +105,8 @@ def renew_api_key(service_id=None):
         secret_name = request.get_json()['name']
         key = ApiKey(service=service, name=secret_name)
         save_model_api_key(key)
-    except DAOException as e:
-        return jsonify(result='error', message=str(e)), 400
+    except Exception as e:
+        return jsonify(result='error', message=str(e)), 500
     unsigned_api_key = get_unsigned_secret(key.id)
     return jsonify(data=unsigned_api_key), 201
 
@@ -97,13 +115,15 @@ def renew_api_key(service_id=None):
 def revoke_api_key(service_id, api_key_id):
     try:
         service_api_key = get_model_api_keys(service_id=service_id, id=api_key_id)
+        save_model_api_key(service_api_key, update_dict={'id': service_api_key.id, 'expiry_date': datetime.utcnow()})
+        return jsonify(), 202
     except DataError:
         return jsonify(result="error", message="Invalid  api key for service"), 400
     except NoResultFound:
         return jsonify(result="error", message="Api key not found for service"), 404
-
-    save_model_api_key(service_api_key, update_dict={'id': service_api_key.id, 'expiry_date': datetime.utcnow()})
-    return jsonify(), 202
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
 
 
 @service.route('/<service_id>/api-keys', methods=['GET'])
@@ -115,16 +135,22 @@ def get_api_keys(service_id, key_id=None):
         return jsonify(result="error", message="Invalid service id"), 400
     except NoResultFound:
         return jsonify(result="error", message="Service not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
 
     try:
         if key_id:
             api_keys = [get_model_api_keys(service_id=service_id, id=key_id)]
         else:
             api_keys = get_model_api_keys(service_id=service_id)
-    except DAOException as e:
+    except DataError as e:
         return jsonify(result='error', message=str(e)), 400
     except NoResultFound:
         return jsonify(result="error", message="API key not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
 
     return jsonify(apiKeys=api_keys_schema.dump(api_keys).data), 200
 
@@ -133,18 +159,21 @@ def get_api_keys(service_id, key_id=None):
 def create_template(service_id):
     try:
         service = get_model_services(service_id=service_id)
+        template, errors = template_schema.load(request.get_json())
+        if errors:
+            return jsonify(result="error", message=errors), 400
+        template.service = service
+        # I believe service is already added to the session but just needs a
+        # db.session.commit
+        save_model_template(template)
+        return jsonify(data=template_schema.dump(template).data), 201
     except DataError:
         return jsonify(result="error", message="Invalid service id"), 400
     except NoResultFound:
         return jsonify(result="error", message="Service not found"), 404
-    template, errors = template_schema.load(request.get_json())
-    if errors:
-        return jsonify(result="error", message=errors), 400
-    template.service = service
-    # I believe service is already added to the session but just needs a
-    # db.session.commit
-    save_model_template(template)
-    return jsonify(data=template_schema.dump(template).data), 201
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
 
 
 @service.route('/<service_id>/template/<int:template_id>', methods=['PUT', 'DELETE'])
@@ -155,12 +184,18 @@ def update_template(service_id, template_id):
         return jsonify(result="error", message="Invalid service id"), 400
     except NoResultFound:
         return jsonify(result="error", message="Service not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
     try:
         template = get_model_templates(template_id=template_id)
     except DataError:
         return jsonify(result="error", message="Invalid template id"), 400
     except NoResultFound:
         return jsonify(result="error", message="Template not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
     if request.method == 'DELETE':
         status_code = 202
         delete_model_template(template)
@@ -171,8 +206,8 @@ def update_template(service_id, template_id):
             return jsonify(result="error", message=errors), 400
         try:
             save_model_template(template, update_dict=update_dict)
-        except DAOException as e:
-            return jsonify(result="error", message=str(e)), 400
+        except Exception as e:
+            return jsonify(result="error", message=str(e)), 500
     return jsonify(data=template_schema.dump(template).data), status_code
 
 
@@ -185,6 +220,9 @@ def get_service_template(service_id, template_id=None):
         return jsonify(result="error", message="Invalid template id"), 400
     except NoResultFound:
         return jsonify(result="error", message="Template not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
     if isinstance(templates, list):
         data, errors = templates_schema.dump(templates)
     else:

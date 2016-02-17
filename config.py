@@ -17,7 +17,7 @@ class Config(object):
     SECRET_KEY = os.environ['SECRET_KEY']
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False
     SQLALCHEMY_DATABASE_URI = os.environ['SQLALCHEMY_DATABASE_URI']
-    SQLALCHEMY_RECORD_QUERIES = True
+    SQLALCHEMY_RECORD_QUERIES = False
     VERIFY_CODE_FROM_EMAIL_ADDRESS = os.environ['VERIFY_CODE_FROM_EMAIL_ADDRESS']
 
     BROKER_URL = 'sqs://'
@@ -45,6 +45,7 @@ class Config(object):
 
 class Development(Config):
     DEBUG = True
+    SQLALCHEMY_RECORD_QUERIES = True
 
 
 class Test(Development):

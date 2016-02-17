@@ -1,7 +1,15 @@
 from datetime import datetime
-from flask import (jsonify, request, abort, Blueprint, current_app)
+from flask import (
+    jsonify,
+    request,
+    abort,
+    Blueprint,
+    current_app
+)
+
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
+
 from app.dao.services_dao import get_model_services
 from app.aws_sqs import add_notification_to_queue
 from app.dao.users_dao import (
@@ -33,7 +41,13 @@ def create_user():
         return jsonify(result="error", message=errors), 400
     if errors:
         return jsonify(result="error", message=errors), 400
-    save_model_user(user, pwd=req_json.get('password'))
+
+    try:
+        save_model_user(user, pwd=req_json.get('password'))
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
+
     return jsonify(data=user_schema.dump(user).data), 201
 
 
@@ -45,6 +59,10 @@ def update_user(user_id):
         return jsonify(result="error", message="Invalid user id"), 400
     except NoResultFound:
         return jsonify(result="error", message="User not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
+
     if request.method == 'DELETE':
         status_code = 202
         delete_model_user(user)
@@ -71,6 +89,9 @@ def verify_user_password(user_id):
         return jsonify(result="error", message="Invalid user id"), 400
     except NoResultFound:
         return jsonify(result="error", message="User not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
     txt_pwd = None
     try:
         txt_pwd = request.get_json()['password']
@@ -94,6 +115,10 @@ def verify_user_code(user_id):
         return jsonify(result="error", message="Invalid user id"), 400
     except NoResultFound:
         return jsonify(result="error", message="User not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
+
     txt_code = None
     resp_json = request.get_json()
     txt_type = None
@@ -125,6 +150,9 @@ def send_user_code(user_id):
         return jsonify(result="error", message="Invalid user id"), 400
     except NoResultFound:
         return jsonify(result="error", message="User not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
 
     verify_code, errors = request_verify_code_schema.load(request.get_json())
     if errors:
@@ -159,6 +187,9 @@ def get_user(user_id=None):
         return jsonify(result="error", message="Invalid user id"), 400
     except NoResultFound:
         return jsonify(result="error", message="User not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
     result = users_schema.dump(users) if isinstance(users, list) else user_schema.dump(users)
     return jsonify(data=result.data)
 
@@ -172,6 +203,9 @@ def get_service_by_user_id(user_id, service_id=None):
         return jsonify(result="error", message="Invalid user id"), 400
     except NoResultFound:
         return jsonify(result="error", message="User not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
 
     try:
         services = get_model_services(user_id=user.id, service_id=service_id)
@@ -179,5 +213,9 @@ def get_service_by_user_id(user_id, service_id=None):
         return jsonify(result="error", message="Invalid service id"), 400
     except NoResultFound:
         return jsonify(result="error", message="Service not found"), 404
+    except Exception as e:
+        current_app.logger.exception(e)
+        return jsonify(result="error", message=str(e)), 500
+
     services, errors = services_schema.dump(services) if isinstance(services, list) else service_schema.dump(services)
     return jsonify(data=services)
