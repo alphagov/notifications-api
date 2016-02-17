@@ -25,7 +25,7 @@ class Config(object):
         'region': 'eu-west-1',
         'polling_interval': 1,  # 1 second
         'visibility_timeout': 60,  # 60 seconds
-        'queue_name_prefix': os.environ['NOTIFICATION_QUEUE_PREFIX']
+        'queue_name_prefix': os.environ['NOTIFICATION_QUEUE_PREFIX']+'-'
     }
     CELERY_ENABLE_UTC = True,
     CELERY_TIMEZONE = 'Europe/London'

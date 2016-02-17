@@ -1,7 +1,7 @@
 import uuid
 import pytest
-from app.celery.tasks import send_sms
-from app import twilio_client
+from app.celery.tasks import (send_sms, send_sms_code)
+from app import twilio_client, encryption
 from app.clients.sms.twilio import TwilioClientException
 from app.dao import notifications_dao
 from sqlalchemy.exc import SQLAlchemyError
@@ -74,3 +74,24 @@ def test_should_not_send_sms_if_db_peristance_failed(sample_template, mocker):
     with pytest.raises(NoResultFound) as e:
         notifications_dao.get_notification(sample_template.service_id, notification_id)
     assert 'No row was found for one' in str(e.value)
+
+
+def test_should_send_sms_code(mocker):
+    notification = {'to': '+441234123123',
+                    'secret_code': '12345'}
+
+    encrypted_notification = encryption.encrypt(notification)
+
+    mocker.patch('app.twilio_client.send_sms')
+    send_sms_code(encrypted_notification)
+    twilio_client.send_sms.assert_called_once_with(notification['to'], notification['secret_code'])
+
+
+def test_should_throw_twilio_exception(mocker):
+    notification = {'to': '+441234123123',
+                    'secret_code': '12345'}
+
+    encrypted_notification = encryption.encrypt(notification)
+    mocker.patch('app.twilio_client.send_sms', side_effect=TwilioClientException)
+    send_sms_code(encrypted_notification)
+    twilio_client.send_sms.assert_called_once_with(notification['to'], notification['secret_code'])
