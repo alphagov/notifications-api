@@ -37,6 +37,6 @@ def send_sms_code(encrypted_notification):
     notification = encryption.decrypt(encrypted_notification)
 
     try:
-        twilio_client.send_sms(notification['to'], notification['secret_code'])
-    except TwilioClientException as e:
+        firetext_client.send_sms(notification['to'], notification['secret_code'])
+    except FiretextClientException as e:
         current_app.logger.debug(e)

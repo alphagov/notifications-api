@@ -85,16 +85,16 @@ def test_should_send_sms_code(mocker):
 
     encrypted_notification = encryption.encrypt(notification)
 
-    mocker.patch('app.twilio_client.send_sms')
+    mocker.patch('app.firetext_client.send_sms')
     send_sms_code(encrypted_notification)
-    twilio_client.send_sms.assert_called_once_with(notification['to'], notification['secret_code'])
+    firetext_client.send_sms.assert_called_once_with(notification['to'], notification['secret_code'])
 
 
-def test_should_throw_twilio_exception(mocker):
+def test_should_log_firetext_client_exception(mocker):
     notification = {'to': '+441234123123',
                     'secret_code': '12345'}
 
     encrypted_notification = encryption.encrypt(notification)
-    mocker.patch('app.twilio_client.send_sms', side_effect=TwilioClientException)
+    mocker.patch('app.firetext_client.send_sms', side_effect=FiretextClientException)
     send_sms_code(encrypted_notification)
-    twilio_client.send_sms.assert_called_once_with(notification['to'], notification['secret_code'])
+    firetext_client.send_sms.assert_called_once_with(notification['to'], notification['secret_code'])
