@@ -1,22 +1,17 @@
 import os
-import re
-import ast
 
 from flask import request, url_for
-from flask._compat import string_types
 from flask import Flask, _request_ctx_stack
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from werkzeug.local import LocalProxy
 from utils import logging
-from notify_client import NotifyAPIClient
 from app.celery.celery import NotifyCelery
 from app.clients.sms.twilio import TwilioClient
 from app.encryption import Encryption
 
 db = SQLAlchemy()
 ma = Marshmallow()
-notify_alpha_client = NotifyAPIClient()
 notify_celery = NotifyCelery()
 twilio_client = TwilioClient()
 encryption = Encryption()
