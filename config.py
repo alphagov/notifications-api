@@ -41,6 +41,8 @@ class Config(object):
     TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
     TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
     TWILIO_NUMBER = os.getenv('TWILIO_NUMBER')
+    FIRETEXT_NUMBER = os.getenv('FIRETEXT_NUMBER')
+    FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
 
 
 class Development(Config):
