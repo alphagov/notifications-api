@@ -16,21 +16,26 @@ mkvirtualenv -p /usr/local/bin/python3 notifications-api
 
 Creating the environment.sh file. Replace [unique-to-environment] with your something unique to the environment. The local development environments are using the AWS on preview.
 
+Create a local environment.sh file containing the following:
+
 ```
 echo "
-export ADMIN_CLIENT_USER_NAME = 'dev-notify-admin'
-export ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
+export NOTIFY_API_ENVIRONMENT='config.Development'
+export ADMIN_CLIENT_SECRET='dev-notify-secret-key'
+export ADMIN_CLIENT_USER_NAME='dev-notify-admin'
 export AWS_REGION='eu-west-1'
-export DANGEROUS_SALT = 'dangerous-salt'
+export DANGEROUS_SALT='dev-notify-salt'
 export DELIVERY_CLIENT_USER_NAME='dev-notify-delivery'
 export DELIVERY_CLIENT_SECRET='dev-notify-secret-key'
-export NOTIFY_JOB_QUEUE='[unique-to-environment]-notify-jobs-queue'
-export NOTIFICATION_QUEUE_PREFIX='[unique-to-environment]-notification_development'
-export SECRET_KEY = 'secret-key'
+export NOTIFY_JOB_QUEUE='[unique-to-environment]-notify-jobs-queue' # NOTE unique prefix
+export NOTIFICATION_QUEUE_PREFIX='[unique-to-environment]-notification_development' # NOTE unique prefix
+export SECRET_KEY='dev-notify-secret-key'
 export SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/notification_api'
-export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.works' 
+export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.works'
 "> environment.sh
 ```
 
 NOTE: the DELIVERY_CLIENT_USER_NAME, DELIVERY_CLIENT_SECRET, NOTIFY_JOB_QUEUE and NOTIFICATION_QUEUE_PREFIX must be the same as the ones in the [notifications-delivery](https://github.com/alphagov/notifications-delivery) app.
-The SECRET_KEY and DANGEROUS_SALT are the same in [notifications-delivery](https://github.com/alphagov/notifications-delivery) and [notifications-admin](https://github.com/alphagov/notifications-admin) app
+The SECRET_KEY and DANGEROUS_SALT are the same in [notifications-delivery](https://github.com/alphagov/notifications-delivery) and [notifications-admin](https://github.com/alphagov/notifications-admin) app.
+
+NOTE:  Also note the  unique prefix for the queue names. This prevents clashing with others queues in shared amazon environment and using a prefix enables filtering by queue name in the SQS interface.
