@@ -1,4 +1,4 @@
-from app import notify_celery, twilio_client, db, encryption
+from app import notify_celery, twilio_client, encryption
 from app.clients.sms.twilio import TwilioClientException
 from app.dao.templates_dao import get_model_templates
 from app.dao.notifications_dao import save_notification
