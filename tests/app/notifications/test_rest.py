@@ -1,6 +1,6 @@
 import uuid
 import app.celery.tasks
-
+import moto
 from tests import create_authorization_header
 from flask import json
 from app.models import Service
@@ -228,6 +228,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
             assert notification_id
 
 
+@moto.mock_sqs
 def test_send_email_valid_data(notify_api,
                                notify_db,
                                notify_db_session,
@@ -261,6 +262,7 @@ def test_send_email_valid_data(notify_api,
             assert json.loads(response.data)['notification_id'] is not None
 
 
+@moto.mock_sqs
 def test_valid_message_with_service_id(notify_api,
                                        notify_db,
                                        notify_db_session,
@@ -292,6 +294,7 @@ def test_valid_message_with_service_id(notify_api,
             assert json.loads(response.data)['notification_id'] is not None
 
 
+@moto.mock_sqs
 def test_message_with_incorrect_service_id_should_fail(notify_api,
                                                        notify_db,
                                                        notify_db_session,
