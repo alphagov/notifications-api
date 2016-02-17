@@ -1,18 +1,20 @@
 import os
-import re
-import ast
 
 from flask import request, url_for
-from flask._compat import string_types
 from flask import Flask, _request_ctx_stack
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from werkzeug.local import LocalProxy
 from utils import logging
-
+from app.celery.celery import NotifyCelery
+from app.clients.sms.twilio import TwilioClient
+from app.encryption import Encryption
 
 db = SQLAlchemy()
 ma = Marshmallow()
+notify_celery = NotifyCelery()
+twilio_client = TwilioClient()
+encryption = Encryption()
 
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 
@@ -22,10 +24,14 @@ def create_app():
 
     application.config.from_object(os.environ['NOTIFY_API_ENVIRONMENT'])
 
+    init_app(application)
     db.init_app(application)
     ma.init_app(application)
     init_app(application)
     logging.init_app(application)
+    twilio_client.init_app(application)
+    notify_celery.init_app(application)
+    encryption.init_app(application)
 
     from app.service.rest import service as service_blueprint
     from app.user.rest import user as user_blueprint

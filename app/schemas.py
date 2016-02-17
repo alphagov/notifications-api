@@ -93,13 +93,6 @@ class SmsTemplateNotificationSchema(SmsNotificationSchema):
     template = fields.Int(required=True)
     job = fields.String()
 
-    @validates('template')
-    def validate_template(self, value):
-        if not models.Template.query.filter_by(id=value).first():
-            # TODO is this message consistent with what marshmallow
-            # would normally produce.
-            raise ValidationError('Template not found')
-
     @validates_schema
     def validate_schema(self, data):
         """

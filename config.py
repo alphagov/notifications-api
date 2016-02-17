@@ -20,6 +20,28 @@ class Config(object):
     SQLALCHEMY_RECORD_QUERIES = True
     VERIFY_CODE_FROM_EMAIL_ADDRESS = os.environ['VERIFY_CODE_FROM_EMAIL_ADDRESS']
 
+    BROKER_URL = 'sqs://'
+    BROKER_TRANSPORT_OPTIONS = {
+        'region': 'eu-west-1',
+        'polling_interval': 1,  # 1 second
+        'visibility_timeout': 60,  # 60 seconds
+        'queue_name_prefix': os.environ['NOTIFICATION_QUEUE_PREFIX']
+    }
+    CELERY_ENABLE_UTC = True,
+    CELERY_TIMEZONE = 'Europe/London'
+    CELERY_ACCEPT_CONTENT = ['json']
+    CELERY_TASK_SERIALIZER = 'json'
+    # CELERYBEAT_SCHEDULE = {
+    #     'refresh-queues': {
+    #         'task': 'refresh-services',
+    #         'schedule': timedelta(seconds=5)
+    #     }
+    # }
+    CELERY_IMPORTS = ('app.celery.tasks',)
+    TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
+    TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
+    TWILIO_NUMBER = os.getenv('TWILIO_NUMBER')
+
 
 class Development(Config):
     DEBUG = True

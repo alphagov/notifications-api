@@ -17,11 +17,7 @@ from app.dao.jobs_dao import (
     get_jobs_by_service
 )
 
-from app.dao.notifications_dao import (
-    save_notification,
-    get_notification,
-    get_notifications
-)
+from app.dao import notifications_dao
 
 from app.schemas import (
     job_schema,
@@ -89,7 +85,7 @@ def create_notification_for_job(service_id, job_id):
     if errors:
         return jsonify(result="error", message=errors), 400
     try:
-        save_notification(notification)
+        notifications_dao.save_notification(notification)
     except Exception as e:
         return jsonify(result="error", message=str(e)), 500
     return jsonify(data=notification_status_schema.dump(notification).data), 201
@@ -100,7 +96,7 @@ def create_notification_for_job(service_id, job_id):
 def get_notification_for_job(service_id, job_id, notification_id=None):
     if notification_id:
         try:
-            notification = get_notification(service_id, job_id, notification_id)
+            notification = notifications_dao.get_notification_for_job(service_id, job_id, notification_id)
             data, errors = notification_status_schema.dump(notification)
             return jsonify(data=data)
         except DataError:
@@ -108,7 +104,7 @@ def get_notification_for_job(service_id, job_id, notification_id=None):
         except NoResultFound:
             return jsonify(result="error", message="Notification not found"), 404
     else:
-        notifications = get_notifications(service_id, job_id)
+        notifications = notifications_dao.get_notifications_for_job(service_id, job_id)
         data, errors = notifications_status_schema.dump(notifications)
         return jsonify(data=data)
 
@@ -116,13 +112,13 @@ def get_notification_for_job(service_id, job_id, notification_id=None):
 @job.route('/<job_id>/notification/<notification_id>', methods=['PUT'])
 def update_notification_for_job(service_id, job_id, notification_id):
 
-    notification = get_notification(service_id, job_id, notification_id)
+    notification = notifications_dao.get_notification_for_job(service_id, job_id, notification_id)
     update_dict, errors = notification_status_schema_load_json.load(request.get_json())
 
     if errors:
         return jsonify(result="error", message=errors), 400
     try:
-        save_notification(notification, update_dict=update_dict)
+        notifications_dao.save_notification(notification, update_dict=update_dict)
     except Exception as e:
         return jsonify(result="error", message=str(e)), 400
 
