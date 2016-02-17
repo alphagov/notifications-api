@@ -1,7 +1,6 @@
 import pytest
-from flask import jsonify
 
-from app.models import (User, Service, Template, ApiKey, Job, VerifyCode, Notification)
+from app.models import (User, Service, Template, ApiKey, Job, Notification)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import save_model_service
 from app.dao.templates_dao import save_model_template
@@ -9,6 +8,18 @@ from app.dao.api_key_dao import save_model_api_key
 from app.dao.jobs_dao import save_job
 from app.dao.notifications_dao import save_notification
 import uuid
+
+
+@pytest.fixture(scope='function')
+def service_factory(notify_db, notify_db_session):
+    class ServiceFactory(object):
+        def get(self, service_name):
+            user = sample_user(notify_db, notify_db_session)
+            service = sample_service(notify_db, notify_db_session, service_name, user)
+            sample_template(notify_db, notify_db_session, service=service)
+            return service
+
+    return ServiceFactory()
 
 
 @pytest.fixture(scope='function')

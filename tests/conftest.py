@@ -60,6 +60,13 @@ def notify_db_session(request):
 
 
 @pytest.fixture(scope='function')
+def notify_config(notify_api):
+    notify_api.config['NOTIFY_API_ENVIRONMENT'] = 'test'
+    notify_api.config.from_object(configs['test'])
+    return notify_api.config
+
+
+@pytest.fixture(scope='function')
 def os_environ(request):
     env_patch = mock.patch('os.environ', {})
     request.addfinalizer(env_patch.stop)

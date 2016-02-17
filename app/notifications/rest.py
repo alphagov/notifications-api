@@ -6,30 +6,51 @@ from flask import (
     request
 )
 
-from app import api_user
+from app import api_user, encryption
 from app.aws_sqs import add_notification_to_queue
-from app.dao import (templates_dao)
+from app.dao import (templates_dao, notifications_dao)
 from app.schemas import (
-    email_notification_schema, sms_template_notification_schema)
+    email_notification_schema,
+    sms_template_notification_schema,
+    notification_status_schema
+)
+from app.celery.tasks import send_sms
+from sqlalchemy.orm.exc import NoResultFound
 
 notifications = Blueprint('notifications', __name__)
 
 
-@notifications.route('/<notification_id>', methods=['GET'])
+def create_notification_id():
+    return str(uuid.uuid4())
+
+
+@notifications.route('/<string:notification_id>', methods=['GET'])
 def get_notifications(notification_id):
-    # TODO return notification id details
-    return jsonify({'id': notification_id}), 200
+    try:
+        notification = notifications_dao.get_notification(api_user['client'], notification_id)
+        return jsonify({'notification': notification_status_schema.dump(notification).data}), 200
+    except NoResultFound:
+        return jsonify(result="error", message="not found"), 404
 
 
 @notifications.route('/sms', methods=['POST'])
 def create_sms_notification():
-    resp_json = request.get_json()
-
-    notification, errors = sms_template_notification_schema.load(resp_json)
+    notification, errors = sms_template_notification_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
 
-    notification_id = add_notification_to_queue(api_user['client'], notification['template'], 'sms', notification)
+    try:
+        templates_dao.get_model_templates(template_id=notification['template'], service_id=api_user['client'])
+    except NoResultFound:
+        return jsonify(result="error", message={'template': ['Template not found']}), 400
+
+    notification_id = create_notification_id()
+
+    send_sms.apply_async((
+        api_user['client'],
+        notification_id,
+        encryption.encrypt(notification)),
+        queue='sms')
     return jsonify({'notification_id': notification_id}), 201
 
 
