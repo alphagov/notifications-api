@@ -13,3 +13,5 @@ export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.works'
 export TWILIO_ACCOUNT_SID="test"
 export TWILIO_AUTH_TOKEN="test"
 export TWILIO_NUMBER="test"
+export FIRETEXT_API_KEY="Firetext"
+export FIRETEXT_NUMBER="Firetext"
