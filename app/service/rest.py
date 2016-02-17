@@ -1,10 +1,9 @@
 from datetime import datetime
 
-from flask import (jsonify, request)
+from flask import (jsonify, request, abort)
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import db
 from app.dao import DAOException
 from app.dao.services_dao import (
     save_model_service, get_model_services, delete_model_service)
@@ -19,6 +18,9 @@ from app.schemas import (
 from flask import Blueprint
 service = Blueprint('service', __name__)
 
+from app.errors import register_errors
+register_errors(service)
+
 
 @service.route('', methods=['POST'])
 def create_service():
@@ -31,7 +33,7 @@ def create_service():
     try:
         save_model_service(service)
     except DAOException as e:
-        return jsonify(result="error", message=str(e)), 400
+        return jsonify(result="error", message=str(e)), 500
     return jsonify(data=service_schema.dump(service).data), 201
 
 
@@ -54,7 +56,7 @@ def update_service(service_id):
         try:
             save_model_service(service, update_dict=update_dict)
         except DAOException as e:
-            return jsonify(result="error", message=str(e)), 400
+            return jsonify(result="error", message=str(e)), 500
     return jsonify(data=service_schema.dump(service).data), status_code
 
 
@@ -88,7 +90,7 @@ def renew_api_key(service_id=None):
         key = ApiKey(service=service, name=secret_name)
         save_model_api_key(key)
     except DAOException as e:
-        return jsonify(result='error', message=str(e)), 400
+        return jsonify(result='error', message=str(e)), 500
     unsigned_api_key = get_unsigned_secret(key.id)
     return jsonify(data=unsigned_api_key), 201
 
@@ -122,7 +124,7 @@ def get_api_keys(service_id, key_id=None):
         else:
             api_keys = get_model_api_keys(service_id=service_id)
     except DAOException as e:
-        return jsonify(result='error', message=str(e)), 400
+        return jsonify(result='error', message=str(e)), 500
     except NoResultFound:
         return jsonify(result="error", message="API key not found"), 404
 
@@ -172,7 +174,7 @@ def update_template(service_id, template_id):
         try:
             save_model_template(template, update_dict=update_dict)
         except DAOException as e:
-            return jsonify(result="error", message=str(e)), 400
+            return jsonify(result="error", message=str(e)), 500
     return jsonify(data=template_schema.dump(template).data), status_code
 
 

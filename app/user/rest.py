@@ -22,6 +22,9 @@ from app import api_user
 
 user = Blueprint('user', __name__)
 
+from app.errors import register_errors
+register_errors(user)
+
 
 @user.route('', methods=['POST'])
 def create_user():
