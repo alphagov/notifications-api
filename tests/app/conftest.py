@@ -202,3 +202,8 @@ def sample_notification(notify_db,
     notification = Notification(**data)
     save_notification(notification)
     return notification
+
+
+@pytest.fixture(scope='function')
+def mock_celery_send_sms_code(mocker):
+    return mocker.patch('app.celery.tasks.send_sms_code.apply_async')

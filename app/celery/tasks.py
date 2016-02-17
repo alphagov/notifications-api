@@ -30,3 +30,13 @@ def send_sms(service_id, notification_id, encrypted_notification):
 
     except SQLAlchemyError as e:
         current_app.logger.debug(e)
+
+
+@notify_celery.task(name='send-sms-code')
+def send_sms_code(encrypted_notification):
+    notification = encryption.decrypt(encrypted_notification)
+
+    try:
+        twilio_client.send_sms(notification['to'], notification['secret_code'])
+    except TwilioClientException as e:
+        current_app.logger.debug(e)
