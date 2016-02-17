@@ -146,7 +146,7 @@ def test_post_service_without_users_attribute(notify_api, notify_db, notify_db_s
                 url_for('service.create_service'),
                 data=json.dumps(data),
                 headers=headers)
-            assert resp.status_code == 400
+            assert resp.status_code == 500
             assert Service.query.count() == 0
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['message'] == '{"users": ["Missing data for required attribute"]}'
