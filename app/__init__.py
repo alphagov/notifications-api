@@ -9,6 +9,7 @@ from utils import logging
 from app.celery.celery import NotifyCelery
 from app.clients.sms.twilio import TwilioClient
 from app.clients.sms.firetext import FiretextClient
+from app.clients.email.aws_ses import AwsSesClient
 from app.encryption import Encryption
 
 db = SQLAlchemy()
@@ -16,6 +17,7 @@ ma = Marshmallow()
 notify_celery = NotifyCelery()
 twilio_client = TwilioClient()
 firetext_client = FiretextClient()
+aws_ses_client = AwsSesClient()
 encryption = Encryption()
 
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
@@ -33,6 +35,7 @@ def create_app():
     logging.init_app(application)
     twilio_client.init_app(application)
     firetext_client.init_app(application)
+    aws_ses_client.init_app(application.config['AWS_REGION'])
     notify_celery.init_app(application)
     encryption.init_app(application)
 
