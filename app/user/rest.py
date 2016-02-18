@@ -2,6 +2,8 @@ from datetime import datetime
 from flask import (jsonify, request, abort, Blueprint, current_app)
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
+
+from app import encryption
 from app.dao.services_dao import get_model_services
 from app.aws_sqs import add_notification_to_queue
 from app.dao.users_dao import (
@@ -18,7 +20,7 @@ from app.schemas import (
     user_schema, users_schema, service_schema, services_schema,
     request_verify_code_schema, user_schema_load_json)
 from app import api_user
-
+from app.celery.tasks import send_sms_code
 
 user = Blueprint('user', __name__)
 
@@ -138,16 +140,16 @@ def send_user_code(user_id):
     create_user_code(user, secret_code, verify_code.get('code_type'))
     if verify_code.get('code_type') == 'sms':
         mobile = user.mobile_number if verify_code.get('to', None) is None else verify_code.get('to')
-        notification = {'to': mobile, 'content': secret_code}
-        add_notification_to_queue(api_user['client'], 'admin', 'sms', notification)
+        verification_message = {'to': mobile, 'secret_code': secret_code}
+        send_sms_code.apply_async([encryption.encrypt(verification_message)], queue='sms_code')
     elif verify_code.get('code_type') == 'email':
         email = user.email_address if verify_code.get('to', None) is None else verify_code.get('to')
-        notification = {
+        verification_message = {
             'to_address': email,
             'from_address': current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
             'subject': 'Verification code',
             'body': secret_code}
-        add_notification_to_queue(api_user['client'], 'admin', 'email', notification)
+        add_notification_to_queue(api_user['client'], 'admin', 'email', verification_message)
     else:
         abort(500)
     return jsonify({}), 204

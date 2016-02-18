@@ -30,3 +30,13 @@ def send_sms(service_id, notification_id, encrypted_notification):
 
     except SQLAlchemyError as e:
         current_app.logger.debug(e)
+
+
+@notify_celery.task(name='send-sms-code')
+def send_sms_code(encrypted_verification):
+    verification_message = encryption.decrypt(encrypted_verification)
+
+    try:
+        firetext_client.send_sms(verification_message['to'], verification_message['secret_code'])
+    except FiretextClientException as e:
+        current_app.logger.debug(e)
