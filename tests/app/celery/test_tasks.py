@@ -98,17 +98,17 @@ def test_should_log_firetext_client_exception(mocker):
 
 
 def test_should_send_email_code(mocker):
-    notification = {'to_address': 'someone@it.gov.uk',
+    verification = {'to_address': 'someone@it.gov.uk',
                     'from_address': 'no-reply@notify.gov.uk',
                     'subject': 'Verification code',
                     'body': 11111}
 
-    encrypted_notification = encryption.encrypt(notification)
+    encrypted_verification = encryption.encrypt(verification)
     mocker.patch('app.aws_ses_client.send_email')
 
-    send_email_code(encrypted_notification)
+    send_email_code(encrypted_verification)
 
-    aws_ses_client.send_email.assert_called_once_with((notification['from_address'],
-                                                       notification['to_address'],
-                                                       notification['subject'],
-                                                       notification['body']))
+    aws_ses_client.send_email.assert_called_once_with(verification['from_address'],
+                                                      verification['to_address'],
+                                                      verification['subject'],
+                                                      verification['body'])
