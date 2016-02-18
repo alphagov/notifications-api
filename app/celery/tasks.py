@@ -45,13 +45,12 @@ def send_sms_code(encrypted_notification):
 
 
 @notify_celery.task(name='send-email-code')
-def send_email_code(encrypted_notification):
-    content = encryption.decrypt(encrypted_notification)
-
+def send_email_code(encrypted_verification_message):
+    verification_message = encryption.decrypt(encrypted_verification_message)
     try:
-        aws_ses_client.send_email(content['from_address'],
-                                  content['to_address'],
-                                  content['subject'],
-                                  content['body'])
+        aws_ses_client.send_email(verification_message['from_address'],
+                                  verification_message['to_address'],
+                                  verification_message['subject'],
+                                  verification_message['body'])
     except AwsSesClientException as e:
         current_app.logger.error(e)
