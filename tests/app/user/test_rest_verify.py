@@ -270,7 +270,7 @@ def test_send_user_code_for_sms(notify_api,
 
             assert resp.status_code == 204
             encrpyted = encryption.encrypt({'to': sample_sms_code.user.mobile_number, 'secret_code': '11111'})
-            app.celery.tasks.send_sms_code.apply_async.assert_called_once_with([encrpyted], queue='sms_code')
+            app.celery.tasks.send_sms_code.apply_async.assert_called_once_with([encrpyted], queue='sms-code')
 
 
 def test_send_user_code_for_sms_with_optional_to_field(notify_api,
@@ -295,7 +295,7 @@ def test_send_user_code_for_sms_with_optional_to_field(notify_api,
 
             assert resp.status_code == 204
             encrypted = encryption.encrypt({'to': '+441119876757', 'secret_code': '11111'})
-            app.celery.tasks.send_sms_code.apply_async.assert_called_once_with([encrypted], queue='sms_code')
+            app.celery.tasks.send_sms_code.apply_async.assert_called_once_with([encrypted], queue='sms-code')
 
 
 def test_send_user_code_for_email(notify_api,
@@ -320,7 +320,7 @@ def test_send_user_code_for_email(notify_api,
             assert resp.status_code == 204
 
             app.celery.tasks.send_email_code.apply_async.assert_called_once_with(['something_encrypted'],
-                                                                                 queue='email_code')
+                                                                                 queue='email-code')
 
 
 def test_send_user_code_for_email_uses_optional_to_field(notify_api,
@@ -345,7 +345,7 @@ def test_send_user_code_for_email_uses_optional_to_field(notify_api,
             assert resp.status_code == 204
 
             app.celery.tasks.send_email_code.apply_async.assert_called_once_with(['something_encrypted'],
-                                                                                 queue='email_code')
+                                                                                 queue='email-code')
 
 
 def test_request_verify_code_schema_invalid_code_type(notify_api, notify_db, notify_db_session, sample_user):
