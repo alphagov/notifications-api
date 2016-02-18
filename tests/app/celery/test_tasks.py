@@ -87,7 +87,7 @@ def test_should_send_sms_code(mocker):
     firetext_client.send_sms.assert_called_once_with(notification['to'], notification['secret_code'])
 
 
-def test_should_log_firetext_client_exception(mocker):
+def test_should_throw_firetext_client_exception(mocker):
     notification = {'to': '+441234123123',
                     'secret_code': '12345'}
 
