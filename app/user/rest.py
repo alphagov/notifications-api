@@ -1,7 +1,5 @@
 from datetime import datetime
 from flask import (jsonify, request, abort, Blueprint, current_app)
-from sqlalchemy.exc import DataError
-from sqlalchemy.orm.exc import NoResultFound
 
 from app import encryption
 from app.dao.services_dao import get_model_services
@@ -17,7 +15,8 @@ from app.dao.users_dao import (
 )
 from app.schemas import (
     user_schema, users_schema, service_schema, services_schema,
-    request_verify_code_schema, user_schema_load_json)
+    old_request_verify_code_schema, user_schema_load_json,
+    request_verify_code_schema)
 from app.celery.tasks import (send_sms_code, send_email_code)
 
 user = Blueprint('user', __name__)
@@ -42,15 +41,11 @@ def create_user():
 
 @user.route('/<int:user_id>', methods=['PUT', 'DELETE'])
 def update_user(user_id):
-    try:
-        user = get_model_users(user_id=user_id)
-    except DataError:
-        return jsonify(result="error", message="Invalid user id"), 400
-    except NoResultFound:
-        return jsonify(result="error", message="User not found"), 404
+    user_to_update = get_model_users(user_id=user_id)
+
     if request.method == 'DELETE':
         status_code = 202
-        delete_model_user(user)
+        delete_model_user(user_to_update)
     else:
         req_json = request.get_json()
         update_dct, errors = user_schema_load_json.load(req_json)
@@ -62,18 +57,14 @@ def update_user(user_id):
         if errors:
             return jsonify(result="error", message=errors), 400
         status_code = 200
-        save_model_user(user, update_dict=update_dct, pwd=pwd)
-    return jsonify(data=user_schema.dump(user).data), status_code
+        save_model_user(user_to_update, update_dict=update_dct, pwd=pwd)
+    return jsonify(data=user_schema.dump(user_to_update).data), status_code
 
 
 @user.route('/<int:user_id>/verify/password', methods=['POST'])
 def verify_user_password(user_id):
-    try:
-        user = get_model_users(user_id=user_id)
-    except DataError:
-        return jsonify(result="error", message="Invalid user id"), 400
-    except NoResultFound:
-        return jsonify(result="error", message="User not found"), 404
+    user_to_verify = get_model_users(user_id=user_id)
+
     txt_pwd = None
     try:
         txt_pwd = request.get_json()['password']
@@ -81,22 +72,18 @@ def verify_user_password(user_id):
         return jsonify(
             result="error",
             message={'password': ['Required field missing data']}), 400
-    if user.check_password(txt_pwd):
-        reset_failed_login_count(user)
+    if user_to_verify.check_password(txt_pwd):
+        reset_failed_login_count(user_to_verify)
         return jsonify({}), 204
     else:
-        increment_failed_login_count(user)
+        increment_failed_login_count(user_to_verify)
         return jsonify(result='error', message={'password': ['Incorrect password']}), 400
 
 
 @user.route('/<int:user_id>/verify/code', methods=['POST'])
 def verify_user_code(user_id):
-    try:
-        user = get_model_users(user_id=user_id)
-    except DataError:
-        return jsonify(result="error", message="Invalid user id"), 400
-    except NoResultFound:
-        return jsonify(result="error", message="User not found"), 404
+    user_to_verify = get_model_users(user_id=user_id)
+
     txt_code = None
     resp_json = request.get_json()
     txt_type = None
@@ -111,7 +98,7 @@ def verify_user_code(user_id):
         errors.update({'code_type': ['Required field missing data']})
     if errors:
         return jsonify(result="error", message=errors), 400
-    code = get_user_code(user, txt_code, txt_type)
+    code = get_user_code(user_to_verify, txt_code, txt_type)
     if not code:
         return jsonify(result="error", message="Code not found"), 404
     if datetime.now() > code.expiry_datetime or code.code_used:
@@ -120,14 +107,9 @@ def verify_user_code(user_id):
     return jsonify({}), 204
 
 
-@user.route('/<int:user_id>/code', methods=['POST'])
-def send_user_code(user_id):
-    try:
-        user = get_model_users(user_id=user_id)
-    except DataError:
-        return jsonify(result="error", message="Invalid user id"), 400
-    except NoResultFound:
-        return jsonify(result="error", message="User not found"), 404
+@user.route('/<int:user_id>/sms-code', methods=['POST'])
+def send_user_sms_code(user_id):
+    user_to_send_to = get_model_users(user_id=user_id)
 
     verify_code, errors = request_verify_code_schema.load(request.get_json())
     if errors:
@@ -135,13 +117,54 @@ def send_user_code(user_id):
 
     from app.dao.users_dao import create_secret_code
     secret_code = create_secret_code()
-    create_user_code(user, secret_code, verify_code.get('code_type'))
+    create_user_code(user_to_send_to, secret_code, 'sms')
+
+    mobile = user_to_send_to.mobile_number if verify_code.get('to', None) is None else verify_code.get('to')
+    verification_message = {'to': mobile, 'secret_code': secret_code}
+
+    send_sms_code.apply_async([encryption.encrypt(verification_message)], queue='sms-code')
+
+    return jsonify({}), 204
+
+
+@user.route('/<int:user_id>/email-code', methods=['POST'])
+def send_user_email_code(user_id):
+    user_to_send_to = get_model_users(user_id=user_id)
+
+    verify_code, errors = request_verify_code_schema.load(request.get_json())
+    if errors:
+        return jsonify(result="error", message=errors), 400
+
+    from app.dao.users_dao import create_secret_code
+    secret_code = create_secret_code()
+    create_user_code(user_to_send_to, secret_code, 'email')
+
+    email = user_to_send_to.email_address if verify_code.get('to', None) is None else verify_code.get('to')
+    verification_message = {'to': email, 'secret_code': secret_code}
+
+    send_email_code.apply_async([encryption.encrypt(verification_message)], queue='email-code')
+
+    return jsonify({}), 204
+
+
+# TODO: Remove this method once the admin app has stopped using it.
+@user.route('/<int:user_id>/code', methods=['POST'])
+def send_user_code(user_id):
+    user_to_send_to = get_model_users(user_id=user_id)
+
+    verify_code, errors = old_request_verify_code_schema.load(request.get_json())
+    if errors:
+        return jsonify(result="error", message=errors), 400
+
+    from app.dao.users_dao import create_secret_code
+    secret_code = create_secret_code()
+    create_user_code(user_to_send_to, secret_code, verify_code.get('code_type'))
     if verify_code.get('code_type') == 'sms':
-        mobile = user.mobile_number if verify_code.get('to', None) is None else verify_code.get('to')
+        mobile = user_to_send_to.mobile_number if verify_code.get('to', None) is None else verify_code.get('to')
         verification_message = {'to': mobile, 'secret_code': secret_code}
         send_sms_code.apply_async([encryption.encrypt(verification_message)], queue='sms-code')
     elif verify_code.get('code_type') == 'email':
-        email = user.email_address if verify_code.get('to', None) is None else verify_code.get('to')
+        email = user_to_send_to.email_address if verify_code.get('to', None) is None else verify_code.get('to')
         verification_message = {
             'to_address': email,
             'from_address': current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
@@ -156,12 +179,8 @@ def send_user_code(user_id):
 @user.route('/<int:user_id>', methods=['GET'])
 @user.route('', methods=['GET'])
 def get_user(user_id=None):
-    try:
-        users = get_model_users(user_id=user_id)
-    except DataError:
-        return jsonify(result="error", message="Invalid user id"), 400
-    except NoResultFound:
-        return jsonify(result="error", message="User not found"), 404
+    users = get_model_users(user_id=user_id)
+
     result = users_schema.dump(users) if isinstance(users, list) else user_schema.dump(users)
     return jsonify(data=result.data)
 
@@ -169,18 +188,9 @@ def get_user(user_id=None):
 @user.route('/<int:user_id>/service', methods=['GET'])
 @user.route('/<int:user_id>/service/<service_id>', methods=['GET'])
 def get_service_by_user_id(user_id, service_id=None):
-    try:
-        user = get_model_users(user_id=user_id)
-    except DataError:
-        return jsonify(result="error", message="Invalid user id"), 400
-    except NoResultFound:
-        return jsonify(result="error", message="User not found"), 404
+    ret_user = get_model_users(user_id=user_id)
 
-    try:
-        services = get_model_services(user_id=user.id, service_id=service_id)
-    except DataError:
-        return jsonify(result="error", message="Invalid service id"), 400
-    except NoResultFound:
-        return jsonify(result="error", message="Service not found"), 404
+    services = get_model_services(user_id=ret_user.id, service_id=service_id)
+
     services, errors = services_schema.dump(services) if isinstance(services, list) else service_schema.dump(services)
     return jsonify(data=services)
