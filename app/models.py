@@ -66,7 +66,7 @@ class Service(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     old_id = db.Column(db.Integer, Sequence('services_id_seq'), nullable=False)
-    name = db.Column(db.String(255), nullable=False)
+    name = db.Column(db.String(255), nullable=False, unique=True)
     created_at = db.Column(
         db.DateTime,
         index=False,
@@ -86,6 +86,7 @@ class Service(db.Model):
         secondary=user_to_service,
         backref=db.backref('user_to_service', lazy='dynamic'))
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
+    email_from = db.Column(db.Text, index=False, unique=True, nullable=False)
 
 
 class ApiKey(db.Model):
@@ -127,6 +128,7 @@ class Template(db.Model):
     content = db.Column(db.Text, index=False, unique=False, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
     service = db.relationship('Service', backref=db.backref('templates', lazy='dynamic'))
+    subject = db.Column(db.Text, index=False, unique=True, nullable=True)
 
 
 JOB_STATUS_TYPES = ['pending', 'in progress', 'finished']
