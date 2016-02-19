@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 from flask import (jsonify, request)
@@ -70,16 +71,16 @@ def get_service_by_id(service_id):
 @service.route('', methods=['POST'])
 def create_service():
     data = request.get_json()
-
     if not data.get('user_id', None):
         return jsonify(result="error", message={'user_id': ['Missing data for required field.']}), 400
 
     user = get_model_users(data['user_id'])
-
     if not user:
         return jsonify(result="error", message={'user_id': ['not found']}), 400
 
-    request.get_json().pop('user_id', None)
+    data.pop('user_id', None)
+    if 'name' in data:
+        data['email_from'] = _email_safe(data.get('name', None))
 
     valid_service, errors = service_schema.load(request.get_json())
 
@@ -88,6 +89,13 @@ def create_service():
 
     dao_create_service(valid_service, user)
     return jsonify(data=service_schema.dump(valid_service).data), 201
+
+
+def _email_safe(string):
+    return "".join([
+        character.lower() if character.isalnum() or character == "." else ""
+        for character in re.sub("\s+", ".", string.strip())
+    ])
 
 
 @service.route('/<service_id>', methods=['POST'])

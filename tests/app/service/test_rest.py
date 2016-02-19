@@ -172,7 +172,6 @@ def test_create_service(notify_api, sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
-                'email_from': 'service',
                 'name': 'created service',
                 'user_id': sample_user.id,
                 'limit': 1000,
@@ -192,6 +191,7 @@ def test_create_service(notify_api, sample_user):
             assert resp.status_code == 201
             assert json_resp['data']['id']
             assert json_resp['data']['name'] == 'created service'
+            assert json_resp['data']['email_from'] == 'created.service'
 
             auth_header_fetch = create_authorization_header(
                 path='/service/{}'.format(json_resp['data']['id']),
@@ -260,7 +260,7 @@ def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(no
             assert 'not found' in json_resp['message']['user_id']
 
 
-def test_should_not_create_service_with_missing_if_missing_data(notify_api, sample_user):
+def test_should_not_create_service_if_missing_data(notify_api, sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
@@ -283,7 +283,6 @@ def test_should_not_create_service_with_missing_if_missing_data(notify_api, samp
             assert 'Missing data for required field.' in json_resp['message']['active']
             assert 'Missing data for required field.' in json_resp['message']['limit']
             assert 'Missing data for required field.' in json_resp['message']['restricted']
-            assert 'Missing data for required field.' in json_resp['message']['email_from']
 
 
 def test_update_service(notify_api, sample_service):
