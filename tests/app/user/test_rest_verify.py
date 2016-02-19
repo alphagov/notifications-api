@@ -2,9 +2,7 @@ import json
 import moto
 from datetime import (datetime, timedelta)
 from flask import url_for
-
 from app.models import (VerifyCode)
-
 import app.celery.tasks
 from app import db, encryption
 from tests import create_authorization_header
@@ -191,7 +189,6 @@ def test_user_verify_password_valid_password_resets_failed_logins(notify_api,
                                                                   notify_db,
                                                                   notify_db_session,
                                                                   sample_user):
-
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = json.dumps({'password': 'bad password'})
@@ -249,9 +246,10 @@ def test_user_verify_password_missing_password(notify_api,
             assert 'Required field missing data' in json_resp['message']['password']
 
 
+# TODO: Remove this test once the admin app has stopped using it.
 def test_send_user_code_for_sms(notify_api,
                                 sample_sms_code,
-                                mock_secret_code,
+                                mock_encryption,
                                 mock_celery_send_sms_code):
     """
    Tests POST endpoint '/<user_id>/code' successful sms
@@ -269,35 +267,11 @@ def test_send_user_code_for_sms(notify_api,
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             assert resp.status_code == 204
-            encrpyted = encryption.encrypt({'to': sample_sms_code.user.mobile_number, 'secret_code': '11111'})
-            app.celery.tasks.send_sms_code.apply_async.assert_called_once_with([encrpyted], queue='sms-code')
+            app.celery.tasks.send_sms_code.apply_async.assert_called_once_with(['something_encrypted'],
+                                                                               queue='sms-code')
 
 
-def test_send_user_code_for_sms_with_optional_to_field(notify_api,
-                                                       sample_sms_code,
-                                                       mock_secret_code,
-                                                       mock_celery_send_sms_code):
-    """
-   Tests POST endpoint '/<user_id>/code' successful sms with optional to field
-   """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-
-            data = json.dumps({'code_type': 'sms', 'to': '+441119876757'})
-            auth_header = create_authorization_header(
-                path=url_for('user.send_user_code', user_id=sample_sms_code.user.id),
-                method='POST',
-                request_body=data)
-            resp = client.post(
-                url_for('user.send_user_code', user_id=sample_sms_code.user.id),
-                data=data,
-                headers=[('Content-Type', 'application/json'), auth_header])
-
-            assert resp.status_code == 204
-            encrypted = encryption.encrypt({'to': '+441119876757', 'secret_code': '11111'})
-            app.celery.tasks.send_sms_code.apply_async.assert_called_once_with([encrypted], queue='sms-code')
-
-
+# TODO: Remove this test once the admin app has stopped using it.
 def test_send_user_code_for_email(notify_api,
                                   sample_email_code,
                                   mock_secret_code,
@@ -323,6 +297,7 @@ def test_send_user_code_for_email(notify_api,
                                                                                  queue='email-code')
 
 
+# TODO: Remove this test once the admin app has stopped using it.
 def test_send_user_code_for_email_uses_optional_to_field(notify_api,
                                                          sample_email_code,
                                                          mock_secret_code,
@@ -348,16 +323,130 @@ def test_send_user_code_for_email_uses_optional_to_field(notify_api,
                                                                                  queue='email-code')
 
 
-def test_request_verify_code_schema_invalid_code_type(notify_api, notify_db, notify_db_session, sample_user):
-    from app.schemas import request_verify_code_schema
+# TODO: Remove this test once the admin app has stopped using it.
+def test_request_verify_code_schema_invalid_code_type(notify_api, sample_user):
+    from app.schemas import old_request_verify_code_schema
     data = json.dumps({'code_type': 'not_sms'})
-    code, error = request_verify_code_schema.loads(data)
+    code, error = old_request_verify_code_schema.loads(data)
     assert error == {'code_type': ['Invalid code type']}
 
 
-def test_request_verify_code_schema_with_to(notify_api, notify_db, notify_db_session, sample_user):
-    from app.schemas import request_verify_code_schema
+# TODO: Remove this method once the admin app has stopped using it.
+def test_request_verify_code_schema_with_to(notify_api, sample_user):
+    from app.schemas import old_request_verify_code_schema
     data = json.dumps({'code_type': 'sms', 'to': 'some@one.gov.uk'})
-    code, error = request_verify_code_schema.loads(data)
+    code, error = old_request_verify_code_schema.loads(data)
     assert code == {'code_type': 'sms', 'to': 'some@one.gov.uk'}
     assert error == {}
+
+
+def test_send_user_sms_code(notify_api,
+                            sample_sms_code,
+                            mock_celery_send_sms_code,
+                            mock_encryption):
+    """
+    Tests POST endpoint /user/<user_id>/sms-code
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = json.dumps({})
+            auth_header = create_authorization_header(
+                path=url_for('user.send_user_sms_code', user_id=sample_sms_code.user.id),
+                method='POST',
+                request_body=data)
+            resp = client.post(
+                url_for('user.send_user_sms_code', user_id=sample_sms_code.user.id),
+                data=data,
+                headers=[('Content-Type', 'application/json'), auth_header])
+            print(resp.get_data(as_text=True))
+            assert resp.status_code == 204
+            app.celery.tasks.send_sms_code.apply_async.assert_called_once_with(['something_encrypted'],
+                                                                               queue='sms-code')
+
+
+def test_send_user_code_for_sms_with_optional_to_field(notify_api,
+                                                       sample_sms_code,
+                                                       mock_secret_code,
+                                                       mock_celery_send_sms_code):
+    """
+   Tests POST endpoint '/<user_id>/code' successful sms with optional to field
+   """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = json.dumps({'code_type': 'sms', 'to': '+441119876757'})
+            auth_header = create_authorization_header(
+                path=url_for('user.send_user_sms_code', user_id=sample_sms_code.user.id),
+                method='POST',
+                request_body=data)
+            resp = client.post(
+                url_for('user.send_user_sms_code', user_id=sample_sms_code.user.id),
+                data=data,
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            assert resp.status_code == 204
+            encrypted = encryption.encrypt({'to': '+441119876757', 'secret_code': '11111'})
+            app.celery.tasks.send_sms_code.apply_async.assert_called_once_with([encrypted], queue='sms-code')
+
+
+def test_send_sms_code_returns_404_for_bad_input_data(notify_api, notify_db, notify_db_session):
+    """
+    Tests POST endpoint /user/<user_id>/sms-code return 404 for bad input data
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = json.dumps({})
+            import uuid
+            uuid_ = uuid.uuid4()
+            auth_header = create_authorization_header(
+                path=url_for('user.send_user_sms_code', user_id=uuid_),
+                method='POST',
+                request_body=data)
+            resp = client.post(
+                url_for('user.send_user_sms_code', user_id=uuid_),
+                data=data,
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert resp.status_code == 404
+            assert json.loads(resp.get_data(as_text=True))['error'] == 'No result found'
+
+
+def test_send_user_email_code(notify_api,
+                              sample_email_code,
+                              mock_celery_send_email_code,
+                              mock_encryption):
+    """
+    Tests POST endpoint /user/<user_id>/email-code
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = json.dumps({})
+            auth_header = create_authorization_header(
+                path=url_for('user.send_user_email_code', user_id=sample_email_code.user.id),
+                method='POST',
+                request_body=data)
+            resp = client.post(
+                url_for('user.send_user_email_code', user_id=sample_email_code.user.id),
+                data=data,
+                headers=[('Content-Type', 'application/json'), auth_header])
+            print(resp.get_data(as_text=True))
+            assert resp.status_code == 204
+            app.celery.tasks.send_email_code.apply_async.assert_called_once_with(['something_encrypted'],
+                                                                                 queue='email-code')
+
+
+def test_send_user_email_code_returns_404_for_when_user_does_not_exist(notify_api, notify_db, notify_db_session):
+    """
+    Tests POST endpoint /user/<user_id>/email-code return 404 for missing user
+    """
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = json.dumps({})
+            auth_header = create_authorization_header(
+                path=url_for('user.send_user_email_code', user_id=1),
+                method='POST',
+                request_body=data)
+            resp = client.post(
+                url_for('user.send_user_email_code', user_id=1),
+                data=data,
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert resp.status_code == 404
+            assert json.loads(resp.get_data(as_text=True))['error'] == 'No result found'
