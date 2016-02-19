@@ -149,11 +149,8 @@ def send_user_code(user_id):
 @user.route('/<int:user_id>', methods=['GET'])
 @user.route('', methods=['GET'])
 def get_user(user_id=None):
-    try:
-        users = get_model_users(user_id=user_id)
-    except DataError:
-        return jsonify(result="error", message="Invalid user id"), 400
-    except NoResultFound:
-        return jsonify(result="error", message="User not found"), 404
+    users = get_model_users(user_id=user_id)
+    if not users:
+        return jsonify(result="error", message="not found"), 404
     result = users_schema.dump(users) if isinstance(users, list) else user_schema.dump(users)
     return jsonify(data=result.data)
