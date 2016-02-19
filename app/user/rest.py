@@ -2,12 +2,11 @@ from datetime import datetime
 from flask import (jsonify, request, abort, Blueprint, current_app)
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
-from app.dao.services_dao import dao_fetch_service_by_id_and_user
-from app.aws_sqs import add_notification_to_queue
+from app import encryption
+
 from app.dao.users_dao import (
     get_model_users,
     save_model_user,
-    delete_model_user,
     create_user_code,
     get_user_code,
     use_user_code,
@@ -15,14 +14,15 @@ from app.dao.users_dao import (
     reset_failed_login_count
 )
 from app.schemas import (
-    user_schema, users_schema, service_schema, services_schema,
-    request_verify_code_schema, user_schema_load_json)
-from app import api_user
-
+    user_schema,
+    users_schema,
+    request_verify_code_schema,
+    user_schema_load_json
+)
+from app.celery.tasks import (send_sms_code, send_email_code)
+from app.errors import register_errors
 
 user = Blueprint('user', __name__)
-
-from app.errors import register_errors
 register_errors(user)
 
 
@@ -131,16 +131,16 @@ def send_user_code(user_id):
     create_user_code(user, secret_code, verify_code.get('code_type'))
     if verify_code.get('code_type') == 'sms':
         mobile = user.mobile_number if verify_code.get('to', None) is None else verify_code.get('to')
-        notification = {'to': mobile, 'content': secret_code}
-        add_notification_to_queue(api_user['client'], 'admin', 'sms', notification)
+        verification_message = {'to': mobile, 'secret_code': secret_code}
+        send_sms_code.apply_async([encryption.encrypt(verification_message)], queue='sms-code')
     elif verify_code.get('code_type') == 'email':
         email = user.email_address if verify_code.get('to', None) is None else verify_code.get('to')
-        notification = {
+        verification_message = {
             'to_address': email,
             'from_address': current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
             'subject': 'Verification code',
             'body': secret_code}
-        add_notification_to_queue(api_user['client'], 'admin', 'email', notification)
+        send_email_code.apply_async([encryption.encrypt(verification_message)], queue='email-code')
     else:
         abort(500)
     return jsonify({}), 204
