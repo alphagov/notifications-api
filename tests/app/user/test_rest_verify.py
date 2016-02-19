@@ -373,7 +373,7 @@ def test_send_user_code_for_sms_with_optional_to_field(notify_api,
    """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            data = json.dumps({'code_type': 'sms', 'to': '+441119876757'})
+            data = json.dumps({'to': '+441119876757'})
             auth_header = create_authorization_header(
                 path=url_for('user.send_user_sms_code', user_id=sample_sms_code.user.id),
                 method='POST',
