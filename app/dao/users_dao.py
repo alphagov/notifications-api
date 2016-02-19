@@ -60,7 +60,7 @@ def delete_model_user(user):
 
 def get_model_users(user_id=None):
     if user_id:
-        return User.query.filter_by(id=user_id).one()
+        return User.query.filter_by(id=user_id).first()
     return User.query.filter_by().all()
 
 
