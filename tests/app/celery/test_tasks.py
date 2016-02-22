@@ -1,5 +1,6 @@
 import uuid
 import pytest
+from flask import current_app
 from app.celery.tasks import (send_sms, send_sms_code, send_email_code)
 from app import (firetext_client, aws_ses_client, encryption)
 from app.clients.sms.firetext import FiretextClientException
@@ -98,17 +99,15 @@ def test_should_throw_firetext_client_exception(mocker):
 
 
 def test_should_send_email_code(mocker):
-    verification = {'to_address': 'someone@it.gov.uk',
-                    'from_address': 'no-reply@notify.gov.uk',
-                    'subject': 'Verification code',
-                    'body': 11111}
+    verification = {'to': 'someone@it.gov.uk',
+                    'secret_code': 11111}
 
     encrypted_verification = encryption.encrypt(verification)
     mocker.patch('app.aws_ses_client.send_email')
 
     send_email_code(encrypted_verification)
 
-    aws_ses_client.send_email.assert_called_once_with(verification['from_address'],
-                                                      verification['to_address'],
-                                                      verification['subject'],
-                                                      verification['body'])
+    aws_ses_client.send_email.assert_called_once_with(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
+                                                      verification['to'],
+                                                      "Verification code",
+                                                      verification['secret_code'])
