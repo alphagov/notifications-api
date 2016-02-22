@@ -90,6 +90,7 @@ def test_create_job(notify_api, notify_db, notify_db_session, sample_template):
         'original_file_name': original_file_name,
         'bucket_name': bucket_name,
         'file_name': file_name,
+        'notification_count': 1
     }
 
     with notify_api.test_request_context():
@@ -142,7 +143,8 @@ def test_get_update_job_status(notify_api,
         'bucket_name': sample_job.bucket_name,
         'file_name': sample_job.file_name,
         'original_file_name': sample_job.original_file_name,
-        'status': 'in progress'
+        'status': 'in progress',
+        'notification_count': 1
     }
 
     with notify_api.test_request_context():
