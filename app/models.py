@@ -159,6 +159,7 @@ class Job(db.Model):
         nullable=True,
         onupdate=datetime.datetime.now)
     status = db.Column(db.Enum(*JOB_STATUS_TYPES, name='job_status_types'), nullable=False, default='pending')
+    notification_count = db.Column(db.Integer, nullable=False)
 
 
 VERIFY_CODE_TYPES = ['email', 'sms']

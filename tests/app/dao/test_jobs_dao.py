@@ -24,7 +24,8 @@ def test_save_job(notify_db, notify_db_session, sample_template):
         'template_id': sample_template.id,
         'bucket_name': bucket_name,
         'file_name': file_name,
-        'original_file_name': 'some.csv'
+        'original_file_name': 'some.csv',
+        'notification_count': 1
     }
 
     job = Job(**data)

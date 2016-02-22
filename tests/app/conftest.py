@@ -159,7 +159,8 @@ def sample_job(notify_db,
         'template_id': template.id,
         'bucket_name': bucket_name,
         'file_name': file_name,
-        'original_file_name': 'some.csv'
+        'original_file_name': 'some.csv',
+        'notification_count': 1
     }
     job = Job(**data)
     save_job(job)
