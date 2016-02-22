@@ -7,6 +7,8 @@ from marshmallow import (post_load, ValidationError, validates, validates_schema
 
 mobile_regex = re.compile("^\\+44[\\d]{10}$")
 
+email_regex = re.compile("(^[^@^\\s]+@[^@^\\.^\\s]+(\\.[^@^\\.^\\s]*)*\.(.+))")
+
 
 # TODO I think marshmallow provides a better integration and error handling.
 # Would be better to replace functionality in dao with the marshmallow supported
@@ -78,9 +80,6 @@ class RequestVerifyCodeSchema(ma.Schema):
     to = fields.Str(required=False)
 
 
-# TODO main purpose to be added later
-# when processing templates, template will be
-# common for all notifications.
 class NotificationSchema(ma.Schema):
     pass
 
@@ -94,48 +93,23 @@ class SmsNotificationSchema(NotificationSchema):
             raise ValidationError('Invalid phone number, must be of format +441234123123')
 
 
+class EmailNotificationSchema(NotificationSchema):
+    to = fields.Str(required=True)
+    template = fields.Int(required=True)
+
+    @validates('to')
+    def validate_to(self, value):
+        if not email_regex.match(value):
+            raise ValidationError('Invalid email')
+
+
 class SmsTemplateNotificationSchema(SmsNotificationSchema):
     template = fields.Int(required=True)
     job = fields.String()
 
-    @validates_schema
-    def validate_schema(self, data):
-        """
-        Validate the to field is valid for this notification
-        """
-        from app import api_user
-        template_id = data.get('template', None)
-        template = models.Template.query.filter_by(id=template_id).first()
-        if template:
-            service = template.service
-            # Validate restricted service,
-            # restricted services can only send to one of its users.
-            if service.restricted:
-                valid = False
-                for usr in service.users:
-                    if data['to'] == usr.mobile_number:
-                        valid = True
-                        break
-                if not valid:
-                    raise ValidationError('Invalid phone number for restricted service', 'restricted')
-            # Assert the template is valid for the service which made the request.
-            service = api_user['client']
-            admin_users = [current_app.config.get('ADMIN_CLIENT_USER_NAME'),
-                           current_app.config.get('DELIVERY_CLIENT_USER_NAME')]
-            if (service not in admin_users and
-               template.service != models.Service.query.filter_by(id=service).first()):
-                raise ValidationError('Invalid template', 'restricted')
-
 
 class SmsAdminNotificationSchema(SmsNotificationSchema):
     content = fields.Str(required=True)
-
-
-class EmailNotificationSchema(NotificationSchema):
-    to_address = fields.Str(load_from="to", dump_to='to', required=True)
-    from_address = fields.Str(load_from="from", dump_to='from', required=True)
-    subject = fields.Str(required=True)
-    body = fields.Str(load_from="message", dump_to='message', required=True)
 
 
 class NotificationStatusSchema(BaseSchema):
