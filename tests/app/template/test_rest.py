@@ -193,7 +193,7 @@ def test_must_have_a_uniqe_subject_on_an_email_template(notify_api, sample_servi
             assert response.status_code == 400
             json_resp = json.loads(response.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'Duplicate template subject'
+            assert json_resp['message'][0]['subject'] == 'Duplicate template subject'
 
 
 def test_should_be_able_to_update_a_template(notify_api, sample_service):

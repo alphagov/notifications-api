@@ -44,7 +44,7 @@ def create_template(service_id):
         message = "Failed to create template"
         if "templates_subject_key" in str(ex):
             message = 'Duplicate template subject'
-            return jsonify(result="error", message=message), 400
+            return jsonify(result="error", message=[{'subject': message}]), 400
         return jsonify(result="error", message=message), 500
 
     return jsonify(data=template_schema.dump(new_template).data), 201
