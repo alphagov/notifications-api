@@ -2,6 +2,8 @@ from flask import (
     jsonify,
     current_app
 )
+from sqlalchemy.exc import SQLAlchemyError, DataError
+from sqlalchemy.orm.exc import NoResultFound
 
 
 def register_errors(blueprint):
@@ -32,3 +34,18 @@ def register_errors(blueprint):
     def internal_server_error(e):
         current_app.logger.exception(e)
         return jsonify(error="Internal error"), 500
+
+    @blueprint.app_errorhandler(NoResultFound)
+    def no_result_found(e):
+        current_app.logger.error(e)
+        return jsonify(error="No result found"), 404
+
+    @blueprint.app_errorhandler(DataError)
+    def no_result_found(e):
+        current_app.logger.error(e)
+        return jsonify(error="No result found"), 404
+
+    @blueprint.app_errorhandler(SQLAlchemyError)
+    def db_error(e):
+        current_app.logger.error(e)
+        return jsonify(error="Database error occurred"), 500

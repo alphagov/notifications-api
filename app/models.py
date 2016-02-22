@@ -3,7 +3,7 @@ import uuid
 from sqlalchemy import UniqueConstraint, Sequence
 from . import db
 import datetime
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import (UUID, ARRAY)
 from app.encryption import (
     hashpw,
     check_hash
@@ -40,6 +40,7 @@ class User(db.Model):
     logged_in_at = db.Column(db.DateTime, nullable=True)
     failed_login_count = db.Column(db.Integer, nullable=False, default=0)
     state = db.Column(db.String, nullable=False, default='pending')
+    permissions = db.Column("permissions", ARRAY(db.String))
 
     @property
     def password(self):
