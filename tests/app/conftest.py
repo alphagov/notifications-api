@@ -2,7 +2,7 @@ import pytest
 
 from app.models import (User, Service, Template, ApiKey, Job, Notification)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
-from app.dao.services_dao import save_model_service
+from app.dao.services_dao import dao_create_service
 from app.dao.templates_dao import save_model_template
 from app.dao.api_key_dao import save_model_api_key
 from app.dao.jobs_dao import save_job
@@ -13,8 +13,9 @@ import uuid
 @pytest.fixture(scope='function')
 def service_factory(notify_db, notify_db_session):
     class ServiceFactory(object):
-        def get(self, service_name):
-            user = sample_user(notify_db, notify_db_session)
+        def get(self, service_name, user=None):
+            if not user:
+                user = sample_user(notify_db, notify_db_session)
             service = sample_service(notify_db, notify_db_session, service_name, user)
             sample_template(notify_db, notify_db_session, service=service)
             return service
@@ -91,11 +92,13 @@ def sample_service(notify_db,
         'users': [user],
         'limit': 1000,
         'active': False,
-        'restricted': False}
+        'restricted': False,
+        'email_from': service_name
+    }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
         service = Service(**data)
-        save_model_service(service)
+        dao_create_service(service, user)
     return service
 
 
@@ -105,6 +108,7 @@ def sample_template(notify_db,
                     template_name="Template Name",
                     template_type="sms",
                     content="This is a template",
+                    subject_line=None,
                     service=None):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
@@ -115,6 +119,10 @@ def sample_template(notify_db,
         'content': content,
         'service': service
     }
+    if subject_line:
+        data.update({
+            'subject': subject_line
+        })
     template = Template(**data)
     save_model_template(template)
     return template

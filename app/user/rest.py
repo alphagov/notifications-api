@@ -1,12 +1,10 @@
 from datetime import datetime
 from flask import (jsonify, request, abort, Blueprint, current_app)
-
 from app import encryption
-from app.dao.services_dao import get_model_services
+
 from app.dao.users_dao import (
     get_model_users,
     save_model_user,
-    delete_model_user,
     create_user_code,
     get_user_code,
     use_user_code,
@@ -14,14 +12,17 @@ from app.dao.users_dao import (
     reset_failed_login_count
 )
 from app.schemas import (
-    user_schema, users_schema, service_schema, services_schema,
-    old_request_verify_code_schema, user_schema_load_json,
-    request_verify_code_schema)
+    old_request_verify_code_schema,
+    user_schema,
+    users_schema,
+    request_verify_code_schema,
+    user_schema_load_json
+)
+
 from app.celery.tasks import (send_sms_code, send_email_code)
+from app.errors import register_errors
 
 user = Blueprint('user', __name__)
-
-from app.errors import register_errors
 register_errors(user)
 
 
@@ -39,25 +40,23 @@ def create_user():
     return jsonify(data=user_schema.dump(user).data), 201
 
 
-@user.route('/<int:user_id>', methods=['PUT', 'DELETE'])
+@user.route('/<int:user_id>', methods=['PUT'])
 def update_user(user_id):
     user_to_update = get_model_users(user_id=user_id)
+    if not user_to_update:
+        return jsonify(result="error", message="User not found"), 404
 
-    if request.method == 'DELETE':
-        status_code = 202
-        delete_model_user(user_to_update)
-    else:
-        req_json = request.get_json()
-        update_dct, errors = user_schema_load_json.load(req_json)
-        pwd = req_json.get('password', None)
-        # TODO password validation, it is already done on the admin app
-        # but would be good to have the same validation here.
-        if pwd is not None and not pwd:
-            errors.update({'password': ['Invalid data for field']})
-        if errors:
-            return jsonify(result="error", message=errors), 400
-        status_code = 200
-        save_model_user(user_to_update, update_dict=update_dct, pwd=pwd)
+    req_json = request.get_json()
+    update_dct, errors = user_schema_load_json.load(req_json)
+    pwd = req_json.get('password', None)
+    # TODO password validation, it is already done on the admin app
+    # but would be good to have the same validation here.
+    if pwd is not None and not pwd:
+        errors.update({'password': ['Invalid data for field']})
+    if errors:
+        return jsonify(result="error", message=errors), 400
+    status_code = 200
+    save_model_user(user_to_update, update_dict=update_dct, pwd=pwd)
     return jsonify(data=user_schema.dump(user_to_update).data), status_code
 
 
@@ -111,6 +110,9 @@ def verify_user_code(user_id):
 def send_user_sms_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
 
+    if not user_to_send_to:
+        return jsonify(result="error", message="No user found"), 404
+
     verify_code, errors = request_verify_code_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
@@ -130,6 +132,8 @@ def send_user_sms_code(user_id):
 @user.route('/<int:user_id>/email-code', methods=['POST'])
 def send_user_email_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
+    if not user_to_send_to:
+        return jsonify(result="error", message="No user found"), 404
 
     verify_code, errors = request_verify_code_schema.load(request.get_json())
     if errors:
@@ -151,6 +155,9 @@ def send_user_email_code(user_id):
 @user.route('/<int:user_id>/code', methods=['POST'])
 def send_user_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
+
+    if not user_to_send_to:
+        return jsonify(result="error", message="not found"), 404
 
     verify_code, errors = old_request_verify_code_schema.load(request.get_json())
     if errors:
@@ -180,17 +187,7 @@ def send_user_code(user_id):
 @user.route('', methods=['GET'])
 def get_user(user_id=None):
     users = get_model_users(user_id=user_id)
-
+    if not users:
+        return jsonify(result="error", message="not found"), 404
     result = users_schema.dump(users) if isinstance(users, list) else user_schema.dump(users)
     return jsonify(data=result.data)
-
-
-@user.route('/<int:user_id>/service', methods=['GET'])
-@user.route('/<int:user_id>/service/<service_id>', methods=['GET'])
-def get_service_by_user_id(user_id, service_id=None):
-    ret_user = get_model_users(user_id=user_id)
-
-    services = get_model_services(user_id=ret_user.id, service_id=service_id)
-
-    services, errors = services_schema.dump(services) if isinstance(services, list) else service_schema.dump(services)
-    return jsonify(data=services)

@@ -1,352 +1,347 @@
 import json
 import uuid
-from collections import Set
-
 from flask import url_for
-from app.dao.services_dao import save_model_service
-from app.models import (Service, ApiKey, Template)
+
+from app.dao.users_dao import save_model_user
+from app.models import User, Template, Service
 from tests import create_authorization_header
-from tests.app.conftest import sample_user as create_sample_user
-from tests.app.conftest import sample_service as create_sample_service
 
 
-def test_get_service_list(notify_api, notify_db, notify_db_session, sample_service):
-    """
-    Tests GET endpoint '/' to retrieve entire service list.
-    """
+def test_get_service_list(notify_api, service_factory):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            auth_header = create_authorization_header(path=url_for('service.get_service'),
-                                                      method='GET')
-            response = client.get(url_for('service.get_service'),
-                                  headers=[auth_header])
+            service_factory.get('one')
+            service_factory.get('two')
+            service_factory.get('three')
+
+            auth_header = create_authorization_header(
+                path='/service',
+                method='GET'
+            )
+            response = client.get(
+                '/service',
+                headers=[auth_header]
+            )
             assert response.status_code == 200
             json_resp = json.loads(response.get_data(as_text=True))
-            # TODO assert correct json returned
-            assert len(json_resp['data']) == 1
-            assert json_resp['data'][0]['name'] == sample_service.name
-            assert json_resp['data'][0]['id'] == str(sample_service.id)
+            assert len(json_resp['data']) == 3
+            assert json_resp['data'][0]['name'] == 'one'
+            assert json_resp['data'][1]['name'] == 'two'
+            assert json_resp['data'][2]['name'] == 'three'
 
 
-def test_get_service(notify_api, notify_db, notify_db_session, sample_service):
-    """
-    Tests GET endpoint '/<service_id>' to retrieve a single service.
-    """
+def test_get_service_list_by_user(notify_api, service_factory, sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            auth_header = create_authorization_header(path=url_for('service.get_service', service_id=sample_service.id),
-                                                      method='GET')
-            resp = client.get(url_for('service.get_service',
-                                      service_id=sample_service.id),
-                              headers=[auth_header])
+            service_factory.get('one', sample_user)
+            service_factory.get('two', sample_user)
+            service_factory.get('three', sample_user)
+
+            auth_header = create_authorization_header(
+                path='/service',
+                method='GET'
+            )
+            response = client.get(
+                '/service?user_id='.format(sample_user.id),
+                headers=[auth_header]
+            )
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
+            assert len(json_resp['data']) == 3
+            assert json_resp['data'][0]['name'] == 'one'
+            assert json_resp['data'][1]['name'] == 'two'
+            assert json_resp['data'][2]['name'] == 'three'
+
+
+def test_get_service_list_by_user_should_return_empty_list_if_no_services(notify_api, service_factory, sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            new_user = User(
+                name='Test User',
+                email_address='new_user@digital.cabinet-office.gov.uk',
+                password='password',
+                mobile_number='+447700900986'
+            )
+            save_model_user(new_user)
+
+            service_factory.get('one', sample_user)
+            service_factory.get('two', sample_user)
+            service_factory.get('three', sample_user)
+
+            auth_header = create_authorization_header(
+                path='/service',
+                method='GET'
+            )
+            response = client.get(
+                '/service?user_id={}'.format(new_user.id),
+                headers=[auth_header]
+            )
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
+            assert len(json_resp['data']) == 0
+
+
+def test_get_service_list_should_return_empty_list_if_no_services(notify_api, notify_db):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(
+                path='/service',
+                method='GET'
+            )
+            response = client.get(
+                '/service',
+                headers=[auth_header]
+            )
+            assert response.status_code == 200
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert len(json_resp['data']) == 0
+
+
+def test_get_service_by_id(notify_api, sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(
+                path='/service/{}'.format(sample_service.id),
+                method='GET'
+            )
+            resp = client.get(
+                '/service/{}'.format(sample_service.id),
+                headers=[auth_header]
+            )
             assert resp.status_code == 200
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['data']['name'] == sample_service.name
             assert json_resp['data']['id'] == str(sample_service.id)
 
 
-def test_get_service_for_user(notify_api, notify_db, notify_db_session, sample_service):
-    second_user = create_sample_user(notify_db, notify_db_session, 'an@other.gov.uk')
-    create_sample_service(notify_db, notify_db_session, service_name='Second Service', user=second_user)
-    create_sample_service(notify_db, notify_db_session, service_name='Another Service', user=sample_service.users[0])
+def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            service_id = str(uuid.uuid4())
+            auth_header = create_authorization_header(
+                path='/service/{}'.format(service_id),
+                method='GET'
+            )
+            resp = client.get(
+                '/service/{}'.format(service_id),
+                headers=[auth_header]
+            )
+            assert resp.status_code == 404
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert json_resp['result'] == 'error'
+            assert json_resp['message'] == 'not found'
+
+
+def test_get_service_by_id_and_user(notify_api, service_factory, sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            service = service_factory.get('new service', sample_user)
+            auth_header = create_authorization_header(
+                path='/service/{}'.format(service.id),
+                method='GET'
+            )
+            resp = client.get(
+                '/service/{}?user_id={}'.format(service.id, sample_user.id),
+                headers=[auth_header]
+            )
+            assert resp.status_code == 200
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert json_resp['data']['name'] == service.name
+            assert json_resp['data']['id'] == str(service.id)
+
+
+def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            service_id = str(uuid.uuid4())
+            auth_header = create_authorization_header(
+                path='/service/{}'.format(service_id),
+                method='GET'
+            )
+            resp = client.get(
+                '/service/{}?user_id={}'.format(service_id, sample_user.id),
+                headers=[auth_header]
+            )
+            assert resp.status_code == 404
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert json_resp['result'] == 'error'
+            assert json_resp['message'] == 'not found'
+
+
+def test_create_service(notify_api, sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = {
+                'name': 'created service',
+                'user_id': sample_user.id,
+                'limit': 1000,
+                'restricted': False,
+                'active': False}
+            auth_header = create_authorization_header(
+                path='/service',
+                method='POST',
+                request_body=json.dumps(data)
+            )
+            headers = [('Content-Type', 'application/json'), auth_header]
+            resp = client.post(
+                '/service',
+                data=json.dumps(data),
+                headers=headers)
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 201
+            assert json_resp['data']['id']
+            assert json_resp['data']['name'] == 'created service'
+            assert json_resp['data']['email_from'] == 'created.service'
+
+            auth_header_fetch = create_authorization_header(
+                path='/service/{}'.format(json_resp['data']['id']),
+                method='GET'
+            )
+
+            resp = client.get(
+                '/service/{}?user_id={}'.format(json_resp['data']['id'], sample_user.id),
+                headers=[auth_header_fetch]
+            )
+            assert resp.status_code == 200
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert json_resp['data']['name'] == 'created service'
+
+
+def test_should_not_create_service_with_missing_user_id_field(notify_api):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = {
+                'email_from': 'service',
+                'name': 'created service',
+                'limit': 1000,
+                'restricted': False,
+                'active': False
+            }
+            auth_header = create_authorization_header(
+                path='/service',
+                method='POST',
+                request_body=json.dumps(data)
+            )
+            headers = [('Content-Type', 'application/json'), auth_header]
+            resp = client.post(
+                '/service',
+                data=json.dumps(data),
+                headers=headers)
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 400
+            assert json_resp['result'] == 'error'
+            assert 'Missing data for required field.' in json_resp['message']['user_id']
+
+
+def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(notify_api, notify_db):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = {
+                'email_from': 'service',
+                'user_id': 1234,
+                'name': 'created service',
+                'limit': 1000,
+                'restricted': False,
+                'active': False
+            }
+            auth_header = create_authorization_header(
+                path='/service',
+                method='POST',
+                request_body=json.dumps(data)
+            )
+            headers = [('Content-Type', 'application/json'), auth_header]
+            resp = client.post(
+                '/service',
+                data=json.dumps(data),
+                headers=headers)
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 400
+            assert json_resp['result'] == 'error'
+            assert 'not found' in json_resp['message']['user_id']
+
+
+def test_should_not_create_service_if_missing_data(notify_api, sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = {
+                'user_id': sample_user.id
+            }
+            auth_header = create_authorization_header(
+                path='/service',
+                method='POST',
+                request_body=json.dumps(data)
+            )
+            headers = [('Content-Type', 'application/json'), auth_header]
+            resp = client.post(
+                '/service',
+                data=json.dumps(data),
+                headers=headers)
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 400
+            assert json_resp['result'] == 'error'
+            assert 'Missing data for required field.' in json_resp['message']['name']
+            assert 'Missing data for required field.' in json_resp['message']['active']
+            assert 'Missing data for required field.' in json_resp['message']['limit']
+            assert 'Missing data for required field.' in json_resp['message']['restricted']
+
+
+def test_update_service(notify_api, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header(
-                path='/service',
-                method='GET')
-            resp = client.get('/service?user_id={}'.format(sample_service.users[0].id),
-                              headers=[auth_header])
+                path='/service/{}'.format(sample_service.id),
+                method='GET'
+            )
+            resp = client.get(
+                '/service/{}'.format(sample_service.id),
+                headers=[auth_header]
+            )
+            json_resp = json.loads(resp.get_data(as_text=True))
             assert resp.status_code == 200
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert len(json_resp['data']) == 2
-            print(x for x in json_resp['data'])
-            assert 'Another Service' in [x.get('name') for x in json_resp['data']]
-            assert 'Sample service' in [x.get('name') for x in json_resp['data']]
-            assert 'Second Service' not in [x.get('name') for x in json_resp['data']]
+            assert json_resp['data']['name'] == sample_service.name
 
-
-def test_post_service(notify_api, notify_db, notify_db_session, sample_user):
-    """
-    Tests POST endpoint '/' to create a service.
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            assert Service.query.count() == 0
             data = {
-                'name': 'created service',
-                'users': [sample_user.id],
-                'limit': 1000,
-                'restricted': False,
-                'active': False}
-            auth_header = create_authorization_header(path=url_for('service.create_service'),
-                                                      method='POST',
-                                                      request_body=json.dumps(data))
-            headers = [('Content-Type', 'application/json'), auth_header]
+                'name': 'updated service name'
+            }
+
+            auth_header = create_authorization_header(
+                path='/service/{}'.format(sample_service.id),
+                method='POST',
+                request_body=json.dumps(data)
+            )
+
             resp = client.post(
-                url_for('service.create_service'),
+                '/service/{}'.format(sample_service.id),
                 data=json.dumps(data),
-                headers=headers)
-            assert resp.status_code == 201
-            service = Service.query.filter_by(name='created service').first()
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp['data']['name'] == service.name
-            assert json_resp['data']['limit'] == service.limit
-
-
-def test_post_service_multiple_users(notify_api, notify_db, notify_db_session, sample_user):
-    """
-    Tests POST endpoint '/' to create a service with multiple users.
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            another_user = create_sample_user(
-                notify_db,
-                notify_db_session,
-                "new@digital.cabinet-office.gov.uk")
-            assert Service.query.count() == 0
-            data = {
-                'name': 'created service',
-                'users': [sample_user.id, another_user.id],
-                'limit': 1000,
-                'restricted': False,
-                'active': False}
-            auth_header = create_authorization_header(path=url_for('service.create_service'),
-                                                      method='POST',
-                                                      request_body=json.dumps(data))
-            headers = [('Content-Type', 'application/json'), auth_header]
-            resp = client.post(
-                url_for('service.create_service'),
-                data=json.dumps(data),
-                headers=headers)
-            assert resp.status_code == 201
-            service = Service.query.filter_by(name='created service').first()
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp['data']['name'] == service.name
-            assert json_resp['data']['limit'] == service.limit
-            assert len(service.users) == 2
-
-
-def test_post_service_without_users_attribute(notify_api, notify_db, notify_db_session):
-    """
-    Tests POST endpoint '/' to create a service without 'users' attribute.
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            assert Service.query.count() == 0
-            data = {
-                'name': 'created service',
-                'limit': 1000,
-                'restricted': False,
-                'active': False}
-            auth_header = create_authorization_header(path=url_for('service.create_service'),
-                                                      method='POST',
-                                                      request_body=json.dumps(data))
-            headers = [('Content-Type', 'application/json'), auth_header]
-            resp = client.post(
-                url_for('service.create_service'),
-                data=json.dumps(data),
-                headers=headers)
-            assert resp.status_code == 500
-            assert Service.query.count() == 0
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp['message'] == '{"users": ["Missing data for required attribute"]}'
-
-
-def test_put_service(notify_api, notify_db, notify_db_session, sample_service):
-    """
-    Tests PUT endpoint '/<service_id>' to edit a service.
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            assert Service.query.count() == 1
-            new_name = 'updated service'
-            data = {
-                'name': new_name,
-                'users': [sample_service.users[0].id],
-                'limit': 1000,
-                'restricted': False,
-                'active': False}
-            auth_header = create_authorization_header(path=url_for('service.update_service',
-                                                                   service_id=sample_service.id),
-                                                      method='PUT',
-                                                      request_body=json.dumps(data))
-            headers = [('Content-Type', 'application/json'), auth_header]
-            resp = client.put(
-                url_for('service.update_service', service_id=sample_service.id),
-                data=json.dumps(data),
-                headers=headers)
-            assert Service.query.count() == 1
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+            result = json.loads(resp.get_data(as_text=True))
             assert resp.status_code == 200
-            updated_service = Service.query.get(sample_service.id)
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp['data']['name'] == updated_service.name
-            assert json_resp['data']['limit'] == updated_service.limit
-            assert updated_service.name == new_name
+            assert result['data']['name'] == 'updated service name'
 
 
-def test_put_service_not_exists(notify_api, notify_db, notify_db_session, sample_service):
-    """
-    Tests PUT endpoint '/<service_id>' service doesn't exist.
-    """
+def test_update_service_should_404_if_id_is_invalid(notify_api, notify_db):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            sample_user = sample_service.users[0]
-            new_name = 'updated service'
+
             data = {
-                'name': new_name,
-                'users': [sample_user.id],
-                'limit': 1000,
-                'restricted': False,
-                'active': False}
+                'name': 'updated service name'
+            }
+
             missing_service_id = uuid.uuid4()
-            auth_header = create_authorization_header(path=url_for('service.update_service',
-                                                                   service_id=missing_service_id),
-                                                      method='PUT',
-                                                      request_body=json.dumps(data))
-            resp = client.put(
-                url_for('service.update_service', service_id=missing_service_id),
+
+            auth_header = create_authorization_header(
+                path='/service/{}'.format(missing_service_id),
+                method='POST',
+                request_body=json.dumps(data)
+            )
+
+            resp = client.post(
+                '/service/{}'.format(missing_service_id),
                 data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
             assert resp.status_code == 404
-            assert Service.query.first().name == sample_service.name
-            assert Service.query.first().name != new_name
-
-
-def test_put_service_add_user(notify_api, notify_db, notify_db_session, sample_service):
-    """
-    Tests PUT endpoint '/<service_id>' add user to the service.
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            assert Service.query.count() == 1
-            another_user = create_sample_user(
-                notify_db,
-                notify_db_session,
-                "new@digital.cabinet-office.gov.uk")
-            new_name = 'updated service'
-            sample_user = sample_service.users[0]
-            data = {
-                'name': new_name,
-                'users': [sample_user.id, another_user.id],
-                'limit': 1000,
-                'restricted': False,
-                'active': False}
-            auth_header = create_authorization_header(path=url_for('service.update_service',
-                                                                   service_id=sample_service.id),
-                                                      method='PUT',
-                                                      request_body=json.dumps(data))
-            headers = [('Content-Type', 'application/json'), auth_header]
-            resp = client.put(
-                url_for('service.update_service', service_id=sample_service.id),
-                data=json.dumps(data),
-                headers=headers)
-            assert Service.query.count() == 1
-            assert resp.status_code == 200
-            updated_service = Service.query.get(sample_service.id)
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert len(json_resp['data']['users']) == 2
-            assert sample_user.id in json_resp['data']['users']
-            assert another_user.id in json_resp['data']['users']
-            assert len(updated_service.users) == 2
-            assert set(updated_service.users) == set([sample_user, another_user])
-
-
-def test_put_service_remove_user(notify_api, notify_db, notify_db_session, sample_service):
-    """
-    Tests PUT endpoint '/<service_id>' add user to the service.
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            sample_user = sample_service.users[0]
-            another_user = create_sample_user(
-                notify_db,
-                notify_db_session,
-                "new@digital.cabinet-office.gov.uk")
-            data = {
-                'name': sample_service.name,
-                'users': [sample_user, another_user],
-                'limit': sample_service.limit,
-                'restricted': sample_service.restricted,
-                'active': sample_service.active}
-            save_model_service(sample_service, update_dict=data)
-            assert Service.query.count() == 1
-            data['users'] = [another_user.id]
-
-            auth_header = create_authorization_header(path=url_for('service.update_service',
-                                                                   service_id=sample_service.id),
-                                                      method='PUT',
-                                                      request_body=json.dumps(data))
-            headers = [('Content-Type', 'application/json'), auth_header]
-            resp = client.put(
-                url_for('service.update_service', service_id=sample_service.id),
-                data=json.dumps(data),
-                headers=headers)
-            assert Service.query.count() == 1
-            assert resp.status_code == 200
-            updated_service = Service.query.get(sample_service.id)
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert len(json_resp['data']['users']) == 1
-            assert sample_user.id not in json_resp['data']['users']
-            assert another_user.id in json_resp['data']['users']
-            assert sample_user not in updated_service.users
-            assert another_user in updated_service.users
-
-
-def test_delete_service(notify_api, notify_db, notify_db_session, sample_service):
-    """
-    Tests DELETE endpoint '/<service_id>' delete service.
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            auth_header = create_authorization_header(path=url_for('service.update_service',
-                                                                   service_id=sample_service.id),
-                                                      method='DELETE')
-            resp = client.delete(
-                url_for('service.update_service', service_id=sample_service.id),
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 202
-            json_resp = json.loads(resp.get_data(as_text=True))
-            json_resp['data']['name'] == sample_service.name
-            assert Service.query.count() == 0
-
-
-def test_delete_service_not_exists(notify_api, notify_db, notify_db_session, sample_service):
-    """
-    Tests DELETE endpoint '/<service_id>' delete service doesn't exist.
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            assert Service.query.count() == 1
-            missing_service_id = uuid.uuid4()
-            auth_header = create_authorization_header(path=url_for('service.update_service',
-                                                                   service_id=missing_service_id),
-                                                      method='DELETE')
-            resp = client.delete(
-                url_for('service.update_service', service_id=missing_service_id),
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 404
-            assert Service.query.count() == 1
-
-
-def test_create_service_should_create_new_service_for_user(notify_api, notify_db, notify_db_session, sample_user):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            assert Service.query.count() == 0
-            data = {
-                'name': 'created service',
-                'users': [sample_user.id],
-                'limit': 1000,
-                'restricted': False,
-                'active': False}
-            auth_header = create_authorization_header(path=url_for('service.create_service'),
-                                                      method='POST',
-                                                      request_body=json.dumps(data))
-            headers = [('Content-Type', 'application/json'), auth_header]
-            resp = client.post(url_for('service.create_service'),
-                               data=json.dumps(data),
-                               headers=headers)
-            assert resp.status_code == 201
-            assert Service.query.count() == 1
 
 
 def test_create_template(notify_api, notify_db, notify_db_session, sample_service):
