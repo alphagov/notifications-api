@@ -42,8 +42,8 @@ def create_user():
 
 @user.route('/<int:user_id>', methods=['PUT'])
 def update_user(user_id):
-    user = get_model_users(user_id=user_id)
-    if not user:
+    user_to_update = get_model_users(user_id=user_id)
+    if not user_to_update:
         return jsonify(result="error", message="User not found"), 404
 
     req_json = request.get_json()
@@ -110,6 +110,9 @@ def verify_user_code(user_id):
 def send_user_sms_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
 
+    if not user_to_send_to:
+        return jsonify(result="error", message="No user found"), 404
+
     verify_code, errors = request_verify_code_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
@@ -129,7 +132,9 @@ def send_user_sms_code(user_id):
 @user.route('/<int:user_id>/email-code', methods=['POST'])
 def send_user_email_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
-    print(user_to_send_to)
+    if not user_to_send_to:
+        return jsonify(result="error", message="No user found"), 404
+
     verify_code, errors = request_verify_code_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
@@ -150,6 +155,9 @@ def send_user_email_code(user_id):
 @user.route('/<int:user_id>/code', methods=['POST'])
 def send_user_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
+
+    if not user_to_send_to:
+        return jsonify(result="error", message="not found"), 404
 
     verify_code, errors = old_request_verify_code_schema.load(request.get_json())
     if errors:
