@@ -1,4 +1,3 @@
-import re
 from datetime import datetime
 
 from flask import (
@@ -30,6 +29,7 @@ from app.schemas import (
     service_schema,
     api_keys_schema
 )
+from app import email_safe
 
 from flask import Blueprint
 
@@ -76,7 +76,7 @@ def create_service():
 
     data.pop('user_id', None)
     if 'name' in data:
-        data['email_from'] = _email_safe(data.get('name', None))
+        data['email_from'] = email_safe(data.get('name', None))
 
     valid_service, errors = service_schema.load(request.get_json())
 
@@ -85,13 +85,6 @@ def create_service():
 
     dao_create_service(valid_service, user)
     return jsonify(data=service_schema.dump(valid_service).data), 201
-
-
-def _email_safe(string):
-    return "".join([
-        character.lower() if character.isalnum() or character == "." else ""
-        for character in re.sub("\s+", ".", string.strip())
-    ])
 
 
 @service.route('/<service_id>', methods=['POST'])

@@ -1,5 +1,6 @@
 import pytest
 
+from app import email_safe
 from app.models import (User, Service, Template, ApiKey, Job, Notification)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import dao_create_service
@@ -13,11 +14,24 @@ import uuid
 @pytest.fixture(scope='function')
 def service_factory(notify_db, notify_db_session):
     class ServiceFactory(object):
-        def get(self, service_name, user=None):
+        def get(self, service_name, user=None, template_type=None):
             if not user:
                 user = sample_user(notify_db, notify_db_session)
             service = sample_service(notify_db, notify_db_session, service_name, user)
-            sample_template(notify_db, notify_db_session, service=service)
+            if template_type == 'email':
+                sample_template(
+                    notify_db,
+                    notify_db_session,
+                    template_type=template_type,
+                    subject_line=email_safe(service_name),
+                    service=service
+                )
+            else:
+                sample_template(
+                    notify_db,
+                    notify_db_session,
+                    service=service
+                )
             return service
 
     return ServiceFactory()
@@ -93,7 +107,7 @@ def sample_service(notify_db,
         'limit': 1000,
         'active': False,
         'restricted': False,
-        'email_from': service_name
+        'email_from': email_safe(service_name)
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
@@ -110,6 +124,33 @@ def sample_template(notify_db,
                     content="This is a template",
                     subject_line=None,
                     service=None):
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
+    sample_api_key(notify_db, notify_db_session, service=service)
+    data = {
+        'name': template_name,
+        'template_type': template_type,
+        'content': content,
+        'service': service
+    }
+    if template_type == 'email':
+        data.update({
+            'subject': subject_line
+        })
+    template = Template(**data)
+    save_model_template(template)
+    return template
+
+
+@pytest.fixture(scope='function')
+def sample_email_template(
+        notify_db,
+        notify_db_session,
+        template_name="Email Template Name",
+        template_type="email",
+        content="This is a template",
+        subject_line='Email Subject',
+        service=None):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     sample_api_key(notify_db, notify_db_session, service=service)
