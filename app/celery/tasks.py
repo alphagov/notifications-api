@@ -46,9 +46,9 @@ def send_sms_code(encrypted_verification):
 def send_email_code(encrypted_verification_message):
     verification_message = encryption.decrypt(encrypted_verification_message)
     try:
-        aws_ses_client.send_email(verification_message['from_address'],
-                                  verification_message['to_address'],
-                                  verification_message['subject'],
-                                  verification_message['body'])
+        aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
+                                  verification_message['to'],
+                                  "Verification code",
+                                  verification_message['secret_code'])
     except AwsSesClientException as e:
         current_app.logger.error(e)
