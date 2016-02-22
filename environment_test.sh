@@ -1,3 +1,4 @@
+#!/bin/bash
 export NOTIFY_API_ENVIRONMENT='config.Test'
 export ADMIN_CLIENT_USER_NAME='dev-notify-admin'
 export ADMIN_CLIENT_SECRET='dev-notify-secret-key'

@@ -31,7 +31,8 @@ def sample_user(notify_db,
         'email_address': email,
         'password': 'password',
         'mobile_number': '+447700900986',
-        'state': 'active'
+        'state': 'active',
+        'permissions': []
     }
     usr = User.query.filter_by(email_address=email).first()
     if not usr:
