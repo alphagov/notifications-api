@@ -1,7 +1,10 @@
 import re
 from datetime import datetime
 
-from flask import (jsonify, request)
+from flask import (
+    jsonify,
+    request
+)
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 from app.dao import DAOException
@@ -15,11 +18,7 @@ from app.dao.services_dao import (
     dao_update_service,
     dao_fetch_all_services_by_user
 )
-from app.dao.templates_dao import (
-    save_model_template,
-    get_model_templates,
-    delete_model_template
-)
+
 from app.dao.api_key_dao import (
     save_model_api_key,
     get_model_api_keys,
@@ -29,10 +28,7 @@ from app.models import ApiKey
 from app.schemas import (
     services_schema,
     service_schema,
-    templates_schema,
-    api_keys_schema,
-    template_schema_load_json,
-    template_schema
+    api_keys_schema
 )
 
 from flask import Blueprint
@@ -166,62 +162,3 @@ def get_api_keys(service_id, key_id=None):
         return jsonify(result="error", message="API key not found"), 404
 
     return jsonify(apiKeys=api_keys_schema.dump(api_keys).data), 200
-
-
-@service.route('/<service_id>/template', methods=['POST'])
-def create_template(service_id):
-    fetched_service = dao_fetch_service_by_id(service_id=service_id)
-    if not fetched_service:
-        return jsonify(result="error", message="Service not found"), 404
-    template, errors = template_schema.load(request.get_json())
-    if errors:
-        return jsonify(result="error", message=errors), 400
-    template.service = fetched_service
-    # I believe service is already added to the session but just needs a
-    # db.session.commit
-    save_model_template(template)
-    return jsonify(data=template_schema.dump(template).data), 201
-
-
-@service.route('/<service_id>/template/<int:template_id>', methods=['PUT', 'DELETE'])
-def update_template(service_id, template_id):
-    fetched_service = dao_fetch_service_by_id(service_id=service_id)
-    if not fetched_service:
-        return jsonify(result="error", message="Service not found"), 404
-    try:
-        template = get_model_templates(template_id=template_id)
-    except DataError:
-        return jsonify(result="error", message="Invalid template id"), 400
-    except NoResultFound:
-        return jsonify(result="error", message="Template not found"), 404
-    if request.method == 'DELETE':
-        status_code = 202
-        delete_model_template(template)
-    else:
-        status_code = 200
-        update_dict, errors = template_schema_load_json.load(request.get_json())
-        if errors:
-            return jsonify(result="error", message=errors), 400
-        try:
-            save_model_template(template, update_dict=update_dict)
-        except DAOException as e:
-            return jsonify(result="error", message=str(e)), 500
-    return jsonify(data=template_schema.dump(template).data), status_code
-
-
-@service.route('/<service_id>/template/<int:template_id>', methods=['GET'])
-@service.route('/<service_id>/template', methods=['GET'])
-def get_service_template(service_id, template_id=None):
-    try:
-        templates = get_model_templates(service_id=service_id, template_id=template_id)
-    except DataError:
-        return jsonify(result="error", message="Invalid template id"), 400
-    except NoResultFound:
-        return jsonify(result="error", message="Template not found"), 404
-    if isinstance(templates, list):
-        data, errors = templates_schema.dump(templates)
-    else:
-        data, errors = template_schema.dump(templates)
-    if errors:
-        return jsonify(result="error", message=str(errors))
-    return jsonify(data=data)

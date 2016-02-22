@@ -1,3 +1,5 @@
+from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.exc import IntegrityError
 from app.dao.templates_dao import (
     dao_create_template,
     dao_get_template_by_id_and_service_id,
@@ -6,6 +8,7 @@ from app.dao.templates_dao import (
 )
 from tests.app.conftest import sample_template as create_sample_template
 from app.models import Template
+import pytest
 
 
 def test_create_template(sample_service):
@@ -21,6 +24,36 @@ def test_create_template(sample_service):
     assert Template.query.count() == 1
     assert len(dao_get_all_templates_for_service(sample_service.id)) == 1
     assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'Sample Template'
+
+
+def test_create_email_template(sample_service):
+    data = {
+        'name': 'Sample Template',
+        'template_type': "email",
+        'subject': "subject",
+        'content': "Template content",
+        'service': sample_service
+    }
+    template = Template(**data)
+    dao_create_template(template)
+
+    assert Template.query.count() == 1
+    assert len(dao_get_all_templates_for_service(sample_service.id)) == 1
+    assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'Sample Template'
+
+
+def test_create_email_template_fails_if_no_subject(sample_service):
+    data = {
+        'name': 'Sample Template',
+        'template_type': "email",
+        'content': "Template content",
+        'service': sample_service
+    }
+    template = Template(**data)
+
+    with pytest.raises(IntegrityError) as e:
+        dao_create_template(template)
+    assert 'new row for relation "templates" violates check constraint "ch_email_template_has_subject"' in str(e.value)
 
 
 def test_update_template(sample_service):
