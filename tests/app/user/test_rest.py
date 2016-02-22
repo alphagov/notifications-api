@@ -270,7 +270,7 @@ def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_us
             assert User.query.count() == 2
             user = User.query.filter_by(id=sample_user.id).first()
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp == {'result': 'error', 'message': 'User not found'}
+            assert json_resp == {'error': 'No result found'}
             assert user == sample_user
             assert user.email_address != new_email
 
@@ -327,8 +327,7 @@ def test_get_user_service(notify_api, notify_db, notify_db_session, sample_servi
             assert json_resp['data']['id'] == str(another_service.id)
 
 
-def test_get_user_service_user_not_exists(notify_api, notify_db, notify_db_session, sample_service,
-                                          sample_admin_service_id):
+def test_get_user_service_user_not_exists(notify_api, sample_service, sample_admin_service_id):
     """
     Tests GET endpoint "/<user_id>/service/<service_id>" 404 is returned for invalid user.
     """
@@ -339,28 +338,25 @@ def test_get_user_service_user_not_exists(notify_api, notify_db, notify_db_sessi
                                                       path=url_for('user.get_service_by_user_id', user_id="123423",
                                                                    service_id=sample_service.id),
                                                       method='GET')
-            print('** service users{}'.format(sample_service.users[0].id))
             resp = client.get(
                 url_for('user.get_service_by_user_id', user_id="123423", service_id=sample_service.id),
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 404
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert "User not found" in json_resp['message']
+            assert json_resp == {'error': 'No result found'}
 
 
-def test_get_user_service_service_not_exists(notify_api, notify_db, notify_db_session, sample_service,
-                                             sample_admin_service_id):
+def test_get_user_service_service_not_exists(notify_api, sample_service):
     """
     Tests GET endpoint "/<user_id>/service/<service_id>" 404 is returned for invalid service.
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             user = User.query.first()
-            assert Service.query.count() == 2
+            assert Service.query.count() == 1
             import uuid
             missing_service_id = uuid.uuid4()
-            auth_header = create_authorization_header(service_id=sample_admin_service_id,
-                                                      path=url_for('user.get_service_by_user_id', user_id=user.id,
+            auth_header = create_authorization_header(path=url_for('user.get_service_by_user_id', user_id=user.id,
                                                                    service_id=missing_service_id),
                                                       method='GET')
             resp = client.get(
@@ -368,10 +364,10 @@ def test_get_user_service_service_not_exists(notify_api, notify_db, notify_db_se
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 404
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert "Service not found" in json_resp['message']
+            assert json_resp == {'error': 'No result found'}
 
 
-def test_delete_user(notify_api, notify_db, notify_db_session, sample_user, sample_admin_service_id):
+def test_delete_user(notify_api, sample_user, sample_admin_service_id):
     """
     Tests DELETE endpoint '/<user_id>' delete user.
     """
@@ -417,6 +413,8 @@ def test_delete_user_not_exists(notify_api, notify_db, notify_db_session, sample
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 404
             assert User.query.count() == 2
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert json_resp == {'error': 'No result found'}
 
 
 def test_post_with_permissions(notify_api, notify_db, notify_db_session, sample_admin_service_id):
