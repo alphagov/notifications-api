@@ -34,6 +34,7 @@ export NOTIFICATION_QUEUE_PREFIX='[unique-to-environment]-notification_developme
 export SECRET_KEY='dev-notify-secret-key'
 export SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/notification_api'
 export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.works'
+export NOTIFY_EMAIL_DOMAIN='dev.notify.com'
 "> environment.sh
 ```
 
