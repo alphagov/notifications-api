@@ -27,7 +27,7 @@ export AWS_REGION='eu-west-1'
 export DANGEROUS_SALT='dev-notify-salt'
 export DELIVERY_CLIENT_USER_NAME='dev-notify-delivery'
 export DELIVERY_CLIENT_SECRET='dev-notify-secret-key'
-export FIRETEXT_API_KEY="secret-fire-text"
+export FIRETEXT_API_KEY="secret-fire-text" # This has to be real so speak to a grownup
 export FIRETEXT_NUMBER="Firetext"
 export NOTIFY_JOB_QUEUE='[unique-to-environment]-notify-jobs-queue' # NOTE unique prefix
 export NOTIFICATION_QUEUE_PREFIX='[unique-to-environment]-notification_development' # NOTE unique prefix
@@ -41,3 +41,20 @@ NOTE: the DELIVERY_CLIENT_USER_NAME, DELIVERY_CLIENT_SECRET, NOTIFY_JOB_QUEUE an
 The SECRET_KEY and DANGEROUS_SALT are the same in [notifications-delivery](https://github.com/alphagov/notifications-delivery) and [notifications-admin](https://github.com/alphagov/notifications-admin) app.
 
 NOTE:  Also note the  unique prefix for the queue names. This prevents clashing with others queues in shared amazon environment and using a prefix enables filtering by queue name in the SQS interface.
+
+
+
+##  To run the application
+
+You need to run the api application and a local celery instance.
+
+There are two run scripts for running all the necessary parts.
+
+```
+scripts/run_app.sh
+```
+
+```
+scripts/run_celery.sh
+```
+
