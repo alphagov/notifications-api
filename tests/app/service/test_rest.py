@@ -4,6 +4,7 @@ import uuid
 from app.dao.users_dao import save_model_user
 from app.models import User
 from tests import create_authorization_header
+from tests.app.conftest import sample_service as create_service
 
 
 def test_get_service_list(notify_api, service_factory):
@@ -341,3 +342,27 @@ def test_update_service_should_404_if_id_is_invalid(notify_api, notify_db):
                 headers=[('Content-Type', 'application/json'), auth_header]
             )
             assert resp.status_code == 404
+
+
+def test_get_users_by_service(notify_api, notify_db, notify_db_session, sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            sample_service = create_service(notify_db=notify_db, notify_db_session=notify_db_session,
+                                            service_name='Sample service', user=sample_user)
+            auth_header = create_authorization_header(
+                path='/service/{}/users'.format(sample_service.id),
+                method='GET'
+            )
+
+            resp = client.get(
+                '/service/{}/users'.format(sample_service.id),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+
+            assert resp.status_code == 200
+            result = json.loads(resp.get_data(as_text=True))
+            assert len(result['data']) == 1
+            assert result['data'][0]['name'] == sample_user.name
+            assert result['data'][0]['email_address'] == sample_user.email_address
+            assert result['data'][0]['mobile_number'] == sample_user.mobile_number
