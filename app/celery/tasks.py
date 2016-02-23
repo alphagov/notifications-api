@@ -33,6 +33,36 @@ def send_sms(service_id, notification_id, encrypted_notification):
         current_app.logger.debug(e)
 
 
+@notify_celery.task(name="send-email")
+def send_email(service_id, notification_id, subject, from_address, encrypted_notification):
+    notification = encryption.decrypt(encrypted_notification)
+    template = get_model_templates(notification['template'])
+
+    try:
+        notification_db_object = Notification(
+            id=notification_id,
+            template_id=notification['template'],
+            to=notification['to'],
+            service_id=service_id,
+            status='sent'
+        )
+        save_notification(notification_db_object)
+
+        try:
+            aws_ses_client.send_email(
+                from_address,
+                notification['to'],
+                subject,
+                template.content
+            )
+        except AwsSesClientException as e:
+            current_app.logger.debug(e)
+            save_notification(notification_db_object, {"status": "failed"})
+
+    except SQLAlchemyError as e:
+        current_app.logger.debug(e)
+
+
 @notify_celery.task(name='send-sms-code')
 def send_sms_code(encrypted_verification):
     verification_message = encryption.decrypt(encrypted_verification)

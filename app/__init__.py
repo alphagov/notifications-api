@@ -1,5 +1,5 @@
 import os
-
+import re
 from flask import request, url_for
 from flask import Flask, _request_ctx_stack
 from flask.ext.sqlalchemy import SQLAlchemy
@@ -92,3 +92,10 @@ def get_db_version():
         return full_name.split('_')[0]
     except:
         return 'n/a'
+
+
+def email_safe(string):
+    return "".join([
+        character.lower() if character.isalnum() or character == "." else ""
+        for character in re.sub("\s+", ".", string.strip())
+    ])
