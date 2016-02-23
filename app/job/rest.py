@@ -41,12 +41,12 @@ def get_job_for_service(service_id, job_id=None):
     if job_id:
         try:
             job = get_job(service_id, job_id)
+            if not job:
+                return jsonify(result="error", message="Job not found"), 404
             data, errors = job_schema.dump(job)
             return jsonify(data=data)
         except DataError:
             return jsonify(result="error", message="Invalid job id"), 400
-        except NoResultFound:
-            return jsonify(result="error", message="Job not found"), 404
     else:
         jobs = get_jobs_by_service(service_id)
         data, errors = jobs_schema.dump(jobs)
