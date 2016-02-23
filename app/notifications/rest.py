@@ -49,9 +49,12 @@ def create_sms_notification():
     if errors:
         return jsonify(result="error", message=errors), 400
 
-    try:
-        templates_dao.get_model_templates(template_id=notification['template'], service_id=api_user['client'])
-    except NoResultFound:
+    template = templates_dao.dao_get_template_by_id_and_service_id(
+        template_id=notification['template'],
+        service_id=api_user['client']
+    )
+
+    if not template:
         return jsonify(result="error", message={'template': ['Template not found']}), 400
 
     service = services_dao.dao_fetch_service_by_id(api_user['client'])
