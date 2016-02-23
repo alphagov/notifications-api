@@ -394,3 +394,64 @@ def test_put_remove_permissions(notify_api, notify_db, notify_db_session, sample
                 "permissions": permissions
             }
             assert json_resp['data'] == expected
+
+
+def test_get_user_by_email(notify_api, notify_db, notify_db_session, sample_user, sample_admin_service_id):
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            header = create_authorization_header(service_id=sample_admin_service_id,
+                                                 path=url_for('user.get_by_email'), method='GET')
+            url = url_for('user.get_by_email', email=sample_user.email_address)
+            resp = client.get(url, headers=[header])
+            assert resp.status_code == 200
+            json_resp = json.loads(resp.get_data(as_text=True))
+            expected = {
+                "name": "Test User",
+                "email_address": sample_user.email_address,
+                "id": sample_user.id,
+                "mobile_number": "+447700900986",
+                "password_changed_at": None,
+                "logged_in_at": None,
+                "state": "active",
+                "failed_login_count": 0,
+                "permissions": []
+            }
+
+            assert json_resp['data'] == expected
+
+
+def test_get_user_by_email_not_found_returns_400(notify_api,
+                                                 notify_db,
+                                                 notify_db_session,
+                                                 sample_user,
+                                                 sample_admin_service_id):
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            header = create_authorization_header(service_id=sample_admin_service_id,
+                                                 path=url_for('user.get_by_email'), method='GET')
+            url = url_for('user.get_by_email', email='no_user@digital.gov.uk')
+            resp = client.get(url, headers=[header])
+            assert resp.status_code == 404
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert json_resp['result'] == 'error'
+            assert json_resp['message'] == 'not found'
+
+
+def test_get_user_by_email_bad_url_returns_404(notify_api,
+                                               notify_db,
+                                               notify_db_session,
+                                               sample_user,
+                                               sample_admin_service_id):
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            header = create_authorization_header(service_id=sample_admin_service_id,
+                                                 path=url_for('user.get_by_email'), method='GET')
+            url = '/user/email'
+            resp = client.get(url, headers=[header])
+            assert resp.status_code == 400
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert json_resp['result'] == 'error'
+            assert json_resp['message'] == 'invalid request'
