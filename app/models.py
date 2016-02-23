@@ -224,3 +224,38 @@ class Notification(db.Model):
         onupdate=datetime.datetime.now)
     status = db.Column(
         db.Enum(*NOTIFICATION_STATUS_TYPES, name='notification_status_types'), nullable=False, default='sent')
+
+
+INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
+
+
+class InvitedUser(db.Model):
+
+    __tablename__ = 'invited_users'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email_address = db.Column(db.String(255), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=False)
+    from_user = db.relationship('User')
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False)
+    service = db.relationship('Service')
+    _token = db.Column(db.String, nullable=False)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=False,
+        default=datetime.datetime.now)
+    status = db.Column(
+        db.Enum(*INVITED_USER_STATUS_TYPES, name='invited_users_status_types'), nullable=False, default='invited')
+
+    @property
+    def token(self):
+        raise AttributeError("Token not readable")
+
+    @token.setter
+    def token(self, token):
+        self._token = hashpw(token)
+
+    def check_token(self, token):
+        return check_hash(token, self._token)
