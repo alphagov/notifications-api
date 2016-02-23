@@ -1,5 +1,4 @@
 from sqlalchemy.exc import DataError
-from sqlalchemy.orm.exc import NoResultFound
 
 import pytest
 
@@ -8,7 +7,8 @@ from app.dao.users_dao import (
     get_model_users,
     delete_model_user,
     increment_failed_login_count,
-    reset_failed_login_count
+    reset_failed_login_count,
+    get_user_by_email
 )
 
 from tests.app.conftest import sample_user as create_sample_user
@@ -84,3 +84,9 @@ def test_reset_failed_login_should_set_failed_logins_to_0(notify_api, notify_db,
     assert sample_user.failed_login_count == 1
     reset_failed_login_count(sample_user)
     assert sample_user.failed_login_count == 0
+
+
+def test_get_user_by_email(notify_api, notify_db, notify_db_session, sample_user):
+    email = sample_user.email_address
+    user_from_db = get_user_by_email(email)
+    assert sample_user == user_from_db

@@ -9,8 +9,10 @@ from app.dao.users_dao import (
     get_user_code,
     use_user_code,
     increment_failed_login_count,
-    reset_failed_login_count
+    reset_failed_login_count,
+    get_user_by_email
 )
+
 from app.schemas import (
     old_request_verify_code_schema,
     user_schema,
@@ -190,4 +192,17 @@ def get_user(user_id=None):
     if not users:
         return jsonify(result="error", message="not found"), 404
     result = users_schema.dump(users) if isinstance(users, list) else user_schema.dump(users)
+    return jsonify(data=result.data)
+
+
+@user.route('/email', methods=['GET'])
+def get_by_email():
+    email = request.args.get('email')
+    if not email:
+        return jsonify(result="error", message="invalid request"), 400
+    user = get_user_by_email(email)
+    if not user:
+        return jsonify(result="error", message="not found"), 404
+    result = user_schema.dump(user)
+
     return jsonify(data=result.data)
