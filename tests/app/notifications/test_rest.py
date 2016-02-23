@@ -6,6 +6,7 @@ from flask import json
 from app.models import Service
 from app.dao.templates_dao import get_model_templates
 from app.dao.services_dao import dao_update_service
+from tests.app.conftest import sample_job
 
 
 def test_get_notification_by_id(notify_api, sample_notification):
@@ -72,6 +73,32 @@ def test_create_sms_should_reject_if_missing_required_fields(notify_api, sample_
             assert response.status_code == 400
 
 
+def test_create_sms_should_reject_if_missing_job_id_on_job_sms(notify_api, sample_api_key, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+
+            data = {}
+            auth_header = create_authorization_header(
+                service_id=sample_api_key.service_id,
+                request_body=json.dumps(data),
+                path='/notifications/sms/service/{}'.format(sample_api_key.service_id),
+                method='POST')
+
+            response = client.post(
+                path='/notifications/sms/service/{}'.format(sample_api_key.service_id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_sms.apply_async.assert_not_called()
+            assert json_resp['result'] == 'error'
+            assert 'Missing data for required field.' in json_resp['message']['to'][0]
+            assert 'Missing data for required field.' in json_resp['message']['template'][0]
+            assert 'Missing data for required field.' in json_resp['message']['job'][0]
+            assert response.status_code == 400
+
+
 def test_should_reject_bad_phone_numbers(notify_api, sample_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -88,6 +115,35 @@ def test_should_reject_bad_phone_numbers(notify_api, sample_template, mocker):
 
             response = client.post(
                 path='/notifications/sms',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_sms.apply_async.assert_not_called()
+
+            assert json_resp['result'] == 'error'
+            assert len(json_resp['message'].keys()) == 1
+            assert 'Invalid phone number, must be of format +441234123123' in json_resp['message']['to']
+            assert response.status_code == 400
+
+
+def test_should_reject_bad_phone_numbers_on_job_sms(notify_api, sample_job, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+
+            data = {
+                'to': 'invalid',
+                'template': sample_job.template.id,
+                'job': sample_job.id
+            }
+            auth_header = create_authorization_header(
+                request_body=json.dumps(data),
+                path='/notifications/sms/service/{}'.format(sample_job.service_id),
+                method='POST')
+
+            response = client.post(
+                path='/notifications/sms/service/{}'.format(sample_job.service_id),
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
 
@@ -128,6 +184,99 @@ def test_send_notification_invalid_template_id(notify_api, sample_template, mock
             assert 'Template not found' in json_resp['message']['template']
 
 
+def test_send_notification_invalid_service_id_on_job_sms(notify_api, sample_job, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+
+            service_id = uuid.uuid4()
+
+            data = {
+                'to': '+441234123123',
+                'template': sample_job.template.id,
+                'job': sample_job.id
+            }
+
+            auth_header = create_authorization_header(
+                service_id=sample_job.service.id,
+                request_body=json.dumps(data),
+                path='/notifications/sms/service/{}'.format(service_id),
+                method='POST')
+
+            response = client.post(
+                path='/notifications/sms/service/{}'.format(service_id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_sms.apply_async.assert_not_called()
+
+            assert response.status_code == 400
+            assert len(json_resp['message'].keys()) == 1
+            assert 'Template or service not found' in json_resp['message']['template']
+
+
+def test_send_notification_invalid_template_id_on_job_sms(notify_api, sample_job, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+
+            data = {
+                'to': '+441234123123',
+                'template': 9999,
+                'job': sample_job.id
+            }
+
+            auth_header = create_authorization_header(
+                service_id=sample_job.service.id,
+                request_body=json.dumps(data),
+                path='/notifications/sms/service/{}'.format(sample_job.service_id),
+                method='POST')
+
+            response = client.post(
+                path='/notifications/sms/service/{}'.format(sample_job.service_id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_sms.apply_async.assert_not_called()
+
+            assert response.status_code == 400
+            assert len(json_resp['message'].keys()) == 1
+            assert 'Template or service not found' in json_resp['message']['template']
+
+
+def test_send_notification_invalid_job_id_on_job_sms(notify_api, sample_template, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+
+            data = {
+                'to': '+441234123123',
+                'template': sample_template.id,
+                'job': uuid.uuid4()
+
+            }
+
+            auth_header = create_authorization_header(
+                service_id=sample_template.service.id,
+                request_body=json.dumps(data),
+                path='/notifications/sms/service/{}'.format(sample_template.service_id),
+                method='POST')
+
+            response = client.post(
+                path='/notifications/sms/service/{}'.format(sample_template.service_id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_sms.apply_async.assert_not_called()
+
+            assert response.status_code == 400
+            assert len(json_resp['message'].keys()) == 1
+            assert 'Job not found' in json_resp['message']['job']
+
+
 def test_prevents_sending_to_any_mobile_on_restricted_service(notify_api, sample_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -152,6 +301,41 @@ def test_prevents_sending_to_any_mobile_on_restricted_service(notify_api, sample
 
             response = client.post(
                 path='/notifications/sms',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_sms.apply_async.assert_not_called()
+
+            assert response.status_code == 400
+            assert 'Invalid phone number for restricted service' in json_resp['message']['to']
+
+
+def test_prevents_sending_to_any_mobile_on_restricted_service_on_job_sms(notify_api, sample_job, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+
+            Service.query.filter_by(
+                id=sample_job.service.id
+            ).update(
+                {'restricted': True}
+            )
+            invalid_mob = '+449999999999'
+            data = {
+                'to': invalid_mob,
+                'template': sample_job.template.id,
+                'job': sample_job.id
+            }
+
+            auth_header = create_authorization_header(
+                service_id=sample_job.service.id,
+                request_body=json.dumps(data),
+                path='/notifications/sms/service/{}'.format(sample_job.service_id),
+                method='POST')
+
+            response = client.post(
+                path='/notifications/sms/service/{}'.format(sample_job.service_id),
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
 
@@ -194,6 +378,50 @@ def test_should_not_allow_template_from_another_service(notify_api, service_fact
             assert 'Template not found' in json_resp['message']['template']
 
 
+def test_should_not_allow_template_from_another_service_on_job_sms(
+        notify_db,
+        notify_db_session,
+        notify_api,
+        service_factory,
+        sample_user,
+        mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+
+            service_1 = service_factory.get('service 1', user=sample_user)
+            service_2 = service_factory.get('service 2', user=sample_user)
+
+            service_1_templates = get_model_templates(service_id=service_2.id)
+            service_2_templates = get_model_templates(service_id=service_2.id)
+
+            job_1 = sample_job(notify_db, notify_db_session, service_1, service_1_templates[0])
+            sample_job(notify_db, notify_db_session, service_2, service_2_templates[0])
+
+            data = {
+                'to': sample_user.mobile_number,
+                'template': service_2_templates[0].id,
+                'job': job_1.id
+            }
+
+            auth_header = create_authorization_header(
+                service_id=service_1.id,
+                request_body=json.dumps(data),
+                path='/notifications/sms/service/{}'.format(service_1.id),
+                method='POST')
+
+            response = client.post(
+                path='/notifications/sms/service/{}'.format(service_1.id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_sms.apply_async.assert_not_called()
+
+            assert response.status_code == 400
+            assert 'Template or service not found' in json_resp['message']['template']
+
+
 def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -222,6 +450,42 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
                 (str(sample_template.service_id),
                  notification_id,
                  "something_encrypted"),
+                queue="sms"
+            )
+            assert response.status_code == 201
+            assert notification_id
+
+
+def test_should_allow_valid_sms_notification_for_job(notify_api, sample_job, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+
+            data = {
+                'to': '+441234123123',
+                'template': sample_job.template.id,
+                'job': sample_job.id
+            }
+
+            auth_header = create_authorization_header(
+                request_body=json.dumps(data),
+                path='/notifications/sms/service/{}'.format(sample_job.service_id),
+                method='POST',
+                service_id=sample_job.service_id
+            )
+
+            response = client.post(
+                path='/notifications/sms/service/{}'.format(sample_job.service_id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            notification_id = json.loads(response.data)['notification_id']
+            app.celery.tasks.send_sms.apply_async.assert_called_once_with(
+                (str(sample_job.template.service_id),
+                 notification_id,
+                 "something_encrypted",
+                 str(sample_job.id)),
                 queue="sms"
             )
             assert response.status_code == 201
@@ -405,73 +669,3 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
             )
             assert response.status_code == 201
             assert notification_id
-
-
-@moto.mock_sqs
-def test_valid_message_with_service_id(notify_api,
-                                       notify_db,
-                                       notify_db_session,
-                                       sqs_client_conn,
-                                       sample_user,
-                                       sample_template,
-                                       mocker):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            job_id = uuid.uuid4()
-            service_id = sample_template.service.id
-            url = '/notifications/sms/service/{}'.format(service_id)
-            data = {
-                'to': '+441234123123',
-                'template': sample_template.id,
-                'job': job_id
-            }
-            auth_header = create_authorization_header(
-                request_body=json.dumps(data),
-                path=url,
-                method='POST')
-
-            response = client.post(
-                url,
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
-
-            assert response.status_code == 201
-            assert json.loads(response.data)['notification_id'] is not None
-
-
-@moto.mock_sqs
-def test_message_with_incorrect_service_id_should_fail(notify_api,
-                                                       notify_db,
-                                                       notify_db_session,
-                                                       sqs_client_conn,
-                                                       sample_user,
-                                                       sample_template,
-                                                       mocker):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            job_id = uuid.uuid4()
-            invalid_service_id = uuid.uuid4()
-
-            url = '/notifications/sms/service/{}'.format(invalid_service_id)
-
-            data = {
-                'to': '+441234123123',
-                'template': sample_template.id,
-                'job': job_id
-            }
-
-            auth_header = create_authorization_header(
-                request_body=json.dumps(data),
-                path=url,
-                method='POST')
-
-            response = client.post(
-                url,
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
-
-            json_resp = json.loads(response.get_data(as_text=True))
-            assert response.status_code == 400
-            expected_error = 'Invalid template: id {} for service id: {}'.format(sample_template.id,
-                                                                                 invalid_service_id)
-            assert json_resp['message'] == expected_error

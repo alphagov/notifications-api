@@ -108,6 +108,11 @@ class SmsTemplateNotificationSchema(SmsNotificationSchema):
     job = fields.String()
 
 
+class JobSmsTemplateNotificationSchema(SmsNotificationSchema):
+    template = fields.Int(required=True)
+    job = fields.String(required=True)
+
+
 class SmsAdminNotificationSchema(SmsNotificationSchema):
     content = fields.Str(required=True)
 
@@ -138,6 +143,7 @@ old_request_verify_code_schema = OldRequestVerifyCodeSchema()
 request_verify_code_schema = RequestVerifyCodeSchema()
 sms_admin_notification_schema = SmsAdminNotificationSchema()
 sms_template_notification_schema = SmsTemplateNotificationSchema()
+job_sms_template_notification_schema = JobSmsTemplateNotificationSchema()
 email_notification_schema = EmailNotificationSchema()
 notification_status_schema = NotificationStatusSchema()
 notifications_status_schema = NotificationStatusSchema(many=True)

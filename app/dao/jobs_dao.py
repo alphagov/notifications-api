@@ -14,7 +14,7 @@ def save_job(job, update_dict={}):
 
 
 def get_job(service_id, job_id):
-    return Job.query.filter_by(service_id=service_id, id=job_id).one()
+    return Job.query.filter_by(service_id=service_id, id=job_id).first()
 
 
 def get_jobs_by_service(service_id):
