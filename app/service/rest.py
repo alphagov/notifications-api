@@ -27,8 +27,8 @@ from app.models import ApiKey
 from app.schemas import (
     services_schema,
     service_schema,
-    api_keys_schema
-)
+    api_keys_schema,
+    users_schema)
 from app import email_safe
 
 from flask import Blueprint
@@ -155,3 +155,13 @@ def get_api_keys(service_id, key_id=None):
         return jsonify(result="error", message="API key not found"), 404
 
     return jsonify(apiKeys=api_keys_schema.dump(api_keys).data), 200
+
+
+@service.route('/<service_id>/users', methods=['GET'])
+def get_users_for_service(service_id):
+    fetched = dao_fetch_service_by_id(service_id)
+    if not fetched:
+        return jsonify(result="error", message="Service not found"), 404
+    print(fetched.users)
+    result = users_schema.dump(fetched.users)
+    return jsonify(data=result.data)
