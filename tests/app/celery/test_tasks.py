@@ -31,6 +31,32 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     assert persisted_notification.to == '+441234123123'
     assert persisted_notification.template_id == sample_template.id
     assert persisted_notification.status == 'sent'
+    assert not persisted_notification.job_id
+
+
+def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sample_job, mocker):
+    notification = {
+        "template": sample_job.template.id,
+        "job": sample_job.id,
+        "to": "+441234123123"
+    }
+    mocker.patch('app.encryption.decrypt', return_value=notification)
+    mocker.patch('app.firetext_client.send_sms')
+
+    notification_id = uuid.uuid4()
+
+    send_sms(
+        sample_job.service.id,
+        notification_id,
+        "encrypted-in-reality")
+
+    firetext_client.send_sms.assert_called_once_with("+441234123123", sample_job.template.content)
+    persisted_notification = notifications_dao.get_notification(sample_job.template.service_id, notification_id)
+    assert persisted_notification.id == notification_id
+    assert persisted_notification.to == '+441234123123'
+    assert persisted_notification.job_id == sample_job.id
+    assert persisted_notification.template_id == sample_job.template.id
+    assert persisted_notification.status == 'sent'
 
 
 def test_should_send_template_to_email_provider_and_persist(sample_email_template, mocker):

@@ -1,6 +1,5 @@
 import uuid
 import app.celery.tasks
-import moto
 from tests import create_authorization_header
 from flask import json
 from app.models import Service
@@ -484,8 +483,7 @@ def test_should_allow_valid_sms_notification_for_job(notify_api, sample_job, moc
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 (str(sample_job.template.service_id),
                  notification_id,
-                 "something_encrypted",
-                 str(sample_job.id)),
+                 "something_encrypted"),
                 queue="sms"
             )
             assert response.status_code == 201
