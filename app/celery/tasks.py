@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 
 @notify_celery.task(name="send-sms")
-def send_sms(service_id, notification_id, encrypted_notification):
+def send_sms(service_id, notification_id, encrypted_notification, job_id=None):
     notification = encryption.decrypt(encrypted_notification)
     template = get_model_templates(notification['template'])
 
@@ -19,6 +19,7 @@ def send_sms(service_id, notification_id, encrypted_notification):
             template_id=notification['template'],
             to=notification['to'],
             service_id=service_id,
+            job_id=job_id,
             status='sent'
         )
         save_notification(notification_db_object)
