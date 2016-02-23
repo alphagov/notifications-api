@@ -64,6 +64,10 @@ def get_model_users(user_id=None):
     return User.query.filter_by().all()
 
 
+def get_user_by_email(email):
+    return User.query.filter_by(email_address=email).first()
+
+
 def increment_failed_login_count(user):
     user.failed_login_count += 1
     db.session.add(user)
