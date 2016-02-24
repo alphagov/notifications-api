@@ -239,7 +239,6 @@ class InvitedUser(db.Model):
     from_user = db.relationship('User')
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False)
     service = db.relationship('Service')
-    _token = db.Column(db.String, nullable=False)
     created_at = db.Column(
         db.DateTime,
         index=False,
@@ -247,15 +246,4 @@ class InvitedUser(db.Model):
         nullable=False,
         default=datetime.datetime.now)
     status = db.Column(
-        db.Enum(*INVITED_USER_STATUS_TYPES, name='invited_users_status_types'), nullable=False, default='invited')
-
-    @property
-    def token(self):
-        raise AttributeError("Token not readable")
-
-    @token.setter
-    def token(self, token):
-        self._token = hashpw(token)
-
-    def check_token(self, token):
-        return check_hash(token, self._token)
+        db.Enum(*INVITED_USER_STATUS_TYPES, name='invited_users_status_types'), nullable=False, default='pending')

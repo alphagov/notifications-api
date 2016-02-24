@@ -45,6 +45,7 @@ def create_app():
     from app.status.healthcheck import status as status_blueprint
     from app.job.rest import job as job_blueprint
     from app.notifications.rest import notifications as notifications_blueprint
+    from app.invite.rest import invite as invite_blueprint
 
     application.register_blueprint(service_blueprint, url_prefix='/service')
     application.register_blueprint(user_blueprint, url_prefix='/user')
@@ -52,6 +53,7 @@ def create_app():
     application.register_blueprint(status_blueprint, url_prefix='/status')
     application.register_blueprint(notifications_blueprint, url_prefix='/notifications')
     application.register_blueprint(job_blueprint)
+    application.register_blueprint(invite_blueprint)
 
     return application
 

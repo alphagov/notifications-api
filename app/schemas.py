@@ -118,6 +118,16 @@ class NotificationStatusSchema(BaseSchema):
         model = models.Notification
 
 
+class InvitedUserSchema(BaseSchema):
+    class Meta:
+        model = models.InvitedUser
+
+    @validates('email_address')
+    def validate_to(self, value):
+        if not email_regex.match(value):
+            raise ValidationError('Invalid email')
+
+
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
 users_schema = UserSchema(many=True)
@@ -142,3 +152,5 @@ email_notification_schema = EmailNotificationSchema()
 notification_status_schema = NotificationStatusSchema()
 notifications_status_schema = NotificationStatusSchema(many=True)
 notification_status_schema_load_json = NotificationStatusSchema(load_json=True)
+invited_user_schema = InvitedUserSchema()
+invited_users_schema = InvitedUserSchema(many=True)
