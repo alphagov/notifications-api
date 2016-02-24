@@ -1,12 +1,14 @@
-import random
-from datetime import (datetime, timedelta)
+from datetime import (
+    datetime,
+    timedelta
+)
 
 from app import db
-from app.models import (User, VerifyCode)
 
-
-def create_secret_code():
-    return ''.join(map(str, random.sample(range(9), 5)))
+from app.models import (
+    User,
+    VerifyCode
+)
 
 
 def save_model_user(usr, update_dict={}, pwd=None):
