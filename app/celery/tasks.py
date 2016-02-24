@@ -1,11 +1,42 @@
+from app import create_uuid
 from app import notify_celery, encryption, firetext_client, aws_ses_client
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.notifications_dao import save_notification
+from app.dao.jobs_dao import dao_update_job, dao_get_job_by_id
 from app.models import Notification
 from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
+from app.aws import s3
+from app.csv import get_mobile_numbers_from_csv
+
+
+@notify_celery.task(name="process-job")
+def process_job(job_id):
+    job = dao_get_job_by_id(job_id)
+    job.status = 'in progress'
+    dao_update_job(job)
+
+    file = s3.get_job_from_s3(job.bucket_name, job_id)
+    mobile_numbers = get_mobile_numbers_from_csv(file)
+
+    for mobile_number in mobile_numbers:
+        notification = encryption.encrypt({
+            'template': job.template_id,
+            'job': str(job.id),
+            'to': mobile_number
+        })
+
+        send_sms.apply_async((
+            str(job.service_id),
+            str(create_uuid()),
+            notification),
+            queue='sms'
+        )
+
+    job.status = 'finished'
+    dao_update_job(job)
 
 
 @notify_celery.task(name="send-sms")

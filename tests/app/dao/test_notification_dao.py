@@ -8,7 +8,7 @@ from app.dao.notifications_dao import (
 )
 
 
-def test_save_notification(notify_db, notify_db_session, sample_template, sample_job):
+def test_save_notification(sample_template, sample_job):
 
     assert Notification.query.count() == 0
     to = '+44709123456'

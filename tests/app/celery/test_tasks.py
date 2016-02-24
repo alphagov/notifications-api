@@ -1,13 +1,49 @@
 import uuid
 import pytest
 from flask import current_app
-from app.celery.tasks import (send_sms, send_sms_code, send_email_code, send_email)
+from app.celery.tasks import (send_sms, send_sms_code, send_email_code, send_email, process_job)
 from app import (firetext_client, aws_ses_client, encryption)
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
-from app.dao import notifications_dao
+from app.dao import notifications_dao, jobs_dao
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
+from app.celery.tasks import s3
+from app.celery import tasks
+from tests.app import load_example_csv
+
+
+def test_should_process_sms_job(sample_job, mocker):
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
+    mocker.patch('app.celery.tasks.send_sms.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+
+    process_job(sample_job.id)
+
+    s3.get_job_from_s3.assert_called_once_with(sample_job.bucket_name, sample_job.id)
+    tasks.send_sms.apply_async.assert_called_once_with(
+        (str(sample_job.service_id),
+         "uuid",
+         "something_encrypted"),
+        queue="sms"
+    )
+    job = jobs_dao.dao_get_job_by_id(sample_job.id)
+    assert job.status == 'finished'
+
+
+def test_should_process_all_sms_job(sample_job, mocker):
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
+    mocker.patch('app.celery.tasks.send_sms.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+
+    process_job(sample_job.id)
+
+    s3.get_job_from_s3.assert_called_once_with(sample_job.bucket_name, sample_job.id)
+    tasks.send_sms.apply_async.call_count == 10
+    job = jobs_dao.dao_get_job_by_id(sample_job.id)
+    assert job.status == 'finished'
 
 
 def test_should_send_template_to_correct_sms_provider_and_persist(sample_template, mocker):
@@ -218,7 +254,9 @@ def test_should_send_email_code(mocker):
 
     send_email_code(encrypted_verification)
 
-    aws_ses_client.send_email.assert_called_once_with(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
-                                                      verification['to'],
-                                                      "Verification code",
-                                                      verification['secret_code'])
+    aws_ses_client.send_email.assert_called_once_with(
+        current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
+        verification['to'],
+        "Verification code",
+        verification['secret_code']
+    )
