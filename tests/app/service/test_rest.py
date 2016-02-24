@@ -366,3 +366,25 @@ def test_get_users_by_service(notify_api, notify_db, notify_db_session, sample_u
             assert result['data'][0]['name'] == sample_user.name
             assert result['data'][0]['email_address'] == sample_user.email_address
             assert result['data'][0]['mobile_number'] == sample_user.mobile_number
+
+
+def test_get_users_for_service_returns_empty_list_if_no_users_associated_with_service(notify_api,
+                                                                                      notify_db,
+                                                                                      notify_db_session,
+                                                                                      sample_service,
+                                                                                      sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            sample_service.users.remove(sample_user)
+            auth_header = create_authorization_header(
+                path='/service/{}/users'.format(sample_service.id),
+                method='GET'
+            )
+
+            response = client.get(
+                '/service/{}/users'.format(sample_service.id),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+            assert response.status_code == 200
+            result = json.loads(response.get_data(as_text=True))
+            assert result['data'] == []

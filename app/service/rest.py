@@ -161,7 +161,7 @@ def get_api_keys(service_id, key_id=None):
 def get_users_for_service(service_id):
     fetched = dao_fetch_service_by_id(service_id)
     if not fetched:
-        return jsonify(result="error", message="Service not found"), 404
-    print(fetched.users)
+        return jsonify(data=[])
+
     result = users_schema.dump(fetched.users)
     return jsonify(data=result.data)
