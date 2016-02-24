@@ -521,6 +521,32 @@ def test_create_email_should_reject_if_missing_required_fields(notify_api, sampl
             assert response.status_code == 400
 
 
+def test_create_email_job_should_reject_if_missing_required_fields(notify_api, sample_api_key, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_email.apply_async')
+
+            data = {}
+            auth_header = create_authorization_header(
+                service_id=sample_api_key.service_id,
+                request_body=json.dumps(data),
+                path='/notifications/email/service/{}'.format(sample_api_key.service_id),
+                method='POST')
+
+            response = client.post(
+                path='/notifications/email/service/{}'.format(sample_api_key.service_id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_email.apply_async.assert_not_called()
+            assert json_resp['result'] == 'error'
+            assert 'Missing data for required field.' in json_resp['message']['to'][0]
+            assert 'Missing data for required field.' in json_resp['message']['template'][0]
+            assert 'Missing data for required field.' in json_resp['message']['job'][0]
+            assert response.status_code == 400
+
+
 def test_should_reject_email_notification_with_bad_email(notify_api, sample_email_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -548,6 +574,34 @@ def test_should_reject_email_notification_with_bad_email(notify_api, sample_emai
             assert data['message']['to'][0] == 'Invalid email'
 
 
+def test_should_reject_email_job_notification_with_bad_email(notify_api, sample_job, sample_email_template, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_email.apply_async')
+            to_address = "bad-email"
+            data = {
+                'to': to_address,
+                'template': sample_email_template.service.id,
+                'job': sample_job.id
+            }
+            auth_header = create_authorization_header(
+                service_id=sample_email_template.service.id,
+                request_body=json.dumps(data),
+                path='/notifications/email/service/{}'.format(sample_email_template.service_id),
+                method='POST')
+
+            response = client.post(
+                path='/notifications/email/service/{}'.format(sample_email_template.service_id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            data = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_email.apply_async.assert_not_called()
+            assert response.status_code == 400
+            assert data['result'] == 'error'
+            assert data['message']['to'][0] == 'Invalid email'
+
+
 def test_should_reject_email_notification_with_template_id_that_cant_be_found(
         notify_api, sample_email_template, mocker):
     with notify_api.test_request_context():
@@ -565,6 +619,38 @@ def test_should_reject_email_notification_with_template_id_that_cant_be_found(
 
             response = client.post(
                 path='/notifications/email',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            data = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_email.apply_async.assert_not_called()
+            assert response.status_code == 400
+            assert data['result'] == 'error'
+            test_string = 'Template {} not found for service {}'.format(
+                1234,
+                sample_email_template.service.id
+            )
+            assert test_string in data['message']['template']
+
+
+def test_should_reject_email_job_notification_with_template_id_that_cant_be_found(
+        notify_api, sample_job, sample_email_template, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_email.apply_async')
+            data = {
+                'to': 'ok@ok.com',
+                'template': 1234,
+                'job': sample_job.id
+            }
+            auth_header = create_authorization_header(
+                service_id=sample_email_template.service.id,
+                request_body=json.dumps(data),
+                path='/notifications/email/service/{}'.format(sample_job.service.id),
+                method='POST')
+
+            response = client.post(
+                path='/notifications/email/service/{}'.format(sample_job.service.id),
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
 
@@ -613,6 +699,52 @@ def test_should_not_allow_email_template_from_another_service(notify_api, servic
             assert test_string in json_resp['message']['template']
 
 
+def test_should_not_allow_template_from_another_service_on_job_email(
+        notify_db,
+        notify_db_session,
+        notify_api,
+        service_factory,
+        sample_user,
+        mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_email.apply_async')
+
+            service_1 = service_factory.get('service 1', user=sample_user, template_type='email')
+            service_2 = service_factory.get('service 2', user=sample_user, template_type='email')
+
+            service_1_templates = get_model_templates(service_id=service_2.id)
+            service_2_templates = get_model_templates(service_id=service_2.id)
+
+            job_1 = sample_job(notify_db, notify_db_session, service_1, service_1_templates[0])
+            sample_job(notify_db, notify_db_session, service_2, service_2_templates[0])
+
+            data = {
+                'to': sample_user.email_address,
+                'template': service_2_templates[0].id,
+                'job': job_1.id
+            }
+
+            auth_header = create_authorization_header(
+                service_id=service_1.id,
+                request_body=json.dumps(data),
+                path='/notifications/email/service/{}'.format(service_1.id),
+                method='POST')
+
+            response = client.post(
+                path='/notifications/email/service/{}'.format(service_1.id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_email.apply_async.assert_not_called()
+
+            assert response.status_code == 400
+            print(json_resp)
+            test_string = 'Template {} not found for service {}'.format(service_2_templates[0].id, service_1.id)
+            assert test_string in json_resp['message']['template']
+
+
 def test_should_not_send_email_if_restricted_and_not_a_service_user(notify_api, sample_email_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -628,6 +760,38 @@ def test_should_not_send_email_if_restricted_and_not_a_service_user(notify_api, 
 
             auth_header = create_authorization_header(
                 service_id=sample_email_template.service.id,
+                request_body=json.dumps(data),
+                path='/notifications/email',
+                method='POST')
+
+            response = client.post(
+                path='/notifications/email',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_email.apply_async.assert_not_called()
+
+            assert response.status_code == 400
+            assert 'Email address not permitted for restricted service' in json_resp['message']['to']
+
+
+def test_should_not_send_email_for_job_if_restricted_and_not_a_service_user(notify_api, sample_job, sample_email_template, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_email.apply_async')
+
+            sample_email_template.service.restricted = True
+            dao_update_service(sample_email_template)
+
+            data = {
+                'to': "not-someone-we-trust@email-address.com",
+                'template': sample_job.template.id,
+                'job': sample_job.id
+            }
+
+            auth_header = create_authorization_header(
+                service_id=sample_job.service.id,
                 request_body=json.dumps(data),
                 path='/notifications/email',
                 method='POST')
@@ -670,6 +834,75 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
             notification_id = json.loads(response.data)['notification_id']
             app.celery.tasks.send_email.apply_async.assert_called_once_with(
                 (str(sample_email_template.service_id),
+                 notification_id,
+                 "Email Subject",
+                 "sample.service@test.notify.com",
+                 "something_encrypted"),
+                queue="email"
+            )
+            assert response.status_code == 201
+            assert notification_id
+
+
+def test_send_notification_invalid_job_id_on_job_email(notify_api, sample_email_template, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_email.apply_async')
+            job_id = uuid.uuid4()
+            data = {
+                'to': 'test@test.com',
+                'template': sample_email_template.id,
+                'job': job_id
+
+            }
+
+            auth_header = create_authorization_header(
+                service_id=sample_email_template.service.id,
+                request_body=json.dumps(data),
+                path='/notifications/email/service/{}'.format(sample_email_template.service_id),
+                method='POST')
+
+            response = client.post(
+                path='/notifications/email/service/{}'.format(sample_email_template.service_id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_email.apply_async.assert_not_called()
+
+            assert response.status_code == 400
+            assert len(json_resp['message'].keys()) == 1
+            test_string = 'Job {} not found'.format(job_id)
+            assert test_string in json_resp['message']['job']
+
+
+def test_should_allow_valid_email_notification_for_job(notify_api, sample_job, sample_email_template, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_email.apply_async')
+            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+
+            data = {
+                'to': 'ok@ok.com',
+                'template': sample_email_template.id,
+                'job': sample_job.id
+            }
+
+            auth_header = create_authorization_header(
+                request_body=json.dumps(data),
+                path='/notifications/email/service/{}'.format(sample_job.service_id),
+                method='POST',
+                service_id=sample_job.service_id
+            )
+
+            response = client.post(
+                path='/notifications/email/service/{}'.format(sample_job.service_id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            notification_id = json.loads(response.data)['notification_id']
+            app.celery.tasks.send_email.apply_async.assert_called_once_with(
+                (str(sample_job.service_id),
                  notification_id,
                  "Email Subject",
                  "sample.service@test.notify.com",
