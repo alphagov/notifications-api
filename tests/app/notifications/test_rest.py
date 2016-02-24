@@ -572,7 +572,11 @@ def test_should_reject_email_notification_with_template_id_that_cant_be_found(
             app.celery.tasks.send_email.apply_async.assert_not_called()
             assert response.status_code == 400
             assert data['result'] == 'error'
-            assert data['message']['template'][0] == 'Template not found'
+            test_string = 'Template {} not found for service {}'.format(
+                1234,
+                sample_email_template.service.id
+            )
+            assert test_string in data['message']['template']
 
 
 def test_should_not_allow_email_template_from_another_service(notify_api, service_factory, sample_user, mocker):
@@ -605,7 +609,8 @@ def test_should_not_allow_email_template_from_another_service(notify_api, servic
             app.celery.tasks.send_email.apply_async.assert_not_called()
 
             assert response.status_code == 400
-            assert 'Template not found' in json_resp['message']['template']
+            test_string = 'Template {} not found for service {}'.format(service_2_templates[0].id, service_1.id)
+            assert test_string in json_resp['message']['template']
 
 
 def test_should_not_send_email_if_restricted_and_not_a_service_user(notify_api, sample_email_template, mocker):

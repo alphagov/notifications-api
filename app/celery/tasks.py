@@ -45,6 +45,7 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
             template_id=notification['template'],
             to=notification['to'],
             service_id=service_id,
+            job_id=notification.get('job', None),
             status='sent'
         )
         save_notification(notification_db_object)
