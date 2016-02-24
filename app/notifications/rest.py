@@ -119,13 +119,13 @@ def send_notification(notification_type, service_id=None, expects_job=False):
 
     if notification_type is SMS_NOTIFICATION:
         send_sms.apply_async((
-            api_user['client'],
+            service_id,
             notification_id,
             encryption.encrypt(notification)),
             queue='sms')
     else:
         send_email.apply_async((
-            api_user['client'],
+            service_id,
             notification_id,
             template.subject,
             "{}@{}".format(service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),

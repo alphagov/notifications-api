@@ -487,7 +487,7 @@ def test_should_allow_valid_sms_notification_for_job(notify_api, sample_job, moc
 
             notification_id = json.loads(response.data)['notification_id']
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
-                (str(sample_job.template.service_id),
+                (str(sample_job.service_id),
                  notification_id,
                  "something_encrypted"),
                 queue="sms"
