@@ -119,7 +119,7 @@ def send_user_sms_code(user_id):
     if errors:
         return jsonify(result="error", message=errors), 400
 
-    from app.dao.users_dao import create_secret_code
+    from app.dao.utils import create_secret_code
     secret_code = create_secret_code()
     create_user_code(user_to_send_to, secret_code, 'sms')
 
@@ -141,7 +141,7 @@ def send_user_email_code(user_id):
     if errors:
         return jsonify(result="error", message=errors), 400
 
-    from app.dao.users_dao import create_secret_code
+    from app.dao.utils import create_secret_code
     secret_code = create_secret_code()
     create_user_code(user_to_send_to, secret_code, 'email')
 
@@ -165,7 +165,7 @@ def send_user_code(user_id):
     if errors:
         return jsonify(result="error", message=errors), 400
 
-    from app.dao.users_dao import create_secret_code
+    from app.dao.utils import create_secret_code
     secret_code = create_secret_code()
     create_user_code(user_to_send_to, secret_code, verify_code.get('code_type'))
     if verify_code.get('code_type') == 'sms':

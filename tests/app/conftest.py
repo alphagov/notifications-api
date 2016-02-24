@@ -1,14 +1,15 @@
+import uuid
 import pytest
 
 from app import email_safe
 from app.models import (User, Service, Template, ApiKey, Job, Notification)
-from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
+from app.dao.users_dao import (save_model_user, create_user_code)
+from app.dao.utils import create_secret_code
 from app.dao.services_dao import dao_create_service
 from app.dao.templates_dao import save_model_template
 from app.dao.api_key_dao import save_model_api_key
 from app.dao.jobs_dao import save_job
 from app.dao.notifications_dao import save_notification
-import uuid
 
 
 @pytest.fixture(scope='function')
@@ -223,7 +224,7 @@ def mock_secret_code(mocker):
     def _create():
         return '11111'
 
-    mock_class = mocker.patch('app.dao.users_dao.create_secret_code', side_effect=_create)
+    mock_class = mocker.patch('app.dao.utils.create_secret_code', side_effect=_create)
     return mock_class
 
 
