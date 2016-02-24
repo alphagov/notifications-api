@@ -180,7 +180,8 @@ def test_send_notification_invalid_template_id(notify_api, sample_template, mock
 
             assert response.status_code == 400
             assert len(json_resp['message'].keys()) == 1
-            assert 'Template not found' in json_resp['message']['template']
+            test_string = 'Template {} not found for service {}'.format(9999, sample_template.service.id)
+            assert test_string in json_resp['message']['template']
 
 
 def test_send_notification_invalid_service_id_on_job_sms(notify_api, sample_job, mocker):
@@ -212,7 +213,8 @@ def test_send_notification_invalid_service_id_on_job_sms(notify_api, sample_job,
 
             assert response.status_code == 400
             assert len(json_resp['message'].keys()) == 1
-            assert 'Template or service not found' in json_resp['message']['template']
+            test_string = 'Template {} not found for service {}'.format(sample_job.template.id, service_id)
+            assert test_string in json_resp['message']['template']
 
 
 def test_send_notification_invalid_template_id_on_job_sms(notify_api, sample_job, mocker):
@@ -242,18 +244,19 @@ def test_send_notification_invalid_template_id_on_job_sms(notify_api, sample_job
 
             assert response.status_code == 400
             assert len(json_resp['message'].keys()) == 1
-            assert 'Template or service not found' in json_resp['message']['template']
+            test_string = 'Template {} not found for service {}'.format(9999, sample_job.service.id)
+            assert test_string in json_resp['message']['template']
 
 
 def test_send_notification_invalid_job_id_on_job_sms(notify_api, sample_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.send_sms.apply_async')
-
+            job_id = uuid.uuid4()
             data = {
                 'to': '+441234123123',
                 'template': sample_template.id,
-                'job': uuid.uuid4()
+                'job': job_id
 
             }
 
@@ -273,7 +276,8 @@ def test_send_notification_invalid_job_id_on_job_sms(notify_api, sample_template
 
             assert response.status_code == 400
             assert len(json_resp['message'].keys()) == 1
-            assert 'Job not found' in json_resp['message']['job']
+            test_string = 'Job {} not found'.format(job_id)
+            assert test_string in json_resp['message']['job']
 
 
 def test_prevents_sending_to_any_mobile_on_restricted_service(notify_api, sample_template, mocker):
@@ -374,7 +378,8 @@ def test_should_not_allow_template_from_another_service(notify_api, service_fact
             app.celery.tasks.send_sms.apply_async.assert_not_called()
 
             assert response.status_code == 400
-            assert 'Template not found' in json_resp['message']['template']
+            test_string = 'Template {} not found for service {}'.format(service_2_templates[0].id, service_1.id)
+            assert test_string in json_resp['message']['template']
 
 
 def test_should_not_allow_template_from_another_service_on_job_sms(
@@ -418,7 +423,8 @@ def test_should_not_allow_template_from_another_service_on_job_sms(
             app.celery.tasks.send_sms.apply_async.assert_not_called()
 
             assert response.status_code == 400
-            assert 'Template or service not found' in json_resp['message']['template']
+            test_string = 'Template {} not found for service {}'.format(service_2_templates[0].id, service_1.id)
+            assert test_string in json_resp['message']['template']
 
 
 def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker):
