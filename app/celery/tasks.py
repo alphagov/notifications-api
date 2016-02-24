@@ -1,7 +1,7 @@
 from app import notify_celery, encryption, firetext_client, aws_ses_client
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
-from app.dao.templates_dao import get_model_templates
+from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.notifications_dao import save_notification
 from app.models import Notification
 from flask import current_app
@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 @notify_celery.task(name="send-sms")
 def send_sms(service_id, notification_id, encrypted_notification):
     notification = encryption.decrypt(encrypted_notification)
-    template = get_model_templates(notification['template'])
+    template = dao_get_template_by_id(notification['template'])
 
     try:
         notification_db_object = Notification(
@@ -37,7 +37,7 @@ def send_sms(service_id, notification_id, encrypted_notification):
 @notify_celery.task(name="send-email")
 def send_email(service_id, notification_id, subject, from_address, encrypted_notification):
     notification = encryption.decrypt(encrypted_notification)
-    template = get_model_templates(notification['template'])
+    template = dao_get_template_by_id(notification['template'])
 
     try:
         notification_db_object = Notification(

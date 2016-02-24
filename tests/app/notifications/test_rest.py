@@ -3,7 +3,7 @@ import app.celery.tasks
 from tests import create_authorization_header
 from flask import json
 from app.models import Service
-from app.dao.templates_dao import get_model_templates
+from app.dao.templates_dao import dao_get_all_templates_for_service
 from app.dao.services_dao import dao_update_service
 from tests.app.conftest import sample_job
 
@@ -357,7 +357,7 @@ def test_should_not_allow_template_from_another_service(notify_api, service_fact
             service_1 = service_factory.get('service 1', user=sample_user)
             service_2 = service_factory.get('service 2', user=sample_user)
 
-            service_2_templates = get_model_templates(service_id=service_2.id)
+            service_2_templates = dao_get_all_templates_for_service(service_id=service_2.id)
             data = {
                 'to': sample_user.mobile_number,
                 'template': service_2_templates[0].id
@@ -396,8 +396,8 @@ def test_should_not_allow_template_from_another_service_on_job_sms(
             service_1 = service_factory.get('service 1', user=sample_user)
             service_2 = service_factory.get('service 2', user=sample_user)
 
-            service_1_templates = get_model_templates(service_id=service_2.id)
-            service_2_templates = get_model_templates(service_id=service_2.id)
+            service_1_templates = dao_get_all_templates_for_service(service_id=service_2.id)
+            service_2_templates = dao_get_all_templates_for_service(service_id=service_2.id)
 
             job_1 = sample_job(notify_db, notify_db_session, service_1, service_1_templates[0])
             sample_job(notify_db, notify_db_session, service_2, service_2_templates[0])
@@ -673,7 +673,7 @@ def test_should_not_allow_email_template_from_another_service(notify_api, servic
             service_1 = service_factory.get('service 1', template_type='email', user=sample_user)
             service_2 = service_factory.get('service 2', template_type='email', user=sample_user)
 
-            service_2_templates = get_model_templates(service_id=service_2.id)
+            service_2_templates = dao_get_all_templates_for_service(service_id=service_2.id)
 
             data = {
                 'to': sample_user.email_address,
@@ -713,8 +713,8 @@ def test_should_not_allow_template_from_another_service_on_job_email(
             service_1 = service_factory.get('service 1', user=sample_user, template_type='email')
             service_2 = service_factory.get('service 2', user=sample_user, template_type='email')
 
-            service_1_templates = get_model_templates(service_id=service_2.id)
-            service_2_templates = get_model_templates(service_id=service_2.id)
+            service_1_templates = dao_get_all_templates_for_service(service_id=service_2.id)
+            service_2_templates = dao_get_all_templates_for_service(service_id=service_2.id)
 
             job_1 = sample_job(notify_db, notify_db_session, service_1, service_1_templates[0])
             sample_job(notify_db, notify_db_session, service_2, service_2_templates[0])
@@ -776,7 +776,11 @@ def test_should_not_send_email_if_restricted_and_not_a_service_user(notify_api, 
             assert 'Email address not permitted for restricted service' in json_resp['message']['to']
 
 
-def test_should_not_send_email_for_job_if_restricted_and_not_a_service_user(notify_api, sample_job, sample_email_template, mocker):
+def test_should_not_send_email_for_job_if_restricted_and_not_a_service_user(
+        notify_api,
+        sample_job,
+        sample_email_template,
+        mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.send_email.apply_async')

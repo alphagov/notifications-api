@@ -4,7 +4,7 @@ from app import email_safe
 from app.models import (User, Service, Template, ApiKey, Job, Notification)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import dao_create_service
-from app.dao.templates_dao import save_model_template
+from app.dao.templates_dao import dao_create_template
 from app.dao.api_key_dao import save_model_api_key
 from app.dao.jobs_dao import save_job
 from app.dao.notifications_dao import save_notification
@@ -138,7 +138,7 @@ def sample_template(notify_db,
             'subject': subject_line
         })
     template = Template(**data)
-    save_model_template(template)
+    dao_create_template(template)
     return template
 
 
@@ -165,7 +165,7 @@ def sample_email_template(
             'subject': subject_line
         })
     template = Template(**data)
-    save_model_template(template)
+    dao_create_template(template)
     return template
 
 
