@@ -1,5 +1,3 @@
-import uuid
-
 from flask import (
     Blueprint,
     jsonify,
@@ -7,7 +5,7 @@ from flask import (
     current_app
 )
 
-from app import api_user, encryption
+from app import api_user, encryption, create_uuid
 from app.dao import (
     templates_dao,
     services_dao,
@@ -34,11 +32,7 @@ SMS_NOTIFICATION = 'sms'
 EMAIL_NOTIFICATION = 'email'
 
 
-def create_notification_id():
-    return str(uuid.uuid4())
-
-
-@notifications.route('/<string:notification_id>', methods=['GET'])
+@notifications.route('/notifications/<string:notification_id>', methods=['GET'])
 def get_notifications(notification_id):
     try:
         notification = notifications_dao.get_notification(api_user['client'], notification_id)
@@ -47,22 +41,22 @@ def get_notifications(notification_id):
         return jsonify(result="error", message="not found"), 404
 
 
-@notifications.route('/sms', methods=['POST'])
+@notifications.route('/notifications/sms', methods=['POST'])
 def create_sms_notification():
     return send_notification(notification_type=SMS_NOTIFICATION, expects_job=False)
 
 
-@notifications.route('/sms/service/<service_id>', methods=['POST'])
+@notifications.route('/notifications/sms/service/<service_id>', methods=['POST'])
 def create_sms_for_job(service_id):
     return send_notification(service_id=service_id, notification_type=SMS_NOTIFICATION, expects_job=True)
 
 
-@notifications.route('/email', methods=['POST'])
+@notifications.route('/notifications/email', methods=['POST'])
 def create_email_notification():
     return send_notification(notification_type=EMAIL_NOTIFICATION, expects_job=False)
 
 
-@notifications.route('/email/service/<service_id>', methods=['POST'])
+@notifications.route('/notifications/email/service/<service_id>', methods=['POST'])
 def create_email_notification_for_job(service_id):
     return send_notification(service_id=service_id, notification_type=EMAIL_NOTIFICATION, expects_job=True)
 
@@ -98,7 +92,7 @@ def send_notification(notification_type, service_id=None, expects_job=False):
         ), 400
 
     if expects_job:
-        job = jobs_dao.get_job(service_id, notification['job'])
+        job = jobs_dao.dao_get_job_by_service_id_and_job_id(service_id, notification['job'])
 
         if not job:
             return jsonify(result="error", message={'job': ['Job {} not found'.format(notification['job'])]}), 400
@@ -115,7 +109,7 @@ def send_notification(notification_type, service_id=None, expects_job=False):
                 return jsonify(
                     result="error", message={'to': ['Email address not permitted for restricted service']}), 400
 
-    notification_id = create_notification_id()
+    notification_id = create_uuid()
 
     if notification_type is SMS_NOTIFICATION:
         send_sms.apply_async((

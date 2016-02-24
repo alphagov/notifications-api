@@ -6,7 +6,7 @@ from app.dao.users_dao import (save_model_user, create_user_code, create_secret_
 from app.dao.services_dao import dao_create_service
 from app.dao.templates_dao import dao_create_template
 from app.dao.api_key_dao import save_model_api_key
-from app.dao.jobs_dao import save_job
+from app.dao.jobs_dao import dao_create_job
 from app.dao.notifications_dao import save_notification
 import uuid
 
@@ -204,7 +204,7 @@ def sample_job(notify_db,
         'notification_count': 1
     }
     job = Job(**data)
-    save_job(job)
+    dao_create_job(job)
     return job
 
 

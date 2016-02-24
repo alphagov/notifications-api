@@ -1,3 +1,4 @@
+import uuid
 import os
 import re
 from flask import request, url_for
@@ -50,7 +51,7 @@ def create_app():
     application.register_blueprint(user_blueprint, url_prefix='/user')
     application.register_blueprint(template_blueprint)
     application.register_blueprint(status_blueprint, url_prefix='/status')
-    application.register_blueprint(notifications_blueprint, url_prefix='/notifications')
+    application.register_blueprint(notifications_blueprint)
     application.register_blueprint(job_blueprint)
 
     return application
@@ -99,3 +100,7 @@ def email_safe(string):
         character.lower() if character.isalnum() or character == "." else ""
         for character in re.sub("\s+", ".", string.strip())
     ])
+
+
+def create_uuid():
+    return str(uuid.uuid4())
