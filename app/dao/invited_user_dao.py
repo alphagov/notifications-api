@@ -9,7 +9,7 @@ def save_invited_user(invited_user):
 
 
 def get_invited_user(service_id, invited_user_id):
-    return InvitedUser.query.filter_by(service_id=service_id, id=invited_user_id).one()
+    return InvitedUser.query.filter_by(service_id=service_id, id=invited_user_id).first()
 
 
 def get_invited_users_for_service(service_id):
