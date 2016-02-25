@@ -12,8 +12,10 @@ from app.celery.tasks import s3
 from app.celery import tasks
 from tests.app import load_example_csv
 from datetime import datetime
+from freezegun import freeze_time
 
 
+@freeze_time("2016-01-01 11:09:00.061258")
 def test_should_process_sms_job(sample_job, mocker):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
@@ -26,7 +28,8 @@ def test_should_process_sms_job(sample_job, mocker):
     tasks.send_sms.apply_async.assert_called_once_with(
         (str(sample_job.service_id),
          "uuid",
-         "something_encrypted"),
+         "something_encrypted",
+         "2016-01-01 11:09:00.061258"),
         queue="bulk-sms"
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
@@ -45,6 +48,7 @@ def test_should_not_create_send_task_for_empty_file(sample_job, mocker):
     tasks.send_sms.apply_async.assert_not_called
 
 
+@freeze_time("2016-01-01 11:09:00.061258")
 def test_should_process_email_job(sample_email_job, mocker):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
@@ -59,7 +63,8 @@ def test_should_process_email_job(sample_email_job, mocker):
          "uuid",
          sample_email_job.template.subject,
          "{}@{}".format(sample_email_job.service.email_from, "test.notify.com"),
-         "something_encrypted"),
+         "something_encrypted",
+         "2016-01-01 11:09:00.061258"),
         queue="bulk-email"
     )
     job = jobs_dao.dao_get_job_by_id(sample_email_job.id)
@@ -87,6 +92,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.firetext_client.send_sms')
+    mocker.patch('app.firetext_client.get_name', return_value="firetext")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -105,6 +111,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     assert persisted_notification.status == 'sent'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
+    assert persisted_notification.sent_by == 'firetext'
     assert not persisted_notification.job_id
 
 
@@ -116,6 +123,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.firetext_client.send_sms')
+    mocker.patch('app.firetext_client.get_name', return_value="firetext")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -134,6 +142,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
     assert persisted_notification.status == 'sent'
     assert persisted_notification.sent_at > now
     assert persisted_notification.created_at == now
+    assert persisted_notification.sent_by == 'firetext'
 
 
 def test_should_use_email_template_and_persist(sample_email_template, mocker):
@@ -143,6 +152,7 @@ def test_should_use_email_template_and_persist(sample_email_template, mocker):
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.aws_ses_client.get_name', return_value='ses')
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -167,6 +177,7 @@ def test_should_use_email_template_and_persist(sample_email_template, mocker):
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
     assert persisted_notification.status == 'sent'
+    assert persisted_notification.sent_by == 'ses'
 
 
 def test_should_persist_notification_as_failed_if_sms_client_fails(sample_template, mocker):
@@ -176,6 +187,7 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.firetext_client.send_sms', side_effect=FiretextClientException())
+    mocker.patch('app.firetext_client.get_name', return_value="firetext")
     now = datetime.utcnow()
 
     notification_id = uuid.uuid4()
@@ -194,6 +206,7 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
     assert persisted_notification.status == 'failed'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
+    assert persisted_notification.sent_by == 'firetext'
 
 
 def test_should_persist_notification_as_failed_if_email_client_fails(sample_email_template, mocker):
@@ -203,6 +216,8 @@ def test_should_persist_notification_as_failed_if_email_client_fails(sample_emai
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.aws_ses_client.send_email', side_effect=AwsSesClientException())
+    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
+
     now = datetime.utcnow()
 
     notification_id = uuid.uuid4()
@@ -227,6 +242,7 @@ def test_should_persist_notification_as_failed_if_email_client_fails(sample_emai
     assert persisted_notification.template_id == sample_email_template.id
     assert persisted_notification.status == 'failed'
     assert persisted_notification.created_at == now
+    assert persisted_notification.sent_by == 'ses'
     assert persisted_notification.sent_at > now
 
 

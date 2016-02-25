@@ -15,6 +15,7 @@ from datetime import datetime
 
 @notify_celery.task(name="process-job")
 def process_job(job_id):
+    start = datetime.utcnow()
     job = dao_get_job_by_id(job_id)
     job.status = 'in progress'
     dao_update_job(job)
@@ -33,7 +34,8 @@ def process_job(job_id):
             send_sms.apply_async((
                 str(job.service_id),
                 str(create_uuid()),
-                encrypted),
+                encrypted,
+                str(datetime.utcnow())),
                 queue='bulk-sms'
             )
 
@@ -43,11 +45,18 @@ def process_job(job_id):
                 str(create_uuid()),
                 job.template.subject,
                 "{}@{}".format(job.service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
-                encrypted),
+                encrypted,
+                str(datetime.utcnow())),
                 queue='bulk-email')
 
+    finished = datetime.utcnow()
     job.status = 'finished'
+    job.processing_started = start
+    job.processing_finished = finished
     dao_update_job(job)
+    current_app.logger.info(
+        "Job {} created at {} started at {} finished at {}".format(job_id, job.created_at, start, finished)
+    )
 
 
 @notify_celery.task(name="send-sms")
@@ -55,7 +64,10 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
     notification = encryption.decrypt(encrypted_notification)
     template = dao_get_template_by_id(notification['template'])
 
+    client = firetext_client
+
     try:
+        sent_at = datetime.utcnow()
         notification_db_object = Notification(
             id=notification_id,
             template_id=notification['template'],
@@ -64,17 +76,22 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             job_id=notification.get('job', None),
             status='sent',
             created_at=created_at,
-            sent_at=datetime.utcnow()
+            sent_at=sent_at,
+            sent_by=client.get_name()
+
         )
         dao_create_notification(notification_db_object)
 
         try:
-            firetext_client.send_sms(notification['to'], template.content)
+            client.send_sms(notification['to'], template.content)
         except FiretextClientException as e:
             current_app.logger.debug(e)
             notification_db_object.status = 'failed'
             dao_update_notification(notification_db_object)
 
+        current_app.logger.info(
+            "SMS {} created at {} sent at {}".format(notification_id, created_at, sent_at)
+        )
     except SQLAlchemyError as e:
         current_app.logger.debug(e)
 
@@ -84,7 +101,10 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
     notification = encryption.decrypt(encrypted_notification)
     template = dao_get_template_by_id(notification['template'])
 
+    client = aws_ses_client
+
     try:
+        sent_at = datetime.utcnow()
         notification_db_object = Notification(
             id=notification_id,
             template_id=notification['template'],
@@ -93,12 +113,13 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
             job_id=notification.get('job', None),
             status='sent',
             created_at=created_at,
-            sent_at=datetime.utcnow()
+            sent_at=sent_at,
+            sent_by=client.get_name()
         )
         dao_create_notification(notification_db_object)
 
         try:
-            aws_ses_client.send_email(
+            client.send_email(
                 from_address,
                 notification['to'],
                 subject,
@@ -109,6 +130,9 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
             notification_db_object.status = 'failed'
             dao_update_notification(notification_db_object)
 
+        current_app.logger.info(
+            "Email {} created at {} sent at {}".format(notification_id, created_at, sent_at)
+        )
     except SQLAlchemyError as e:
         current_app.logger.debug(e)
 

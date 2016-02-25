@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import (
     Blueprint,
     jsonify,
@@ -115,7 +117,8 @@ def send_notification(notification_type, service_id=None, expects_job=False):
         send_sms.apply_async((
             service_id,
             notification_id,
-            encryption.encrypt(notification)),
+            encryption.encrypt(notification),
+            str(datetime.utcnow())),
             queue='sms')
     else:
         send_email.apply_async((
@@ -123,6 +126,7 @@ def send_notification(notification_type, service_id=None, expects_job=False):
             notification_id,
             template.subject,
             "{}@{}".format(service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
-            encryption.encrypt(notification)),
+            encryption.encrypt(notification),
+            str(datetime.utcnow())),
             queue='email')
     return jsonify({'notification_id': notification_id}), 201
