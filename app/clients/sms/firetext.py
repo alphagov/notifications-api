@@ -21,6 +21,10 @@ class FiretextClient(SmsClient):
         super(SmsClient, self).__init__(*args, **kwargs)
         self.api_key = config.config.get('FIRETEXT_API_KEY')
         self.from_number = config.config.get('FIRETEXT_NUMBER')
+        self.name = 'firetext'
+
+    def get_name(self):
+        return self.name
 
     def send_sms(self, to, content):
 

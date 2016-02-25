@@ -381,8 +381,8 @@ def test_get_users_for_service_returns_empty_list_if_no_users_associated_with_se
                 '/service/{}/users'.format(sample_service.id),
                 headers=[('Content-Type', 'application/json'), auth_header]
             )
-            assert response.status_code == 200
             result = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
             assert result['data'] == []
 
 
