@@ -6,6 +6,7 @@ from app.models import Service
 from app.dao.templates_dao import dao_get_all_templates_for_service
 from app.dao.services_dao import dao_update_service
 from tests.app.conftest import sample_job
+from freezegun import freeze_time
 
 
 def test_get_notification_by_id(notify_api, sample_notification):
@@ -427,6 +428,7 @@ def test_should_not_allow_template_from_another_service_on_job_sms(
             assert test_string in json_resp['message']['template']
 
 
+@freeze_time("2016-01-01 11:09:00.061258")
 def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -454,13 +456,15 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 (str(sample_template.service_id),
                  notification_id,
-                 "something_encrypted"),
+                 "something_encrypted",
+                 "2016-01-01 11:09:00.061258"),
                 queue="sms"
             )
             assert response.status_code == 201
             assert notification_id
 
 
+@freeze_time("2016-01-01 11:09:00.061258")
 def test_should_allow_valid_sms_notification_for_job(notify_api, sample_job, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -489,7 +493,8 @@ def test_should_allow_valid_sms_notification_for_job(notify_api, sample_job, moc
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 (str(sample_job.service_id),
                  notification_id,
-                 "something_encrypted"),
+                 "something_encrypted",
+                 "2016-01-01 11:09:00.061258"),
                 queue="sms"
             )
             assert response.status_code == 201
@@ -812,6 +817,7 @@ def test_should_not_send_email_for_job_if_restricted_and_not_a_service_user(
             assert 'Email address not permitted for restricted service' in json_resp['message']['to']
 
 
+@freeze_time("2016-01-01 11:09:00.061258")
 def test_should_allow_valid_email_notification(notify_api, sample_email_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -841,7 +847,8 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
                  notification_id,
                  "Email Subject",
                  "sample.service@test.notify.com",
-                 "something_encrypted"),
+                 "something_encrypted",
+                 "2016-01-01 11:09:00.061258"),
                 queue="email"
             )
             assert response.status_code == 201
@@ -880,6 +887,7 @@ def test_send_notification_invalid_job_id_on_job_email(notify_api, sample_email_
             assert test_string in json_resp['message']['job']
 
 
+@freeze_time("2016-01-01 11:09:00.061258")
 def test_should_allow_valid_email_notification_for_job(notify_api, sample_job, sample_email_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -904,14 +912,14 @@ def test_should_allow_valid_email_notification_for_job(notify_api, sample_job, s
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
 
-            print(json.loads(response.data))
             notification_id = json.loads(response.data)['notification_id']
             app.celery.tasks.send_email.apply_async.assert_called_once_with(
                 (str(sample_job.service_id),
                  notification_id,
                  "Email Subject",
                  "sample.service@test.notify.com",
-                 "something_encrypted"),
+                 "something_encrypted",
+                 "2016-01-01 11:09:00.061258"),
                 queue="email"
             )
             assert response.status_code == 201
