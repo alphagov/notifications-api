@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0024_add_service_permission
+Revision ID: 0027_add_service_permission
 Revises: 0023_drop_token
 Create Date: 2016-02-25 12:41:29.112824
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0024_add_service_permission'
-down_revision = '0023_drop_token'
+revision = '0027_add_service_permission'
+down_revision = '0026_add_sender'
 
 from alembic import op
 import sqlalchemy as sa

@@ -40,6 +40,7 @@ def get_job_by_service_and_job_id(service_id, job_id):
     return jsonify(data=data)
 
 
+@job.route('', methods=['GET'])
 def get_jobs_by_service(service_id):
     jobs = dao_get_jobs_by_service_id(service_id)
     data, errors = job_schema.dump(jobs, many=True)
