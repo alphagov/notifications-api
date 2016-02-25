@@ -160,6 +160,16 @@ class Job(db.Model):
         onupdate=datetime.datetime.now)
     status = db.Column(db.Enum(*JOB_STATUS_TYPES, name='job_status_types'), nullable=False, default='pending')
     notification_count = db.Column(db.Integer, nullable=False)
+    processing_started = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True)
+    processing_finished = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True)
 
 
 VERIFY_CODE_TYPES = ['email', 'sms']
@@ -214,8 +224,13 @@ class Notification(db.Model):
         db.DateTime,
         index=False,
         unique=False,
-        nullable=False,
-        default=datetime.datetime.now)
+        nullable=False)
+    sent_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True)
+    sent_by = db.Column(db.String, nullable=True)
     updated_at = db.Column(
         db.DateTime,
         index=False,
