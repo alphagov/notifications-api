@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0022_add_processing_dates
-Revises: 0021_add_job_metadata
+Revision ID: 0025_add_processing_dates
+Revises: 0024_uix_user_to_service
 Create Date: 2016-02-24 17:15:47.457200
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0022_add_processing_dates'
-down_revision = '0022_add_invite_users'
+revision = '0025_add_processing_dates'
+down_revision = '0024_uix_user_to_service'
 
 from alembic import op
 import sqlalchemy as sa

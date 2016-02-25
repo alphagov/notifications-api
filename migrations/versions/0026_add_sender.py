@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0023_add_sender
-Revises: 0022_add_processing_dates
+Revision ID: 0026_add_sender
+Revises: 0025_add_processing_dates
 Create Date: 2016-02-24 17:18:21.942772
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0023_add_sender'
-down_revision = '0022_add_processing_dates'
+revision = '0026_add_sender'
+down_revision = '0025_add_processing_dates'
 
 from alembic import op
 import sqlalchemy as sa
