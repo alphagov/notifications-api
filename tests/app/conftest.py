@@ -104,7 +104,7 @@ def sample_service(notify_db,
         user = sample_user(notify_db, notify_db_session)
     data = {
         'name': service_name,
-        'users': [user],
+        'users': [],
         'limit': 1000,
         'active': False,
         'restricted': False,
