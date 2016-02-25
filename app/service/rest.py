@@ -1,14 +1,18 @@
 from datetime import datetime
 
+from flask import Blueprint
 from flask import (
     jsonify,
     request
 )
-from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
-from app.dao import DAOException
 
-from app.dao.users_dao import get_model_users
+from app import email_safe
+from app.dao.api_key_dao import (
+    save_model_api_key,
+    get_model_api_keys,
+    get_unsigned_secret
+)
 from app.dao.services_dao import (
     dao_fetch_service_by_id_and_user,
     dao_fetch_service_by_id,
@@ -17,25 +21,17 @@ from app.dao.services_dao import (
     dao_update_service,
     dao_fetch_all_services_by_user
 )
-
-from app.dao.api_key_dao import (
-    save_model_api_key,
-    get_model_api_keys,
-    get_unsigned_secret
-)
+from app.dao.users_dao import get_model_users
 from app.models import ApiKey
 from app.schemas import (
     services_schema,
     service_schema,
     api_keys_schema,
     users_schema)
-from app import email_safe
-
-from flask import Blueprint
+from app.errors import register_errors
 
 service = Blueprint('service', __name__)
 
-from app.errors import register_errors
 
 register_errors(service)
 
@@ -59,7 +55,10 @@ def get_service_by_id(service_id):
     else:
         fetched = dao_fetch_service_by_id(service_id)
     if not fetched:
-        return jsonify(result="error", message="not found"), 404
+        message_with_user_id = 'and for user id: {}'.format(user_id) if user_id else ''
+        return jsonify(result="error",
+                       message="Service not found for service id: {0} {1}".format(service_id,
+                                                                                  message_with_user_id)), 404
     data, errors = service_schema.dump(fetched)
     return jsonify(data=data)
 
@@ -91,7 +90,7 @@ def create_service():
 def update_service(service_id):
     fetched_service = dao_fetch_service_by_id(service_id)
     if not fetched_service:
-        return jsonify(result="error", message="not found"), 404
+        return _service_not_found(service_id)
 
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())
@@ -107,28 +106,21 @@ def update_service(service_id):
 def renew_api_key(service_id=None):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
     if not fetched_service:
-        return jsonify(result="error", message="Service not found"), 404
+        return _service_not_found(service_id)
 
-    try:
-        # create a new one
-        # TODO: what validation should be done here?
-        secret_name = request.get_json()['name']
-        key = ApiKey(service=fetched_service, name=secret_name)
-        save_model_api_key(key)
-    except DAOException as e:
-        return jsonify(result='error', message=str(e)), 500
+    # create a new one
+    # TODO: what validation should be done here?
+    secret_name = request.get_json()['name']
+    key = ApiKey(service=fetched_service, name=secret_name)
+    save_model_api_key(key)
+
     unsigned_api_key = get_unsigned_secret(key.id)
     return jsonify(data=unsigned_api_key), 201
 
 
 @service.route('/<service_id>/api-key/revoke/<int:api_key_id>', methods=['POST'])
 def revoke_api_key(service_id, api_key_id):
-    try:
-        service_api_key = get_model_api_keys(service_id=service_id, id=api_key_id)
-    except DataError:
-        return jsonify(result="error", message="Invalid  api key for service"), 400
-    except NoResultFound:
-        return jsonify(result="error", message="Api key not found for service"), 404
+    service_api_key = get_model_api_keys(service_id=service_id, id=api_key_id)
 
     save_model_api_key(service_api_key, update_dict={'id': service_api_key.id, 'expiry_date': datetime.utcnow()})
     return jsonify(), 202
@@ -137,22 +129,16 @@ def revoke_api_key(service_id, api_key_id):
 @service.route('/<service_id>/api-keys', methods=['GET'])
 @service.route('/<service_id>/api-keys/<int:key_id>', methods=['GET'])
 def get_api_keys(service_id, key_id=None):
-    try:
-        service = dao_fetch_service_by_id(service_id=service_id)
-    except DataError:
-        return jsonify(result="error", message="Invalid service id"), 400
-    except NoResultFound:
-        return jsonify(result="error", message="Service not found"), 404
-
+    fetched_service = dao_fetch_service_by_id(service_id=service_id)
+    if not fetched_service:
+        return _service_not_found(service_id)
     try:
         if key_id:
             api_keys = [get_model_api_keys(service_id=service_id, id=key_id)]
         else:
             api_keys = get_model_api_keys(service_id=service_id)
-    except DAOException as e:
-        return jsonify(result='error', message=str(e)), 500
     except NoResultFound:
-        return jsonify(result="error", message="API key not found"), 404
+        return jsonify(result="error", message="API key not found for id: {}".format(service_id)), 404
 
     return jsonify(apiKeys=api_keys_schema.dump(api_keys).data), 200
 
@@ -161,7 +147,13 @@ def get_api_keys(service_id, key_id=None):
 def get_users_for_service(service_id):
     fetched = dao_fetch_service_by_id(service_id)
     if not fetched:
+        return _service_not_found(service_id)
+    if not fetched.users:
         return jsonify(data=[])
 
     result = users_schema.dump(fetched.users)
     return jsonify(data=result.data)
+
+
+def _service_not_found(service_id):
+    return jsonify(result='error', message='Service not found for id: {}'.format(service_id)), 404

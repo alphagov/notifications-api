@@ -52,8 +52,8 @@ def notify_db_session(request):
     def teardown():
         db.session.remove()
         for tbl in reversed(meta.sorted_tables):
-            if tbl.fullname not in ['roles']:
-                db.engine.execute(tbl.delete())
+            db.engine.execute(tbl.delete())
+        db.session.commit()
 
     meta = MetaData(bind=db.engine, reflect=True)
     request.addfinalizer(teardown)
