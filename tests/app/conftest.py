@@ -1,5 +1,5 @@
 import pytest
-
+from datetime import datetime
 from app import email_safe
 from app.models import (User, Service, Template, ApiKey, Job, Notification)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
@@ -7,7 +7,7 @@ from app.dao.services_dao import dao_create_service
 from app.dao.templates_dao import dao_create_template
 from app.dao.api_key_dao import save_model_api_key
 from app.dao.jobs_dao import dao_create_job
-from app.dao.notifications_dao import save_notification
+from app.dao.notifications_dao import dao_create_notification
 import uuid
 
 
@@ -209,6 +209,35 @@ def sample_job(notify_db,
 
 
 @pytest.fixture(scope='function')
+def sample_email_job(notify_db,
+                     notify_db_session,
+                     service=None,
+                     template=None):
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
+    if template is None:
+        template = sample_email_template(
+            notify_db,
+            notify_db_session,
+            service=service)
+    job_id = uuid.uuid4()
+    bucket_name = 'service-{}-notify'.format(service.id)
+    file_name = '{}.csv'.format(job_id)
+    data = {
+        'id': uuid.uuid4(),
+        'service_id': service.id,
+        'template_id': template.id,
+        'bucket_name': bucket_name,
+        'file_name': file_name,
+        'original_file_name': 'some.csv',
+        'notification_count': 1
+    }
+    job = Job(**data)
+    dao_create_job(job)
+    return job
+
+
+@pytest.fixture(scope='function')
 def sample_admin_service_id(notify_db, notify_db_session):
     admin_user = sample_user(notify_db, notify_db_session, email="notify_admin@digital.cabinet-office.gov.uk")
     admin_service = sample_service(notify_db, notify_db_session, service_name="Sample Admin Service", user=admin_user)
@@ -248,10 +277,11 @@ def sample_notification(notify_db,
         'to': to,
         'job': job,
         'service': service,
-        'template': template
+        'template': template,
+        'created_at': datetime.utcnow()
     }
     notification = Notification(**data)
-    save_notification(notification)
+    dao_create_notification(notification)
     return notification
 
 
