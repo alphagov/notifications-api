@@ -11,8 +11,7 @@ from app.dao.invited_user_dao import (
 )
 
 from app.schemas import (
-    invited_user_schema,
-    invited_users_schema
+    invited_user_schema
 )
 
 invite = Blueprint('invite', __name__, url_prefix='/service/<service_id>/invite')
