@@ -8,7 +8,7 @@ Create Date: 2016-02-24 17:15:47.457200
 
 # revision identifiers, used by Alembic.
 revision = '0022_add_processing_dates'
-down_revision = '0021_add_job_metadata'
+down_revision = '0022_add_invite_users'
 
 from alembic import op
 import sqlalchemy as sa
