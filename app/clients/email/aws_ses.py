@@ -15,6 +15,10 @@ class AwsSesClient(EmailClient):
     def init_app(self, region, *args, **kwargs):
         self._client = boto3.client('ses', region_name=region)
         super(AwsSesClient, self).__init__(*args, **kwargs)
+        self.name = 'ses'
+
+    def get_name(self):
+        return self.name
 
     def send_email(self,
                    source,
