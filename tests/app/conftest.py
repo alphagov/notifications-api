@@ -1,13 +1,14 @@
 import pytest
 
 from app import email_safe
-from app.models import (User, Service, Template, ApiKey, Job, Notification)
+from app.models import (User, Service, Template, ApiKey, Job, Notification, InvitedUser)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import dao_create_service
 from app.dao.templates_dao import save_model_template
 from app.dao.api_key_dao import save_model_api_key
 from app.dao.jobs_dao import save_job
 from app.dao.notifications_dao import save_notification
+from app.dao.invited_user_dao import save_invited_user
 import uuid
 
 
@@ -268,3 +269,26 @@ def mock_celery_send_email_code(mocker):
 @pytest.fixture(scope='function')
 def mock_encryption(mocker):
     return mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+
+
+@pytest.fixture(scope='function')
+def sample_invited_user(notify_db,
+                        notify_db_session,
+                        service=None,
+                        to_email_address=None):
+
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
+    if to_email_address is None:
+        to_email_address = 'invited_user@digital.gov.uk'
+
+    from_user = service.users[0]
+
+    data = {
+        'service': service,
+        'email_address': to_email_address,
+        'from_user': from_user
+    }
+    invited_user = InvitedUser(**data)
+    save_invited_user(invited_user)
+    return invited_user
