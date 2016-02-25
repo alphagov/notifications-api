@@ -1,13 +1,14 @@
 import pytest
 
 from app import (email_safe, db)
-from app.models import (User, Service, Template, ApiKey, Job, Notification, Permission)
+from app.models import (User, Service, Template, ApiKey, Job, Notification, Permission, InvitedUser)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import dao_create_service
-from app.dao.templates_dao import save_model_template
+from app.dao.templates_dao import dao_create_template
 from app.dao.api_key_dao import save_model_api_key
-from app.dao.jobs_dao import save_job
-from app.dao.notifications_dao import save_notification
+from app.dao.jobs_dao import dao_create_job
+from app.dao.notifications_dao import dao_create_notification
+from app.dao.invited_user_dao import save_invited_user
 import uuid
 
 
@@ -102,7 +103,6 @@ def sample_service(notify_db,
         user = sample_user(notify_db, notify_db_session)
     data = {
         'name': service_name,
-        'users': [],
         'limit': 1000,
         'active': False,
         'restricted': False,
@@ -137,7 +137,7 @@ def sample_template(notify_db,
             'subject': subject_line
         })
     template = Template(**data)
-    save_model_template(template)
+    dao_create_template(template)
     return template
 
 
@@ -164,7 +164,7 @@ def sample_email_template(
             'subject': subject_line
         })
     template = Template(**data)
-    save_model_template(template)
+    dao_create_template(template)
     return template
 
 
@@ -203,7 +203,36 @@ def sample_job(notify_db,
         'notification_count': 1
     }
     job = Job(**data)
-    save_job(job)
+    dao_create_job(job)
+    return job
+
+
+@pytest.fixture(scope='function')
+def sample_email_job(notify_db,
+                     notify_db_session,
+                     service=None,
+                     template=None):
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
+    if template is None:
+        template = sample_email_template(
+            notify_db,
+            notify_db_session,
+            service=service)
+    job_id = uuid.uuid4()
+    bucket_name = 'service-{}-notify'.format(service.id)
+    file_name = '{}.csv'.format(job_id)
+    data = {
+        'id': uuid.uuid4(),
+        'service_id': service.id,
+        'template_id': template.id,
+        'bucket_name': bucket_name,
+        'file_name': file_name,
+        'original_file_name': 'some.csv',
+        'notification_count': 1
+    }
+    job = Job(**data)
+    dao_create_job(job)
     return job
 
 
@@ -247,10 +276,11 @@ def sample_notification(notify_db,
         'to': to,
         'job': job,
         'service': service,
-        'template': template
+        'template': template,
+        'created_at': datetime.utcnow()
     }
     notification = Notification(**data)
-    save_notification(notification)
+    dao_create_notification(notification)
     return notification
 
 
@@ -287,3 +317,26 @@ def mock_celery_send_email_code(mocker):
 @pytest.fixture(scope='function')
 def mock_encryption(mocker):
     return mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+
+
+@pytest.fixture(scope='function')
+def sample_invited_user(notify_db,
+                        notify_db_session,
+                        service=None,
+                        to_email_address=None):
+
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
+    if to_email_address is None:
+        to_email_address = 'invited_user@digital.gov.uk'
+
+    from_user = service.users[0]
+
+    data = {
+        'service': service,
+        'email_address': to_email_address,
+        'from_user': from_user
+    }
+    invited_user = InvitedUser(**data)
+    save_invited_user(invited_user)
+    return invited_user

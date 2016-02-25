@@ -57,7 +57,10 @@ user_to_service = db.Table(
     'user_to_service',
     db.Model.metadata,
     db.Column('user_id', db.Integer, db.ForeignKey('users.id')),
-    db.Column('service_id', UUID(as_uuid=True), db.ForeignKey('services.id'))
+    db.Column('service_id', UUID(as_uuid=True), db.ForeignKey('services.id')),
+
+    UniqueConstraint('user_id', 'service_id', name='uix_user_to_service')
+
 )
 
 
@@ -159,6 +162,16 @@ class Job(db.Model):
         onupdate=datetime.datetime.now)
     status = db.Column(db.Enum(*JOB_STATUS_TYPES, name='job_status_types'), nullable=False, default='pending')
     notification_count = db.Column(db.Integer, nullable=False)
+    processing_started = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True)
+    processing_finished = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True)
 
 
 VERIFY_CODE_TYPES = ['email', 'sms']
@@ -213,8 +226,13 @@ class Notification(db.Model):
         db.DateTime,
         index=False,
         unique=False,
-        nullable=False,
-        default=datetime.datetime.now)
+        nullable=False)
+    sent_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True)
+    sent_by = db.Column(db.String, nullable=True)
     updated_at = db.Column(
         db.DateTime,
         index=False,
