@@ -1,10 +1,9 @@
 import json
 import uuid
-
 from app.dao.users_dao import save_model_user
+from app.dao.services_dao import dao_remove_user_from_service
 from app.models import User
 from tests import create_authorization_header
-from tests.app.conftest import sample_service as create_service
 
 
 def test_get_service_list(notify_api, service_factory):
@@ -13,7 +12,6 @@ def test_get_service_list(notify_api, service_factory):
             service_factory.get('one')
             service_factory.get('two')
             service_factory.get('three')
-
             auth_header = create_authorization_header(
                 path='/service',
                 method='GET'
@@ -30,7 +28,8 @@ def test_get_service_list(notify_api, service_factory):
             assert json_resp['data'][2]['name'] == 'three'
 
 
-def test_get_service_list_by_user(notify_api, service_factory, sample_user):
+def test_get_service_list_by_user(notify_api, sample_user, service_factory):
+
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service_factory.get('one', sample_user)
@@ -81,7 +80,7 @@ def test_get_service_list_by_user_should_return_empty_list_if_no_services(notify
             assert len(json_resp['data']) == 0
 
 
-def test_get_service_list_should_return_empty_list_if_no_services(notify_api, notify_db):
+def test_get_service_list_should_return_empty_list_if_no_services(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header(
@@ -129,7 +128,7 @@ def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
             assert resp.status_code == 404
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'not found'
+            assert json_resp['message'] == 'Service not found for service id: {} '.format(service_id)
 
 
 def test_get_service_by_id_and_user(notify_api, service_factory, sample_user):
@@ -165,7 +164,8 @@ def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_
             assert resp.status_code == 404
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'not found'
+            assert json_resp['message'] == \
+                'Service not found for service id: {0} and for user id: {1}'.format(service_id, sample_user.id)
 
 
 def test_create_service(notify_api, sample_user):
@@ -233,7 +233,7 @@ def test_should_not_create_service_with_missing_user_id_field(notify_api):
             assert 'Missing data for required field.' in json_resp['message']['user_id']
 
 
-def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(notify_api, notify_db):
+def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
@@ -320,10 +320,9 @@ def test_update_service(notify_api, sample_service):
             assert result['data']['name'] == 'updated service name'
 
 
-def test_update_service_should_404_if_id_is_invalid(notify_api, notify_db):
+def test_update_service_should_404_if_id_is_invalid(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             data = {
                 'name': 'updated service name'
             }
@@ -344,12 +343,10 @@ def test_update_service_should_404_if_id_is_invalid(notify_api, notify_db):
             assert resp.status_code == 404
 
 
-def test_get_users_by_service(notify_api, notify_db, notify_db_session, sample_user):
+def test_get_users_by_service(notify_api, notify_db, notify_db_session, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
-            sample_service = create_service(notify_db=notify_db, notify_db_session=notify_db_session,
-                                            service_name='Sample service', user=sample_user)
+            user_on_service = sample_service.users[0]
             auth_header = create_authorization_header(
                 path='/service/{}/users'.format(sample_service.id),
                 method='GET'
@@ -363,19 +360,18 @@ def test_get_users_by_service(notify_api, notify_db, notify_db_session, sample_u
             assert resp.status_code == 200
             result = json.loads(resp.get_data(as_text=True))
             assert len(result['data']) == 1
-            assert result['data'][0]['name'] == sample_user.name
-            assert result['data'][0]['email_address'] == sample_user.email_address
-            assert result['data'][0]['mobile_number'] == sample_user.mobile_number
+            assert result['data'][0]['name'] == user_on_service.name
+            assert result['data'][0]['email_address'] == user_on_service.email_address
+            assert result['data'][0]['mobile_number'] == user_on_service.mobile_number
 
 
 def test_get_users_for_service_returns_empty_list_if_no_users_associated_with_service(notify_api,
                                                                                       notify_db,
                                                                                       notify_db_session,
-                                                                                      sample_service,
-                                                                                      sample_user):
+                                                                                      sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            sample_service.users.remove(sample_user)
+            dao_remove_user_from_service(sample_service, sample_service.users[0])
             auth_header = create_authorization_header(
                 path='/service/{}/users'.format(sample_service.id),
                 method='GET'
@@ -388,3 +384,22 @@ def test_get_users_for_service_returns_empty_list_if_no_users_associated_with_se
             result = json.loads(response.get_data(as_text=True))
             assert response.status_code == 200
             assert result['data'] == []
+
+
+def test_get_users_for_service_returns_404_when_service_does_not_exist(notify_api, notify_db, notify_db_session):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            service_id = uuid.uuid4()
+            auth_header = create_authorization_header(
+                path='/service/{}/users'.format(service_id),
+                method='GET'
+            )
+
+            response = client.get(
+                '/service/{}/users'.format(service_id),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+            assert response.status_code == 404
+            result = json.loads(response.get_data(as_text=True))
+            assert result['result'] == 'error'
+            assert result['message'] == 'Service not found for id: {}'.format(service_id)
