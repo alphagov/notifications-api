@@ -11,15 +11,12 @@ from app import api_user, encryption, create_uuid
 from app.dao import (
     templates_dao,
     services_dao,
-    notifications_dao,
-    jobs_dao
+    notifications_dao
 )
 from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
-    notification_status_schema,
-    job_sms_template_notification_schema,
-    job_email_template_notification_schema
+    notification_status_schema
 )
 from app.celery.tasks import send_sms, send_email
 from sqlalchemy.orm.exc import NoResultFound
@@ -45,36 +42,20 @@ def get_notifications(notification_id):
 
 @notifications.route('/notifications/sms', methods=['POST'])
 def create_sms_notification():
-    return send_notification(notification_type=SMS_NOTIFICATION, expects_job=False)
-
-
-@notifications.route('/notifications/sms/service/<service_id>', methods=['POST'])
-def create_sms_for_job(service_id):
-    return send_notification(service_id=service_id, notification_type=SMS_NOTIFICATION, expects_job=True)
+    return send_notification(notification_type=SMS_NOTIFICATION)
 
 
 @notifications.route('/notifications/email', methods=['POST'])
 def create_email_notification():
-    return send_notification(notification_type=EMAIL_NOTIFICATION, expects_job=False)
+    return send_notification(notification_type=EMAIL_NOTIFICATION)
 
 
-@notifications.route('/notifications/email/service/<service_id>', methods=['POST'])
-def create_email_notification_for_job(service_id):
-    return send_notification(service_id=service_id, notification_type=EMAIL_NOTIFICATION, expects_job=True)
-
-
-def send_notification(notification_type, service_id=None, expects_job=False):
+def send_notification(notification_type):
     assert notification_type
 
-    if not service_id:
-        service_id = api_user['client']
+    service_id = api_user['client']
 
-    if expects_job:
-        schema = job_sms_template_notification_schema if notification_type is SMS_NOTIFICATION else \
-            job_email_template_notification_schema
-    else:
-        schema = sms_template_notification_schema if notification_type is SMS_NOTIFICATION else \
-            email_notification_schema
+    schema = sms_template_notification_schema if notification_type is SMS_NOTIFICATION else email_notification_schema
 
     notification, errors = schema.load(request.get_json())
     if errors:
@@ -91,13 +72,7 @@ def send_notification(notification_type, service_id=None, expects_job=False):
             message={
                 'template': ['Template {} not found for service {}'.format(notification['template'], service_id)]
             }
-        ), 400
-
-    if expects_job:
-        job = jobs_dao.dao_get_job_by_service_id_and_job_id(service_id, notification['job'])
-
-        if not job:
-            return jsonify(result="error", message={'job': ['Job {} not found'.format(notification['job'])]}), 400
+        ), 404
 
     service = services_dao.dao_fetch_service_by_id(api_user['client'])
 
