@@ -143,7 +143,6 @@ api_keys_schema = ApiKeySchema(many=True)
 job_schema = JobSchema()
 job_schema_load_json = JobSchema(load_json=True)
 jobs_schema = JobSchema(many=True)
-# TODO: Remove this schema once the admin app has stopped using the /user/<user_id>code endpoint
 old_request_verify_code_schema = OldRequestVerifyCodeSchema()
 request_verify_code_schema = RequestVerifyCodeSchema()
 sms_admin_notification_schema = SmsAdminNotificationSchema()
