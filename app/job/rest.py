@@ -21,10 +21,8 @@ from app.dao import notifications_dao
 
 from app.schemas import (
     job_schema,
-    jobs_schema,
     job_schema_load_json,
     notification_status_schema,
-    notifications_status_schema,
     notification_status_schema_load_json
 )
 
@@ -49,7 +47,7 @@ def get_job_for_service(service_id, job_id=None):
             return jsonify(result="error", message="Job not found"), 404
     else:
         jobs = get_jobs_by_service(service_id)
-        data, errors = jobs_schema.dump(jobs)
+        data, errors = job_schema.dump(jobs, many=True)
         return jsonify(data=data)
 
 
@@ -106,7 +104,7 @@ def get_notification_for_job(service_id, job_id, notification_id=None):
             return jsonify(result="error", message="Notification not found"), 404
     else:
         notifications = notifications_dao.get_notifications_for_job(service_id, job_id)
-        data, errors = notifications_status_schema.dump(notifications)
+        data, errors = notification_status_schema.dump(notifications, many=True)
         return jsonify(data=data)
 
 
