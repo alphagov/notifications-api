@@ -58,7 +58,10 @@ user_to_service = db.Table(
     'user_to_service',
     db.Model.metadata,
     db.Column('user_id', db.Integer, db.ForeignKey('users.id')),
-    db.Column('service_id', UUID(as_uuid=True), db.ForeignKey('services.id'))
+    db.Column('service_id', UUID(as_uuid=True), db.ForeignKey('services.id')),
+
+    UniqueConstraint('user_id', 'service_id', name='uix_user_to_service')
+
 )
 
 
