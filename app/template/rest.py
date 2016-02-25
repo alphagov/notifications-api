@@ -12,13 +12,8 @@ from app.dao.templates_dao import (
     dao_get_template_by_id_and_service_id,
     dao_get_all_templates_for_service
 )
-from app.dao.services_dao import (
-    dao_fetch_service_by_id
-)
-from app.schemas import (
-    template_schema,
-    templates_schema,
-)
+from app.dao.services_dao import dao_fetch_service_by_id
+from app.schemas import template_schema
 
 template = Blueprint('template', __name__, url_prefix='/service/<service_id>/template')
 
@@ -70,7 +65,7 @@ def update_template(service_id, template_id):
 @template.route('', methods=['GET'])
 def get_all_templates_for_service(service_id):
     templates = dao_get_all_templates_for_service(service_id=service_id)
-    data, errors = templates_schema.dump(templates)
+    data, errors = template_schema.dump(templates, many=True)
     return jsonify(data=data)
 
 

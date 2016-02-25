@@ -24,10 +24,10 @@ from app.dao.services_dao import (
 from app.dao.users_dao import get_model_users
 from app.models import ApiKey
 from app.schemas import (
-    services_schema,
     service_schema,
-    api_keys_schema,
-    users_schema)
+    api_key_schema,
+    user_schema)
+
 from app.errors import register_errors
 
 service = Blueprint('service', __name__)
@@ -43,7 +43,7 @@ def get_services():
         services = dao_fetch_all_services_by_user(user_id)
     else:
         services = dao_fetch_all_services()
-    data, errors = services_schema.dump(services)
+    data, errors = service_schema.dump(services, many=True)
     return jsonify(data=data)
 
 
@@ -140,7 +140,7 @@ def get_api_keys(service_id, key_id=None):
     except NoResultFound:
         return jsonify(result="error", message="API key not found for id: {}".format(service_id)), 404
 
-    return jsonify(apiKeys=api_keys_schema.dump(api_keys).data), 200
+    return jsonify(apiKeys=api_key_schema.dump(api_keys, many=True).data), 200
 
 
 @service.route('/<service_id>/users', methods=['GET'])
@@ -151,7 +151,7 @@ def get_users_for_service(service_id):
     if not fetched.users:
         return jsonify(data=[])
 
-    result = users_schema.dump(fetched.users)
+    result = user_schema.dump(fetched.users, many=True)
     return jsonify(data=result.data)
 
 

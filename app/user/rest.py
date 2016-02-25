@@ -16,7 +16,6 @@ from app.dao.users_dao import (
 from app.schemas import (
     old_request_verify_code_schema,
     user_schema,
-    users_schema,
     request_verify_code_schema,
     user_schema_load_json
 )
@@ -185,14 +184,23 @@ def send_user_code(user_id):
     return jsonify({}), 204
 
 
-@user.route('/<int:user_id>', methods=['GET'])
 @user.route('', methods=['GET'])
-def get_user(user_id=None):
-    users = get_model_users(user_id=user_id)
-    if not users:
+def get_users():
+    data, errors = user_schema.dump(user_schema.get_query(), many=True)
+    if errors:
+        abort(500, errors)
+    return jsonify(data=data)
+
+
+@user.route('/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    inst = user_schema.get_query(filter_by_dict={'id': user_id}).first()
+    if not inst:
         return jsonify(result="error", message="not found"), 404
-    result = users_schema.dump(users) if isinstance(users, list) else user_schema.dump(users)
-    return jsonify(data=result.data)
+    data, errors = user_schema.dump(inst)
+    if errors:
+        abort(500, errors)
+    return jsonify(data=data)
 
 
 @user.route('/email', methods=['GET'])

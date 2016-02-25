@@ -1,8 +1,12 @@
 import re
 from flask import current_app
 from flask_marshmallow.fields import fields
+from werkzeug.datastructures import MultiDict
+from sqlalchemy.inspection import inspect
+from sqlalchemy.orm.relationships import RelationshipProperty
 from . import ma
 from . import models
+from . import db
 from marshmallow import (post_load, ValidationError, validates, validates_schema)
 
 mobile_regex = re.compile("^\\+44[\\d]{10}$")
@@ -21,6 +25,31 @@ class BaseSchema(ma.ModelSchema):
         self.load_json = load_json
         super(BaseSchema, self).__init__(*args, **kwargs)
 
+    # Custom options
+    __envelope__ = {
+        'single': None,
+        'many': None
+    }
+
+    def get_envelope_key(self, many):
+        """Helper to get the envelope key."""
+        key = self.__envelope__['many'] if many else self.__envelope__['single']
+        assert key is not None, "Envelope key undefined"
+        return key
+
+    # Code to envelope the input and response.
+    # TOBE added soon.
+
+    # @pre_load(pass_many=True)
+    # def unwrap_envelope(self, data, many):
+    #     key = self.get_envelope_key(many)
+    #     return data[key]
+
+    # @post_dump(pass_many=True)
+    # def wrap_with_envelope(self, data, many):
+    #     key = self.get_envelope_key(many)
+    #     return {key: data}
+
     @post_load
     def make_instance(self, data):
         """Deserialize data to an instance of the model. Update an existing row
@@ -31,6 +60,45 @@ class BaseSchema(ma.ModelSchema):
         if self.load_json:
             return data
         return super(BaseSchema, self).make_instance(data)
+
+    def create_instance(self, inst):
+        db.session.add(inst)
+        db.session.commit()
+
+    def update_instance(self, inst, update_dict):
+        # Make sure the id is not included in the update_dict
+        update_dict.pop('id')
+        self.Meta.model.query.filter_by(id=inst.id).update(update_dict)
+        db.session.commit()
+
+    def get_query(self, filter_by_dict={}):
+        if isinstance(filter_by_dict, dict):
+            filter_by_dict = MultiDict(filter_by_dict)
+        query = self.Meta.model.query
+        for k in filter_by_dict.keys():
+            query = self._build_query(query, k, filter_by_dict.getlist(k))
+        return query
+
+    def delete_instance(self, inst):
+        db.session.delete(inst)
+        db.session.commit()
+
+    def _build_query(self, query, key, values):
+        # TODO Lots to do here to work with all types of filters.
+        field = getattr(self.Meta.model, key, None)
+        filters = getattr(self.Meta, 'filter', [key])
+        if field and key in filters:
+            if isinstance(field.property, RelationshipProperty):
+                if len(values) == 1:
+                    query = query.filter_by(**{key: field.property.mapper.class_.query.get(values[0])})
+                elif len(values) > 1:
+                    query = query.filter(field.in_(field.property.mapper.class_.query.any(values[0])))
+            else:
+                if len(values) == 1:
+                    query = query.filter_by(**{key: values[0]})
+                elif len(values) > 1:
+                    query = query.filter(field.in_(values))
+        return query
 
 
 class UserSchema(BaseSchema):
@@ -138,21 +206,29 @@ class InvitedUserSchema(BaseSchema):
             raise ValidationError('Invalid email')
 
 
+class PermissionSchema(BaseSchema):
+
+    __envelope__ = {
+        'single': 'permission',
+        'many': 'permissions',
+    }
+
+    class Meta:
+        model = models.Permission
+        exclude = ("created_at",)
+
+
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
-users_schema = UserSchema(many=True)
 service_schema = ServiceSchema()
 service_schema_load_json = ServiceSchema(load_json=True)
-services_schema = ServiceSchema(many=True)
 template_schema = TemplateSchema()
 template_schema_load_json = TemplateSchema(load_json=True)
-templates_schema = TemplateSchema(many=True)
 api_key_schema = ApiKeySchema()
 api_key_schema_load_json = ApiKeySchema(load_json=True)
-api_keys_schema = ApiKeySchema(many=True)
 job_schema = JobSchema()
 job_schema_load_json = JobSchema(load_json=True)
-jobs_schema = JobSchema(many=True)
+# TODO: Remove this schema once the admin app has stopped using the /user/<user_id>code endpoint
 old_request_verify_code_schema = OldRequestVerifyCodeSchema()
 request_verify_code_schema = RequestVerifyCodeSchema()
 sms_admin_notification_schema = SmsAdminNotificationSchema()
@@ -161,7 +237,7 @@ job_sms_template_notification_schema = JobSmsTemplateNotificationSchema()
 email_notification_schema = EmailNotificationSchema()
 job_email_template_notification_schema = JobEmailTemplateNotificationSchema()
 notification_status_schema = NotificationStatusSchema()
-notifications_status_schema = NotificationStatusSchema(many=True)
 notification_status_schema_load_json = NotificationStatusSchema(load_json=True)
 invited_user_schema = InvitedUserSchema()
-invited_users_schema = InvitedUserSchema(many=True)
+permission_schema = PermissionSchema()
+permission_schema_load_json = PermissionSchema(load_json=True)

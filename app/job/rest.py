@@ -17,7 +17,9 @@ from app.dao.services_dao import (
 
 from app.schemas import (
     job_schema,
-    jobs_schema
+    job_schema_load_json,
+    notification_status_schema,
+    notification_status_schema_load_json
 )
 
 from app.celery.tasks import process_job
@@ -41,7 +43,7 @@ def get_job_by_service_and_job_id(service_id, job_id):
 @job.route('', methods=['GET'])
 def get_jobs_by_service(service_id):
     jobs = dao_get_jobs_by_service_id(service_id)
-    data, errors = jobs_schema.dump(jobs)
+    data, errors = job_schema.dump(jobs, many=True)
     return jsonify(data=data)
 
 
