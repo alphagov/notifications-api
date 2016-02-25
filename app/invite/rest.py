@@ -39,4 +39,8 @@ def get_invited_users_by_service(service_id):
 @invite.route('/<invited_user_id>', methods=['GET'])
 def get_invited_user_by_service_and_id(service_id, invited_user_id):
     invited_user = get_invited_user(service_id, invited_user_id)
+    if not invited_user:
+        message = 'Invited user not found for service id: {} and invited user id: {}'.format(service_id,
+                                                                                             invited_user_id)
+        return jsonify(result='error', message=message), 404
     return jsonify(data=invited_user_schema.dump(invited_user).data), 200

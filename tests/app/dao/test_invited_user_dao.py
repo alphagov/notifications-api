@@ -1,6 +1,4 @@
 import uuid
-import pytest
-from sqlalchemy.orm.exc import NoResultFound
 
 from app.models import InvitedUser
 
@@ -35,10 +33,11 @@ def test_get_invited_user(notify_db, notify_db_session, sample_invited_user):
     assert from_db == sample_invited_user
 
 
-def test_get_unknown_invited_user_throws_no_result_exception(notify_db, notify_db_session, sample_service):
+def test_get_unknown_invited_user_returns_none(notify_db, notify_db_session, sample_service):
     unknown_id = uuid.uuid4()
-    with pytest.raises(NoResultFound):
-        get_invited_user(sample_service.id, unknown_id)
+
+    unknown = get_invited_user(sample_service.id, unknown_id)
+    assert unknown is None
 
 
 def test_get_invited_users_for_service(notify_db, notify_db_session, sample_service):
