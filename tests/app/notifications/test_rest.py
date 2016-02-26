@@ -96,7 +96,6 @@ def test_should_reject_bad_phone_numbers(notify_api, sample_template, mocker):
 
             assert json_resp['result'] == 'error'
             assert len(json_resp['message'].keys()) == 1
-            print(json_resp['message']['to'])
             assert 'Invalid phone number, must be of format +441234123123' in json_resp['message']['to']
             assert response.status_code == 400
 
@@ -440,7 +439,6 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
                 path='/notifications/email',
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
-            print(json.loads(response.get_data(as_text=True)))
             assert response.status_code == 201
             notification_id = json.loads(response.get_data(as_text=True))['notification_id']
             app.celery.tasks.send_email.apply_async.assert_called_once_with(
