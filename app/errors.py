@@ -10,7 +10,11 @@ def register_errors(blueprint):
 
     @blueprint.app_errorhandler(400)
     def bad_request(e):
-        return jsonify(result='error', message=str(e.description)), 400
+        if isinstance(e, str):
+            msg = e
+        else:
+            msg = e.description or "Invalid request parameters"
+        return jsonify(result='error', message=str(msg)), 400
 
     @blueprint.app_errorhandler(401)
     def unauthorized(e):
@@ -24,7 +28,11 @@ def register_errors(blueprint):
 
     @blueprint.app_errorhandler(404)
     def page_not_found(e):
-        return jsonify(result='error', message=e.description or "Not found"), 404
+        if isinstance(e, str):
+            msg = e
+        else:
+            msg = e.description or "Not found"
+        return jsonify(result='error', message=msg), 404
 
     @blueprint.app_errorhandler(429)
     def limit_exceeded(e):
@@ -32,7 +40,10 @@ def register_errors(blueprint):
 
     @blueprint.app_errorhandler(500)
     def internal_server_error(e):
-        current_app.logger.exception(e)
+        if isinstance(e, str):
+            current_app.logger.error(e)
+        elif isinstance(e, Exception):
+            current_app.logger.exception(e)
         return jsonify(result='error', message="Internal server error"), 500
 
     @blueprint.app_errorhandler(NoResultFound)
