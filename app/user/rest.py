@@ -16,7 +16,6 @@ from app.dao.users_dao import (
 from app.schemas import (
     old_request_verify_code_schema,
     user_schema,
-    users_schema,
     request_verify_code_schema,
     user_schema_load_json
 )
@@ -191,7 +190,7 @@ def get_user(user_id=None):
     users = get_model_users(user_id=user_id)
     if not users:
         return jsonify(result="error", message="not found"), 404
-    result = users_schema.dump(users) if isinstance(users, list) else user_schema.dump(users)
+    result = user_schema.dump(users, many=True) if isinstance(users, list) else user_schema.dump(users)
     return jsonify(data=result.data)
 
 

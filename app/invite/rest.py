@@ -10,10 +10,7 @@ from app.dao.invited_user_dao import (
     get_invited_users_for_service
 )
 
-from app.schemas import (
-    invited_user_schema,
-    invited_users_schema
-)
+from app.schemas import invited_user_schema
 
 invite = Blueprint('invite', __name__, url_prefix='/service/<service_id>/invite')
 
@@ -33,7 +30,7 @@ def create_invited_user(service_id):
 @invite.route('', methods=['GET'])
 def get_invited_users_by_service(service_id):
     invited_users = get_invited_users_for_service(service_id)
-    return jsonify(data=invited_users_schema.dump(invited_users).data), 200
+    return jsonify(data=invited_user_schema.dump(invited_users, many=True).data), 200
 
 
 @invite.route('/<invited_user_id>', methods=['GET'])
