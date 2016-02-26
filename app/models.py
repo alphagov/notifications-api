@@ -40,7 +40,6 @@ class User(db.Model):
     logged_in_at = db.Column(db.DateTime, nullable=True)
     failed_login_count = db.Column(db.Integer, nullable=False, default=0)
     state = db.Column(db.String, nullable=False, default='pending')
-    permissions = db.Column("permissions", ARRAY(db.String))
 
     @property
     def password(self):
@@ -265,3 +264,25 @@ class InvitedUser(db.Model):
         default=datetime.datetime.now)
     status = db.Column(
         db.Enum(*INVITED_USER_STATUS_TYPES, name='invited_users_status_types'), nullable=False, default='pending')
+
+
+class Permission(db.Model):
+    __tablename__ = 'permissions'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # Service id is optional, if the service is omitted we will assume the permission is not service specific.
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=True)
+    service = db.relationship('Service')
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=False)
+    user = db.relationship('User')
+    permission = db.Column(db.String(255), nullable=False, unique=False)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=False,
+        default=datetime.datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('service_id', 'user_id', 'permission', name='uix_service_user_permission'),
+    )
