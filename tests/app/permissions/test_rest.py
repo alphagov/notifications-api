@@ -53,7 +53,6 @@ def test_get_permission_filter(notify_api,
                 headers=[header])
             assert response.status_code == 200
             json_resp = json.loads(response.get_data(as_text=True))
-            assert len(json_resp['data']) == 1
             expected = {
                 "permission": another_permission.permission,
                 "user": sample_user.id,

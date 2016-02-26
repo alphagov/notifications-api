@@ -20,7 +20,14 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
 
 
 def dao_create_service(service, user):
-    service.users.append(user)
+    try:
+        from app.dao.permissions_dao import permission_dao
+        service.users.append(user)
+        permission_dao.add_default_service_permissions_for_user(user, service)
+    except Exception as e:
+        # Proper clean up
+        db.session.rollback()
+        raise e
     db.session.add(service)
     db.session.commit()
 

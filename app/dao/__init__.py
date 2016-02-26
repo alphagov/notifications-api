@@ -14,9 +14,10 @@ class DAOClass(object):
     class Meta:
         model = None
 
-    def create_instance(self, inst):
+    def create_instance(self, inst, _commit=True):
         db.session.add(inst)
-        db.session.commit()
+        if _commit:
+            db.session.commit()
 
     def update_instance(self, inst, update_dict):
         # Make sure the id is not included in the update_dict
