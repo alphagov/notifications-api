@@ -21,6 +21,30 @@ class BaseSchema(ma.ModelSchema):
         self.load_json = load_json
         super(BaseSchema, self).__init__(*args, **kwargs)
 
+    __envelope__ = {
+        'single': None,
+        'many': None
+    }
+
+    def get_envelope_key(self, many):
+        """Helper to get the envelope key."""
+        key = self.__envelope__['many'] if many else self.__envelope__['single']
+        assert key is not None, "Envelope key undefined"
+        return key
+
+    # Code to envelope the input and response.
+    # TOBE added soon.
+
+    # @pre_load(pass_many=True)
+    # def unwrap_envelope(self, data, many):
+    #     key = self.get_envelope_key(many)
+    #     return data[key]
+
+    # @post_dump(pass_many=True)
+    # def wrap_with_envelope(self, data, many):
+    #     key = self.get_envelope_key(many)
+    #     return {key: data}
+
     @post_load
     def make_instance(self, data):
         """Deserialize data to an instance of the model. Update an existing row
@@ -138,21 +162,28 @@ class InvitedUserSchema(BaseSchema):
             raise ValidationError('Invalid email')
 
 
+class PermissionSchema(BaseSchema):
+
+    __envelope__ = {
+        'single': 'permission',
+        'many': 'permissions',
+    }
+
+    class Meta:
+        model = models.Permission
+        exclude = ("created_at",)
+
+
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
-users_schema = UserSchema(many=True)
 service_schema = ServiceSchema()
 service_schema_load_json = ServiceSchema(load_json=True)
-services_schema = ServiceSchema(many=True)
 template_schema = TemplateSchema()
 template_schema_load_json = TemplateSchema(load_json=True)
-templates_schema = TemplateSchema(many=True)
 api_key_schema = ApiKeySchema()
 api_key_schema_load_json = ApiKeySchema(load_json=True)
-api_keys_schema = ApiKeySchema(many=True)
 job_schema = JobSchema()
 job_schema_load_json = JobSchema(load_json=True)
-jobs_schema = JobSchema(many=True)
 old_request_verify_code_schema = OldRequestVerifyCodeSchema()
 request_verify_code_schema = RequestVerifyCodeSchema()
 sms_admin_notification_schema = SmsAdminNotificationSchema()
@@ -161,7 +192,6 @@ job_sms_template_notification_schema = JobSmsTemplateNotificationSchema()
 email_notification_schema = EmailNotificationSchema()
 job_email_template_notification_schema = JobEmailTemplateNotificationSchema()
 notification_status_schema = NotificationStatusSchema()
-notifications_status_schema = NotificationStatusSchema(many=True)
 notification_status_schema_load_json = NotificationStatusSchema(load_json=True)
 invited_user_schema = InvitedUserSchema()
-invited_users_schema = InvitedUserSchema(many=True)
+permission_schema = PermissionSchema()

@@ -1,7 +1,8 @@
 import pytest
 from datetime import datetime
-from app import email_safe
-from app.models import (User, Service, Template, ApiKey, Job, Notification, InvitedUser)
+from app import (email_safe, db)
+from app.models import (
+    User, Service, Template, ApiKey, Job, Notification, InvitedUser, Permission)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import dao_create_service
 from app.dao.templates_dao import dao_create_template
@@ -47,8 +48,7 @@ def sample_user(notify_db,
         'email_address': email,
         'password': 'password',
         'mobile_number': '+447700900986',
-        'state': 'active',
-        'permissions': []
+        'state': 'active'
     }
     usr = User.query.filter_by(email_address=email).first()
     if not usr:
@@ -321,3 +321,23 @@ def sample_invited_user(notify_db,
     invited_user = InvitedUser(**data)
     save_invited_user(invited_user)
     return invited_user
+
+
+@pytest.fixture(scope='function')
+def sample_permission(notify_db,
+                      notify_db_session,
+                      service=None,
+                      user=None,
+                      permission="sample permission"):
+    if user is None:
+        user = sample_user(notify_db, notify_db_session)
+    data = {
+        'user': user,
+        'permission': permission
+    }
+    if service:
+        data['service'] = service
+    p_model = Permission(**data)
+    db.session.add(p_model)
+    db.session.commit()
+    return p_model
