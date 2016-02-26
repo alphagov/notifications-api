@@ -341,3 +341,24 @@ def sample_permission(notify_db,
     db.session.add(p_model)
     db.session.commit()
     return p_model
+
+
+@pytest.fixture(scope='function')
+def sample_service_permission(notify_db,
+                              notify_db_session,
+                              service=None,
+                              user=None,
+                              permission="sample permission"):
+    if user is None:
+        user = sample_user(notify_db, notify_db_session)
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
+    data = {
+        'user': user,
+        'service': service,
+        'permission': permission
+    }
+    p_model = Permission(**data)
+    db.session.add(p_model)
+    db.session.commit()
+    return p_model
