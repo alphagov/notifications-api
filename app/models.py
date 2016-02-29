@@ -264,6 +264,12 @@ class InvitedUser(db.Model):
         default=datetime.datetime.now)
     status = db.Column(
         db.Enum(*INVITED_USER_STATUS_TYPES, name='invited_users_status_types'), nullable=False, default='pending')
+    permissions = db.Column(db.String, nullable=False)
+
+    # would like to have used properties for this but haven't found a way to make them
+    # play nice with marshmallow yet
+    def get_permissions(self):
+        return self.permissions.split(',')
 
 
 class Permission(db.Model):
