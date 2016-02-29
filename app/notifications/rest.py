@@ -8,6 +8,8 @@ from flask import (
     url_for
 )
 
+from utils.template import Template
+
 from app import api_user, encryption, create_uuid
 from app.authentication.auth import require_admin
 from app.dao import (
@@ -28,9 +30,6 @@ notifications = Blueprint('notifications', __name__)
 from app.errors import register_errors
 
 register_errors(notifications)
-
-SMS_NOTIFICATION = 'sms'
-EMAIL_NOTIFICATION = 'email'
 
 
 @notifications.route('/notifications/<string:notification_id>', methods=['GET'])
@@ -122,32 +121,24 @@ def pagination_links(pagination, endpoint, args):
     return links
 
 
-@notifications.route('/notifications/sms', methods=['POST'])
-def create_sms_notification():
-    return send_notification(notification_type=SMS_NOTIFICATION)
-
-
-@notifications.route('/notifications/email', methods=['POST'])
-def create_email_notification():
-    return send_notification(notification_type=EMAIL_NOTIFICATION)
-
-
+@notifications.route('/notifications/<string:notification_type>', methods=['POST'])
 def send_notification(notification_type):
-    assert notification_type
+    if notification_type not in ['sms', 'email']:
+        assert False
 
     service_id = api_user['client']
 
-    schema = sms_template_notification_schema if notification_type is SMS_NOTIFICATION else email_notification_schema
+    notification, errors = (
+        sms_template_notification_schema if notification_type == 'sms' else email_notification_schema
+    ).load(request.get_json())
 
-    notification, errors = schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
 
-    template = templates_dao.dao_get_template_by_id_and_service_id(
+    template = Template(templates_dao.dao_get_template_by_id_and_service_id(
         template_id=notification['template'],
         service_id=service_id
-    )
-
+    ))
     if not template:
         return jsonify(
             result="error",
@@ -157,33 +148,28 @@ def send_notification(notification_type):
         ), 404
 
     service = services_dao.dao_fetch_service_by_id(api_user['client'])
-
-    if service.restricted:
-        if notification_type is SMS_NOTIFICATION:
-            if notification['to'] not in [user.mobile_number for user in service.users]:
-                return jsonify(
-                    result="error", message={'to': ['Invalid phone number for restricted service']}), 400
-        else:
-            if notification['to'] not in [user.email_address for user in service.users]:
-                return jsonify(
-                    result="error", message={'to': ['Email address not permitted for restricted service']}), 400
-
     notification_id = create_uuid()
 
-    if notification_type is SMS_NOTIFICATION:
+    if notification_type == 'sms':
+        if service.restricted and notification['to'] not in [user.mobile_number for user in service.users]:
+            return jsonify(
+                result="error", message={'to': ['Invalid phone number for restricted service']}), 400
         send_sms.apply_async((
             service_id,
             notification_id,
             encryption.encrypt(notification),
-            str(datetime.utcnow())),
-            queue='sms')
+            str(datetime.utcnow())
+        ), queue='sms')
     else:
+        if service.restricted and notification['to'] not in [user.email_address for user in service.users]:
+            return jsonify(
+                result="error", message={'to': ['Email address not permitted for restricted service']}), 400
         send_email.apply_async((
             service_id,
             notification_id,
             template.subject,
             "{}@{}".format(service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
             encryption.encrypt(notification),
-            str(datetime.utcnow())),
-            queue='email')
+            str(datetime.utcnow())
+        ), queue='email')
     return jsonify({'notification_id': notification_id}), 201
