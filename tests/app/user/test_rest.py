@@ -31,7 +31,8 @@ def test_get_user_list(notify_api, notify_db, notify_db_session, sample_user, sa
                 "failed_login_count": 0,
                 "permissions": {
                     str(sample_admin_service_id): [
-                        'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates']}
+                        'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates',
+                        'manage_team', 'view_activity']}
             }
             print(json_resp['data'])
             assert expected in json_resp['data']
@@ -62,7 +63,8 @@ def test_get_user(notify_api, notify_db, notify_db_session, sample_user, sample_
                 "failed_login_count": 0,
                 "permissions": {
                     str(sample_admin_service_id): [
-                        'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates']}
+                        'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates',
+                        'manage_team', 'view_activity']}
             }
             assert json_resp['data'] == expected
 
@@ -203,7 +205,8 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_user, sample_
                 "failed_login_count": 0,
                 "permissions": {
                     str(sample_admin_service_id): [
-                        'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates']}
+                        'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates',
+                        'manage_team', 'view_activity']}
             }
             assert json_resp['data'] == expected
             assert json_resp['data']['email_address'] == new_email
@@ -303,7 +306,8 @@ def test_get_user_by_email(notify_api, notify_db, notify_db_session, sample_user
                 "failed_login_count": 0,
                 "permissions": {
                     str(sample_admin_service_id): [
-                        'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates']}
+                        'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates',
+                        'manage_team', 'view_activity']}
             }
 
             assert json_resp['data'] == expected
