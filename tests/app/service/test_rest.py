@@ -456,3 +456,127 @@ def test_default_permissions_are_added_for_user_service(notify_api,
             service_permissions = json_resp['data']['permissions'][str(sample_service.id)]
             from app.dao.permissions_dao import default_service_permissions
             assert sorted(default_service_permissions) == sorted(service_permissions)
+
+
+def test_add_existing_user_to_another_service(notify_api, notify_db, notify_db_session, sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            # check which users part of service
+            user_already_in_service = sample_service.users[0]
+            auth_header = create_authorization_header(
+                path='/service/{}/users'.format(sample_service.id),
+                method='GET'
+            )
+
+            resp = client.get(
+                '/service/{}/users'.format(sample_service.id),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+
+            assert resp.status_code == 200
+            result = json.loads(resp.get_data(as_text=True))
+            assert len(result['data']) == 1
+            assert result['data'][0]['email_address'] == user_already_in_service.email_address
+
+            # add new user to service
+            user_to_add = User(
+                name='Invited User',
+                email_address='invited@digital.cabinet-office.gov.uk',
+                password='password',
+                mobile_number='+4477123456'
+            )
+            # they must exist in db first
+            save_model_user(user_to_add)
+
+            auth_header = create_authorization_header(
+                path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
+                method='POST'
+            )
+
+            resp = client.post(
+                '/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+
+            assert resp.status_code == 201
+
+            # check new user added to service
+            auth_header = create_authorization_header(
+                path='/service/{}/users'.format(sample_service.id),
+                method='GET'
+            )
+
+            resp = client.get(
+                '/service/{}/users'.format(sample_service.id),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+
+            assert resp.status_code == 200
+            result = json.loads(resp.get_data(as_text=True))
+            assert len(result['data']) == 2
+            assert _user_email_in_list(result['data'], user_already_in_service.email_address)
+            assert _user_email_in_list(result['data'], user_to_add.email_address)
+
+
+def test_add_existing_user_to_non_existing_service_returns404(notify_api, notify_db, notify_db_session):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            user_to_add = User(
+                name='Invited User',
+                email_address='invited@digital.cabinet-office.gov.uk',
+                password='password',
+                mobile_number='+4477123456'
+            )
+            save_model_user(user_to_add)
+
+            incorrect_id = uuid.uuid4()
+
+            auth_header = create_authorization_header(
+                path='/service/{}/users/{}'.format(incorrect_id, user_to_add.id),
+                method='POST'
+            )
+
+            resp = client.post(
+                '/service/{}/users/{}'.format(incorrect_id, user_to_add.id),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+
+            result = json.loads(resp.get_data(as_text=True))
+            expected_message = 'Service not found for id: {}'.format(incorrect_id)
+
+            assert resp.status_code == 404
+            assert result['result'] == 'error'
+            assert result['message'] == expected_message
+
+
+def test_add_existing_user_of_service_to_service_returns400(notify_api, notify_db, notify_db_session, sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            existing_user_id = sample_service.users[0].id
+
+            auth_header = create_authorization_header(
+                path='/service/{}/users/{}'.format(sample_service.id, existing_user_id),
+                method='POST'
+            )
+
+            resp = client.post(
+                '/service/{}/users/{}'.format(sample_service.id, existing_user_id),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+
+            result = json.loads(resp.get_data(as_text=True))
+            expected_message = 'User id: {} already part of service id: {}'.format(existing_user_id, sample_service.id)
+
+            assert resp.status_code == 400
+            assert result['result'] == 'error'
+            assert result['message'] == expected_message
+
+
+def _user_email_in_list(user_list, email_address):
+    for user in user_list:
+        if user['email_address'] == email_address:
+            return True
+    return False

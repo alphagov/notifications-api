@@ -5,7 +5,8 @@ from app.models import InvitedUser
 from app.dao.invited_user_dao import (
     save_invited_user,
     get_invited_user,
-    get_invited_users_for_service
+    get_invited_users_for_service,
+    get_invited_user_by_id
 )
 
 
@@ -33,8 +34,13 @@ def test_create_invited_user(notify_db, notify_db_session, sample_service):
     assert 'manage_service' in permissions
 
 
-def test_get_invited_user(notify_db, notify_db_session, sample_invited_user):
+def test_get_invited_user_by_service_and_id(notify_db, notify_db_session, sample_invited_user):
     from_db = get_invited_user(sample_invited_user.service.id, sample_invited_user.id)
+    assert from_db == sample_invited_user
+
+
+def test_get_invited_user_by_id(notify_db, notify_db_session, sample_invited_user):
+    from_db = get_invited_user_by_id(sample_invited_user.id)
     assert from_db == sample_invited_user
 
 

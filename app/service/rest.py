@@ -155,5 +155,23 @@ def get_users_for_service(service_id):
     return jsonify(data=result.data)
 
 
+@service.route('/<service_id>/users/<user_id>', methods=['POST'])
+def add_user_to_service(service_id, user_id):
+    service = dao_fetch_service_by_id(service_id)
+    if not service:
+        return _service_not_found(service_id)
+    user = get_model_users(user_id=user_id)
+
+    if user in service.users:
+        return jsonify(result='error',
+                       message='User id: {} already part of service id: {}'.format(user_id, service_id)), 400
+
+    service.users.append(user)
+    dao_update_service(service)
+
+    data, errors = service_schema.dump(service)
+    return jsonify(data=data), 201
+
+
 def _service_not_found(service_id):
     return jsonify(result='error', message='Service not found for id: {}'.format(service_id)), 404
