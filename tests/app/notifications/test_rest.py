@@ -439,8 +439,8 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
                 path='/notifications/email',
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
-
-            notification_id = json.loads(response.data)['notification_id']
+            assert response.status_code == 201
+            notification_id = json.loads(response.get_data(as_text=True))['notification_id']
             app.celery.tasks.send_email.apply_async.assert_called_once_with(
                 (str(sample_email_template.service_id),
                  notification_id,
