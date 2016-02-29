@@ -161,9 +161,18 @@ def send_email_code(encrypted_verification_message):
 # TODO: when placeholders in templates work, this will be a real template
 def invitation_template(user_name, service_name, url, expiry_date):
     from string import Template
-    t = Template('You are invited to use GOV.UK Notify by $user_name for service $service_name.'
-                 ' The url to join is $url. This url will expire on $expiry_date')
+    t = Template(
+        '$user_name has invited you to collaborate on $service_name on GOV.UK Notify.\n\n'
+        'GOV.UK Notify makes it easy to keep people updated, by helping you send text messages, emails and letters.\n\n'
+        'Click this link to create an account on GOV.UK Notify:\n$url\n\n'
+        'This invitation will stop working at midnight tomorrow. This is to keep $service_name secure.')
     return t.substitute(user_name=user_name, service_name=service_name, url=url, expiry_date=expiry_date)
+
+
+def invitation_subject_line(user_name, service_name):
+    from string import Template
+    t = Template('$user_name has invited you to collaborate on $service_name on GOV.UK Notify')
+    return t.substitute(user_name=user_name, service_name=service_name)
 
 
 def invited_user_url(base_url, token):
@@ -180,7 +189,12 @@ def email_invited_user(encrypted_invitation):
                                              url,
                                              invitation['expiry_date'])
     try:
-        aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
+        email_from = "{}@{}".format(current_app.config['INVITATION_EMAIL_FROM'],
+                                    current_app.config['NOTIFY_EMAIL_DOMAIN'])
+        current_app.logger.info('email_from: {} invitation_content: {}  to: {}'.format(email_from,
+                                                                                       invitation_content,
+                                                                                       invitation['to']))
+        aws_ses_client.send_email(email_from,
                                   invitation['to'],
                                   'Invitation to GOV.UK Notify',
                                   invitation_content)
