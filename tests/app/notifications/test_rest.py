@@ -328,6 +328,105 @@ def test_send_notification_invalid_template_id(notify_api, sample_template, mock
             test_string = 'Template {} not found for service {}'.format(9999, sample_template.service.id)
             assert test_string in json_resp['message']['template']
 
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_send_notification_with_placeholders_replaced(notify_api, sample_template_with_placeholders, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+
+            data = {
+                'to': '+441234123123',
+                'template': sample_template_with_placeholders.id,
+                'personalisation': {
+                    'name': 'Jo'
+                }
+            }
+            auth_header = create_authorization_header(
+                service_id=sample_template_with_placeholders.service.id,
+                request_body=json.dumps(data),
+                path='/notifications/sms',
+                method='POST')
+
+            response = client.post(
+                path='/notifications/sms',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            notification_id = json.loads(response.data)['notification_id']
+            app.celery.tasks.send_sms.apply_async.assert_called_once_with(
+                (str(sample_template_with_placeholders.service.id),
+                 notification_id,
+                 "something_encrypted",
+                 "2016-01-01 11:09:00.061258"),
+                queue="sms"
+            )
+            assert response.status_code == 201
+
+
+def test_send_notification_with_missing_personalisation(
+    notify_api, sample_template_with_placeholders, mocker
+):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+
+            data = {
+                'to': '+441234123123',
+                'template': sample_template_with_placeholders.id,
+                'personalisation': {
+                    'foo': 'bar'
+                }
+            }
+            auth_header = create_authorization_header(
+                service_id=sample_template_with_placeholders.service.id,
+                request_body=json.dumps(data),
+                path='/notifications/sms',
+                method='POST')
+
+            response = client.post(
+                path='/notifications/sms',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_sms.apply_async.assert_not_called()
+
+            assert response.status_code == 400
+            assert 'Missing personalisation: name' in json_resp['message']['template']
+
+
+def test_send_notification_with_too_much_personalisation_data(
+    notify_api, sample_template_with_placeholders, mocker
+):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+
+            data = {
+                'to': '+441234123123',
+                'template': sample_template_with_placeholders.id,
+                'personalisation': {
+                    'name': 'Jo', 'foo': 'bar'
+                }
+            }
+            auth_header = create_authorization_header(
+                service_id=sample_template_with_placeholders.service.id,
+                request_body=json.dumps(data),
+                path='/notifications/sms',
+                method='POST')
+
+            response = client.post(
+                path='/notifications/sms',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            app.celery.tasks.send_sms.apply_async.assert_not_called()
+
+            assert response.status_code == 400
+            assert 'Personalisation not needed for template: foo' in json_resp['message']['template']
+
 
 def test_prevents_sending_to_any_mobile_on_restricted_service(notify_api, sample_template, mocker):
     with notify_api.test_request_context():

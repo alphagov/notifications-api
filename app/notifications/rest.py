@@ -8,7 +8,7 @@ from flask import (
     url_for
 )
 
-from utils.template import Template
+from utils.template import Template, NeededByTemplateError, NoPlaceholderForDataError
 
 from app import api_user, encryption, create_uuid
 from app.authentication.auth import require_admin
@@ -135,10 +135,10 @@ def send_notification(notification_type):
     if errors:
         return jsonify(result="error", message=errors), 400
 
-    template = Template(templates_dao.dao_get_template_by_id_and_service_id(
+    template = templates_dao.dao_get_template_by_id_and_service_id(
         template_id=notification['template'],
         service_id=service_id
-    ))
+    )
     if not template:
         return jsonify(
             result="error",
@@ -146,6 +146,26 @@ def send_notification(notification_type):
                 'template': ['Template {} not found for service {}'.format(notification['template'], service_id)]
             }
         ), 404
+
+    template_object = Template({'content': template.content}, notification.get('personalisation', {}))
+    if template_object.missing_data:
+        return jsonify(
+            result="error",
+            message={
+                'template': ['Missing personalisation: {}'.format(
+                    ", ".join(template_object.missing_data)
+                )]
+            }
+        ), 400
+    if template_object.additional_data:
+        return jsonify(
+            result="error",
+            message={
+                'template': ['Personalisation not needed for template: {}'.format(
+                    ", ".join(template_object.additional_data)
+                )]
+            }
+        ), 400
 
     service = services_dao.dao_fetch_service_by_id(api_user['client'])
     notification_id = create_uuid()
