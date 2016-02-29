@@ -147,7 +147,7 @@ def send_notification(notification_type):
             }
         ), 404
 
-    template_object = Template({'content': template.content}, notification.get('personalisation', {}))
+    template_object = Template(template.__dict__, notification.get('personalisation', {}))
     if template_object.missing_data:
         return jsonify(
             result="error",

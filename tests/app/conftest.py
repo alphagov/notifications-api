@@ -175,6 +175,11 @@ def sample_email_template(
 
 
 @pytest.fixture(scope='function')
+def sample_email_template_with_placeholders(notify_db, notify_db_session):
+    return sample_email_template(notify_db, notify_db_session, content="Hello ((name))")
+
+
+@pytest.fixture(scope='function')
 def sample_api_key(notify_db,
                    notify_db_session,
                    service=None):
