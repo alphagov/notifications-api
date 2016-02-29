@@ -1,7 +1,7 @@
 import uuid
 import pytest
 from flask import current_app
-from app.celery.tasks import (send_sms, send_sms_code, send_email_code, send_email, process_job)
+from app.celery.tasks import (send_sms, send_sms_code, send_email_code, send_email, process_job, email_invited_user)
 from app import (firetext_client, aws_ses_client, encryption)
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
@@ -11,7 +11,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from app.celery.tasks import s3
 from app.celery import tasks
 from tests.app import load_example_csv
-from datetime import datetime
+from datetime import datetime, timedelta
 from freezegun import freeze_time
 
 
@@ -332,3 +332,31 @@ def test_should_send_email_code(mocker):
         "Verification code",
         verification['secret_code']
     )
+
+
+def test_email_invited_user_should_send_email(notify_api, mocker):
+    with notify_api.test_request_context():
+        invitation = {'to': 'new_person@it.gov.uk',
+                      'user_name': 'John Smith',
+                      'service_id': '123123',
+                      'service_name': 'Blacksmith Service',
+                      'token': 'the-token',
+                      'expiry_date': str(datetime.now() + timedelta(days=1))
+                      }
+
+        mocker.patch('app.aws_ses_client.send_email')
+        mocker.patch('app.encryption.decrypt', return_value=invitation)
+        url = tasks.invited_user_url(current_app.config['ADMIN_BASE_URL'], invitation['token'])
+        expected_content = tasks.invitation_template(invitation['user_name'],
+                                                     invitation['service_name'],
+                                                     url,
+                                                     invitation['expiry_date'])
+
+        email_invited_user(encryption.encrypt(invitation))
+        email_from = "{}@{}".format(current_app.config['INVITATION_EMAIL_FROM'],
+                                    current_app.config['NOTIFY_EMAIL_DOMAIN'])
+        expected_subject = tasks.invitation_subject_line(invitation['user_name'], invitation['service_name'])
+        aws_ses_client.send_email.assert_called_once_with(email_from,
+                                                          invitation['to'],
+                                                          expected_subject,
+                                                          expected_content)
