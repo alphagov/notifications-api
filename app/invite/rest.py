@@ -6,6 +6,7 @@ from flask import (
     jsonify,
     current_app)
 
+from app import encryption
 from app.dao.invited_user_dao import (
     save_invited_user,
     get_invited_user,
@@ -13,7 +14,7 @@ from app.dao.invited_user_dao import (
 )
 
 from app.schemas import invited_user_schema
-from app.celery.tasks import email_invited_user
+from app.celery.tasks import (email_invited_user)
 
 invite = Blueprint('invite', __name__, url_prefix='/service/<service_id>/invite')
 
@@ -28,7 +29,8 @@ def create_invited_user(service_id):
         return jsonify(result="error", message=errors), 400
     save_invited_user(invited_user)
     invitation = _create_invitation(invited_user)
-    email_invited_user.apply_async(encrypted_invitation=invitation, queue_name='email-invited-user')
+    encrypted_invitation = encryption.encrypt(invitation)
+    email_invited_user.apply_async([encrypted_invitation], queue='email-invited-user')
     return jsonify(data=invited_user_schema.dump(invited_user).data), 201
 
 
@@ -61,6 +63,6 @@ def _create_invitation(invited_user):
                   'service_id': str(invited_user.service_id),
                   'service_name': invited_user.service.name,
                   'token': token,
-                  'expiry_date': expiration_date
+                  'expiry_date': str(expiration_date)
                   }
     return invitation

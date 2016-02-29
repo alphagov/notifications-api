@@ -353,8 +353,9 @@ def test_email_invited_user_should_send_email(notify_api, mocker):
                                                      invitation['expiry_date'])
 
         email_invited_user(encryption.encrypt(invitation))
-
-        aws_ses_client.send_email.assert_called_once_with(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
+        email_from = "{}@{}".format(current_app.config['INVITATION_EMAIL_FROM'],
+                                    current_app.config['NOTIFY_EMAIL_DOMAIN'])
+        aws_ses_client.send_email.assert_called_once_with(email_from,
                                                           invitation['to'],
                                                           'Invitation to GOV.UK Notify',
                                                           expected_content)

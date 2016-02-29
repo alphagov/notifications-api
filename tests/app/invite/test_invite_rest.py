@@ -3,6 +3,7 @@ import uuid
 
 from datetime import datetime, timedelta
 
+from app import encryption
 from tests import create_authorization_header
 import app.celery.tasks
 
@@ -50,11 +51,11 @@ def test_create_invited_user(notify_api, sample_service, mocker):
                                     'service_id': str(sample_service.id),
                                     'service_name': sample_service.name,
                                     'token': 'the-token',
-                                    'expiry_date': expiry_date
+                                    'expiry_date': str(expiry_date)
                                     }
             app.celery.tasks.email_invited_user.apply_async.assert_called_once_with(
-                encrypted_invitation=encrypted_invitation,
-                queue_name='email-invited-user')
+                [encryption.encrypt(encrypted_invitation)],
+                queue='email-invited-user')
 
 
 def test_create_invited_user_invalid_email(notify_api, sample_service, mocker):
