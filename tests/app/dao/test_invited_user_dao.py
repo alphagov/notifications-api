@@ -17,7 +17,8 @@ def test_create_invited_user(notify_db, notify_db_session, sample_service):
     data = {
         'service': sample_service,
         'email_address': email_address,
-        'from_user': invite_from
+        'from_user': invite_from,
+        'permissions': 'send_messages,manage_service'
     }
 
     invited_user = InvitedUser(**data)
@@ -26,6 +27,10 @@ def test_create_invited_user(notify_db, notify_db_session, sample_service):
     assert InvitedUser.query.count() == 1
     assert invited_user.email_address == email_address
     assert invited_user.from_user == invite_from
+    permissions = invited_user.get_permissions()
+    assert len(permissions) == 2
+    assert 'send_messages' in permissions
+    assert 'manage_service' in permissions
 
 
 def test_get_invited_user(notify_db, notify_db_session, sample_invited_user):
