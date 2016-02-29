@@ -355,7 +355,8 @@ def test_email_invited_user_should_send_email(notify_api, mocker):
         email_invited_user(encryption.encrypt(invitation))
         email_from = "{}@{}".format(current_app.config['INVITATION_EMAIL_FROM'],
                                     current_app.config['NOTIFY_EMAIL_DOMAIN'])
+        expected_subject = tasks.invitation_subject_line(invitation['user_name'], invitation['service_name'])
         aws_ses_client.send_email.assert_called_once_with(email_from,
                                                           invitation['to'],
-                                                          'Invitation to GOV.UK Notify',
+                                                          expected_subject,
                                                           expected_content)
