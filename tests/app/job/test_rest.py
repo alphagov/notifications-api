@@ -50,7 +50,6 @@ def test_get_job_with_invalid_job_id_returns404(notify_api, sample_template):
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 404
             resp_json = json.loads(response.get_data(as_text=True))
-            print(resp_json)
             assert resp_json['result'] == 'error'
             assert resp_json['message'] == 'No result found'
 
@@ -218,7 +217,6 @@ def test_get_update_job(notify_api, sample_job):
 
 def _setup_jobs(notify_db, notify_db_session, template, number_of_jobs=5):
     for i in range(number_of_jobs):
-        print(i)
         create_job(
             notify_db,
             notify_db_session,
