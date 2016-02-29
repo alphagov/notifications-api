@@ -7,8 +7,9 @@ from werkzeug.datastructures import MultiDict
 manage_service = 'manage_service'
 send_messages = 'send_messages'
 manage_api_keys = 'manage_api_keys'
+manage_templates = 'manage_templates'
 # Default permissions for a service
-default_service_permissions = [manage_service, send_messages, manage_api_keys]
+default_service_permissions = [manage_service, send_messages, manage_api_keys, manage_templates]
 
 
 class PermissionDAO(DAOClass):
