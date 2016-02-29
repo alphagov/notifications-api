@@ -156,3 +156,45 @@ def send_email_code(encrypted_verification_message):
                                   verification_message['secret_code'])
     except AwsSesClientException as e:
         current_app.logger.error(e)
+
+
+# TODO: when placeholders in templates work, this will be a real template
+def invitation_template(user_name, service_name, url, expiry_date):
+    from string import Template
+    t = Template(
+        '$user_name has invited you to collaborate on $service_name on GOV.UK Notify.\n\n'
+        'GOV.UK Notify makes it easy to keep people updated by helping you send text messages, emails and letters.\n\n'
+        'Click this link to create an account on GOV.UK Notify:\n$url\n\n'
+        'This invitation will stop working at midnight tomorrow. This is to keep $service_name secure.')
+    return t.substitute(user_name=user_name, service_name=service_name, url=url, expiry_date=expiry_date)
+
+
+def invitation_subject_line(user_name, service_name):
+    from string import Template
+    t = Template('$user_name has invited you to collaborate on $service_name on GOV.UK Notify')
+    return t.substitute(user_name=user_name, service_name=service_name)
+
+
+def invited_user_url(base_url, token):
+    return '{0}/invitation/{1}'.format(base_url, token)
+
+
+@notify_celery.task(name='email-invited-user')
+def email_invited_user(encrypted_invitation):
+    invitation = encryption.decrypt(encrypted_invitation)
+    url = invited_user_url(current_app.config['ADMIN_BASE_URL'],
+                           invitation['token'])
+    invitation_content = invitation_template(invitation['user_name'],
+                                             invitation['service_name'],
+                                             url,
+                                             invitation['expiry_date'])
+    try:
+        email_from = "{}@{}".format(current_app.config['INVITATION_EMAIL_FROM'],
+                                    current_app.config['NOTIFY_EMAIL_DOMAIN'])
+        subject_line = invitation_subject_line(invitation['user_name'], invitation['service_name'])
+        aws_ses_client.send_email(email_from,
+                                  invitation['to'],
+                                  subject_line,
+                                  invitation_content)
+    except AwsSesClientException as e:
+        current_app.logger.error(e)
