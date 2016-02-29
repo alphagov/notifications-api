@@ -24,12 +24,13 @@ def dao_create_service(service, user):
         from app.dao.permissions_dao import permission_dao
         service.users.append(user)
         permission_dao.add_default_service_permissions_for_user(user, service)
+        db.session.add(service)
     except Exception as e:
         # Proper clean up
         db.session.rollback()
         raise e
-    db.session.add(service)
-    db.session.commit()
+    else:
+        db.session.commit()
 
 
 def dao_update_service(service):
