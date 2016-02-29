@@ -3,6 +3,7 @@ from flask import current_app
 from flask_marshmallow.fields import fields
 from . import ma
 from . import models
+from app.dao.permissions_dao import permission_dao
 from marshmallow import (post_load, ValidationError, validates, validates_schema)
 
 mobile_regex = re.compile("^\\+44[\\d]{10}$")
@@ -58,6 +59,18 @@ class BaseSchema(ma.ModelSchema):
 
 
 class UserSchema(BaseSchema):
+
+    permissions = fields.Method("user_permissions", dump_only=True)
+
+    def user_permissions(self, usr):
+        retval = {}
+        for x in permission_dao.get_query({'user': usr.id}):
+            service_id = str(x.service_id)
+            if service_id not in retval:
+                retval[service_id] = []
+            retval[service_id].append(x.permission)
+        return retval
+
     class Meta:
         model = models.User
         exclude = (
