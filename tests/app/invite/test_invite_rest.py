@@ -1,13 +1,17 @@
 import json
 import uuid
 
+from datetime import datetime, timedelta
+
 from tests import create_authorization_header
+import app.celery.tasks
 
 
-def test_create_invited_user(notify_api, sample_service):
+def test_create_invited_user(notify_api, sample_service, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
+            mocker.patch('app.celery.tasks.email_invited_user.apply_async')
+            mocker.patch('utils.url_safe_token.generate_token', return_value='the-token')
             email_address = 'invited_user@service.gov.uk'
             invite_from = sample_service.users[0]
 
@@ -37,12 +41,26 @@ def test_create_invited_user(notify_api, sample_service):
             assert json_resp['data']['email_address'] == email_address
             assert json_resp['data']['from_user'] == invite_from.id
             assert json_resp['data']['id']
+            invitation_expiration_days = notify_api.config['INVITATION_EXPIRATION_DAYS']
+            expiry_date = (datetime.now() + timedelta(days=invitation_expiration_days)).replace(hour=0, minute=0,
+                                                                                                second=0,
+                                                                                                microsecond=0)
+            encrypted_invitation = {'to': email_address,
+                                    'user_name': invite_from.name,
+                                    'service_id': str(sample_service.id),
+                                    'service_name': sample_service.name,
+                                    'token': 'the-token',
+                                    'expiry_date': expiry_date
+                                    }
+            app.celery.tasks.email_invited_user.apply_async.assert_called_once_with(
+                encrypted_invitation=encrypted_invitation,
+                queue_name='email-invited-user')
 
 
-def test_create_invited_user_invalid_email(notify_api, sample_service):
+def test_create_invited_user_invalid_email(notify_api, sample_service, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
+            mocker.patch('app.celery.tasks.email_invited_user.apply_async')
             email_address = 'notanemail'
             invite_from = sample_service.users[0]
 
@@ -69,6 +87,7 @@ def test_create_invited_user_invalid_email(notify_api, sample_service):
             json_resp = json.loads(response.get_data(as_text=True))
             assert json_resp['result'] == 'error'
             assert json_resp['message'] == {'email_address': ['Invalid email']}
+            app.celery.tasks.email_invited_user.apply_async.assert_not_called()
 
 
 def test_get_all_invited_users_by_service(notify_api, notify_db, notify_db_session, sample_service):

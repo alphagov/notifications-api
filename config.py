@@ -3,12 +3,14 @@ import os
 
 class Config(object):
     DEBUG = False
+    ADMIN_BASE_URL = os.environ['ADMIN_BASE_URL']
     ADMIN_CLIENT_USER_NAME = os.environ['ADMIN_CLIENT_USER_NAME']
     ADMIN_CLIENT_SECRET = os.environ['ADMIN_CLIENT_SECRET']
     AWS_REGION = os.environ['AWS_REGION']
     DANGEROUS_SALT = os.environ['DANGEROUS_SALT']
     DELIVERY_CLIENT_USER_NAME = os.environ['DELIVERY_CLIENT_USER_NAME']
     DELIVERY_CLIENT_SECRET = os.environ['DELIVERY_CLIENT_SECRET']
+    INVITATION_EXPIRATION_DAYS = int(os.environ['INVITATION_EXPIRATION_DAYS'])
     NOTIFY_APP_NAME = 'api'
     NOTIFY_LOG_PATH = '/var/log/notify/application.log'
     NOTIFY_JOB_QUEUE = os.environ['NOTIFY_JOB_QUEUE']

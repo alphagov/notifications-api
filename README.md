@@ -21,20 +21,24 @@ Create a local environment.sh file containing the following:
 ```
 echo "
 export NOTIFY_API_ENVIRONMENT='config.Development'
+export ADMIN_BASE_URL='http://localhost:6012'
 export ADMIN_CLIENT_SECRET='dev-notify-secret-key'
 export ADMIN_CLIENT_USER_NAME='dev-notify-admin'
 export AWS_REGION='eu-west-1'
 export DANGEROUS_SALT='dev-notify-salt'
 export DELIVERY_CLIENT_USER_NAME='dev-notify-delivery'
 export DELIVERY_CLIENT_SECRET='dev-notify-secret-key'
-export FIRETEXT_API_KEY="secret-fire-text" # This has to be real so speak to a grownup
+export FIRETEXT_API_KEY=[contact team member for api key] 
 export FIRETEXT_NUMBER="Firetext"
+export INVITATION_EXPIRATION_DAYS=2
+export NOTIFY_EMAIL_DOMAIN='dev.notify.com'
 export NOTIFY_JOB_QUEUE='[unique-to-environment]-notify-jobs-queue' # NOTE unique prefix
 export NOTIFICATION_QUEUE_PREFIX='[unique-to-environment]-notification_development' # NOTE unique prefix
 export SECRET_KEY='dev-notify-secret-key'
 export SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/notification_api'
+export TWILIO_ACCOUNT_SID=[contact team member for account sid]
+export TWILIO_AUTH_TOKEN=[contact team member for auth token]
 export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.works'
-export NOTIFY_EMAIL_DOMAIN='dev.notify.com'
 "> environment.sh
 ```
 
