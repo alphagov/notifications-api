@@ -85,10 +85,11 @@ def test_should_process_all_sms_job(sample_job, mocker):
     assert job.status == 'finished'
 
 
-def test_should_send_template_to_correct_sms_provider_and_persist(sample_template, mocker):
+def test_should_send_template_to_correct_sms_provider_and_persist(sample_template_with_placeholders, mocker):
     notification = {
-        "template": sample_template.id,
-        "to": "+441234123123"
+        "template": sample_template_with_placeholders.id,
+        "to": "+441234123123",
+        "personalisation": {"name": "Jo"}
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.firetext_client.send_sms')
@@ -97,17 +98,19 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
     send_sms(
-        sample_template.service_id,
+        sample_template_with_placeholders.service_id,
         notification_id,
         "encrypted-in-reality",
         now
     )
 
-    firetext_client.send_sms.assert_called_once_with("+441234123123", sample_template.content)
-    persisted_notification = notifications_dao.get_notification(sample_template.service_id, notification_id)
+    firetext_client.send_sms.assert_called_once_with("+441234123123", "Hello Jo")
+    persisted_notification = notifications_dao.get_notification(
+        sample_template_with_placeholders.service_id, notification_id
+    )
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == '+441234123123'
-    assert persisted_notification.template_id == sample_template.id
+    assert persisted_notification.template_id == sample_template_with_placeholders.id
     assert persisted_notification.status == 'sent'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
@@ -145,10 +148,11 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
     assert persisted_notification.sent_by == 'firetext'
 
 
-def test_should_use_email_template_and_persist(sample_email_template, mocker):
+def test_should_use_email_template_and_persist(sample_email_template_with_placeholders, mocker):
     notification = {
-        "template": sample_email_template.id,
-        "to": "my_email@my_email.com"
+        "template": sample_email_template_with_placeholders.id,
+        "to": "my_email@my_email.com",
+        "personalisation": {"name": "Jo"}
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.aws_ses_client.send_email')
@@ -157,7 +161,7 @@ def test_should_use_email_template_and_persist(sample_email_template, mocker):
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
     send_email(
-        sample_email_template.service_id,
+        sample_email_template_with_placeholders.service_id,
         notification_id,
         'subject',
         'email_from',
@@ -168,12 +172,12 @@ def test_should_use_email_template_and_persist(sample_email_template, mocker):
         "email_from",
         "my_email@my_email.com",
         "subject",
-        sample_email_template.content
+        "Hello Jo"
     )
-    persisted_notification = notifications_dao.get_notification(sample_email_template.service_id, notification_id)
+    persisted_notification = notifications_dao.get_notification(sample_email_template_with_placeholders.service_id, notification_id)
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'my_email@my_email.com'
-    assert persisted_notification.template_id == sample_email_template.id
+    assert persisted_notification.template_id == sample_email_template_with_placeholders.id
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
     assert persisted_notification.status == 'sent'
