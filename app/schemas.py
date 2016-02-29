@@ -166,6 +166,7 @@ class NotificationStatusSchema(BaseSchema):
 
 
 class InvitedUserSchema(BaseSchema):
+
     class Meta:
         model = models.InvitedUser
 
