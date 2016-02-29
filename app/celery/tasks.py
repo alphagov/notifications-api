@@ -9,8 +9,8 @@ from app.models import Notification
 from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
-from app.csv import get_recipient_from_csv
 from datetime import datetime
+from utils.process_csv import get_recipients_from_csv
 
 
 @notify_celery.task(name="process-job")
@@ -20,10 +20,10 @@ def process_job(job_id):
     job.status = 'in progress'
     dao_update_job(job)
 
-    file = s3.get_job_from_s3(job.bucket_name, job_id)
-    recipients = get_recipient_from_csv(file)
-
-    for recipient in recipients:
+    for recipient in get_recipients_from_csv(
+        s3.get_job_from_s3(job.bucket_name, job_id),
+        template_type=job.template.template_type
+    ):
         encrypted = encryption.encrypt({
             'template': job.template_id,
             'job': str(job.id),
