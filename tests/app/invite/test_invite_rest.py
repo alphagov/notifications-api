@@ -19,7 +19,8 @@ def test_create_invited_user(notify_api, sample_service, mocker):
             data = {
                 'service': str(sample_service.id),
                 'email_address': email_address,
-                'from_user': invite_from.id
+                'from_user': invite_from.id,
+                'permissions': 'send_messages,manage_service,manage_api_keys'
             }
 
             data = json.dumps(data)
@@ -41,6 +42,7 @@ def test_create_invited_user(notify_api, sample_service, mocker):
             assert json_resp['data']['service'] == str(sample_service.id)
             assert json_resp['data']['email_address'] == email_address
             assert json_resp['data']['from_user'] == invite_from.id
+            assert json_resp['data']['permissions'] == 'send_messages,manage_service,manage_api_keys'
             assert json_resp['data']['id']
             invitation_expiration_days = notify_api.config['INVITATION_EXPIRATION_DAYS']
             expiry_date = (datetime.now() + timedelta(days=invitation_expiration_days)).replace(hour=0, minute=0,
@@ -68,7 +70,8 @@ def test_create_invited_user_invalid_email(notify_api, sample_service, mocker):
             data = {
                 'service': str(sample_service.id),
                 'email_address': email_address,
-                'from_user': invite_from.id
+                'from_user': invite_from.id,
+                'permissions': 'send_messages,manage_service,manage_api_keys'
             }
 
             data = json.dumps(data)

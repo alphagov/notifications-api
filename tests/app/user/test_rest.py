@@ -28,8 +28,12 @@ def test_get_user_list(notify_api, notify_db, notify_db_session, sample_user, sa
                 "password_changed_at": None,
                 "logged_in_at": None,
                 "state": "active",
-                "failed_login_count": 0
+                "failed_login_count": 0,
+                "permissions": {
+                    str(sample_admin_service_id): [
+                        'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates']}
             }
+            print(json_resp['data'])
             assert expected in json_resp['data']
 
 
@@ -55,7 +59,10 @@ def test_get_user(notify_api, notify_db, notify_db_session, sample_user, sample_
                 "password_changed_at": None,
                 "logged_in_at": None,
                 "state": "active",
-                "failed_login_count": 0
+                "failed_login_count": 0,
+                "permissions": {
+                    str(sample_admin_service_id): [
+                        'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates']}
             }
             assert json_resp['data'] == expected
 
@@ -75,7 +82,8 @@ def test_post_user(notify_api, notify_db, notify_db_session, sample_admin_servic
                 "password_changed_at": None,
                 "logged_in_at": None,
                 "state": "active",
-                "failed_login_count": 0
+                "failed_login_count": 0,
+                "permissions": {}
             }
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
                                                       path=url_for('user.create_user'),
@@ -108,7 +116,8 @@ def test_post_user_missing_attribute_email(notify_api, notify_db, notify_db_sess
                 "password_changed_at": None,
                 "logged_in_at": None,
                 "state": "active",
-                "failed_login_count": 0
+                "failed_login_count": 0,
+                "permissions": {}
             }
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
                                                       path=url_for('user.create_user'),
@@ -139,7 +148,8 @@ def test_post_user_missing_attribute_password(notify_api, notify_db, notify_db_s
                 "password_changed_at": None,
                 "logged_in_at": None,
                 "state": "active",
-                "failed_login_count": 0
+                "failed_login_count": 0,
+                "permissions": {}
             }
             auth_header = create_authorization_header(service_id=sample_admin_service_id,
                                                       path=url_for('user.create_user'),
@@ -190,7 +200,10 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_user, sample_
                 "id": user.id,
                 "logged_in_at": None,
                 "state": "active",
-                "failed_login_count": 0
+                "failed_login_count": 0,
+                "permissions": {
+                    str(sample_admin_service_id): [
+                        'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates']}
             }
             assert json_resp['data'] == expected
             assert json_resp['data']['email_address'] == new_email
@@ -287,7 +300,10 @@ def test_get_user_by_email(notify_api, notify_db, notify_db_session, sample_user
                 "password_changed_at": None,
                 "logged_in_at": None,
                 "state": "active",
-                "failed_login_count": 0
+                "failed_login_count": 0,
+                "permissions": {
+                    str(sample_admin_service_id): [
+                        'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates']}
             }
 
             assert json_resp['data'] == expected
@@ -327,3 +343,19 @@ def test_get_user_by_email_bad_url_returns_404(notify_api,
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == 'error'
             assert json_resp['message'] == 'invalid request'
+
+
+def test_get_user_with_permissions(notify_api,
+                                   notify_db,
+                                   notify_db_session,
+                                   sample_service_permission):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            header = create_authorization_header(
+                path=url_for('user.get_user', user_id=sample_service_permission.user.id),
+                method='GET')
+            response = client.get(url_for('user.get_user', user_id=sample_service_permission.user.id),
+                                  headers=[header])
+            assert response.status_code == 200
+            permissions = json.loads(response.get_data(as_text=True))['data']['permissions']
+            assert sample_service_permission.permission in permissions[str(sample_service_permission.service.id)]
