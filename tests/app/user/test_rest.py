@@ -29,7 +29,8 @@ def test_get_user_list(notify_api, notify_db, notify_db_session, sample_user, sa
                 "logged_in_at": None,
                 "state": "active",
                 "failed_login_count": 0,
-                "permissions": {}
+                "permissions": {
+                    str(sample_admin_service_id): ['manage_service', 'send_messages', 'manage_api_keys']}
             }
             print(json_resp['data'])
             assert expected in json_resp['data']
@@ -58,7 +59,8 @@ def test_get_user(notify_api, notify_db, notify_db_session, sample_user, sample_
                 "logged_in_at": None,
                 "state": "active",
                 "failed_login_count": 0,
-                "permissions": {}
+                "permissions": {
+                    str(sample_admin_service_id): ['manage_service', 'send_messages', 'manage_api_keys']}
             }
             assert json_resp['data'] == expected
 
@@ -197,7 +199,8 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_user, sample_
                 "logged_in_at": None,
                 "state": "active",
                 "failed_login_count": 0,
-                "permissions": {}
+                "permissions": {
+                    str(sample_admin_service_id): ['manage_service', 'send_messages', 'manage_api_keys']}
             }
             assert json_resp['data'] == expected
             assert json_resp['data']['email_address'] == new_email
@@ -295,7 +298,8 @@ def test_get_user_by_email(notify_api, notify_db, notify_db_session, sample_user
                 "logged_in_at": None,
                 "state": "active",
                 "failed_login_count": 0,
-                "permissions": {}
+                "permissions": {
+                    str(sample_admin_service_id): ['manage_service', 'send_messages', 'manage_api_keys']}
             }
 
             assert json_resp['data'] == expected
@@ -349,16 +353,5 @@ def test_get_user_with_permissions(notify_api,
             response = client.get(url_for('user.get_user', user_id=sample_service_permission.user.id),
                                   headers=[header])
             assert response.status_code == 200
-            json_resp = json.loads(response.get_data(as_text=True))
-            expected = {
-                "name": "Test User",
-                "email_address": sample_service_permission.user.email_address,
-                "id": sample_service_permission.user.id,
-                "mobile_number": "+447700900986",
-                "password_changed_at": None,
-                "logged_in_at": None,
-                "state": "active",
-                "failed_login_count": 0,
-                "permissions": {str(sample_service_permission.service.id): [sample_service_permission.permission]}
-            }
-            assert expected == json_resp['data']
+            permissions = json.loads(response.get_data(as_text=True))['data']['permissions']
+            assert sample_service_permission.permission in permissions[str(sample_service_permission.service.id)]

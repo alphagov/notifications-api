@@ -1,5 +1,6 @@
 import json
 import uuid
+from flask import url_for
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
 from app.models import User
@@ -403,3 +404,55 @@ def test_get_users_for_service_returns_404_when_service_does_not_exist(notify_ap
             result = json.loads(response.get_data(as_text=True))
             assert result['result'] == 'error'
             assert result['message'] == 'Service not found for id: {}'.format(service_id)
+
+
+def test_default_permissions_are_added_for_user_service(notify_api,
+                                                        notify_db,
+                                                        notify_db_session,
+                                                        sample_service,
+                                                        sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = {
+                'name': 'created service',
+                'user_id': sample_user.id,
+                'limit': 1000,
+                'restricted': False,
+                'active': False}
+            auth_header = create_authorization_header(
+                path='/service',
+                method='POST',
+                request_body=json.dumps(data)
+            )
+            headers = [('Content-Type', 'application/json'), auth_header]
+            resp = client.post(
+                '/service',
+                data=json.dumps(data),
+                headers=headers)
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 201
+            assert json_resp['data']['id']
+            assert json_resp['data']['name'] == 'created service'
+            assert json_resp['data']['email_from'] == 'created.service'
+
+            auth_header_fetch = create_authorization_header(
+                path='/service/{}'.format(json_resp['data']['id']),
+                method='GET'
+            )
+
+            resp = client.get(
+                '/service/{}?user_id={}'.format(json_resp['data']['id'], sample_user.id),
+                headers=[auth_header_fetch]
+            )
+            assert resp.status_code == 200
+            header = create_authorization_header(
+                path=url_for('user.get_user', user_id=sample_user.id),
+                method='GET')
+            response = client.get(
+                url_for('user.get_user', user_id=sample_user.id),
+                headers=[header])
+            assert response.status_code == 200
+            json_resp = json.loads(response.get_data(as_text=True))
+            service_permissions = json_resp['data']['permissions'][str(sample_service.id)]
+            from app.dao.permissions_dao import default_service_permissions
+            assert sorted(default_service_permissions) == sorted(service_permissions)

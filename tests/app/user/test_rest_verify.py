@@ -358,7 +358,6 @@ def test_send_user_sms_code(notify_api,
                 url_for('user.send_user_sms_code', user_id=sample_sms_code.user.id),
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
-            print(resp.get_data(as_text=True))
             assert resp.status_code == 204
             app.celery.tasks.send_sms_code.apply_async.assert_called_once_with(['something_encrypted'],
                                                                                queue='sms-code')
@@ -427,7 +426,6 @@ def test_send_user_email_code(notify_api,
                 url_for('user.send_user_email_code', user_id=sample_email_code.user.id),
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
-            print(resp.get_data(as_text=True))
             assert resp.status_code == 204
             app.celery.tasks.send_email_code.apply_async.assert_called_once_with(['something_encrypted'],
                                                                                  queue='email-code')
