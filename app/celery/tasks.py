@@ -156,3 +156,33 @@ def send_email_code(encrypted_verification_message):
                                   verification_message['secret_code'])
     except AwsSesClientException as e:
         current_app.logger.error(e)
+
+
+# TODO: when placeholders in templates work, this will be a real template
+def invitation_template(user_name, service_name, url, expiry_date):
+    from string import Template
+    t = Template('You are invited to use GOV.UK Notify by $user_name for service $service_name.'
+                 ' The url to join is $url. This url will expire on $expiry_date')
+    return t.substitute(user_name=user_name, service_name=service_name, url=url, expiry_date=expiry_date)
+
+
+def invited_user_url(base_url, token):
+    return '{0}/invitation/{1}'.format(base_url, token)
+
+
+@notify_celery.task(name='email-invited-user')
+def email_invited_user(encrypted_invitation):
+    invitation = encryption.decrypt(encrypted_invitation)
+    url = invited_user_url(current_app.config['ADMIN_BASE_URL'],
+                           invitation['token'])
+    invitation_content = invitation_template(invitation['user_name'],
+                                             invitation['service_name'],
+                                             url,
+                                             invitation['expiry_date'])
+    try:
+        aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
+                                  invitation['to'],
+                                  'Invitation to GOV.UK Notify',
+                                  invitation_content)
+    except AwsSesClientException as e:
+        current_app.logger.error(e)
