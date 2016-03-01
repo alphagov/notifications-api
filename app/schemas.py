@@ -5,6 +5,7 @@ from . import ma
 from . import models
 from app.dao.permissions_dao import permission_dao
 from marshmallow import (post_load, ValidationError, validates, validates_schema)
+from marshmallow_sqlalchemy import field_for
 
 mobile_regex = re.compile("^\\+44[\\d]{10}$")
 
@@ -177,6 +178,11 @@ class InvitedUserSchema(BaseSchema):
 
 
 class PermissionSchema(BaseSchema):
+
+    # Override generated fields
+    user = field_for(models.Permission, 'user', dump_only=True)
+    service = field_for(models.Permission, 'service', dump_only=True)
+    permission = field_for(models.Permission, 'permission')
 
     __envelope__ = {
         'single': 'permission',

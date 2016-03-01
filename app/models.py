@@ -272,6 +272,20 @@ class InvitedUser(db.Model):
         return self.permissions.split(',')
 
 
+# Service Permissions
+MANAGE_SERVICE = 'manage_service'
+SEND_MESSAGES = 'send_messages'
+MANAGE_API_KEYS = 'manage_api_keys'
+MANAGE_TEMPLATES = 'manage_templates'
+
+# List of permissions
+PERMISSION_LIST = [
+    MANAGE_SERVICE,
+    SEND_MESSAGES,
+    MANAGE_API_KEYS,
+    MANAGE_TEMPLATES]
+
+
 class Permission(db.Model):
     __tablename__ = 'permissions'
 
@@ -281,7 +295,10 @@ class Permission(db.Model):
     service = db.relationship('Service')
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=False)
     user = db.relationship('User')
-    permission = db.Column(db.String(255), nullable=False, unique=False)
+    permission = db.Column(db.Enum(*PERMISSION_LIST, name='permission_types'),
+                           index=False,
+                           unique=False,
+                           nullable=False)
     created_at = db.Column(
         db.DateTime,
         index=False,
