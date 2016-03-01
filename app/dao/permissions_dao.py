@@ -29,7 +29,7 @@ class PermissionDAO(DAOClass):
                 query.filter_by(service=Service.query.get(service_ids[0]))
             # TODO the join method for multiple services
         if 'user' in filter_by_dict:
-            user_ids = filter_by_dict.getlist('service')
+            user_ids = filter_by_dict.getlist('user')
             if len(user_ids) == 1:
                 query = query.filter_by(user=User.query.get(user_ids[0]))
             # TODO the join method for multiple users
