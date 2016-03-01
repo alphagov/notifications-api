@@ -1,3 +1,4 @@
+from kombu import Exchange, Queue
 import os
 
 
@@ -48,6 +49,16 @@ class Config(object):
     TWILIO_NUMBER = os.getenv('TWILIO_NUMBER')
     FIRETEXT_NUMBER = os.getenv('FIRETEXT_NUMBER')
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
+    CELERY_QUEUES = [
+        Queue('sms', Exchange('default'), routing_key='default'),
+        Queue('email', Exchange('default'), routing_key='default'),
+        Queue('sms-code', Exchange('default'), routing_key='default'),
+        Queue('email-code', Exchange('default'), routing_key='default'),
+        Queue('process-job', Exchange('default'), routing_key='default'),
+        Queue('bulk-sms', Exchange('default'), routing_key='default'),
+        Queue('bulk-email', Exchange('default'), routing_key='default'),
+        Queue('email-invited-user', Exchange('default'), routing_key='default')
+    ]
 
 
 class Development(Config):
