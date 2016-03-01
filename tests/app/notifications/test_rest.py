@@ -328,6 +328,7 @@ def test_send_notification_invalid_template_id(notify_api, sample_template, mock
             test_string = 'Template {} not found for service {}'.format(9999, sample_template.service.id)
             assert test_string in json_resp['message']['template']
 
+
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_send_notification_with_placeholders_replaced(notify_api, sample_template_with_placeholders, mocker):
     with notify_api.test_request_context():

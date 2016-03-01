@@ -104,7 +104,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
         now
     )
 
-    firetext_client.send_sms.assert_called_once_with("+441234123123", "Hello Jo")
+    firetext_client.send_sms.assert_called_once_with("+441234123123", "Sample service: Hello Jo")
     persisted_notification = notifications_dao.get_notification(
         sample_template_with_placeholders.service_id, notification_id
     )
@@ -136,7 +136,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
         "encrypted-in-reality",
         now)
 
-    firetext_client.send_sms.assert_called_once_with("+441234123123", sample_job.template.content)
+    firetext_client.send_sms.assert_called_once_with("+441234123123", "Sample service: This is a template")
     persisted_notification = notifications_dao.get_notification(sample_job.template.service_id, notification_id)
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == '+441234123123'
@@ -174,7 +174,9 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
         "subject",
         "Hello Jo"
     )
-    persisted_notification = notifications_dao.get_notification(sample_email_template_with_placeholders.service_id, notification_id)
+    persisted_notification = notifications_dao.get_notification(
+        sample_email_template_with_placeholders.service_id, notification_id
+    )
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template_with_placeholders.id
@@ -202,7 +204,7 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
         "encrypted-in-reality",
         now)
 
-    firetext_client.send_sms.assert_called_once_with("+441234123123", sample_template.content)
+    firetext_client.send_sms.assert_called_once_with("+441234123123", "Sample service: This is a template")
     persisted_notification = notifications_dao.get_notification(sample_template.service_id, notification_id)
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == '+441234123123'
