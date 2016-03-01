@@ -68,3 +68,14 @@ def test_get_invited_users_for_service_that_has_no_invites(notify_db, notify_db_
 
     invites = get_invited_users_for_service(sample_service.id)
     assert len(invites) == 0
+
+
+def test_save_invited_user_sets_status_to_cancelled(notify_db, notify_db_session, sample_invited_user):
+    assert InvitedUser.query.count() == 1
+    saved = InvitedUser.query.get(sample_invited_user.id)
+    assert saved.status == 'pending'
+    saved.status = 'cancelled'
+    save_invited_user(saved)
+    assert InvitedUser.query.count() == 1
+    cancelled_invited_user = InvitedUser.query.get(sample_invited_user.id)
+    assert cancelled_invited_user.status == 'cancelled'
