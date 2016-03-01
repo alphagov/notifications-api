@@ -18,7 +18,6 @@ default_service_permissions = [
     MANAGE_API_KEYS,
     MANAGE_TEMPLATES]
 
-
 class PermissionDAO(DAOClass):
 
     class Meta:

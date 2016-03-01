@@ -196,3 +196,58 @@ def test_get_invited_user_by_service_but_unknown_invite_id_returns_404(notify_ap
                 headers=[('Content-Type', 'application/json'), auth_header]
             )
             assert response.status_code == 404
+
+
+def test_update_invited_user_set_status_to_cancelled(notify_api, sample_invited_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            data = {'status': 'cancelled'}
+            url = '/service/{0}/invite/{1}'.format(sample_invited_user.service_id, sample_invited_user.id)
+            auth_header = create_authorization_header(
+                path=url,
+                method='POST',
+                request_body=json.dumps(data)
+            )
+            response = client.post(url,
+                                   data=json.dumps(data),
+                                   headers=[('Content-Type', 'application/json'), auth_header])
+
+            assert response.status_code == 200
+            json_resp = json.loads(response.get_data(as_text=True))['data']
+            print(json_resp)
+            assert json_resp['status'] == 'cancelled'
+
+
+def test_update_invited_user_for_wrong_service_returns_404(notify_api, sample_invited_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = {'status': 'cancelled'}
+            bad_service_id = uuid.uuid4()
+            url = '/service/{0}/invite/{1}'.format(bad_service_id, sample_invited_user.id)
+            auth_header = create_authorization_header(
+                path=url,
+                method='POST',
+                request_body=json.dumps(data)
+            )
+            response = client.post(url, data=json.dumps(data),
+                                   headers=[('Content-Type', 'application/json'), auth_header])
+            assert response.status_code == 404
+            json_response = json.loads(response.get_data(as_text=True))['message']
+            assert json_response == 'Invited user not found for service id: {} and invited user id: {}'\
+                .format(bad_service_id, sample_invited_user.id)
+
+
+def test_update_invited_user_for_invalid_data_returns_400(notify_api, sample_invited_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = {'status': 'garbage'}
+            url = '/service/{0}/invite/{1}'.format(sample_invited_user.service_id, sample_invited_user.id)
+            auth_header = create_authorization_header(
+                path=url,
+                method='POST',
+                request_body=json.dumps(data)
+            )
+            response = client.post(url, data=json.dumps(data),
+                                   headers=[('Content-Type', 'application/json'), auth_header])
+            assert response.status_code == 400
