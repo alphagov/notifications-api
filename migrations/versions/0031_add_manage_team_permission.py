@@ -25,6 +25,7 @@ def upgrade():
         conn.execute((
             "INSERT INTO permissions (id, user_id, service_id, permission, created_at)"
             " VALUES ('{}', '{}', '{}', 'manage_team', '{}')").format(id_, entry[0], entry[1], created_at))
+        id_ = uuid.uuid4()
         conn.execute((
             "INSERT INTO permissions (id, user_id, service_id, permission, created_at)"
             " VALUES ('{}', '{}', '{}', 'view_activity', '{}')").format(id_, entry[0], entry[1], created_at))
