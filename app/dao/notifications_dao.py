@@ -1,7 +1,7 @@
 from flask import current_app
 from app import db
 from app.models import Notification
-from sqlalchemy import asc
+from sqlalchemy import desc
 
 
 def dao_create_notification(notification):
@@ -20,7 +20,7 @@ def get_notification_for_job(service_id, job_id, notification_id):
 
 def get_notifications_for_job(service_id, job_id, page=1):
     query = Notification.query.filter_by(service_id=service_id, job_id=job_id)\
-        .order_by(asc(Notification.created_at))\
+        .order_by(desc(Notification.created_at))\
         .paginate(
             page=page,
             per_page=current_app.config['PAGE_SIZE']
@@ -34,7 +34,7 @@ def get_notification(service_id, notification_id):
 
 def get_notifications_for_service(service_id, page=1):
     print(service_id)
-    query = Notification.query.filter_by(service_id=service_id).order_by(asc(Notification.created_at)).paginate(
+    query = Notification.query.filter_by(service_id=service_id).order_by(desc(Notification.created_at)).paginate(
         page=page,
         per_page=current_app.config['PAGE_SIZE']
     )
