@@ -82,7 +82,7 @@ def test_get_all_notifications_for_job(notify_db, notify_db_session, sample_job)
                             template=sample_job.template,
                             job=sample_job)
 
-    notifcations_from_db = get_notifications_for_job(sample_job.service.id, sample_job.id)
+    notifcations_from_db = get_notifications_for_job(sample_job.service.id, sample_job.id).items
     assert len(notifcations_from_db) == 5
 
 
