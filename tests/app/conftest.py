@@ -251,7 +251,8 @@ def sample_notification(notify_db,
                         notify_db_session,
                         service=None,
                         template=None,
-                        job=None):
+                        job=None,
+                        to_field=None):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:
@@ -259,11 +260,15 @@ def sample_notification(notify_db,
     if job is None:
         job = sample_job(notify_db, notify_db_session, service=service, template=template)
 
-    notificaton_id = uuid.uuid4()
-    to = '+44709123456'
+    notification_id = uuid.uuid4()
+
+    if to_field:
+        to = to_field
+    else:
+        to = '+44709123456'
 
     data = {
-        'id': notificaton_id,
+        'id': notification_id,
         'to': to,
         'job': job,
         'service': service,
