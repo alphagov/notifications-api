@@ -42,12 +42,31 @@ def get_invited_users_by_service(service_id):
 
 @invite.route('/<invited_user_id>', methods=['GET'])
 def get_invited_user_by_service_and_id(service_id, invited_user_id):
-    invited_user = get_invited_user(service_id, invited_user_id)
+    invited_user = get_invited_user(service_id=service_id, invited_user_id=invited_user_id)
     if not invited_user:
-        message = 'Invited user not found for service id: {} and invited user id: {}'.format(service_id,
-                                                                                             invited_user_id)
-        return jsonify(result='error', message=message), 404
+        return _invited_user_not_found(service_id, invited_user_id)
     return jsonify(data=invited_user_schema.dump(invited_user).data), 200
+
+
+@invite.route('/<invited_user_id>', methods=['POST'])
+def update_invited_user(service_id, invited_user_id):
+    fetched = get_invited_user(service_id=service_id, invited_user_id=invited_user_id)
+    if not fetched:
+        return _invited_user_not_found(service_id=service_id, invited_user_id=invited_user_id)
+
+    current_data = dict(invited_user_schema.dump(fetched).data.items())
+    current_data.update(request.get_json())
+    update_dict, errors = invited_user_schema.load(current_data)
+    if errors:
+        return jsonify(result='error', message=errors), 400
+    save_invited_user(update_dict)
+    return jsonify(data=invited_user_schema.dump(fetched).data), 200
+
+
+def _invited_user_not_found(service_id, invited_user_id):
+    message = 'Invited user not found for service id: {} and invited user id: {}'.format(service_id,
+                                                                                         invited_user_id)
+    return jsonify(result='error', message=message), 404
 
 
 def _create_invitation(invited_user):
