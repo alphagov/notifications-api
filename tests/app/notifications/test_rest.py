@@ -1,6 +1,7 @@
 import uuid
 import app.celery.tasks
 from tests import create_authorization_header
+from tests.app.conftest import sample_notification, sample_job, sample_service
 from flask import json
 from app.models import Service
 from app.dao.templates_dao import dao_get_all_templates_for_service
@@ -45,6 +46,204 @@ def test_get_notifications_empty_result(notify_api, sample_api_key):
             assert notification['result'] == "error"
             assert notification['message'] == "not found"
             assert response.status_code == 404
+
+
+def test_get_all_notifications(notify_api, sample_notification):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(
+                service_id=sample_notification.service_id,
+                path='/notifications',
+                method='GET')
+
+            response = client.get(
+                '/notifications',
+                headers=[auth_header])
+
+            notifications = json.loads(response.get_data(as_text=True))
+            assert notifications['notifications'][0]['status'] == 'sent'
+            assert notifications['notifications'][0]['template'] == sample_notification.template.id
+            assert notifications['notifications'][0]['to'] == '+44709123456'
+            assert notifications['notifications'][0]['service'] == str(sample_notification.service_id)
+            assert response.status_code == 200
+
+
+def test_get_all_notifications_newest_first(notify_api, notify_db, notify_db_session, sample_email_template):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            notification_1 = sample_notification(notify_db, notify_db_session, sample_email_template.service)
+            notification_2 = sample_notification(notify_db, notify_db_session, sample_email_template.service)
+            notification_3 = sample_notification(notify_db, notify_db_session, sample_email_template.service)
+
+            auth_header = create_authorization_header(
+                service_id=sample_email_template.service_id,
+                path='/notifications',
+                method='GET')
+
+            response = client.get(
+                '/notifications',
+                headers=[auth_header])
+
+            notifications = json.loads(response.get_data(as_text=True))
+            assert len(notifications['notifications']) == 3
+            assert notifications['notifications'][0]['to'] == notification_3.to
+            assert notifications['notifications'][1]['to'] == notification_2.to
+            assert notifications['notifications'][2]['to'] == notification_1.to
+            assert response.status_code == 200
+
+
+def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notify_db_session):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            service_1 = sample_service(notify_db, notify_db_session, service_name="1")
+            service_2 = sample_service(notify_db, notify_db_session, service_name="2")
+
+            sample_notification(notify_db, notify_db_session, service=service_2)
+
+            notification_1 = sample_notification(notify_db, notify_db_session, service=service_1)
+            notification_2 = sample_notification(notify_db, notify_db_session, service=service_1)
+            notification_3 = sample_notification(notify_db, notify_db_session, service=service_1)
+
+            auth_header = create_authorization_header(
+                path='/service/{}/notifications'.format(service_1.id),
+                method='GET')
+
+            response = client.get(
+                path='/service/{}/notifications'.format(service_1.id),
+                headers=[auth_header])
+
+            resp = json.loads(response.get_data(as_text=True))
+            assert len(resp['notifications']) == 3
+            assert resp['notifications'][0]['to'] == notification_3.to
+            assert resp['notifications'][1]['to'] == notification_2.to
+            assert resp['notifications'][2]['to'] == notification_1.to
+            assert response.status_code == 200
+
+
+def test_get_all_notifications_for_job_in_order(notify_api, notify_db, notify_db_session, sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            main_job = sample_job(notify_db, notify_db_session, service=sample_service)
+            another_job = sample_job(notify_db, notify_db_session, service=sample_service)
+
+            notification_1 = sample_notification(notify_db, notify_db_session, job=main_job)
+            notification_2 = sample_notification(notify_db, notify_db_session, job=main_job)
+            notification_3 = sample_notification(notify_db, notify_db_session, job=main_job)
+            sample_notification(notify_db, notify_db_session, job=another_job)
+
+            auth_header = create_authorization_header(
+                path='/service/{}/job/{}/notifications'.format(sample_service.id, main_job.id),
+                method='GET')
+
+            response = client.get(
+                path='/service/{}/job/{}/notifications'.format(sample_service.id, main_job.id),
+                headers=[auth_header])
+
+            resp = json.loads(response.get_data(as_text=True))
+            assert len(resp['notifications']) == 3
+            assert resp['notifications'][0]['to'] == notification_3.to
+            assert resp['notifications'][1]['to'] == notification_2.to
+            assert resp['notifications'][2]['to'] == notification_1.to
+            assert response.status_code == 200
+
+
+def test_should_not_get_notifications_by_service_with_client_credentials(notify_api, sample_api_key):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(
+                service_id=sample_api_key.service.id,
+                path='/service/{}/notifications'.format(sample_api_key.service.id),
+                method='GET')
+
+            response = client.get(
+                '/service/{}/notifications'.format(sample_api_key.service.id),
+                headers=[auth_header])
+
+            resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 403
+            assert resp['result'] == 'error'
+            assert resp['message'] == 'Forbidden, invalid authentication token provided'
+
+
+def test_should_not_get_notifications_by_job_and_service_with_client_credentials(notify_api, sample_job):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(
+                service_id=sample_job.service.id,
+                path='/service/{}/job/{}/notifications'.format(sample_job.service.id, sample_job.id),
+                method='GET')
+
+            response = client.get(
+                '/service/{}/job/{}/notifications'.format(sample_job.service.id, sample_job.id),
+                headers=[auth_header])
+
+            resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 403
+            assert resp['result'] == 'error'
+            assert resp['message'] == 'Forbidden, invalid authentication token provided'
+
+
+def test_should_reject_invalid_page_param(notify_api, sample_email_template):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(
+                service_id=sample_email_template.service_id,
+                path='/notifications',
+                method='GET')
+
+            response = client.get(
+                '/notifications?page=invalid',
+                headers=[auth_header])
+
+            notifications = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 400
+            assert notifications['result'] == 'error'
+            assert notifications['message'] == 'Invalid page'
+
+
+def test_should_return_pagination_links(notify_api, notify_db, notify_db_session, sample_email_template):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            notify_api.config['PAGE_SIZE'] = 1
+
+            sample_notification(notify_db, notify_db_session, sample_email_template.service)
+            notification_2 = sample_notification(notify_db, notify_db_session, sample_email_template.service)
+            sample_notification(notify_db, notify_db_session, sample_email_template.service)
+
+            auth_header = create_authorization_header(
+                service_id=sample_email_template.service_id,
+                path='/notifications',
+                method='GET')
+
+            response = client.get(
+                '/notifications?page=2',
+                headers=[auth_header])
+
+            notifications = json.loads(response.get_data(as_text=True))
+            assert len(notifications['notifications']) == 1
+            assert notifications['links']['last'] == '/notifications?page=3'
+            assert notifications['links']['prev'] == '/notifications?page=1'
+            assert notifications['links']['next'] == '/notifications?page=3'
+            assert notifications['notifications'][0]['to'] == notification_2.to
+            assert response.status_code == 200
+
+
+def test_get_all_notifications_returns_empty_list(notify_api, sample_api_key):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(
+                service_id=sample_api_key.service.id,
+                path='/notifications',
+                method='GET')
+
+            response = client.get(
+                '/notifications',
+                headers=[auth_header])
+
+            notifications = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
+            assert len(notifications['notifications']) == 0
 
 
 def test_create_sms_should_reject_if_missing_required_fields(notify_api, sample_api_key, mocker):

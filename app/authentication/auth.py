@@ -1,7 +1,10 @@
 from flask import request, jsonify, _request_ctx_stack, current_app
 from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
 from notifications_python_client.errors import TokenDecodeError, TokenRequestError, TokenExpiredError, TokenPayloadError
+from werkzeug.exceptions import abort
 from app.dao.api_key_dao import get_unsigned_secrets
+from app import api_user
+from functools import wraps
 
 
 def authentication_response(message, code):
@@ -68,3 +71,14 @@ def fetch_client(client):
             "client": client,
             "secret": get_unsigned_secrets(client)
         }
+
+
+def require_admin():
+    def wrap(func):
+        @wraps(func)
+        def wrap_func(*args, **kwargs):
+            if not api_user['client'] == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
+                abort(403)
+            return func(*args, **kwargs)
+        return wrap_func
+    return wrap
