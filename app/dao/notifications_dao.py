@@ -33,7 +33,6 @@ def get_notification(service_id, notification_id):
 
 
 def get_notifications_for_service(service_id, page=1):
-    print(service_id)
     query = Notification.query.filter_by(service_id=service_id).order_by(asc(Notification.created_at)).paginate(
         page=page,
         per_page=current_app.config['PAGE_SIZE']
