@@ -19,8 +19,10 @@ from app.dao.services_dao import (
     dao_fetch_all_services,
     dao_create_service,
     dao_update_service,
-    dao_fetch_all_services_by_user
+    dao_fetch_all_services_by_user,
+    dao_add_user_to_service
 )
+
 from app.dao.users_dao import get_model_users
 from app.models import ApiKey
 from app.schemas import (
@@ -162,12 +164,15 @@ def add_user_to_service(service_id, user_id):
         return _service_not_found(service_id)
     user = get_model_users(user_id=user_id)
 
+    if not user:
+        return jsonify(result='error',
+                       message='User not found for id: {}'.format(user_id)), 400
+
     if user in service.users:
         return jsonify(result='error',
                        message='User id: {} already part of service id: {}'.format(user_id, service_id)), 400
 
-    service.users.append(user)
-    dao_update_service(service)
+    dao_add_user_to_service(service, user)
 
     data, errors = service_schema.dump(service)
     return jsonify(data=data), 201
