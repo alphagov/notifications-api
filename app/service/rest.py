@@ -166,7 +166,7 @@ def add_user_to_service(service_id, user_id):
 
     if not user:
         return jsonify(result='error',
-                       message='User not found for id: {}'.format(user_id)), 400
+                       message='User not found for id: {}'.format(user_id)), 404
 
     if user in service.users:
         return jsonify(result='error',

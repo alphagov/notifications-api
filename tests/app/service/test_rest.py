@@ -575,7 +575,7 @@ def test_add_existing_user_of_service_to_service_returns400(notify_api, notify_d
             assert result['message'] == expected_message
 
 
-def test_add_unknown_user_to_service_returns400(notify_api, notify_db, notify_db_session, sample_service):
+def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db_session, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
@@ -594,7 +594,7 @@ def test_add_unknown_user_to_service_returns400(notify_api, notify_db, notify_db
             result = json.loads(resp.get_data(as_text=True))
             expected_message = 'User not found for id: {}'.format(incorrect_id)
 
-            assert resp.status_code == 400
+            assert resp.status_code == 404
             assert result['result'] == 'error'
             assert result['message'] == expected_message
 
