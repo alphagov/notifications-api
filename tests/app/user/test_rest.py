@@ -2,7 +2,8 @@ import json
 
 from flask import url_for
 
-from app.models import (User)
+from app.models import (User, Permission, MANAGE_SERVICE, MANAGE_TEMPLATES)
+from app import db
 from tests import create_authorization_header
 
 
@@ -328,3 +329,99 @@ def test_get_user_with_permissions(notify_api,
             assert response.status_code == 200
             permissions = json.loads(response.get_data(as_text=True))['data']['permissions']
             assert sample_service_permission.permission in permissions[str(sample_service_permission.service.id)]
+
+
+def test_set_user_permissions(notify_api,
+                              notify_db,
+                              notify_db_session,
+                              sample_user,
+                              sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = json.dumps([{'permission': MANAGE_SERVICE}])
+            header = create_authorization_header(
+                path=url_for(
+                    'user.set_permissions',
+                    user_id=sample_user.id,
+                    service_id=str(sample_service.id)),
+                method='POST',
+                request_body=data)
+            headers = [('Content-Type', 'application/json'), header]
+            response = client.post(
+                url_for(
+                    'user.set_permissions',
+                    user_id=sample_user.id,
+                    service_id=str(sample_service.id)),
+                headers=headers,
+                data=data)
+
+            assert response.status_code == 204
+            permission = Permission.query.filter_by(permission=MANAGE_SERVICE).first()
+            assert permission.user == sample_user
+            assert permission.service == sample_service
+            assert permission.permission == MANAGE_SERVICE
+
+
+def test_set_user_permissions_multiple(notify_api,
+                                       notify_db,
+                                       notify_db_session,
+                                       sample_user,
+                                       sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = json.dumps([{'permission': MANAGE_SERVICE}, {'permission': MANAGE_TEMPLATES}])
+            header = create_authorization_header(
+                path=url_for(
+                    'user.set_permissions',
+                    user_id=sample_user.id,
+                    service_id=str(sample_service.id)),
+                method='POST',
+                request_body=data)
+            headers = [('Content-Type', 'application/json'), header]
+            response = client.post(
+                url_for(
+                    'user.set_permissions',
+                    user_id=sample_user.id,
+                    service_id=str(sample_service.id)),
+                headers=headers,
+                data=data)
+
+            assert response.status_code == 204
+            permission = Permission.query.filter_by(permission=MANAGE_SERVICE).first()
+            assert permission.user == sample_user
+            assert permission.service == sample_service
+            assert permission.permission == MANAGE_SERVICE
+            permission = Permission.query.filter_by(permission=MANAGE_TEMPLATES).first()
+            assert permission.user == sample_user
+            assert permission.service == sample_service
+            assert permission.permission == MANAGE_TEMPLATES
+
+
+def test_set_user_permissions_remove_old(notify_api,
+                                         notify_db,
+                                         notify_db_session,
+                                         sample_user,
+                                         sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = json.dumps([{'permission': MANAGE_SERVICE}])
+            header = create_authorization_header(
+                path=url_for(
+                    'user.set_permissions',
+                    user_id=sample_user.id,
+                    service_id=str(sample_service.id)),
+                method='POST',
+                request_body=data)
+            headers = [('Content-Type', 'application/json'), header]
+            response = client.post(
+                url_for(
+                    'user.set_permissions',
+                    user_id=sample_user.id,
+                    service_id=str(sample_service.id)),
+                headers=headers,
+                data=data)
+
+            assert response.status_code == 204
+            query = Permission.query.filter_by(user=sample_user)
+            assert query.count() == 1
+            assert query.first().permission == MANAGE_SERVICE
