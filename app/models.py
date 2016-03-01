@@ -277,13 +277,17 @@ MANAGE_SERVICE = 'manage_service'
 SEND_MESSAGES = 'send_messages'
 MANAGE_API_KEYS = 'manage_api_keys'
 MANAGE_TEMPLATES = 'manage_templates'
+MANAGE_TEAM = 'manage_team'
+VIEW_ACTIVITY = 'view_activity'
 
 # List of permissions
 PERMISSION_LIST = [
     MANAGE_SERVICE,
     SEND_MESSAGES,
     MANAGE_API_KEYS,
-    MANAGE_TEMPLATES]
+    MANAGE_TEMPLATES,
+    MANAGE_TEAM,
+    VIEW_ACTIVITY]
 
 
 class Permission(db.Model):
@@ -295,10 +299,11 @@ class Permission(db.Model):
     service = db.relationship('Service')
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=False)
     user = db.relationship('User')
-    permission = db.Column(db.Enum(*PERMISSION_LIST, name='permission_types'),
-                           index=False,
-                           unique=False,
-                           nullable=False)
+    permission = db.Column(
+        db.Enum(*PERMISSION_LIST, name='permission_types'),
+        index=False,
+        unique=False,
+        nullable=False)
     created_at = db.Column(
         db.DateTime,
         index=False,

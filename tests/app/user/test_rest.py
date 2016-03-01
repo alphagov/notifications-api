@@ -21,7 +21,9 @@ def test_get_user_list(notify_api, notify_db, notify_db_session, sample_service)
             json_resp = json.loads(response.get_data(as_text=True))
             assert len(json_resp['data']) == 1
             sample_user = sample_service.users[0]
-            expected_permissions = ['manage_service', 'send_messages', 'manage_api_keys', 'manage_templates']
+            expected_permissions = [
+                'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates',
+                'manage_team', 'view_activity']
             fetched = json_resp['data'][0]
 
             assert sample_user.id == fetched['id']
@@ -47,7 +49,9 @@ def test_get_user(notify_api, notify_db, notify_db_session, sample_service):
             assert resp.status_code == 200
             json_resp = json.loads(resp.get_data(as_text=True))
 
-            expected_permissions = ['manage_service', 'send_messages', 'manage_api_keys', 'manage_templates']
+            expected_permissions = [
+                'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates',
+                'manage_team', 'view_activity']
             fetched = json_resp['data']
 
             assert sample_user.id == fetched['id']
@@ -180,7 +184,9 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_service):
             assert User.query.count() == 1
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['data']['email_address'] == new_email
-            expected_permissions = ['manage_service', 'send_messages', 'manage_api_keys', 'manage_templates']
+            expected_permissions = [
+                'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates',
+                'manage_team', 'view_activity']
             fetched = json_resp['data']
 
             assert sample_user.id == fetched['id']
@@ -272,7 +278,9 @@ def test_get_user_by_email(notify_api, notify_db, notify_db_session, sample_serv
             assert resp.status_code == 200
 
             json_resp = json.loads(resp.get_data(as_text=True))
-            expected_permissions = ['manage_service', 'send_messages', 'manage_api_keys', 'manage_templates']
+            expected_permissions = [
+                'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates',
+                'manage_team', 'view_activity']
             fetched = json_resp['data']
 
             assert sample_user.id == fetched['id']
