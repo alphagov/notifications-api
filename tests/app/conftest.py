@@ -269,11 +269,11 @@ def sample_notification(notify_db,
     if job is None:
         job = sample_job(notify_db, notify_db_session, service=service, template=template)
 
-    notificaton_id = uuid.uuid4()
+    notification_id = uuid.uuid4()
     to = '+44709123456'
 
     data = {
-        'id': notificaton_id,
+        'id': notification_id,
         'to': to,
         'job': job,
         'service': service,

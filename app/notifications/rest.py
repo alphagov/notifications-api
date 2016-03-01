@@ -4,10 +4,12 @@ from flask import (
     Blueprint,
     jsonify,
     request,
-    current_app
+    current_app,
+    url_for
 )
 
 from app import api_user, encryption, create_uuid
+from app.authentication.auth import require_admin
 from app.dao import (
     templates_dao,
     services_dao,
@@ -38,6 +40,86 @@ def get_notifications(notification_id):
         return jsonify({'notification': notification_status_schema.dump(notification).data}), 200
     except NoResultFound:
         return jsonify(result="error", message="not found"), 404
+
+
+@notifications.route('/notifications', methods=['GET'])
+def get_all_notifications():
+    page = get_page_from_request()
+
+    if not page:
+        return jsonify(result="error", message="Invalid page"), 400
+
+    all_notifications = notifications_dao.get_notifications_for_service(api_user['client'], page)
+
+    return jsonify(
+        notifications=notification_status_schema.dump(all_notifications.items, many=True).data,
+        links=pagination_links(
+            all_notifications,
+            '.get_all_notifications',
+            request.args
+        )
+    ), 200
+
+
+@notifications.route('/service/<service_id>/notifications', methods=['GET'])
+@require_admin()
+def get_all_notifications_for_service(service_id):
+    page = get_page_from_request()
+
+    if not page:
+        return jsonify(result="error", message="Invalid page"), 400
+
+    all_notifications = notifications_dao.get_notifications_for_service(service_id, page)
+
+    return jsonify(
+        notifications=notification_status_schema.dump(all_notifications.items, many=True).data,
+        links=pagination_links(
+            all_notifications,
+            '.get_all_notifications_for_service',
+            request.args
+        )
+    ), 200
+
+
+@notifications.route('/service/<service_id>/job/<job_id>/notifications', methods=['GET'])
+@require_admin()
+def get_all_notifications_for_service_job(service_id, job_id):
+    page = get_page_from_request()
+
+    if not page:
+        return jsonify(result="error", message="Invalid page"), 400
+
+    all_notifications = notifications_dao.get_notifications_for_job(service_id, job_id, page)
+
+    return jsonify(
+        notifications=notification_status_schema.dump(all_notifications.items, many=True).data,
+        links=pagination_links(
+            all_notifications,
+            '.get_all_notifications_for_service_job',
+            request.args
+        )
+    ), 200
+
+
+def get_page_from_request():
+    if 'page' in request.args:
+        try:
+            return int(request.args['page'])
+
+        except ValueError:
+            return None
+    else:
+        return 1
+
+
+def pagination_links(pagination, endpoint, args):
+    links = dict()
+    if pagination.has_prev:
+        links['prev'] = url_for(endpoint, **dict(list(args.items()) + [('page', pagination.prev_num)]))
+    if pagination.has_next:
+        links['next'] = url_for(endpoint, **dict(list(args.items()) + [('page', pagination.next_num)]))
+        links['last'] = url_for(endpoint, **dict(list(args.items()) + [('page', pagination.pages)]))
+    return links
 
 
 @notifications.route('/notifications/sms', methods=['POST'])
