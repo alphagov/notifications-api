@@ -8,8 +8,16 @@ manage_service = 'manage_service'
 send_messages = 'send_messages'
 manage_api_keys = 'manage_api_keys'
 manage_templates = 'manage_templates'
+manage_team = 'manage_team'
+view_activity = 'view_activity'
 # Default permissions for a service
-default_service_permissions = [manage_service, send_messages, manage_api_keys, manage_templates]
+default_service_permissions = [
+    manage_service,
+    send_messages,
+    manage_api_keys,
+    manage_templates,
+    manage_team,
+    view_activity]
 
 
 class PermissionDAO(DAOClass):
