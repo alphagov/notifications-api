@@ -575,6 +575,30 @@ def test_add_existing_user_of_service_to_service_returns400(notify_api, notify_d
             assert result['message'] == expected_message
 
 
+def test_add_unknown_user_to_service_returns400(notify_api, notify_db, notify_db_session, sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            incorrect_id = 9876
+
+            auth_header = create_authorization_header(
+                path='/service/{}/users/{}'.format(sample_service.id, incorrect_id),
+                method='POST'
+            )
+
+            resp = client.post(
+                '/service/{}/users/{}'.format(sample_service.id, incorrect_id),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+
+            result = json.loads(resp.get_data(as_text=True))
+            expected_message = 'User not found for id: {}'.format(incorrect_id)
+
+            assert resp.status_code == 400
+            assert result['result'] == 'error'
+            assert result['message'] == expected_message
+
+
 def _user_email_in_list(user_list, email_address):
     for user in user_list:
         if user['email_address'] == email_address:
