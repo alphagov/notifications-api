@@ -43,6 +43,16 @@ class Config(object):
     #         'schedule': timedelta(seconds=5)
     #     }
     # }
+    CELERY_QUEUES = [
+        Queue('sms', Exchange('default'), routing_key='sms'),
+        Queue('email', Exchange('default'), routing_key='email'),
+        Queue('sms-code', Exchange('default'), routing_key='sms-code'),
+        Queue('email-code', Exchange('default'), routing_key='email-code'),
+        Queue('process-job', Exchange('default'), routing_key='process-job'),
+        Queue('bulk-sms', Exchange('default'), routing_key='bulk-sms'),
+        Queue('bulk-email', Exchange('default'), routing_key='bulk-email'),
+        Queue('email-invited-user', Exchange('default'), routing_key='email-invited-user')
+    ]
     CELERY_IMPORTS = ('app.celery.tasks',)
     TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
     TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
