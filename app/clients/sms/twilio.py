@@ -1,11 +1,9 @@
-import logging
+from monotonic import monotonic
 from app.clients.sms import (
     SmsClient, SmsClientException)
 from twilio.rest import TwilioRestClient
 from twilio import TwilioRestException
-
-
-logger = logging.getLogger(__name__)
+from flask import current_app
 
 
 class TwilioClientException(SmsClientException):
@@ -28,6 +26,7 @@ class TwilioClient(SmsClient):
         return self.name
 
     def send_sms(self, to, content):
+        start_time = monotonic()
         try:
             response = self.client.messages.create(
                 body=content,
@@ -36,8 +35,11 @@ class TwilioClient(SmsClient):
             )
             return response.sid
         except TwilioRestException as e:
-            logger.exception(e)
+            current_app.logger.exception(e)
             raise TwilioClientException(e)
+        finally:
+            elapsed_time = monotonic() - start_time
+            current_app.logger.info("Twilio request finished in {}".format(elapsed_time))
 
     def status(self, message_id):
         try:
@@ -46,5 +48,5 @@ class TwilioClient(SmsClient):
                 return response.status
             return None
         except TwilioRestException as e:
-            logger.exception(e)
+            current_app.logger.exception(e)
             raise TwilioClientException(e)

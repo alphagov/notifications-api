@@ -1,8 +1,10 @@
 import logging
+from monotonic import monotonic
 from app.clients.sms import (
     SmsClient,
     SmsClientException
 )
+from flask import current_app
 from requests import request, RequestException, HTTPError
 
 logger = logging.getLogger(__name__)
@@ -36,6 +38,7 @@ class FiretextClient(SmsClient):
         }
 
         try:
+            start_time = monotonic()
             response = request(
                 "POST",
                 "https://www.firetext.co.uk/api/sendsms",
@@ -53,4 +56,7 @@ class FiretextClient(SmsClient):
                 )
             )
             raise api_error
+        finally:
+            elapsed_time = monotonic() - start_time
+            current_app.logger.info("Firetext request finished in {}".format(elapsed_time))
         return response
