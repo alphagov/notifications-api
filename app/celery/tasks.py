@@ -95,7 +95,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 template.replaced
             )
         except FiretextClientException as e:
-            current_app.logger.debug(e)
+            current_app.logger.exception(e)
             notification_db_object.status = 'failed'
             dao_update_notification(notification_db_object)
 
