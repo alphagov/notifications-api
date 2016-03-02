@@ -2,6 +2,7 @@ from app import create_uuid
 from app import notify_celery, encryption, firetext_client, aws_ses_client
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
+from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.notifications_dao import dao_create_notification, dao_update_notification
 from app.dao.jobs_dao import dao_update_job, dao_get_job_by_id
@@ -9,8 +10,9 @@ from app.models import Notification
 from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
-from app.csv import get_recipient_from_csv
 from datetime import datetime
+from utils.template import Template
+from utils.process_csv import get_rows_from_csv, get_recipient_from_row, first_column_heading
 
 
 @notify_celery.task(name="process-job")
@@ -21,13 +23,14 @@ def process_job(job_id):
     dao_update_job(job)
 
     file = s3.get_job_from_s3(job.bucket_name, job_id)
-    recipients = get_recipient_from_csv(file)
 
-    for recipient in recipients:
+    for row in get_rows_from_csv(file):
+
         encrypted = encryption.encrypt({
             'template': job.template_id,
             'job': str(job.id),
-            'to': recipient
+            'to': get_recipient_from_row(row, job.template.template_type),
+            'personalisation': row
         })
 
         if job.template.template_type == 'sms':
@@ -62,7 +65,12 @@ def process_job(job_id):
 @notify_celery.task(name="send-sms")
 def send_sms(service_id, notification_id, encrypted_notification, created_at):
     notification = encryption.decrypt(encrypted_notification)
-    template = dao_get_template_by_id(notification['template'])
+    service = dao_fetch_service_by_id(service_id)
+    template = Template(
+        dao_get_template_by_id(notification['template']).__dict__,
+        values=notification.get('personalisation', {}),
+        prefix=service.name
+    )
 
     client = firetext_client
 
@@ -78,14 +86,16 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             created_at=created_at,
             sent_at=sent_at,
             sent_by=client.get_name()
-
         )
         dao_create_notification(notification_db_object)
 
         try:
-            client.send_sms(notification['to'], template.content)
+            client.send_sms(
+                notification['to'],
+                template.replaced
+            )
         except FiretextClientException as e:
-            current_app.logger.debug(e)
+            current_app.logger.exception(e)
             notification_db_object.status = 'failed'
             dao_update_notification(notification_db_object)
 
@@ -99,7 +109,10 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
 @notify_celery.task(name="send-email")
 def send_email(service_id, notification_id, subject, from_address, encrypted_notification, created_at):
     notification = encryption.decrypt(encrypted_notification)
-    template = dao_get_template_by_id(notification['template'])
+    template = Template(
+        dao_get_template_by_id(notification['template']).__dict__,
+        values=notification.get('personalisation', {})
+    )
 
     client = aws_ses_client
 
@@ -123,7 +136,7 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
                 from_address,
                 notification['to'],
                 subject,
-                template.content
+                template.replaced
             )
         except AwsSesClientException as e:
             current_app.logger.debug(e)
