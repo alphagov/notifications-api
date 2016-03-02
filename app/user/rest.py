@@ -152,38 +152,6 @@ def send_user_email_code(user_id):
     return jsonify({}), 204
 
 
-# TODO: Remove this method once the admin app has stopped using it.
-@user.route('/<int:user_id>/code', methods=['POST'])
-def send_user_code(user_id):
-    user_to_send_to = get_model_users(user_id=user_id)
-
-    if not user_to_send_to:
-        return jsonify(result="error", message="not found"), 404
-
-    verify_code, errors = old_request_verify_code_schema.load(request.get_json())
-    if errors:
-        return jsonify(result="error", message=errors), 400
-
-    from app.dao.users_dao import create_secret_code
-    secret_code = create_secret_code()
-    create_user_code(user_to_send_to, secret_code, verify_code.get('code_type'))
-    if verify_code.get('code_type') == 'sms':
-        mobile = user_to_send_to.mobile_number if verify_code.get('to', None) is None else verify_code.get('to')
-        verification_message = {'to': mobile, 'secret_code': secret_code}
-        send_sms_code.apply_async([encryption.encrypt(verification_message)], queue='sms-code')
-    elif verify_code.get('code_type') == 'email':
-        email = user_to_send_to.email_address if verify_code.get('to', None) is None else verify_code.get('to')
-        verification_message = {
-            'to_address': email,
-            'from_address': current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
-            'subject': 'Verification code',
-            'body': secret_code}
-        send_email_code.apply_async([encryption.encrypt(verification_message)], queue='email-code')
-    else:
-        abort(500)
-    return jsonify({}), 204
-
-
 @user.route('/<int:user_id>', methods=['GET'])
 @user.route('', methods=['GET'])
 def get_user(user_id=None):
