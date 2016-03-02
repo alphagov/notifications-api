@@ -143,6 +143,11 @@ def sample_template(notify_db,
 
 
 @pytest.fixture(scope='function')
+def sample_template_with_placeholders(notify_db, notify_db_session):
+    return sample_template(notify_db, notify_db_session, content="Hello ((name))")
+
+
+@pytest.fixture(scope='function')
 def sample_email_template(
         notify_db,
         notify_db_session,
@@ -167,6 +172,11 @@ def sample_email_template(
     template = Template(**data)
     dao_create_template(template)
     return template
+
+
+@pytest.fixture(scope='function')
+def sample_email_template_with_placeholders(notify_db, notify_db_session):
+    return sample_email_template(notify_db, notify_db_session, content="Hello ((name))")
 
 
 @pytest.fixture(scope='function')
