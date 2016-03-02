@@ -29,7 +29,7 @@ class Config(object):
     BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {
         'region': 'eu-west-1',
-        'polling_interval': 1,  # 1 second
+        'polling_interval': 120,  # 1 second
         'visibility_timeout': 60,  # 60 seconds
         'queue_name_prefix': os.environ['NOTIFICATION_QUEUE_PREFIX']+'-'
     }
@@ -49,16 +49,6 @@ class Config(object):
     TWILIO_NUMBER = os.getenv('TWILIO_NUMBER')
     FIRETEXT_NUMBER = os.getenv('FIRETEXT_NUMBER')
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
-    CELERY_QUEUES = [
-        Queue('sms', Exchange('default'), routing_key='default'),
-        Queue('email', Exchange('default'), routing_key='default'),
-        Queue('sms-code', Exchange('default'), routing_key='default'),
-        Queue('email-code', Exchange('default'), routing_key='default'),
-        Queue('process-job', Exchange('default'), routing_key='default'),
-        Queue('bulk-sms', Exchange('default'), routing_key='default'),
-        Queue('bulk-email', Exchange('default'), routing_key='default'),
-        Queue('email-invited-user', Exchange('default'), routing_key='default')
-    ]
 
 
 class Development(Config):
