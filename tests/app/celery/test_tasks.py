@@ -118,6 +118,27 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     assert not persisted_notification.job_id
 
 
+def test_should_send_sms_without_personalisation(sample_template, mocker):
+    notification = {
+        "template": sample_template.id,
+        "to": "+441234123123"
+    }
+    mocker.patch('app.encryption.decrypt', return_value=notification)
+    mocker.patch('app.firetext_client.send_sms')
+    mocker.patch('app.firetext_client.get_name', return_value="firetext")
+
+    notification_id = uuid.uuid4()
+    now = datetime.utcnow()
+    send_sms(
+        sample_template.service_id,
+        notification_id,
+        "encrypted-in-reality",
+        now
+    )
+
+    firetext_client.send_sms.assert_called_once_with("+441234123123", "Sample service: This is a template")
+
+
 def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sample_job, mocker):
     notification = {
         "template": sample_job.template.id,
@@ -184,6 +205,34 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     assert persisted_notification.sent_at > now
     assert persisted_notification.status == 'sent'
     assert persisted_notification.sent_by == 'ses'
+
+
+def test_should_use_email_template_and_persist_without_personalisation(
+    sample_email_template, mocker
+):
+    mocker.patch('app.encryption.decrypt', return_value={
+        "template": sample_email_template.id,
+        "to": "my_email@my_email.com",
+    })
+    mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.aws_ses_client.get_name', return_value='ses')
+
+    notification_id = uuid.uuid4()
+    now = datetime.utcnow()
+    send_email(
+        sample_email_template.service_id,
+        notification_id,
+        'subject',
+        'email_from',
+        "encrypted-in-reality",
+        now)
+
+    aws_ses_client.send_email.assert_called_once_with(
+        "email_from",
+        "my_email@my_email.com",
+        "subject",
+        "This is a template"
+    )
 
 
 def test_should_persist_notification_as_failed_if_sms_client_fails(sample_template, mocker):
