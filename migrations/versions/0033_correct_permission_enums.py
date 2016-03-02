@@ -41,6 +41,7 @@ def upgrade():
                        'access_developer_docs']
     conn = op.get_bind()
     conn.execute("DELETE FROM permissions")
+    op.drop_constraint('uix_service_user_permission', 'permissions', type_='unique')
     op.drop_column('permissions', 'permission')
     try:
         sa.Enum(name='permission_types').drop(conn, checkfirst=False)
@@ -51,6 +52,7 @@ def upgrade():
     op.add_column('permissions', sa.Column('permission', permission_types, nullable=False))
     add_default_permissions(conn, new_permissions)
     op.alter_column('permissions', 'permission', nullable=False)
+    op.create_unique_constraint('uix_service_user_permission', 'permissions', ['service_id', 'user_id', 'permission'])
     ### end Alembic commands ###
 
 
@@ -64,6 +66,7 @@ def downgrade():
                         'view_activity']
     conn = op.get_bind()
     conn.execute("DELETE FROM permissions")
+    op.drop_constraint('uix_service_user_permission', 'permissions', type_='unique')
     op.drop_column('permissions', 'permission')
     try:
         sa.Enum(name='permission_types').drop(conn, checkfirst=False)
@@ -74,4 +77,5 @@ def downgrade():
     op.add_column('permissions', sa.Column('permission', permission_types, nullable=False))
     add_default_permissions(conn, old_permissions)
     op.alter_column('permissions', 'permission', nullable=False)
+    op.create_unique_constraint('uix_service_user_permission', 'permissions', ['service_id', 'user_id', 'permission'])
     ### end Alembic commands ###
