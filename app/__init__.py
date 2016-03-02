@@ -48,6 +48,7 @@ def create_app():
     from app.notifications.rest import notifications as notifications_blueprint
     from app.invite.rest import invite as invite_blueprint
     from app.permission.rest import permission as permission_blueprint
+    from app.accept_invite.rest import accept_invite
 
     application.register_blueprint(service_blueprint, url_prefix='/service')
     application.register_blueprint(user_blueprint, url_prefix='/user')
@@ -57,6 +58,7 @@ def create_app():
     application.register_blueprint(job_blueprint)
     application.register_blueprint(invite_blueprint)
     application.register_blueprint(permission_blueprint, url_prefix='/permission')
+    application.register_blueprint(accept_invite, url_prefix='/invite')
 
     return application
 
