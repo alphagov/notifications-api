@@ -1,5 +1,6 @@
 import json
 from flask import url_for
+from app.models import Permission
 from tests import create_authorization_header
 from ..conftest import sample_permission as create_permission
 
@@ -39,12 +40,6 @@ def test_get_permission_filter(notify_api,
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            another_permission = create_permission(
-                notify_db,
-                notify_db_session,
-                user=sample_user,
-                service=sample_service,
-                permission="another permission")
             header = create_authorization_header(
                 path=url_for('permission.get_permissions'),
                 method='GET')
@@ -53,6 +48,8 @@ def test_get_permission_filter(notify_api,
                 headers=[header])
             assert response.status_code == 200
             json_resp = json.loads(response.get_data(as_text=True))
+            another_permission = Permission.query.filter_by(
+                service_id=str(sample_service.id)).first()
             expected = {
                 "permission": another_permission.permission,
                 "user": sample_user.id,

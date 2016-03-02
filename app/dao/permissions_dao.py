@@ -8,7 +8,9 @@ from app.models import (
     MANAGE_SERVICE,
     SEND_MESSAGES,
     MANAGE_API_KEYS,
-    MANAGE_TEMPLATES)
+    MANAGE_TEMPLATES,
+    MANAGE_TEAM,
+    VIEW_ACTIVITY)
 
 
 # Default permissions for a service
@@ -16,7 +18,10 @@ default_service_permissions = [
     MANAGE_SERVICE,
     SEND_MESSAGES,
     MANAGE_API_KEYS,
-    MANAGE_TEMPLATES]
+    MANAGE_TEMPLATES,
+    MANAGE_TEAM,
+    VIEW_ACTIVITY]
+
 
 class PermissionDAO(DAOClass):
 

@@ -324,7 +324,7 @@ def sample_permission(notify_db,
                       notify_db_session,
                       service=None,
                       user=None,
-                      permission="sample permission"):
+                      permission="manage_service"):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
     data = {
@@ -333,9 +333,14 @@ def sample_permission(notify_db,
     }
     if service:
         data['service'] = service
-    p_model = Permission(**data)
-    db.session.add(p_model)
-    db.session.commit()
+    p_model = Permission.query.filter_by(
+        user=user,
+        service=service,
+        permission=permission).first()
+    if not p_model:
+        p_model = Permission(**data)
+        db.session.add(p_model)
+        db.session.commit()
     return p_model
 
 
@@ -344,7 +349,7 @@ def sample_service_permission(notify_db,
                               notify_db_session,
                               service=None,
                               user=None,
-                              permission="sample permission"):
+                              permission="manage_service"):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
     if service is None:
@@ -354,7 +359,12 @@ def sample_service_permission(notify_db,
         'service': service,
         'permission': permission
     }
-    p_model = Permission(**data)
-    db.session.add(p_model)
-    db.session.commit()
+    p_model = Permission.query.filter_by(
+        user=user,
+        service=service,
+        permission=permission).first()
+    if not p_model:
+        p_model = Permission(**data)
+        db.session.add(p_model)
+        db.session.commit()
     return p_model
