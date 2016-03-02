@@ -118,6 +118,7 @@ class RequestVerifyCodeSchema(ma.Schema):
 
 
 class NotificationSchema(ma.Schema):
+    personalisation = fields.Dict(required=False)
     pass
 
 
