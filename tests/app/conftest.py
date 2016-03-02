@@ -334,7 +334,7 @@ def sample_permission(notify_db,
                       notify_db_session,
                       service=None,
                       user=None,
-                      permission="manage_service"):
+                      permission="manage_settings"):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
     data = {
@@ -359,7 +359,7 @@ def sample_service_permission(notify_db,
                               notify_db_session,
                               service=None,
                               user=None,
-                              permission="manage_service"):
+                              permission="manage_settings"):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
     if service is None:

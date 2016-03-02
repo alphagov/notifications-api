@@ -273,21 +273,25 @@ class InvitedUser(db.Model):
 
 
 # Service Permissions
-MANAGE_SERVICE = 'manage_service'
-SEND_MESSAGES = 'send_messages'
-MANAGE_API_KEYS = 'manage_api_keys'
+MANAGE_USERS = 'manage_users'
 MANAGE_TEMPLATES = 'manage_templates'
-MANAGE_TEAM = 'manage_team'
-VIEW_ACTIVITY = 'view_activity'
+MANAGE_SETTINGS = 'manage_settings'
+SEND_TEXTS = 'send_texts'
+SEND_EMAILS = 'send_emails'
+SEND_LETTERS = 'send_letters'
+MANAGE_API_KEYS = 'manage_api_keys'
+ACCESS_DEVELOPER_DOCS = 'access_developer_docs'
 
 # List of permissions
 PERMISSION_LIST = [
-    MANAGE_SERVICE,
-    SEND_MESSAGES,
-    MANAGE_API_KEYS,
+    MANAGE_USERS,
     MANAGE_TEMPLATES,
-    MANAGE_TEAM,
-    VIEW_ACTIVITY]
+    MANAGE_SETTINGS,
+    SEND_TEXTS,
+    SEND_EMAILS,
+    SEND_LETTERS,
+    MANAGE_API_KEYS,
+    ACCESS_DEVELOPER_DOCS]
 
 
 class Permission(db.Model):

@@ -2,7 +2,8 @@ import json
 
 from flask import url_for
 
-from app.models import (User, Permission, MANAGE_SERVICE, MANAGE_TEMPLATES)
+from app.models import (User, Permission, MANAGE_SETTINGS, MANAGE_TEMPLATES)
+from app.dao.permissions_dao import default_service_permissions
 from app import db
 from tests import create_authorization_header
 
@@ -21,9 +22,7 @@ def test_get_user_list(notify_api, notify_db, notify_db_session, sample_service)
             json_resp = json.loads(response.get_data(as_text=True))
             assert len(json_resp['data']) == 1
             sample_user = sample_service.users[0]
-            expected_permissions = [
-                'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates',
-                'manage_team', 'view_activity']
+            expected_permissions = default_service_permissions
             fetched = json_resp['data'][0]
 
             assert sample_user.id == fetched['id']
@@ -49,9 +48,7 @@ def test_get_user(notify_api, notify_db, notify_db_session, sample_service):
             assert resp.status_code == 200
             json_resp = json.loads(resp.get_data(as_text=True))
 
-            expected_permissions = [
-                'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates',
-                'manage_team', 'view_activity']
+            expected_permissions = default_service_permissions
             fetched = json_resp['data']
 
             assert sample_user.id == fetched['id']
@@ -184,9 +181,7 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_service):
             assert User.query.count() == 1
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['data']['email_address'] == new_email
-            expected_permissions = [
-                'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates',
-                'manage_team', 'view_activity']
+            expected_permissions = default_service_permissions
             fetched = json_resp['data']
 
             assert sample_user.id == fetched['id']
@@ -278,9 +273,7 @@ def test_get_user_by_email(notify_api, notify_db, notify_db_session, sample_serv
             assert resp.status_code == 200
 
             json_resp = json.loads(resp.get_data(as_text=True))
-            expected_permissions = [
-                'manage_service', 'send_messages', 'manage_api_keys', 'manage_templates',
-                'manage_team', 'view_activity']
+            expected_permissions = default_service_permissions
             fetched = json_resp['data']
 
             assert sample_user.id == fetched['id']
@@ -346,7 +339,7 @@ def test_set_user_permissions(notify_api,
                               sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            data = json.dumps([{'permission': MANAGE_SERVICE}])
+            data = json.dumps([{'permission': MANAGE_SETTINGS}])
             header = create_authorization_header(
                 path=url_for(
                     'user.set_permissions',
@@ -364,10 +357,10 @@ def test_set_user_permissions(notify_api,
                 data=data)
 
             assert response.status_code == 204
-            permission = Permission.query.filter_by(permission=MANAGE_SERVICE).first()
+            permission = Permission.query.filter_by(permission=MANAGE_SETTINGS).first()
             assert permission.user == sample_user
             assert permission.service == sample_service
-            assert permission.permission == MANAGE_SERVICE
+            assert permission.permission == MANAGE_SETTINGS
 
 
 def test_set_user_permissions_multiple(notify_api,
@@ -377,7 +370,7 @@ def test_set_user_permissions_multiple(notify_api,
                                        sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            data = json.dumps([{'permission': MANAGE_SERVICE}, {'permission': MANAGE_TEMPLATES}])
+            data = json.dumps([{'permission': MANAGE_SETTINGS}, {'permission': MANAGE_TEMPLATES}])
             header = create_authorization_header(
                 path=url_for(
                     'user.set_permissions',
@@ -395,10 +388,10 @@ def test_set_user_permissions_multiple(notify_api,
                 data=data)
 
             assert response.status_code == 204
-            permission = Permission.query.filter_by(permission=MANAGE_SERVICE).first()
+            permission = Permission.query.filter_by(permission=MANAGE_SETTINGS).first()
             assert permission.user == sample_user
             assert permission.service == sample_service
-            assert permission.permission == MANAGE_SERVICE
+            assert permission.permission == MANAGE_SETTINGS
             permission = Permission.query.filter_by(permission=MANAGE_TEMPLATES).first()
             assert permission.user == sample_user
             assert permission.service == sample_service
@@ -412,7 +405,7 @@ def test_set_user_permissions_remove_old(notify_api,
                                          sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            data = json.dumps([{'permission': MANAGE_SERVICE}])
+            data = json.dumps([{'permission': MANAGE_SETTINGS}])
             header = create_authorization_header(
                 path=url_for(
                     'user.set_permissions',
@@ -432,4 +425,4 @@ def test_set_user_permissions_remove_old(notify_api,
             assert response.status_code == 204
             query = Permission.query.filter_by(user=sample_user)
             assert query.count() == 1
-            assert query.first().permission == MANAGE_SERVICE
+            assert query.first().permission == MANAGE_SETTINGS

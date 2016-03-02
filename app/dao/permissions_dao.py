@@ -5,22 +5,26 @@ from app.models import (
     Permission,
     Service,
     User,
-    MANAGE_SERVICE,
-    SEND_MESSAGES,
-    MANAGE_API_KEYS,
+    MANAGE_USERS,
     MANAGE_TEMPLATES,
-    MANAGE_TEAM,
-    VIEW_ACTIVITY)
+    MANAGE_SETTINGS,
+    SEND_TEXTS,
+    SEND_EMAILS,
+    SEND_LETTERS,
+    MANAGE_API_KEYS,
+    ACCESS_DEVELOPER_DOCS)
 
 
 # Default permissions for a service
 default_service_permissions = [
-    MANAGE_SERVICE,
-    SEND_MESSAGES,
-    MANAGE_API_KEYS,
+    MANAGE_USERS,
     MANAGE_TEMPLATES,
-    MANAGE_TEAM,
-    VIEW_ACTIVITY]
+    MANAGE_SETTINGS,
+    SEND_TEXTS,
+    SEND_EMAILS,
+    SEND_LETTERS,
+    MANAGE_API_KEYS,
+    ACCESS_DEVELOPER_DOCS]
 
 
 class PermissionDAO(DAOClass):
