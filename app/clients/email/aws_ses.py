@@ -1,5 +1,6 @@
 import boto3
-
+from flask import current_app
+from monotonic import monotonic
 from app.clients.email import (EmailClientException, EmailClient)
 
 
@@ -34,6 +35,7 @@ class AwsSesClient(EmailClient):
             elif reply_to_addresses is None:
                 reply_to_addresses = []
 
+            start_time = monotonic()
             response = self._client.send_email(
                 Source=source,
                 Destination={
@@ -50,6 +52,8 @@ class AwsSesClient(EmailClient):
                             'Data': body}}
                 },
                 ReplyToAddresses=reply_to_addresses)
+            elapsed_time = monotonic() - start_time
+            current_app.logger.info("AWS SES request finished in {}".format(elapsed_time))
             return response['MessageId']
         except Exception as e:
             # TODO logging exceptions
