@@ -1,23 +1,26 @@
-from app.dao import DAOClass
-from app.models import (Permission, Service, User)
+from app import db
 from werkzeug.datastructures import MultiDict
+from app.dao import DAOClass
+from app.models import (
+    Permission,
+    Service,
+    User,
+    MANAGE_SERVICE,
+    SEND_MESSAGES,
+    MANAGE_API_KEYS,
+    MANAGE_TEMPLATES,
+    MANAGE_TEAM,
+    VIEW_ACTIVITY)
 
 
-# Service Permissions
-manage_service = 'manage_service'
-send_messages = 'send_messages'
-manage_api_keys = 'manage_api_keys'
-manage_templates = 'manage_templates'
-manage_team = 'manage_team'
-view_activity = 'view_activity'
 # Default permissions for a service
 default_service_permissions = [
-    manage_service,
-    send_messages,
-    manage_api_keys,
-    manage_templates,
-    manage_team,
-    view_activity]
+    MANAGE_SERVICE,
+    SEND_MESSAGES,
+    MANAGE_API_KEYS,
+    MANAGE_TEMPLATES,
+    MANAGE_TEAM,
+    VIEW_ACTIVITY]
 
 
 class PermissionDAO(DAOClass):
@@ -49,6 +52,18 @@ class PermissionDAO(DAOClass):
         for name in default_service_permissions:
             permission = Permission(permission=name, user=user, service=service)
             self.create_instance(permission, _commit=False)
+
+    def set_user_permission(self, user, permissions):
+        try:
+            query = self.get_query(filter_by_dict={'user': user.id})
+            query.delete()
+            for p in permissions:
+                self.create_instance(p, _commit=False)
+        except Exception as e:
+            db.session.rollback()
+            raise e
+        else:
+            db.session.commit()
 
 
 permission_dao = PermissionDAO()
