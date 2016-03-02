@@ -13,11 +13,15 @@ from app.dao.users_dao import (
     get_user_by_email
 )
 
+from app.dao.permissions_dao import permission_dao
+from app.dao.services_dao import dao_fetch_service_by_id
+
 from app.schemas import (
     old_request_verify_code_schema,
     user_schema,
     request_verify_code_schema,
-    user_schema_load_json
+    user_schema_load_json,
+    permission_schema
 )
 
 from app.celery.tasks import (send_sms_code, send_email_code)
@@ -192,6 +196,26 @@ def get_user(user_id=None):
         return jsonify(result="error", message="not found"), 404
     result = user_schema.dump(users, many=True) if isinstance(users, list) else user_schema.dump(users)
     return jsonify(data=result.data)
+
+
+@user.route('/<int:user_id>/<service_id>/permission', methods=['POST'])
+def set_permissions(user_id, service_id):
+    # TODO fix security hole, how do we verify that the user
+    # who is making this request has permission to make the request.
+    user = get_model_users(user_id=user_id)
+    if not user:
+        abort(404, 'User not found for id: {}'.format(user_id))
+    service = dao_fetch_service_by_id(service_id=service_id)
+    if not service:
+        abort(404, 'Service not found for id: {}'.format(service_id))
+    permissions, errors = permission_schema.load(request.get_json(), many=True)
+    if errors:
+        abort(400, errors)
+    for p in permissions:
+        p.user = user
+        p.service = service
+    permission_dao.set_user_permission(user, permissions)
+    return jsonify({}), 204
 
 
 @user.route('/email', methods=['GET'])
