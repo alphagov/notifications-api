@@ -29,7 +29,7 @@ class Config(object):
     BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {
         'region': 'eu-west-1',
-        'polling_interval': 120,  # 1 second
+        'polling_interval': 1,  # 1 second
         'visibility_timeout': 60,  # 60 seconds
         'queue_name_prefix': os.environ['NOTIFICATION_QUEUE_PREFIX']+'-'
     }
