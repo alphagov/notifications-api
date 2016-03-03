@@ -458,7 +458,11 @@ def test_default_permissions_are_added_for_user_service(notify_api,
             assert sorted(default_service_permissions) == sorted(service_permissions)
 
 
-def test_add_existing_user_to_another_service(notify_api, notify_db, notify_db_session, sample_service):
+def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
+                                                                   notify_db,
+                                                                   notify_db_session,
+                                                                   sample_service,
+                                                                   sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
@@ -489,37 +493,221 @@ def test_add_existing_user_to_another_service(notify_api, notify_db, notify_db_s
             # they must exist in db first
             save_model_user(user_to_add)
 
+            data = {
+                'service': str(sample_service.id),
+                'email_address': 'invited@digital.cabinet-office.gov.uk',
+                'from_user': sample_user.id,
+                'permissions': 'send_messages,manage_service,manage_api_keys'
+            }
+
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
+                request_body=json.dumps(data),
                 method='POST'
             )
 
             resp = client.post(
                 '/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
-                headers=[('Content-Type', 'application/json'), auth_header]
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=json.dumps(data)
             )
 
             assert resp.status_code == 201
 
             # check new user added to service
             auth_header = create_authorization_header(
-                path='/service/{}/users'.format(sample_service.id),
+                path='/service/{}'.format(sample_service.id),
                 method='GET'
             )
 
             resp = client.get(
-                '/service/{}/users'.format(sample_service.id),
-                headers=[('Content-Type', 'application/json'), auth_header]
+                '/service/{}'.format(sample_service.id),
+                headers=[('Content-Type', 'application/json'), auth_header],
             )
+            assert resp.status_code == 200
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert user_to_add.id in json_resp['data']['users']
+
+            # check user has all permissions
+            auth_header = create_authorization_header(
+                path=url_for('user.get_user', user_id=user_to_add.id),
+                method='GET'
+            )
+            resp = client.get(url_for('user.get_user', user_id=user_to_add.id),
+                              headers=[('Content-Type', 'application/json'), auth_header])
 
             assert resp.status_code == 200
-            result = json.loads(resp.get_data(as_text=True))
-            assert len(result['data']) == 2
-            assert _user_email_in_list(result['data'], user_already_in_service.email_address)
-            assert _user_email_in_list(result['data'], user_to_add.email_address)
+            json_resp = json.loads(resp.get_data(as_text=True))
+            permissions = json_resp['data']['permissions'][str(sample_service.id)]
+            expected_permissions = ['send_texts', 'send_emails', 'send_letters', 'manage_users',
+                                    'manage_settings', 'manage_templates', 'manage_api_keys',
+                                    'access_developer_docs']
+            assert sorted(expected_permissions) == sorted(permissions)
 
 
-def test_add_existing_user_to_non_existing_service_returns404(notify_api, notify_db, notify_db_session):
+def test_add_existing_user_to_another_service_with_send_permissions(notify_api,
+                                                                    notify_db,
+                                                                    notify_db_session,
+                                                                    sample_service,
+                                                                    sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            # they must exist in db first
+            user_to_add = User(
+                name='Invited User',
+                email_address='invited@digital.cabinet-office.gov.uk',
+                password='password',
+                mobile_number='+4477123456'
+            )
+            save_model_user(user_to_add)
+
+            data = {
+                'service': str(sample_service.id),
+                'email_address': 'invited@digital.cabinet-office.gov.uk',
+                'from_user': sample_user.id,
+                'permissions': 'send_messages'
+            }
+            auth_header = create_authorization_header(
+                path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
+                request_body=json.dumps(data),
+                method='POST'
+            )
+
+            resp = client.post(
+                '/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=json.dumps(data)
+            )
+
+            assert resp.status_code == 201
+
+            # check user has send permissions
+            auth_header = create_authorization_header(
+                path=url_for('user.get_user', user_id=user_to_add.id),
+                method='GET'
+            )
+            resp = client.get(url_for('user.get_user', user_id=user_to_add.id),
+                              headers=[('Content-Type', 'application/json'), auth_header])
+
+            assert resp.status_code == 200
+            json_resp = json.loads(resp.get_data(as_text=True))
+
+            permissions = json_resp['data']['permissions'][str(sample_service.id)]
+            expected_permissions = ['send_texts', 'send_emails', 'send_letters']
+            assert sorted(expected_permissions) == sorted(permissions)
+
+
+def test_add_existing_user_to_another_service_with_manage_permissions(notify_api,
+                                                                      notify_db,
+                                                                      notify_db_session,
+                                                                      sample_service,
+                                                                      sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            # they must exist in db first
+            user_to_add = User(
+                name='Invited User',
+                email_address='invited@digital.cabinet-office.gov.uk',
+                password='password',
+                mobile_number='+4477123456'
+            )
+            save_model_user(user_to_add)
+
+            data = {
+                'service': str(sample_service.id),
+                'email_address': 'invited@digital.cabinet-office.gov.uk',
+                'from_user': sample_user.id,
+                'permissions': 'manage_service'
+            }
+            auth_header = create_authorization_header(
+                path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
+                request_body=json.dumps(data),
+                method='POST'
+            )
+
+            resp = client.post(
+                '/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=json.dumps(data)
+            )
+
+            assert resp.status_code == 201
+
+            # check user has send permissions
+            auth_header = create_authorization_header(
+                path=url_for('user.get_user', user_id=user_to_add.id),
+                method='GET'
+            )
+            resp = client.get(url_for('user.get_user', user_id=user_to_add.id),
+                              headers=[('Content-Type', 'application/json'), auth_header])
+
+            assert resp.status_code == 200
+            json_resp = json.loads(resp.get_data(as_text=True))
+
+            permissions = json_resp['data']['permissions'][str(sample_service.id)]
+            expected_permissions = ['manage_users', 'manage_settings', 'manage_templates']
+            assert sorted(expected_permissions) == sorted(permissions)
+
+
+def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
+                                                                   notify_db,
+                                                                   notify_db_session,
+                                                                   sample_service,
+                                                                   sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            # they must exist in db first
+            user_to_add = User(
+                name='Invited User',
+                email_address='invited@digital.cabinet-office.gov.uk',
+                password='password',
+                mobile_number='+4477123456'
+            )
+            save_model_user(user_to_add)
+
+            data = {
+                'service': str(sample_service.id),
+                'email_address': 'invited@digital.cabinet-office.gov.uk',
+                'from_user': sample_user.id,
+                'permissions': 'manage_api_keys'
+            }
+            auth_header = create_authorization_header(
+                path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
+                request_body=json.dumps(data),
+                method='POST'
+            )
+
+            resp = client.post(
+                '/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=json.dumps(data)
+            )
+
+            assert resp.status_code == 201
+
+            # check user has send permissions
+            auth_header = create_authorization_header(
+                path=url_for('user.get_user', user_id=user_to_add.id),
+                method='GET'
+            )
+            resp = client.get(url_for('user.get_user', user_id=user_to_add.id),
+                              headers=[('Content-Type', 'application/json'), auth_header])
+
+            assert resp.status_code == 200
+            json_resp = json.loads(resp.get_data(as_text=True))
+
+            permissions = json_resp['data']['permissions'][str(sample_service.id)]
+            expected_permissions = ['manage_api_keys', 'access_developer_docs']
+            assert sorted(expected_permissions) == sorted(permissions)
+
+
+def test_add_existing_user_to_non_existing_service_returns404(notify_api,
+                                                              notify_db,
+                                                              notify_db_session,
+                                                              sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
@@ -533,14 +721,22 @@ def test_add_existing_user_to_non_existing_service_returns404(notify_api, notify
 
             incorrect_id = uuid.uuid4()
 
+            data = {
+                'service': str(incorrect_id),
+                'email_address': 'invited@digital.cabinet-office.gov.uk',
+                'from_user': sample_user.id,
+                'permissions': 'send_messages'
+            }
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(incorrect_id, user_to_add.id),
+                request_body=json.dumps(data),
                 method='POST'
             )
 
             resp = client.post(
                 '/service/{}/users/{}'.format(incorrect_id, user_to_add.id),
-                headers=[('Content-Type', 'application/json'), auth_header]
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=json.dumps(data)
             )
 
             result = json.loads(resp.get_data(as_text=True))
@@ -557,14 +753,22 @@ def test_add_existing_user_of_service_to_service_returns400(notify_api, notify_d
 
             existing_user_id = sample_service.users[0].id
 
+            data = {
+                'service': str(sample_service.id),
+                'email_address': 'invited@digital.cabinet-office.gov.uk',
+                'from_user': 'doesnotmatter',
+                'permissions': 'send_messages'
+            }
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, existing_user_id),
+                request_body=json.dumps(data),
                 method='POST'
             )
 
             resp = client.post(
                 '/service/{}/users/{}'.format(sample_service.id, existing_user_id),
-                headers=[('Content-Type', 'application/json'), auth_header]
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=json.dumps(data)
             )
 
             result = json.loads(resp.get_data(as_text=True))
@@ -581,14 +785,22 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db
 
             incorrect_id = 9876
 
+            data = {
+                'service': str(sample_service.id),
+                'email_address': 'invited@digital.cabinet-office.gov.uk',
+                'from_user': incorrect_id,
+                'permissions': 'send_messages'
+            }
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, incorrect_id),
+                request_body=json.dumps(data),
                 method='POST'
             )
 
             resp = client.post(
                 '/service/{}/users/{}'.format(sample_service.id, incorrect_id),
-                headers=[('Content-Type', 'application/json'), auth_header]
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=json.dumps(data)
             )
 
             result = json.loads(resp.get_data(as_text=True))
@@ -597,10 +809,3 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db
             assert resp.status_code == 404
             assert result['result'] == 'error'
             assert result['message'] == expected_message
-
-
-def _user_email_in_list(user_list, email_address):
-    for user in user_list:
-        if user['email_address'] == email_address:
-            return True
-    return False
