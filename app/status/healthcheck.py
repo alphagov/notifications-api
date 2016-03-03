@@ -22,16 +22,13 @@ def show_status():
 
 
 def get_api_version():
-    travis_commit = 'n/a'
-    travis_job_number = 'n/a'
-    build_time = "n/a"
     try:
         travis_commit = version.__travis_commit__
         travis_job_number = version.__travis_job_number__
         build_time = version.__time__
+        return travis_commit, travis_job_number, build_time
     except:
         pass
-    return travis_commit, travis_job_number, build_time
 
 
 def get_db_version():
