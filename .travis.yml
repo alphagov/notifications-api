@@ -27,7 +27,7 @@ deploy:
   skip_cleanup: true
   region: eu-west-1
   on:
-    branch: staging
+    branch: master
     repo: alphagov/notifications-api
   bucket: notifications-api-codedeploy
 - provider: codedeploy
@@ -40,7 +40,7 @@ deploy:
   deployment_group: notifications_api_deployment_group
   region: eu-west-1
   on:
-    branch: staging
+    branch: master
 - provider: codedeploy
   access_key_id: AKIAJQPPNM6P6V53SWKA
   secret_access_key: *1
@@ -49,6 +49,51 @@ deploy:
   bundle_type: zip
   application: notifications-api
   deployment_group: notifications-api-celery
+  region: eu-west-1
+  on:
+    branch: master
+deploy:
+- provider: s3
+  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
+  secret_access_key: &1
+    secure: QaYZXBCS5Opgq1isQ4wcSRNAbgatorf7yLfXptc0iHvdZi7EaVNQyFetSVZsfvtEexWsq7mYbmY4lyOvG/BvBLXIb+u+oQD+8IrX6PDbPFZ47SnX6h+VjreTigAwZ3QqMxjCtu5/5EUPaVpDy9yKUJD13aT6eUgAoOhj/uRFXurvZf8jKaBwQdnXC1K7AfWLQNk3cFrXAAiNSMSENFnt5xqyQAXChYszINEMIdfzdxbYZhZqKT5TvnFbUcZ+V4Hw2CWT9EwkzDyuEclOXamj+7RSeMqoQ/XZmwBqEc0m6Ajt0In2MSyQJ1XwYnTRbCUPhqoVxbVyjgbEB/D0mCF+py+47HzZJmd1BGoKhhDElU0RfHpfTCdOccARYgk0ajhPg+1FvHP/SyIU0L0tzNCc7u3dl/RK9butwJ7iIFQYp3pYfdjYozDutHs7KHkBB5wueSGtNHjU6Ms4/tD9zgVUDH4suAxOFaALPgo8ShCPiINneElW5INqZMPRcL1tlaXPS2zMpymxvpa7VFFr5GHcowHIX+DaUYpv0ZqX3yh00P7TheN/hJCMynYYVS2a/3aXMeK5nRPP50ZjG5zNRqOblkEU6q0B4EHe1aB7ggJAJOZNqP8gNTYfXoFC1hWvF/d2UYdGuCJeE7n0heLFTaBHc3PI0+0D9fwm15X3WYPbxhI=
+  local_dir: dpl_cd_upload
+  skip_cleanup: true
+  region: eu-west-1
+  on:
+    branch: staging
+    repo: alphagov/notifications-api
+  bucket: notifications-api-codedeploy
+- provider: codedeploy
+  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
+  secret_access_key: *1
+  bucket: notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: notifications-api
+  deployment_group: notifications_api_deployment_group
+  region: eu-west-1
+  on:
+    branch: staging
+- provider: codedeploy
+  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
+  secret_access_key: *1
+  bucket: notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: notifications-api
+  deployment_group: notifications_admin_api_deployment_group
+  region: eu-west-1
+  on:
+    branch: staging
+- provider: codedeploy
+  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
+  secret_access_key: *1
+  bucket: notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: notifications-api
+  deployment_group: notifications_delivery_api_deployment_group
   region: eu-west-1
   on:
     branch: staging
