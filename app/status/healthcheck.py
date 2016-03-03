@@ -9,26 +9,15 @@ status = Blueprint('status', __name__)
 
 @status.route('/_status', methods=['GET', 'POST'])
 def show_status():
-    travis_commit, travis_build_number, build_time = get_api_version()
     if request.args.get('elb', None):
         return jsonify(status="ok"), 200
     else:
         return jsonify(
             status="ok",
-            travis_commit=travis_commit,
-            travis_build_number=travis_build_number,
-            build_time=build_time,
+            travis_commit=version.__travis_commit__,
+            travis_build_number=version.__travis_job_number__,
+            build_time=version.__time__,
             db_version=get_db_version()), 200
-
-
-def get_api_version():
-    try:
-        travis_commit = version.__travis_commit__
-        travis_job_number = version.__travis_job_number__
-        build_time = version.__time__
-        return travis_commit, travis_job_number, build_time
-    except:
-        pass
 
 
 def get_db_version():
