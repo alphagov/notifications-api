@@ -26,7 +26,8 @@ deploy:
   local_dir: dpl_cd_upload
   skip_cleanup: true
   region: eu-west-1
-  on: &2
+  on:
+    branch: staging
     repo: alphagov/notifications-api
   bucket: notifications-api-codedeploy
 - provider: codedeploy
@@ -38,7 +39,7 @@ deploy:
   application: notifications-api
   deployment_group: notifications_api_deployment_group
   region: eu-west-1
-  on: *2
+  on:
     branch: staging
 - provider: codedeploy
   access_key_id: AKIAJQPPNM6P6V53SWKA
@@ -49,7 +50,7 @@ deploy:
   application: notifications-api
   deployment_group: notifications-api-celery
   region: eu-west-1
-  on: *2
+  on:
     branch: staging
 before_deploy:
 - ./scripts/update_version_file.sh
