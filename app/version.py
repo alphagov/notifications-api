@@ -1,3 +1,3 @@
-__build__ = ""
+__travis_commit__ = ""
 __time__ = ""
-__travis_build__ = ""
+__travis_job_number__ = ""
