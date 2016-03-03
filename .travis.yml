@@ -52,39 +52,17 @@ deploy:
   region: eu-west-1
   on:
     branch: master
+deploy:
 - provider: s3
   access_key_id: AKIAJ5MKF6G3P2JQP4QQ
   secret_access_key: &1
-    secure: PeTrfPeutq/0fVze29HHr6U2+MIFSLoBUlTKkjTU9HVE2LTBKcAOnBfASXuCOtWVDEQcGMdlU14H1OLVCEmlDNxuc8nrhf91OEkwF2NzQy2U2SdNMcoNnxbddJghWCyA5w3nWDGtePnHu5LacR4idKeN0xTgeyMutccCTN+kqDM4DQs5onebEnwRJQmlTwhd98qHNwHaZDgPAUIpLvXn4Apdn0j2eip2NouOsDwac+9pv2u5lugK2njbiU3rdSz9tUqfjvctiIreVwAVTdg3iQQpfOWISY0Nu8nbZUjsj3zTih8Yr7EFmRWZC+/SZ29DB8HhrwW8jCAYBbF/FPp5a5mskPBYxeO8IsArpY7zS4YjIoolc6KxfDmwsRxWniOKxjBEizug8qDGf12Zmz7eJ3W6ECfNZrOFZUfYI7KTGrfmGiIKdkIetHW59rNSyYSfCfTlN/CYbDbfTZ3UUPsAADlsqgpty08ZFUp1Os0CMeiNcNn7wyoNl5s4w2yAG58v4OGCX4jvc4KN2OBbU0WdAnbBMufSue2Zvb+8/mU1LzP5OIQre5HzujvR9dzkgETnCvgQt1QPjD4cqNgRGusO9b46XN1Pf3grEtallswHJy13KVncjAQrORIf81FYnTtDVte6EhOZa0INIAMvFskOUCbH+u8jYHUwZsmrtrkL+QU=
+    secure: daC1bCHXqLRK+iIZ8P699KCnTh77lwV4KxrZxL1yd6cstgfptyd/rg1WgRwE6QdxOCT9gQvKWUZFCzFy7M6E/Ih8EUHqEXTzC5M4oAye8rhePIBMQwqkgfYyIoZ3LdDMMP5JfBhiz0zS3Vj7HerL2qIu12adJBjkRJx3XAGimCrFOMQ0xUXQAKDjL6Xmv+gVz2f/ISLy6icKY4KNGt3cQV+8pa5aMF34C9R2udA9N67EWlXlh7hJbFtmY+0Zqpo8Rr6wKRb5MA0xEcTVLORSz1aa6GkxUCbzaIH99p7z3Ghz0qW2bUi9ZcDrvg0GLbVe1T+1HXhfktJfW8wnzw6A/2U/CIIFDQZ/qk0w/DkEwpQinXow99Zl49CcEU+v8llKhg5nM3LmAZCQg1c/iZyP/d90AwAMoMA/VTDD72M93IqTJQH18eC8g02DwE0hNDD6aos5wzeuDeiH/6BG+Tq0pDl0y0aWCcHf3vGRlo/5GlWfpE0vMQEC+qnEOWOUqSprCdSypgD2Aip9mCC98w4BkqKKvGNHPZolA7rxf7E9hTK+BNPRATpYsHR1X/1Xl0TMc/pHhjU1yNXzWnI/kOlNV2CRq3slEtcWihaEo8oDHJ+BhGT49Ps3Je7UB2xO/jXXFPhwJotPMOacTcnUkGqVJSlK1g6TIn4t9nTVSY8KFUs=
   local_dir: dpl_cd_upload
   skip_cleanup: true
-  region: eu-west-1
-  on:
-    branch: staging
+  on: &2
     repo: alphagov/notifications-api
-  bucket: notifications-api-codedeploy
-- provider: codedeploy
-  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
-  secret_access_key: *1
-  bucket: notifications-api-codedeploy
-  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
-  bundle_type: zip
-  application: notifications-api
-  deployment_group: notifications_api_deployment_group
-  region: eu-west-1
-  on:
     branch: staging
-- provider: codedeploy
-  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
-  secret_access_key: *1
   bucket: notifications-api-codedeploy
-  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
-  bundle_type: zip
-  application: notifications-api
-  deployment_group: notifications_admin_api_deployment_group
-  region: eu-west-1
-  on:
-    branch: staging
 - provider: codedeploy
   access_key_id: AKIAJ5MKF6G3P2JQP4QQ
   secret_access_key: *1
@@ -93,13 +71,28 @@ deploy:
   bundle_type: zip
   application: notifications-api
   deployment_group: notifications_delivery_api_deployment_group
-  region: eu-west-1
-  on:
-    branch: staging
+  on: *2
+- provider: codedeploy
+  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
+  secret_access_key: *1
+  bucket: notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: notifications-api
+  deployment_group: notifications_api_deployment_group
+  on: *2
+- provider: codedeploy
+  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
+  secret_access_key: *1
+  bucket: notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: notifications-api
+  deployment_group: notifications_admin_api_deployment_group
+  on: *2
 before_deploy:
 - ./scripts/update_version_file.sh
 - zip -r notifications-api *
 - mkdir -p dpl_cd_upload
 - mv notifications-api.zip dpl_cd_upload/notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
-
 
