@@ -42,12 +42,13 @@ def service_factory(notify_db, notify_db_session):
 @pytest.fixture(scope='function')
 def sample_user(notify_db,
                 notify_db_session,
+                mobile_numnber="+447700900986",
                 email="notify@digital.cabinet-office.gov.uk"):
     data = {
         'name': 'Test User',
         'email_address': email,
         'password': 'password',
-        'mobile_number': '+447700900986',
+        'mobile_number': mobile_numnber,
         'state': 'active'
     }
     usr = User.query.filter_by(email_address=email).first()
@@ -99,14 +100,15 @@ def sample_sms_code(notify_db,
 def sample_service(notify_db,
                    notify_db_session,
                    service_name="Sample service",
-                   user=None):
+                   user=None,
+                   restricted=False):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
     data = {
         'name': service_name,
         'limit': 1000,
         'active': False,
-        'restricted': False,
+        'restricted': restricted,
         'email_from': email_safe(service_name)
     }
     service = Service.query.filter_by(name=service_name).first()
