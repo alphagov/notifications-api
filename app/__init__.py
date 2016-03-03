@@ -53,7 +53,7 @@ def create_app():
     application.register_blueprint(service_blueprint, url_prefix='/service')
     application.register_blueprint(user_blueprint, url_prefix='/user')
     application.register_blueprint(template_blueprint)
-    application.register_blueprint(status_blueprint, url_prefix='/status')
+    application.register_blueprint(status_blueprint)
     application.register_blueprint(notifications_blueprint)
     application.register_blueprint(job_blueprint)
     application.register_blueprint(invite_blueprint)
@@ -80,32 +80,11 @@ def init_app(app):
         return response
 
 
-def get_api_version():
-    build = 'n/a'
-    build_time = "n/a"
-    try:
-        from app import version
-        build = version.__build__
-        build_time = version.__time__
-    except:
-        pass
-    return build, build_time
-
-
-def get_db_version():
-    try:
-        query = 'SELECT version_num FROM alembic_version'
-        full_name = db.session.execute(query).fetchone()[0]
-        return full_name.split('_')[0]
-    except:
-        return 'n/a'
-
-
 def email_safe(string):
     return "".join([
-        character.lower() if character.isalnum() or character == "." else ""
-        for character in re.sub("\s+", ".", string.strip())
-    ])
+                       character.lower() if character.isalnum() or character == "." else ""
+                       for character in re.sub("\s+", ".", string.strip())
+                       ])
 
 
 def create_uuid():
