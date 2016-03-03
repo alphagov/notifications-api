@@ -207,7 +207,7 @@ class VerifyCode(db.Model):
         return check_hash(cde, self._code)
 
 
-NOTIFICATION_STATUS_TYPES = ['sent', 'failed']
+NOTIFICATION_STATUS_TYPES = ['sent', 'failed', 'failed - restricted service']
 
 
 class Notification(db.Model):
