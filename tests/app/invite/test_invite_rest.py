@@ -215,7 +215,6 @@ def test_update_invited_user_set_status_to_cancelled(notify_api, sample_invited_
 
             assert response.status_code == 200
             json_resp = json.loads(response.get_data(as_text=True))['data']
-            print(json_resp)
             assert json_resp['status'] == 'cancelled'
 
 
