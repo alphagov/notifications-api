@@ -181,7 +181,6 @@ def test_create_job_returns_404_if_missing_service(notify_api, sample_template, 
             assert response.status_code == 404
 
             app.celery.tasks.process_job.apply_async.assert_not_called()
-            print(resp_json)
             assert resp_json['result'] == 'error'
             assert resp_json['message'] == 'Service {} not found'.format(random_id)
 
