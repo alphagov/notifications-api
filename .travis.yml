@@ -49,7 +49,6 @@ deploy:
   deployment_group: notifications-api-celery
   region: eu-west-1
   on: *2
-deploy:
 - provider: s3
   access_key_id: AKIAJ5MKF6G3P2JQP4QQ
   secret_access_key: &1
