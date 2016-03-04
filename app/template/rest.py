@@ -4,7 +4,6 @@ from flask import (
     request,
     current_app
 )
-from lxml import html
 from sqlalchemy.exc import IntegrityError
 
 from app.dao.templates_dao import (
@@ -35,7 +34,6 @@ def create_template(service_id):
     if errors:
         return jsonify(result="error", message=errors), 400
     new_template.service = fetched_service
-    new_template.content = _strip_html(new_template.content)
     try:
         dao_create_template(new_template)
     except IntegrityError as ex:
@@ -57,7 +55,6 @@ def update_template(service_id, template_id):
 
     current_data = dict(template_schema.dump(fetched_template).data.items())
     current_data.update(request.get_json())
-    current_data['content'] = _strip_html(current_data['content'])
 
     update_dict, errors = template_schema.load(current_data)
     if errors:
@@ -82,7 +79,3 @@ def get_template_by_id_and_service_id(service_id, template_id):
         return jsonify(data=data)
     else:
         return jsonify(result="error", message="Template not found"), 404
-
-
-def _strip_html(content):
-    return html.document_fromstring(content).text_content()

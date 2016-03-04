@@ -10,7 +10,7 @@ def test_should_create_a_new_sms_template_for_a_service(notify_api, sample_servi
             data = {
                 'name': 'my template',
                 'template_type': 'sms',
-                'content': 'template <b>content</b>',
+                'content': 'template content',
                 'service': str(sample_service.id)
             }
             data = json.dumps(data)
@@ -42,7 +42,7 @@ def test_should_create_a_new_email_template_for_a_service(notify_api, sample_ser
                 'name': 'my template',
                 'template_type': 'email',
                 'subject': 'subject',
-                'content': 'template <b>content</b>',
+                'content': 'template content',
                 'service': str(sample_service.id)
             }
             data = json.dumps(data)
@@ -222,7 +222,7 @@ def test_should_be_able_to_update_a_template(notify_api, sample_service):
             json_resp = json.loads(create_response.get_data(as_text=True))
             assert json_resp['data']['name'] == 'my template'
             data = {
-                'content': 'my template has new content <script type="text/javascript">alert("foo")</script>'
+                'name': 'my template has a new name'
             }
             data = json.dumps(data)
             auth_header = create_authorization_header(
@@ -239,7 +239,7 @@ def test_should_be_able_to_update_a_template(notify_api, sample_service):
 
             assert update_response.status_code == 200
             update_json_resp = json.loads(update_response.get_data(as_text=True))
-            assert update_json_resp['data']['content'] == 'my template has new content alert("foo")'
+            assert update_json_resp['data']['name'] == 'my template has a new name'
 
 
 def test_should_be_able_to_get_all_templates_for_a_service(notify_api, sample_service):
