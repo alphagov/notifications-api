@@ -1,4 +1,4 @@
-from app.models import Notification
+from app.models import Notification, Job
 from datetime import datetime
 from app.dao.notifications_dao import (
     dao_create_notification,
@@ -9,12 +9,12 @@ from app.dao.notifications_dao import (
 )
 
 
-def test_save_notification(sample_template, sample_job):
+def test_save_notification_and_increment_job(sample_template, sample_job):
 
     assert Notification.query.count() == 0
     data = {
         'to': '+44709123456',
-        'job': sample_job,
+        'job_id': sample_job.id,
         'service': sample_template.service,
         'template': sample_template,
         'created_at': datetime.utcnow()
@@ -27,7 +27,31 @@ def test_save_notification(sample_template, sample_job):
     notification_from_db = Notification.query.all()[0]
     assert notification_from_db.id
     assert data['to'] == notification_from_db.to
-    assert data['job'] == notification_from_db.job
+    assert data['job_id'] == notification_from_db.job_id
+    assert data['service'] == notification_from_db.service
+    assert data['template'] == notification_from_db.template
+    assert data['created_at'] == notification_from_db.created_at
+    assert 'sent' == notification_from_db.status
+    assert Job.query.get(sample_job.id).notifications_sent == 1
+
+
+def test_save_notification_with_no_job(sample_template):
+
+    assert Notification.query.count() == 0
+    data = {
+        'to': '+44709123456',
+        'service': sample_template.service,
+        'template': sample_template,
+        'created_at': datetime.utcnow()
+    }
+
+    notification = Notification(**data)
+    dao_create_notification(notification)
+
+    assert Notification.query.count() == 1
+    notification_from_db = Notification.query.all()[0]
+    assert notification_from_db.id
+    assert data['to'] == notification_from_db.to
     assert data['service'] == notification_from_db.service
     assert data['template'] == notification_from_db.template
     assert data['created_at'] == notification_from_db.created_at
