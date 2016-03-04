@@ -96,7 +96,7 @@ deploy:
   on: *2
 before_deploy:
 - ./scripts/update_version_file.sh
-- zip -r notifications-api *
+- zip -r  --exclude=*__pycache__* notifications-api *
 - mkdir -p dpl_cd_upload
 - mv notifications-api.zip dpl_cd_upload/notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
 
