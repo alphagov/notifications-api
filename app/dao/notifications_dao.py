@@ -6,7 +6,9 @@ from sqlalchemy import desc
 
 def dao_create_notification(notification):
     if notification.job_id:
-        db.session.query(Job).update({Job.notifications_sent: Job.notifications_sent + 1})
+        db.session.query(Job).filter_by(
+            id=notification.job_id
+        ).update({Job.notifications_sent: Job.notifications_sent + 1})
     db.session.add(notification)
     db.session.commit()
 
