@@ -28,7 +28,6 @@ deploy:
   region: eu-west-1
   bucket: notifications-api-codedeploy
   on:
-    branch: master
     repo: alphagov/notifications-api
 - provider: codedeploy
   access_key_id: AKIAJQPPNM6P6V53SWKA
