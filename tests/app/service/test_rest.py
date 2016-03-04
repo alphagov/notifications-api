@@ -493,12 +493,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
             # they must exist in db first
             save_model_user(user_to_add)
 
-            data = {
-                'service': str(sample_service.id),
-                'email_address': 'invited@digital.cabinet-office.gov.uk',
-                'from_user': sample_user.id,
-                'permissions': 'send_messages,manage_service,manage_api_keys'
-            }
+            data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
 
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
@@ -562,12 +557,7 @@ def test_add_existing_user_to_another_service_with_send_permissions(notify_api,
             )
             save_model_user(user_to_add)
 
-            data = {
-                'service': str(sample_service.id),
-                'email_address': 'invited@digital.cabinet-office.gov.uk',
-                'from_user': sample_user.id,
-                'permissions': 'send_messages'
-            }
+            data = {'permissions': ['send_messages']}
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
                 request_body=json.dumps(data),
@@ -615,12 +605,7 @@ def test_add_existing_user_to_another_service_with_manage_permissions(notify_api
             )
             save_model_user(user_to_add)
 
-            data = {
-                'service': str(sample_service.id),
-                'email_address': 'invited@digital.cabinet-office.gov.uk',
-                'from_user': sample_user.id,
-                'permissions': 'manage_service'
-            }
+            data = {'permissions': ['manage_service']}
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
                 request_body=json.dumps(data),
@@ -668,12 +653,7 @@ def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
             )
             save_model_user(user_to_add)
 
-            data = {
-                'service': str(sample_service.id),
-                'email_address': 'invited@digital.cabinet-office.gov.uk',
-                'from_user': sample_user.id,
-                'permissions': 'manage_api_keys'
-            }
+            data = {'permissions': ['manage_api_keys']}
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
                 request_body=json.dumps(data),
@@ -721,12 +701,7 @@ def test_add_existing_user_to_non_existing_service_returns404(notify_api,
 
             incorrect_id = uuid.uuid4()
 
-            data = {
-                'service': str(incorrect_id),
-                'email_address': 'invited@digital.cabinet-office.gov.uk',
-                'from_user': sample_user.id,
-                'permissions': 'send_messages'
-            }
+            data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(incorrect_id, user_to_add.id),
                 request_body=json.dumps(data),
@@ -753,12 +728,7 @@ def test_add_existing_user_of_service_to_service_returns400(notify_api, notify_d
 
             existing_user_id = sample_service.users[0].id
 
-            data = {
-                'service': str(sample_service.id),
-                'email_address': 'invited@digital.cabinet-office.gov.uk',
-                'from_user': 'doesnotmatter',
-                'permissions': 'send_messages'
-            }
+            data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, existing_user_id),
                 request_body=json.dumps(data),
@@ -785,12 +755,7 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db
 
             incorrect_id = 9876
 
-            data = {
-                'service': str(sample_service.id),
-                'email_address': 'invited@digital.cabinet-office.gov.uk',
-                'from_user': incorrect_id,
-                'permissions': 'send_messages'
-            }
+            data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, incorrect_id),
                 request_body=json.dumps(data),

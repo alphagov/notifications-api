@@ -177,10 +177,8 @@ def add_user_to_service(service_id, user_id):
                        message='User id: {} already part of service id: {}'.format(user_id, service_id)), 400
 
     dao_add_user_to_service(service, user)
-    invited_user, errors = invited_user_schema.load(request.get_json())
-    if errors:
-        return jsonify(result="error", message=errors), 404
-    _process_permissions(user, service, invited_user.get_permissions())
+    permissions = request.get_json()['permissions']
+    _process_permissions(user, service, permissions)
 
     data, errors = service_schema.dump(service)
     return jsonify(data=data), 201
