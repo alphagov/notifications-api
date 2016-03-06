@@ -6,7 +6,11 @@ from . import models
 from app.dao.permissions_dao import permission_dao
 from marshmallow import (post_load, ValidationError, validates, validates_schema)
 from marshmallow_sqlalchemy import field_for
-from utils.recipients import validate_email_address, InvalidEmailError, validate_phone_number, InvalidPhoneError
+from utils.recipients import (
+    validate_email_address, InvalidEmailError,
+    validate_phone_number, InvalidPhoneError,
+    format_phone_number
+)
 
 
 # TODO I think marshmallow provides a better integration and error handling.
@@ -129,6 +133,13 @@ class SmsNotificationSchema(NotificationSchema):
             validate_phone_number(value)
         except InvalidPhoneError as error:
             raise ValidationError('Invalid phone number: {}'.format(error))
+
+    @post_load
+    def format_phone_number(self, item):
+        item['to'] = format_phone_number(validate_phone_number(
+            item['to'])
+        )
+        return item
 
 
 class EmailNotificationSchema(NotificationSchema):
