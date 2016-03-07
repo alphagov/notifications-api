@@ -193,26 +193,27 @@ def get_by_email():
         return jsonify(result="error", message="invalid request"), 400
     fetched_user = get_user_by_email(email)
     if not fetched_user:
-        return _user_not_found_for_email(email)
+        return _user_not_found_for_email()
     result = user_schema.dump(fetched_user)
 
     return jsonify(data=result.data)
 
 
 @user.route('/reset-password', methods=['POST'])
-def send_reset_password():
+def send_user_reset_password():
     email, errors = email_data_request_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
 
     user_to_send_to = get_user_by_email(email['email'])
     if not user_to_send_to:
-        return _user_not_found_for_email(email['email'])
+        return _user_not_found_for_email()
 
     reset_password_message = {'to': user_to_send_to.email_address,
                               'reset_password_url': _create_reset_password_url(user_to_send_to.email_address)}
 
-    email_reset_password.apply_async([encryption.encrypt(reset_password_message)], queue='send-reset-password')
+    email_reset_password.apply_async([encryption.encrypt(reset_password_message)], queue='email-reset-password')
+
     return jsonify({}), 204
 
 
@@ -220,12 +221,14 @@ def _user_not_found(user_id):
     return abort(404, 'User not found for id: {}'.format(user_id))
 
 
-def _user_not_found_for_email(email):
-    return abort(404, 'User not found for email address: {}'.format(email))
+def _user_not_found_for_email():
+    return abort(404, 'User not found for email address')
 
 
 def _create_reset_password_url(email):
     from utils.url_safe_token import generate_token
-    token = generate_token(email, current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
+    import json
+    data = json.dumps({'email': email, 'created_at': str(datetime.now())})
+    token = generate_token(data, current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
 
     return current_app.config['ADMIN_BASE_URL'] + '/new-password/' + token

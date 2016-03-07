@@ -253,9 +253,9 @@ def email_invited_user(encrypted_invitation):
         current_app.logger.error(e)
 
 
-@notify_celery.task(name='send-reset-password')
+@notify_celery.task(name='email-reset-password')
 def email_reset_password(encrypted_reset_password_message):
-    reset_password_message = encryption.decrypt(encryption)
+    reset_password_message = encryption.decrypt(encrypted_reset_password_message)
     try:
         aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
                                   reset_password_message['to'],
