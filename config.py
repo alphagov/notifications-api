@@ -48,7 +48,7 @@ class Config(object):
         Queue('email', Exchange('default'), routing_key='email'),
         Queue('sms-code', Exchange('default'), routing_key='sms-code'),
         Queue('email-code', Exchange('default'), routing_key='email-code'),
-        Queue('email-forgot-password', Exchange('default'), routing_key='email-forgot-password'),
+        Queue('email-reset-password', Exchange('default'), routing_key='email-reset-password'),
         Queue('process-job', Exchange('default'), routing_key='process-job'),
         Queue('bulk-sms', Exchange('default'), routing_key='bulk-sms'),
         Queue('bulk-email', Exchange('default'), routing_key='bulk-email'),
