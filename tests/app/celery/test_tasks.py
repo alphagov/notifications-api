@@ -1,7 +1,13 @@
 import uuid
 import pytest
 from flask import current_app
-from app.celery.tasks import (send_sms, send_sms_code, send_email_code, send_email, process_job, email_invited_user)
+from app.celery.tasks import (send_sms,
+                              send_sms_code,
+                              send_email_code,
+                              send_email,
+                              process_job,
+                              email_invited_user,
+                              email_reset_password)
 from app import (firetext_client, aws_ses_client, encryption)
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
@@ -503,3 +509,20 @@ def test_email_invited_user_should_send_email(notify_api, mocker):
                                                           invitation['to'],
                                                           expected_subject,
                                                           expected_content)
+
+
+def test_email_reset_password_should_send_email(notify_api, mocker):
+    with notify_api.test_request_context():
+        reset_password_message = {'to': 'someone@it.gov.uk',
+                                  'reset_password_url': 'bah'}
+
+        mocker.patch('app.aws_ses_client.send_email')
+        mocker.patch('app.encryption.decrypt', return_value=reset_password_message)
+
+        encrypted_message = encryption.encrypt(reset_password_message)
+        email_reset_password(encrypted_message)
+
+        aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
+                                  reset_password_message['to'],
+                                  "Reset password for GOV.UK Notify",
+                                  reset_password_message['reset_password_url'])

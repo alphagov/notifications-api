@@ -9,8 +9,6 @@ from tests import create_authorization_header
 
 
 def test_user_verify_code_sms(notify_api,
-                              notify_db,
-                              notify_db_session,
                               sample_sms_code):
     """
     Tests POST endpoint '/<user_id>/verify/code'
@@ -34,8 +32,6 @@ def test_user_verify_code_sms(notify_api,
 
 
 def test_user_verify_code_sms_missing_code(notify_api,
-                                           notify_db,
-                                           notify_db_session,
                                            sample_sms_code):
     """
     Tests POST endpoint '/<user_id>/verify/code'
@@ -58,8 +54,6 @@ def test_user_verify_code_sms_missing_code(notify_api,
 
 @moto.mock_sqs
 def test_user_verify_code_email(notify_api,
-                                notify_db,
-                                notify_db_session,
                                 sqs_client_conn,
                                 sample_email_code):
     """
@@ -84,8 +78,6 @@ def test_user_verify_code_email(notify_api,
 
 
 def test_user_verify_code_email_bad_code(notify_api,
-                                         notify_db,
-                                         notify_db_session,
                                          sample_email_code):
     """
     Tests POST endpoint '/<user_id>/verify/code'
@@ -109,8 +101,6 @@ def test_user_verify_code_email_bad_code(notify_api,
 
 
 def test_user_verify_code_email_expired_code(notify_api,
-                                             notify_db,
-                                             notify_db_session,
                                              sample_email_code):
     """
     Tests POST endpoint '/<user_id>/verify/code'
@@ -159,8 +149,6 @@ def test_user_verify_password(notify_api,
 
 
 def test_user_verify_password_invalid_password(notify_api,
-                                               notify_db,
-                                               notify_db_session,
                                                sample_user):
     """
     Tests POST endpoint '/<user_id>/verify/password' invalid endpoint.
@@ -186,8 +174,6 @@ def test_user_verify_password_invalid_password(notify_api,
 
 
 def test_user_verify_password_valid_password_resets_failed_logins(notify_api,
-                                                                  notify_db,
-                                                                  notify_db_session,
                                                                   sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -224,8 +210,6 @@ def test_user_verify_password_valid_password_resets_failed_logins(notify_api,
 
 
 def test_user_verify_password_missing_password(notify_api,
-                                               notify_db,
-                                               notify_db_session,
                                                sample_user):
     """
     Tests POST endpoint '/<user_id>/verify/password' missing password.
@@ -311,7 +295,7 @@ def test_send_sms_code_returns_404_for_bad_input_data(notify_api, notify_db, not
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 404
-            assert json.loads(resp.get_data(as_text=True))['message'] == 'No user found'
+            assert json.loads(resp.get_data(as_text=True))['message'] == 'User not found for id: {}'.format(int(uuid_))
 
 
 def test_send_user_email_code(notify_api,
@@ -353,4 +337,4 @@ def test_send_user_email_code_returns_404_for_when_user_does_not_exist(notify_ap
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 404
-            assert json.loads(resp.get_data(as_text=True))['message'] == 'No user found'
+            assert json.loads(resp.get_data(as_text=True))['message'] == 'User not found for id: {}'.format(1)
