@@ -1,10 +1,12 @@
 import json
+import uuid
 
 from flask import url_for
 
+import app
 from app.models import (User, Permission, MANAGE_SETTINGS, MANAGE_TEMPLATES)
 from app.dao.permissions_dao import default_service_permissions
-from app import db
+from app import db, encryption
 from tests import create_authorization_header
 
 
@@ -256,7 +258,7 @@ def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_us
             user = User.query.filter_by(id=sample_user.id).first()
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == "error"
-            assert json_resp['message'] == "User not found"
+            assert json_resp['message'] == "User not found for id: {}".format("9999")
 
             assert user == sample_user
             assert user.email_address != new_email
@@ -426,3 +428,46 @@ def test_set_user_permissions_remove_old(notify_api,
             query = Permission.query.filter_by(user=sample_user)
             assert query.count() == 1
             assert query.first().permission == MANAGE_SETTINGS
+
+
+def test_send_reset_password_should_send_reset_password_link(notify_api,
+                                                             sample_user,
+                                                             mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.email_reset_password.apply_async')
+            auth_header = create_authorization_header(
+                path=url_for('user.send_reset_password', user_id=sample_user.id),
+                method='POST',
+                request_body={})
+            resp = client.post(
+                url_for('user.send_reset_password', user_id=sample_user.id),
+                data={},
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            assert resp.status_code == 204
+            from app.user.rest import _create_reset_password_url
+            url = _create_reset_password_url(sample_user.email_address)
+            encrypted = encryption.encrypt({'to': sample_user.email_address, 'reset_password_url': url})
+            app.celery.tasks.email_reset_password.apply_async.assert_called_once_with([encrypted],
+                                                                                      queue='send-reset-password')
+
+
+def test_send_reset_password_should_return_404_when_user_doesnot_exist(notify_api,
+                                                                       sample_user,
+                                                                       mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            user_id = 99999
+            auth_header = create_authorization_header(
+                path=url_for('user.send_reset_password', user_id=user_id),
+                method='POST',
+                request_body={})
+
+        resp = client.post(
+            url_for('user.send_reset_password', user_id=user_id),
+            data={},
+            headers=[('Content-Type', 'application/json'), auth_header])
+
+        assert resp.status_code == 404
+        assert json.loads(resp.get_data(as_text=True))['message'] == 'User not found for id: {}'.format(user_id)

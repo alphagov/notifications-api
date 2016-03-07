@@ -24,7 +24,7 @@ from app.schemas import (
     permission_schema
 )
 
-from app.celery.tasks import (send_sms_code, send_email_code)
+from app.celery.tasks import (send_sms_code, send_email_code, email_reset_password)
 from app.errors import register_errors
 
 user = Blueprint('user', __name__)
@@ -49,7 +49,7 @@ def create_user():
 def update_user(user_id):
     user_to_update = get_model_users(user_id=user_id)
     if not user_to_update:
-        return jsonify(result="error", message="User not found"), 404
+        return _user_not_found(user_id)
 
     req_json = request.get_json()
     update_dct, errors = user_schema_load_json.load(req_json)
@@ -116,7 +116,7 @@ def send_user_sms_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
 
     if not user_to_send_to:
-        return jsonify(result="error", message="No user found"), 404
+        return _user_not_found(user_id)
 
     verify_code, errors = request_verify_code_schema.load(request.get_json())
     if errors:
@@ -138,7 +138,7 @@ def send_user_sms_code(user_id):
 def send_user_email_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
     if not user_to_send_to:
-        return jsonify(result="error", message="No user found"), 404
+        return _user_not_found(user_id)
 
     verify_code, errors = request_verify_code_schema.load(request.get_json())
     if errors:
@@ -172,7 +172,7 @@ def set_permissions(user_id, service_id):
     # who is making this request has permission to make the request.
     user = get_model_users(user_id=user_id)
     if not user:
-        abort(404, 'User not found for id: {}'.format(user_id))
+        _user_not_found(user_id)
     service = dao_fetch_service_by_id(service_id=service_id)
     if not service:
         abort(404, 'Service not found for id: {}'.format(service_id))
@@ -197,3 +197,27 @@ def get_by_email():
     result = user_schema.dump(user)
 
     return jsonify(data=result.data)
+
+
+@user.route('/<int:user_id>/reset-password', methods=['POST'])
+def send_reset_password(user_id):
+    user_to_send_to = get_model_users(user_id=user_id)
+    if not user_to_send_to:
+        return _user_not_found(user_id)
+
+    reset_password_message = {'to': user_to_send_to.email_address,
+                              'reset_password_url': _create_reset_password_url(user_to_send_to.email_address)}
+
+    email_reset_password.apply_async([encryption.encrypt(reset_password_message)], queue='send-reset-password')
+    return jsonify({}), 204
+
+
+def _user_not_found(user_id):
+    return abort(404, 'User not found for id: {}'.format(user_id))
+
+
+def _create_reset_password_url(email):
+    from utils.url_safe_token import generate_token
+    token = generate_token(email, current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
+
+    return current_app.config['ADMIN_BASE_URL'] + '/new-password/' + token
