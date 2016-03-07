@@ -17,7 +17,7 @@ from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
 
 from app.schemas import (
-    old_request_verify_code_schema,
+    email_data_request_schema,
     user_schema,
     request_verify_code_schema,
     user_schema_load_json,
@@ -191,19 +191,23 @@ def get_by_email():
     email = request.args.get('email')
     if not email:
         return jsonify(result="error", message="invalid request"), 400
-    user = get_user_by_email(email)
-    if not user:
-        return jsonify(result="error", message="not found"), 404
-    result = user_schema.dump(user)
+    fetched_user = get_user_by_email(email)
+    if not fetched_user:
+        return _user_not_found_for_email(email)
+    result = user_schema.dump(fetched_user)
 
     return jsonify(data=result.data)
 
 
-@user.route('/<int:user_id>/reset-password', methods=['POST'])
-def send_reset_password(user_id):
-    user_to_send_to = get_model_users(user_id=user_id)
+@user.route('/reset-password', methods=['POST'])
+def send_reset_password():
+    email, errors = email_data_request_schema.load(request.get_json())
+    if errors:
+        return jsonify(result="error", message=errors), 400
+
+    user_to_send_to = get_user_by_email(email['email'])
     if not user_to_send_to:
-        return _user_not_found(user_id)
+        return _user_not_found_for_email(email['email'])
 
     reset_password_message = {'to': user_to_send_to.email_address,
                               'reset_password_url': _create_reset_password_url(user_to_send_to.email_address)}
@@ -214,6 +218,10 @@ def send_reset_password(user_id):
 
 def _user_not_found(user_id):
     return abort(404, 'User not found for id: {}'.format(user_id))
+
+
+def _user_not_found_for_email(email):
+    return abort(404, 'User not found for email address: {}'.format(email))
 
 
 def _create_reset_password_url(email):
