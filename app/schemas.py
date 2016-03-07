@@ -1,5 +1,4 @@
 import re
-from flask import current_app
 from flask_marshmallow.fields import fields
 from . import ma
 from . import models
@@ -102,18 +101,6 @@ class JobSchema(BaseSchema):
         model = models.Job
 
 
-# TODO: Remove this schema once the admin app has stopped using the /user/<user_id>code endpoint
-class OldRequestVerifyCodeSchema(ma.Schema):
-
-    code_type = fields.Str(required=True)
-    to = fields.Str(required=False)
-
-    @validates('code_type')
-    def validate_code_type(self, code):
-        if code not in models.VERIFY_CODE_TYPES:
-            raise ValidationError('Invalid code type')
-
-
 class RequestVerifyCodeSchema(ma.Schema):
     to = fields.Str(required=False)
 
@@ -195,6 +182,14 @@ class PermissionSchema(BaseSchema):
         exclude = ("created_at",)
 
 
+class EmailDataSchema(ma.Schema):
+    email = fields.Str(required=False)
+
+    @validates('email')
+    def validate_to(self, value):
+        if not email_regex.match(value):
+            raise ValidationError('Invalid email')
+
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
 service_schema = ServiceSchema()
@@ -205,7 +200,6 @@ api_key_schema = ApiKeySchema()
 api_key_schema_load_json = ApiKeySchema(load_json=True)
 job_schema = JobSchema()
 job_schema_load_json = JobSchema(load_json=True)
-old_request_verify_code_schema = OldRequestVerifyCodeSchema()
 request_verify_code_schema = RequestVerifyCodeSchema()
 sms_admin_notification_schema = SmsAdminNotificationSchema()
 sms_template_notification_schema = SmsTemplateNotificationSchema()
@@ -216,3 +210,4 @@ notification_status_schema = NotificationStatusSchema()
 notification_status_schema_load_json = NotificationStatusSchema(load_json=True)
 invited_user_schema = InvitedUserSchema()
 permission_schema = PermissionSchema()
+email_data_request_schema = EmailDataSchema()
