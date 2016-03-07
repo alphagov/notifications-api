@@ -251,3 +251,15 @@ def email_invited_user(encrypted_invitation):
                                   invitation_content)
     except AwsSesClientException as e:
         current_app.logger.error(e)
+
+
+@notify_celery.task(name='send-reset-password')
+def email_reset_password(encrypted_reset_password_message):
+    reset_password_message = encryption.decrypt(encryption)
+    try:
+        aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
+                                  reset_password_message['to'],
+                                  "Reset password for GOV.UK Notify",
+                                  reset_password_message['reset_password_url'])
+    except AwsSesClientException as e:
+        current_app.logger.error(e)
