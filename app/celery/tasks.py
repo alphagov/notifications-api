@@ -6,7 +6,7 @@ from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.notifications_dao import dao_create_notification, dao_update_notification
 from app.dao.jobs_dao import dao_update_job, dao_get_job_by_id
-from app.models import Notification
+from app.models import Notification, TEMPLATE_TYPE_EMAIL, TEMPLATE_TYPE_SMS
 from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
@@ -93,7 +93,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             sent_by=client.get_name()
         )
 
-        dao_create_notification(notification_db_object)
+        dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS)
 
         if can_send:
             try:
@@ -162,7 +162,7 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
             sent_at=sent_at,
             sent_by=client.get_name()
         )
-        dao_create_notification(notification_db_object)
+        dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS)
 
         if can_send:
             try:
