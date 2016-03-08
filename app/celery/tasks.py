@@ -197,7 +197,7 @@ def send_sms_code(encrypted_verification):
     try:
         firetext_client.send_sms(verification_message['to'], verification_message['secret_code'])
     except FiretextClientException as e:
-        current_app.logger.error(e)
+        current_app.logger.exception(e)
 
 
 @notify_celery.task(name='send-email-code')
@@ -209,7 +209,7 @@ def send_email_code(encrypted_verification_message):
                                   "Verification code",
                                   verification_message['secret_code'])
     except AwsSesClientException as e:
-        current_app.logger.error(e)
+        current_app.logger.exception(e)
 
 
 # TODO: when placeholders in templates work, this will be a real template
@@ -251,7 +251,7 @@ def email_invited_user(encrypted_invitation):
                                   subject_line,
                                   invitation_content)
     except AwsSesClientException as e:
-        current_app.logger.error(e)
+        current_app.logger.exception(e)
 
 
 def password_reset_message(name, url):
@@ -274,4 +274,4 @@ def email_reset_password(encrypted_reset_password_message):
                                   password_reset_message(name=reset_password_message['name'],
                                                          url=reset_password_message['reset_password_url']))
     except AwsSesClientException as e:
-        current_app.logger.error(e)
+        current_app.logger.exception(e)

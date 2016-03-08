@@ -1,9 +1,8 @@
-import re
 from flask_marshmallow.fields import fields
 from . import ma
 from . import models
 from app.dao.permissions_dao import permission_dao
-from marshmallow import (post_load, ValidationError, validates, validates_schema)
+from marshmallow import (post_load, ValidationError, validates)
 from marshmallow_sqlalchemy import field_for
 from utils.recipients import (
     validate_email_address, InvalidEmailError,
@@ -202,8 +201,10 @@ class EmailDataSchema(ma.Schema):
     email = fields.Str(required=False)
 
     @validates('email')
-    def validate_to(self, value):
-        if not email_regex.match(value):
+    def validate_email(self, value):
+        try:
+            validate_email_address(value)
+        except InvalidEmailError:
             raise ValidationError('Invalid email')
 
 user_schema = UserSchema()
