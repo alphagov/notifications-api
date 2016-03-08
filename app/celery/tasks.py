@@ -1,4 +1,4 @@
-from app import create_uuid
+from app import create_uuid, DATETIME_FORMAT
 from app import notify_celery, encryption, firetext_client, aws_ses_client
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
@@ -38,7 +38,7 @@ def process_job(job_id):
                 str(job.service_id),
                 str(create_uuid()),
                 encrypted,
-                str(datetime.utcnow())),
+                datetime.utcnow().strftime(DATETIME_FORMAT)),
                 queue='bulk-sms'
             )
 
@@ -49,7 +49,7 @@ def process_job(job_id):
                 job.template.subject,
                 "{}@{}".format(job.service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
                 encrypted,
-                str(datetime.utcnow())),
+                datetime.utcnow().strftime(DATETIME_FORMAT)),
                 queue='bulk-email')
 
     finished = datetime.utcnow()
@@ -88,7 +88,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             service_id=service_id,
             job_id=notification.get('job', None),
             status=status,
-            created_at=created_at,
+            created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=client.get_name()
         )
@@ -158,11 +158,11 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
             service_id=service_id,
             job_id=notification.get('job', None),
             status=status,
-            created_at=created_at,
+            created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=client.get_name()
         )
-        dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS)
+        dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL)
 
         if can_send:
             try:

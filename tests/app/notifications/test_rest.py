@@ -359,7 +359,7 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_templat
                 (str(sample_template_with_placeholders.service.id),
                  notification_id,
                  "something_encrypted",
-                 "2016-01-01 11:09:00.061258"),
+                 "2016-01-01T11:09:00.061258"),
                 queue="sms"
             )
             assert response.status_code == 201
@@ -525,7 +525,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
                 (str(sample_template.service_id),
                  notification_id,
                  "something_encrypted",
-                 "2016-01-01 11:09:00.061258"),
+                 "2016-01-01T11:09:00.061258"),
                 queue="sms"
             )
             assert response.status_code == 201
@@ -747,7 +747,7 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
                  "Email Subject",
                  "sample.service@test.notify.com",
                  "something_encrypted",
-                 "2016-01-01 11:09:00.061258"),
+                 "2016-01-01T11:09:00.061258"),
                 queue="email"
             )
             assert response.status_code == 201

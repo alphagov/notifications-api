@@ -13,6 +13,8 @@ from app.clients.sms.firetext import FiretextClient
 from app.clients.email.aws_ses import AwsSesClient
 from app.encryption import Encryption
 
+DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+
 db = SQLAlchemy()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
