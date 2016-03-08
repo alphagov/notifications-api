@@ -138,8 +138,8 @@ class EmailNotificationSchema(NotificationSchema):
     def validate_to(self, value):
         try:
             validate_email_address(value)
-        except InvalidEmailError:
-            raise ValidationError('Invalid email')
+        except InvalidEmailError as e:
+            raise ValidationError(e.message)
 
 
 class SmsTemplateNotificationSchema(SmsNotificationSchema):
@@ -176,8 +176,8 @@ class InvitedUserSchema(BaseSchema):
     def validate_to(self, value):
         try:
             validate_email_address(value)
-        except InvalidEmailError:
-            raise ValidationError('Invalid email')
+        except InvalidEmailError as e:
+            raise ValidationError(e.message)
 
 
 class PermissionSchema(BaseSchema):
@@ -204,8 +204,8 @@ class EmailDataSchema(ma.Schema):
     def validate_email(self, value):
         try:
             validate_email_address(value)
-        except InvalidEmailError:
-            raise ValidationError('Invalid email')
+        except InvalidEmailError as e:
+            raise ValidationError(e.message)
 
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
