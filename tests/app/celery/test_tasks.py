@@ -514,6 +514,7 @@ def test_email_invited_user_should_send_email(notify_api, mocker):
 def test_email_reset_password_should_send_email(notify_api, mocker):
     with notify_api.test_request_context():
         reset_password_message = {'to': 'someone@it.gov.uk',
+                                  'name': 'Some One',
                                   'reset_password_url': 'bah'}
 
         mocker.patch('app.aws_ses_client.send_email')
@@ -521,8 +522,9 @@ def test_email_reset_password_should_send_email(notify_api, mocker):
 
         encrypted_message = encryption.encrypt(reset_password_message)
         email_reset_password(encrypted_message)
-
+        message = tasks.password_reset_message(reset_password_message['name'],
+                                               reset_password_message['reset_password_url'])
         aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
                                   reset_password_message['to'],
                                   "Reset password for GOV.UK Notify",
-                                  reset_password_message['reset_password_url'])
+                                  message)

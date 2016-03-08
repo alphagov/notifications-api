@@ -253,13 +253,24 @@ def email_invited_user(encrypted_invitation):
         current_app.logger.error(e)
 
 
+def password_reset_message(name, url):
+    from string import Template
+    t = Template("Hi $user_name,\n\n"
+                 "We received a request to reset your password on GOV.UK Notify.\n\n"
+                 "If you didn't request this email, you can ignore it – your password has not been changed.\n\n"
+                 "To reset your password, click this link:\n\n"
+                 "$url")
+    return t.substitute(user_name=name, url=url)
+
+
 @notify_celery.task(name='email-reset-password')
 def email_reset_password(encrypted_reset_password_message):
     reset_password_message = encryption.decrypt(encrypted_reset_password_message)
     try:
         aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
                                   reset_password_message['to'],
-                                  "Reset password for GOV.UK Notify",
-                                  reset_password_message['reset_password_url'])
+                                  "Reset your GOV.UK Notify password",
+                                  password_reset_message(name=reset_password_message['name'],
+                                                         url=reset_password_message['reset_password_url']))
     except AwsSesClientException as e:
         current_app.logger.error(e)

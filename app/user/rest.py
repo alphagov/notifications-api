@@ -210,6 +210,7 @@ def send_user_reset_password():
         return _user_not_found_for_email()
 
     reset_password_message = {'to': user_to_send_to.email_address,
+                              'name': user_to_send_to.name,
                               'reset_password_url': _create_reset_password_url(user_to_send_to.email_address)}
 
     email_reset_password.apply_async([encryption.encrypt(reset_password_message)], queue='email-reset-password')
