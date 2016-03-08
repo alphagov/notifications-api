@@ -1,8 +1,14 @@
 from flask import current_app
 from app import db
-from app.models import Notification, Job, ServiceNotificationStats, TEMPLATE_TYPE_SMS, TEMPLATE_TYPE_EMAIL
+from app.models import Notification, Job, NotificationStatistics, TEMPLATE_TYPE_SMS, TEMPLATE_TYPE_EMAIL
 from sqlalchemy import desc
 from datetime import datetime
+
+
+def dao_get_notification_statistics_for_service(service_id):
+    return NotificationStatistics.query.filter_by(
+        service_id=service_id
+    ).order_by(desc(NotificationStatistics.day)).all()
 
 
 def dao_create_notification(notification, notification_type):
@@ -10,25 +16,9 @@ def dao_create_notification(notification, notification_type):
         if notification.job_id:
             update_job_sent_count(notification)
 
-        day = datetime.utcnow().strftime('%Y-%m-%d')
-
-        if notification_type == TEMPLATE_TYPE_SMS:
-            update = {
-                ServiceNotificationStats.sms_requested: ServiceNotificationStats.sms_requested + 1
-            }
-        else:
-            update = {
-                ServiceNotificationStats.emails_requested: ServiceNotificationStats.emails_requested + 1
-            }
-
-        result = db.session.query(ServiceNotificationStats).filter_by(
-            day=day,
-            service_id=notification.service_id
-        ).update(update)
-
-        if result == 0:
-            stats = ServiceNotificationStats(
-                day=day,
+        if update_notification_stats(notification, notification_type) == 0:
+            stats = NotificationStatistics(
+                day=notification.created_at.strftime('%Y-%m-%d'),
                 service_id=notification.service_id,
                 sms_requested=1 if notification_type == TEMPLATE_TYPE_SMS else 0,
                 emails_requested=1 if notification_type == TEMPLATE_TYPE_EMAIL else 0
@@ -39,6 +29,22 @@ def dao_create_notification(notification, notification_type):
     except:
         db.session.rollback()
         raise
+
+
+def update_notification_stats(notification, notification_type):
+    if notification_type == TEMPLATE_TYPE_SMS:
+        update = {
+            NotificationStatistics.sms_requested: NotificationStatistics.sms_requested + 1
+        }
+    else:
+        update = {
+            NotificationStatistics.emails_requested: NotificationStatistics.emails_requested + 1
+        }
+
+    return db.session.query(NotificationStatistics).filter_by(
+        day=notification.created_at.strftime('%Y-%m-%d'),
+        service_id=notification.service_id
+    ).update(update)
 
 
 def update_job_sent_count(notification):

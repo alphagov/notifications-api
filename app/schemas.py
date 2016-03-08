@@ -34,19 +34,6 @@ class BaseSchema(ma.ModelSchema):
         assert key is not None, "Envelope key undefined"
         return key
 
-    # Code to envelope the input and response.
-    # TOBE added soon.
-
-    # @pre_load(pass_many=True)
-    # def unwrap_envelope(self, data, many):
-    #     key = self.get_envelope_key(many)
-    #     return data[key]
-
-    # @post_dump(pass_many=True)
-    # def wrap_with_envelope(self, data, many):
-    #     key = self.get_envelope_key(many)
-    #     return {key: data}
-
     @post_load
     def make_instance(self, data):
         """Deserialize data to an instance of the model. Update an existing row
@@ -89,6 +76,11 @@ class TemplateSchema(BaseSchema):
     class Meta:
         model = models.Template
         exclude = ("updated_at", "created_at", "service_id", "jobs")
+
+
+class NotificationsStatisticsSchema(BaseSchema):
+    class Meta:
+        model = models.NotificationStatistics
 
 
 class ApiKeySchema(BaseSchema):
@@ -216,3 +208,4 @@ notification_status_schema = NotificationStatusSchema()
 notification_status_schema_load_json = NotificationStatusSchema(load_json=True)
 invited_user_schema = InvitedUserSchema()
 permission_schema = PermissionSchema()
+notifications_statistics_schema = NotificationsStatisticsSchema()

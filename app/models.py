@@ -107,8 +107,8 @@ class ApiKey(db.Model):
     )
 
 
-class ServiceNotificationStats(db.Model):
-    __tablename__ = 'service_notification_stats'
+class NotificationStatistics(db.Model):
+    __tablename__ = 'notification_statistics'
 
     id = db.Column(db.Integer, primary_key=True)
     day = db.Column(db.String(255), nullable=False)
