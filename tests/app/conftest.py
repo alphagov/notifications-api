@@ -283,12 +283,13 @@ def sample_notification(notify_db,
         'id': notification_id,
         'to': to,
         'job': job,
+        'service_id': service.id,
         'service': service,
         'template': template,
         'created_at': datetime.utcnow()
     }
     notification = Notification(**data)
-    dao_create_notification(notification)
+    dao_create_notification(notification, template.template_type)
     return notification
 
 
