@@ -162,6 +162,7 @@ class Job(db.Model):
         onupdate=datetime.datetime.now)
     status = db.Column(db.Enum(*JOB_STATUS_TYPES, name='job_status_types'), nullable=False, default='pending')
     notification_count = db.Column(db.Integer, nullable=False)
+    notifications_sent = db.Column(db.Integer, nullable=False, default=0)
     processing_started = db.Column(
         db.DateTime,
         index=False,
