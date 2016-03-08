@@ -1,18 +1,104 @@
 import pytest
 import uuid
 from freezegun import freeze_time
-import random
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from app.models import Notification, Job, ServiceNotificationStats
-from datetime import datetime
+from app.models import Notification, Job, NotificationStatistics
+from datetime import datetime, timedelta
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_update_notification,
     get_notification,
     get_notification_for_job,
-    get_notifications_for_job
+    get_notifications_for_job,
+    dao_get_notification_statistics_for_service
 )
 from tests.app.conftest import sample_job
+
+
+def test_should_be_able_to_get_statistics_for_a_service(sample_template):
+    data = {
+        'to': '+44709123456',
+        'service': sample_template.service,
+        'service_id': sample_template.service.id,
+        'template': sample_template,
+        'created_at': datetime.utcnow()
+    }
+
+    notification = Notification(**data)
+    dao_create_notification(notification, sample_template.template_type)
+
+    stats = dao_get_notification_statistics_for_service(sample_template.service.id)
+    assert len(stats) == 1
+    assert stats[0].emails_requested == 0
+    assert stats[0].sms_requested == 1
+    assert stats[0].day == notification.created_at.strftime('%Y-%m-%d')
+    assert stats[0].service_id == notification.service_id
+
+
+def test_should_be_able_to_get_all_statistics_for_a_service(sample_template):
+    data = {
+        'to': '+44709123456',
+        'service': sample_template.service,
+        'service_id': sample_template.service.id,
+        'template': sample_template,
+        'created_at': datetime.utcnow()
+    }
+
+    notification_1 = Notification(**data)
+    notification_2 = Notification(**data)
+    notification_3 = Notification(**data)
+    dao_create_notification(notification_1, sample_template.template_type)
+    dao_create_notification(notification_2, sample_template.template_type)
+    dao_create_notification(notification_3, sample_template.template_type)
+
+    stats = dao_get_notification_statistics_for_service(sample_template.service.id)
+    assert len(stats) == 1
+    assert stats[0].emails_requested == 0
+    assert stats[0].sms_requested == 3
+
+
+def test_should_be_able_to_get_all_statistics_for_a_service_for_several_days(sample_template):
+    data = {
+        'to': '+44709123456',
+        'service': sample_template.service,
+        'service_id': sample_template.service.id,
+        'template': sample_template
+    }
+
+    today = datetime.utcnow()
+    yesterday = datetime.utcnow() - timedelta(days=1)
+    two_days_ago = datetime.utcnow() - timedelta(days=2)
+    data.update({
+        'created_at': today
+    })
+    notification_1 = Notification(**data)
+    data.update({
+        'created_at': yesterday
+    })
+    notification_2 = Notification(**data)
+    data.update({
+        'created_at': two_days_ago
+    })
+    notification_3 = Notification(**data)
+    dao_create_notification(notification_1, sample_template.template_type)
+    dao_create_notification(notification_2, sample_template.template_type)
+    dao_create_notification(notification_3, sample_template.template_type)
+
+    stats = dao_get_notification_statistics_for_service(sample_template.service.id)
+    assert len(stats) == 3
+    assert stats[0].emails_requested == 0
+    assert stats[0].sms_requested == 1
+    assert stats[0].day == today.strftime('%Y-%m-%d')
+    assert stats[1].emails_requested == 0
+    assert stats[1].sms_requested == 1
+    assert stats[1].day == yesterday.strftime('%Y-%m-%d')
+    assert stats[2].emails_requested == 0
+    assert stats[2].sms_requested == 1
+    assert stats[2].day == two_days_ago.strftime('%Y-%m-%d')
+
+
+def test_should_be_empty_list_if_no_statistics_for_a_service(sample_service):
+    assert len(dao_get_notification_statistics_for_service(sample_service.id)) == 0
 
 
 def test_save_notification_and_create_sms_stats(sample_template, sample_job):
@@ -40,8 +126,8 @@ def test_save_notification_and_create_sms_stats(sample_template, sample_job):
     assert 'sent' == notification_from_db.status
     assert Job.query.get(sample_job.id).notifications_sent == 1
 
-    stats = ServiceNotificationStats.query.filter(
-        ServiceNotificationStats.service_id == sample_template.service.id
+    stats = NotificationStatistics.query.filter(
+        NotificationStatistics.service_id == sample_template.service.id
     ).first()
 
     assert stats.emails_requested == 0
@@ -73,8 +159,8 @@ def test_save_notification_and_create_email_stats(sample_email_template, sample_
     assert 'sent' == notification_from_db.status
     assert Job.query.get(sample_job.id).notifications_sent == 1
 
-    stats = ServiceNotificationStats.query.filter(
-        ServiceNotificationStats.service_id == sample_email_template.service.id
+    stats = NotificationStatistics.query.filter(
+        NotificationStatistics.service_id == sample_email_template.service.id
     ).first()
 
     assert stats.emails_requested == 1
@@ -98,8 +184,8 @@ def test_save_notification_handles_midnight_properly(sample_template, sample_job
 
     assert Notification.query.count() == 1
 
-    stats = ServiceNotificationStats.query.filter(
-        ServiceNotificationStats.service_id == sample_template.service.id
+    stats = NotificationStatistics.query.filter(
+        NotificationStatistics.service_id == sample_template.service.id
     ).first()
 
     assert stats.day == '2016-01-01'
@@ -122,8 +208,8 @@ def test_save_notification_handles_just_before_midnight_properly(sample_template
 
     assert Notification.query.count() == 1
 
-    stats = ServiceNotificationStats.query.filter(
-        ServiceNotificationStats.service_id == sample_template.service.id
+    stats = NotificationStatistics.query.filter(
+        NotificationStatistics.service_id == sample_template.service.id
     ).first()
 
     assert stats.day == '2016-01-01'
@@ -146,8 +232,8 @@ def test_save_notification_and_increment_email_stats(sample_email_template, samp
 
     assert Notification.query.count() == 1
 
-    stats1 = ServiceNotificationStats.query.filter(
-        ServiceNotificationStats.service_id == sample_email_template.service.id
+    stats1 = NotificationStatistics.query.filter(
+        NotificationStatistics.service_id == sample_email_template.service.id
     ).first()
 
     assert stats1.emails_requested == 1
@@ -157,8 +243,8 @@ def test_save_notification_and_increment_email_stats(sample_email_template, samp
 
     assert Notification.query.count() == 2
 
-    stats2 = ServiceNotificationStats.query.filter(
-        ServiceNotificationStats.service_id == sample_email_template.service.id
+    stats2 = NotificationStatistics.query.filter(
+        NotificationStatistics.service_id == sample_email_template.service.id
     ).first()
 
     assert stats2.emails_requested == 2
@@ -182,8 +268,8 @@ def test_save_notification_and_increment_sms_stats(sample_template, sample_job):
 
     assert Notification.query.count() == 1
 
-    stats1 = ServiceNotificationStats.query.filter(
-        ServiceNotificationStats.service_id == sample_template.service.id
+    stats1 = NotificationStatistics.query.filter(
+        NotificationStatistics.service_id == sample_template.service.id
     ).first()
 
     assert stats1.emails_requested == 0
@@ -193,8 +279,8 @@ def test_save_notification_and_increment_sms_stats(sample_template, sample_job):
 
     assert Notification.query.count() == 2
 
-    stats2 = ServiceNotificationStats.query.filter(
-        ServiceNotificationStats.service_id == sample_template.service.id
+    stats2 = NotificationStatistics.query.filter(
+        NotificationStatistics.service_id == sample_template.service.id
     ).first()
 
     assert stats2.emails_requested == 0
@@ -220,7 +306,7 @@ def test_not_save_notification_and_not_create_stats_on_commit_error(sample_templ
 
     assert Notification.query.count() == 0
     assert Job.query.get(sample_job.id).notifications_sent == 0
-    assert ServiceNotificationStats.query.count() == 0
+    assert NotificationStatistics.query.count() == 0
 
 
 def test_save_notification_and_increment_job(sample_template, sample_job):
@@ -389,8 +475,8 @@ def test_get_all_notifications_for_job(notify_db, notify_db_session, sample_job)
 
     notifcations_from_db = get_notifications_for_job(sample_job.service.id, sample_job.id).items
     assert len(notifcations_from_db) == 5
-    stats = ServiceNotificationStats.query.filter(
-        ServiceNotificationStats.service_id == sample_job.service.id
+    stats = NotificationStatistics.query.filter(
+        NotificationStatistics.service_id == sample_job.service.id
     ).first()
 
     assert stats.emails_requested == 0
