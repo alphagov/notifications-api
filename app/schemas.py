@@ -5,10 +5,11 @@ from . import models
 from app.dao.permissions_dao import permission_dao
 from marshmallow import (post_load, ValidationError, validates, validates_schema)
 from marshmallow_sqlalchemy import field_for
-
-mobile_regex = re.compile("^\\+44[\\d]{10}$")
-
-email_regex = re.compile("(^[^@^\\s]+@[^@^\\.^\\s]+(\\.[^@^\\.^\\s]*)*\.(.+))")
+from utils.recipients import (
+    validate_email_address, InvalidEmailError,
+    validate_phone_number, InvalidPhoneError,
+    format_phone_number
+)
 
 
 # TODO I think marshmallow provides a better integration and error handling.
@@ -117,8 +118,17 @@ class SmsNotificationSchema(NotificationSchema):
 
     @validates('to')
     def validate_to(self, value):
-        if not mobile_regex.match(value):
-            raise ValidationError('Invalid phone number, must be of format +441234123123')
+        try:
+            validate_phone_number(value)
+        except InvalidPhoneError as error:
+            raise ValidationError('Invalid phone number: {}'.format(error))
+
+    @post_load
+    def format_phone_number(self, item):
+        item['to'] = format_phone_number(validate_phone_number(
+            item['to'])
+        )
+        return item
 
 
 class EmailNotificationSchema(NotificationSchema):
@@ -127,7 +137,9 @@ class EmailNotificationSchema(NotificationSchema):
 
     @validates('to')
     def validate_to(self, value):
-        if not email_regex.match(value):
+        try:
+            validate_email_address(value)
+        except InvalidEmailError:
             raise ValidationError('Invalid email')
 
 
@@ -163,7 +175,9 @@ class InvitedUserSchema(BaseSchema):
 
     @validates('email_address')
     def validate_to(self, value):
-        if not email_regex.match(value):
+        try:
+            validate_email_address(value)
+        except InvalidEmailError:
             raise ValidationError('Invalid email')
 
 

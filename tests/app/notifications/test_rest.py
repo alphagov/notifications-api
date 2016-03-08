@@ -24,7 +24,7 @@ def test_get_notification_by_id(notify_api, sample_notification):
             notification = json.loads(response.get_data(as_text=True))['notification']
             assert notification['status'] == 'sent'
             assert notification['template'] == sample_notification.template.id
-            assert notification['to'] == '+44709123456'
+            assert notification['to'] == '+447700900855'
             assert notification['service'] == str(sample_notification.service_id)
             assert response.status_code == 200
 
@@ -63,7 +63,7 @@ def test_get_all_notifications(notify_api, sample_notification):
             notifications = json.loads(response.get_data(as_text=True))
             assert notifications['notifications'][0]['status'] == 'sent'
             assert notifications['notifications'][0]['template'] == sample_notification.template.id
-            assert notifications['notifications'][0]['to'] == '+44709123456'
+            assert notifications['notifications'][0]['to'] == '+447700900855'
             assert notifications['notifications'][0]['service'] == str(sample_notification.service_id)
             assert response.status_code == 200
 
@@ -296,7 +296,7 @@ def test_should_reject_bad_phone_numbers(notify_api, sample_template, mocker):
 
             assert json_resp['result'] == 'error'
             assert len(json_resp['message'].keys()) == 1
-            assert 'Invalid phone number, must be of format +441234123123' in json_resp['message']['to']
+            assert 'Invalid phone number: Must not contain letters or symbols' in json_resp['message']['to']
             assert response.status_code == 400
 
 
@@ -306,7 +306,7 @@ def test_send_notification_invalid_template_id(notify_api, sample_template, mock
             mocker.patch('app.celery.tasks.send_sms.apply_async')
 
             data = {
-                'to': '+441234123123',
+                'to': '+447700900855',
                 'template': 9999
             }
             auth_header = create_authorization_header(
@@ -337,7 +337,7 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_templat
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             data = {
-                'to': '+441234123123',
+                'to': '+447700900855',
                 'template': sample_template_with_placeholders.id,
                 'personalisation': {
                     'name': 'Jo'
@@ -373,7 +373,7 @@ def test_send_notification_with_missing_personalisation(
             mocker.patch('app.celery.tasks.send_sms.apply_async')
 
             data = {
-                'to': '+441234123123',
+                'to': '+447700900855',
                 'template': sample_template_with_placeholders.id,
                 'personalisation': {
                     'foo': 'bar'
@@ -405,7 +405,7 @@ def test_send_notification_with_too_much_personalisation_data(
             mocker.patch('app.celery.tasks.send_sms.apply_async')
 
             data = {
-                'to': '+441234123123',
+                'to': '+447700900855',
                 'template': sample_template_with_placeholders.id,
                 'personalisation': {
                     'name': 'Jo', 'foo': 'bar'
@@ -439,7 +439,7 @@ def test_prevents_sending_to_any_mobile_on_restricted_service(notify_api, sample
             ).update(
                 {'restricted': True}
             )
-            invalid_mob = '+449999999999'
+            invalid_mob = '+447700900855'
             data = {
                 'to': invalid_mob,
                 'template': sample_template.id
@@ -504,7 +504,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             data = {
-                'to': '+441234123123',
+                'to': '07700 900 855',
                 'template': sample_template.id
             }
 
@@ -521,6 +521,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             notification_id = json.loads(response.data)['notification_id']
+            assert app.encryption.encrypt.call_args[0][0]['to'] == '+447700900855'
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 (str(sample_template.service_id),
                  notification_id,
