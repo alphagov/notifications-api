@@ -10,7 +10,7 @@ from flask import (
 
 from utils.template import Template, NeededByTemplateError, NoPlaceholderForDataError
 
-from app import api_user, encryption, create_uuid
+from app import api_user, encryption, create_uuid, DATETIME_FORMAT
 from app.authentication.auth import require_admin
 from app.dao import (
     templates_dao,
@@ -178,7 +178,7 @@ def send_notification(notification_type):
             service_id,
             notification_id,
             encryption.encrypt(notification),
-            str(datetime.utcnow())
+            datetime.utcnow().strftime(DATETIME_FORMAT)
         ), queue='sms')
     else:
         if service.restricted and notification['to'] not in [user.email_address for user in service.users]:
@@ -190,6 +190,6 @@ def send_notification(notification_type):
             template.subject,
             "{}@{}".format(service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
             encryption.encrypt(notification),
-            str(datetime.utcnow())
+            datetime.utcnow().strftime(DATETIME_FORMAT)
         ), queue='email')
     return jsonify({'notification_id': notification_id}), 201

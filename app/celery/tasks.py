@@ -1,4 +1,4 @@
-from app import create_uuid
+from app import create_uuid, DATETIME_FORMAT
 from app import notify_celery, encryption, firetext_client, aws_ses_client
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
@@ -6,7 +6,7 @@ from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.notifications_dao import dao_create_notification, dao_update_notification
 from app.dao.jobs_dao import dao_update_job, dao_get_job_by_id
-from app.models import Notification
+from app.models import Notification, TEMPLATE_TYPE_EMAIL, TEMPLATE_TYPE_SMS
 from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
@@ -39,7 +39,7 @@ def process_job(job_id):
                 str(job.service_id),
                 str(create_uuid()),
                 encrypted,
-                str(datetime.utcnow())),
+                datetime.utcnow().strftime(DATETIME_FORMAT)),
                 queue='bulk-sms'
             )
 
@@ -50,7 +50,7 @@ def process_job(job_id):
                 job.template.subject,
                 "{}@{}".format(job.service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
                 encrypted,
-                str(datetime.utcnow())),
+                datetime.utcnow().strftime(DATETIME_FORMAT)),
                 queue='bulk-email')
 
     finished = datetime.utcnow()
@@ -89,12 +89,12 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             service_id=service_id,
             job_id=notification.get('job', None),
             status=status,
-            created_at=created_at,
+            created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=client.get_name()
         )
 
-        dao_create_notification(notification_db_object)
+        dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS)
 
         if can_send:
             try:
@@ -159,11 +159,11 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
             service_id=service_id,
             job_id=notification.get('job', None),
             status=status,
-            created_at=created_at,
+            created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=client.get_name()
         )
-        dao_create_notification(notification_db_object)
+        dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL)
 
         if can_send:
             try:
