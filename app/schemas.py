@@ -61,6 +61,8 @@ class BaseSchema(ma.ModelSchema):
 class UserSchema(BaseSchema):
 
     permissions = fields.Method("user_permissions", dump_only=True)
+    password_changed_at = field_for(models.User, 'password_changed_at', format='%Y-%m-%d %H:%M:%S.%f')
+    created_at = field_for(models.User, 'created_at', format='%Y-%m-%d %H:%M:%S.%f')
 
     def user_permissions(self, usr):
         retval = {}

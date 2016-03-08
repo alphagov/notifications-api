@@ -16,6 +16,7 @@ def save_model_user(usr, update_dict={}, pwd=None):
     if update_dict:
         if update_dict.get('id'):
             del update_dict['id']
+            update_dict.pop('password_changed_at')
         db.session.query(User).filter_by(id=usr.id).update(update_dict)
     else:
         db.session.add(usr)
