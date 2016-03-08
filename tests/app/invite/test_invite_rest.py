@@ -90,7 +90,7 @@ def test_create_invited_user_invalid_email(notify_api, sample_service, mocker):
             assert response.status_code == 400
             json_resp = json.loads(response.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == {'email_address': ['Invalid email']}
+            assert json_resp['message'] == {'email_address': ['Not a valid email address']}
             app.celery.tasks.email_invited_user.apply_async.assert_not_called()
 
 
