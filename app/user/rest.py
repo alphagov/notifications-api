@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import (jsonify, request, abort, Blueprint)
+from flask import (jsonify, request, abort, Blueprint, current_app)
 from app import encryption
 
 from app.dao.users_dao import (
