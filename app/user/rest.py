@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import (jsonify, request, abort, Blueprint, current_app)
+from flask import (jsonify, request, abort, Blueprint)
 from app import encryption
 
 from app.dao.users_dao import (
@@ -77,6 +77,8 @@ def verify_user_password(user_id):
             result="error",
             message={'password': ['Required field missing data']}), 400
     if user_to_verify.check_password(txt_pwd):
+        user_to_verify.logged_in_at = datetime.utcnow()
+        save_model_user(user_to_verify)
         reset_failed_login_count(user_to_verify)
         return jsonify({}), 204
     else:
