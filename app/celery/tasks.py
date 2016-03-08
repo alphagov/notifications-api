@@ -12,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
 from datetime import datetime
 from utils.template import Template
-from utils.process_csv import get_rows_from_csv, get_recipient_from_row, first_column_heading
+from utils.recipients import RecipientCSV, first_column_heading
 
 
 @notify_celery.task(name="process-job")
@@ -22,15 +22,16 @@ def process_job(job_id):
     job.status = 'in progress'
     dao_update_job(job)
 
-    file = s3.get_job_from_s3(job.bucket_name, job_id)
-
-    for row in get_rows_from_csv(file):
+    for recipient, personalisation in RecipientCSV(
+        s3.get_job_from_s3(job.bucket_name, job_id),
+        template_type=job.template.template_type
+    ).recipients_and_personalisation:
 
         encrypted = encryption.encrypt({
             'template': job.template_id,
             'job': str(job.id),
-            'to': get_recipient_from_row(row, job.template.template_type),
-            'personalisation': row
+            'to': recipient,
+            'personalisation': personalisation
         })
 
         if job.template.template_type == 'sms':
