@@ -28,9 +28,7 @@ from app.models import ApiKey
 from app.schemas import (
     service_schema,
     api_key_schema,
-    user_schema,
-    permission_schema,
-    invited_user_schema
+    user_schema
 )
 
 from app.errors import register_errors
