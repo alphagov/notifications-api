@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import (jsonify, request, abort, Blueprint)
+from flask import (jsonify, request, abort, Blueprint, current_app)
 from app import encryption
 
 from app.dao.users_dao import (
@@ -17,14 +17,14 @@ from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
 
 from app.schemas import (
-    old_request_verify_code_schema,
+    email_data_request_schema,
     user_schema,
     request_verify_code_schema,
     user_schema_load_json,
     permission_schema
 )
 
-from app.celery.tasks import (send_sms_code, send_email_code)
+from app.celery.tasks import (send_sms_code, send_email_code, email_reset_password)
 from app.errors import register_errors
 
 user = Blueprint('user', __name__)
@@ -49,7 +49,7 @@ def create_user():
 def update_user(user_id):
     user_to_update = get_model_users(user_id=user_id)
     if not user_to_update:
-        return jsonify(result="error", message="User not found"), 404
+        return _user_not_found(user_id)
 
     req_json = request.get_json()
     update_dct, errors = user_schema_load_json.load(req_json)
@@ -118,7 +118,7 @@ def send_user_sms_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
 
     if not user_to_send_to:
-        return jsonify(result="error", message="No user found"), 404
+        return _user_not_found(user_id)
 
     verify_code, errors = request_verify_code_schema.load(request.get_json())
     if errors:
@@ -140,7 +140,7 @@ def send_user_sms_code(user_id):
 def send_user_email_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
     if not user_to_send_to:
-        return jsonify(result="error", message="No user found"), 404
+        return _user_not_found(user_id)
 
     verify_code, errors = request_verify_code_schema.load(request.get_json())
     if errors:
@@ -174,7 +174,7 @@ def set_permissions(user_id, service_id):
     # who is making this request has permission to make the request.
     user = get_model_users(user_id=user_id)
     if not user:
-        abort(404, 'User not found for id: {}'.format(user_id))
+        _user_not_found(user_id)
     service = dao_fetch_service_by_id(service_id=service_id)
     if not service:
         abort(404, 'Service not found for id: {}'.format(service_id))
@@ -193,9 +193,45 @@ def get_by_email():
     email = request.args.get('email')
     if not email:
         return jsonify(result="error", message="invalid request"), 400
-    user = get_user_by_email(email)
-    if not user:
-        return jsonify(result="error", message="not found"), 404
-    result = user_schema.dump(user)
+    fetched_user = get_user_by_email(email)
+    if not fetched_user:
+        return _user_not_found_for_email()
+    result = user_schema.dump(fetched_user)
 
     return jsonify(data=result.data)
+
+
+@user.route('/reset-password', methods=['POST'])
+def send_user_reset_password():
+    email, errors = email_data_request_schema.load(request.get_json())
+    if errors:
+        return jsonify(result="error", message=errors), 400
+
+    user_to_send_to = get_user_by_email(email['email'])
+    if not user_to_send_to:
+        return _user_not_found_for_email()
+
+    reset_password_message = {'to': user_to_send_to.email_address,
+                              'name': user_to_send_to.name,
+                              'reset_password_url': _create_reset_password_url(user_to_send_to.email_address)}
+
+    email_reset_password.apply_async([encryption.encrypt(reset_password_message)], queue='email-reset-password')
+
+    return jsonify({}), 204
+
+
+def _user_not_found(user_id):
+    return abort(404, 'User not found for id: {}'.format(user_id))
+
+
+def _user_not_found_for_email():
+    return abort(404, 'User not found for email address')
+
+
+def _create_reset_password_url(email):
+    from utils.url_safe_token import generate_token
+    import json
+    data = json.dumps({'email': email, 'created_at': str(datetime.now())})
+    token = generate_token(data, current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
+
+    return current_app.config['ADMIN_BASE_URL'] + '/new-password/' + token
