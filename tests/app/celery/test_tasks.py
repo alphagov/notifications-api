@@ -16,7 +16,9 @@ from freezegun import freeze_time
 from tests.app.conftest import (
     sample_service,
     sample_user,
-    sample_template
+    sample_template,
+    sample_job,
+    sample_email_template
 )
 
 
@@ -39,6 +41,43 @@ def test_should_process_sms_job(sample_job, mocker):
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
     assert job.status == 'finished'
+
+
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db, notify_db_session, mocker):
+    service = sample_service(notify_db, notify_db_session, limit=9)
+    job = sample_job(notify_db, notify_db_session, service=service)
+
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
+    mocker.patch('app.celery.tasks.send_sms.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+
+    process_job(job.id)
+
+    s3.get_job_from_s3.assert_called_once_with(job.bucket_name, job.id)
+    job = jobs_dao.dao_get_job_by_id(job.id)
+    assert job.status == 'finished'
+    tasks.send_sms.apply_async.assert_not_called
+
+
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db, notify_db_session, mocker):
+    service = sample_service(notify_db, notify_db_session, limit=9)
+    template = sample_email_template(notify_db, notify_db_session, service=service)
+    job = sample_job(notify_db, notify_db_session, service=service, template=template)
+
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_email'))
+    mocker.patch('app.celery.tasks.send_email.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+
+    process_job(job.id)
+
+    s3.get_job_from_s3.assert_called_once_with(job.bucket_name, job.id)
+    job = jobs_dao.dao_get_job_by_id(job.id)
+    assert job.status == 'finished'
+    tasks.send_email.apply_async.assert_not_called
 
 
 def test_should_not_create_send_task_for_empty_file(sample_job, mocker):
