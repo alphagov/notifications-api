@@ -55,7 +55,7 @@ def test_should_process_sms_job(sample_job, mocker):
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db, notify_db_session, mocker):
     service = sample_service(notify_db, notify_db_session, limit=9)
-    job = sample_job(notify_db, notify_db_session, service=service)
+    job = sample_job(notify_db, notify_db_session, service=service, notification_count=10)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
@@ -96,7 +96,7 @@ def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(noti
 
     sample_notification(notify_db, notify_db_session, service=service, job=job)
 
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
@@ -110,7 +110,7 @@ def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(noti
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db, notify_db_session, mocker):
+def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, notify_db_session, mocker):
     service = sample_service(notify_db, notify_db_session, limit=0)
     template = sample_email_template(notify_db, notify_db_session, service=service)
     job = sample_job(notify_db, notify_db_session, service=service, template=template)
@@ -132,7 +132,7 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db, notif
 def test_should_process_sms_job_if_exactly_on_send_limits(notify_db, notify_db_session, mocker):
     service = sample_service(notify_db, notify_db_session, limit=10)
     template = sample_email_template(notify_db, notify_db_session, service=service)
-    job = sample_job(notify_db, notify_db_session, service=service, template=template)
+    job = sample_job(notify_db, notify_db_session, service=service, template=template, notification_count=10)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
@@ -168,7 +168,7 @@ def test_should_not_create_send_task_for_empty_file(sample_job, mocker):
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_email_job(sample_email_job, sample_template, mocker):
+def test_should_process_email_job(sample_email_job, mocker):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
