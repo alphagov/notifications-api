@@ -8,7 +8,7 @@ from app.celery.tasks import (send_sms,
                               process_job,
                               email_invited_user,
                               email_reset_password)
-from app import (firetext_client, aws_ses_client, encryption)
+from app import (firetext_client, aws_ses_client, encryption, DATETIME_FORMAT)
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
 from app.dao import notifications_dao, jobs_dao
@@ -40,7 +40,7 @@ def test_should_process_sms_job(sample_job, mocker):
         (str(sample_job.service_id),
          "uuid",
          "something_encrypted",
-         "2016-01-01 11:09:00.061258"),
+         "2016-01-01T11:09:00.061258"),
         queue="bulk-sms"
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
@@ -75,7 +75,7 @@ def test_should_process_email_job(sample_email_job, mocker):
          sample_email_job.template.subject,
          "{}@{}".format(sample_email_job.service.email_from, "test.notify.com"),
          "something_encrypted",
-         "2016-01-01 11:09:00.061258"),
+         "2016-01-01T11:09:00.061258"),
         queue="bulk-email"
     )
     job = jobs_dao.dao_get_job_by_id(sample_email_job.id)
@@ -112,7 +112,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
         sample_template_with_placeholders.service_id,
         notification_id,
         "encrypted-in-reality",
-        now
+        now.strftime(DATETIME_FORMAT)
     )
 
     firetext_client.send_sms.assert_called_once_with("+441234123123", "Sample service: Hello Jo")
@@ -144,7 +144,7 @@ def test_should_send_sms_without_personalisation(sample_template, mocker):
         sample_template.service_id,
         notification_id,
         "encrypted-in-reality",
-        now
+        now.strftime(DATETIME_FORMAT)
     )
 
     firetext_client.send_sms.assert_called_once_with("+441234123123", "Sample service: This is a template")
@@ -170,7 +170,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
         service.id,
         notification_id,
         "encrypted-in-reality",
-        now
+        now.strftime(DATETIME_FORMAT)
     )
 
     firetext_client.send_sms.assert_called_once_with("+441234123123", "Sample service: This is a template")
@@ -196,7 +196,7 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
         service.id,
         notification_id,
         "encrypted-in-reality",
-        now
+        now.strftime(DATETIME_FORMAT)
     )
 
     firetext_client.send_sms.assert_not_called()
@@ -223,7 +223,8 @@ def test_should_send_email_if_restricted_service_and_valid_email(notify_db, noti
         'subject',
         'email_from',
         "encrypted-in-reality",
-        now)
+        now.strftime(DATETIME_FORMAT)
+    )
 
     aws_ses_client.send_email.assert_called_once_with(
         "email_from",
@@ -249,8 +250,8 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
         sample_job.service.id,
         notification_id,
         "encrypted-in-reality",
-        now)
-
+        now.strftime(DATETIME_FORMAT)
+    )
     firetext_client.send_sms.assert_called_once_with("+441234123123", "Sample service: This is a template")
     persisted_notification = notifications_dao.get_notification(sample_job.template.service_id, notification_id)
     assert persisted_notification.id == notification_id
@@ -281,8 +282,8 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
         'subject',
         'email_from',
         "encrypted-in-reality",
-        now)
-
+        now.strftime(DATETIME_FORMAT)
+    )
     aws_ses_client.send_email.assert_called_once_with(
         "email_from",
         "my_email@my_email.com",
@@ -319,8 +320,8 @@ def test_should_use_email_template_and_persist_without_personalisation(
         'subject',
         'email_from',
         "encrypted-in-reality",
-        now)
-
+        now.strftime(DATETIME_FORMAT)
+    )
     aws_ses_client.send_email.assert_called_once_with(
         "email_from",
         "my_email@my_email.com",
@@ -345,8 +346,8 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
         sample_template.service_id,
         notification_id,
         "encrypted-in-reality",
-        now)
-
+        now.strftime(DATETIME_FORMAT)
+    )
     firetext_client.send_sms.assert_called_once_with("+441234123123", "Sample service: This is a template")
     persisted_notification = notifications_dao.get_notification(sample_template.service_id, notification_id)
     assert persisted_notification.id == notification_id
@@ -377,8 +378,8 @@ def test_should_persist_notification_as_failed_if_email_client_fails(sample_emai
         'subject',
         'email_from',
         "encrypted-in-reality",
-        now)
-
+        now.strftime(DATETIME_FORMAT)
+    )
     aws_ses_client.send_email.assert_called_once_with(
         "email_from",
         "my_email@my_email.com",
@@ -411,8 +412,8 @@ def test_should_not_send_sms_if_db_peristance_failed(sample_template, mocker):
         sample_template.service_id,
         notification_id,
         "encrypted-in-reality",
-        now)
-
+        now.strftime(DATETIME_FORMAT)
+    )
     firetext_client.send_sms.assert_not_called()
     with pytest.raises(NoResultFound) as e:
         notifications_dao.get_notification(sample_template.service_id, notification_id)
@@ -437,8 +438,8 @@ def test_should_not_send_email_if_db_peristance_failed(sample_email_template, mo
         'subject',
         'email_from',
         "encrypted-in-reality",
-        now)
-
+        now.strftime(DATETIME_FORMAT)
+    )
     aws_ses_client.send_email.assert_not_called()
     with pytest.raises(NoResultFound) as e:
         notifications_dao.get_notification(sample_email_template.service_id, notification_id)
