@@ -1,5 +1,8 @@
 import pytest
 import uuid
+from app import (
+    DATE_FORMAT
+)
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from app.models import Notification, Job, NotificationStatistics
@@ -10,7 +13,8 @@ from app.dao.notifications_dao import (
     get_notification,
     get_notification_for_job,
     get_notifications_for_job,
-    dao_get_notification_statistics_for_service
+    dao_get_notification_statistics_for_service,
+    dao_get_notification_statistics_for_service_and_day
 )
 from tests.app.conftest import sample_job
 
@@ -31,8 +35,46 @@ def test_should_be_able_to_get_statistics_for_a_service(sample_template):
     assert len(stats) == 1
     assert stats[0].emails_requested == 0
     assert stats[0].sms_requested == 1
-    assert stats[0].day == notification.created_at.strftime('%Y-%m-%d')
+    assert stats[0].day == notification.created_at.strftime(DATE_FORMAT)
     assert stats[0].service_id == notification.service_id
+
+
+def test_should_be_able_to_get_statistics_for_a_service_for_a_day(sample_template):
+    now = datetime.utcnow()
+    data = {
+        'to': '+44709123456',
+        'service': sample_template.service,
+        'service_id': sample_template.service.id,
+        'template': sample_template,
+        'created_at': now
+    }
+
+    notification = Notification(**data)
+    dao_create_notification(notification, sample_template.template_type)
+    stat = dao_get_notification_statistics_for_service_and_day(
+        sample_template.service.id, now.strftime(DATE_FORMAT)
+    )
+    assert stat.emails_requested == 0
+    assert stat.sms_requested == 1
+    assert stat.day == notification.created_at.strftime(DATE_FORMAT)
+    assert stat.service_id == notification.service_id
+
+
+def test_should_return_none_if_no_statistics_for_a_service_for_a_day(sample_template):
+    now = datetime.utcnow()
+    data = {
+        'to': '+44709123456',
+        'service': sample_template.service,
+        'service_id': sample_template.service.id,
+        'template': sample_template,
+        'created_at': now
+    }
+
+    notification = Notification(**data)
+    dao_create_notification(notification, sample_template.template_type)
+    assert not dao_get_notification_statistics_for_service_and_day(
+        sample_template.service.id, (datetime.utcnow() - timedelta(days=1)).strftime(DATE_FORMAT)
+    )
 
 
 def test_should_be_able_to_get_all_statistics_for_a_service(sample_template):
@@ -88,13 +130,13 @@ def test_should_be_able_to_get_all_statistics_for_a_service_for_several_days(sam
     assert len(stats) == 3
     assert stats[0].emails_requested == 0
     assert stats[0].sms_requested == 1
-    assert stats[0].day == today.strftime('%Y-%m-%d')
+    assert stats[0].day == today.strftime(DATE_FORMAT)
     assert stats[1].emails_requested == 0
     assert stats[1].sms_requested == 1
-    assert stats[1].day == yesterday.strftime('%Y-%m-%d')
+    assert stats[1].day == yesterday.strftime(DATE_FORMAT)
     assert stats[2].emails_requested == 0
     assert stats[2].sms_requested == 1
-    assert stats[2].day == two_days_ago.strftime('%Y-%m-%d')
+    assert stats[2].day == two_days_ago.strftime(DATE_FORMAT)
 
 
 def test_should_be_empty_list_if_no_statistics_for_a_service(sample_service):

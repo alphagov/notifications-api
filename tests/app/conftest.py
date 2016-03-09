@@ -101,12 +101,13 @@ def sample_service(notify_db,
                    notify_db_session,
                    service_name="Sample service",
                    user=None,
-                   restricted=False):
+                   restricted=False,
+                   limit=1000):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
     data = {
         'name': service_name,
-        'limit': 1000,
+        'limit': limit,
         'active': False,
         'restricted': restricted,
         'email_from': email_safe(service_name)
@@ -197,7 +198,8 @@ def sample_api_key(notify_db,
 def sample_job(notify_db,
                notify_db_session,
                service=None,
-               template=None):
+               template=None,
+               notification_count=1):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:
@@ -213,7 +215,7 @@ def sample_job(notify_db,
         'bucket_name': bucket_name,
         'file_name': file_name,
         'original_file_name': 'some.csv',
-        'notification_count': 1
+        'notification_count': notification_count
     }
     job = Job(**data)
     dao_create_job(job)

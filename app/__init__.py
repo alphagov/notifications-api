@@ -14,6 +14,7 @@ from app.clients.email.aws_ses import AwsSesClient
 from app.encryption import Encryption
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+DATE_FORMAT = "%Y-%m-%d"
 
 db = SQLAlchemy()
 ma = Marshmallow()
