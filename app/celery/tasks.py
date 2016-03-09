@@ -22,19 +22,24 @@ def process_job(job_id):
     job.status = 'in progress'
     dao_update_job(job)
 
+    template = Template(
+        dao_get_template_by_id(job.template_id).__dict__
+    )
+
     for recipient, personalisation in RecipientCSV(
         s3.get_job_from_s3(job.bucket_name, job_id),
-        template_type=job.template.template_type
+        template_type=template.template_type,
+        placeholders=template.placeholders
     ).recipients_and_personalisation:
 
         encrypted = encryption.encrypt({
-            'template': job.template_id,
+            'template': template.id,
             'job': str(job.id),
             'to': recipient,
             'personalisation': personalisation
         })
 
-        if job.template.template_type == 'sms':
+        if template.template_type == 'sms':
             send_sms.apply_async((
                 str(job.service_id),
                 str(create_uuid()),
@@ -43,11 +48,11 @@ def process_job(job_id):
                 queue='bulk-sms'
             )
 
-        if job.template.template_type == 'email':
+        if template.template_type == 'email':
             send_email.apply_async((
                 str(job.service_id),
                 str(create_uuid()),
-                job.template.subject,
+                template.subject,
                 "{}@{}".format(job.service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
@@ -101,8 +106,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 template = Template(
                     dao_get_template_by_id(notification['template']).__dict__,
                     values=notification.get('personalisation', {}),
-                    prefix=service.name,
-                    drop_values={first_column_heading['sms']}
+                    prefix=service.name
                 )
 
                 client.send_sms(
@@ -169,8 +173,7 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
             try:
                 template = Template(
                     dao_get_template_by_id(notification['template']).__dict__,
-                    values=notification.get('personalisation', {}),
-                    drop_values={first_column_heading['email']}
+                    values=notification.get('personalisation', {})
                 )
 
                 client.send_email(
