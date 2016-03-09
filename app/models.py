@@ -157,7 +157,7 @@ class Template(db.Model):
     subject = db.Column(db.Text, index=False, unique=True, nullable=True)
 
 
-JOB_STATUS_TYPES = ['pending', 'in progress', 'finished']
+JOB_STATUS_TYPES = ['pending', 'in progress', 'finished', 'sending limits exceeded']
 
 
 class Job(db.Model):

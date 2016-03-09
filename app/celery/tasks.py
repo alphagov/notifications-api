@@ -31,20 +31,18 @@ def process_job(job_id):
         day=job.created_at.strftime(DATE_FORMAT)
     )
 
+    total_sent = 0
     if stats:
-        sending_limit = service.limit
-        job_size = job.notification_count
         total_sent = stats.emails_requested + stats.sms_requested
 
-        if total_sent + job_size > sending_limit:
-            finished = datetime.utcnow()
-            job.status = 'finished'
-            job.processing_finished = finished
-            dao_update_job(job)
-            current_app.logger.info(
-                "Job {} size {} error. Sending limits {} exceeded".format(job_id, job.notification_count, service.limit)
-            )
-            return
+    if total_sent + job.notification_count > service.limit:
+        job.status = 'sending limits exceeded'
+        job.processing_finished = datetime.utcnow()
+        dao_update_job(job)
+        current_app.logger.info(
+            "Job {} size {} error. Sending limits {} exceeded".format(job_id, job.notification_count, service.limit)
+        )
+        return
 
     job.status = 'in progress'
     dao_update_job(job)
