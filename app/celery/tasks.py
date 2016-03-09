@@ -36,7 +36,7 @@ def process_job(job_id):
         job_size = job.notification_count
         total_sent = stats.emails_requested + stats.sms_requested
 
-        if total_sent + job_size >= sending_limit:
+        if total_sent + job_size > sending_limit:
             finished = datetime.utcnow()
             job.status = 'finished'
             job.processing_finished = finished

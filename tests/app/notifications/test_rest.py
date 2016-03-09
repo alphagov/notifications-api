@@ -797,7 +797,7 @@ def test_should_block_api_call_if_over_day_limit_regardless_of_type(notify_db, n
             sample_notification(notify_db, notify_db_session, template=email_template, service=service)
 
             data = {
-                'to': '+441234123123',
+                'to': '+447234123123',
                 'template': sms_template.id
             }
 
@@ -813,7 +813,7 @@ def test_should_block_api_call_if_over_day_limit_regardless_of_type(notify_db, n
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
             json_resp = json.loads(response.get_data(as_text=True))
-
+            print(json_resp)
             assert response.status_code == 429
             assert 'Exceeded send limits (1) for today' in json_resp['message']
 
