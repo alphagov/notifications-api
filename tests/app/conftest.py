@@ -101,12 +101,13 @@ def sample_service(notify_db,
                    notify_db_session,
                    service_name="Sample service",
                    user=None,
-                   restricted=False):
+                   restricted=False,
+                   limit=1000):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
     data = {
         'name': service_name,
-        'limit': 1000,
+        'limit': limit,
         'active': False,
         'restricted': restricted,
         'email_from': email_safe(service_name)
