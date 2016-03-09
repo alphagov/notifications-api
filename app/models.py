@@ -107,7 +107,30 @@ class ApiKey(db.Model):
     )
 
 
-TEMPLATE_TYPES = ['sms', 'email', 'letter']
+class NotificationStatistics(db.Model):
+    __tablename__ = 'notification_statistics'
+
+    id = db.Column(db.Integer, primary_key=True)
+    day = db.Column(db.String(255), nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
+    service = db.relationship('Service', backref=db.backref('service_notification_stats', lazy='dynamic'))
+    emails_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False)
+    emails_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
+    emails_error = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
+    sms_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False)
+    sms_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
+    sms_error = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint('service_id', 'day', name='uix_service_to_day'),
+    )
+
+
+TEMPLATE_TYPE_SMS = 'sms'
+TEMPLATE_TYPE_EMAIL = 'email'
+TEMPLATE_TYPE_LETTER = 'letter'
+
+TEMPLATE_TYPES = [TEMPLATE_TYPE_SMS, TEMPLATE_TYPE_EMAIL, TEMPLATE_TYPE_LETTER]
 
 
 class Template(db.Model):

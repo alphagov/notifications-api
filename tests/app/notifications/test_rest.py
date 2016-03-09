@@ -359,7 +359,7 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_templat
                 (str(sample_template_with_placeholders.service.id),
                  notification_id,
                  "something_encrypted",
-                 "2016-01-01 11:09:00.061258"),
+                 "2016-01-01T11:09:00.061258"),
                 queue="sms"
             )
             assert response.status_code == 201
@@ -526,7 +526,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
                 (str(sample_template.service_id),
                  notification_id,
                  "something_encrypted",
-                 "2016-01-01 11:09:00.061258"),
+                 "2016-01-01T11:09:00.061258"),
                 queue="sms"
             )
             assert response.status_code == 201
@@ -582,7 +582,7 @@ def test_should_reject_email_notification_with_bad_email(notify_api, sample_emai
             app.celery.tasks.send_email.apply_async.assert_not_called()
             assert response.status_code == 400
             assert data['result'] == 'error'
-            assert data['message']['to'][0] == 'Not a valid email address'
+            assert data['message']['to'][0] == 'Not a valid email address '
 
 
 def test_should_reject_email_notification_with_template_id_that_cant_be_found(
@@ -748,7 +748,7 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
                  "Email Subject",
                  "sample.service@test.notify.com",
                  "something_encrypted",
-                 "2016-01-01 11:09:00.061258"),
+                 "2016-01-01T11:09:00.061258"),
                 queue="email"
             )
             assert response.status_code == 201

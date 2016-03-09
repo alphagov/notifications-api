@@ -348,7 +348,7 @@ def test_should_get_only_templates_for_that_servcie(notify_api, service_factory)
                 method='POST',
                 request_body=data
             )
-            client.post(
+            resp = client.post(
                 '/service/{}/template'.format(service_1.id),
                 headers=[('Content-Type', 'application/json'), create_auth_header],
                 data=data
