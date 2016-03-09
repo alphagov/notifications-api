@@ -16,7 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
 from datetime import datetime
 from utils.template import Template
-from utils.recipients import RecipientCSV, first_column_heading
+from utils.recipients import RecipientCSV
 
 
 @notify_celery.task(name="process-job")
@@ -47,19 +47,24 @@ def process_job(job_id):
     job.status = 'in progress'
     dao_update_job(job)
 
+    template = Template(
+        dao_get_template_by_id(job.template_id).__dict__
+    )
+
     for recipient, personalisation in RecipientCSV(
-            s3.get_job_from_s3(job.bucket_name, job_id),
-            template_type=job.template.template_type
+        s3.get_job_from_s3(job.bucket_name, job_id),
+        template_type=template.template_type,
+        placeholders=template.placeholders
     ).recipients_and_personalisation:
 
         encrypted = encryption.encrypt({
-            'template': job.template_id,
+            'template': template.id,
             'job': str(job.id),
             'to': recipient,
             'personalisation': personalisation
         })
 
-        if job.template.template_type == 'sms':
+        if template.template_type == 'sms':
             send_sms.apply_async((
                 str(job.service_id),
                 str(create_uuid()),
@@ -68,11 +73,11 @@ def process_job(job_id):
                 queue='bulk-sms'
             )
 
-        if job.template.template_type == 'email':
+        if template.template_type == 'email':
             send_email.apply_async((
                 str(job.service_id),
                 str(create_uuid()),
-                job.template.subject,
+                template.subject,
                 "{}@{}".format(job.service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
@@ -126,8 +131,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 template = Template(
                     dao_get_template_by_id(notification['template']).__dict__,
                     values=notification.get('personalisation', {}),
-                    prefix=service.name,
-                    drop_values={first_column_heading['sms']}
+                    prefix=service.name
                 )
 
                 client.send_sms(
@@ -194,8 +198,7 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
             try:
                 template = Template(
                     dao_get_template_by_id(notification['template']).__dict__,
-                    values=notification.get('personalisation', {}),
-                    drop_values={first_column_heading['email']}
+                    values=notification.get('personalisation', {})
                 )
 
                 client.send_email(
@@ -222,7 +225,7 @@ def send_sms_code(encrypted_verification):
     try:
         firetext_client.send_sms(verification_message['to'], verification_message['secret_code'])
     except FiretextClientException as e:
-        current_app.logger.error(e)
+        current_app.logger.exception(e)
 
 
 @notify_celery.task(name='send-email-code')
@@ -234,7 +237,7 @@ def send_email_code(encrypted_verification_message):
                                   "Verification code",
                                   verification_message['secret_code'])
     except AwsSesClientException as e:
-        current_app.logger.error(e)
+        current_app.logger.exception(e)
 
 
 # TODO: when placeholders in templates work, this will be a real template
@@ -276,4 +279,27 @@ def email_invited_user(encrypted_invitation):
                                   subject_line,
                                   invitation_content)
     except AwsSesClientException as e:
-        current_app.logger.error(e)
+        current_app.logger.exception(e)
+
+
+def password_reset_message(name, url):
+    from string import Template
+    t = Template("Hi $user_name,\n\n"
+                 "We received a request to reset your password on GOV.UK Notify.\n\n"
+                 "If you didn't request this email, you can ignore it – your password has not been changed.\n\n"
+                 "To reset your password, click this link:\n\n"
+                 "$url")
+    return t.substitute(user_name=name, url=url)
+
+
+@notify_celery.task(name='email-reset-password')
+def email_reset_password(encrypted_reset_password_message):
+    reset_password_message = encryption.decrypt(encrypted_reset_password_message)
+    try:
+        aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
+                                  reset_password_message['to'],
+                                  "Reset your GOV.UK Notify password",
+                                  password_reset_message(name=reset_password_message['name'],
+                                                         url=reset_password_message['reset_password_url']))
+    except AwsSesClientException as e:
+        current_app.logger.exception(e)
