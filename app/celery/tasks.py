@@ -1,10 +1,14 @@
-from app import create_uuid, DATETIME_FORMAT
+from app import create_uuid, DATETIME_FORMAT, DATE_FORMAT
 from app import notify_celery, encryption, firetext_client, aws_ses_client
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.dao.notifications_dao import dao_create_notification, dao_update_notification
+from app.dao.notifications_dao import (
+    dao_create_notification,
+    dao_update_notification,
+    dao_get_notification_statistics_for_service_and_day
+)
 from app.dao.jobs_dao import dao_update_job, dao_get_job_by_id
 from app.models import Notification, TEMPLATE_TYPE_EMAIL, TEMPLATE_TYPE_SMS
 from flask import current_app
@@ -12,13 +16,34 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
 from datetime import datetime
 from utils.template import Template
-from utils.recipients import RecipientCSV, first_column_heading
+from utils.recipients import RecipientCSV
 
 
 @notify_celery.task(name="process-job")
 def process_job(job_id):
     start = datetime.utcnow()
     job = dao_get_job_by_id(job_id)
+
+    service = job.service
+
+    stats = dao_get_notification_statistics_for_service_and_day(
+        service_id=service.id,
+        day=job.created_at.strftime(DATE_FORMAT)
+    )
+
+    total_sent = 0
+    if stats:
+        total_sent = stats.emails_requested + stats.sms_requested
+
+    if total_sent + job.notification_count > service.limit:
+        job.status = 'sending limits exceeded'
+        job.processing_finished = datetime.utcnow()
+        dao_update_job(job)
+        current_app.logger.info(
+            "Job {} size {} error. Sending limits {} exceeded".format(job_id, job.notification_count, service.limit)
+        )
+        return
+
     job.status = 'in progress'
     dao_update_job(job)
 
