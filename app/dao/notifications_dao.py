@@ -2,7 +2,7 @@ from flask import current_app
 from app import db
 from app.models import Notification, Job, NotificationStatistics, TEMPLATE_TYPE_SMS, TEMPLATE_TYPE_EMAIL
 from sqlalchemy import desc
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def dao_get_notification_statistics_for_service(service_id):
@@ -85,3 +85,21 @@ def get_notifications_for_service(service_id, page=1):
         per_page=current_app.config['PAGE_SIZE']
     )
     return query
+
+
+def delete_successful_notifications_created_more_than_a_day_ago():
+    deleted = db.session.query(Notification).filter(
+        Notification.created_at < datetime.utcnow() - timedelta(hours=24),
+        Notification.status == 'sent'
+    ).delete()
+    db.session.commit()
+    return deleted
+
+
+def delete_failed_notifications_created_more_than_a_week_ago():
+    deleted = db.session.query(Notification).filter(
+        Notification.created_at < datetime.utcnow() - timedelta(hours=24 * 7),
+        Notification.status == 'failed'
+    ).delete()
+    db.session.commit()
+    return deleted
