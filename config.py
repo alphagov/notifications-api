@@ -1,3 +1,4 @@
+from datetime import timedelta
 from kombu import Exchange, Queue
 import os
 
@@ -35,12 +36,13 @@ class Config(object):
     CELERY_TIMEZONE = 'Europe/London'
     CELERY_ACCEPT_CONTENT = ['json']
     CELERY_TASK_SERIALIZER = 'json'
-    # CELERYBEAT_SCHEDULE = {
-    #     'refresh-queues': {
-    #         'task': 'refresh-services',
-    #         'schedule': timedelta(seconds=5)
-    #     }
-    # }
+    CELERY_IMPORTS = ('app.celery.tasks',)
+    CELERYBEAT_SCHEDULE = {
+        'tasks': {
+            'task': 'log_this',
+            'schedule': timedelta(seconds=5)
+        }
+    }
     CELERY_QUEUES = [
         Queue('sms', Exchange('default'), routing_key='sms'),
         Queue('email', Exchange('default'), routing_key='email'),
@@ -52,7 +54,6 @@ class Config(object):
         Queue('bulk-email', Exchange('default'), routing_key='bulk-email'),
         Queue('email-invited-user', Exchange('default'), routing_key='email-invited-user')
     ]
-    CELERY_IMPORTS = ('app.celery.tasks',)
     TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
     TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
     TWILIO_NUMBER = os.getenv('TWILIO_NUMBER')
