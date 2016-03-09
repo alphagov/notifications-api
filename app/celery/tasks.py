@@ -12,7 +12,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
 from datetime import datetime
 from utils.template import Template
-from utils.recipients import RecipientCSV, first_column_heading
+from utils.recipients import RecipientCSV
+
+
+@notify_celery.task(name="log_this")
+def do_test():
+    current_app.logger.info(
+        "here"
+    )
 
 
 @notify_celery.task(name="process-job")
@@ -27,9 +34,9 @@ def process_job(job_id):
     )
 
     for recipient, personalisation in RecipientCSV(
-        s3.get_job_from_s3(job.bucket_name, job_id),
-        template_type=template.template_type,
-        placeholders=template.placeholders
+            s3.get_job_from_s3(job.bucket_name, job_id),
+            template_type=template.template_type,
+            placeholders=template.placeholders
     ).recipients_and_personalisation:
 
         encrypted = encryption.encrypt({
