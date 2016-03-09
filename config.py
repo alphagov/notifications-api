@@ -30,7 +30,7 @@ class Config(object):
         'region': 'eu-west-1',
         'polling_interval': 1,  # 1 second
         'visibility_timeout': 60,  # 60 seconds
-        'queue_name_prefix': os.environ['NOTIFICATION_QUEUE_PREFIX']+'-'
+        'queue_name_prefix': os.environ['NOTIFICATION_QUEUE_PREFIX'] + '-'
     }
     CELERY_ENABLE_UTC = True,
     CELERY_TIMEZONE = 'Europe/London'
@@ -38,12 +38,29 @@ class Config(object):
     CELERY_TASK_SERIALIZER = 'json'
     CELERY_IMPORTS = ('app.celery.tasks',)
     CELERYBEAT_SCHEDULE = {
-        'tasks': {
-            'task': 'log_this',
-            'schedule': timedelta(seconds=5)
+        'delete-verify-codes': {
+            'task': 'delete-verify-codes',
+            'schedule': timedelta(hours=1),
+            'options': {'queue': 'periodic'}
+        },
+        'delete-invitations': {
+            'task': 'delete-invitations',
+            'schedule': timedelta(hours=1),
+            'options': {'queue': 'periodic'}
+        },
+        'delete-failed-notifications': {
+            'task': 'delete-failed-notifications',
+            'schedule': timedelta(hours=1),
+            'options': {'queue': 'periodic'}
+        },
+        'delete-successful-notifications': {
+            'task': 'delete-successful-notifications',
+            'schedule': timedelta(hours=1),
+            'options': {'queue': 'periodic'}
         }
     }
     CELERY_QUEUES = [
+        Queue('periodic', Exchange('default'), routing_key='periodic'),
         Queue('sms', Exchange('default'), routing_key='sms'),
         Queue('email', Exchange('default'), routing_key='email'),
         Queue('sms-code', Exchange('default'), routing_key='sms-code'),

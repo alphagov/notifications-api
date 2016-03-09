@@ -278,7 +278,9 @@ def sample_notification(notify_db,
                         service=None,
                         template=None,
                         job=None,
-                        to_field=None):
+                        to_field=None,
+                        status='sent',
+                        created_at=datetime.utcnow()):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:
@@ -300,7 +302,8 @@ def sample_notification(notify_db,
         'service_id': service.id,
         'service': service,
         'template': template,
-        'created_at': datetime.utcnow()
+        'status': status,
+        'created_at': created_at
     }
     notification = Notification(**data)
     dao_create_notification(notification, template.template_type)
