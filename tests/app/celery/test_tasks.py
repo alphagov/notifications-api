@@ -18,7 +18,8 @@ from tests.app.conftest import (
     sample_user,
     sample_template,
     sample_job,
-    sample_email_template
+    sample_email_template,
+    sample_notification
 )
 
 
@@ -55,28 +56,67 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db, notif
 
     process_job(job.id)
 
-    s3.get_job_from_s3.assert_called_once_with(job.bucket_name, job.id)
+    s3.get_job_from_s3.assert_not_called()
     job = jobs_dao.dao_get_job_by_id(job.id)
-    assert job.status == 'finished'
-    tasks.send_sms.apply_async.assert_not_called
+    assert job.status == 'sending limits exceeded'
+    tasks.send_sms.apply_async.assert_not_called()
 
 
-@freeze_time("2016-01-01 11:09:00.061258")
-def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db, notify_db_session, mocker):
-    service = sample_service(notify_db, notify_db_session, limit=9)
+def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify_db, notify_db_session, mocker):
+    service = sample_service(notify_db, notify_db_session, limit=1)
+    job = sample_job(notify_db, notify_db_session, service=service)
+
+    sample_notification(notify_db, notify_db_session, service=service, job=job)
+
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
+    mocker.patch('app.celery.tasks.send_sms.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+
+    process_job(job.id)
+
+    job = jobs_dao.dao_get_job_by_id(job.id)
+    assert job.status == 'sending limits exceeded'
+    s3.get_job_from_s3.assert_not_called()
+    tasks.send_sms.apply_async.assert_not_called()
+
+
+def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(notify_db, notify_db_session, mocker):
+    service = sample_service(notify_db, notify_db_session, limit=1)
     template = sample_email_template(notify_db, notify_db_session, service=service)
     job = sample_job(notify_db, notify_db_session, service=service, template=template)
 
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_email'))
+    sample_notification(notify_db, notify_db_session, service=service, job=job)
+
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
 
     process_job(job.id)
 
-    s3.get_job_from_s3.assert_called_once_with(job.bucket_name, job.id)
     job = jobs_dao.dao_get_job_by_id(job.id)
-    assert job.status == 'finished'
+    assert job.status == 'sending limits exceeded'
+    s3.get_job_from_s3.assert_not_called()
+    tasks.send_email.apply_async.assert_not_called()
+
+
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db, notify_db_session, mocker):
+    service = sample_service(notify_db, notify_db_session, limit=0)
+    template = sample_email_template(notify_db, notify_db_session, service=service)
+    job = sample_job(notify_db, notify_db_session, service=service, template=template)
+
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
+    mocker.patch('app.celery.tasks.send_email.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+
+    process_job(job.id)
+
+    s3.get_job_from_s3.assert_not_called
+    job = jobs_dao.dao_get_job_by_id(job.id)
+    assert job.status == 'sending limits exceeded'
     tasks.send_email.apply_async.assert_not_called
 
 
