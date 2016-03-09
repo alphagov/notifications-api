@@ -578,7 +578,7 @@ def test_should_reject_email_notification_with_bad_email(notify_api, sample_emai
             app.celery.tasks.send_email.apply_async.assert_not_called()
             assert response.status_code == 400
             assert data['result'] == 'error'
-            assert data['message']['to'][0] == 'Invalid email'
+            assert data['message']['to'][0] == 'Not a valid email address'
 
 
 def test_should_reject_email_notification_with_template_id_that_cant_be_found(
