@@ -221,6 +221,20 @@ def sample_job(notify_db,
 
 
 @pytest.fixture(scope='function')
+def sample_job_with_placeholdered_template(
+    notify_db,
+    notify_db_session,
+    service=None
+):
+    return sample_job(
+        notify_db,
+        notify_db_session,
+        service=service,
+        template=sample_template_with_placeholders(notify_db, notify_db_session)
+    )
+
+
+@pytest.fixture(scope='function')
 def sample_email_job(notify_db,
                      notify_db_session,
                      service=None,
