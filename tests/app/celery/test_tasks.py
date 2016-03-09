@@ -22,12 +22,13 @@ from freezegun import freeze_time
 from tests.app.conftest import (
     sample_service,
     sample_user,
-    sample_template
+    sample_template,
+    sample_template_with_placeholders
 )
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_sms_job(sample_job, mocker):
+def test_should_process_sms_job(sample_job, sample_template, mocker):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
@@ -36,6 +37,8 @@ def test_should_process_sms_job(sample_job, mocker):
     process_job(sample_job.id)
 
     s3.get_job_from_s3.assert_called_once_with(sample_job.bucket_name, sample_job.id)
+    assert encryption.encrypt.call_args[0][0]['to'] == '+441234123123'
+    assert encryption.encrypt.call_args[0][0]['personalisation'] == {}
     tasks.send_sms.apply_async.assert_called_once_with(
         (str(sample_job.service_id),
          "uuid",
@@ -47,7 +50,7 @@ def test_should_process_sms_job(sample_job, mocker):
     assert job.status == 'finished'
 
 
-def test_should_not_create_send_task_for_empty_file(sample_job, mocker):
+def test_should_not_create_send_task_for_empty_file(sample_job, sample_template, mocker):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('empty'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
 
@@ -60,7 +63,7 @@ def test_should_not_create_send_task_for_empty_file(sample_job, mocker):
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_email_job(sample_email_job, mocker):
+def test_should_process_email_job(sample_email_job, sample_template, mocker):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
@@ -69,6 +72,8 @@ def test_should_process_email_job(sample_email_job, mocker):
     process_job(sample_email_job.id)
 
     s3.get_job_from_s3.assert_called_once_with(sample_email_job.bucket_name, sample_email_job.id)
+    assert encryption.encrypt.call_args[0][0]['to'] == 'test@test.com'
+    assert encryption.encrypt.call_args[0][0]['personalisation'] == {}
     tasks.send_email.apply_async.assert_called_once_with(
         (str(sample_email_job.service_id),
          "uuid",
@@ -82,17 +87,22 @@ def test_should_process_email_job(sample_email_job, mocker):
     assert job.status == 'finished'
 
 
-def test_should_process_all_sms_job(sample_job, mocker):
+def test_should_process_all_sms_job(sample_job, sample_job_with_placeholdered_template, mocker):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
 
-    process_job(sample_job.id)
+    process_job(sample_job_with_placeholdered_template.id)
 
-    s3.get_job_from_s3.assert_called_once_with(sample_job.bucket_name, sample_job.id)
+    s3.get_job_from_s3.assert_called_once_with(
+        sample_job_with_placeholdered_template.bucket_name,
+        sample_job_with_placeholdered_template.id
+    )
+    assert encryption.encrypt.call_args[0][0]['to'] == '+441234123120'
+    assert encryption.encrypt.call_args[0][0]['personalisation'] == {'name': 'chris'}
     tasks.send_sms.apply_async.call_count == 10
-    job = jobs_dao.dao_get_job_by_id(sample_job.id)
+    job = jobs_dao.dao_get_job_by_id(sample_job_with_placeholdered_template.id)
     assert job.status == 'finished'
 
 
