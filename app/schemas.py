@@ -1,10 +1,8 @@
-import re
-from flask import current_app
 from flask_marshmallow.fields import fields
 from . import ma
 from . import models
 from app.dao.permissions_dao import permission_dao
-from marshmallow import (post_load, ValidationError, validates, validates_schema)
+from marshmallow import (post_load, ValidationError, validates)
 from marshmallow_sqlalchemy import field_for
 from utils.recipients import (
     validate_email_address, InvalidEmailError,
@@ -50,6 +48,8 @@ class BaseSchema(ma.ModelSchema):
 class UserSchema(BaseSchema):
 
     permissions = fields.Method("user_permissions", dump_only=True)
+    password_changed_at = field_for(models.User, 'password_changed_at', format='%Y-%m-%d %H:%M:%S.%f')
+    created_at = field_for(models.User, 'created_at', format='%Y-%m-%d %H:%M:%S.%f')
 
     def user_permissions(self, usr):
         retval = {}
@@ -95,18 +95,6 @@ class JobSchema(BaseSchema):
         model = models.Job
 
 
-# TODO: Remove this schema once the admin app has stopped using the /user/<user_id>code endpoint
-class OldRequestVerifyCodeSchema(ma.Schema):
-
-    code_type = fields.Str(required=True)
-    to = fields.Str(required=False)
-
-    @validates('code_type')
-    def validate_code_type(self, code):
-        if code not in models.VERIFY_CODE_TYPES:
-            raise ValidationError('Invalid code type')
-
-
 class RequestVerifyCodeSchema(ma.Schema):
     to = fields.Str(required=False)
 
@@ -142,8 +130,8 @@ class EmailNotificationSchema(NotificationSchema):
     def validate_to(self, value):
         try:
             validate_email_address(value)
-        except InvalidEmailError:
-            raise ValidationError('Invalid email')
+        except InvalidEmailError as e:
+            raise ValidationError(e.message)
 
 
 class SmsTemplateNotificationSchema(SmsNotificationSchema):
@@ -180,8 +168,8 @@ class InvitedUserSchema(BaseSchema):
     def validate_to(self, value):
         try:
             validate_email_address(value)
-        except InvalidEmailError:
-            raise ValidationError('Invalid email')
+        except InvalidEmailError as e:
+            raise ValidationError(e.message)
 
 
 class PermissionSchema(BaseSchema):
@@ -201,6 +189,16 @@ class PermissionSchema(BaseSchema):
         exclude = ("created_at",)
 
 
+class EmailDataSchema(ma.Schema):
+    email = fields.Str(required=False)
+
+    @validates('email')
+    def validate_email(self, value):
+        try:
+            validate_email_address(value)
+        except InvalidEmailError as e:
+            raise ValidationError(e.message)
+
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
 service_schema = ServiceSchema()
@@ -211,7 +209,6 @@ api_key_schema = ApiKeySchema()
 api_key_schema_load_json = ApiKeySchema(load_json=True)
 job_schema = JobSchema()
 job_schema_load_json = JobSchema(load_json=True)
-old_request_verify_code_schema = OldRequestVerifyCodeSchema()
 request_verify_code_schema = RequestVerifyCodeSchema()
 sms_admin_notification_schema = SmsAdminNotificationSchema()
 sms_template_notification_schema = SmsTemplateNotificationSchema()
@@ -222,4 +219,5 @@ notification_status_schema = NotificationStatusSchema()
 notification_status_schema_load_json = NotificationStatusSchema(load_json=True)
 invited_user_schema = InvitedUserSchema()
 permission_schema = PermissionSchema()
+email_data_request_schema = EmailDataSchema()
 notifications_statistics_schema = NotificationsStatisticsSchema()

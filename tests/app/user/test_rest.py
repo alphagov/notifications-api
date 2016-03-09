@@ -1,10 +1,12 @@
 import json
+import uuid
 
 from flask import url_for
 
+import app
 from app.models import (User, Permission, MANAGE_SETTINGS, MANAGE_TEMPLATES)
 from app.dao.permissions_dao import default_service_permissions
-from app import db
+from app import db, encryption
 from tests import create_authorization_header
 
 
@@ -256,7 +258,7 @@ def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_us
             user = User.query.filter_by(id=sample_user.id).first()
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == "error"
-            assert json_resp['message'] == "User not found"
+            assert json_resp['message'] == "User not found for id: {}".format("9999")
 
             assert user == sample_user
             assert user.email_address != new_email
@@ -284,7 +286,7 @@ def test_get_user_by_email(notify_api, notify_db, notify_db_session, sample_serv
             assert sorted(expected_permissions) == sorted(fetched['permissions'][str(sample_service.id)])
 
 
-def test_get_user_by_email_not_found_returns_400(notify_api,
+def test_get_user_by_email_not_found_returns_404(notify_api,
                                                  notify_db,
                                                  notify_db_session,
                                                  sample_user):
@@ -297,7 +299,7 @@ def test_get_user_by_email_not_found_returns_400(notify_api,
             assert resp.status_code == 404
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'not found'
+            assert json_resp['message'] == 'User not found for email address'
 
 
 def test_get_user_by_email_bad_url_returns_404(notify_api,
@@ -426,3 +428,64 @@ def test_set_user_permissions_remove_old(notify_api,
             query = Permission.query.filter_by(user=sample_user)
             assert query.count() == 1
             assert query.first().permission == MANAGE_SETTINGS
+
+
+def test_send_user_reset_password_should_send_reset_password_link(notify_api,
+                                                                  sample_user,
+                                                                  mocker,
+                                                                  mock_encryption):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.email_reset_password.apply_async')
+            data = json.dumps({'email': sample_user.email_address})
+            auth_header = create_authorization_header(
+                path=url_for('user.send_user_reset_password'),
+                method='POST',
+                request_body=data)
+            resp = client.post(
+                url_for('user.send_user_reset_password'),
+                data=data,
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            assert resp.status_code == 204
+            app.celery.tasks.email_reset_password.apply_async.assert_called_once_with(['something_encrypted'],
+                                                                                      queue='email-reset-password')
+
+
+def test_send_user_reset_password_should_return_400_when_user_doesnot_exist(notify_api,
+                                                                            mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            bad_email_address = 'bad@email.gov.uk'
+            data = json.dumps({'email': bad_email_address})
+            auth_header = create_authorization_header(
+                path=url_for('user.send_user_reset_password'),
+                method='POST',
+                request_body=data)
+
+        resp = client.post(
+            url_for('user.send_user_reset_password'),
+            data=data,
+            headers=[('Content-Type', 'application/json'), auth_header])
+
+        assert resp.status_code == 404
+        assert json.loads(resp.get_data(as_text=True))['message'] == 'User not found for email address'
+
+
+def test_send_user_reset_password_should_return_400_when_data_is_not_email_address(notify_api, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            bad_email_address = 'bad.email.gov.uk'
+            data = json.dumps({'email': bad_email_address})
+            auth_header = create_authorization_header(
+                path=url_for('user.send_user_reset_password'),
+                method='POST',
+                request_body=data)
+
+        resp = client.post(
+            url_for('user.send_user_reset_password'),
+            data=data,
+            headers=[('Content-Type', 'application/json'), auth_header])
+
+        assert resp.status_code == 400
+        assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Not a valid email address']}
