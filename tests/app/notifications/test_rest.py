@@ -1,3 +1,4 @@
+from datetime import datetime
 import uuid
 import app.celery.tasks
 from tests import create_authorization_header
@@ -126,9 +127,15 @@ def test_get_all_notifications_for_job_in_order(notify_api, notify_db, notify_db
             main_job = sample_job(notify_db, notify_db_session, service=sample_service)
             another_job = sample_job(notify_db, notify_db_session, service=sample_service)
 
-            notification_1 = sample_notification(notify_db, notify_db_session, job=main_job, to_field="1")
-            notification_2 = sample_notification(notify_db, notify_db_session, job=main_job, to_field="2")
-            notification_3 = sample_notification(notify_db, notify_db_session, job=main_job, to_field="3")
+            notification_1 = sample_notification(
+                notify_db, notify_db_session, job=main_job, to_field="1", created_at=datetime.utcnow()
+            )
+            notification_2 = sample_notification(
+                notify_db, notify_db_session, job=main_job, to_field="2", created_at=datetime.utcnow()
+            )
+            notification_3 = sample_notification(
+                notify_db, notify_db_session, job=main_job, to_field="3", created_at=datetime.utcnow()
+            )
             sample_notification(notify_db, notify_db_session, job=another_job)
 
             auth_header = create_authorization_header(
@@ -760,7 +767,9 @@ def test_should_block_api_call_if_over_day_limit(notify_db, notify_db_session, n
 
             service = sample_service(notify_db, notify_db_session, limit=1)
             email_template = sample_email_template(notify_db, notify_db_session, service=service)
-            sample_notification(notify_db, notify_db_session, template=email_template, service=service)
+            sample_notification(
+                notify_db, notify_db_session, template=email_template, service=service, created_at=datetime.utcnow()
+            )
 
             data = {
                 'to': 'ok@ok.com',
@@ -794,7 +803,9 @@ def test_should_block_api_call_if_over_day_limit_regardless_of_type(notify_db, n
             service = sample_service(notify_db, notify_db_session, limit=1)
             email_template = sample_email_template(notify_db, notify_db_session, service=service)
             sms_template = sample_template(notify_db, notify_db_session, service=service)
-            sample_notification(notify_db, notify_db_session, template=email_template, service=service)
+            sample_notification(
+                notify_db, notify_db_session, template=email_template, service=service, created_at=datetime.utcnow()
+            )
 
             data = {
                 'to': '+447234123123',

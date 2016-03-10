@@ -7,16 +7,84 @@ from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_update_notification,
+    delete_failed_notifications_created_more_than_a_week_ago,
+    delete_successful_notifications_created_more_than_a_day_ago,
     dao_get_notification_statistics_for_service_and_day
 )
 from app.dao.jobs_dao import dao_update_job, dao_get_job_by_id
-from app.models import Notification, TEMPLATE_TYPE_EMAIL, TEMPLATE_TYPE_SMS
+from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
+from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
+from app.models import (
+    Notification,
+    TEMPLATE_TYPE_EMAIL,
+    TEMPLATE_TYPE_SMS
+)
 from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
 from datetime import datetime
 from utils.template import Template
 from utils.recipients import RecipientCSV
+
+
+@notify_celery.task(name="delete-verify-codes")
+def delete_verify_codes():
+    try:
+        start = datetime.utcnow()
+        deleted = delete_codes_older_created_more_than_a_day_ago()
+        current_app.logger.info(
+            "Delete job started {} finished {} deleted {} verify codes".format(start, datetime.utcnow(), deleted)
+        )
+    except SQLAlchemyError:
+        current_app.logger.info("Failed to delete verify codes")
+        raise
+
+
+@notify_celery.task(name="delete-successful-notifications")
+def delete_successful_notifications():
+    try:
+        start = datetime.utcnow()
+        deleted = delete_successful_notifications_created_more_than_a_day_ago()
+        current_app.logger.info(
+            "Delete job started {} finished {} deleted {} successful notifications".format(
+                start,
+                datetime.utcnow(),
+                deleted
+            )
+        )
+    except SQLAlchemyError:
+        current_app.logger.info("Failed to delete successful notifications")
+        raise
+
+
+@notify_celery.task(name="delete-failed-notifications")
+def delete_failed_notifications():
+    try:
+        start = datetime.utcnow()
+        deleted = delete_failed_notifications_created_more_than_a_week_ago()
+        current_app.logger.info(
+            "Delete job started {} finished {} deleted {} failed notifications".format(
+                start,
+                datetime.utcnow(),
+                deleted
+            )
+        )
+    except SQLAlchemyError:
+        current_app.logger.info("Failed to delete failed notifications")
+        raise
+
+
+@notify_celery.task(name="delete-invitations")
+def delete_invitations():
+    try:
+        start = datetime.utcnow()
+        deleted = delete_invitations_created_more_than_two_days_ago()
+        current_app.logger.info(
+            "Delete job started {} finished {} deleted {} invitations".format(start, datetime.utcnow(), deleted)
+        )
+    except SQLAlchemyError:
+        current_app.logger.info("Failed to delete invitations")
+        raise
 
 
 @notify_celery.task(name="process-job")
@@ -52,9 +120,9 @@ def process_job(job_id):
     )
 
     for recipient, personalisation in RecipientCSV(
-        s3.get_job_from_s3(job.bucket_name, job_id),
-        template_type=template.template_type,
-        placeholders=template.placeholders
+            s3.get_job_from_s3(job.bucket_name, job_id),
+            template_type=template.template_type,
+            placeholders=template.placeholders
     ).recipients_and_personalisation:
 
         encrypted = encryption.encrypt({

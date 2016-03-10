@@ -1,13 +1,19 @@
 import uuid
 import pytest
 from flask import current_app
-from app.celery.tasks import (send_sms,
-                              send_sms_code,
-                              send_email_code,
-                              send_email,
-                              process_job,
-                              email_invited_user,
-                              email_reset_password)
+from app.celery.tasks import (
+    send_sms,
+    send_sms_code,
+    send_email_code,
+    send_email,
+    process_job,
+    email_invited_user,
+    email_reset_password,
+    delete_verify_codes,
+    delete_invitations,
+    delete_failed_notifications,
+    delete_successful_notifications
+)
 from app import (firetext_client, aws_ses_client, encryption, DATETIME_FORMAT)
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
@@ -27,6 +33,30 @@ from tests.app.conftest import (
     sample_email_template,
     sample_notification
 )
+
+
+def test_should_call_delete_successful_notifications_in_task(notify_api, mocker):
+    mocker.patch('app.celery.tasks.delete_successful_notifications_created_more_than_a_day_ago')
+    delete_successful_notifications()
+    assert tasks.delete_successful_notifications_created_more_than_a_day_ago.call_count == 1
+
+
+def test_should_call_delete_failed_notifications_in_task(notify_api, mocker):
+    mocker.patch('app.celery.tasks.delete_failed_notifications_created_more_than_a_week_ago')
+    delete_failed_notifications()
+    assert tasks.delete_failed_notifications_created_more_than_a_week_ago.call_count == 1
+
+
+def test_should_call_delete_codes_on_delete_verify_codes_task(notify_api, mocker):
+    mocker.patch('app.celery.tasks.delete_codes_older_created_more_than_a_day_ago')
+    delete_verify_codes()
+    assert tasks.delete_codes_older_created_more_than_a_day_ago.call_count == 1
+
+
+def test_should_call_delete_invotations_on_delete_invitations_task(notify_api, mocker):
+    mocker.patch('app.celery.tasks.delete_invitations_created_more_than_two_days_ago')
+    delete_invitations()
+    assert tasks.delete_invitations_created_more_than_two_days_ago.call_count == 1
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -266,7 +296,6 @@ def test_should_send_sms_without_personalisation(sample_template, mocker):
 
 
 def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notify_db_session, mocker):
-
     user = sample_user(notify_db, notify_db_session, mobile_numnber="+441234123123")
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
     template = sample_template(notify_db, notify_db_session, service=service)
@@ -292,7 +321,6 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
 
 
 def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db, notify_db_session, mocker):
-
     user = sample_user(notify_db, notify_db_session, mobile_numnber="+441234123123")
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
     template = sample_template(notify_db, notify_db_session, service=service)
@@ -318,7 +346,6 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
 
 
 def test_should_send_email_if_restricted_service_and_valid_email(notify_db, notify_db_session, mocker):
-
     user = sample_user(notify_db, notify_db_session, email="test@restricted.com")
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
     template = sample_template(notify_db, notify_db_session, service=service)
@@ -418,7 +445,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
 
 
 def test_should_use_email_template_and_persist_without_personalisation(
-    sample_email_template, mocker
+        sample_email_template, mocker
 ):
     mocker.patch('app.encryption.decrypt', return_value={
         "template": sample_email_template.id,
