@@ -866,13 +866,13 @@ def test_firetext_callback_should_not_need_auth(notify_api):
         with notify_api.test_client() as client:
             response = client.post(
                 path='/notifications/sms/firetext',
-                data='mobile=441234123123&status=0&reference=&time=2016-03-10 14:17:00',
+                data='mobile=441234123123&status=0&reference=send-sms-code&time=2016-03-10 14:17:00',
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
             assert response.status_code == 200
 
 
-def test_firetext_callback_should_return_200_if_empty_reference(notify_api):
+def test_firetext_callback_should_return_400_if_empty_reference(notify_api):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             response = client.post(
@@ -881,12 +881,12 @@ def test_firetext_callback_should_return_200_if_empty_reference(notify_api):
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            assert response.status_code == 200
-            assert json_resp['result'] == 'success'
-            assert json_resp['message'] == 'Firetext callback succeeded'
+            assert response.status_code == 400
+            assert json_resp['result'] == 'error'
+            assert json_resp['message'] == 'Firetext callback failed: reference missing'
 
 
-def test_firetext_callback_should_return_200_if_no_reference(notify_api):
+def test_firetext_callback_should_return_400_if_no_reference(notify_api):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             response = client.post(
@@ -895,9 +895,23 @@ def test_firetext_callback_should_return_200_if_no_reference(notify_api):
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
             json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 400
+            assert json_resp['result'] == 'error'
+            assert json_resp['message'] == 'Firetext callback failed: reference missing'
+
+
+def test_firetext_callback_should_return_200_if_send_sms_reference(notify_api):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            response = client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference=send-sms-code',
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 200
             assert json_resp['result'] == 'success'
-            assert json_resp['message'] == 'Firetext callback succeeded'
+            assert json_resp['message'] == 'Firetext callback succeeded: send-sms-code'
 
 
 def test_firetext_callback_should_return_400_if_no_status(notify_api):

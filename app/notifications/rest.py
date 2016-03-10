@@ -45,19 +45,22 @@ def process_firetext_response():
         current_app.logger.info(
             "Firetext callback with no reference"
         )
-        return jsonify(result="success", message="Firetext callback succeeded"), 200
+        return jsonify(result="error", message="Firetext callback failed: reference missing"), 400
 
-    notification_id = request.form['reference']
+    reference = request.form['reference']
     status = request.form['status']
 
+    if reference == 'send-sms-code':
+        return jsonify(result="success", message="Firetext callback succeeded: send-sms-code"), 200
+
     try:
-        uuid.UUID(notification_id, version=4)
+        uuid.UUID(reference, version=4)
     except ValueError:
         current_app.logger.info(
-            "Firetext callback with invalid reference {}".format(notification_id)
+            "Firetext callback with invalid reference {}".format(reference)
         )
         return jsonify(
-            result="error", message="Firetext callback with invalid reference {}".format(notification_id)
+            result="error", message="Firetext callback with invalid reference {}".format(reference)
         ), 400
 
     notification_status = firetext_response_status.get(status, None)
@@ -67,15 +70,15 @@ def process_firetext_response():
         )
         return jsonify(result="error", message="Firetext callback failed: status {} not found.".format(status)), 400
 
-    notification = notifications_dao.get_notification_by_id(notification_id)
+    notification = notifications_dao.get_notification_by_id(reference)
     if not notification:
         current_app.logger.info(
-            "Firetext callback failed: notification {} not found. Status {}".format(notification_id, status)
+            "Firetext callback failed: notification {} not found. Status {}".format(reference, status)
         )
         return jsonify(
             result="error",
             message="Firetext callback failed: notification {} not found. Status {}".format(
-                notification_id,
+                reference,
                 notification_status['firetext_message']
             )
         ), 404
@@ -83,14 +86,14 @@ def process_firetext_response():
     if not notification_status['success']:
         current_app.logger.info(
             "Firetext delivery failed: notification {} has error found. Status {}".format(
-                notification_id,
+                reference,
                 firetext_response_status[status]['firetext_message']
             )
         )
     notification.status = notification_status['notify_status']
     notifications_dao.dao_update_notification(notification)
     return jsonify(
-        result="success", message="Firetext callback succeeded. reference {} updated".format(notification_id)
+        result="success", message="Firetext callback succeeded. reference {} updated".format(reference)
     ), 200
 
 
