@@ -5,6 +5,7 @@ from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
 from app.models import User
 from tests import create_authorization_header
+from tests.app.conftest import sample_service as create_service
 
 
 def test_get_service_list(notify_api, service_factory):
@@ -286,6 +287,35 @@ def test_should_not_create_service_if_missing_data(notify_api, sample_user):
             assert 'Missing data for required field.' in json_resp['message']['restricted']
 
 
+def test_should_not_create_service_with_duplicate_name(notify_api,
+                                                       notify_db,
+                                                       notify_db_session,
+                                                       sample_user,
+                                                       sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = {
+                'name': sample_service.name,
+                'user_id': sample_service.users[0].id,
+                'limit': 1000,
+                'restricted': False,
+                'active': False}
+            auth_header = create_authorization_header(
+                path='/service',
+                method='POST',
+                request_body=json.dumps(data)
+            )
+            headers = [('Content-Type', 'application/json'), auth_header]
+            resp = client.post(
+                '/service',
+                data=json.dumps(data),
+                headers=headers)
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 400
+            assert "Duplicate service name '{}'".format(
+                sample_service.name) in json_resp['message']['name']
+
+
 def test_update_service(notify_api, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -319,6 +349,40 @@ def test_update_service(notify_api, sample_service):
             result = json.loads(resp.get_data(as_text=True))
             assert resp.status_code == 200
             assert result['data']['name'] == 'updated service name'
+
+
+def test_should_not_update_service_with_duplicate_name(notify_api,
+                                                       notify_db,
+                                                       notify_db_session,
+                                                       sample_user,
+                                                       sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            service_name = "another name"
+            another_service = create_service(
+                notify_db,
+                notify_db_session,
+                service_name=service_name,
+                user=sample_user)
+            data = {
+                'name': service_name
+            }
+
+            auth_header = create_authorization_header(
+                path='/service/{}'.format(sample_service.id),
+                method='POST',
+                request_body=json.dumps(data)
+            )
+
+            resp = client.post(
+                '/service/{}'.format(sample_service.id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 400
+            assert "Duplicate service name '{}'".format(
+                service_name) in json_resp['message']['name']
 
 
 def test_update_service_should_404_if_id_is_invalid(notify_api, notify_db, notify_db_session):

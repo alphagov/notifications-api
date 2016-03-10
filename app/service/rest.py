@@ -97,7 +97,6 @@ def update_service(service_id):
 
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())
-    print(current_data)
     update_dict, errors = service_schema.load(current_data)
     if errors:
         return jsonify(result="error", message=errors), 400
