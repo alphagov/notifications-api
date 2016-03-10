@@ -203,8 +203,9 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 )
 
                 client.send_sms(
-                    notification['to'],
-                    template.replaced
+                    to=notification['to'],
+                    content=template.replaced,
+                    notification_id=notification_id
                 )
             except FiretextClientException as e:
                 current_app.logger.exception(e)

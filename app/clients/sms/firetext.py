@@ -11,7 +11,12 @@ logger = logging.getLogger(__name__)
 
 
 class FiretextClientException(SmsClientException):
-    pass
+    def __init__(self, response):
+        self.code = response['code']
+        self.description = response['description']
+
+    def __str__(self):
+        return "Code {} description {}".format(self.code, self.description)
 
 
 class FiretextClient(SmsClient):
@@ -28,7 +33,7 @@ class FiretextClient(SmsClient):
     def get_name(self):
         return self.name
 
-    def send_sms(self, to, content):
+    def send_sms(self, to, content, notification_id=None):
 
         data = {
             "apiKey": self.api_key,
@@ -37,13 +42,21 @@ class FiretextClient(SmsClient):
             "message": content
         }
 
+        if notification_id:
+            data.update({
+                "reference": notification_id
+            })
+
+        start_time = monotonic()
         try:
-            start_time = monotonic()
             response = request(
                 "POST",
-                "https://www.firetext.co.uk/api/sendsms",
+                "https://www.firetext.co.uk/api/sendsms/json",
                 data=data
             )
+            firetext_response = response.json()
+            if firetext_response['code'] != 0:
+                raise FiretextClientException(firetext_response)
             response.raise_for_status()
         except RequestException as e:
             api_error = HTTPError.create(e)
