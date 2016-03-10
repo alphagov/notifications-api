@@ -260,7 +260,11 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
         now.strftime(DATETIME_FORMAT)
     )
 
-    firetext_client.send_sms.assert_called_once_with("+441234123123", "Sample service: Hello Jo")
+    firetext_client.send_sms.assert_called_once_with(
+        to="+441234123123",
+        content="Sample service: Hello Jo",
+        notification_id=notification_id
+    )
     persisted_notification = notifications_dao.get_notification(
         sample_template_with_placeholders.service_id, notification_id
     )
@@ -292,7 +296,11 @@ def test_should_send_sms_without_personalisation(sample_template, mocker):
         now.strftime(DATETIME_FORMAT)
     )
 
-    firetext_client.send_sms.assert_called_once_with("+441234123123", "Sample service: This is a template")
+    firetext_client.send_sms.assert_called_once_with(
+        to="+441234123123",
+        content="Sample service: This is a template",
+        notification_id=notification_id
+    )
 
 
 def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notify_db_session, mocker):
@@ -317,7 +325,11 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
         now.strftime(DATETIME_FORMAT)
     )
 
-    firetext_client.send_sms.assert_called_once_with("+441234123123", "Sample service: This is a template")
+    firetext_client.send_sms.assert_called_once_with(
+        to="+441234123123",
+        content="Sample service: This is a template",
+        notification_id=notification_id
+    )
 
 
 def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db, notify_db_session, mocker):
@@ -394,7 +406,11 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
-    firetext_client.send_sms.assert_called_once_with("+441234123123", "Sample service: This is a template")
+    firetext_client.send_sms.assert_called_once_with(
+        to="+441234123123",
+        content="Sample service: This is a template",
+        notification_id=notification_id
+    )
     persisted_notification = notifications_dao.get_notification(sample_job.template.service_id, notification_id)
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == '+441234123123'
@@ -490,7 +506,10 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
-    firetext_client.send_sms.assert_called_once_with("+441234123123", "Sample service: This is a template")
+    firetext_client.send_sms.assert_called_once_with(
+        to="+441234123123",
+        content="Sample service: This is a template",
+        notification_id=notification_id)
     persisted_notification = notifications_dao.get_notification(sample_template.service_id, notification_id)
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == '+441234123123'
