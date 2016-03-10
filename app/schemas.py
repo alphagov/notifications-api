@@ -2,7 +2,7 @@ from flask_marshmallow.fields import fields
 from . import ma
 from . import models
 from app.dao.permissions_dao import permission_dao
-from marshmallow import (post_load, ValidationError, validates)
+from marshmallow import (post_load, ValidationError, validates, validates_schema)
 from marshmallow_sqlalchemy import field_for
 from utils.recipients import (
     validate_email_address, InvalidEmailError,
@@ -15,6 +15,7 @@ from utils.recipients import (
 # Would be better to replace functionality in dao with the marshmallow supported
 # functionality.
 # http://marshmallow.readthedocs.org/en/latest/api_reference.html
+# http://marshmallow.readthedocs.org/en/latest/extending.html
 
 
 class BaseSchema(ma.ModelSchema):
@@ -71,6 +72,21 @@ class ServiceSchema(BaseSchema):
     class Meta:
         model = models.Service
         exclude = ("updated_at", "created_at", "api_keys", "templates", "jobs", 'old_id')
+
+    @validates_schema
+    def validate_all(self, data):
+        # There are 2 instances where we want to check
+        # for duplicate service name. One when they updating
+        # an existing service and when they are creating a service
+        name = data.get('name', None)
+        service = models.Service.query.filter_by(name=name).first()
+        error_msg = "Duplicate service name '{}'".format(name)
+        if 'id' in data:
+            if service and str(service.id) != data['id']:
+                raise ValidationError(error_msg, 'name')
+        else:
+            if service:
+                raise ValidationError(error_msg, 'name')
 
 
 class TemplateSchema(BaseSchema):
