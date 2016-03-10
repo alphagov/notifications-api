@@ -1,3 +1,4 @@
+from datetime import timedelta
 from kombu import Exchange, Queue
 import os
 
@@ -29,19 +30,37 @@ class Config(object):
         'region': 'eu-west-1',
         'polling_interval': 1,  # 1 second
         'visibility_timeout': 60,  # 60 seconds
-        'queue_name_prefix': os.environ['NOTIFICATION_QUEUE_PREFIX']+'-'
+        'queue_name_prefix': os.environ['NOTIFICATION_QUEUE_PREFIX'] + '-'
     }
     CELERY_ENABLE_UTC = True,
     CELERY_TIMEZONE = 'Europe/London'
     CELERY_ACCEPT_CONTENT = ['json']
     CELERY_TASK_SERIALIZER = 'json'
-    # CELERYBEAT_SCHEDULE = {
-    #     'refresh-queues': {
-    #         'task': 'refresh-services',
-    #         'schedule': timedelta(seconds=5)
-    #     }
-    # }
+    CELERY_IMPORTS = ('app.celery.tasks',)
+    CELERYBEAT_SCHEDULE = {
+        'delete-verify-codes': {
+            'task': 'delete-verify-codes',
+            'schedule': timedelta(minutes=63),
+            'options': {'queue': 'periodic'}
+        },
+        'delete-invitations': {
+            'task': 'delete-invitations',
+            'schedule': timedelta(minutes=66),
+            'options': {'queue': 'periodic'}
+        },
+        'delete-failed-notifications': {
+            'task': 'delete-failed-notifications',
+            'schedule': timedelta(minutes=60),
+            'options': {'queue': 'periodic'}
+        },
+        'delete-successful-notifications': {
+            'task': 'delete-successful-notifications',
+            'schedule': timedelta(minutes=31),
+            'options': {'queue': 'periodic'}
+        }
+    }
     CELERY_QUEUES = [
+        Queue('periodic', Exchange('default'), routing_key='periodic'),
         Queue('sms', Exchange('default'), routing_key='sms'),
         Queue('email', Exchange('default'), routing_key='email'),
         Queue('sms-code', Exchange('default'), routing_key='sms-code'),
@@ -52,7 +71,6 @@ class Config(object):
         Queue('bulk-email', Exchange('default'), routing_key='bulk-email'),
         Queue('email-invited-user', Exchange('default'), routing_key='email-invited-user')
     ]
-    CELERY_IMPORTS = ('app.celery.tasks',)
     TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
     TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
     TWILIO_NUMBER = os.getenv('TWILIO_NUMBER')

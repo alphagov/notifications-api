@@ -47,6 +47,14 @@ def get_user_code(user, code, code_type):
     return retval
 
 
+def delete_codes_older_created_more_than_a_day_ago():
+    deleted = db.session.query(VerifyCode).filter(
+        VerifyCode.created_at < datetime.utcnow() - timedelta(hours=24)
+    ).delete()
+    db.session.commit()
+    return deleted
+
+
 def use_user_code(id):
     verify_code = VerifyCode.query.get(id)
     verify_code.code_used = True
