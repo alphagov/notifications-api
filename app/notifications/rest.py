@@ -1,4 +1,5 @@
 from datetime import datetime
+from json import JSONDecodeError
 import uuid
 
 from flask import (
@@ -6,11 +7,13 @@ from flask import (
     jsonify,
     request,
     current_app,
-    url_for
+    url_for,
+    json
 )
 
 from utils.template import Template
 from app.clients.sms.firetext import firetext_response_status
+from app.clients.email.aws_ses import ses_response_status
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT
 from app.authentication.auth import require_admin
 from app.dao import (
@@ -31,6 +34,69 @@ notifications = Blueprint('notifications', __name__)
 from app.errors import register_errors
 
 register_errors(notifications)
+
+
+@notifications.route('/notifications/email/ses', methods=['POST'])
+def process_ses_response():
+    try:
+        ses_request = json.loads(request.data)
+
+        if 'Message' not in ses_request:
+            current_app.logger.error(
+                "SES callback failed: message missing"
+            )
+            return jsonify(
+                result="error", message="SES callback failed: message missing"
+            ), 400
+
+        if 'notificationType' not in ses_request['Message']:
+            current_app.logger.error(
+                "SES callback failed: notificationType missing"
+            )
+            return jsonify(
+                result="error", message="SES callback failed: notificationType missing"
+            ), 400
+
+        status = ses_response_status.get(ses_request['Message']['notificationType'], None)
+        if not status:
+            current_app.logger.info(
+                "SES callback failed: status {} not found.".format(status)
+            )
+            return jsonify(
+                result="error",
+                message="SES callback failed: status {} not found".format(ses_request['Message']['notificationType'])
+            ), 400
+
+        try:
+            recipients = ses_request['Message']['mail']['destination']
+
+            if notifications_dao.update_notification_status_by_to(recipients[0], status['notify_status']) == 0:
+                current_app.logger.info(
+                    "SES callback failed: notification not found. Status {}".format(status['notify_status'])
+                )
+                return jsonify(
+                    result="error",
+                    message="SES callback failed: notification not found. Status {}".format(status['notify_status'])
+                ), 404
+            return jsonify(
+                result="success", message="SES callback succeeded"
+            ), 200
+
+        except KeyError:
+            current_app.logger.error(
+                "SES callback failed: destination missing"
+            )
+            return jsonify(
+                result="error", message="SES callback failed: destination missing"
+            ), 400
+
+    except JSONDecodeError as ex:
+        current_app.logger.error(
+            "SES callback failed: invalid json"
+        )
+        return jsonify(
+            result="error", message="SES callback failed: invalid json"
+        ), 400
 
 
 @notifications.route('/notifications/sms/firetext', methods=['POST'])
@@ -70,8 +136,7 @@ def process_firetext_response():
         )
         return jsonify(result="error", message="Firetext callback failed: status {} not found.".format(status)), 400
 
-    notification = notifications_dao.get_notification_by_id(reference)
-    if not notification:
+    if notifications_dao.update_notification_status_by_id(reference, notification_status['notify_status']) == 0:
         current_app.logger.info(
             "Firetext callback failed: notification {} not found. Status {}".format(reference, status)
         )
@@ -90,8 +155,6 @@ def process_firetext_response():
                 firetext_response_status[status]['firetext_message']
             )
         )
-    notification.status = notification_status['notify_status']
-    notifications_dao.dao_update_notification(notification)
     return jsonify(
         result="success", message="Firetext callback succeeded. reference {} updated".format(reference)
     ), 200

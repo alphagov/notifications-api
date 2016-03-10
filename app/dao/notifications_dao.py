@@ -68,6 +68,28 @@ def dao_update_notification(notification):
     db.session.commit()
 
 
+def update_notification_status_by_id(notification_id, status):
+    count = db.session.query(Notification).filter_by(
+        id=notification_id
+    ).update({
+        Notification.status: status,
+        Notification.updated_at: datetime.utcnow()
+    })
+    db.session.commit()
+    return count
+
+
+def update_notification_status_by_to(to, status):
+    count = db.session.query(Notification).filter_by(
+        to=to
+    ).update({
+        Notification.status: status,
+        Notification.updated_at: datetime.utcnow()
+    })
+    db.session.commit()
+    return count
+
+
 def get_notification_for_job(service_id, job_id, notification_id):
     return Notification.query.filter_by(service_id=service_id, job_id=job_id, id=notification_id).one()
 
