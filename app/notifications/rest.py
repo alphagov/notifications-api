@@ -134,8 +134,6 @@ def send_notification(notification_type):
         datetime.utcnow().strftime(DATE_FORMAT)
     )
 
-    print(service_stats)
-
     if service_stats:
         total_sms_count = service_stats.sms_requested
         total_email_count = service_stats.emails_requested
