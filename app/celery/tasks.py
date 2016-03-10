@@ -12,7 +12,7 @@ from app.dao.notifications_dao import (
 )
 from app.dao.jobs_dao import dao_update_job, dao_get_job_by_id
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
-from app.dao.invited_user_dao import delete_invitations_older_created_more_than_a_day_ago
+from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
 from app.models import (
     Notification,
     TEMPLATE_TYPE_EMAIL,
@@ -77,7 +77,7 @@ def delete_failed_notifications():
 def delete_invitations():
     try:
         start = datetime.utcnow()
-        deleted = delete_invitations_older_created_more_than_a_day_ago()
+        deleted = delete_invitations_created_more_than_two_days_ago()
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} invitations".format(start, datetime.utcnow(), deleted)
         )
