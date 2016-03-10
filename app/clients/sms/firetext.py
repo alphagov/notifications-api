@@ -9,6 +9,24 @@ from requests import request, RequestException, HTTPError
 
 logger = logging.getLogger(__name__)
 
+firetext_response_status = {
+    '0': {
+        "firetext_message": 'delivered',
+        "success": True,
+        "notify_status": 'delivered'
+    },
+    '1': {
+        "firetext_message": 'declined',
+        "success": False,
+        "notify_status": 'failed'
+    },
+    '2': {
+        "firetext_message": 'Undelivered (Pending with Network)',
+        "success": False,
+        "notify_status": 'sent'
+    }
+}
+
 
 class FiretextClientException(SmsClientException):
     def __init__(self, response):

@@ -1,4 +1,5 @@
 from datetime import datetime
+import uuid
 
 from flask import (
     Blueprint,
@@ -9,7 +10,7 @@ from flask import (
 )
 
 from utils.template import Template
-
+from app.clients.sms.firetext import firetext_response_status
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT
 from app.authentication.auth import require_admin
 from app.dao import (
@@ -30,6 +31,67 @@ notifications = Blueprint('notifications', __name__)
 from app.errors import register_errors
 
 register_errors(notifications)
+
+
+@notifications.route('/notifications/sms/firetext', methods=['POST'])
+def process_firetext_response():
+    if 'status' not in request.form:
+        current_app.logger.info(
+            "Firetext callback failed: status missing"
+        )
+        return jsonify(result="error", message="Firetext callback failed: status missing"), 400
+
+    if len(request.form.get('reference', '')) <= 0:
+        current_app.logger.info(
+            "Firetext callback with no reference"
+        )
+        return jsonify(result="success", message="Firetext callback succeeded"), 200
+
+    notification_id = request.form['reference']
+    status = request.form['status']
+
+    try:
+        uuid.UUID(notification_id, version=4)
+    except ValueError:
+        current_app.logger.info(
+            "Firetext callback with invalid reference {}".format(notification_id)
+        )
+        return jsonify(
+            result="error", message="Firetext callback with invalid reference {}".format(notification_id)
+        ), 400
+
+    notification_status = firetext_response_status.get(status, None)
+    if not notification_status:
+        current_app.logger.info(
+            "Firetext callback failed: status {} not found.".format(status)
+        )
+        return jsonify(result="error", message="Firetext callback failed: status {} not found.".format(status)), 400
+
+    notification = notifications_dao.get_notification_by_id(notification_id)
+    if not notification:
+        current_app.logger.info(
+            "Firetext callback failed: notification {} not found. Status {}".format(notification_id, status)
+        )
+        return jsonify(
+            result="error",
+            message="Firetext callback failed: notification {} not found. Status {}".format(
+                notification_id,
+                notification_status['firetext_message']
+            )
+        ), 404
+
+    if not notification_status['success']:
+        current_app.logger.info(
+            "Firetext delivery failed: notification {} has error found. Status {}".format(
+                notification_id,
+                firetext_response_status[status]['firetext_message']
+            )
+        )
+    notification.status = notification_status['notify_status']
+    notifications_dao.dao_update_notification(notification)
+    return jsonify(
+        result="success", message="Firetext callback succeeded. reference {} updated".format(notification_id)
+    ), 200
 
 
 @notifications.route('/notifications/<string:notification_id>', methods=['GET'])

@@ -71,7 +71,7 @@ def create_app():
 def init_app(app):
     @app.before_request
     def required_authentication():
-        if request.path != url_for('status.show_status'):
+        if request.path not in [url_for('status.show_status'), url_for('notifications.process_firetext_response')]:
             from app.authentication import auth
             error = auth.requires_auth()
             if error:

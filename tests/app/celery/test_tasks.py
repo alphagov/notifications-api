@@ -35,6 +35,10 @@ from tests.app.conftest import (
 )
 
 
+def firetext_error():
+    return {'code': 0, 'description': 'error'}
+
+
 def test_should_call_delete_successful_notifications_in_task(notify_api, mocker):
     mocker.patch('app.celery.tasks.delete_successful_notifications_created_more_than_a_day_ago')
     delete_successful_notifications()
@@ -494,7 +498,7 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
         "to": "+441234123123"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms', side_effect=FiretextClientException())
+    mocker.patch('app.firetext_client.send_sms', side_effect=FiretextClientException(firetext_error()))
     mocker.patch('app.firetext_client.get_name', return_value="firetext")
     now = datetime.utcnow()
 
@@ -623,7 +627,7 @@ def test_should_throw_firetext_client_exception(mocker):
                     'secret_code': '12345'}
 
     encrypted_notification = encryption.encrypt(notification)
-    mocker.patch('app.firetext_client.send_sms', side_effect=FiretextClientException)
+    mocker.patch('app.firetext_client.send_sms', side_effect=FiretextClientException(firetext_error()))
     send_sms_code(encrypted_notification)
     firetext_client.send_sms.assert_called_once_with(notification['to'], notification['secret_code'])
 
