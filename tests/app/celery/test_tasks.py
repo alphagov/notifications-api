@@ -51,9 +51,9 @@ def test_should_call_delete_codes_on_delete_verify_codes_task(notify_api, mocker
 
 
 def test_should_call_delete_invotations_on_delete_invitations_task(notify_api, mocker):
-    mocker.patch('app.celery.tasks.delete_invitations_older_created_more_than_a_day_ago')
+    mocker.patch('app.celery.tasks.delete_invitations_created_more_than_two_days_ago')
     delete_invitations()
-    assert tasks.delete_invitations_older_created_more_than_a_day_ago.call_count == 1
+    assert tasks.delete_invitations_created_more_than_two_days_ago.call_count == 1
 
 
 @freeze_time("2016-01-01 11:09:00.061258")

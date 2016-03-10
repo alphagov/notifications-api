@@ -89,7 +89,7 @@ def get_notifications_for_service(service_id, page=1):
 
 def delete_successful_notifications_created_more_than_a_day_ago():
     deleted = db.session.query(Notification).filter(
-        Notification.created_at < datetime.utcnow() - timedelta(hours=24),
+        Notification.created_at < datetime.utcnow() - timedelta(days=1),
         Notification.status == 'sent'
     ).delete()
     db.session.commit()
@@ -98,7 +98,7 @@ def delete_successful_notifications_created_more_than_a_day_ago():
 
 def delete_failed_notifications_created_more_than_a_week_ago():
     deleted = db.session.query(Notification).filter(
-        Notification.created_at < datetime.utcnow() - timedelta(hours=24 * 7),
+        Notification.created_at < datetime.utcnow() - timedelta(days=7),
         Notification.status == 'failed'
     ).delete()
     db.session.commit()

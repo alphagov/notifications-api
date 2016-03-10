@@ -1,3 +1,4 @@
+from datetime import datetime
 import uuid
 import app.celery.tasks
 from tests import create_authorization_header
@@ -126,11 +127,16 @@ def test_get_all_notifications_for_job_in_order(notify_api, notify_db, notify_db
         with notify_api.test_client() as client:
             main_job = sample_job(notify_db, notify_db_session, service=sample_service)
             another_job = sample_job(notify_db, notify_db_session, service=sample_service)
-            from time import sleep
 
-            notification_1 = sample_notification(notify_db, notify_db_session, job=main_job, to_field="1")
-            notification_2 = sample_notification(notify_db, notify_db_session, job=main_job, to_field="2")
-            notification_3 = sample_notification(notify_db, notify_db_session, job=main_job, to_field="3")
+            notification_1 = sample_notification(
+                notify_db, notify_db_session, job=main_job, to_field="1", created_at=datetime.utcnow()
+            )
+            notification_2 = sample_notification(
+                notify_db, notify_db_session, job=main_job, to_field="2", created_at=datetime.utcnow()
+            )
+            notification_3 = sample_notification(
+                notify_db, notify_db_session, job=main_job, to_field="3", created_at=datetime.utcnow()
+            )
             sample_notification(notify_db, notify_db_session, job=another_job)
 
             auth_header = create_authorization_header(

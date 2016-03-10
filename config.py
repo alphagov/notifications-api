@@ -40,22 +40,22 @@ class Config(object):
     CELERYBEAT_SCHEDULE = {
         'delete-verify-codes': {
             'task': 'delete-verify-codes',
-            'schedule': timedelta(hours=1),
+            'schedule': timedelta(minutes=63),
             'options': {'queue': 'periodic'}
         },
         'delete-invitations': {
             'task': 'delete-invitations',
-            'schedule': timedelta(hours=1),
+            'schedule': timedelta(minutes=66),
             'options': {'queue': 'periodic'}
         },
         'delete-failed-notifications': {
             'task': 'delete-failed-notifications',
-            'schedule': timedelta(hours=1),
+            'schedule': timedelta(minutes=60),
             'options': {'queue': 'periodic'}
         },
         'delete-successful-notifications': {
             'task': 'delete-successful-notifications',
-            'schedule': timedelta(hours=1),
+            'schedule': timedelta(minutes=31),
             'options': {'queue': 'periodic'}
         }
     }
