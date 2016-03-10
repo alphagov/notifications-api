@@ -2,7 +2,7 @@ from datetime import datetime
 import uuid
 import app.celery.tasks
 from tests import create_authorization_header
-from tests.app.conftest import sample_notification, sample_job, sample_service
+from tests.app.conftest import sample_notification, sample_job, sample_service, sample_email_template, sample_template
 from flask import json
 from app.models import Service
 from app.dao.templates_dao import dao_get_all_templates_for_service
@@ -96,7 +96,6 @@ def test_get_all_notifications_newest_first(notify_api, notify_db, notify_db_ses
 def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             service_1 = sample_service(notify_db, notify_db_session, service_name="1")
             service_2 = sample_service(notify_db, notify_db_session, service_name="2")
 
@@ -288,6 +287,7 @@ def test_should_reject_bad_phone_numbers(notify_api, sample_template, mocker):
                 'template': sample_template.id
             }
             auth_header = create_authorization_header(
+                service_id=sample_template.service.id,
                 request_body=json.dumps(data),
                 path='/notifications/sms',
                 method='POST')
@@ -299,7 +299,6 @@ def test_should_reject_bad_phone_numbers(notify_api, sample_template, mocker):
 
             json_resp = json.loads(response.get_data(as_text=True))
             app.celery.tasks.send_sms.apply_async.assert_not_called()
-
             assert json_resp['result'] == 'error'
             assert len(json_resp['message'].keys()) == 1
             assert 'Invalid phone number: Must not contain letters or symbols' in json_resp['message']['to']
@@ -371,9 +370,7 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_templat
             assert response.status_code == 201
 
 
-def test_send_notification_with_missing_personalisation(
-    notify_api, sample_template_with_placeholders, mocker
-):
+def test_send_notification_with_missing_personalisation(notify_api, sample_template_with_placeholders, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.send_sms.apply_async')
@@ -404,7 +401,7 @@ def test_send_notification_with_missing_personalisation(
 
 
 def test_send_notification_with_too_much_personalisation_data(
-    notify_api, sample_template_with_placeholders, mocker
+        notify_api, sample_template_with_placeholders, mocker
 ):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -759,3 +756,105 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
             )
             assert response.status_code == 201
             assert notification_id
+
+
+@freeze_time("2016-01-01 12:00:00.061258")
+def test_should_block_api_call_if_over_day_limit(notify_db, notify_db_session, notify_api, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_email.apply_async')
+            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+
+            service = sample_service(notify_db, notify_db_session, limit=1)
+            email_template = sample_email_template(notify_db, notify_db_session, service=service)
+            sample_notification(
+                notify_db, notify_db_session, template=email_template, service=service, created_at=datetime.utcnow()
+            )
+
+            data = {
+                'to': 'ok@ok.com',
+                'template': email_template.id
+            }
+
+            auth_header = create_authorization_header(
+                request_body=json.dumps(data),
+                path='/notifications/email',
+                method='POST',
+                service_id=service.id
+            )
+
+            response = client.post(
+                path='/notifications/email',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+            json_resp = json.loads(response.get_data(as_text=True))
+
+            assert response.status_code == 429
+            assert 'Exceeded send limits (1) for today' in json_resp['message']
+
+
+@freeze_time("2016-01-01 12:00:00.061258")
+def test_should_block_api_call_if_over_day_limit_regardless_of_type(notify_db, notify_db_session, notify_api, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+
+            service = sample_service(notify_db, notify_db_session, limit=1)
+            email_template = sample_email_template(notify_db, notify_db_session, service=service)
+            sms_template = sample_template(notify_db, notify_db_session, service=service)
+            sample_notification(
+                notify_db, notify_db_session, template=email_template, service=service, created_at=datetime.utcnow()
+            )
+
+            data = {
+                'to': '+447234123123',
+                'template': sms_template.id
+            }
+
+            auth_header = create_authorization_header(
+                request_body=json.dumps(data),
+                path='/notifications/sms',
+                method='POST',
+                service_id=service.id
+            )
+
+            response = client.post(
+                path='/notifications/sms',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 429
+            assert 'Exceeded send limits (1) for today' in json_resp['message']
+
+
+@freeze_time("2016-01-01 12:00:00.061258")
+def test_should_allow_api_call_if_under_day_limit_regardless_of_type(notify_db, notify_db_session, notify_api, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+
+            service = sample_service(notify_db, notify_db_session, limit=2)
+            email_template = sample_email_template(notify_db, notify_db_session, service=service)
+            sms_template = sample_template(notify_db, notify_db_session, service=service)
+            sample_notification(notify_db, notify_db_session, template=email_template, service=service)
+
+            data = {
+                'to': '+447634123123',
+                'template': sms_template.id
+            }
+
+            auth_header = create_authorization_header(
+                request_body=json.dumps(data),
+                path='/notifications/sms',
+                method='POST',
+                service_id=service.id
+            )
+
+            response = client.post(
+                path='/notifications/sms',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            assert response.status_code == 201
