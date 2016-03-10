@@ -8,9 +8,9 @@ from flask import (
     url_for
 )
 
-from utils.template import Template, NeededByTemplateError, NoPlaceholderForDataError
+from utils.template import Template
 
-from app import api_user, encryption, create_uuid, DATETIME_FORMAT
+from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT
 from app.authentication.auth import require_admin
 from app.dao import (
     templates_dao,
@@ -127,6 +127,21 @@ def send_notification(notification_type):
         assert False
 
     service_id = api_user['client']
+    service = services_dao.dao_fetch_service_by_id(api_user['client'])
+
+    service_stats = notifications_dao.dao_get_notification_statistics_for_service_and_day(
+        service_id,
+        datetime.utcnow().strftime(DATE_FORMAT)
+    )
+
+    print(service_stats)
+
+    if service_stats:
+        total_sms_count = service_stats.sms_requested
+        total_email_count = service_stats.emails_requested
+
+        if total_email_count + total_sms_count >= service.limit:
+            return jsonify(result="error", message='Exceeded send limits ({}) for today'.format(service.limit)), 429
 
     notification, errors = (
         sms_template_notification_schema if notification_type == 'sms' else email_notification_schema
@@ -167,7 +182,6 @@ def send_notification(notification_type):
             }
         ), 400
 
-    service = services_dao.dao_fetch_service_by_id(api_user['client'])
     notification_id = create_uuid()
 
     if notification_type == 'sms':

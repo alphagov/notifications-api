@@ -11,6 +11,13 @@ def dao_get_notification_statistics_for_service(service_id):
     ).order_by(desc(NotificationStatistics.day)).all()
 
 
+def dao_get_notification_statistics_for_service_and_day(service_id, day):
+    return NotificationStatistics.query.filter_by(
+        service_id=service_id,
+        day=day
+    ).order_by(desc(NotificationStatistics.day)).first()
+
+
 def dao_create_notification(notification, notification_type):
     try:
         if notification.job_id:
