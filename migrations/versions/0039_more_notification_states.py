@@ -18,7 +18,7 @@ from sqlalchemy.dialects import postgresql
 def upgrade():
     op.drop_column('notifications', 'status')
     op.execute('DROP TYPE notification_status_types')
-    notification_status_types = sa.Enum('sent', 'delivered', 'failed', name='notification_status_types')
+    notification_status_types = sa.Enum('sent', 'delivered', 'failed', 'complaint', 'bounce', name='notification_status_types')
     notification_status_types.create(op.get_bind())
     op.add_column('notifications', sa.Column('status', notification_status_types, nullable=True))
     op.get_bind()

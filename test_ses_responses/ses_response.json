@@ -1,0 +1,32 @@
+{
+  "MessageId": "35efe472-ba36-5808-89bb-ab2925158b13",
+  "UnsubscribeURL": "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:123456789012:preview-emails:12345678-1234-1234-1234-123456789012",
+  "SignatureVersion": "1",
+  "TopicArn": "arn:aws:sns:eu-west-1:123456789012:testing",
+  "Timestamp": "2016-03-10T16:12:19.876Z",
+  "Type": "Notification",
+  "Signature": "sig",
+  "Message": {
+    "notificationType": "Delivery",
+    "mail": {
+      "timestamp": "2016-03-10T16:12:19.016Z",
+      "source": "invites@testing-notify.com",
+      "sourceArn": "arn:aws:ses:eu-west-1:123456789012:identity/testing-notify",
+      "sendingAccountId": "123456789012",
+      "messageId": "01020153614cd6c8-2ec4bd32-7ddc-4344-811e-65d05519251f-000000",
+      "destination": [
+        "testing@digital.cabinet-office.gov.uk"
+      ]
+    },
+    "delivery": {
+      "timestamp": "2016-03-10T16:12:19.751Z",
+      "processingTimeMillis": 735,
+      "recipients": [
+        "testing@digital.cabinet-office.gov.uk"
+      ],
+      "smtpResponse": "250 2.0.0 OK 1457626339 u62si5491824wme.91 - gsmtp",
+      "reportingMTA": "a6-15.smtp-out.eu-west-1.amazonses.com"
+    }
+  },
+  "SigningCertURL": "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem"
+}
