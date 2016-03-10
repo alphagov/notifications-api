@@ -51,19 +51,15 @@ class FiretextClient(SmsClient):
     def get_name(self):
         return self.name
 
-    def send_sms(self, to, content, notification_id=None):
+    def send_sms(self, to, content, reference):
 
         data = {
             "apiKey": self.api_key,
             "from": self.from_number,
             "to": to.replace('+', ''),
-            "message": content
+            "message": content,
+            "reference": reference
         }
-
-        if notification_id:
-            data.update({
-                "reference": notification_id
-            })
 
         start_time = monotonic()
         try:
