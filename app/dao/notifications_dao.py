@@ -86,6 +86,10 @@ def get_notification(service_id, notification_id):
     return Notification.query.filter_by(service_id=service_id, id=notification_id).one()
 
 
+def get_notification_by_id(notification_id):
+    return Notification.query.filter_by(id=notification_id).first()
+
+
 def get_notifications_for_service(service_id, page=1):
     query = Notification.query.filter_by(service_id=service_id).order_by(desc(Notification.created_at)).paginate(
         page=page,

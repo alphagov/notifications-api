@@ -7,6 +7,7 @@ from flask import json
 from app.models import Service
 from app.dao.templates_dao import dao_get_all_templates_for_service
 from app.dao.services_dao import dao_update_service
+from app.dao.notifications_dao import get_notification_by_id
 from freezegun import freeze_time
 
 
@@ -858,3 +859,174 @@ def test_should_allow_api_call_if_under_day_limit_regardless_of_type(notify_db, 
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             assert response.status_code == 201
+
+
+def test_firetext_callback_should_not_need_auth(notify_api):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            response = client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=0&reference=&time=2016-03-10 14:17:00',
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            assert response.status_code == 200
+
+
+def test_firetext_callback_should_return_200_if_empty_reference(notify_api):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            response = client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=0&reference=&time=2016-03-10 14:17:00',
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
+            assert json_resp['result'] == 'success'
+            assert json_resp['message'] == 'Firetext callback succeeded'
+
+
+def test_firetext_callback_should_return_200_if_no_reference(notify_api):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            response = client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00',
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
+            assert json_resp['result'] == 'success'
+            assert json_resp['message'] == 'Firetext callback succeeded'
+
+
+def test_firetext_callback_should_return_400_if_no_status(notify_api):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            response = client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&time=2016-03-10 14:17:00',
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 400
+            assert json_resp['result'] == 'error'
+            assert json_resp['message'] == 'Firetext callback failed: status missing'
+
+
+def test_firetext_callback_should_return_400_if_unknown_status(notify_api):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            response = client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=99&time=2016-03-10 14:17:00&reference={}'.format(uuid.uuid4()),
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 400
+            assert json_resp['result'] == 'error'
+            assert json_resp['message'] == 'Firetext callback failed: status 99 not found.'
+
+
+def test_firetext_callback_should_return_400_if_invalid_guid_notification_id(notify_api):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            response = client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference=1234',
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 400
+            assert json_resp['result'] == 'error'
+            assert json_resp['message'] == 'Firetext callback with invalid reference 1234'
+
+
+def test_firetext_callback_should_return_404_if_cannot_find_notification_id(notify_db, notify_db_session, notify_api):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            missing_notification_id = uuid.uuid4()
+            response = client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
+                    missing_notification_id
+                ),
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 404
+            assert json_resp['result'] == 'error'
+            assert json_resp['message'] == 'Firetext callback failed: notification {} not found. Status {}'.format(
+                missing_notification_id,
+                'delivered'
+            )
+
+
+def test_firetext_callback_should_update_notification_status(notify_api, sample_notification):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            original = get_notification_by_id(sample_notification.id)
+            assert original.status == 'sent'
+
+            response = client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
+                    sample_notification.id
+                ),
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
+            assert json_resp['result'] == 'success'
+            assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
+                sample_notification.id
+            )
+            updated = get_notification_by_id(sample_notification.id)
+            assert updated.status == 'delivered'
+
+
+def test_firetext_callback_should_update_notification_status_failed(notify_api, sample_notification):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            original = get_notification_by_id(sample_notification.id)
+            assert original.status == 'sent'
+
+            response = client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=1&time=2016-03-10 14:17:00&reference={}'.format(
+                    sample_notification.id
+                ),
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
+            assert json_resp['result'] == 'success'
+            assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
+                sample_notification.id
+            )
+            updated = get_notification_by_id(sample_notification.id)
+            assert updated.status == 'failed'
+
+
+def test_firetext_callback_should_update_notification_status_sent(notify_api, notify_db, notify_db_session):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            notification = sample_notification(notify_db, notify_db_session, status='delivered')
+            original = get_notification_by_id(notification.id)
+            assert original.status == 'delivered'
+
+            response = client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=2&time=2016-03-10 14:17:00&reference={}'.format(
+                    notification.id
+                ),
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
+            assert json_resp['result'] == 'success'
+            assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
+                notification.id
+            )
+            updated = get_notification_by_id(notification.id)
+            assert updated.status == 'sent'
