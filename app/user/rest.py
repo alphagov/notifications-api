@@ -156,7 +156,7 @@ def get_user(user_id=None):
     return jsonify(data=result.data)
 
 
-@user.route('/<int:user_id>/service/<service_id>/permission', methods=['POST'])
+@user.route('/<int:user_id>/service/<uuid:service_id>/permission', methods=['POST'])
 def set_permissions(user_id, service_id):
     # TODO fix security hole, how do we verify that the user
     # who is making this request has permission to make the request.

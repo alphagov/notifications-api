@@ -11,7 +11,7 @@ def dao_get_jobs_by_service_id(service_id):
 
 
 def dao_get_job_by_id(job_id):
-    return Job.query.filter_by(id=job_id).first()
+    return Job.query.filter_by(id=job_id).one()
 
 
 def dao_create_job(job):

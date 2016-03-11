@@ -1,5 +1,9 @@
 from datetime import datetime, timedelta
 import uuid
+
+import pytest
+from sqlalchemy.orm.exc import NoResultFound
+
 from app import db
 
 from app.models import InvitedUser
@@ -50,8 +54,9 @@ def test_get_invited_user_by_id(notify_db, notify_db_session, sample_invited_use
 def test_get_unknown_invited_user_returns_none(notify_db, notify_db_session, sample_service):
     unknown_id = uuid.uuid4()
 
-    unknown = get_invited_user(sample_service.id, unknown_id)
-    assert unknown is None
+    with pytest.raises(NoResultFound) as e:
+        get_invited_user(sample_service.id, unknown_id)
+    assert 'No row was found for one()' in str(e.value)
 
 
 def test_get_invited_users_for_service(notify_db, notify_db_session, sample_service):

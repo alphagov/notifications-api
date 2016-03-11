@@ -29,8 +29,6 @@ register_errors(job)
 @job.route('/<job_id>', methods=['GET'])
 def get_job_by_service_and_job_id(service_id, job_id):
     job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
-    if not job:
-        return jsonify(result="error", message="Job {} not found for service {}".format(job_id, service_id)), 404
     data, errors = job_schema.dump(job)
     return jsonify(data=data)
 
@@ -44,7 +42,6 @@ def get_jobs_by_service(service_id):
 
 @job.route('', methods=['POST'])
 def create_job(service_id):
-
     dao_fetch_service_by_id(service_id)
 
     data = request.get_json()

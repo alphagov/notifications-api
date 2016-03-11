@@ -233,8 +233,7 @@ def test_update_invited_user_for_wrong_service_returns_404(notify_api, sample_in
                                    headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 404
             json_response = json.loads(response.get_data(as_text=True))['message']
-            assert json_response == 'Invited user not found for service id: {} and invited user id: {}'\
-                .format(bad_service_id, sample_invited_user.id)
+            assert json_response == 'No result found'
 
 
 def test_update_invited_user_for_invalid_data_returns_400(notify_api, sample_invited_user):

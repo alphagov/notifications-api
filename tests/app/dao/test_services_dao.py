@@ -171,4 +171,6 @@ def test_cannot_get_service_by_id_and_owned_by_different_user(service_factory, s
     save_model_user(new_user)
     service2 = service_factory.get('service 2', new_user)
     assert dao_fetch_service_by_id_and_user(service1.id, sample_user.id).name == 'service 1'
-    assert not dao_fetch_service_by_id_and_user(service2.id, sample_user.id)
+    with pytest.raises(NoResultFound) as e:
+        dao_fetch_service_by_id_and_user(service2.id, sample_user.id)
+    assert 'No row was found for one()' in str(e)
