@@ -80,20 +80,9 @@ def update_notification_status_by_id(notification_id, status):
     return count
 
 
-def update_notification_status_by_to(to, status):
-    count = db.session.query(Notification).filter_by(
-        to=to
-    ).update({
-        Notification.status: status,
-        Notification.updated_at: datetime.utcnow()
-    })
-    db.session.commit()
-    return count
-
-
 def update_notification_status_by_reference(reference, status):
     count = db.session.query(Notification).filter_by(
-        refernce=reference
+        reference=reference
     ).update({
         Notification.status: status,
         Notification.updated_at: datetime.utcnow()
