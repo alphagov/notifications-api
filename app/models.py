@@ -265,6 +265,7 @@ class Notification(db.Model):
         onupdate=datetime.datetime.now)
     status = db.Column(
         db.Enum(*NOTIFICATION_STATUS_TYPES, name='notification_status_types'), nullable=False, default='sent')
+    reference = db.Column(db.String, nullable=True, index=True)
 
 
 INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']

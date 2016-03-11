@@ -9,7 +9,8 @@ from app.dao.notifications_dao import (
     dao_update_notification,
     delete_failed_notifications_created_more_than_a_week_ago,
     delete_successful_notifications_created_more_than_a_day_ago,
-    dao_get_notification_statistics_for_service_and_day
+    dao_get_notification_statistics_for_service_and_day,
+    update_notification_reference_by_id
 )
 from app.dao.jobs_dao import dao_update_job, dao_get_job_by_id
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
@@ -205,7 +206,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 client.send_sms(
                     to=notification['to'],
                     content=template.replaced,
-                    notification_id=notification_id
+                    reference=str(notification_id)
                 )
             except FiretextClientException as e:
                 current_app.logger.error(
@@ -273,12 +274,13 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
                     values=notification.get('personalisation', {})
                 )
 
-                client.send_email(
+                reference = client.send_email(
                     from_address,
                     notification['to'],
                     subject,
                     template.replaced
                 )
+                update_notification_reference_by_id(notification_id, reference)
             except AwsSesClientException as e:
                 current_app.logger.debug(e)
                 notification_db_object.status = 'failed'
