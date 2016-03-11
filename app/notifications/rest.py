@@ -10,8 +10,6 @@ from flask import (
     json
 )
 
-from json import JSONDecodeError
-
 from utils.template import Template
 from app.clients.sms.firetext import firetext_response_status
 from app.clients.email.aws_ses import ses_response_status
@@ -91,7 +89,7 @@ def process_ses_response():
                 result="error", message="SES callback failed: destination missing"
             ), 400
 
-    except JSONDecodeError as ex:
+    except ValueError as ex:
         current_app.logger.exception(
             "SES callback failed: invalid json {}".format(ex)
         )
