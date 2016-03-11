@@ -10,7 +10,7 @@ from flask import (
     json
 )
 
-from json.decoder import JSONDecodeError
+from json import JSONDecodeError
 
 from utils.template import Template
 from app.clients.sms.firetext import firetext_response_status
