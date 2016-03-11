@@ -67,9 +67,17 @@ def process_ses_response():
             ), 400
 
         try:
-            recipients = ses_request['Message']['mail']['destination']
+            source = ses_request['Message']['mail']['source']
+            if is_not_a_notification(ses_request['Message']['mail']['source']):
+                current_app.logger.info(
+                    "SES callback for notify success:. source {} status {}".format(source, status['notify_status'])
+                )
+                return jsonify(
+                    result="success", message="SES callback succeeded"
+                ), 200
 
-            if notifications_dao.update_notification_status_by_to(recipients[0], status['notify_status']) == 0:
+            reference = ses_request['Message']['mail']['messageId']
+            if notifications_dao.update_notification_status_by_reference(reference, status['notify_status']) == 0:
                 current_app.logger.info(
                     "SES callback failed: notification not found. Status {}".format(status['notify_status'])
                 )
@@ -83,10 +91,10 @@ def process_ses_response():
 
         except KeyError:
             current_app.logger.error(
-                "SES callback failed: destination missing"
+                "SES callback failed: messageId missing"
             )
             return jsonify(
-                result="error", message="SES callback failed: destination missing"
+                result="error", message="SES callback failed: messageId missing"
             ), 400
 
     except ValueError as ex:
@@ -96,6 +104,18 @@ def process_ses_response():
         return jsonify(
             result="error", message="SES callback failed: invalid json"
         ), 400
+
+
+def is_not_a_notification(source):
+    invite_email = "{}@{}".format(
+        current_app.config['INVITATION_EMAIL_FROM'],
+        current_app.config['NOTIFY_EMAIL_DOMAIN']
+    )
+    if current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'] == source:
+        return True
+    if invite_email == source:
+        return True
+    return False
 
 
 @notifications.route('/notifications/sms/firetext', methods=['POST'])

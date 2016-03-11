@@ -18,8 +18,8 @@ from app.dao.notifications_dao import (
     delete_failed_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
     update_notification_status_by_id,
-    update_notification_status_by_to,
-    update_notification_reference_by_id
+    update_notification_reference_by_id,
+    update_notification_status_by_reference
 )
 from tests.app.conftest import sample_job
 from tests.app.conftest import sample_notification
@@ -30,6 +30,13 @@ def test_should_by_able_to_update_reference_by_id(sample_notification):
     count = update_notification_reference_by_id(sample_notification.id, 'reference')
     assert count == 1
     assert Notification.query.get(sample_notification.id).reference == 'reference'
+
+
+def test_should_by_able_to_update_status_by_reference(sample_notification):
+    assert Notification.query.get(sample_notification.id).status == "sent"
+    update_notification_reference_by_id(sample_notification.id, 'reference')
+    update_notification_status_by_reference('reference', 'delivered')
+    assert Notification.query.get(sample_notification.id).status == 'delivered'
 
 
 def test_should_by_able_to_update_status_by_id(sample_notification):
@@ -43,15 +50,8 @@ def test_should_return_zero_count_if_no_notification_with_id():
     assert update_notification_status_by_id(str(uuid.uuid4()), 'delivered') == 0
 
 
-def test_should_return_zero_count_if_no_notification_with_to():
-    assert update_notification_status_by_to('something', 'delivered') == 0
-
-
-def test_should_by_able_to_update_status_by_to(sample_notification):
-    assert Notification.query.get(sample_notification.id).status == 'sent'
-    count = update_notification_status_by_to(sample_notification.to, 'delivered')
-    assert count == 1
-    assert Notification.query.get(sample_notification.id).status == 'delivered'
+def test_should_return_zero_count_if_no_notification_with_reference():
+    assert update_notification_status_by_reference('something', 'delivered') == 0
 
 
 def test_should_be_able_to_get_statistics_for_a_service(sample_template):

@@ -1089,11 +1089,11 @@ def test_ses_callback_should_fail_if_invalid_notification_type(notify_api):
             assert json_resp['message'] == 'SES callback failed: status Unknown not found'
 
 
-def test_ses_callback_should_fail_if_missing_destination(notify_api):
+def test_ses_callback_should_fail_if_missing_message_id(notify_api):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             ses_response = json.loads(load_example_ses('ses_response'))
-            del(ses_response['Message']['mail']['destination'])
+            del(ses_response['Message']['mail']['messageId'])
 
             response = client.post(
                 path='/notifications/email/ses',
@@ -1103,14 +1103,14 @@ def test_ses_callback_should_fail_if_missing_destination(notify_api):
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 400
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'SES callback failed: destination missing'
+            assert json_resp['message'] == 'SES callback failed: messageId missing'
 
 
 def test_ses_callback_should_fail_if_notification_cannot_be_found(notify_db, notify_db_session, notify_api):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             ses_response = json.loads(load_example_ses('ses_response'))
-            ses_response['Message']['mail']['destination'] = ['wont find this']
+            ses_response['Message']['mail']['messageId'] = 'wont find this'
 
             response = client.post(
                 path='/notifications/email/ses',
@@ -1118,19 +1118,22 @@ def test_ses_callback_should_fail_if_notification_cannot_be_found(notify_db, not
                 headers=[('Content-Type', 'text/plain; charset=UTF-8')]
             )
             json_resp = json.loads(response.get_data(as_text=True))
+            print(json_resp)
             assert response.status_code == 404
             assert json_resp['result'] == 'error'
             assert json_resp['message'] == 'SES callback failed: notification not found. Status delivered'
 
 
-def test_ses_callback_should_update_notification_status(notify_api, sample_notification):
+def test_ses_callback_should_update_notification_status(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
-            assert get_notification_by_id(sample_notification.id).status == 'sent'
+            notification = sample_notification(notify_db, notify_db_session, reference='ref')
+
+            assert get_notification_by_id(notification.id).status == 'sent'
 
             ses_response = json.loads(load_example_ses('ses_response'))
-            ses_response['Message']['mail']['destination'] = [sample_notification.to]
+            ses_response['Message']['mail']['messageId'] = 'ref'
 
             response = client.post(
                 path='/notifications/email/ses',
@@ -1141,4 +1144,47 @@ def test_ses_callback_should_update_notification_status(notify_api, sample_notif
             assert response.status_code == 200
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'SES callback succeeded'
-            assert get_notification_by_id(sample_notification.id).status == 'delivered'
+            assert get_notification_by_id(notification.id).status == 'delivered'
+
+
+def test_should_handle_invite_email_callbacks(notify_api, notify_db, notify_db_session):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            notify_api.config['INVITATION_EMAIL_FROM'] = 'test-invite'
+            notify_api.config['NOTIFY_EMAIL_DOMAIN'] = 'test-domain.com'
+
+            ses_response = json.loads(load_example_ses('ses_response'))
+            ses_response['Message']['mail']['messageId'] = 'ref'
+            ses_response['Message']['mail']['source'] = 'test-invite@test-domain.com'
+
+            response = client.post(
+                path='/notifications/email/ses',
+                data=json.dumps(ses_response),
+                headers=[('Content-Type', 'text/plain; charset=UTF-8')]
+            )
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
+            assert json_resp['result'] == 'success'
+            assert json_resp['message'] == 'SES callback succeeded'
+
+
+def test_should_handle_validation_code_callbacks(notify_api, notify_db, notify_db_session):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            notify_api.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'] = 'valid-code@test.com'
+
+            ses_response = json.loads(load_example_ses('ses_response'))
+            ses_response['Message']['mail']['messageId'] = 'ref'
+            ses_response['Message']['mail']['source'] = 'valid-code@test.com'
+
+            response = client.post(
+                path='/notifications/email/ses',
+                data=json.dumps(ses_response),
+                headers=[('Content-Type', 'text/plain; charset=UTF-8')]
+            )
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
+            assert json_resp['result'] == 'success'
+            assert json_resp['message'] == 'SES callback succeeded'

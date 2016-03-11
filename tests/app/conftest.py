@@ -282,6 +282,7 @@ def sample_notification(notify_db,
                         job=None,
                         to_field=None,
                         status='sent',
+                        reference=None,
                         created_at=datetime.utcnow()):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
@@ -305,6 +306,7 @@ def sample_notification(notify_db,
         'service': service,
         'template': template,
         'status': status,
+        'reference': reference,
         'created_at': created_at
     }
     notification = Notification(**data)
