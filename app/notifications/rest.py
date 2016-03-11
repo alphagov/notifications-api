@@ -1,5 +1,4 @@
 from datetime import datetime
-from json import JSONDecodeError
 import uuid
 
 from flask import (
@@ -10,6 +9,8 @@ from flask import (
     url_for,
     json
 )
+
+from json.decoder import JSONDecodeError
 
 from utils.template import Template
 from app.clients.sms.firetext import firetext_response_status
@@ -91,8 +92,8 @@ def process_ses_response():
             ), 400
 
     except JSONDecodeError as ex:
-        current_app.logger.error(
-            "SES callback failed: invalid json"
+        current_app.logger.exception(
+            "SES callback failed: invalid json {}".format(ex)
         )
         return jsonify(
             result="error", message="SES callback failed: invalid json"
