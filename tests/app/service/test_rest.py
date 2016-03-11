@@ -166,8 +166,7 @@ def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_
             assert resp.status_code == 404
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == \
-                'Service not found for service id: {0} and for user id: {1}'.format(service_id, sample_user.id)
+            assert json_resp['message'] == 'No result found'
 
 
 def test_create_service(notify_api, sample_user):
@@ -257,9 +256,9 @@ def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(no
                 data=json.dumps(data),
                 headers=headers)
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 400
+            assert resp.status_code == 404
             assert json_resp['result'] == 'error'
-            assert 'not found' in json_resp['message']['user_id']
+            assert 'No result found' == json_resp['message']
 
 
 def test_should_not_create_service_if_missing_data(notify_api, sample_user):

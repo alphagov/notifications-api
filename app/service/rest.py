@@ -57,11 +57,7 @@ def get_service_by_id(service_id):
         fetched = dao_fetch_service_by_id_and_user(service_id, user_id)
     else:
         fetched = dao_fetch_service_by_id(service_id)
-    if not fetched:
-        message_with_user_id = 'and for user id: {}'.format(user_id) if user_id else ''
-        return jsonify(result="error",
-                       message="Service not found for service id: {0} {1}".format(service_id,
-                                                                                  message_with_user_id)), 404
+
     data, errors = service_schema.dump(fetched)
     return jsonify(data=data)
 
@@ -72,10 +68,7 @@ def create_service():
     if not data.get('user_id', None):
         return jsonify(result="error", message={'user_id': ['Missing data for required field.']}), 400
 
-    try:
-        user = get_model_users(data['user_id'])
-    except NoResultFound:
-        return jsonify(result="error", message={'user_id': ['not found']}), 400
+    user = get_model_users(data['user_id'])
 
     data.pop('user_id', None)
     if 'name' in data:
@@ -93,8 +86,6 @@ def create_service():
 @service.route('/<uuid:service_id>', methods=['POST'])
 def update_service(service_id):
     fetched_service = dao_fetch_service_by_id(service_id)
-    if not fetched_service:
-        return _service_not_found(service_id)
 
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())
@@ -108,8 +99,6 @@ def update_service(service_id):
 @service.route('/<uuid:service_id>/api-key', methods=['POST'])
 def renew_api_key(service_id=None):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
-    if not fetched_service:
-        return _service_not_found(service_id)
 
     # create a new one
     # TODO: what validation should be done here?
@@ -132,9 +121,8 @@ def revoke_api_key(service_id, api_key_id):
 @service.route('/<uuid:service_id>/api-keys', methods=['GET'])
 @service.route('/<uuid:service_id>/api-keys/<int:key_id>', methods=['GET'])
 def get_api_keys(service_id, key_id=None):
-    fetched_service = dao_fetch_service_by_id(service_id=service_id)
-    if not fetched_service:
-        return _service_not_found(service_id)
+    dao_fetch_service_by_id(service_id=service_id)
+
     try:
         if key_id:
             api_keys = [get_model_api_keys(service_id=service_id, id=key_id)]
@@ -149,11 +137,6 @@ def get_api_keys(service_id, key_id=None):
 @service.route('/<uuid:service_id>/users', methods=['GET'])
 def get_users_for_service(service_id):
     fetched = dao_fetch_service_by_id(service_id)
-    if not fetched:
-        return _service_not_found(service_id)
-    # TODO why is this code here, the same functionality exists without it?
-    if not fetched.users:
-        return jsonify(data=[])
 
     result = user_schema.dump(fetched.users, many=True)
     return jsonify(data=result.data)
@@ -162,13 +145,7 @@ def get_users_for_service(service_id):
 @service.route('/<uuid:service_id>/users/<user_id>', methods=['POST'])
 def add_user_to_service(service_id, user_id):
     service = dao_fetch_service_by_id(service_id)
-    if not service:
-        return _service_not_found(service_id)
     user = get_model_users(user_id=user_id)
-
-    if not user:
-        return jsonify(result='error',
-                       message='User not found for id: {}'.format(user_id)), 404
 
     if user in service.users:
         return jsonify(result='error',
@@ -180,10 +157,6 @@ def add_user_to_service(service_id, user_id):
 
     data, errors = service_schema.dump(service)
     return jsonify(data=data), 201
-
-
-def _service_not_found(service_id):
-    return jsonify(result='error', message='Service not found for id: {}'.format(service_id)), 404
 
 
 def _process_permissions(user, service, permission_groups):

@@ -34,8 +34,4 @@ def get_invited_user_by_token(token):
 
     invited_user = get_invited_user_by_id(invited_user_id)
 
-    if not invited_user:
-        message = 'Invited user not found with id: {}'.format(invited_user_id)
-        return jsonify(result='error', message=message), 404
-
     return jsonify(data=invited_user_schema.dump(invited_user).data), 200
