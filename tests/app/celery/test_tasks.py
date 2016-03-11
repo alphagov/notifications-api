@@ -267,7 +267,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     firetext_client.send_sms.assert_called_once_with(
         to="+441234123123",
         content="Sample service: Hello Jo",
-        notification_id=notification_id
+        reference=str(notification_id)
     )
     persisted_notification = notifications_dao.get_notification(
         sample_template_with_placeholders.service_id, notification_id
@@ -303,7 +303,7 @@ def test_should_send_sms_without_personalisation(sample_template, mocker):
     firetext_client.send_sms.assert_called_once_with(
         to="+441234123123",
         content="Sample service: This is a template",
-        notification_id=notification_id
+        reference=str(notification_id)
     )
 
 
@@ -332,7 +332,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
     firetext_client.send_sms.assert_called_once_with(
         to="+441234123123",
         content="Sample service: This is a template",
-        notification_id=notification_id
+        reference=str(notification_id)
     )
 
 
@@ -413,7 +413,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
     firetext_client.send_sms.assert_called_once_with(
         to="+441234123123",
         content="Sample service: This is a template",
-        notification_id=notification_id
+        reference=str(notification_id)
     )
     persisted_notification = notifications_dao.get_notification(sample_job.template.service_id, notification_id)
     assert persisted_notification.id == notification_id
@@ -464,6 +464,31 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     assert persisted_notification.sent_by == 'ses'
 
 
+def test_should_use_email_template_and_persist_ses_reference(sample_email_template_with_placeholders, mocker):
+    notification = {
+        "template": sample_email_template_with_placeholders.id,
+        "to": "my_email@my_email.com",
+        "personalisation": {"name": "Jo"}
+    }
+    mocker.patch('app.encryption.decrypt', return_value=notification)
+    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+
+    notification_id = uuid.uuid4()
+    now = datetime.utcnow()
+    send_email(
+        sample_email_template_with_placeholders.service_id,
+        notification_id,
+        'subject',
+        'email_from',
+        "encrypted-in-reality",
+        now.strftime(DATETIME_FORMAT)
+    )
+    persisted_notification = notifications_dao.get_notification(
+        sample_email_template_with_placeholders.service_id, notification_id
+    )
+    assert persisted_notification.reference == 'reference'
+
+
 def test_should_use_email_template_and_persist_without_personalisation(
         sample_email_template, mocker
 ):
@@ -471,7 +496,7 @@ def test_should_use_email_template_and_persist_without_personalisation(
         "template": sample_email_template.id,
         "to": "my_email@my_email.com",
     })
-    mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.aws_ses_client.send_email', return_value="ref")
     mocker.patch('app.aws_ses_client.get_name', return_value='ses')
 
     notification_id = uuid.uuid4()
@@ -513,7 +538,8 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
     firetext_client.send_sms.assert_called_once_with(
         to="+441234123123",
         content="Sample service: This is a template",
-        notification_id=notification_id)
+        reference=str(notification_id)
+    )
     persisted_notification = notifications_dao.get_notification(sample_template.service_id, notification_id)
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == '+441234123123'

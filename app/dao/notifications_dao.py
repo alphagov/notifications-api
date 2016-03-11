@@ -64,6 +64,7 @@ def update_job_sent_count(notification):
 
 
 def dao_update_notification(notification):
+    notification.updated_at = datetime.utcnow()
     db.session.add(notification)
     db.session.commit()
 
@@ -84,6 +85,28 @@ def update_notification_status_by_to(to, status):
         to=to
     ).update({
         Notification.status: status,
+        Notification.updated_at: datetime.utcnow()
+    })
+    db.session.commit()
+    return count
+
+
+def update_notification_status_by_reference(reference, status):
+    count = db.session.query(Notification).filter_by(
+        refernce=reference
+    ).update({
+        Notification.status: status,
+        Notification.updated_at: datetime.utcnow()
+    })
+    db.session.commit()
+    return count
+
+
+def update_notification_reference_by_id(id, reference):
+    count = db.session.query(Notification).filter_by(
+        id=id
+    ).update({
+        Notification.reference: reference,
         Notification.updated_at: datetime.utcnow()
     })
     db.session.commit()

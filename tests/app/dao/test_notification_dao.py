@@ -18,10 +18,18 @@ from app.dao.notifications_dao import (
     delete_failed_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
     update_notification_status_by_id,
-    update_notification_status_by_to
+    update_notification_status_by_to,
+    update_notification_reference_by_id
 )
 from tests.app.conftest import sample_job
 from tests.app.conftest import sample_notification
+
+
+def test_should_by_able_to_update_reference_by_id(sample_notification):
+    assert not Notification.query.get(sample_notification.id).reference
+    count = update_notification_reference_by_id(sample_notification.id, 'reference')
+    assert count == 1
+    assert Notification.query.get(sample_notification.id).reference == 'reference'
 
 
 def test_should_by_able_to_update_status_by_id(sample_notification):
