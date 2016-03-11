@@ -69,12 +69,12 @@ def delete_model_user(user):
 
 def get_model_users(user_id=None):
     if user_id:
-        return User.query.filter_by(id=user_id).first()
+        return User.query.filter_by(id=user_id).one()
     return User.query.filter_by().all()
 
 
 def get_user_by_email(email):
-    return User.query.filter_by(email_address=email).first()
+    return User.query.filter_by(email_address=email).one()
 
 
 def increment_failed_login_count(user):

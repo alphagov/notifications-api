@@ -8,7 +8,7 @@ def dao_fetch_all_services():
 
 
 def dao_fetch_service_by_id(service_id):
-    return Service.query.filter_by(id=service_id).first()
+    return Service.query.filter_by(id=service_id).one()
 
 
 def dao_fetch_all_services_by_user(user_id):

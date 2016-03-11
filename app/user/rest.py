@@ -33,7 +33,7 @@ register_errors(user)
 
 @user.route('', methods=['POST'])
 def create_user():
-    user, errors = user_schema.load(request.get_json())
+    user_to_create, errors = user_schema.load(request.get_json())
     req_json = request.get_json()
     # TODO password policy, what is valid password
     if not req_json.get('password', None):
@@ -41,16 +41,13 @@ def create_user():
         return jsonify(result="error", message=errors), 400
     if errors:
         return jsonify(result="error", message=errors), 400
-    save_model_user(user, pwd=req_json.get('password'))
-    return jsonify(data=user_schema.dump(user).data), 201
+    save_model_user(user_to_create, pwd=req_json.get('password'))
+    return jsonify(data=user_schema.dump(user_to_create).data), 201
 
 
 @user.route('/<int:user_id>', methods=['PUT'])
 def update_user(user_id):
     user_to_update = get_model_users(user_id=user_id)
-    if not user_to_update:
-        return _user_not_found(user_id)
-
     req_json = request.get_json()
     update_dct, errors = user_schema_load_json.load(req_json)
     pwd = req_json.get('password', None)
@@ -116,10 +113,6 @@ def verify_user_code(user_id):
 @user.route('/<int:user_id>/sms-code', methods=['POST'])
 def send_user_sms_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
-
-    if not user_to_send_to:
-        return _user_not_found(user_id)
-
     verify_code, errors = request_verify_code_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
@@ -139,9 +132,6 @@ def send_user_sms_code(user_id):
 @user.route('/<int:user_id>/email-code', methods=['POST'])
 def send_user_email_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
-    if not user_to_send_to:
-        return _user_not_found(user_id)
-
     verify_code, errors = request_verify_code_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
@@ -162,8 +152,6 @@ def send_user_email_code(user_id):
 @user.route('', methods=['GET'])
 def get_user(user_id=None):
     users = get_model_users(user_id=user_id)
-    if not users:
-        return jsonify(result="error", message="not found"), 404
     result = user_schema.dump(users, many=True) if isinstance(users, list) else user_schema.dump(users)
     return jsonify(data=result.data)
 
@@ -173,11 +161,7 @@ def set_permissions(user_id, service_id):
     # TODO fix security hole, how do we verify that the user
     # who is making this request has permission to make the request.
     user = get_model_users(user_id=user_id)
-    if not user:
-        _user_not_found(user_id)
     service = dao_fetch_service_by_id(service_id=service_id)
-    if not service:
-        abort(404, 'Service not found for id: {}'.format(service_id))
     permissions, errors = permission_schema.load(request.get_json(), many=True)
     if errors:
         abort(400, errors)
@@ -194,8 +178,6 @@ def get_by_email():
     if not email:
         return jsonify(result="error", message="invalid request"), 400
     fetched_user = get_user_by_email(email)
-    if not fetched_user:
-        return _user_not_found_for_email()
     result = user_schema.dump(fetched_user)
 
     return jsonify(data=result.data)
@@ -208,8 +190,6 @@ def send_user_reset_password():
         return jsonify(result="error", message=errors), 400
 
     user_to_send_to = get_user_by_email(email['email'])
-    if not user_to_send_to:
-        return _user_not_found_for_email()
 
     reset_password_message = {'to': user_to_send_to.email_address,
                               'name': user_to_send_to.name,
@@ -218,14 +198,6 @@ def send_user_reset_password():
     email_reset_password.apply_async([encryption.encrypt(reset_password_message)], queue='email-reset-password')
 
     return jsonify({}), 204
-
-
-def _user_not_found(user_id):
-    return abort(404, 'User not found for id: {}'.format(user_id))
-
-
-def _user_not_found_for_email():
-    return abort(404, 'User not found for email address')
 
 
 def _create_reset_password_url(email):
