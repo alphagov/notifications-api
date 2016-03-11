@@ -19,7 +19,7 @@ from app.schemas import job_schema
 
 from app.celery.tasks import process_job
 
-job = Blueprint('job', __name__, url_prefix='/service/<service_id>/job')
+job = Blueprint('job', __name__, url_prefix='/service/<uuid:service_id>/job')
 
 from app.errors import register_errors
 
@@ -45,9 +45,7 @@ def get_jobs_by_service(service_id):
 @job.route('', methods=['POST'])
 def create_job(service_id):
 
-    service = dao_fetch_service_by_id(service_id)
-    if not service:
-        return jsonify(result="error", message="Service {} not found".format(service_id)), 404
+    dao_fetch_service_by_id(service_id)
 
     data = request.get_json()
     data.update({
@@ -65,9 +63,6 @@ def create_job(service_id):
 @job.route('/<job_id>', methods=['POST'])
 def update_job(service_id, job_id):
     fetched_job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
-    if not fetched_job:
-        return jsonify(result="error", message="Job {} not found for service {}".format(job_id, service_id)), 404
-
     current_data = dict(job_schema.dump(fetched_job).data.items())
     current_data.update(request.get_json())
 

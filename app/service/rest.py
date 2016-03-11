@@ -50,7 +50,7 @@ def get_services():
     return jsonify(data=data)
 
 
-@service.route('/<service_id>', methods=['GET'])
+@service.route('/<uuid:service_id>', methods=['GET'])
 def get_service_by_id(service_id):
     user_id = request.args.get('user_id', None)
     if user_id:
@@ -72,8 +72,9 @@ def create_service():
     if not data.get('user_id', None):
         return jsonify(result="error", message={'user_id': ['Missing data for required field.']}), 400
 
-    user = get_model_users(data['user_id'])
-    if not user:
+    try:
+        user = get_model_users(data['user_id'])
+    except NoResultFound:
         return jsonify(result="error", message={'user_id': ['not found']}), 400
 
     data.pop('user_id', None)
@@ -89,7 +90,7 @@ def create_service():
     return jsonify(data=service_schema.dump(valid_service).data), 201
 
 
-@service.route('/<service_id>', methods=['POST'])
+@service.route('/<uuid:service_id>', methods=['POST'])
 def update_service(service_id):
     fetched_service = dao_fetch_service_by_id(service_id)
     if not fetched_service:
@@ -104,7 +105,7 @@ def update_service(service_id):
     return jsonify(data=service_schema.dump(fetched_service).data), 200
 
 
-@service.route('/<service_id>/api-key', methods=['POST'])
+@service.route('/<uuid:service_id>/api-key', methods=['POST'])
 def renew_api_key(service_id=None):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
     if not fetched_service:
@@ -120,7 +121,7 @@ def renew_api_key(service_id=None):
     return jsonify(data=unsigned_api_key), 201
 
 
-@service.route('/<service_id>/api-key/revoke/<int:api_key_id>', methods=['POST'])
+@service.route('/<uuid:service_id>/api-key/revoke/<int:api_key_id>', methods=['POST'])
 def revoke_api_key(service_id, api_key_id):
     service_api_key = get_model_api_keys(service_id=service_id, id=api_key_id)
 
@@ -128,8 +129,8 @@ def revoke_api_key(service_id, api_key_id):
     return jsonify(), 202
 
 
-@service.route('/<service_id>/api-keys', methods=['GET'])
-@service.route('/<service_id>/api-keys/<int:key_id>', methods=['GET'])
+@service.route('/<uuid:service_id>/api-keys', methods=['GET'])
+@service.route('/<uuid:service_id>/api-keys/<int:key_id>', methods=['GET'])
 def get_api_keys(service_id, key_id=None):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
     if not fetched_service:
@@ -145,7 +146,7 @@ def get_api_keys(service_id, key_id=None):
     return jsonify(apiKeys=api_key_schema.dump(api_keys, many=True).data), 200
 
 
-@service.route('/<service_id>/users', methods=['GET'])
+@service.route('/<uuid:service_id>/users', methods=['GET'])
 def get_users_for_service(service_id):
     fetched = dao_fetch_service_by_id(service_id)
     if not fetched:
@@ -158,7 +159,7 @@ def get_users_for_service(service_id):
     return jsonify(data=result.data)
 
 
-@service.route('/<service_id>/users/<user_id>', methods=['POST'])
+@service.route('/<uuid:service_id>/users/<user_id>', methods=['POST'])
 def add_user_to_service(service_id, user_id):
     service = dao_fetch_service_by_id(service_id)
     if not service:

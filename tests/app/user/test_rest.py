@@ -258,7 +258,7 @@ def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_us
             user = User.query.filter_by(id=sample_user.id).first()
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == "error"
-            assert json_resp['message'] == "User not found for id: {}".format("9999")
+            assert json_resp['message'] == 'No result found'
 
             assert user == sample_user
             assert user.email_address != new_email
@@ -299,7 +299,7 @@ def test_get_user_by_email_not_found_returns_404(notify_api,
             assert resp.status_code == 404
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'User not found for email address'
+            assert json_resp['message'] == 'No result found'
 
 
 def test_get_user_by_email_bad_url_returns_404(notify_api,
@@ -469,7 +469,7 @@ def test_send_user_reset_password_should_return_400_when_user_doesnot_exist(noti
             headers=[('Content-Type', 'application/json'), auth_header])
 
         assert resp.status_code == 404
-        assert json.loads(resp.get_data(as_text=True))['message'] == 'User not found for email address'
+        assert json.loads(resp.get_data(as_text=True))['message'] == 'No result found'
 
 
 def test_send_user_reset_password_should_return_400_when_data_is_not_email_address(notify_api, mocker):

@@ -68,7 +68,7 @@ def test_get_job_with_unknown_id_returns404(notify_api, sample_template):
             assert response.status_code == 404
             resp_json = json.loads(response.get_data(as_text=True))
             assert resp_json == {
-                'message': 'Job {} not found for service {}'.format(random_id, service_id),
+                'message': 'No result found',
                 'result': 'error'
             }
 
@@ -182,7 +182,7 @@ def test_create_job_returns_404_if_missing_service(notify_api, sample_template, 
 
             app.celery.tasks.process_job.apply_async.assert_not_called()
             assert resp_json['result'] == 'error'
-            assert resp_json['message'] == 'Service {} not found'.format(random_id)
+            assert resp_json['message'] == 'No result found'
 
 
 def test_get_update_job(notify_api, sample_job):
