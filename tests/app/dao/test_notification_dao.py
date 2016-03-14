@@ -16,10 +16,42 @@ from app.dao.notifications_dao import (
     dao_get_notification_statistics_for_service,
     delete_successful_notifications_created_more_than_a_day_ago,
     delete_failed_notifications_created_more_than_a_week_ago,
-    dao_get_notification_statistics_for_service_and_day
+    dao_get_notification_statistics_for_service_and_day,
+    update_notification_status_by_id,
+    update_notification_reference_by_id,
+    update_notification_status_by_reference
 )
 from tests.app.conftest import sample_job
 from tests.app.conftest import sample_notification
+
+
+def test_should_by_able_to_update_reference_by_id(sample_notification):
+    assert not Notification.query.get(sample_notification.id).reference
+    count = update_notification_reference_by_id(sample_notification.id, 'reference')
+    assert count == 1
+    assert Notification.query.get(sample_notification.id).reference == 'reference'
+
+
+def test_should_by_able_to_update_status_by_reference(sample_notification):
+    assert Notification.query.get(sample_notification.id).status == "sent"
+    update_notification_reference_by_id(sample_notification.id, 'reference')
+    update_notification_status_by_reference('reference', 'delivered')
+    assert Notification.query.get(sample_notification.id).status == 'delivered'
+
+
+def test_should_by_able_to_update_status_by_id(sample_notification):
+    assert Notification.query.get(sample_notification.id).status == 'sent'
+    count = update_notification_status_by_id(sample_notification.id, 'delivered')
+    assert count == 1
+    assert Notification.query.get(sample_notification.id).status == 'delivered'
+
+
+def test_should_return_zero_count_if_no_notification_with_id():
+    assert update_notification_status_by_id(str(uuid.uuid4()), 'delivered') == 0
+
+
+def test_should_return_zero_count_if_no_notification_with_reference():
+    assert update_notification_status_by_reference('something', 'delivered') == 0
 
 
 def test_should_be_able_to_get_statistics_for_a_service(sample_template):
@@ -568,7 +600,7 @@ def test_should_not_delete_sent_notifications_before_one_day(notify_db, notify_d
 
 def test_should_not_delete_failed_notifications_before_seven_days(notify_db, notify_db_session):
     expired = datetime.utcnow() - timedelta(hours=24 * 7)
-    valid = datetime.utcnow() - timedelta(hours=(24 * 6) + 23,  minutes=59, seconds=59)
+    valid = datetime.utcnow() - timedelta(hours=(24 * 6) + 23, minutes=59, seconds=59)
     sample_notification(notify_db, notify_db_session, created_at=expired, status="failed", to_field="expired")
     sample_notification(notify_db, notify_db_session, created_at=valid, status="failed", to_field="valid")
     assert len(Notification.query.all()) == 2

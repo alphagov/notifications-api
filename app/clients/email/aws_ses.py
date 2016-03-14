@@ -3,6 +3,21 @@ from flask import current_app
 from monotonic import monotonic
 from app.clients.email import (EmailClientException, EmailClient)
 
+ses_response_status = {
+    'Bounce': {
+        "success": False,
+        "notify_status": 'bounce'
+    },
+    'Delivery': {
+        "success": True,
+        "notify_status": 'delivered'
+    },
+    'Complaint': {
+        "success": False,
+        "notify_status": 'complaint'
+    }
+}
+
 
 class AwsSesClientException(EmailClientException):
     pass

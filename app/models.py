@@ -231,7 +231,7 @@ class VerifyCode(db.Model):
         return check_hash(cde, self._code)
 
 
-NOTIFICATION_STATUS_TYPES = ['sent', 'failed']
+NOTIFICATION_STATUS_TYPES = ['sent', 'delivered', 'failed', 'complaint', 'bounce']
 
 
 class Notification(db.Model):
@@ -265,6 +265,7 @@ class Notification(db.Model):
         onupdate=datetime.datetime.now)
     status = db.Column(
         db.Enum(*NOTIFICATION_STATUS_TYPES, name='notification_status_types'), nullable=False, default='sent')
+    reference = db.Column(db.String, nullable=True, index=True)
 
 
 INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
