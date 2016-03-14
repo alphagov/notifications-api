@@ -38,7 +38,6 @@ register_errors(notifications)
 def process_ses_response():
     try:
         ses_request = json.loads(request.data)
-
         if 'Message' not in ses_request:
             current_app.logger.error(
                 "SES callback failed: message missing"
@@ -47,7 +46,9 @@ def process_ses_response():
                 result="error", message="SES callback failed: message missing"
             ), 400
 
-        if 'notificationType' not in ses_request['Message']:
+        ses_message = json.loads(ses_request['Message'])
+
+        if 'notificationType' not in ses_message:
             current_app.logger.error(
                 "SES callback failed: notificationType missing"
             )
@@ -55,19 +56,19 @@ def process_ses_response():
                 result="error", message="SES callback failed: notificationType missing"
             ), 400
 
-        status = ses_response_status.get(ses_request['Message']['notificationType'], None)
+        status = ses_response_status.get(ses_message['notificationType'], None)
         if not status:
             current_app.logger.info(
                 "SES callback failed: status {} not found.".format(status)
             )
             return jsonify(
                 result="error",
-                message="SES callback failed: status {} not found".format(ses_request['Message']['notificationType'])
+                message="SES callback failed: status {} not found".format(ses_message['notificationType'])
             ), 400
 
         try:
-            source = ses_request['Message']['mail']['source']
-            if is_not_a_notification(ses_request['Message']['mail']['source']):
+            source = ses_message['mail']['source']
+            if is_not_a_notification(source):
                 current_app.logger.info(
                     "SES callback for notify success:. source {} status {}".format(source, status['notify_status'])
                 )
@@ -75,7 +76,7 @@ def process_ses_response():
                     result="success", message="SES callback succeeded"
                 ), 200
 
-            reference = ses_request['Message']['mail']['messageId']
+            reference = ses_message['mail']['messageId']
             if notifications_dao.update_notification_status_by_reference(reference, status['notify_status']) == 0:
                 current_app.logger.info(
                     "SES callback failed: notification not found. Status {}".format(status['notify_status'])
