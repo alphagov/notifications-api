@@ -9,7 +9,8 @@ from app.dao.notifications_dao import (
     dao_update_notification,
     delete_failed_notifications_created_more_than_a_week_ago,
     delete_successful_notifications_created_more_than_a_day_ago,
-    dao_get_notification_statistics_for_service_and_day
+    dao_get_notification_statistics_for_service_and_day,
+    update_notification_reference_by_id
 )
 from app.dao.jobs_dao import dao_update_job, dao_get_job_by_id
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
@@ -203,10 +204,14 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 )
 
                 client.send_sms(
-                    notification['to'],
-                    template.replaced
+                    to=notification['to'],
+                    content=template.replaced,
+                    reference=str(notification_id)
                 )
             except FiretextClientException as e:
+                current_app.logger.error(
+                    "SMS notification {} failed".format(notification_id)
+                )
                 current_app.logger.exception(e)
                 notification_db_object.status = 'failed'
                 dao_update_notification(notification_db_object)
@@ -271,14 +276,15 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
                     values=notification.get('personalisation', {})
                 )
 
-                client.send_email(
+                reference = client.send_email(
                     from_address,
                     notification['to'],
                     subject,
                     template.replaced
                 )
+                update_notification_reference_by_id(notification_id, reference)
             except AwsSesClientException as e:
-                current_app.logger.debug(e)
+                current_app.logger.exception(e)
                 notification_db_object.status = 'failed'
                 dao_update_notification(notification_db_object)
 
@@ -293,7 +299,9 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
 def send_sms_code(encrypted_verification):
     verification_message = encryption.decrypt(encrypted_verification)
     try:
-        firetext_client.send_sms(verification_message['to'], verification_message['secret_code'])
+        firetext_client.send_sms(
+            verification_message['to'], verification_message['secret_code'], 'send-sms-code'
+        )
     except FiretextClientException as e:
         current_app.logger.exception(e)
 
