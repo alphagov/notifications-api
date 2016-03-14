@@ -61,6 +61,7 @@ def update_job_sent_count(notification):
         Job.notifications_sent: Job.notifications_sent + 1,
         Job.updated_at: datetime.utcnow()
     })
+    db.session.commit()
 
 
 def dao_update_notification(notification):
