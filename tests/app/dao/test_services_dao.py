@@ -11,7 +11,7 @@ from app.dao.services_dao import (
 )
 from app.dao.users_dao import save_model_user
 from app.models import Service, User
-from sqlalchemy.orm.exc import FlushError
+from sqlalchemy.orm.exc import FlushError, NoResultFound
 from sqlalchemy.exc import IntegrityError
 
 
@@ -145,7 +145,9 @@ def test_get_all_user_services_should_return_empty_list_if_no_services_for_user(
 
 
 def test_get_service_by_id_returns_none_if_no_service(notify_db):
-    assert not dao_fetch_service_by_id(str(uuid.uuid4()))
+    with pytest.raises(NoResultFound) as e:
+        dao_fetch_service_by_id(str(uuid.uuid4()))
+    assert 'No row was found for one()' in str(e)
 
 
 def test_get_service_by_id_returns_service(service_factory):
@@ -169,4 +171,6 @@ def test_cannot_get_service_by_id_and_owned_by_different_user(service_factory, s
     save_model_user(new_user)
     service2 = service_factory.get('service 2', new_user)
     assert dao_fetch_service_by_id_and_user(service1.id, sample_user.id).name == 'service 1'
-    assert not dao_fetch_service_by_id_and_user(service2.id, sample_user.id)
+    with pytest.raises(NoResultFound) as e:
+        dao_fetch_service_by_id_and_user(service2.id, sample_user.id)
+    assert 'No row was found for one()' in str(e)

@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 from sqlalchemy.exc import DataError
+from sqlalchemy.orm.exc import NoResultFound
+
 from app import db
 import pytest
 
@@ -55,7 +57,7 @@ def test_get_user_not_exists(notify_api, notify_db, notify_db_session):
     try:
         get_model_users(user_id="12345")
         pytest.fail("NoResultFound exception not thrown.")
-    except:
+    except NoResultFound as e:
         pass
 
 

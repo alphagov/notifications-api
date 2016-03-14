@@ -92,7 +92,7 @@ def test_should_be_error_if_service_does_not_exist_on_create(notify_api):
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 404
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'Service not found'
+            assert json_resp['message'] == 'No result found'
 
 
 def test_should_be_error_if_service_does_not_exist_on_update(notify_api):
@@ -117,7 +117,7 @@ def test_should_be_error_if_service_does_not_exist_on_update(notify_api):
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 404
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'Template not found'
+            assert json_resp['message'] == 'No result found'
 
 
 def test_must_have_a_subject_on_an_email_template(notify_api, sample_service):
@@ -397,17 +397,18 @@ def test_should_return_404_if_no_templates_for_service_with_id(notify_api, sampl
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
+            uuid_ = uuid.uuid4()
             auth_header = create_authorization_header(
-                path='/service/{}/template/{}'.format(sample_service.id, 111),
+                path='/service/{}/template/{}'.format(sample_service.id, 9999),
                 method='GET'
             )
 
             response = client.get(
-                '/service/{}/template/{}'.format(sample_service.id, 111),
+                '/service/{}/template/{}'.format(sample_service.id, 9999),
                 headers=[auth_header]
             )
 
             assert response.status_code == 404
             json_resp = json.loads(response.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'Template not found'
+            assert json_resp['message'] == 'No result found'
