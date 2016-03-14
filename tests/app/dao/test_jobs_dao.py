@@ -1,3 +1,4 @@
+from datetime import datetime
 import uuid
 
 from app.dao.jobs_dao import (
@@ -62,6 +63,27 @@ def test_get_jobs_for_service(notify_db, notify_db_session, sample_template):
     assert other_job == other_job_from_db[0]
 
     assert one_job_from_db != other_job_from_db
+
+
+def test_get_jobs_for_service_in_created_at_order(notify_db, notify_db_session, sample_template):
+    from tests.app.conftest import sample_job as create_job
+
+    job_1 = create_job(
+        notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
+    job_2 = create_job(
+        notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
+    job_3 = create_job(
+        notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
+    job_4 = create_job(
+        notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
+
+    jobs = dao_get_jobs_by_service_id(sample_template.service.id)
+
+    assert len(jobs) == 4
+    assert jobs[0].id == job_4.id
+    assert jobs[1].id == job_3.id
+    assert jobs[2].id == job_2.id
+    assert jobs[3].id == job_1.id
 
 
 def test_update_job(sample_job):
