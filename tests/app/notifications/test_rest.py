@@ -47,7 +47,7 @@ def test_get_notifications_empty_result(notify_api, sample_api_key):
 
             notification = json.loads(response.get_data(as_text=True))
             assert notification['result'] == "error"
-            assert notification['message'] == "not found"
+            assert notification['message'] == "No result found"
             assert response.status_code == 404
 
 
@@ -331,9 +331,8 @@ def test_send_notification_invalid_template_id(notify_api, sample_template, mock
             app.celery.tasks.send_sms.apply_async.assert_not_called()
 
             assert response.status_code == 404
-            assert len(json_resp['message'].keys()) == 1
-            test_string = 'Template {} not found for service {}'.format(9999, sample_template.service.id)
-            assert test_string in json_resp['message']['template']
+            test_string = 'No result found'
+            assert test_string in json_resp['message']
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -497,8 +496,8 @@ def test_should_not_allow_template_from_another_service(notify_api, service_fact
             app.celery.tasks.send_sms.apply_async.assert_not_called()
 
             assert response.status_code == 404
-            test_string = 'Template {} not found for service {}'.format(service_2_templates[0].id, service_1.id)
-            assert test_string in json_resp['message']['template']
+            test_string = 'No result found'
+            assert test_string in json_resp['message']
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -614,11 +613,8 @@ def test_should_reject_email_notification_with_template_id_that_cant_be_found(
             app.celery.tasks.send_email.apply_async.assert_not_called()
             assert response.status_code == 404
             assert data['result'] == 'error'
-            test_string = 'Template {} not found for service {}'.format(
-                1234,
-                sample_email_template.service.id
-            )
-            assert test_string in data['message']['template']
+            test_string = 'No result found'
+            assert test_string in data['message']
 
 
 def test_should_not_allow_email_template_from_another_service(notify_api, service_factory, sample_user, mocker):
@@ -651,8 +647,8 @@ def test_should_not_allow_email_template_from_another_service(notify_api, servic
             app.celery.tasks.send_email.apply_async.assert_not_called()
 
             assert response.status_code == 404
-            test_string = 'Template {} not found for service {}'.format(service_2_templates[0].id, service_1.id)
-            assert test_string in json_resp['message']['template']
+            test_string = 'No result found'
+            assert test_string in json_resp['message']
 
 
 def test_should_not_send_email_if_restricted_and_not_a_service_user(notify_api, sample_email_template, mocker):

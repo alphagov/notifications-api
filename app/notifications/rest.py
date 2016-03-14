@@ -26,7 +26,6 @@ from app.schemas import (
     notification_status_schema
 )
 from app.celery.tasks import send_sms, send_email
-from sqlalchemy.orm.exc import NoResultFound
 
 notifications = Blueprint('notifications', __name__)
 
@@ -179,13 +178,10 @@ def process_firetext_response():
     ), 200
 
 
-@notifications.route('/notifications/<string:notification_id>', methods=['GET'])
+@notifications.route('/notifications/<uuid:notification_id>', methods=['GET'])
 def get_notifications(notification_id):
-    try:
-        notification = notifications_dao.get_notification(api_user['client'], notification_id)
-        return jsonify({'notification': notification_status_schema.dump(notification).data}), 200
-    except NoResultFound:
-        return jsonify(result="error", message="not found"), 404
+    notification = notifications_dao.get_notification(api_user['client'], notification_id)
+    return jsonify({'notification': notification_status_schema.dump(notification).data}), 200
 
 
 @notifications.route('/notifications', methods=['GET'])
@@ -299,13 +295,6 @@ def send_notification(notification_type):
         template_id=notification['template'],
         service_id=service_id
     )
-    if not template:
-        return jsonify(
-            result="error",
-            message={
-                'template': ['Template {} not found for service {}'.format(notification['template'], service_id)]
-            }
-        ), 404
 
     template_object = Template(template.__dict__, notification.get('personalisation', {}))
     if template_object.missing_data:

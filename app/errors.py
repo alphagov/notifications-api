@@ -48,15 +48,15 @@ def register_errors(blueprint):
 
     @blueprint.app_errorhandler(NoResultFound)
     def no_result_found(e):
-        current_app.logger.error(e)
+        current_app.logger.exception(e)
         return jsonify(result='error', message="No result found"), 404
 
     @blueprint.app_errorhandler(DataError)
     def data_error(e):
-        current_app.logger.error(e)
+        current_app.logger.exception(e)
         return jsonify(result='error', message="No result found"), 404
 
     @blueprint.app_errorhandler(SQLAlchemyError)
     def db_error(e):
-        current_app.logger.error(e)
+        current_app.logger.exception(e)
         return jsonify(result='error', message=str(e)), 500
