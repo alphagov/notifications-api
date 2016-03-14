@@ -9,9 +9,9 @@ from functools import wraps
 
 def authentication_response(message, code):
     current_app.logger.info(message)
-    return jsonify(
-        error=message
-    ), code
+    return jsonify(result='error',
+                   message=message
+                   ), code
 
 
 def requires_auth():

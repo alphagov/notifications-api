@@ -12,7 +12,7 @@ def test_should_not_allow_request_with_no_token(notify_api):
             response = client.get('/service')
             assert response.status_code == 401
             data = json.loads(response.get_data())
-            assert data['error'] == 'Unauthorized, authentication token must be provided'
+            assert data['message'] == 'Unauthorized, authentication token must be provided'
 
 
 def test_should_not_allow_request_with_incorrect_header(notify_api):
@@ -23,7 +23,7 @@ def test_should_not_allow_request_with_incorrect_header(notify_api):
                 headers={'Authorization': 'Basic 1234'})
             assert response.status_code == 401
             data = json.loads(response.get_data())
-            assert data['error'] == 'Unauthorized, authentication bearer scheme must be used'
+            assert data['message'] == 'Unauthorized, authentication bearer scheme must be used'
 
 
 def test_should_not_allow_request_with_incorrect_token(notify_api, sample_user):
@@ -34,7 +34,7 @@ def test_should_not_allow_request_with_incorrect_token(notify_api, sample_user):
                 headers={'Authorization': 'Bearer 1234'})
             assert response.status_code == 403
             data = json.loads(response.get_data())
-            assert data['error'] == 'Invalid token: signature'
+            assert data['message'] == 'Invalid token: signature'
 
 
 def test_should_not_allow_incorrect_path(notify_api, sample_api_key):
@@ -51,7 +51,7 @@ def test_should_not_allow_incorrect_path(notify_api, sample_api_key):
                 headers={'Authorization': "Bearer {}".format(token)})
             assert response.status_code == 403
             data = json.loads(response.get_data())
-            assert data['error'] == 'Invalid token: request'
+            assert data['message'] == 'Invalid token: request'
 
 
 def test_should_not_allow_incorrect_method(notify_api, sample_api_key):
@@ -64,7 +64,7 @@ def test_should_not_allow_incorrect_method(notify_api, sample_api_key):
             )
             assert response.status_code == 403
             data = json.loads(response.get_data())
-            assert data['error'] == 'Invalid token: request'
+            assert data['message'] == 'Invalid token: request'
 
 
 def test_should_not_allow_invalid_secret(notify_api, sample_api_key):
@@ -81,7 +81,7 @@ def test_should_not_allow_invalid_secret(notify_api, sample_api_key):
             )
             assert response.status_code == 403
             data = json.loads(response.get_data())
-            assert data['error'] == 'Invalid token: signature'
+            assert data['message'] == 'Invalid token: signature'
 
 
 def test_should_allow_valid_token(notify_api, sample_api_key):
@@ -162,7 +162,7 @@ def test_should_not_allow_valid_token_with_invalid_post_body(notify_api, notify_
                 headers={'Authorization': 'Bearer {}'.format(token)})
             assert response.status_code == 403
             data = json.loads(response.get_data())
-            assert data['error'] == 'Invalid token: payload'
+            assert data['message'] == 'Invalid token: payload'
 
 
 def test_authentication_passes_admin_client_token(notify_api,
@@ -235,7 +235,7 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
                 headers={'Authorization': 'Bearer {}'.format(token)})
             assert response.status_code == 403
             data = json.loads(response.get_data())
-            assert data['error'] == 'Invalid token: signature'
+            assert data['message'] == 'Invalid token: signature'
 
 
 def test_authentication_returns_error_when_api_client_has_no_secrets(notify_api,
@@ -256,7 +256,7 @@ def test_authentication_returns_error_when_api_client_has_no_secrets(notify_api,
                 headers={'Authorization': 'Bearer {}'.format(token)})
             assert response.status_code == 403
             error_message = json.loads(response.get_data())
-            assert error_message['error'] == 'Invalid token: signature'
+            assert error_message['message'] == 'Invalid token: signature'
             notify_api.config['ADMIN_CLIENT_SECRET'] = api_secret
 
 
