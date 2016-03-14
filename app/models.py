@@ -150,7 +150,7 @@ class Template(db.Model):
         index=False,
         unique=False,
         nullable=True,
-        onupdate=datetime.datetime.now)
+        onupdate=datetime.datetime.utcnow())
     content = db.Column(db.Text, index=False, unique=False, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
     service = db.relationship('Service', backref=db.backref('templates', lazy='dynamic'))
@@ -176,13 +176,13 @@ class Job(db.Model):
         index=False,
         unique=False,
         nullable=False,
-        default=datetime.datetime.now)
+        default=datetime.datetime.utcnow())
     updated_at = db.Column(
         db.DateTime,
         index=False,
         unique=False,
         nullable=True,
-        onupdate=datetime.datetime.now)
+        onupdate=datetime.datetime.utcnow())
     status = db.Column(db.Enum(*JOB_STATUS_TYPES, name='job_status_types'), nullable=False, default='pending')
     notification_count = db.Column(db.Integer, nullable=False)
     notifications_sent = db.Column(db.Integer, nullable=False, default=0)
@@ -217,7 +217,7 @@ class VerifyCode(db.Model):
         index=False,
         unique=False,
         nullable=False,
-        default=datetime.datetime.now)
+        default=datetime.datetime.utcnow())
 
     @property
     def code(self):
@@ -262,7 +262,7 @@ class Notification(db.Model):
         index=False,
         unique=False,
         nullable=True,
-        onupdate=datetime.datetime.now)
+        onupdate=datetime.datetime.utcnow())
     status = db.Column(
         db.Enum(*NOTIFICATION_STATUS_TYPES, name='notification_status_types'), nullable=False, default='sent')
     reference = db.Column(db.String, nullable=True, index=True)
@@ -286,7 +286,7 @@ class InvitedUser(db.Model):
         index=False,
         unique=False,
         nullable=False,
-        default=datetime.datetime.now)
+        default=datetime.datetime.utcnow())
     status = db.Column(
         db.Enum(*INVITED_USER_STATUS_TYPES, name='invited_users_status_types'), nullable=False, default='pending')
     permissions = db.Column(db.String, nullable=False)
@@ -338,7 +338,7 @@ class Permission(db.Model):
         index=False,
         unique=False,
         nullable=False,
-        default=datetime.datetime.now)
+        default=datetime.datetime.utcnow())
 
     __table_args__ = (
         UniqueConstraint('service_id', 'user_id', 'permission', name='uix_service_user_permission'),
