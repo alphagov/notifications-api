@@ -199,7 +199,8 @@ def sample_job(notify_db,
                notify_db_session,
                service=None,
                template=None,
-               notification_count=1):
+               notification_count=1,
+               created_at=datetime.utcnow()):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:
@@ -215,10 +216,12 @@ def sample_job(notify_db,
         'bucket_name': bucket_name,
         'file_name': file_name,
         'original_file_name': 'some.csv',
-        'notification_count': notification_count
+        'notification_count': notification_count,
+        'created_at': created_at
     }
     job = Job(**data)
     dao_create_job(job)
+    print(job.created_at)
     return job
 
 
