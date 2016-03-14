@@ -298,7 +298,7 @@ def test_send_sms_code_returns_404_for_bad_input_data(notify_api, notify_db, not
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 404
-            assert json.loads(resp.get_data(as_text=True))['message'] == 'User not found for id: {}'.format(int(uuid_))
+            assert json.loads(resp.get_data(as_text=True))['message'] == 'No result found'
 
 
 def test_send_user_email_code(notify_api,
@@ -340,4 +340,4 @@ def test_send_user_email_code_returns_404_for_when_user_does_not_exist(notify_ap
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 404
-            assert json.loads(resp.get_data(as_text=True))['message'] == 'User not found for id: {}'.format(1)
+            assert json.loads(resp.get_data(as_text=True))['message'] == 'No result found'
