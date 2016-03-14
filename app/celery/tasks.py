@@ -282,7 +282,7 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
                 )
                 update_notification_reference_by_id(notification_id, reference)
             except AwsSesClientException as e:
-                current_app.logger.debug(e)
+                current_app.logger.exception(e)
                 notification_db_object.status = 'failed'
                 dao_update_notification(notification_db_object)
 
