@@ -68,10 +68,14 @@ def test_get_jobs_for_service(notify_db, notify_db_session, sample_template):
 def test_get_jobs_for_service_in_created_at_order(notify_db, notify_db_session, sample_template):
     from tests.app.conftest import sample_job as create_job
 
-    job_1 = create_job(notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
-    job_2 = create_job(notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
-    job_3 = create_job(notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
-    job_4 = create_job(notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
+    job_1 = create_job(
+        notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
+    job_2 = create_job(
+        notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
+    job_3 = create_job(
+        notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
+    job_4 = create_job(
+        notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
 
     jobs = dao_get_jobs_by_service_id(sample_template.service.id)
 
