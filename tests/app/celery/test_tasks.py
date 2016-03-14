@@ -308,13 +308,13 @@ def test_should_send_sms_without_personalisation(sample_template, mocker):
 
 
 def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notify_db_session, mocker):
-    user = sample_user(notify_db, notify_db_session, mobile_numnber="+441234123123")
+    user = sample_user(notify_db, notify_db_session, mobile_numnber="07700 900890")
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
     template = sample_template(notify_db, notify_db_session, service=service)
 
     notification = {
         "template": template.id,
-        "to": "+441234123123"
+        "to": "+447700900890"  # The user’s own number, but in a different format
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.firetext_client.send_sms')
@@ -330,20 +330,20 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
     )
 
     firetext_client.send_sms.assert_called_once_with(
-        to="+441234123123",
+        to="+447700900890",
         content="Sample service: This is a template",
         reference=str(notification_id)
     )
 
 
 def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db, notify_db_session, mocker):
-    user = sample_user(notify_db, notify_db_session, mobile_numnber="+441234123123")
+    user = sample_user(notify_db, notify_db_session, mobile_numnber="07700 900205")
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
     template = sample_template(notify_db, notify_db_session, service=service)
 
     notification = {
         "template": template.id,
-        "to": "+440000000000"
+        "to": "07700 900849"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.firetext_client.send_sms')

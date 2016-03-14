@@ -21,7 +21,12 @@ def dao_get_notification_statistics_for_service_and_day(service_id, day):
 def dao_create_notification(notification, notification_type):
     try:
         if notification.job_id:
-            update_job_sent_count(notification)
+            db.session.query(Job).filter_by(
+                id=notification.job_id
+            ).update({
+                Job.notifications_sent: Job.notifications_sent + 1,
+                Job.updated_at: datetime.utcnow()
+            })
 
         if update_notification_stats(notification, notification_type) == 0:
             stats = NotificationStatistics(
@@ -54,16 +59,6 @@ def update_notification_stats(notification, notification_type):
     ).update(update)
 
 
-def update_job_sent_count(notification):
-    db.session.query(Job).filter_by(
-        id=notification.job_id
-    ).update({
-        Job.notifications_sent: Job.notifications_sent + 1,
-        Job.updated_at: datetime.utcnow()
-    })
-    db.session.commit()
-
-
 def dao_update_notification(notification):
     notification.updated_at = datetime.utcnow()
     db.session.add(notification)
@@ -74,8 +69,7 @@ def update_notification_status_by_id(notification_id, status):
     count = db.session.query(Notification).filter_by(
         id=notification_id
     ).update({
-        Notification.status: status,
-        Notification.updated_at: datetime.utcnow()
+        Notification.status: status
     })
     db.session.commit()
     return count
@@ -85,8 +79,7 @@ def update_notification_status_by_reference(reference, status):
     count = db.session.query(Notification).filter_by(
         reference=reference
     ).update({
-        Notification.status: status,
-        Notification.updated_at: datetime.utcnow()
+        Notification.status: status
     })
     db.session.commit()
     return count
@@ -96,8 +89,7 @@ def update_notification_reference_by_id(id, reference):
     count = db.session.query(Notification).filter_by(
         id=id
     ).update({
-        Notification.reference: reference,
-        Notification.updated_at: datetime.utcnow()
+        Notification.reference: reference
     })
     db.session.commit()
     return count

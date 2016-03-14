@@ -130,7 +130,7 @@ def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
             assert resp.status_code == 404
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'Service not found for service id: {} '.format(service_id)
+            assert json_resp['message'] == 'No result found'
 
 
 def test_get_service_by_id_and_user(notify_api, service_factory, sample_user):
@@ -166,8 +166,7 @@ def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_
             assert resp.status_code == 404
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == \
-                'Service not found for service id: {0} and for user id: {1}'.format(service_id, sample_user.id)
+            assert json_resp['message'] == 'No result found'
 
 
 def test_create_service(notify_api, sample_user):
@@ -257,9 +256,9 @@ def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(no
                 data=json.dumps(data),
                 headers=headers)
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 400
+            assert resp.status_code == 404
             assert json_resp['result'] == 'error'
-            assert 'not found' in json_resp['message']['user_id']
+            assert 'No result found' == json_resp['message']
 
 
 def test_should_not_create_service_if_missing_data(notify_api, sample_user):
@@ -467,7 +466,7 @@ def test_get_users_for_service_returns_404_when_service_does_not_exist(notify_ap
             assert response.status_code == 404
             result = json.loads(response.get_data(as_text=True))
             assert result['result'] == 'error'
-            assert result['message'] == 'Service not found for id: {}'.format(service_id)
+            assert result['message'] == 'No result found'
 
 
 def test_default_permissions_are_added_for_user_service(notify_api,
@@ -779,7 +778,7 @@ def test_add_existing_user_to_non_existing_service_returns404(notify_api,
             )
 
             result = json.loads(resp.get_data(as_text=True))
-            expected_message = 'Service not found for id: {}'.format(incorrect_id)
+            expected_message = 'No result found'
 
             assert resp.status_code == 404
             assert result['result'] == 'error'
@@ -833,7 +832,7 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db
             )
 
             result = json.loads(resp.get_data(as_text=True))
-            expected_message = 'User not found for id: {}'.format(incorrect_id)
+            expected_message = 'No result found'
 
             assert resp.status_code == 404
             assert result['result'] == 'error'

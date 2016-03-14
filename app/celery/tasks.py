@@ -25,7 +25,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
 from datetime import datetime
 from utils.template import Template
-from utils.recipients import RecipientCSV
+from utils.recipients import RecipientCSV, validate_phone_number, format_phone_number
 
 
 @notify_celery.task(name="delete-verify-codes")
@@ -224,7 +224,9 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
 
 
 def allowed_send_to_number(service, to):
-    if service.restricted and to not in [user.mobile_number for user in service.users]:
+    if service.restricted and format_phone_number(validate_phone_number(to)) not in [
+        format_phone_number(validate_phone_number(user.mobile_number)) for user in service.users
+    ]:
         return False
     return True
 
