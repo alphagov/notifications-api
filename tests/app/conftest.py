@@ -101,12 +101,13 @@ def sample_service(notify_db,
                    notify_db_session,
                    service_name="Sample service",
                    user=None,
-                   restricted=False):
+                   restricted=False,
+                   limit=1000):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
     data = {
         'name': service_name,
-        'limit': 1000,
+        'limit': limit,
         'active': False,
         'restricted': restricted,
         'email_from': email_safe(service_name)
@@ -197,7 +198,9 @@ def sample_api_key(notify_db,
 def sample_job(notify_db,
                notify_db_session,
                service=None,
-               template=None):
+               template=None,
+               notification_count=1,
+               created_at=datetime.utcnow()):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:
@@ -213,11 +216,27 @@ def sample_job(notify_db,
         'bucket_name': bucket_name,
         'file_name': file_name,
         'original_file_name': 'some.csv',
-        'notification_count': 1
+        'notification_count': notification_count,
+        'created_at': created_at
     }
     job = Job(**data)
     dao_create_job(job)
+    print(job.created_at)
     return job
+
+
+@pytest.fixture(scope='function')
+def sample_job_with_placeholdered_template(
+    notify_db,
+    notify_db_session,
+    service=None
+):
+    return sample_job(
+        notify_db,
+        notify_db_session,
+        service=service,
+        template=sample_template_with_placeholders(notify_db, notify_db_session)
+    )
 
 
 @pytest.fixture(scope='function')
@@ -264,7 +283,10 @@ def sample_notification(notify_db,
                         service=None,
                         template=None,
                         job=None,
-                        to_field=None):
+                        to_field=None,
+                        status='sent',
+                        reference=None,
+                        created_at=datetime.utcnow()):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:
@@ -277,18 +299,21 @@ def sample_notification(notify_db,
     if to_field:
         to = to_field
     else:
-        to = '+44709123456'
+        to = '+447700900855'
 
     data = {
         'id': notification_id,
         'to': to,
         'job': job,
+        'service_id': service.id,
         'service': service,
         'template': template,
-        'created_at': datetime.utcnow()
+        'status': status,
+        'reference': reference,
+        'created_at': created_at
     }
     notification = Notification(**data)
-    dao_create_notification(notification)
+    dao_create_notification(notification, template.template_type)
     return notification
 
 

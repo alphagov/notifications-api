@@ -10,7 +10,7 @@ def test_should_create_a_new_sms_template_for_a_service(notify_api, sample_servi
             data = {
                 'name': 'my template',
                 'template_type': 'sms',
-                'content': 'template content',
+                'content': 'template <b>content</b>',
                 'service': str(sample_service.id)
             }
             data = json.dumps(data)
@@ -42,7 +42,7 @@ def test_should_create_a_new_email_template_for_a_service(notify_api, sample_ser
                 'name': 'my template',
                 'template_type': 'email',
                 'subject': 'subject',
-                'content': 'template content',
+                'content': 'template <b>content</b>',
                 'service': str(sample_service.id)
             }
             data = json.dumps(data)
@@ -92,7 +92,7 @@ def test_should_be_error_if_service_does_not_exist_on_create(notify_api):
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 404
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'Service not found'
+            assert json_resp['message'] == 'No result found'
 
 
 def test_should_be_error_if_service_does_not_exist_on_update(notify_api):
@@ -117,7 +117,7 @@ def test_should_be_error_if_service_does_not_exist_on_update(notify_api):
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 404
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'Template not found'
+            assert json_resp['message'] == 'No result found'
 
 
 def test_must_have_a_subject_on_an_email_template(notify_api, sample_service):
@@ -222,7 +222,7 @@ def test_should_be_able_to_update_a_template(notify_api, sample_service):
             json_resp = json.loads(create_response.get_data(as_text=True))
             assert json_resp['data']['name'] == 'my template'
             data = {
-                'name': 'my template has a new name'
+                'content': 'my template has new content <script type="text/javascript">alert("foo")</script>'
             }
             data = json.dumps(data)
             auth_header = create_authorization_header(
@@ -239,7 +239,7 @@ def test_should_be_able_to_update_a_template(notify_api, sample_service):
 
             assert update_response.status_code == 200
             update_json_resp = json.loads(update_response.get_data(as_text=True))
-            assert update_json_resp['data']['name'] == 'my template has a new name'
+            assert update_json_resp['data']['content'] == 'my template has new content alert("foo")'
 
 
 def test_should_be_able_to_get_all_templates_for_a_service(notify_api, sample_service):
@@ -348,7 +348,7 @@ def test_should_get_only_templates_for_that_servcie(notify_api, service_factory)
                 method='POST',
                 request_body=data
             )
-            client.post(
+            resp = client.post(
                 '/service/{}/template'.format(service_1.id),
                 headers=[('Content-Type', 'application/json'), create_auth_header],
                 data=data
@@ -397,17 +397,18 @@ def test_should_return_404_if_no_templates_for_service_with_id(notify_api, sampl
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
+            uuid_ = uuid.uuid4()
             auth_header = create_authorization_header(
-                path='/service/{}/template/{}'.format(sample_service.id, 111),
+                path='/service/{}/template/{}'.format(sample_service.id, 9999),
                 method='GET'
             )
 
             response = client.get(
-                '/service/{}/template/{}'.format(sample_service.id, 111),
+                '/service/{}/template/{}'.format(sample_service.id, 9999),
                 headers=[auth_header]
             )
 
             assert response.status_code == 404
             json_resp = json.loads(response.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'Template not found'
+            assert json_resp['message'] == 'No result found'

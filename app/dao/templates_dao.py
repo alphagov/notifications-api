@@ -14,11 +14,11 @@ def dao_update_template(template):
 
 
 def dao_get_template_by_id_and_service_id(template_id, service_id):
-    return Template.query.filter_by(id=template_id, service_id=service_id).first()
+    return Template.query.filter_by(id=template_id, service_id=service_id).one()
 
 
 def dao_get_template_by_id(template_id):
-    return Template.query.filter_by(id=template_id).first()
+    return Template.query.filter_by(id=template_id).one()
 
 
 def dao_get_all_templates_for_service(service_id):

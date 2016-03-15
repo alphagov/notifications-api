@@ -1,16 +1,19 @@
 from datetime import datetime
+import uuid
 
 from flask import (
     Blueprint,
     jsonify,
     request,
     current_app,
-    url_for
+    url_for,
+    json
 )
 
-from utils.template import Template, NeededByTemplateError, NoPlaceholderForDataError
-
-from app import api_user, encryption, create_uuid
+from utils.template import Template
+from app.clients.sms.firetext import firetext_response_status
+from app.clients.email.aws_ses import ses_response_status
+from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT
 from app.authentication.auth import require_admin
 from app.dao import (
     templates_dao,
@@ -23,7 +26,6 @@ from app.schemas import (
     notification_status_schema
 )
 from app.celery.tasks import send_sms, send_email
-from sqlalchemy.orm.exc import NoResultFound
 
 notifications = Blueprint('notifications', __name__)
 
@@ -32,13 +34,155 @@ from app.errors import register_errors
 register_errors(notifications)
 
 
-@notifications.route('/notifications/<string:notification_id>', methods=['GET'])
-def get_notifications(notification_id):
+@notifications.route('/notifications/email/ses', methods=['POST'])
+def process_ses_response():
     try:
-        notification = notifications_dao.get_notification(api_user['client'], notification_id)
-        return jsonify({'notification': notification_status_schema.dump(notification).data}), 200
-    except NoResultFound:
-        return jsonify(result="error", message="not found"), 404
+        ses_request = json.loads(request.data)
+        if 'Message' not in ses_request:
+            current_app.logger.error(
+                "SES callback failed: message missing"
+            )
+            return jsonify(
+                result="error", message="SES callback failed: message missing"
+            ), 400
+
+        ses_message = json.loads(ses_request['Message'])
+
+        if 'notificationType' not in ses_message:
+            current_app.logger.error(
+                "SES callback failed: notificationType missing"
+            )
+            return jsonify(
+                result="error", message="SES callback failed: notificationType missing"
+            ), 400
+
+        status = ses_response_status.get(ses_message['notificationType'], None)
+        if not status:
+            current_app.logger.info(
+                "SES callback failed: status {} not found.".format(status)
+            )
+            return jsonify(
+                result="error",
+                message="SES callback failed: status {} not found".format(ses_message['notificationType'])
+            ), 400
+
+        try:
+            source = ses_message['mail']['source']
+            if is_not_a_notification(source):
+                current_app.logger.info(
+                    "SES callback for notify success:. source {} status {}".format(source, status['notify_status'])
+                )
+                return jsonify(
+                    result="success", message="SES callback succeeded"
+                ), 200
+
+            reference = ses_message['mail']['messageId']
+            if notifications_dao.update_notification_status_by_reference(reference, status['notify_status']) == 0:
+                current_app.logger.info(
+                    "SES callback failed: notification not found. Status {}".format(status['notify_status'])
+                )
+                return jsonify(
+                    result="error",
+                    message="SES callback failed: notification not found. Status {}".format(status['notify_status'])
+                ), 404
+            return jsonify(
+                result="success", message="SES callback succeeded"
+            ), 200
+
+        except KeyError:
+            current_app.logger.error(
+                "SES callback failed: messageId missing"
+            )
+            return jsonify(
+                result="error", message="SES callback failed: messageId missing"
+            ), 400
+
+    except ValueError as ex:
+        current_app.logger.exception(
+            "SES callback failed: invalid json {}".format(ex)
+        )
+        return jsonify(
+            result="error", message="SES callback failed: invalid json"
+        ), 400
+
+
+def is_not_a_notification(source):
+    invite_email = "{}@{}".format(
+        current_app.config['INVITATION_EMAIL_FROM'],
+        current_app.config['NOTIFY_EMAIL_DOMAIN']
+    )
+    if current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'] == source:
+        return True
+    if invite_email == source:
+        return True
+    return False
+
+
+@notifications.route('/notifications/sms/firetext', methods=['POST'])
+def process_firetext_response():
+    if 'status' not in request.form:
+        current_app.logger.info(
+            "Firetext callback failed: status missing"
+        )
+        return jsonify(result="error", message="Firetext callback failed: status missing"), 400
+
+    if len(request.form.get('reference', '')) <= 0:
+        current_app.logger.info(
+            "Firetext callback with no reference"
+        )
+        return jsonify(result="error", message="Firetext callback failed: reference missing"), 400
+
+    reference = request.form['reference']
+    status = request.form['status']
+
+    if reference == 'send-sms-code':
+        return jsonify(result="success", message="Firetext callback succeeded: send-sms-code"), 200
+
+    try:
+        uuid.UUID(reference, version=4)
+    except ValueError:
+        current_app.logger.info(
+            "Firetext callback with invalid reference {}".format(reference)
+        )
+        return jsonify(
+            result="error", message="Firetext callback with invalid reference {}".format(reference)
+        ), 400
+
+    notification_status = firetext_response_status.get(status, None)
+    if not notification_status:
+        current_app.logger.info(
+            "Firetext callback failed: status {} not found.".format(status)
+        )
+        return jsonify(result="error", message="Firetext callback failed: status {} not found.".format(status)), 400
+
+    if notifications_dao.update_notification_status_by_id(reference, notification_status['notify_status']) == 0:
+        current_app.logger.info(
+            "Firetext callback failed: notification {} not found. Status {}".format(reference, status)
+        )
+        return jsonify(
+            result="error",
+            message="Firetext callback failed: notification {} not found. Status {}".format(
+                reference,
+                notification_status['firetext_message']
+            )
+        ), 404
+
+    if not notification_status['success']:
+        current_app.logger.info(
+            "Firetext delivery failed: notification {} has error found. Status {}".format(
+                reference,
+                firetext_response_status[status]['firetext_message']
+            )
+        )
+    return jsonify(
+        result="success", message="Firetext callback succeeded. reference {} updated".format(reference)
+    ), 200
+
+
+@notifications.route('/notifications/<uuid:notification_id>', methods=['GET'])
+def get_notifications(notification_id):
+    notification = notifications_dao.get_notification(api_user['client'], notification_id)
+    return jsonify({'notification': notification_status_schema.dump(notification).data}), 200
 
 
 @notifications.route('/notifications', methods=['GET'])
@@ -127,6 +271,19 @@ def send_notification(notification_type):
         assert False
 
     service_id = api_user['client']
+    service = services_dao.dao_fetch_service_by_id(api_user['client'])
+
+    service_stats = notifications_dao.dao_get_notification_statistics_for_service_and_day(
+        service_id,
+        datetime.utcnow().strftime(DATE_FORMAT)
+    )
+
+    if service_stats:
+        total_sms_count = service_stats.sms_requested
+        total_email_count = service_stats.emails_requested
+
+        if total_email_count + total_sms_count >= service.limit:
+            return jsonify(result="error", message='Exceeded send limits ({}) for today'.format(service.limit)), 429
 
     notification, errors = (
         sms_template_notification_schema if notification_type == 'sms' else email_notification_schema
@@ -139,13 +296,6 @@ def send_notification(notification_type):
         template_id=notification['template'],
         service_id=service_id
     )
-    if not template:
-        return jsonify(
-            result="error",
-            message={
-                'template': ['Template {} not found for service {}'.format(notification['template'], service_id)]
-            }
-        ), 404
 
     template_object = Template(template.__dict__, notification.get('personalisation', {}))
     if template_object.missing_data:
@@ -167,7 +317,6 @@ def send_notification(notification_type):
             }
         ), 400
 
-    service = services_dao.dao_fetch_service_by_id(api_user['client'])
     notification_id = create_uuid()
 
     if notification_type == 'sms':
@@ -178,7 +327,7 @@ def send_notification(notification_type):
             service_id,
             notification_id,
             encryption.encrypt(notification),
-            str(datetime.utcnow())
+            datetime.utcnow().strftime(DATETIME_FORMAT)
         ), queue='sms')
     else:
         if service.restricted and notification['to'] not in [user.email_address for user in service.users]:
@@ -190,6 +339,6 @@ def send_notification(notification_type):
             template.subject,
             "{}@{}".format(service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
             encryption.encrypt(notification),
-            str(datetime.utcnow())
+            datetime.utcnow().strftime(DATETIME_FORMAT)
         ), queue='email')
     return jsonify({'notification_id': notification_id}), 201

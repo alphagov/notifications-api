@@ -26,10 +26,9 @@ deploy:
   local_dir: dpl_cd_upload
   skip_cleanup: true
   region: eu-west-1
-  on:
-    branch: master
-    repo: alphagov/notifications-api
   bucket: notifications-api-codedeploy
+  on:
+    repo: alphagov/notifications-api
 - provider: codedeploy
   access_key_id: AKIAJQPPNM6P6V53SWKA
   secret_access_key: *1
@@ -39,8 +38,7 @@ deploy:
   application: notifications-api
   deployment_group: notifications_api_deployment_group
   region: eu-west-1
-  on:
-    branch: master
+  on: *2
 - provider: codedeploy
   access_key_id: AKIAJQPPNM6P6V53SWKA
   secret_access_key: *1
@@ -50,9 +48,7 @@ deploy:
   application: notifications-api
   deployment_group: notifications-api-celery
   region: eu-west-1
-  on:
-    branch: master
-deploy:
+  on: *2
 - provider: s3
   access_key_id: AKIAJ5MKF6G3P2JQP4QQ
   secret_access_key: &1

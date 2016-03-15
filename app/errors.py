@@ -41,22 +41,22 @@ def register_errors(blueprint):
     @blueprint.app_errorhandler(500)
     def internal_server_error(e):
         if isinstance(e, str):
-            current_app.logger.error(e)
+            current_app.logger.exception(e)
         elif isinstance(e, Exception):
             current_app.logger.exception(e)
         return jsonify(result='error', message="Internal server error"), 500
 
     @blueprint.app_errorhandler(NoResultFound)
     def no_result_found(e):
-        current_app.logger.error(e)
+        current_app.logger.exception(e)
         return jsonify(result='error', message="No result found"), 404
 
     @blueprint.app_errorhandler(DataError)
     def data_error(e):
-        current_app.logger.error(e)
+        current_app.logger.exception(e)
         return jsonify(result='error', message="No result found"), 404
 
     @blueprint.app_errorhandler(SQLAlchemyError)
     def db_error(e):
-        current_app.logger.error(e)
+        current_app.logger.exception(e)
         return jsonify(result='error', message=str(e)), 500

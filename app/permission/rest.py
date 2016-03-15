@@ -19,9 +19,7 @@ def get_permissions():
 
 @permission.route('/<permission_id>', methods=['GET'])
 def get_permission(permission_id):
-    inst = permission_dao.get_query(filter_by_dict={'id': permission_id}).first()
-    if not inst:
-        abort(404, 'Permission not found for id: {permission_id}'.format(permission_id))
+    inst = permission_dao.get_query(filter_by_dict={'id': permission_id}).one()
     data, errors = permission_schema.dump(inst)
     if errors:
         abort(500, errors)

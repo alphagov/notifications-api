@@ -4,6 +4,7 @@ from flask import (
     request,
     current_app
 )
+import bleach
 from sqlalchemy.exc import IntegrityError
 
 from app.dao.templates_dao import (
@@ -17,7 +18,7 @@ from app.dao.services_dao import (
 )
 from app.schemas import template_schema
 
-template = Blueprint('template', __name__, url_prefix='/service/<service_id>/template')
+template = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
 
 from app.errors import register_errors
 
@@ -27,13 +28,12 @@ register_errors(template)
 @template.route('', methods=['POST'])
 def create_template(service_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
-    if not fetched_service:
-        return jsonify(result="error", message="Service not found"), 404
 
     new_template, errors = template_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
     new_template.service = fetched_service
+    new_template.content = _strip_html(new_template.content)
     try:
         dao_create_template(new_template)
     except IntegrityError as ex:
@@ -50,11 +50,10 @@ def create_template(service_id):
 @template.route('/<int:template_id>', methods=['POST'])
 def update_template(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
-    if not fetched_template:
-        return jsonify(result="error", message="Template not found"), 404
 
     current_data = dict(template_schema.dump(fetched_template).data.items())
     current_data.update(request.get_json())
+    current_data['content'] = _strip_html(current_data['content'])
 
     update_dict, errors = template_schema.load(current_data)
     if errors:
@@ -74,8 +73,9 @@ def get_all_templates_for_service(service_id):
 @template.route('/<int:template_id>', methods=['GET'])
 def get_template_by_id_and_service_id(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
-    if fetched_template:
-        data, errors = template_schema.dump(fetched_template)
-        return jsonify(data=data)
-    else:
-        return jsonify(result="error", message="Template not found"), 404
+    data, errors = template_schema.dump(fetched_template)
+    return jsonify(data=data)
+
+
+def _strip_html(content):
+    return bleach.clean(content, tags=[], strip=True)
