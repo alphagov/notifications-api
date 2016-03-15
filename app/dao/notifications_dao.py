@@ -3,7 +3,7 @@ from app import db
 from app.models import Notification, Job, NotificationStatistics, TEMPLATE_TYPE_SMS, TEMPLATE_TYPE_EMAIL
 from sqlalchemy import desc
 from datetime import datetime, timedelta
-
+from app.clients.sms.firetext import FiretextResponses
 
 def dao_get_notification_statistics_for_service(service_id):
     return NotificationStatistics.query.filter_by(
@@ -28,7 +28,12 @@ def dao_create_notification(notification, notification_type):
                 Job.updated_at: datetime.utcnow()
             })
 
-        if update_notification_stats(notification, notification_type) == 0:
+        update_count = db.session.query(NotificationStatistics).filter_by(
+            day=notification.created_at.strftime('%Y-%m-%d'),
+            service_id=notification.service_id
+        ).update(update_query(notification_type, 'requested'))
+
+        if update_count == 0:
             stats = NotificationStatistics(
                 day=notification.created_at.strftime('%Y-%m-%d'),
                 service_id=notification.service_id,
@@ -43,20 +48,24 @@ def dao_create_notification(notification, notification_type):
         raise
 
 
-def update_notification_stats(notification, notification_type):
-    if notification_type == TEMPLATE_TYPE_SMS:
-        update = {
-            NotificationStatistics.sms_requested: NotificationStatistics.sms_requested + 1
+def update_query(notification_type, status):
+    print(notification_type)
+    print(status)
+    mapping = {
+        'sms': {
+            'requested': NotificationStatistics.sms_requested,
+            'success': NotificationStatistics.sms_delivered,
+            'failure': NotificationStatistics.sms_error
+        },
+        'email': {
+            'requested': NotificationStatistics.emails_requested,
+            'success': NotificationStatistics.emails_delivered,
+            'failure': NotificationStatistics.emails_error
         }
-    else:
-        update = {
-            NotificationStatistics.emails_requested: NotificationStatistics.emails_requested + 1
-        }
-
-    return db.session.query(NotificationStatistics).filter_by(
-        day=notification.created_at.strftime('%Y-%m-%d'),
-        service_id=notification.service_id
-    ).update(update)
+    }
+    return {
+        mapping[notification_type][status]: mapping[notification_type][status] + 1
+    }
 
 
 def dao_update_notification(notification):
@@ -71,6 +80,13 @@ def update_notification_status_by_id(notification_id, status):
     ).update({
         Notification.status: status
     })
+    if count == 1:
+        notification = Notification.query.get(notification_id)
+        db.session.query(NotificationStatistics).filter_by(
+            day=notification.created_at.strftime('%Y-%m-%d'),
+            service_id=notification.service_id
+        ).update(update_query(notification.template.template_type, FiretextResponses.response_code_to_notify_stats(status)))
+
     db.session.commit()
     return count
 

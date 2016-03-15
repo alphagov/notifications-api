@@ -28,6 +28,38 @@ firetext_response_status = {
 }
 
 
+class FiretextResponses:
+    response_model = {
+        '0': {
+            "firetext_message": 'delivered',
+            "stats_mapping": 'delivered',
+            "success": True,
+            "notify_status": 'delivered'
+        },
+        '1': {
+            "firetext_message": 'declined',
+            "success": False,
+            "stats_mapping": 'failure',
+            "notify_status": 'failed'
+        },
+        '2': {
+            "firetext_message": 'Undelivered (Pending with Network)',
+            "success": False,
+            "stats_mapping": None,
+            "notify_status": 'sent'
+        }
+    }
+
+    def response_code_to_message(self, response_code):
+        return self.response_model.get(response_code)['firetext_message']
+
+    def response_code_to_notify_status(self, response_code):
+        return self.response_model.get(response_code)['notify_status']
+
+    def response_code_to_notify_stats(self, response_code):
+        return self.response_model.get(response_code)['stats_mapping']
+
+
 class FiretextClientException(SmsClientException):
     def __init__(self, response):
         self.code = response['code']
