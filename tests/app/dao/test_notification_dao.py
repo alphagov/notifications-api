@@ -316,7 +316,7 @@ def test_save_notification_and_increment_email_stats(sample_email_template, samp
     assert stats1.emails_requested == 1
     assert stats1.sms_requested == 0
 
-    dao_create_notification(notification_2, sample_email_template)
+    dao_create_notification(notification_2, sample_email_template.template_type)
 
     assert Notification.query.count() == 2
 
@@ -412,7 +412,7 @@ def test_save_notification_and_increment_job(sample_template, sample_job):
     assert Job.query.get(sample_job.id).notifications_sent == 1
 
     notification_2 = Notification(**data)
-    dao_create_notification(notification_2, sample_template)
+    dao_create_notification(notification_2, sample_template.template_type)
     assert Notification.query.count() == 2
     assert Job.query.get(sample_job.id).notifications_sent == 2
 
