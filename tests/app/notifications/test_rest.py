@@ -28,6 +28,10 @@ def test_get_notification_by_id(notify_api, sample_notification):
             assert notification['template'] == {
                 'id': sample_notification.template.id,
                 'name': sample_notification.template.name}
+            assert notification['job'] == {
+                'id': str(sample_notification.job.id),
+                'file_name': sample_notification.job.file_name
+            }
             assert notification['to'] == '+447700900855'
             assert notification['service'] == str(sample_notification.service_id)
             assert response.status_code == 200
@@ -69,6 +73,10 @@ def test_get_all_notifications(notify_api, sample_notification):
             assert notifications['notifications'][0]['template'] == {
                 'id': sample_notification.template.id,
                 'name': sample_notification.template.name}
+            assert notifications['notifications'][0]['job'] == {
+                'id': str(sample_notification.job.id),
+                'file_name': sample_notification.job.file_name
+            }
             assert notifications['notifications'][0]['to'] == '+447700900855'
             assert notifications['notifications'][0]['service'] == str(sample_notification.service_id)
             assert response.status_code == 200
