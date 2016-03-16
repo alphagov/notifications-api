@@ -1,6 +1,8 @@
 import uuid
 import pytest
 from flask import current_app
+from utils.recipients import validate_phone_number, format_phone_number
+
 from app.celery.tasks import (
     send_sms,
     send_sms_code,
@@ -248,7 +250,7 @@ def test_should_process_all_sms_job(sample_job, sample_job_with_placeholdered_te
 def test_should_send_template_to_correct_sms_provider_and_persist(sample_template_with_placeholders, mocker):
     notification = {
         "template": sample_template_with_placeholders.id,
-        "to": "+441234123123",
+        "to": "+447234123123",
         "personalisation": {"name": "Jo"}
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
@@ -265,7 +267,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     )
 
     firetext_client.send_sms.assert_called_once_with(
-        to="+441234123123",
+        to=format_phone_number(validate_phone_number("+447234123123")),
         content="Sample service: Hello Jo",
         reference=str(notification_id)
     )
@@ -273,7 +275,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
         sample_template_with_placeholders.service_id, notification_id
     )
     assert persisted_notification.id == notification_id
-    assert persisted_notification.to == '+441234123123'
+    assert persisted_notification.to == '+447234123123'
     assert persisted_notification.template_id == sample_template_with_placeholders.id
     assert persisted_notification.status == 'sent'
     assert persisted_notification.created_at == now
@@ -285,7 +287,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
 def test_should_send_sms_without_personalisation(sample_template, mocker):
     notification = {
         "template": sample_template.id,
-        "to": "+441234123123"
+        "to": "+447234123123"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.firetext_client.send_sms')
@@ -301,7 +303,7 @@ def test_should_send_sms_without_personalisation(sample_template, mocker):
     )
 
     firetext_client.send_sms.assert_called_once_with(
-        to="+441234123123",
+        to=format_phone_number(validate_phone_number("+447234123123")),
         content="Sample service: This is a template",
         reference=str(notification_id)
     )
@@ -330,7 +332,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
     )
 
     firetext_client.send_sms.assert_called_once_with(
-        to="+447700900890",
+        to=format_phone_number(validate_phone_number("+447700900890")),
         content="Sample service: This is a template",
         reference=str(notification_id)
     )
@@ -396,7 +398,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
     notification = {
         "template": sample_job.template.id,
         "job": sample_job.id,
-        "to": "+441234123123"
+        "to": "+447234123123"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.firetext_client.send_sms')
@@ -411,13 +413,13 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
         now.strftime(DATETIME_FORMAT)
     )
     firetext_client.send_sms.assert_called_once_with(
-        to="+441234123123",
+        to=format_phone_number(validate_phone_number("+447234123123")),
         content="Sample service: This is a template",
         reference=str(notification_id)
     )
     persisted_notification = notifications_dao.get_notification(sample_job.template.service_id, notification_id)
     assert persisted_notification.id == notification_id
-    assert persisted_notification.to == '+441234123123'
+    assert persisted_notification.to == '+447234123123'
     assert persisted_notification.job_id == sample_job.id
     assert persisted_notification.template_id == sample_job.template.id
     assert persisted_notification.status == 'sent'
@@ -520,7 +522,7 @@ def test_should_use_email_template_and_persist_without_personalisation(
 def test_should_persist_notification_as_failed_if_sms_client_fails(sample_template, mocker):
     notification = {
         "template": sample_template.id,
-        "to": "+441234123123"
+        "to": "+447234123123"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.firetext_client.send_sms', side_effect=FiretextClientException(firetext_error()))
@@ -536,13 +538,13 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
         now.strftime(DATETIME_FORMAT)
     )
     firetext_client.send_sms.assert_called_once_with(
-        to="+441234123123",
+        to=format_phone_number(validate_phone_number("+447234123123")),
         content="Sample service: This is a template",
         reference=str(notification_id)
     )
     persisted_notification = notifications_dao.get_notification(sample_template.service_id, notification_id)
     assert persisted_notification.id == notification_id
-    assert persisted_notification.to == '+441234123123'
+    assert persisted_notification.to == '+447234123123'
     assert persisted_notification.template_id == sample_template.id
     assert persisted_notification.status == 'failed'
     assert persisted_notification.created_at == now
@@ -590,7 +592,7 @@ def test_should_persist_notification_as_failed_if_email_client_fails(sample_emai
 def test_should_not_send_sms_if_db_peristance_failed(sample_template, mocker):
     notification = {
         "template": sample_template.id,
-        "to": "+441234123123"
+        "to": "+447234123123"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.firetext_client.send_sms')
@@ -638,24 +640,28 @@ def test_should_not_send_email_if_db_peristance_failed(sample_email_template, mo
 
 
 def test_should_send_sms_code(mocker):
-    notification = {'to': '+441234123123',
+    notification = {'to': '+447234123123',
                     'secret_code': '12345'}
 
     encrypted_notification = encryption.encrypt(notification)
 
     mocker.patch('app.firetext_client.send_sms')
     send_sms_code(encrypted_notification)
-    firetext_client.send_sms.assert_called_once_with(notification['to'], notification['secret_code'], 'send-sms-code')
+    firetext_client.send_sms.assert_called_once_with(format_phone_number(validate_phone_number(notification['to'])),
+                                                     notification['secret_code'],
+                                                     'send-sms-code')
 
 
 def test_should_throw_firetext_client_exception(mocker):
-    notification = {'to': '+441234123123',
+    notification = {'to': '+447234123123',
                     'secret_code': '12345'}
 
     encrypted_notification = encryption.encrypt(notification)
     mocker.patch('app.firetext_client.send_sms', side_effect=FiretextClientException(firetext_error()))
     send_sms_code(encrypted_notification)
-    firetext_client.send_sms.assert_called_once_with(notification['to'], notification['secret_code'], 'send-sms-code')
+    firetext_client.send_sms.assert_called_once_with(format_phone_number(validate_phone_number(notification['to'])),
+                                                     notification['secret_code'],
+                                                     'send-sms-code')
 
 
 def test_should_send_email_code(mocker):
