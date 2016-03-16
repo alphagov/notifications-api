@@ -27,10 +27,12 @@ encryption = Encryption()
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 
 
-def create_app():
+def create_app(app_name=None):
     application = Flask(__name__)
 
     application.config.from_object(os.environ['NOTIFY_API_ENVIRONMENT'])
+    if app_name:
+        application.config['NOTIFY_APP_NAME'] = app_name
 
     init_app(application)
     db.init_app(application)
@@ -92,9 +94,7 @@ def init_app(app):
 
 def email_safe(string):
     return "".join([
-        character.lower()
-        if character.isalnum() or character == "."
-        else "" for character in re.sub("\s+", ".", string.strip())
+        character.lower() if character.isalnum() or character == "." else "" for character in re.sub("\s+", ".", string.strip())  # noqa
     ])
 
 
