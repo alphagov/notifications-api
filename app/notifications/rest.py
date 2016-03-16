@@ -26,6 +26,7 @@ from app.schemas import (
     notification_status_schema
 )
 from app.celery.tasks import send_sms, send_email
+from app.validation import allowed_send_to_number, allowed_send_to_email
 
 notifications = Blueprint('notifications', __name__)
 
@@ -320,7 +321,7 @@ def send_notification(notification_type):
     notification_id = create_uuid()
 
     if notification_type == 'sms':
-        if service.restricted and notification['to'] not in [user.mobile_number for user in service.users]:
+        if not allowed_send_to_number(service, notification['to']):
             return jsonify(
                 result="error", message={'to': ['Invalid phone number for restricted service']}), 400
         send_sms.apply_async((
@@ -330,7 +331,7 @@ def send_notification(notification_type):
             datetime.utcnow().strftime(DATETIME_FORMAT)
         ), queue='sms')
     else:
-        if service.restricted and notification['to'] not in [user.email_address for user in service.users]:
+        if not allowed_send_to_email(service, notification['to']):
             return jsonify(
                 result="error", message={'to': ['Email address not permitted for restricted service']}), 400
         send_email.apply_async((
