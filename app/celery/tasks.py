@@ -25,7 +25,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
 from datetime import datetime
 from utils.template import Template
-from utils.recipients import RecipientCSV, validate_phone_number, format_phone_number
+from utils.recipients import RecipientCSV, format_phone_number, validate_phone_number
+from app.validation import (allowed_send_to_email, allowed_send_to_number)
 
 
 @notify_celery.task(name="delete-verify-codes")
@@ -204,7 +205,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 )
 
                 client.send_sms(
-                    to=notification['to'],
+                    to=format_phone_number(validate_phone_number(notification['to'])),
                     content=template.replaced,
                     reference=str(notification_id)
                 )
@@ -221,20 +222,6 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             )
     except SQLAlchemyError as e:
         current_app.logger.debug(e)
-
-
-def allowed_send_to_number(service, to):
-    if service.restricted and format_phone_number(validate_phone_number(to)) not in [
-        format_phone_number(validate_phone_number(user.mobile_number)) for user in service.users
-    ]:
-        return False
-    return True
-
-
-def allowed_send_to_email(service, to):
-    if service.restricted and to not in [user.email_address for user in service.users]:
-        return False
-    return True
 
 
 @notify_celery.task(name="send-email")
@@ -300,7 +287,9 @@ def send_sms_code(encrypted_verification):
     verification_message = encryption.decrypt(encrypted_verification)
     try:
         firetext_client.send_sms(
-            verification_message['to'], verification_message['secret_code'], 'send-sms-code'
+            format_phone_number(validate_phone_number(verification_message['to'])),
+            verification_message['secret_code'],
+            'send-sms-code'
         )
     except FiretextClientException as e:
         current_app.logger.exception(e)

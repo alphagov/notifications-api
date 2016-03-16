@@ -46,7 +46,17 @@ deploy:
   key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
   bundle_type: zip
   application: notifications-api
-  deployment_group: notifications-api-celery
+  deployment_group: notifications_admin_api_deployment_group
+  region: eu-west-1
+  on: *2
+- provider: codedeploy
+  access_key_id: AKIAJQPPNM6P6V53SWKA
+  secret_access_key: *1
+  bucket: notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: notifications-api
+  deployment_group: notifications_delivery_api_deployment_group
   region: eu-west-1
   on: *2
 - provider: s3
