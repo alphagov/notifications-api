@@ -94,10 +94,8 @@ def init_app(app):
 
 def email_safe(string):
     return "".join([
-                       character.lower()
-                       if character.isalnum() or character == "."
-                       else "" for character in re.sub("\s+", ".", string.strip())
-                       ])
+        character.lower() if character.isalnum() or character == "." else "" for character in re.sub("\s+", ".", string.strip())  # noqa
+    ])
 
 
 def create_uuid():
