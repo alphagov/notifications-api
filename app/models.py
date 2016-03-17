@@ -40,6 +40,7 @@ class User(db.Model):
     logged_in_at = db.Column(db.DateTime, nullable=True)
     failed_login_count = db.Column(db.Integer, nullable=False, default=0)
     state = db.Column(db.String, nullable=False, default='pending')
+    platform_admin = db.Column(db.Boolean, nullable=False, default=False)
 
     @property
     def password(self):
@@ -306,6 +307,7 @@ SEND_EMAILS = 'send_emails'
 SEND_LETTERS = 'send_letters'
 MANAGE_API_KEYS = 'manage_api_keys'
 ACCESS_DEVELOPER_DOCS = 'access_developer_docs'
+PLATFORM_ADMIN = 'platform_admin'
 
 # List of permissions
 PERMISSION_LIST = [
@@ -316,7 +318,8 @@ PERMISSION_LIST = [
     SEND_EMAILS,
     SEND_LETTERS,
     MANAGE_API_KEYS,
-    ACCESS_DEVELOPER_DOCS]
+    ACCESS_DEVELOPER_DOCS,
+    PLATFORM_ADMIN]
 
 
 class Permission(db.Model):

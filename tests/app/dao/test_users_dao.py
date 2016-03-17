@@ -32,6 +32,7 @@ def test_create_user(notify_api, notify_db, notify_db_session):
     assert User.query.count() == 1
     assert User.query.first().email_address == email
     assert User.query.first().id == user.id
+    assert not user.platform_admin
 
 
 def test_get_all_users(notify_api, notify_db, notify_db_session, sample_user):
