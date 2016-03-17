@@ -84,3 +84,9 @@ class Development(Config):
 
 class Test(Development):
     pass
+
+configs = {
+    'live': 'config_live.Live',
+    'staging': 'config_staging.Staging',
+    'preview': 'config.Config'
+}
