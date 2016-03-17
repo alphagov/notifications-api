@@ -2,7 +2,6 @@
 from app import notify_celery, create_app
 from credstash import getAllSecrets
 import os
-from config import configs
 
 default_env_file = '/home/ubuntu/environment'
 environment = 'live'
@@ -13,6 +12,8 @@ if os.path.isfile(default_env_file):
 
 # on aws get secrets and export to env
 os.environ.update(getAllSecrets(region="eu-west-1"))
+
+from config import configs
 
 os.environ['NOTIFY_API_ENVIRONMENT'] = configs[environment]
 
