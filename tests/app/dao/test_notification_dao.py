@@ -70,8 +70,13 @@ def test_should_be_able_to_get_statistics_for_a_service(sample_template):
     assert len(stats) == 1
     assert stats[0].emails_requested == 0
     assert stats[0].sms_requested == 1
+    assert stats[0].sms_delivered == 0
+    assert stats[0].sms_error == 0
     assert stats[0].day == notification.created_at.strftime(DATE_FORMAT)
     assert stats[0].service_id == notification.service_id
+    assert stats[0].emails_requested == 0
+    assert stats[0].emails_delivered == 0
+    assert stats[0].emails_error == 0
 
 
 def test_should_be_able_to_get_statistics_for_a_service_for_a_day(sample_template):
@@ -90,7 +95,11 @@ def test_should_be_able_to_get_statistics_for_a_service_for_a_day(sample_templat
         sample_template.service.id, now.strftime(DATE_FORMAT)
     )
     assert stat.emails_requested == 0
+    assert stat.emails_error == 0
+    assert stat.emails_delivered == 0
     assert stat.sms_requested == 1
+    assert stat.sms_error == 0
+    assert stat.sms_delivered == 0
     assert stat.day == notification.created_at.strftime(DATE_FORMAT)
     assert stat.service_id == notification.service_id
 

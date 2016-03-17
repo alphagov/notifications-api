@@ -114,12 +114,12 @@ class NotificationStatistics(db.Model):
     day = db.Column(db.String(255), nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service', backref=db.backref('service_notification_stats', lazy='dynamic'))
-    emails_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False)
-    emails_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
-    emails_error = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
-    sms_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False)
-    sms_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
-    sms_error = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
+    emails_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    emails_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    emails_error = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_error = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
 
     __table_args__ = (
         UniqueConstraint('service_id', 'day', name='uix_service_to_day'),
