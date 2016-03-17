@@ -370,3 +370,23 @@ def email_reset_password(encrypted_reset_password_message):
                                                          url=reset_password_message['reset_password_url']))
     except AwsSesClientException as e:
         current_app.logger.exception(e)
+
+
+def registration_verification_template(name, url):
+    from string import Template
+    t = Template("Hi $name,\n\n"
+                 "To complete your registration for GOV.UK Notify please click the link below\n\n $url")
+    return t.substitute(name=name, url=url)
+
+
+@notify_celery.task(name='email-registration-verification')
+def email_registration_verification(encrypted_verification_message):
+    verification_message = encryption.decrypt(encrypted_verification_message)
+    try:
+        aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
+                                  verification_message['to'],
+                                  "Confirm GOV.UK Notify registration",
+                                  registration_verification_template(name=verification_message['name'],
+                                                                     url=verification_message['url']))
+    except AwsSesClientException as e:
+        current_app.logger.exception(e)
