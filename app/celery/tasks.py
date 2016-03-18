@@ -267,7 +267,8 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
                     from_address,
                     notification['to'],
                     subject,
-                    template.replaced
+                    body=template.replaced,
+                    html_body=template.as_HTML_email,
                 )
                 update_notification_reference_by_id(notification_id, reference)
             except AwsSesClientException as e:
