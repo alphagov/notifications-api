@@ -25,7 +25,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
 from datetime import datetime
 from utils.template import Template
-from utils.recipients import RecipientCSV, validate_phone_number, format_phone_number
+from utils.recipients import RecipientCSV, format_phone_number, validate_phone_number
+from app.validation import (allowed_send_to_email, allowed_send_to_number)
 
 
 @notify_celery.task(name="delete-verify-codes")
@@ -204,7 +205,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 )
 
                 client.send_sms(
-                    to=notification['to'],
+                    to=format_phone_number(validate_phone_number(notification['to'])),
                     content=template.replaced,
                     reference=str(notification_id)
                 )
@@ -221,20 +222,6 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             )
     except SQLAlchemyError as e:
         current_app.logger.debug(e)
-
-
-def allowed_send_to_number(service, to):
-    if service.restricted and format_phone_number(validate_phone_number(to)) not in [
-        format_phone_number(validate_phone_number(user.mobile_number)) for user in service.users
-    ]:
-        return False
-    return True
-
-
-def allowed_send_to_email(service, to):
-    if service.restricted and to not in [user.email_address for user in service.users]:
-        return False
-    return True
 
 
 @notify_celery.task(name="send-email")
@@ -300,7 +287,9 @@ def send_sms_code(encrypted_verification):
     verification_message = encryption.decrypt(encrypted_verification)
     try:
         firetext_client.send_sms(
-            verification_message['to'], verification_message['secret_code'], 'send-sms-code'
+            format_phone_number(validate_phone_number(verification_message['to'])),
+            verification_message['secret_code'],
+            'send-sms-code'
         )
     except FiretextClientException as e:
         current_app.logger.exception(e)
@@ -379,5 +368,25 @@ def email_reset_password(encrypted_reset_password_message):
                                   "Reset your GOV.UK Notify password",
                                   password_reset_message(name=reset_password_message['name'],
                                                          url=reset_password_message['reset_password_url']))
+    except AwsSesClientException as e:
+        current_app.logger.exception(e)
+
+
+def registration_verification_template(name, url):
+    from string import Template
+    t = Template("Hi $name,\n\n"
+                 "To complete your registration for GOV.UK Notify please click the link below\n\n $url")
+    return t.substitute(name=name, url=url)
+
+
+@notify_celery.task(name='email-registration-verification')
+def email_registration_verification(encrypted_verification_message):
+    verification_message = encryption.decrypt(encrypted_verification_message)
+    try:
+        aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
+                                  verification_message['to'],
+                                  "Confirm GOV.UK Notify registration",
+                                  registration_verification_template(name=verification_message['name'],
+                                                                     url=verification_message['url']))
     except AwsSesClientException as e:
         current_app.logger.exception(e)
