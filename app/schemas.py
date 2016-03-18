@@ -171,8 +171,8 @@ class SmsAdminNotificationSchema(SmsNotificationSchema):
 
 class NotificationStatusSchema(BaseSchema):
 
-    template = fields.Nested(TemplateSchema, only=["id", "name"], dump_only=True)
-    job = fields.Nested(JobSchema, only=["id", "file_name"], dump_only=True)
+    template = fields.Nested(TemplateSchema, only=["id", "name", "template_type"], dump_only=True)
+    job = fields.Nested(JobSchema, only=["id", "original_file_name"], dump_only=True)
 
     class Meta:
         model = models.Notification
