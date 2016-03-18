@@ -24,7 +24,13 @@ from app.schemas import (
     permission_schema
 )
 
-from app.celery.tasks import (send_sms_code, send_email_code, email_reset_password)
+from app.celery.tasks import (
+    send_sms_code,
+    send_email_code,
+    email_reset_password,
+    email_registration_verification
+)
+
 from app.errors import register_errors
 
 user = Blueprint('user', __name__)
@@ -148,6 +154,28 @@ def send_user_email_code(user_id):
     return jsonify({}), 204
 
 
+@user.route('/<int:user_id>/email-verification', methods=['POST'])
+def send_user_email_verification(user_id):
+    user_to_send_to = get_model_users(user_id=user_id)
+    verify_code, errors = request_verify_code_schema.load(request.get_json())
+    if errors:
+        return jsonify(result="error", message=errors), 400
+
+    from app.dao.users_dao import create_secret_code
+    secret_code = create_secret_code()
+    create_user_code(user_to_send_to, secret_code, 'email')
+
+    email = user_to_send_to.email_address
+    verification_message = {'to': email,
+                            'name': user_to_send_to.name,
+                            'url': _create_verification_url(user_to_send_to, secret_code)}
+
+    email_registration_verification.apply_async([encryption.encrypt(verification_message)],
+                                                queue='email-registration-verification')
+
+    return jsonify({}), 204
+
+
 @user.route('/<int:user_id>', methods=['GET'])
 @user.route('', methods=['GET'])
 def get_user(user_id=None):
@@ -207,3 +235,12 @@ def _create_reset_password_url(email):
     token = generate_token(data, current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
 
     return current_app.config['ADMIN_BASE_URL'] + '/new-password/' + token
+
+
+def _create_verification_url(user, secret_code):
+    from utils.url_safe_token import generate_token
+    import json
+    data = json.dumps({'user_id': user.id, 'email': user.email_address, 'secret_code': secret_code})
+    token = generate_token(data, current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
+
+    return current_app.config['ADMIN_BASE_URL'] + '/verify-email/' + token

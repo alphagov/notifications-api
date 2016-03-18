@@ -1,12 +1,24 @@
 import json
 import moto
-from datetime import (datetime, timedelta)
+
+from datetime import (
+    datetime,
+    timedelta
+)
+
 from flask import url_for
-from app.models import (VerifyCode, User)
-import app.celery.tasks
+
+from app.models import (
+    VerifyCode,
+    User
+)
+
 from app import db, encryption
+
 from tests import create_authorization_header
 from freezegun import freeze_time
+
+import app.celery.tasks
 
 
 def test_user_verify_code_sms(notify_api,
@@ -341,3 +353,23 @@ def test_send_user_email_code_returns_404_for_when_user_does_not_exist(notify_ap
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 404
             assert json.loads(resp.get_data(as_text=True))['message'] == 'No result found'
+
+
+def test_send_user_email_verification(notify_api,
+                                      sample_email_code,
+                                      mock_celery_email_registration_verification,
+                                      mock_encryption):
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = json.dumps({})
+            auth_header = create_authorization_header(
+                path=url_for('user.send_user_email_verification', user_id=sample_email_code.user.id),
+                method='POST',
+                request_body=data)
+            resp = client.post(
+                url_for('user.send_user_email_verification', user_id=sample_email_code.user.id),
+                data=data,
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert resp.status_code == 204
+            app.celery.tasks.email_registration_verification.apply_async.assert_called_once_with(['something_encrypted'], queue='email-registration-verification')  # noqa
