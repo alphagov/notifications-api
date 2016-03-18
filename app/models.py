@@ -40,6 +40,7 @@ class User(db.Model):
     logged_in_at = db.Column(db.DateTime, nullable=True)
     failed_login_count = db.Column(db.Integer, nullable=False, default=0)
     state = db.Column(db.String, nullable=False, default='pending')
+    platform_admin = db.Column(db.Boolean, nullable=False, default=False)
 
     @property
     def password(self):
@@ -114,12 +115,12 @@ class NotificationStatistics(db.Model):
     day = db.Column(db.String(255), nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service', backref=db.backref('service_notification_stats', lazy='dynamic'))
-    emails_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False)
-    emails_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
-    emails_error = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
-    sms_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False)
-    sms_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
-    sms_error = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
+    emails_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    emails_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    emails_error = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_error = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
 
     __table_args__ = (
         UniqueConstraint('service_id', 'day', name='uix_service_to_day'),
@@ -144,13 +145,13 @@ class Template(db.Model):
         index=False,
         unique=False,
         nullable=False,
-        default=datetime.datetime.now)
+        default=datetime.datetime.utcnow)
     updated_at = db.Column(
         db.DateTime,
         index=False,
         unique=False,
         nullable=True,
-        onupdate=datetime.datetime.utcnow())
+        onupdate=datetime.datetime.utcnow)
     content = db.Column(db.Text, index=False, unique=False, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
     service = db.relationship('Service', backref=db.backref('templates', lazy='dynamic'))
@@ -176,13 +177,13 @@ class Job(db.Model):
         index=False,
         unique=False,
         nullable=False,
-        default=datetime.datetime.utcnow())
+        default=datetime.datetime.utcnow)
     updated_at = db.Column(
         db.DateTime,
         index=False,
         unique=False,
         nullable=True,
-        onupdate=datetime.datetime.utcnow())
+        onupdate=datetime.datetime.utcnow)
     status = db.Column(db.Enum(*JOB_STATUS_TYPES, name='job_status_types'), nullable=False, default='pending')
     notification_count = db.Column(db.Integer, nullable=False)
     notifications_sent = db.Column(db.Integer, nullable=False, default=0)
@@ -217,7 +218,7 @@ class VerifyCode(db.Model):
         index=False,
         unique=False,
         nullable=False,
-        default=datetime.datetime.utcnow())
+        default=datetime.datetime.utcnow)
 
     @property
     def code(self):
@@ -262,7 +263,7 @@ class Notification(db.Model):
         index=False,
         unique=False,
         nullable=True,
-        onupdate=datetime.datetime.utcnow())
+        onupdate=datetime.datetime.utcnow)
     status = db.Column(
         db.Enum(*NOTIFICATION_STATUS_TYPES, name='notification_status_types'), nullable=False, default='sent')
     reference = db.Column(db.String, nullable=True, index=True)
@@ -286,7 +287,7 @@ class InvitedUser(db.Model):
         index=False,
         unique=False,
         nullable=False,
-        default=datetime.datetime.utcnow())
+        default=datetime.datetime.utcnow)
     status = db.Column(
         db.Enum(*INVITED_USER_STATUS_TYPES, name='invited_users_status_types'), nullable=False, default='pending')
     permissions = db.Column(db.String, nullable=False)
@@ -306,6 +307,7 @@ SEND_EMAILS = 'send_emails'
 SEND_LETTERS = 'send_letters'
 MANAGE_API_KEYS = 'manage_api_keys'
 ACCESS_DEVELOPER_DOCS = 'access_developer_docs'
+PLATFORM_ADMIN = 'platform_admin'
 
 # List of permissions
 PERMISSION_LIST = [
@@ -316,7 +318,8 @@ PERMISSION_LIST = [
     SEND_EMAILS,
     SEND_LETTERS,
     MANAGE_API_KEYS,
-    ACCESS_DEVELOPER_DOCS]
+    ACCESS_DEVELOPER_DOCS,
+    PLATFORM_ADMIN]
 
 
 class Permission(db.Model):
@@ -338,7 +341,7 @@ class Permission(db.Model):
         index=False,
         unique=False,
         nullable=False,
-        default=datetime.datetime.utcnow())
+        default=datetime.datetime.utcnow)
 
     __table_args__ = (
         UniqueConstraint('service_id', 'user_id', 'permission', name='uix_service_user_permission'),
