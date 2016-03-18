@@ -16,3 +16,10 @@ class Live(Config):
     FIRETEXT_API_KEY = os.getenv("LIVE_FIRETEXT_API_KEY")
     FIRETEXT_NUMBER = os.getenv("LIVE_FIRETEXT_NUMBER")
     TWILIO_AUTH_TOKEN = os.getenv('LIVE_TWILIO_AUTH_TOKEN')
+
+    BROKER_TRANSPORT_OPTIONS = {
+        'region': 'eu-west-1',
+        'polling_interval': 1,  # 1 second
+        'visibility_timeout': 60,  # 60 seconds
+        'queue_name_prefix': os.environ['LIVE_NOTIFICATION_QUEUE_PREFIX'] + '-'
+    }

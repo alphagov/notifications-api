@@ -16,3 +16,10 @@ class Staging(Config):
     FIRETEXT_API_KEY = os.getenv("STAGING_FIRETEXT_API_KEY")
     FIRETEXT_NUMBER = os.getenv("STAGING_FIRETEXT_NUMBER")
     TWILIO_AUTH_TOKEN = os.getenv('STAGING_TWILIO_AUTH_TOKEN')
+
+    BROKER_TRANSPORT_OPTIONS = {
+        'region': 'eu-west-1',
+        'polling_interval': 1,  # 1 second
+        'visibility_timeout': 60,  # 60 seconds
+        'queue_name_prefix': os.environ['STAGING_NOTIFICATION_QUEUE_PREFIX'] + '-'
+    }
