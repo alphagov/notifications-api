@@ -4,6 +4,7 @@ from config import Config
 
 class Live(Config):
     ADMIN_BASE_URL = os.environ['LIVE_ADMIN_BASE_URL']
+    API_HOST_NAME = os.environ['LIVE_API_HOST_NAME']
     ADMIN_CLIENT_SECRET = os.environ['LIVE_ADMIN_CLIENT_SECRET']
     DANGEROUS_SALT = os.environ['LIVE_DANGEROUS_SALT']
     NOTIFICATION_QUEUE_PREFIX = os.environ['LIVE_NOTIFICATION_QUEUE_PREFIX']

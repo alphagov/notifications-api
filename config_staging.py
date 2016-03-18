@@ -4,6 +4,7 @@ from config import Config
 
 class Staging(Config):
     ADMIN_BASE_URL = os.environ['STAGING_ADMIN_BASE_URL']
+    API_HOST_NAME = os.environ['STAGING_API_HOST_NAME']
     ADMIN_CLIENT_SECRET = os.environ['STAGING_ADMIN_CLIENT_SECRET']
     DANGEROUS_SALT = os.environ['STAGING_DANGEROUS_SALT']
     NOTIFICATION_QUEUE_PREFIX = os.environ['STAGING_NOTIFICATION_QUEUE_PREFIX']
