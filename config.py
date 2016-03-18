@@ -69,7 +69,8 @@ class Config(object):
         Queue('process-job', Exchange('default'), routing_key='process-job'),
         Queue('bulk-sms', Exchange('default'), routing_key='bulk-sms'),
         Queue('bulk-email', Exchange('default'), routing_key='bulk-email'),
-        Queue('email-invited-user', Exchange('default'), routing_key='email-invited-user')
+        Queue('email-invited-user', Exchange('default'), routing_key='email-invited-user'),
+        Queue('email-registration-verification', Exchange('default'), routing_key='email-registration-verification')
     ]
     TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
     TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
