@@ -1,6 +1,12 @@
 from flask import current_app
 from app import db
-from app.models import Notification, Job, NotificationStatistics, TEMPLATE_TYPE_SMS, TEMPLATE_TYPE_EMAIL
+from app.models import (
+    Notification,
+    Job,
+    NotificationStatistics,
+    TEMPLATE_TYPE_SMS,
+    TEMPLATE_TYPE_EMAIL,
+    Template)
 from sqlalchemy import desc
 from datetime import datetime, timedelta
 from app.clients import (STATISTICS_FAILURE, STATISTICS_DELIVERED, STATISTICS_REQUESTED)
@@ -131,14 +137,14 @@ def get_notification_for_job(service_id, job_id, notification_id):
     return Notification.query.filter_by(service_id=service_id, job_id=job_id, id=notification_id).one()
 
 
-def get_notifications_for_job(service_id, job_id, page=1):
-    query = Notification.query.filter_by(service_id=service_id, job_id=job_id) \
-        .order_by(desc(Notification.created_at)) \
-        .paginate(
+def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1):
+    query = Notification.query.filter_by(service_id=service_id, job_id=job_id)
+    query = filter_query(query, filter_dict)
+    pagination = query.order_by(desc(Notification.created_at)).paginate(
         page=page,
         per_page=current_app.config['PAGE_SIZE']
     )
-    return query
+    return pagination
 
 
 def get_notification(service_id, notification_id):
@@ -149,11 +155,21 @@ def get_notification_by_id(notification_id):
     return Notification.query.filter_by(id=notification_id).first()
 
 
-def get_notifications_for_service(service_id, page=1):
-    query = Notification.query.filter_by(service_id=service_id).order_by(desc(Notification.created_at)).paginate(
+def get_notifications_for_service(service_id, filter_dict=None, page=1):
+    query = Notification.query.filter_by(service_id=service_id)
+    query = filter_query(query, filter_dict)
+    pagination = query.order_by(desc(Notification.created_at)).paginate(
         page=page,
         per_page=current_app.config['PAGE_SIZE']
     )
+    return pagination
+
+
+def filter_query(query, filter_dict=None):
+    if filter_dict and 'status' in filter_dict:
+        query = query.filter_by(status=filter_dict['status'])
+    if filter_dict and 'template_type' in filter_dict:
+        query = query.join(Template).filter(Template.template_type == filter_dict['template_type'])
     return query
 
 

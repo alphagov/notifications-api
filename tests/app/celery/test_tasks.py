@@ -37,6 +37,11 @@ from tests.app.conftest import (
 )
 
 
+class AnyStringWith(str):
+    def __eq__(self, other):
+        return self in other
+
+
 def firetext_error():
     return {'code': 0, 'description': 'error'}
 
@@ -390,7 +395,8 @@ def test_should_send_email_if_restricted_service_and_valid_email(notify_db, noti
         "email_from",
         "test@restricted.com",
         "subject",
-        template.content
+        body=template.content,
+        html_body=AnyStringWith(template.content)
     )
 
 
@@ -452,7 +458,8 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
         "email_from",
         "my_email@my_email.com",
         "subject",
-        "Hello Jo"
+        body="Hello Jo",
+        html_body=AnyStringWith("Hello Jo")
     )
     persisted_notification = notifications_dao.get_notification(
         sample_email_template_with_placeholders.service_id, notification_id
@@ -515,7 +522,8 @@ def test_should_use_email_template_and_persist_without_personalisation(
         "email_from",
         "my_email@my_email.com",
         "subject",
-        "This is a template"
+        body="This is a template",
+        html_body=AnyStringWith("This is a template")
     )
 
 
@@ -577,7 +585,8 @@ def test_should_persist_notification_as_failed_if_email_client_fails(sample_emai
         "email_from",
         "my_email@my_email.com",
         "subject",
-        sample_email_template.content
+        body=sample_email_template.content,
+        html_body=AnyStringWith(sample_email_template.content)
     )
     persisted_notification = notifications_dao.get_notification(sample_email_template.service_id, notification_id)
     assert persisted_notification.id == notification_id
