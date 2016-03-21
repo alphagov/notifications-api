@@ -1,7 +1,7 @@
 import boto3
 from flask import current_app
 from monotonic import monotonic
-from app.clients import ClientResponse
+from app.clients import ClientResponse, STATISTICS_DELIVERED, STATISTICS_FAILURE
 from app.clients.email import (EmailClientException, EmailClient)
 
 
@@ -13,19 +13,19 @@ class AwsSesResponses(ClientResponse):
                 "message": 'Bounced',
                 "success": False,
                 "notification_status": 'bounce',
-                "notification_statistics_status": 'failed'
+                "notification_statistics_status": STATISTICS_FAILURE
             },
             'Delivery': {
                 "message": 'Delivered',
                 "success": True,
                 "notification_status": 'delivered',
-                "notification_statistics_status": 'delivered'
+                "notification_statistics_status": STATISTICS_DELIVERED
             },
             'Complaint': {
                 "message": 'Complaint',
                 "success": False,
                 "notification_status": 'complaint',
-                "notification_statistics_status": 'failed'
+                "notification_statistics_status": STATISTICS_FAILURE
             }
         }
 

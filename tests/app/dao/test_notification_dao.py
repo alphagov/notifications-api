@@ -32,26 +32,98 @@ def test_should_by_able_to_update_reference_by_id(sample_notification):
     assert Notification.query.get(sample_notification.id).reference == 'reference'
 
 
-def test_should_by_able_to_update_status_by_reference(sample_notification):
-    assert Notification.query.get(sample_notification.id).status == "sent"
-    update_notification_reference_by_id(sample_notification.id, 'reference')
-    update_notification_status_by_reference('reference', 'delivered')
-    assert Notification.query.get(sample_notification.id).status == 'delivered'
+def test_should_by_able_to_update_status_by_reference(sample_email_template):
+    data = {
+        'to': '+44709123456',
+        'service': sample_email_template.service,
+        'service_id': sample_email_template.service.id,
+        'template': sample_email_template,
+        'created_at': datetime.utcnow()
+    }
+
+    notification = Notification(**data)
+    dao_create_notification(notification, sample_email_template.template_type)
+
+    assert Notification.query.get(notification.id).status == "sent"
+    update_notification_reference_by_id(notification.id, 'reference')
+    update_notification_status_by_reference('reference', 'delivered', 'delivered')
+    assert Notification.query.get(notification.id).status == 'delivered'
+    assert NotificationStatistics.query.filter_by(
+        service_id=sample_email_template.service.id
+    ).one().emails_delivered == 1
+    assert NotificationStatistics.query.filter_by(
+        service_id=sample_email_template.service.id
+    ).one().emails_requested == 1
+    assert NotificationStatistics.query.filter_by(
+        service_id=sample_email_template.service.id
+    ).one().emails_error == 0
 
 
 def test_should_by_able_to_update_status_by_id(sample_notification):
     assert Notification.query.get(sample_notification.id).status == 'sent'
-    count = update_notification_status_by_id(sample_notification.id, 'delivered')
+    count = update_notification_status_by_id(sample_notification.id, 'delivered', 'delivered')
     assert count == 1
     assert Notification.query.get(sample_notification.id).status == 'delivered'
+    assert NotificationStatistics.query.filter_by(
+        service_id=sample_notification.service.id
+    ).one().sms_delivered == 1
+    assert NotificationStatistics.query.filter_by(
+        service_id=sample_notification.service.id
+    ).one().sms_requested == 1
+    assert NotificationStatistics.query.filter_by(
+        service_id=sample_notification.service.id
+    ).one().sms_error == 0
+
+
+def test_should_be_able_to_record_statistics_failure_for_sms(sample_notification):
+    assert Notification.query.get(sample_notification.id).status == 'sent'
+    count = update_notification_status_by_id(sample_notification.id, 'delivered', 'failure')
+    assert count == 1
+    assert Notification.query.get(sample_notification.id).status == 'delivered'
+    assert NotificationStatistics.query.filter_by(
+        service_id=sample_notification.service.id
+    ).one().sms_delivered == 0
+    assert NotificationStatistics.query.filter_by(
+        service_id=sample_notification.service.id
+    ).one().sms_requested == 1
+    assert NotificationStatistics.query.filter_by(
+        service_id=sample_notification.service.id
+    ).one().sms_error == 1
+
+
+def test_should_be_able_to_record_statistics_failure_for_email(sample_email_template):
+    data = {
+        'to': '+44709123456',
+        'service': sample_email_template.service,
+        'service_id': sample_email_template.service.id,
+        'template': sample_email_template,
+        'created_at': datetime.utcnow()
+    }
+
+    notification = Notification(**data)
+    dao_create_notification(notification, sample_email_template.template_type)
+
+    update_notification_reference_by_id(notification.id, 'reference')
+    count = update_notification_status_by_reference('reference', 'bounce', 'failure')
+    assert count == 1
+    assert Notification.query.get(notification.id).status == 'bounce'
+    assert NotificationStatistics.query.filter_by(
+        service_id=notification.service.id
+    ).one().emails_delivered == 0
+    assert NotificationStatistics.query.filter_by(
+        service_id=notification.service.id
+    ).one().emails_requested == 1
+    assert NotificationStatistics.query.filter_by(
+        service_id=notification.service.id
+    ).one().emails_error == 1
 
 
 def test_should_return_zero_count_if_no_notification_with_id():
-    assert update_notification_status_by_id(str(uuid.uuid4()), 'delivered') == 0
+    assert update_notification_status_by_id(str(uuid.uuid4()), 'delivered', 'delivered') == 0
 
 
 def test_should_return_zero_count_if_no_notification_with_reference():
-    assert update_notification_status_by_reference('something', 'delivered') == 0
+    assert update_notification_status_by_reference('something', 'delivered', 'delivered') == 0
 
 
 def test_should_be_able_to_get_statistics_for_a_service(sample_template):
