@@ -194,13 +194,12 @@ def get_all_notifications():
         return jsonify(result="error", message="Invalid page"), 400
 
     all_notifications = notifications_dao.get_notifications_for_service(api_user['client'], page)
-
     return jsonify(
         notifications=notification_status_schema.dump(all_notifications.items, many=True).data,
         links=pagination_links(
             all_notifications,
             '.get_all_notifications',
-            request.args
+            **request.args.to_dict()
         )
     ), 200
 
@@ -214,13 +213,14 @@ def get_all_notifications_for_service(service_id):
         return jsonify(result="error", message="Invalid page"), 400
 
     all_notifications = notifications_dao.get_notifications_for_service(service_id, page)
-
+    kwargs = request.args.to_dict()
+    kwargs['service_id'] = service_id
     return jsonify(
         notifications=notification_status_schema.dump(all_notifications.items, many=True).data,
         links=pagination_links(
             all_notifications,
             '.get_all_notifications_for_service',
-            request.args
+            **kwargs
         )
     ), 200
 
@@ -234,13 +234,15 @@ def get_all_notifications_for_service_job(service_id, job_id):
         return jsonify(result="error", message="Invalid page"), 400
 
     all_notifications = notifications_dao.get_notifications_for_job(service_id, job_id, page)
-
+    kwargs = request.args.to_dict()
+    kwargs['service_id'] = service_id
+    kwargs['job_id'] = job_id
     return jsonify(
         notifications=notification_status_schema.dump(all_notifications.items, many=True).data,
         links=pagination_links(
             all_notifications,
             '.get_all_notifications_for_service_job',
-            request.args
+            **kwargs
         )
     ), 200
 
@@ -256,13 +258,15 @@ def get_page_from_request():
         return 1
 
 
-def pagination_links(pagination, endpoint, args):
+def pagination_links(pagination, endpoint, **kwargs):
+    if 'page' in kwargs:
+        kwargs.pop('page', None)
     links = dict()
     if pagination.has_prev:
-        links['prev'] = url_for(endpoint, **dict(list(args.items()) + [('page', pagination.prev_num)]))
+        links['prev'] = url_for(endpoint, page=pagination.prev_num, **kwargs)
     if pagination.has_next:
-        links['next'] = url_for(endpoint, **dict(list(args.items()) + [('page', pagination.next_num)]))
-        links['last'] = url_for(endpoint, **dict(list(args.items()) + [('page', pagination.pages)]))
+        links['next'] = url_for(endpoint, page=pagination.next_num, **kwargs)
+        links['last'] = url_for(endpoint, page=pagination.pages, **kwargs)
     return links
 
 

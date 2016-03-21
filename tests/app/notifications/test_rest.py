@@ -27,10 +27,11 @@ def test_get_notification_by_id(notify_api, sample_notification):
             assert notification['status'] == 'sent'
             assert notification['template'] == {
                 'id': sample_notification.template.id,
-                'name': sample_notification.template.name}
+                'name': sample_notification.template.name,
+                'template_type': sample_notification.template.template_type}
             assert notification['job'] == {
                 'id': str(sample_notification.job.id),
-                'file_name': sample_notification.job.file_name
+                'original_file_name': sample_notification.job.original_file_name
             }
             assert notification['to'] == '+447700900855'
             assert notification['service'] == str(sample_notification.service_id)
@@ -72,10 +73,11 @@ def test_get_all_notifications(notify_api, sample_notification):
             assert notifications['notifications'][0]['status'] == 'sent'
             assert notifications['notifications'][0]['template'] == {
                 'id': sample_notification.template.id,
-                'name': sample_notification.template.name}
+                'name': sample_notification.template.name,
+                'template_type': sample_notification.template.template_type}
             assert notifications['notifications'][0]['job'] == {
                 'id': str(sample_notification.job.id),
-                'file_name': sample_notification.job.file_name
+                'original_file_name': sample_notification.job.original_file_name
             }
             assert notifications['notifications'][0]['to'] == '+447700900855'
             assert notifications['notifications'][0]['service'] == str(sample_notification.service_id)

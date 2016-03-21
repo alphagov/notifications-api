@@ -62,3 +62,6 @@ scripts/run_app.sh
 scripts/run_celery.sh
 ```
 
+```
+scripts/run_celery_beat.sh
+```
