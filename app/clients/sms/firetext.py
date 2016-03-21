@@ -6,7 +6,7 @@ from app.clients.sms import (
 )
 from flask import current_app
 from requests import request, RequestException, HTTPError
-from app.clients import ClientResponse
+from app.clients import ClientResponse, STATISTICS_DELIVERED, STATISTICS_FAILURE
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +17,14 @@ class FiretextResponses(ClientResponse):
         self.__response_model__ = {
             '0': {
                 "message": 'Delivered',
-                "notification_statistics_status": 'delivered',
+                "notification_statistics_status": STATISTICS_DELIVERED,
                 "success": True,
                 "notification_status": 'delivered'
             },
             '1': {
                 "message": 'Declined',
                 "success": False,
-                "notification_statistics_status": 'failed',
+                "notification_statistics_status": STATISTICS_FAILURE,
                 "notification_status": 'failed'
             },
             '2': {

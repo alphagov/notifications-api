@@ -3,7 +3,8 @@ from app import db
 from app.models import Notification, Job, NotificationStatistics, TEMPLATE_TYPE_SMS, TEMPLATE_TYPE_EMAIL
 from sqlalchemy import desc
 from datetime import datetime, timedelta
-from app.clients.sms.firetext import FiretextResponses
+from app.clients import (STATISTICS_FAILURE, STATISTICS_DELIVERED, STATISTICS_REQUESTED)
+
 
 def dao_get_notification_statistics_for_service(service_id):
     return NotificationStatistics.query.filter_by(
@@ -49,18 +50,16 @@ def dao_create_notification(notification, notification_type):
 
 
 def update_query(notification_type, status):
-    print(notification_type)
-    print(status)
     mapping = {
-        'sms': {
-            'requested': NotificationStatistics.sms_requested,
-            'success': NotificationStatistics.sms_delivered,
-            'failure': NotificationStatistics.sms_error
+        TEMPLATE_TYPE_SMS: {
+            STATISTICS_REQUESTED: NotificationStatistics.sms_requested,
+            STATISTICS_DELIVERED: NotificationStatistics.sms_delivered,
+            STATISTICS_FAILURE: NotificationStatistics.sms_error
         },
-        'email': {
-            'requested': NotificationStatistics.emails_requested,
-            'success': NotificationStatistics.emails_delivered,
-            'failure': NotificationStatistics.emails_error
+        TEMPLATE_TYPE_EMAIL: {
+            STATISTICS_REQUESTED: NotificationStatistics.emails_requested,
+            STATISTICS_DELIVERED: NotificationStatistics.emails_delivered,
+            STATISTICS_FAILURE: NotificationStatistics.emails_error
         }
     }
     return {
@@ -74,29 +73,46 @@ def dao_update_notification(notification):
     db.session.commit()
 
 
-def update_notification_status_by_id(notification_id, status):
+def update_notification_status_by_id(notification_id, status, notification_statistics_status):
     count = db.session.query(Notification).filter_by(
         id=notification_id
     ).update({
         Notification.status: status
     })
-    if count == 1:
+
+    if count == 1 and notification_statistics_status:
         notification = Notification.query.get(notification_id)
+
         db.session.query(NotificationStatistics).filter_by(
             day=notification.created_at.strftime('%Y-%m-%d'),
             service_id=notification.service_id
-        ).update(update_query(notification.template.template_type, FiretextResponses.response_code_to_notify_stats(status)))
+        ).update(
+            update_query(notification.template.template_type, notification_statistics_status)
+        )
 
     db.session.commit()
     return count
 
 
-def update_notification_status_by_reference(reference, status):
+def update_notification_status_by_reference(reference, status, notification_statistics_status):
     count = db.session.query(Notification).filter_by(
         reference=reference
     ).update({
         Notification.status: status
     })
+
+    if count == 1:
+        notification = Notification.query.filter_by(
+            reference=reference
+        ).first()
+
+        db.session.query(NotificationStatistics).filter_by(
+            day=notification.created_at.strftime('%Y-%m-%d'),
+            service_id=notification.service_id
+        ).update(
+            update_query(notification.template.template_type, notification_statistics_status)
+        )
+
     db.session.commit()
     return count
 

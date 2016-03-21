@@ -15,7 +15,7 @@ def test_should_return_correct_details_for_delivery():
 def test_should_return_correct_details_for_bounced():
     assert responses.response_code_to_message('1') == 'Declined'
     assert responses.response_code_to_notification_status('1') == 'failed'
-    assert responses.response_code_to_notification_statistics_status('1') == 'failed'
+    assert responses.response_code_to_notification_statistics_status('1') == 'failure'
     assert not responses.response_code_to_notification_success('1')
 
 

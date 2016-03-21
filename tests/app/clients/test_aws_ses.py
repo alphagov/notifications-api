@@ -15,14 +15,14 @@ def test_should_return_correct_details_for_delivery():
 def test_should_return_correct_details_for_bounced():
     assert aws_responses.response_code_to_message('Bounce') == 'Bounced'
     assert aws_responses.response_code_to_notification_status('Bounce') == 'bounce'
-    assert aws_responses.response_code_to_notification_statistics_status('Bounce') == 'failed'
+    assert aws_responses.response_code_to_notification_statistics_status('Bounce') == 'failure'
     assert not aws_responses.response_code_to_notification_success('Bounce')
 
 
 def test_should_return_correct_details_for_complaint():
     assert aws_responses.response_code_to_message('Complaint') == 'Complaint'
     assert aws_responses.response_code_to_notification_status('Complaint') == 'complaint'
-    assert aws_responses.response_code_to_notification_statistics_status('Complaint') == 'failed'
+    assert aws_responses.response_code_to_notification_statistics_status('Complaint') == 'failure'
     assert not aws_responses.response_code_to_notification_success('Complaint')
 
 
