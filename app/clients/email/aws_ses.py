@@ -1,22 +1,33 @@
 import boto3
 from flask import current_app
 from monotonic import monotonic
+from app.clients import ClientResponse
 from app.clients.email import (EmailClientException, EmailClient)
 
-ses_response_status = {
-    'Bounce': {
-        "success": False,
-        "notify_status": 'bounce'
-    },
-    'Delivery': {
-        "success": True,
-        "notify_status": 'delivered'
-    },
-    'Complaint': {
-        "success": False,
-        "notify_status": 'complaint'
-    }
-}
+
+class AwsSesResponses(ClientResponse):
+    def __init__(self):
+        ClientResponse.__init__(self)
+        self.__response_model__ = {
+            'Bounce': {
+                "message": 'Bounced',
+                "success": False,
+                "notification_status": 'bounce',
+                "notification_statistics_status": 'failed'
+            },
+            'Delivery': {
+                "message": 'Delivered',
+                "success": True,
+                "notification_status": 'delivered',
+                "notification_statistics_status": 'delivered'
+            },
+            'Complaint': {
+                "message": 'Complaint',
+                "success": False,
+                "notification_status": 'complaint',
+                "notification_statistics_status": 'failed'
+            }
+        }
 
 
 class AwsSesClientException(EmailClientException):
