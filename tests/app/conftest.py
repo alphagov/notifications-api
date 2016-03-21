@@ -221,7 +221,6 @@ def sample_job(notify_db,
     }
     job = Job(**data)
     dao_create_job(job)
-    print(job.created_at)
     return job
 
 

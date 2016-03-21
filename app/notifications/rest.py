@@ -11,8 +11,8 @@ from flask import (
 )
 
 from utils.template import Template
-from app.clients.sms.firetext import firetext_response_status
-from app.clients.email.aws_ses import ses_response_status
+from app.clients.sms.firetext import FiretextResponses
+from app.clients.email.aws_ses import AwsSesResponses
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT
 from app.authentication.auth import require_admin
 from app.dao import (
@@ -23,7 +23,9 @@ from app.dao import (
 from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
-    notification_status_schema
+    notification_status_schema,
+    template_schema,
+    notifications_filter_schema
 )
 from app.celery.tasks import send_sms, send_email
 from app.validation import allowed_send_to_number, allowed_send_to_email
@@ -33,6 +35,9 @@ notifications = Blueprint('notifications', __name__)
 from app.errors import register_errors
 
 register_errors(notifications)
+
+aws_response = AwsSesResponses()
+firetext_response = FiretextResponses()
 
 
 @notifications.route('/notifications/email/ses', methods=['POST'])
@@ -57,35 +62,54 @@ def process_ses_response():
                 result="error", message="SES callback failed: notificationType missing"
             ), 400
 
-        status = ses_response_status.get(ses_message['notificationType'], None)
-        if not status:
+        try:
+            aws_response.response_code_to_object(ses_message['notificationType'])
+        except KeyError:
             current_app.logger.info(
-                "SES callback failed: status {} not found.".format(status)
+                "SES callback failed: status {} not found.".format(ses_message['notificationType'])
             )
             return jsonify(
                 result="error",
                 message="SES callback failed: status {} not found".format(ses_message['notificationType'])
             ), 400
 
+        notification_status = aws_response.response_code_to_notification_status(ses_message['notificationType'])
+        notification_statistics_status = aws_response.response_code_to_notification_statistics_status(
+            ses_message['notificationType']
+        )
+
         try:
             source = ses_message['mail']['source']
             if is_not_a_notification(source):
                 current_app.logger.info(
-                    "SES callback for notify success:. source {} status {}".format(source, status['notify_status'])
+                    "SES callback for notify success:. source {} status {}".format(source, notification_status)
                 )
                 return jsonify(
                     result="success", message="SES callback succeeded"
                 ), 200
 
             reference = ses_message['mail']['messageId']
-            if notifications_dao.update_notification_status_by_reference(reference, status['notify_status']) == 0:
+            if notifications_dao.update_notification_status_by_reference(
+                    reference,
+                    notification_status,
+                    notification_statistics_status
+            ) == 0:
                 current_app.logger.info(
-                    "SES callback failed: notification not found. Status {}".format(status['notify_status'])
+                    "SES callback failed: notification not found. Status {}".format(notification_status)
                 )
                 return jsonify(
                     result="error",
-                    message="SES callback failed: notification not found. Status {}".format(status['notify_status'])
+                    message="SES callback failed: notification not found. Status {}".format(notification_status)
                 ), 404
+
+            if not aws_response.response_code_to_notification_success(ses_message['notificationType']):
+                current_app.logger.info(
+                    "SES delivery failed: notification {} has error found. Status {}".format(
+                        reference,
+                        aws_response.response_code_to_message(ses_message['notificationType'])
+                    )
+                )
+
             return jsonify(
                 result="success", message="SES callback succeeded"
             ), 200
@@ -149,14 +173,22 @@ def process_firetext_response():
             result="error", message="Firetext callback with invalid reference {}".format(reference)
         ), 400
 
-    notification_status = firetext_response_status.get(status, None)
-    if not notification_status:
+    try:
+        firetext_response.response_code_to_object(status)
+    except KeyError:
         current_app.logger.info(
             "Firetext callback failed: status {} not found.".format(status)
         )
         return jsonify(result="error", message="Firetext callback failed: status {} not found.".format(status)), 400
 
-    if notifications_dao.update_notification_status_by_id(reference, notification_status['notify_status']) == 0:
+    notification_status = firetext_response.response_code_to_notification_status(status)
+    notification_statistics_status = firetext_response.response_code_to_notification_statistics_status(status)
+
+    if notifications_dao.update_notification_status_by_id(
+            reference,
+            notification_status,
+            notification_statistics_status
+    ) == 0:
         current_app.logger.info(
             "Firetext callback failed: notification {} not found. Status {}".format(reference, status)
         )
@@ -164,15 +196,15 @@ def process_firetext_response():
             result="error",
             message="Firetext callback failed: notification {} not found. Status {}".format(
                 reference,
-                notification_status['firetext_message']
+                firetext_response.response_code_to_message(status)
             )
         ), 404
 
-    if not notification_status['success']:
+    if not firetext_response.response_code_to_notification_success(status):
         current_app.logger.info(
             "Firetext delivery failed: notification {} has error found. Status {}".format(
                 reference,
-                firetext_response_status[status]['firetext_message']
+                FiretextResponses().response_code_to_message(status)
             )
         )
     return jsonify(
@@ -188,16 +220,20 @@ def get_notifications(notification_id):
 
 @notifications.route('/notifications', methods=['GET'])
 def get_all_notifications():
-    page = get_page_from_request()
+    data, errors = notifications_filter_schema.load(request.args)
+    if errors:
+        return jsonify(result="error", message=errors), 400
 
-    if not page:
-        return jsonify(result="error", message="Invalid page"), 400
+    page = data['page'] if 'page' in data else 1
 
-    all_notifications = notifications_dao.get_notifications_for_service(api_user['client'], page)
+    pagination = notifications_dao.get_notifications_for_service(
+        api_user['client'],
+        filter_dict=data,
+        page=page)
     return jsonify(
-        notifications=notification_status_schema.dump(all_notifications.items, many=True).data,
+        notifications=notification_status_schema.dump(pagination.items, many=True).data,
         links=pagination_links(
-            all_notifications,
+            pagination,
             '.get_all_notifications',
             **request.args.to_dict()
         )
@@ -207,18 +243,22 @@ def get_all_notifications():
 @notifications.route('/service/<service_id>/notifications', methods=['GET'])
 @require_admin()
 def get_all_notifications_for_service(service_id):
-    page = get_page_from_request()
+    data, errors = notifications_filter_schema.load(request.args)
+    if errors:
+        return jsonify(result="error", message=errors), 400
 
-    if not page:
-        return jsonify(result="error", message="Invalid page"), 400
+    page = data['page'] if 'page' in data else 1
 
-    all_notifications = notifications_dao.get_notifications_for_service(service_id, page)
+    pagination = notifications_dao.get_notifications_for_service(
+        service_id,
+        filter_dict=data,
+        page=page)
     kwargs = request.args.to_dict()
     kwargs['service_id'] = service_id
     return jsonify(
-        notifications=notification_status_schema.dump(all_notifications.items, many=True).data,
+        notifications=notification_status_schema.dump(pagination.items, many=True).data,
         links=pagination_links(
-            all_notifications,
+            pagination,
             '.get_all_notifications_for_service',
             **kwargs
         )
@@ -228,34 +268,28 @@ def get_all_notifications_for_service(service_id):
 @notifications.route('/service/<service_id>/job/<job_id>/notifications', methods=['GET'])
 @require_admin()
 def get_all_notifications_for_service_job(service_id, job_id):
-    page = get_page_from_request()
+    data, errors = notifications_filter_schema.load(request.args)
+    if errors:
+        return jsonify(result="error", message=errors), 400
 
-    if not page:
-        return jsonify(result="error", message="Invalid page"), 400
+    page = data['page'] if 'page' in data else 1
 
-    all_notifications = notifications_dao.get_notifications_for_job(service_id, job_id, page)
+    pagination = notifications_dao.get_notifications_for_job(
+        service_id,
+        job_id,
+        filter_dict=data,
+        page=page)
     kwargs = request.args.to_dict()
     kwargs['service_id'] = service_id
     kwargs['job_id'] = job_id
     return jsonify(
-        notifications=notification_status_schema.dump(all_notifications.items, many=True).data,
+        notifications=notification_status_schema.dump(pagination.items, many=True).data,
         links=pagination_links(
-            all_notifications,
+            pagination,
             '.get_all_notifications_for_service_job',
             **kwargs
         )
     ), 200
-
-
-def get_page_from_request():
-    if 'page' in request.args:
-        try:
-            return int(request.args['page'])
-
-        except ValueError:
-            return None
-    else:
-        return 1
 
 
 def pagination_links(pagination, endpoint, **kwargs):
