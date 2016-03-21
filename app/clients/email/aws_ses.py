@@ -52,6 +52,7 @@ class AwsSesClient(EmailClient):
                    to_addresses,
                    subject,
                    body,
+                   html_body='',
                    reply_to_addresses=None):
         try:
             if isinstance(to_addresses, str):
@@ -60,6 +61,15 @@ class AwsSesClient(EmailClient):
                 reply_to_addresses = [reply_to_addresses]
             elif reply_to_addresses is None:
                 reply_to_addresses = []
+
+            body = {
+                'Text': {'Data': body}
+            }
+
+            if html_body:
+                body.update({
+                    'Html': {'Data': html_body}
+                })
 
             start_time = monotonic()
             response = self._client.send_email(
@@ -73,9 +83,7 @@ class AwsSesClient(EmailClient):
                     'Subject': {
                         'Data': subject,
                     },
-                    'Body': {
-                        'Text': {
-                            'Data': body}}
+                    'Body': body
                 },
                 ReplyToAddresses=reply_to_addresses)
             elapsed_time = monotonic() - start_time
