@@ -9,6 +9,7 @@ from app.models import (
     Template)
 from sqlalchemy import desc
 from datetime import datetime, timedelta
+from app.clients import (STATISTICS_FAILURE, STATISTICS_DELIVERED, STATISTICS_REQUESTED)
 
 
 def dao_get_notification_statistics_for_service(service_id):
@@ -34,7 +35,12 @@ def dao_create_notification(notification, notification_type):
                 Job.updated_at: datetime.utcnow()
             })
 
-        if update_notification_stats(notification, notification_type) == 0:
+        update_count = db.session.query(NotificationStatistics).filter_by(
+            day=notification.created_at.strftime('%Y-%m-%d'),
+            service_id=notification.service_id
+        ).update(update_query(notification_type, 'requested'))
+
+        if update_count == 0:
             stats = NotificationStatistics(
                 day=notification.created_at.strftime('%Y-%m-%d'),
                 service_id=notification.service_id,
@@ -49,20 +55,22 @@ def dao_create_notification(notification, notification_type):
         raise
 
 
-def update_notification_stats(notification, notification_type):
-    if notification_type == TEMPLATE_TYPE_SMS:
-        update = {
-            NotificationStatistics.sms_requested: NotificationStatistics.sms_requested + 1
+def update_query(notification_type, status):
+    mapping = {
+        TEMPLATE_TYPE_SMS: {
+            STATISTICS_REQUESTED: NotificationStatistics.sms_requested,
+            STATISTICS_DELIVERED: NotificationStatistics.sms_delivered,
+            STATISTICS_FAILURE: NotificationStatistics.sms_error
+        },
+        TEMPLATE_TYPE_EMAIL: {
+            STATISTICS_REQUESTED: NotificationStatistics.emails_requested,
+            STATISTICS_DELIVERED: NotificationStatistics.emails_delivered,
+            STATISTICS_FAILURE: NotificationStatistics.emails_error
         }
-    else:
-        update = {
-            NotificationStatistics.emails_requested: NotificationStatistics.emails_requested + 1
-        }
-
-    return db.session.query(NotificationStatistics).filter_by(
-        day=notification.created_at.strftime('%Y-%m-%d'),
-        service_id=notification.service_id
-    ).update(update)
+    }
+    return {
+        mapping[notification_type][status]: mapping[notification_type][status] + 1
+    }
 
 
 def dao_update_notification(notification):
@@ -71,22 +79,46 @@ def dao_update_notification(notification):
     db.session.commit()
 
 
-def update_notification_status_by_id(notification_id, status):
+def update_notification_status_by_id(notification_id, status, notification_statistics_status):
     count = db.session.query(Notification).filter_by(
         id=notification_id
     ).update({
         Notification.status: status
     })
+
+    if count == 1 and notification_statistics_status:
+        notification = Notification.query.get(notification_id)
+
+        db.session.query(NotificationStatistics).filter_by(
+            day=notification.created_at.strftime('%Y-%m-%d'),
+            service_id=notification.service_id
+        ).update(
+            update_query(notification.template.template_type, notification_statistics_status)
+        )
+
     db.session.commit()
     return count
 
 
-def update_notification_status_by_reference(reference, status):
+def update_notification_status_by_reference(reference, status, notification_statistics_status):
     count = db.session.query(Notification).filter_by(
         reference=reference
     ).update({
         Notification.status: status
     })
+
+    if count == 1:
+        notification = Notification.query.filter_by(
+            reference=reference
+        ).first()
+
+        db.session.query(NotificationStatistics).filter_by(
+            day=notification.created_at.strftime('%Y-%m-%d'),
+            service_id=notification.service_id
+        ).update(
+            update_query(notification.template.template_type, notification_statistics_status)
+        )
+
     db.session.commit()
     return count
 
