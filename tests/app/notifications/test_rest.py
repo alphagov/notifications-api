@@ -11,7 +11,7 @@ from flask import json
 from app.models import Service
 from app.dao.templates_dao import dao_get_all_templates_for_service
 from app.dao.services_dao import dao_update_service
-from app.dao.notifications_dao import get_notification_by_id
+from app.dao.notifications_dao import get_notification_by_id, dao_get_notification_statistics_for_service
 from freezegun import freeze_time
 
 
@@ -1082,7 +1082,7 @@ def test_firetext_callback_should_return_404_if_cannot_find_notification_id(noti
             assert json_resp['result'] == 'error'
             assert json_resp['message'] == 'Firetext callback failed: notification {} not found. Status {}'.format(
                 missing_notification_id,
-                'delivered'
+                'Delivered'
             )
 
 
@@ -1107,6 +1107,10 @@ def test_firetext_callback_should_update_notification_status(notify_api, sample_
             )
             updated = get_notification_by_id(sample_notification.id)
             assert updated.status == 'delivered'
+            assert get_notification_by_id(sample_notification.id).status == 'delivered'
+            assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_delivered == 1
+            assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_requested == 1
+            assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_error == 0
 
 
 def test_firetext_callback_should_update_notification_status_failed(notify_api, sample_notification):
@@ -1130,6 +1134,9 @@ def test_firetext_callback_should_update_notification_status_failed(notify_api, 
             )
             updated = get_notification_by_id(sample_notification.id)
             assert updated.status == 'failed'
+            assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_delivered == 0
+            assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_requested == 1
+            assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_error == 1
 
 
 def test_firetext_callback_should_update_notification_status_sent(notify_api, notify_db, notify_db_session):
@@ -1154,6 +1161,42 @@ def test_firetext_callback_should_update_notification_status_sent(notify_api, no
             )
             updated = get_notification_by_id(notification.id)
             assert updated.status == 'sent'
+            assert dao_get_notification_statistics_for_service(notification.service_id)[0].sms_delivered == 0
+            assert dao_get_notification_statistics_for_service(notification.service_id)[0].sms_requested == 1
+            assert dao_get_notification_statistics_for_service(notification.service_id)[0].sms_error == 0
+
+
+def test_firetext_callback_should_update_multiple_notification_status_sent(notify_api, notify_db, notify_db_session):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            notification1 = create_sample_notification(notify_db, notify_db_session, status='delivered')
+            notification2 = create_sample_notification(notify_db, notify_db_session, status='delivered')
+            notification3 = create_sample_notification(notify_db, notify_db_session, status='delivered')
+
+            client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
+                    notification1.id
+                ),
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
+                    notification2.id
+                ),
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
+                    notification3.id
+                ),
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            assert dao_get_notification_statistics_for_service(notification1.service_id)[0].sms_delivered == 3
+            assert dao_get_notification_statistics_for_service(notification1.service_id)[0].sms_requested == 3
+            assert dao_get_notification_statistics_for_service(notification1.service_id)[0].sms_error == 0
 
 
 def test_ses_callback_should_not_need_auth(notify_api):
@@ -1226,11 +1269,19 @@ def test_ses_callback_should_fail_if_notification_cannot_be_found(notify_db, not
             assert json_resp['message'] == 'SES callback failed: notification not found. Status delivered'
 
 
-def test_ses_callback_should_update_notification_status(notify_api, notify_db, notify_db_session):
+def test_ses_callback_should_update_notification_status(
+        notify_api,
+        notify_db,
+        notify_db_session,
+        sample_email_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
-            notification = create_sample_notification(notify_db, notify_db_session, reference='ref')
+            notification = create_sample_notification(
+                notify_db,
+                notify_db_session,
+                template=sample_email_template,
+                reference='ref'
+            )
 
             assert get_notification_by_id(notification.id).status == 'sent'
 
@@ -1244,6 +1295,64 @@ def test_ses_callback_should_update_notification_status(notify_api, notify_db, n
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'SES callback succeeded'
             assert get_notification_by_id(notification.id).status == 'delivered'
+            assert dao_get_notification_statistics_for_service(notification.service_id)[0].emails_delivered == 1
+            assert dao_get_notification_statistics_for_service(notification.service_id)[0].emails_requested == 1
+            assert dao_get_notification_statistics_for_service(notification.service_id)[0].emails_error == 0
+
+
+def test_ses_callback_should_update_multiple_notification_status_sent(
+        notify_api,
+        notify_db,
+        notify_db_session,
+        sample_email_template):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            notification1 = create_sample_notification(
+                notify_db,
+                notify_db_session,
+                template=sample_email_template,
+                reference='ref1',
+                status='delivered')
+
+            notification2 = create_sample_notification(
+                notify_db,
+                notify_db_session,
+                template=sample_email_template,
+                reference='ref2',
+                status='delivered')
+
+            notification3 = create_sample_notification(
+                notify_db,
+                notify_db_session,
+                template=sample_email_template,
+                reference='ref2',
+                status='delivered')
+
+            client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
+                    notification1.id
+                ),
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
+                    notification2.id
+                ),
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
+                    notification3.id
+                ),
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            assert dao_get_notification_statistics_for_service(notification1.service_id)[0].emails_delivered == 3
+            assert dao_get_notification_statistics_for_service(notification1.service_id)[0].emails_requested == 3
+            assert dao_get_notification_statistics_for_service(notification1.service_id)[0].emails_error == 0
 
 
 def test_should_handle_invite_email_callbacks(notify_api, notify_db, notify_db_session):
