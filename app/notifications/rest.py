@@ -23,7 +23,9 @@ from app.dao import (
 from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
-    notification_status_schema
+    notification_status_schema,
+    template_schema,
+    notifications_filter_schema
 )
 from app.celery.tasks import send_sms, send_email
 from app.validation import allowed_send_to_number, allowed_send_to_email
@@ -188,16 +190,20 @@ def get_notifications(notification_id):
 
 @notifications.route('/notifications', methods=['GET'])
 def get_all_notifications():
-    page = get_page_from_request()
+    data, errors = notifications_filter_schema.load(request.args)
+    if errors:
+        return jsonify(result="error", message=errors), 400
 
-    if not page:
-        return jsonify(result="error", message="Invalid page"), 400
+    page = data['page'] if 'page' in data else 1
 
-    all_notifications = notifications_dao.get_notifications_for_service(api_user['client'], page)
+    pagination = notifications_dao.get_notifications_for_service(
+        api_user['client'],
+        filter_dict=data,
+        page=page)
     return jsonify(
-        notifications=notification_status_schema.dump(all_notifications.items, many=True).data,
+        notifications=notification_status_schema.dump(pagination.items, many=True).data,
         links=pagination_links(
-            all_notifications,
+            pagination,
             '.get_all_notifications',
             **request.args.to_dict()
         )
@@ -207,18 +213,22 @@ def get_all_notifications():
 @notifications.route('/service/<service_id>/notifications', methods=['GET'])
 @require_admin()
 def get_all_notifications_for_service(service_id):
-    page = get_page_from_request()
+    data, errors = notifications_filter_schema.load(request.args)
+    if errors:
+        return jsonify(result="error", message=errors), 400
 
-    if not page:
-        return jsonify(result="error", message="Invalid page"), 400
+    page = data['page'] if 'page' in data else 1
 
-    all_notifications = notifications_dao.get_notifications_for_service(service_id, page)
+    pagination = notifications_dao.get_notifications_for_service(
+        service_id,
+        filter_dict=data,
+        page=page)
     kwargs = request.args.to_dict()
     kwargs['service_id'] = service_id
     return jsonify(
-        notifications=notification_status_schema.dump(all_notifications.items, many=True).data,
+        notifications=notification_status_schema.dump(pagination.items, many=True).data,
         links=pagination_links(
-            all_notifications,
+            pagination,
             '.get_all_notifications_for_service',
             **kwargs
         )
@@ -228,34 +238,28 @@ def get_all_notifications_for_service(service_id):
 @notifications.route('/service/<service_id>/job/<job_id>/notifications', methods=['GET'])
 @require_admin()
 def get_all_notifications_for_service_job(service_id, job_id):
-    page = get_page_from_request()
+    data, errors = notifications_filter_schema.load(request.args)
+    if errors:
+        return jsonify(result="error", message=errors), 400
 
-    if not page:
-        return jsonify(result="error", message="Invalid page"), 400
+    page = data['page'] if 'page' in data else 1
 
-    all_notifications = notifications_dao.get_notifications_for_job(service_id, job_id, page)
+    pagination = notifications_dao.get_notifications_for_job(
+        service_id,
+        job_id,
+        filter_dict=data,
+        page=page)
     kwargs = request.args.to_dict()
     kwargs['service_id'] = service_id
     kwargs['job_id'] = job_id
     return jsonify(
-        notifications=notification_status_schema.dump(all_notifications.items, many=True).data,
+        notifications=notification_status_schema.dump(pagination.items, many=True).data,
         links=pagination_links(
-            all_notifications,
+            pagination,
             '.get_all_notifications_for_service_job',
             **kwargs
         )
     ), 200
-
-
-def get_page_from_request():
-    if 'page' in request.args:
-        try:
-            return int(request.args['page'])
-
-        except ValueError:
-            return None
-    else:
-        return 1
 
 
 def pagination_links(pagination, endpoint, **kwargs):
