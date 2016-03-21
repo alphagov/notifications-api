@@ -218,6 +218,21 @@ class EmailDataSchema(ma.Schema):
         except InvalidEmailError as e:
             raise ValidationError(e.message)
 
+
+class NotificationsFilterSchema(ma.Schema):
+    template_type = field_for(models.Template, 'template_type', load_only=True, required=False)
+    status = field_for(models.Notification, 'status', load_only=True, required=False)
+    page = fields.Int(required=False)
+
+    @validates('page')
+    def validate_page(self, value):
+        try:
+            page_int = int(value)
+            if page_int < 1:
+                raise ValidationError("Not a positive integer")
+        except:
+            raise ValidationError("Not a positive integer")
+
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
 service_schema = ServiceSchema()
@@ -240,3 +255,4 @@ invited_user_schema = InvitedUserSchema()
 permission_schema = PermissionSchema()
 email_data_request_schema = EmailDataSchema()
 notifications_statistics_schema = NotificationsStatisticsSchema()
+notifications_filter_schema = NotificationsFilterSchema()
