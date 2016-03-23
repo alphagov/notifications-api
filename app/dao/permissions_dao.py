@@ -61,17 +61,19 @@ class PermissionDAO(DAOClass):
         query = self.get_query(filter_by_dict={'user': user.id, 'service': service.id})
         query.delete()
 
-    def set_user_permission(self, user, permissions):
+    def set_user_service_permission(self, user, service, permissions, _commit=False):
         try:
-            query = self.get_query(filter_by_dict={'user': user.id})
+            query = self.get_query(filter_by_dict={'user': user.id, 'service': service.id})
             query.delete()
             for p in permissions:
                 self.create_instance(p, _commit=False)
         except Exception as e:
-            db.session.rollback()
+            if _commit:
+                db.session.rollback()
             raise e
         else:
-            db.session.commit()
+            if _commit:
+                db.session.commit()
 
 
 permission_dao = PermissionDAO()
