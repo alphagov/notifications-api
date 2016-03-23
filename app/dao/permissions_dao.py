@@ -57,6 +57,10 @@ class PermissionDAO(DAOClass):
             permission = Permission(permission=name, user=user, service=service)
             self.create_instance(permission, _commit=False)
 
+    def remove_user_service_permissions(self, user, service):
+        query = self.get_query(filter_by_dict={'user': user.id, 'service': service.id})
+        query.delete()
+
     def set_user_permission(self, user, permissions):
         try:
             query = self.get_query(filter_by_dict={'user': user.id})

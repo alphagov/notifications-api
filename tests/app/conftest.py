@@ -4,7 +4,7 @@ from app import (email_safe, db)
 from app.models import (
     User, Service, Template, ApiKey, Job, Notification, InvitedUser, Permission)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
-from app.dao.services_dao import dao_create_service
+from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
 from app.dao.api_key_dao import save_model_api_key
 from app.dao.jobs_dao import dao_create_job
@@ -116,6 +116,9 @@ def sample_service(notify_db,
     if not service:
         service = Service(**data)
         dao_create_service(service, user)
+    else:
+        if user not in service.users:
+            dao_add_user_to_service(service, user)
     return service
 
 
@@ -394,7 +397,7 @@ def sample_service_permission(notify_db,
     if user is None:
         user = sample_user(notify_db, notify_db_session)
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = sample_service(notify_db, notify_db_session, user=user)
     data = {
         'user': user,
         'service': service,
