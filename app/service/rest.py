@@ -20,7 +20,8 @@ from app.dao.services_dao import (
     dao_create_service,
     dao_update_service,
     dao_fetch_all_services_by_user,
-    dao_add_user_to_service
+    dao_add_user_to_service,
+    dao_remove_user_from_service
 )
 
 from app.dao.users_dao import get_model_users
@@ -157,6 +158,22 @@ def add_user_to_service(service_id, user_id):
 
     data, errors = service_schema.dump(service)
     return jsonify(data=data), 201
+
+
+@service.route('/<uuid:service_id>/users/<user_id>', methods=['DELETE'])
+def remove_user_from_service(service_id, user_id):
+    service = dao_fetch_service_by_id(service_id)
+    user = get_model_users(user_id=user_id)
+    if user not in service.users:
+        return jsonify(
+            result='error',
+            message='User not found'), 404
+    elif len(service.users) == 1:
+        return jsonify(
+            result='error',
+            message='You cannot remove the only user for a service'), 400
+    dao_remove_user_from_service(service, user)
+    return jsonify({}), 204
 
 
 def _process_permissions(user, service, permission_groups):

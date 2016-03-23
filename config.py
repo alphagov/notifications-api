@@ -84,7 +84,7 @@ class Development(Config):
 
 
 class Test(Development):
-    pass
+    DEBUG = True
 
 configs = {
     'live': 'config_live.Live',
