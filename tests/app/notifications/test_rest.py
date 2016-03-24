@@ -27,7 +27,7 @@ def test_get_notification_by_id(notify_api, sample_notification):
                 '/notifications/{}'.format(sample_notification.id),
                 headers=[auth_header])
 
-            notification = json.loads(response.get_data(as_text=True))['notification']
+            notification = json.loads(response.get_data(as_text=True))['data']['notification']
             assert notification['status'] == 'sent'
             assert notification['template'] == {
                 'id': sample_notification.template.id,
@@ -473,7 +473,8 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_templat
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
 
-            notification_id = json.loads(response.data)['notification_id']
+            notification_id = json.loads(response.data)['data']['notification']['id']
+
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 (str(sample_template_with_placeholders.service.id),
                  notification_id,
@@ -637,7 +638,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
 
-            notification_id = json.loads(response.data)['notification_id']
+            notification_id = json.loads(response.data)['data']['notification']['id']
             assert app.encryption.encrypt.call_args[0][0]['to'] == '+447700900855'
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 (str(sample_template.service_id),
@@ -855,7 +856,7 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 201
-            notification_id = json.loads(response.get_data(as_text=True))['notification_id']
+            notification_id = json.loads(response.get_data(as_text=True))['data']['notification']['id']
             app.celery.tasks.send_email.apply_async.assert_called_once_with(
                 (str(sample_email_template.service_id),
                  notification_id,
