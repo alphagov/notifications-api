@@ -196,7 +196,7 @@ def set_permissions(user_id, service_id):
     for p in permissions:
         p.user = user
         p.service = service
-    permission_dao.set_user_permission(user, permissions)
+    permission_dao.set_user_service_permission(user, service, permissions, _commit=True)
     return jsonify({}), 204
 
 

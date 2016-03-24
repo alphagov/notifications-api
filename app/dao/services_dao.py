@@ -26,7 +26,6 @@ def dao_create_service(service, user):
         permission_dao.add_default_service_permissions_for_user(user, service)
         db.session.add(service)
     except Exception as e:
-        # Proper clean up
         db.session.rollback()
         raise e
     else:
@@ -38,10 +37,17 @@ def dao_update_service(service):
     db.session.commit()
 
 
-def dao_add_user_to_service(service, user):
-    service.users.append(user)
-    db.session.add(service)
-    db.session.commit()
+def dao_add_user_to_service(service, user, permissions=[]):
+    try:
+        from app.dao.permissions_dao import permission_dao
+        service.users.append(user)
+        permission_dao.set_user_service_permission(user, service, permissions, _commit=False)
+        db.session.add(service)
+    except Exception as e:
+        db.session.rollback()
+        raise e
+    else:
+        db.session.commit()
 
 
 def dao_remove_user_from_service(service, user):
@@ -51,7 +57,6 @@ def dao_remove_user_from_service(service, user):
         service.users.remove(user)
         db.session.add(service)
     except Exception as e:
-        # Proper clean up
         db.session.rollback()
         raise e
     else:
