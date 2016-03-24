@@ -215,7 +215,7 @@ def process_firetext_response():
 @notifications.route('/notifications/<uuid:notification_id>', methods=['GET'])
 def get_notifications(notification_id):
     notification = notifications_dao.get_notification(api_user['client'], notification_id)
-    return jsonify({'notification': notification_status_schema.dump(notification).data}), 200
+    return jsonify(data={"notification": notification_status_schema.dump(notification).data}), 200
 
 
 @notifications.route('/notifications', methods=['GET'])
@@ -380,4 +380,5 @@ def send_notification(notification_type):
             encryption.encrypt(notification),
             datetime.utcnow().strftime(DATETIME_FORMAT)
         ), queue='email')
-    return jsonify({'notification_id': notification_id}), 201
+
+    return jsonify(data={"notification": {"id": notification_id}}), 201
