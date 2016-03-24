@@ -7,7 +7,7 @@ from marshmallow_sqlalchemy import field_for
 from utils.recipients import (
     validate_email_address, InvalidEmailError,
     validate_phone_number, InvalidPhoneError,
-    format_phone_number
+    validate_and_format_phone_number
 )
 
 
@@ -132,9 +132,7 @@ class SmsNotificationSchema(NotificationSchema):
 
     @post_load
     def format_phone_number(self, item):
-        item['to'] = format_phone_number(validate_phone_number(
-            item['to'])
-        )
+        item['to'] = validate_and_format_phone_number(item['to'])
         return item
 
 

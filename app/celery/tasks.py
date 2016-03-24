@@ -25,7 +25,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
 from datetime import datetime
 from utils.template import Template
-from utils.recipients import RecipientCSV, format_phone_number, validate_phone_number
+from utils.recipients import RecipientCSV, validate_and_format_phone_number
 from app.validation import (allowed_send_to_email, allowed_send_to_number)
 
 
@@ -205,7 +205,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 )
 
                 client.send_sms(
-                    to=format_phone_number(validate_phone_number(notification['to'])),
+                    to=validate_and_format_phone_number(notification['to']),
                     content=template.replaced,
                     reference=str(notification_id)
                 )
@@ -288,7 +288,7 @@ def send_sms_code(encrypted_verification):
     verification_message = encryption.decrypt(encrypted_verification)
     try:
         firetext_client.send_sms(
-            format_phone_number(validate_phone_number(verification_message['to'])),
+            validate_and_format_phone_number(verification_message['to']),
             verification_message['secret_code'],
             'send-sms-code'
         )
