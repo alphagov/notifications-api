@@ -600,8 +600,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
             json_resp = json.loads(resp.get_data(as_text=True))
             permissions = json_resp['data']['permissions'][str(sample_service.id)]
             expected_permissions = ['send_texts', 'send_emails', 'send_letters', 'manage_users',
-                                    'manage_settings', 'manage_templates', 'manage_api_keys',
-                                    'access_developer_docs']
+                                    'manage_settings', 'manage_templates', 'manage_api_keys']
             assert sorted(expected_permissions) == sorted(permissions)
 
 
@@ -745,7 +744,7 @@ def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
             json_resp = json.loads(resp.get_data(as_text=True))
 
             permissions = json_resp['data']['permissions'][str(sample_service.id)]
-            expected_permissions = ['manage_api_keys', 'access_developer_docs']
+            expected_permissions = ['manage_api_keys']
             assert sorted(expected_permissions) == sorted(permissions)
 
 
