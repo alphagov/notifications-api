@@ -6,7 +6,6 @@ from app.models import (
     SEND_EMAILS,
     SEND_LETTERS,
     MANAGE_API_KEYS,
-    ACCESS_DEVELOPER_DOCS,
     VIEW_ACTIVITY
 )
 
@@ -15,7 +14,7 @@ from app.schemas import permission_schema
 
 permissions_groups = {'send_messages': [SEND_TEXTS, SEND_EMAILS, SEND_LETTERS],
                       'manage_service': [MANAGE_USERS, MANAGE_SETTINGS, MANAGE_TEMPLATES],
-                      'manage_api_keys': [MANAGE_API_KEYS, ACCESS_DEVELOPER_DOCS],
+                      'manage_api_keys': [MANAGE_API_KEYS],
                       VIEW_ACTIVITY: [VIEW_ACTIVITY]}
 
 

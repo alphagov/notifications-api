@@ -26,6 +26,8 @@ def upgrade():
             "insert into permissions (id, service_id, user_id, created_at, permission) "
             "values('{0}', '{1}', {2}, now(), 'view_activity')".format(
                 uuid.uuid4(), user_service.service_id, user_service.user_id))
+    conn.execute("delete from permissions where permission = 'access_developer_docs'")
+    conn.execute("delete from pg_enum where enumlabel='access_developer_docs'")
     ### end Alembic commands ###
 
 
@@ -34,4 +36,12 @@ def downgrade():
     conn = op.get_bind()
     conn.execute("delete from permissions where permission = 'view_activity'")
     conn.execute("delete from pg_enum where enumlabel = 'view_activity'")
+    conn.execute('COMMIT')
+    conn.execute("alter type permission_types add value IF NOT EXISTS 'access_developer_docs'")
+    manage_api_key_users = conn.execute("SELECT * FROM permissions where permission='manage_api_keys'").fetchall()
+    for user_service in manage_api_key_users:
+        conn.execute(
+            "insert into permissions (id, service_id, user_id, created_at, permission) "
+            "values('{0}', '{1}', {2}, now(), 'access_developer_docs')".format(
+                uuid.uuid4(), user_service.service_id, user_service.user_id))
     ### end Alembic commands ###
