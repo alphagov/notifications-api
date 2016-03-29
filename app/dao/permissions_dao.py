@@ -12,7 +12,8 @@ from app.models import (
     SEND_EMAILS,
     SEND_LETTERS,
     MANAGE_API_KEYS,
-    ACCESS_DEVELOPER_DOCS)
+    ACCESS_DEVELOPER_DOCS,
+    VIEW_ACTIVITY)
 
 
 # Default permissions for a service
@@ -24,7 +25,8 @@ default_service_permissions = [
     SEND_EMAILS,
     SEND_LETTERS,
     MANAGE_API_KEYS,
-    ACCESS_DEVELOPER_DOCS]
+    ACCESS_DEVELOPER_DOCS,
+    VIEW_ACTIVITY]
 
 
 class PermissionDAO(DAOClass):

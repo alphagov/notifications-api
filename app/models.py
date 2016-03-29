@@ -308,6 +308,7 @@ SEND_LETTERS = 'send_letters'
 MANAGE_API_KEYS = 'manage_api_keys'
 ACCESS_DEVELOPER_DOCS = 'access_developer_docs'
 PLATFORM_ADMIN = 'platform_admin'
+VIEW_ACTIVITY = 'view_activity'
 
 # List of permissions
 PERMISSION_LIST = [
@@ -319,7 +320,8 @@ PERMISSION_LIST = [
     SEND_LETTERS,
     MANAGE_API_KEYS,
     ACCESS_DEVELOPER_DOCS,
-    PLATFORM_ADMIN]
+    PLATFORM_ADMIN,
+    VIEW_ACTIVITY]
 
 
 class Permission(db.Model):

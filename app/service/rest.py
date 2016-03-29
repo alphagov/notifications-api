@@ -178,7 +178,6 @@ def remove_user_from_service(service_id, user_id):
 
 def _process_permissions(user, service, permission_groups):
     from app.permissions_utils import get_permissions_by_group
-    from app.dao.permissions_dao import permission_dao
     permissions = get_permissions_by_group(permission_groups)
     for permission in permissions:
         permission.user = user
