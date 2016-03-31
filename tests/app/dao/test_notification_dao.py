@@ -7,6 +7,8 @@ from app import DATE_FORMAT
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
+from app import db
+
 from app.models import (
     Notification,
     Job,
@@ -878,27 +880,14 @@ def test_successful_notification_inserts_followed_by_failure_does_not_increment_
     assert template_stats.template_id == sample_template.id
     assert template_stats.usage_count == 3
 
-    broken_data = {
-        'to': '+44709123456',
-        'job_id': sample_job.id,
-        'service': None,
-        'service_id': None,
-        'template': sample_template,
-        'template_id': sample_template.id,
-        'created_at': datetime.utcnow()
-    }
-
-    broken_notification = Notification(**broken_data)
+    failing_notification = Notification(**data)
     try:
-        dao_create_notification(broken_notification, sample_template.template_type)
-    except:
-        assert TemplateStatistics.query.count() == 1
-        template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
-                                                     TemplateStatistics.template_id == sample_template.id).first()  # noqa
-        assert template_stats.service_id == sample_template.service.id
-        assert template_stats.template_id == sample_template.id
-        assert template_stats.usage_count == 3
+        # Mess up db in really bad way
+        db.session.execute('DROP TABLE TEMPLATE_STATISTICS')
+        dao_create_notification(failing_notification, sample_template.template_type)
+    except Exception as e:
 
+        # There should be no additional notification stats or counts
         assert NotificationStatistics.query.count() == 1
         notication_stats = NotificationStatistics.query.filter(
             NotificationStatistics.service_id == sample_template.service.id
