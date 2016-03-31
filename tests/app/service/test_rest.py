@@ -13,9 +13,9 @@ from tests.app.conftest import sample_user as create_sample_user
 def test_get_service_list(notify_api, service_factory):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            service_factory.get('one')
-            service_factory.get('two')
-            service_factory.get('three')
+            service_factory.get('one', email_from='one')
+            service_factory.get('two', email_from='two')
+            service_factory.get('three', email_from='three')
             auth_header = create_authorization_header(
                 path='/service',
                 method='GET'
@@ -36,9 +36,9 @@ def test_get_service_list_by_user(notify_api, sample_user, service_factory):
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            service_factory.get('one', sample_user)
-            service_factory.get('two', sample_user)
-            service_factory.get('three', sample_user)
+            service_factory.get('one', sample_user, email_from='one')
+            service_factory.get('two', sample_user, email_from='two')
+            service_factory.get('three', sample_user, email_from='three')
 
             auth_header = create_authorization_header(
                 path='/service',
@@ -67,9 +67,9 @@ def test_get_service_list_by_user_should_return_empty_list_if_no_services(notify
             )
             save_model_user(new_user)
 
-            service_factory.get('one', sample_user)
-            service_factory.get('two', sample_user)
-            service_factory.get('three', sample_user)
+            service_factory.get('one', sample_user, email_from='one')
+            service_factory.get('two', sample_user, email_from='two')
+            service_factory.get('three', sample_user, email_from='three')
 
             auth_header = create_authorization_header(
                 path='/service',
@@ -138,7 +138,7 @@ def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
 def test_get_service_by_id_and_user(notify_api, service_factory, sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            service = service_factory.get('new service', sample_user)
+            service = service_factory.get('new service', sample_user, email_from='new.service')
             auth_header = create_authorization_header(
                 path='/service/{}'.format(service.id),
                 method='GET'
@@ -179,7 +179,8 @@ def test_create_service(notify_api, sample_user):
                 'user_id': sample_user.id,
                 'limit': 1000,
                 'restricted': False,
-                'active': False}
+                'active': False,
+                'email_from': 'created.service'}
             auth_header = create_authorization_header(
                 path='/service',
                 method='POST',
@@ -333,7 +334,8 @@ def test_update_service(notify_api, sample_service):
             assert json_resp['data']['name'] == sample_service.name
 
             data = {
-                'name': 'updated service name'
+                'name': 'updated service name',
+                'email_from': 'updated.service.name'
             }
 
             auth_header = create_authorization_header(
@@ -350,6 +352,7 @@ def test_update_service(notify_api, sample_service):
             result = json.loads(resp.get_data(as_text=True))
             assert resp.status_code == 200
             assert result['data']['name'] == 'updated service name'
+            assert result['data']['email_from'] == 'updated.service.name'
 
 
 def test_should_not_update_service_with_duplicate_name(notify_api,
@@ -364,7 +367,8 @@ def test_should_not_update_service_with_duplicate_name(notify_api,
                 notify_db,
                 notify_db_session,
                 service_name=service_name,
-                user=sample_user)
+                user=sample_user,
+                email_from='another.name')
             data = {
                 'name': service_name
             }
@@ -483,7 +487,8 @@ def test_default_permissions_are_added_for_user_service(notify_api,
                 'user_id': sample_user.id,
                 'limit': 1000,
                 'restricted': False,
-                'active': False}
+                'active': False,
+                'email_from': 'created.service'}
             auth_header = create_authorization_header(
                 path='/service',
                 method='POST',
