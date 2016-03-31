@@ -1,9 +1,14 @@
 import uuid
+import datetime
 
 from sqlalchemy import UniqueConstraint, Sequence
+
 from . import db
-import datetime
-from sqlalchemy.dialects.postgresql import (UUID, ARRAY)
+from sqlalchemy.dialects.postgresql import (
+    UUID,
+    ARRAY
+)
+
 from app.encryption import (
     hashpw,
     check_hash
@@ -346,3 +351,14 @@ class Permission(db.Model):
     __table_args__ = (
         UniqueConstraint('service_id', 'user_id', 'permission', name='uix_service_user_permission'),
     )
+
+
+class TemplateStatistics(db.Model):
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
+    service = db.relationship('Service', backref=db.backref('template_statics', lazy='dynamic'))
+    template_id = db.Column(db.BigInteger, db.ForeignKey('templates.id'), index=True, nullable=False, unique=False)
+    template = db.relationship('Template')
+    usage_count = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=1)
+    day = db.Column(db.Date, index=True, nullable=False, unique=False, default=datetime.date.today)

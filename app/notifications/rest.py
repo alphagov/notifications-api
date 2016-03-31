@@ -20,11 +20,11 @@ from app.dao import (
     services_dao,
     notifications_dao
 )
+
 from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
     notification_status_schema,
-    template_schema,
     notifications_filter_schema
 )
 from app.celery.tasks import send_sms, send_email
