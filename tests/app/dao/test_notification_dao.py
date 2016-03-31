@@ -840,3 +840,67 @@ def test_save_another_notification_increments_template_stats(sample_template, sa
     template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
                                                      TemplateStatistics.template_id == sample_template.id).first()
     assert template_stats.usage_count == 2
+
+
+def test_successful_notification_inserts_followed_by_failure_does_not_increment_template_stats(sample_template,
+                                                                                               sample_job):
+    assert Notification.query.count() == 0
+    assert NotificationStatistics.query.count() == 0
+    assert TemplateStatistics.query.count() == 0
+
+    data = {
+        'to': '+44709123456',
+        'job_id': sample_job.id,
+        'service': sample_template.service,
+        'service_id': sample_template.service.id,
+        'template': sample_template,
+        'template_id': sample_template.id,
+        'created_at': datetime.utcnow()
+    }
+
+    notification_1 = Notification(**data)
+    notification_2 = Notification(**data)
+    notification_3 = Notification(**data)
+    dao_create_notification(notification_1, sample_template.template_type)
+    dao_create_notification(notification_2, sample_template.template_type)
+    dao_create_notification(notification_3, sample_template.template_type)
+
+    assert NotificationStatistics.query.count() == 1
+    notication_stats = NotificationStatistics.query.filter(
+        NotificationStatistics.service_id == sample_template.service.id
+    ).first()
+    assert notication_stats.sms_requested == 3
+
+    assert TemplateStatistics.query.count() == 1
+    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
+                                                     TemplateStatistics.template_id == sample_template.id).first()
+    assert template_stats.service_id == sample_template.service.id
+    assert template_stats.template_id == sample_template.id
+    assert template_stats.usage_count == 3
+
+    broken_data = {
+        'to': '+44709123456',
+        'job_id': sample_job.id,
+        'service': None,
+        'service_id': None,
+        'template': sample_template,
+        'template_id': sample_template.id,
+        'created_at': datetime.utcnow()
+    }
+
+    broken_notification = Notification(**broken_data)
+    try:
+        dao_create_notification(broken_notification, sample_template.template_type)
+    except:
+        assert TemplateStatistics.query.count() == 1
+        template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
+                                                     TemplateStatistics.template_id == sample_template.id).first()  # noqa
+        assert template_stats.service_id == sample_template.service.id
+        assert template_stats.template_id == sample_template.id
+        assert template_stats.usage_count == 3
+
+        assert NotificationStatistics.query.count() == 1
+        notication_stats = NotificationStatistics.query.filter(
+            NotificationStatistics.service_id == sample_template.service.id
+        ).first()
+        assert notication_stats.sms_requested == 3
