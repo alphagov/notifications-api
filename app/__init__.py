@@ -13,6 +13,9 @@ from app.clients.sms.firetext import FiretextClient
 from app.clients.email.aws_ses import AwsSesClient
 from app.encryption import Encryption
 
+DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+DATE_FORMAT = "%Y-%m-%d"
+
 db = SQLAlchemy()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
@@ -24,10 +27,13 @@ encryption = Encryption()
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 
 
-def create_app():
+def create_app(app_name=None):
     application = Flask(__name__)
 
     application.config.from_object(os.environ['NOTIFY_API_ENVIRONMENT'])
+
+    if app_name:
+        application.config['NOTIFY_APP_NAME'] = app_name
 
     init_app(application)
     db.init_app(application)
@@ -49,6 +55,7 @@ def create_app():
     from app.invite.rest import invite as invite_blueprint
     from app.permission.rest import permission as permission_blueprint
     from app.accept_invite.rest import accept_invite
+    from app.notifications_statistics.rest import notifications_statistics as notifications_statistics_blueprint
 
     application.register_blueprint(service_blueprint, url_prefix='/service')
     application.register_blueprint(user_blueprint, url_prefix='/user')
@@ -59,6 +66,7 @@ def create_app():
     application.register_blueprint(invite_blueprint)
     application.register_blueprint(permission_blueprint, url_prefix='/permission')
     application.register_blueprint(accept_invite, url_prefix='/invite')
+    application.register_blueprint(notifications_statistics_blueprint)
 
     return application
 
@@ -66,7 +74,12 @@ def create_app():
 def init_app(app):
     @app.before_request
     def required_authentication():
-        if request.path != url_for('status.show_status'):
+        no_auth_req = [
+            url_for('status.show_status'),
+            url_for('notifications.process_ses_response'),
+            url_for('notifications.process_firetext_response')
+        ]
+        if request.path not in no_auth_req:
             from app.authentication import auth
             error = auth.requires_auth()
             if error:
@@ -82,9 +95,7 @@ def init_app(app):
 
 def email_safe(string):
     return "".join([
-        character.lower()
-        if character.isalnum() or character == "."
-        else "" for character in re.sub("\s+", ".", string.strip())
+        character.lower() if character.isalnum() or character == "." else "" for character in re.sub("\s+", ".", string.strip())  # noqa
     ])
 
 

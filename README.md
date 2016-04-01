@@ -1,6 +1,8 @@
 ![](https://travis-ci.org/alphagov/notifications-api.svg)
 [![Requirements Status](https://requires.io/github/alphagov/notifications-api/requirements.svg?branch=master)](https://requires.io/github/alphagov/notifications-api/requirements/?branch=master)
 
+[![Deploy to staging](https://notify-build-monitor.herokuapp.com/deploys/notifications-api/master...staging.svg?prefix=Deploy%20to)](https://github.com/alphagov/notifications-api/compare/staging...master?expand=1&title=Deploy%20to%20staging) [![Deploy to live](https://notify-build-monitor.herokuapp.com/deploys/notifications-api/staging...live.svg?prefix=Deploy%20to)](https://github.com/alphagov/notifications-api/compare/live...staging?expand=1&title=Deploy%20to%20live)
+
 # notifications-api
 Notifications api
 Application for the notification api.
@@ -26,8 +28,6 @@ export ADMIN_CLIENT_SECRET='dev-notify-secret-key'
 export ADMIN_CLIENT_USER_NAME='dev-notify-admin'
 export AWS_REGION='eu-west-1'
 export DANGEROUS_SALT='dev-notify-salt'
-export DELIVERY_CLIENT_USER_NAME='dev-notify-delivery'
-export DELIVERY_CLIENT_SECRET='dev-notify-secret-key'
 export FIRETEXT_API_KEY=[contact team member for api key]
 export FIRETEXT_NUMBER="Firetext"
 export INVITATION_EMAIL_FROM='invites@notifications.service.gov.uk'
@@ -64,3 +64,6 @@ scripts/run_app.sh
 scripts/run_celery.sh
 ```
 
+```
+scripts/run_celery_beat.sh
+```

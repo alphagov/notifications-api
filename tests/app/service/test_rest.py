@@ -5,6 +5,9 @@ from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
 from app.models import User
 from tests import create_authorization_header
+from tests.app.conftest import sample_service as create_sample_service
+from tests.app.conftest import sample_service_permission as create_sample_service_permission
+from tests.app.conftest import sample_user as create_sample_user
 
 
 def test_get_service_list(notify_api, service_factory):
@@ -129,7 +132,7 @@ def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
             assert resp.status_code == 404
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'Service not found for service id: {} '.format(service_id)
+            assert json_resp['message'] == 'No result found'
 
 
 def test_get_service_by_id_and_user(notify_api, service_factory, sample_user):
@@ -165,8 +168,7 @@ def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_
             assert resp.status_code == 404
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == \
-                'Service not found for service id: {0} and for user id: {1}'.format(service_id, sample_user.id)
+            assert json_resp['message'] == 'No result found'
 
 
 def test_create_service(notify_api, sample_user):
@@ -256,9 +258,9 @@ def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(no
                 data=json.dumps(data),
                 headers=headers)
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 400
+            assert resp.status_code == 404
             assert json_resp['result'] == 'error'
-            assert 'not found' in json_resp['message']['user_id']
+            assert 'No result found' == json_resp['message']
 
 
 def test_should_not_create_service_if_missing_data(notify_api, sample_user):
@@ -284,6 +286,35 @@ def test_should_not_create_service_if_missing_data(notify_api, sample_user):
             assert 'Missing data for required field.' in json_resp['message']['active']
             assert 'Missing data for required field.' in json_resp['message']['limit']
             assert 'Missing data for required field.' in json_resp['message']['restricted']
+
+
+def test_should_not_create_service_with_duplicate_name(notify_api,
+                                                       notify_db,
+                                                       notify_db_session,
+                                                       sample_user,
+                                                       sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = {
+                'name': sample_service.name,
+                'user_id': sample_service.users[0].id,
+                'limit': 1000,
+                'restricted': False,
+                'active': False}
+            auth_header = create_authorization_header(
+                path='/service',
+                method='POST',
+                request_body=json.dumps(data)
+            )
+            headers = [('Content-Type', 'application/json'), auth_header]
+            resp = client.post(
+                '/service',
+                data=json.dumps(data),
+                headers=headers)
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 400
+            assert "Duplicate service name '{}'".format(
+                sample_service.name) in json_resp['message']['name']
 
 
 def test_update_service(notify_api, sample_service):
@@ -319,6 +350,40 @@ def test_update_service(notify_api, sample_service):
             result = json.loads(resp.get_data(as_text=True))
             assert resp.status_code == 200
             assert result['data']['name'] == 'updated service name'
+
+
+def test_should_not_update_service_with_duplicate_name(notify_api,
+                                                       notify_db,
+                                                       notify_db_session,
+                                                       sample_user,
+                                                       sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            service_name = "another name"
+            another_service = create_sample_service(
+                notify_db,
+                notify_db_session,
+                service_name=service_name,
+                user=sample_user)
+            data = {
+                'name': service_name
+            }
+
+            auth_header = create_authorization_header(
+                path='/service/{}'.format(sample_service.id),
+                method='POST',
+                request_body=json.dumps(data)
+            )
+
+            resp = client.post(
+                '/service/{}'.format(sample_service.id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 400
+            assert "Duplicate service name '{}'".format(
+                service_name) in json_resp['message']['name']
 
 
 def test_update_service_should_404_if_id_is_invalid(notify_api, notify_db, notify_db_session):
@@ -403,7 +468,7 @@ def test_get_users_for_service_returns_404_when_service_does_not_exist(notify_ap
             assert response.status_code == 404
             result = json.loads(response.get_data(as_text=True))
             assert result['result'] == 'error'
-            assert result['message'] == 'Service not found for id: {}'.format(service_id)
+            assert result['message'] == 'No result found'
 
 
 def test_default_permissions_are_added_for_user_service(notify_api,
@@ -493,12 +558,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
             # they must exist in db first
             save_model_user(user_to_add)
 
-            data = {
-                'service': str(sample_service.id),
-                'email_address': 'invited@digital.cabinet-office.gov.uk',
-                'from_user': sample_user.id,
-                'permissions': 'send_messages,manage_service,manage_api_keys'
-            }
+            data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
 
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
@@ -540,8 +600,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
             json_resp = json.loads(resp.get_data(as_text=True))
             permissions = json_resp['data']['permissions'][str(sample_service.id)]
             expected_permissions = ['send_texts', 'send_emails', 'send_letters', 'manage_users',
-                                    'manage_settings', 'manage_templates', 'manage_api_keys',
-                                    'access_developer_docs']
+                                    'manage_settings', 'manage_templates', 'manage_api_keys']
             assert sorted(expected_permissions) == sorted(permissions)
 
 
@@ -562,12 +621,7 @@ def test_add_existing_user_to_another_service_with_send_permissions(notify_api,
             )
             save_model_user(user_to_add)
 
-            data = {
-                'service': str(sample_service.id),
-                'email_address': 'invited@digital.cabinet-office.gov.uk',
-                'from_user': sample_user.id,
-                'permissions': 'send_messages'
-            }
+            data = {'permissions': ['send_messages']}
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
                 request_body=json.dumps(data),
@@ -615,12 +669,7 @@ def test_add_existing_user_to_another_service_with_manage_permissions(notify_api
             )
             save_model_user(user_to_add)
 
-            data = {
-                'service': str(sample_service.id),
-                'email_address': 'invited@digital.cabinet-office.gov.uk',
-                'from_user': sample_user.id,
-                'permissions': 'manage_service'
-            }
+            data = {'permissions': ['manage_service']}
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
                 request_body=json.dumps(data),
@@ -668,12 +717,7 @@ def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
             )
             save_model_user(user_to_add)
 
-            data = {
-                'service': str(sample_service.id),
-                'email_address': 'invited@digital.cabinet-office.gov.uk',
-                'from_user': sample_user.id,
-                'permissions': 'manage_api_keys'
-            }
+            data = {'permissions': ['manage_api_keys']}
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
                 request_body=json.dumps(data),
@@ -700,7 +744,7 @@ def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
             json_resp = json.loads(resp.get_data(as_text=True))
 
             permissions = json_resp['data']['permissions'][str(sample_service.id)]
-            expected_permissions = ['manage_api_keys', 'access_developer_docs']
+            expected_permissions = ['manage_api_keys']
             assert sorted(expected_permissions) == sorted(permissions)
 
 
@@ -721,12 +765,7 @@ def test_add_existing_user_to_non_existing_service_returns404(notify_api,
 
             incorrect_id = uuid.uuid4()
 
-            data = {
-                'service': str(incorrect_id),
-                'email_address': 'invited@digital.cabinet-office.gov.uk',
-                'from_user': sample_user.id,
-                'permissions': 'send_messages'
-            }
+            data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(incorrect_id, user_to_add.id),
                 request_body=json.dumps(data),
@@ -740,7 +779,7 @@ def test_add_existing_user_to_non_existing_service_returns404(notify_api,
             )
 
             result = json.loads(resp.get_data(as_text=True))
-            expected_message = 'Service not found for id: {}'.format(incorrect_id)
+            expected_message = 'No result found'
 
             assert resp.status_code == 404
             assert result['result'] == 'error'
@@ -753,12 +792,7 @@ def test_add_existing_user_of_service_to_service_returns400(notify_api, notify_d
 
             existing_user_id = sample_service.users[0].id
 
-            data = {
-                'service': str(sample_service.id),
-                'email_address': 'invited@digital.cabinet-office.gov.uk',
-                'from_user': 'doesnotmatter',
-                'permissions': 'send_messages'
-            }
+            data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, existing_user_id),
                 request_body=json.dumps(data),
@@ -785,12 +819,7 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db
 
             incorrect_id = 9876
 
-            data = {
-                'service': str(sample_service.id),
-                'email_address': 'invited@digital.cabinet-office.gov.uk',
-                'from_user': incorrect_id,
-                'permissions': 'send_messages'
-            }
+            data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
             auth_header = create_authorization_header(
                 path='/service/{}/users/{}'.format(sample_service.id, incorrect_id),
                 request_body=json.dumps(data),
@@ -804,8 +833,77 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db
             )
 
             result = json.loads(resp.get_data(as_text=True))
-            expected_message = 'User not found for id: {}'.format(incorrect_id)
+            expected_message = 'No result found'
 
             assert resp.status_code == 404
             assert result['result'] == 'error'
             assert result['message'] == expected_message
+
+
+def test_remove_user_from_service(notify_api, notify_db, notify_db_session, sample_service_permission):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            second_user = create_sample_user(
+                notify_db,
+                notify_db_session,
+                email="new@digital.cabinet-office.gov.uk")
+            # Simulates successfully adding a user to the service
+            second_permission = create_sample_service_permission(
+                notify_db,
+                notify_db_session,
+                user=second_user)
+            endpoint = url_for(
+                'service.remove_user_from_service',
+                service_id=str(second_permission.service.id),
+                user_id=str(second_permission.user.id))
+            auth_header = create_authorization_header(
+                path=endpoint,
+                method='DELETE'
+            )
+            resp = client.delete(
+                endpoint,
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert resp.status_code == 204
+
+
+def test_remove_user_from_service(notify_api, notify_db, notify_db_session, sample_service_permission):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            second_user = create_sample_user(
+                notify_db,
+                notify_db_session,
+                email="new@digital.cabinet-office.gov.uk")
+            endpoint = url_for(
+                'service.remove_user_from_service',
+                service_id=str(sample_service_permission.service.id),
+                user_id=str(second_user.id))
+            auth_header = create_authorization_header(
+                path=endpoint,
+                method='DELETE'
+            )
+            resp = client.delete(
+                endpoint,
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert resp.status_code == 404
+
+
+def test_cannot_remove_only_user_from_service(notify_api,
+                                              notify_db,
+                                              notify_db_session,
+                                              sample_service_permission):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            endpoint = url_for(
+                'service.remove_user_from_service',
+                service_id=str(sample_service_permission.service.id),
+                user_id=str(sample_service_permission.user.id))
+            auth_header = create_authorization_header(
+                path=endpoint,
+                method='DELETE'
+            )
+            resp = client.delete(
+                endpoint,
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert resp.status_code == 400
+            result = json.loads(resp.get_data(as_text=True))
+            assert result['message'] == 'You cannot remove the only user for a service'

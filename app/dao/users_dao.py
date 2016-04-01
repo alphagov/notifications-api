@@ -16,6 +16,7 @@ def save_model_user(usr, update_dict={}, pwd=None):
     if update_dict:
         if update_dict.get('id'):
             del update_dict['id']
+            update_dict.pop('password_changed_at')
         db.session.query(User).filter_by(id=usr.id).update(update_dict)
     else:
         db.session.add(usr)
@@ -46,6 +47,14 @@ def get_user_code(user, code, code_type):
     return retval
 
 
+def delete_codes_older_created_more_than_a_day_ago():
+    deleted = db.session.query(VerifyCode).filter(
+        VerifyCode.created_at < datetime.utcnow() - timedelta(hours=24)
+    ).delete()
+    db.session.commit()
+    return deleted
+
+
 def use_user_code(id):
     verify_code = VerifyCode.query.get(id)
     verify_code.code_used = True
@@ -60,12 +69,12 @@ def delete_model_user(user):
 
 def get_model_users(user_id=None):
     if user_id:
-        return User.query.filter_by(id=user_id).first()
+        return User.query.filter_by(id=user_id).one()
     return User.query.filter_by().all()
 
 
 def get_user_by_email(email):
-    return User.query.filter_by(email_address=email).first()
+    return User.query.filter_by(email_address=email).one()
 
 
 def increment_failed_login_count(user):

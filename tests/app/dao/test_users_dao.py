@@ -1,5 +1,8 @@
+from datetime import datetime, timedelta
 from sqlalchemy.exc import DataError
+from sqlalchemy.orm.exc import NoResultFound
 
+from app import db
 import pytest
 
 from app.dao.users_dao import (
@@ -8,11 +11,12 @@ from app.dao.users_dao import (
     delete_model_user,
     increment_failed_login_count,
     reset_failed_login_count,
-    get_user_by_email
+    get_user_by_email,
+    delete_codes_older_created_more_than_a_day_ago
 )
 
 from tests.app.conftest import sample_user as create_sample_user
-from app.models import User
+from app.models import User, VerifyCode
 
 
 def test_create_user(notify_api, notify_db, notify_db_session):
@@ -28,6 +32,7 @@ def test_create_user(notify_api, notify_db, notify_db_session):
     assert User.query.count() == 1
     assert User.query.first().email_address == email
     assert User.query.first().id == user.id
+    assert not user.platform_admin
 
 
 def test_get_all_users(notify_api, notify_db, notify_db_session, sample_user):
@@ -53,7 +58,7 @@ def test_get_user_not_exists(notify_api, notify_db, notify_db_session):
     try:
         get_model_users(user_id="12345")
         pytest.fail("NoResultFound exception not thrown.")
-    except:
+    except NoResultFound as e:
         pass
 
 
@@ -86,7 +91,37 @@ def test_reset_failed_login_should_set_failed_logins_to_0(notify_api, notify_db,
     assert sample_user.failed_login_count == 0
 
 
-def test_get_user_by_email(notify_api, notify_db, notify_db_session, sample_user):
+def test_get_user_by_email(sample_user):
     email = sample_user.email_address
     user_from_db = get_user_by_email(email)
     assert sample_user == user_from_db
+
+
+def test_should_delete_all_verification_codes_more_than_one_day_old(sample_user):
+    make_verify_code(sample_user, age=timedelta(hours=24), code="54321")
+    make_verify_code(sample_user, age=timedelta(hours=24), code="54321")
+    assert len(VerifyCode.query.all()) == 2
+    delete_codes_older_created_more_than_a_day_ago()
+    assert len(VerifyCode.query.all()) == 0
+
+
+def test_should_not_delete_verification_codes_less_than_one_day_old(sample_user):
+    make_verify_code(sample_user, age=timedelta(hours=23, minutes=59, seconds=59), code="12345")
+    make_verify_code(sample_user, age=timedelta(hours=24), code="54321")
+
+    assert len(VerifyCode.query.all()) == 2
+    delete_codes_older_created_more_than_a_day_ago()
+    assert len(VerifyCode.query.all()) == 1
+    assert VerifyCode.query.first()._code == "12345"
+
+
+def make_verify_code(user, age=timedelta(hours=0), code="12335"):
+    verify_code = VerifyCode(
+        code_type='sms',
+        _code=code,
+        created_at=datetime.utcnow() - age,
+        expiry_datetime=datetime.utcnow(),
+        user=user
+    )
+    db.session.add(verify_code)
+    db.session.commit()

@@ -8,7 +8,7 @@ def dao_fetch_all_services():
 
 
 def dao_fetch_service_by_id(service_id):
-    return Service.query.filter_by(id=service_id).first()
+    return Service.query.filter_by(id=service_id).one()
 
 
 def dao_fetch_all_services_by_user(user_id):
@@ -16,7 +16,7 @@ def dao_fetch_all_services_by_user(user_id):
 
 
 def dao_fetch_service_by_id_and_user(service_id, user_id):
-    return Service.query.filter(Service.users.any(id=user_id)).filter_by(id=service_id).first()
+    return Service.query.filter(Service.users.any(id=user_id)).filter_by(id=service_id).one()
 
 
 def dao_create_service(service, user):
@@ -26,7 +26,6 @@ def dao_create_service(service, user):
         permission_dao.add_default_service_permissions_for_user(user, service)
         db.session.add(service)
     except Exception as e:
-        # Proper clean up
         db.session.rollback()
         raise e
     else:
@@ -38,13 +37,27 @@ def dao_update_service(service):
     db.session.commit()
 
 
-def dao_add_user_to_service(service, user):
-    service.users.append(user)
-    db.session.add(service)
-    db.session.commit()
+def dao_add_user_to_service(service, user, permissions=[]):
+    try:
+        from app.dao.permissions_dao import permission_dao
+        service.users.append(user)
+        permission_dao.set_user_service_permission(user, service, permissions, _commit=False)
+        db.session.add(service)
+    except Exception as e:
+        db.session.rollback()
+        raise e
+    else:
+        db.session.commit()
 
 
 def dao_remove_user_from_service(service, user):
-    service.users.remove(user)
-    db.session.add(service)
-    db.session.commit()
+    try:
+        from app.dao.permissions_dao import permission_dao
+        permission_dao.remove_user_service_permissions(user, service)
+        service.users.remove(user)
+        db.session.add(service)
+    except Exception as e:
+        db.session.rollback()
+        raise e
+    else:
+        db.session.commit()

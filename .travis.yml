@@ -141,6 +141,47 @@ deploy:
   deployment_group: live_admin_api_deployment_group
   region: eu-west-1
   on: *2
+- provider: s3
+  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
+  secret_access_key: &1
+    secure: daC1bCHXqLRK+iIZ8P699KCnTh77lwV4KxrZxL1yd6cstgfptyd/rg1WgRwE6QdxOCT9gQvKWUZFCzFy7M6E/Ih8EUHqEXTzC5M4oAye8rhePIBMQwqkgfYyIoZ3LdDMMP5JfBhiz0zS3Vj7HerL2qIu12adJBjkRJx3XAGimCrFOMQ0xUXQAKDjL6Xmv+gVz2f/ISLy6icKY4KNGt3cQV+8pa5aMF34C9R2udA9N67EWlXlh7hJbFtmY+0Zqpo8Rr6wKRb5MA0xEcTVLORSz1aa6GkxUCbzaIH99p7z3Ghz0qW2bUi9ZcDrvg0GLbVe1T+1HXhfktJfW8wnzw6A/2U/CIIFDQZ/qk0w/DkEwpQinXow99Zl49CcEU+v8llKhg5nM3LmAZCQg1c/iZyP/d90AwAMoMA/VTDD72M93IqTJQH18eC8g02DwE0hNDD6aos5wzeuDeiH/6BG+Tq0pDl0y0aWCcHf3vGRlo/5GlWfpE0vMQEC+qnEOWOUqSprCdSypgD2Aip9mCC98w4BkqKKvGNHPZolA7rxf7E9hTK+BNPRATpYsHR1X/1Xl0TMc/pHhjU1yNXzWnI/kOlNV2CRq3slEtcWihaEo8oDHJ+BhGT49Ps3Je7UB2xO/jXXFPhwJotPMOacTcnUkGqVJSlK1g6TIn4t9nTVSY8KFUs=
+  local_dir: dpl_cd_upload
+  skip_cleanup: true
+  region: eu-west-1
+  on: &2
+    repo: alphagov/notifications-api
+    branch: live
+  bucket: live-notifications-api-codedeploy
+- provider: codedeploy
+  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
+  secret_access_key: *1
+  bucket: live-notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: notifications-api
+  deployment_group: live_notifications_delivery_api_deployment_group
+  region: eu-west-1
+  on: *2
+- provider: codedeploy
+  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
+  secret_access_key: *1
+  bucket: live-notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: notifications-api
+  deployment_group: live_notifications_api_deployment_group
+  region: eu-west-1
+  on: *2
+- provider: codedeploy
+  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
+  secret_access_key: *1
+  bucket: live-notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: notifications-api
+  deployment_group: live_notifications_admin_api_deployment_group
+  region: eu-west-1
+  on: *2
 before_deploy:
 - ./scripts/update_version_file.sh
 - zip -r  --exclude=*__pycache__* notifications-api *

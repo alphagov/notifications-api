@@ -155,4 +155,6 @@ def test_get_template_by_id_and_service(notify_db, notify_db_session, sample_ser
 
 
 def test_get_template_by_id_and_service_returns_none_if_no_template(sample_service):
-    assert not dao_get_template_by_id_and_service_id(template_id=999, service_id=sample_service.id)
+    with pytest.raises(NoResultFound) as e:
+        dao_get_template_by_id_and_service_id(template_id=999, service_id=sample_service.id)
+    assert 'No row was found for one' in str(e.value)
