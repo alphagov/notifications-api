@@ -1,12 +1,21 @@
-import pytest
+from datetime import datetime, timedelta, date
 import uuid
-from app import (
-    DATE_FORMAT
-)
+
+import pytest
+
+from app import DATE_FORMAT
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from app.models import Notification, Job, NotificationStatistics
-from datetime import datetime, timedelta
+
+from app import db
+
+from app.models import (
+    Notification,
+    Job,
+    NotificationStatistics,
+    TemplateStatistics
+)
+
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_update_notification,
@@ -21,6 +30,7 @@ from app.dao.notifications_dao import (
     update_notification_reference_by_id,
     update_notification_status_by_reference
 )
+
 from tests.app.conftest import sample_job
 from tests.app.conftest import sample_notification
 
@@ -38,6 +48,7 @@ def test_should_by_able_to_update_status_by_reference(sample_email_template):
         'service': sample_email_template.service,
         'service_id': sample_email_template.service.id,
         'template': sample_email_template,
+        'template_id': sample_email_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -97,6 +108,7 @@ def test_should_be_able_to_record_statistics_failure_for_email(sample_email_temp
         'service': sample_email_template.service,
         'service_id': sample_email_template.service.id,
         'template': sample_email_template,
+        'template_id': sample_email_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -132,6 +144,7 @@ def test_should_be_able_to_get_statistics_for_a_service(sample_template):
         'service': sample_template.service,
         'service_id': sample_template.service.id,
         'template': sample_template,
+        'template_id': sample_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -158,6 +171,7 @@ def test_should_be_able_to_get_statistics_for_a_service_for_a_day(sample_templat
         'service': sample_template.service,
         'service_id': sample_template.service.id,
         'template': sample_template,
+        'template_id': sample_template.id,
         'created_at': now
     }
 
@@ -183,6 +197,7 @@ def test_should_return_none_if_no_statistics_for_a_service_for_a_day(sample_temp
         'service': sample_template.service,
         'service_id': sample_template.service.id,
         'template': sample_template,
+        'template_id': sample_template.id,
         'created_at': now
     }
 
@@ -199,6 +214,7 @@ def test_should_be_able_to_get_all_statistics_for_a_service(sample_template):
         'service': sample_template.service,
         'service_id': sample_template.service.id,
         'template': sample_template,
+        'template_id': sample_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -220,7 +236,8 @@ def test_should_be_able_to_get_all_statistics_for_a_service_for_several_days(sam
         'to': '+44709123456',
         'service': sample_template.service,
         'service_id': sample_template.service.id,
-        'template': sample_template
+        'template': sample_template,
+        'template_id': sample_template.id,
     }
 
     today = datetime.utcnow()
@@ -259,14 +276,18 @@ def test_should_be_empty_list_if_no_statistics_for_a_service(sample_service):
     assert len(dao_get_notification_statistics_for_service(sample_service.id)) == 0
 
 
-def test_save_notification_and_create_sms_stats(sample_template, sample_job):
+def test_save_notification_creates_sms_and_template_stats(sample_template, sample_job):
     assert Notification.query.count() == 0
+    assert NotificationStatistics.query.count() == 0
+    assert TemplateStatistics.query.count() == 0
+
     data = {
         'to': '+44709123456',
         'job_id': sample_job.id,
         'service': sample_template.service,
         'service_id': sample_template.service.id,
         'template': sample_template,
+        'template_id': sample_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -291,15 +312,27 @@ def test_save_notification_and_create_sms_stats(sample_template, sample_job):
     assert stats.emails_requested == 0
     assert stats.sms_requested == 1
 
+    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
+                                                     TemplateStatistics.template_id == sample_template.id).first()
 
-def test_save_notification_and_create_email_stats(sample_email_template, sample_job):
+    assert template_stats.service_id == sample_template.service.id
+    assert template_stats.template_id == sample_template.id
+    assert template_stats.usage_count == 1
+
+
+def test_save_notification_and_create_email_and_template_stats(sample_email_template, sample_job):
+
     assert Notification.query.count() == 0
+    assert NotificationStatistics.query.count() == 0
+    assert TemplateStatistics.query.count() == 0
+
     data = {
         'to': '+44709123456',
         'job_id': sample_job.id,
         'service': sample_email_template.service,
         'service_id': sample_email_template.service.id,
         'template': sample_email_template,
+        'template_id': sample_email_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -324,6 +357,13 @@ def test_save_notification_and_create_email_stats(sample_email_template, sample_
     assert stats.emails_requested == 1
     assert stats.sms_requested == 0
 
+    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_email_template.service.id,
+                                                     TemplateStatistics.template_id == sample_email_template.id).first()  # noqa
+
+    assert template_stats.service_id == sample_email_template.service.id
+    assert template_stats.template_id == sample_email_template.id
+    assert template_stats.usage_count == 1
+
 
 @freeze_time("2016-01-01 00:00:00.000000")
 def test_save_notification_handles_midnight_properly(sample_template, sample_job):
@@ -334,6 +374,7 @@ def test_save_notification_handles_midnight_properly(sample_template, sample_job
         'service': sample_template.service,
         'service_id': sample_template.service.id,
         'template': sample_template,
+        'template_id': sample_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -358,6 +399,7 @@ def test_save_notification_handles_just_before_midnight_properly(sample_template
         'service': sample_template.service,
         'service_id': sample_template.service.id,
         'template': sample_template,
+        'template_id': sample_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -381,6 +423,7 @@ def test_save_notification_and_increment_email_stats(sample_email_template, samp
         'service': sample_email_template.service,
         'service_id': sample_email_template.service.id,
         'template': sample_email_template,
+        'template_id': sample_email_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -417,6 +460,7 @@ def test_save_notification_and_increment_sms_stats(sample_template, sample_job):
         'service': sample_template.service,
         'service_id': sample_template.service.id,
         'template': sample_template,
+        'template_id': sample_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -455,6 +499,7 @@ def test_not_save_notification_and_not_create_stats_on_commit_error(sample_templ
         'service': sample_template.service,
         'service_id': sample_template.service.id,
         'template': sample_template,
+        'template_id': sample_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -465,6 +510,7 @@ def test_not_save_notification_and_not_create_stats_on_commit_error(sample_templ
     assert Notification.query.count() == 0
     assert Job.query.get(sample_job.id).notifications_sent == 0
     assert NotificationStatistics.query.count() == 0
+    assert TemplateStatistics.query.count() == 0
 
 
 def test_save_notification_and_increment_job(sample_template, sample_job):
@@ -475,6 +521,7 @@ def test_save_notification_and_increment_job(sample_template, sample_job):
         'service': sample_template.service,
         'service_id': sample_template.service.id,
         'template': sample_template,
+        'template_id': sample_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -509,6 +556,7 @@ def test_should_not_increment_job_if_notification_fails_to_persist(sample_templa
         'service_id': sample_template.service.id,
         'service': sample_template.service,
         'template': sample_template,
+        'template_id': sample_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -539,6 +587,7 @@ def test_save_notification_and_increment_correct_job(notify_db, notify_db_sessio
         'service_id': sample_template.service.id,
         'service': sample_template.service,
         'template': sample_template,
+        'template_id': sample_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -565,6 +614,7 @@ def test_save_notification_with_no_job(sample_template):
         'service_id': sample_template.service.id,
         'service': sample_template.service,
         'template': sample_template,
+        'template_id': sample_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -596,6 +646,7 @@ def test_save_notification_no_job_id(sample_template):
         'service_id': sample_template.service.id,
         'service': sample_template.service,
         'template': sample_template,
+        'template_id': sample_template.id,
         'created_at': datetime.utcnow()
     }
 
@@ -688,3 +739,157 @@ def test_should_not_delete_failed_notifications_before_seven_days(notify_db, not
     delete_failed_notifications_created_more_than_a_week_ago()
     assert len(Notification.query.all()) == 1
     assert Notification.query.first().to == 'valid'
+
+
+@freeze_time("2016-03-30")
+def test_save_new_notification_creates_template_stats(sample_template, sample_job):
+    assert Notification.query.count() == 0
+    assert TemplateStatistics.query.count() == 0
+    data = {
+        'to': '+44709123456',
+        'job_id': sample_job.id,
+        'service': sample_template.service,
+        'service_id': sample_template.service.id,
+        'template': sample_template,
+        'template_id': sample_template.id,
+        'created_at': datetime.utcnow()
+    }
+
+    notification = Notification(**data)
+    dao_create_notification(notification, sample_template.template_type)
+
+    assert TemplateStatistics.query.count() == 1
+    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
+                                                     TemplateStatistics.template_id == sample_template.id).first()
+    assert template_stats.service_id == sample_template.service.id
+    assert template_stats.template_id == sample_template.id
+    assert template_stats.usage_count == 1
+    assert template_stats.day == date(2016, 3, 30)
+
+
+@freeze_time("2016-03-30")
+def test_save_new_notification_creates_template_stats_per_day(sample_template, sample_job):
+    assert Notification.query.count() == 0
+    assert TemplateStatistics.query.count() == 0
+    data = {
+        'to': '+44709123456',
+        'job_id': sample_job.id,
+        'service': sample_template.service,
+        'service_id': sample_template.service.id,
+        'template': sample_template,
+        'template_id': sample_template.id,
+        'created_at': datetime.utcnow()
+    }
+
+    notification = Notification(**data)
+    dao_create_notification(notification, sample_template.template_type)
+
+    assert TemplateStatistics.query.count() == 1
+    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
+                                                     TemplateStatistics.template_id == sample_template.id).first()
+    assert template_stats.service_id == sample_template.service.id
+    assert template_stats.template_id == sample_template.id
+    assert template_stats.usage_count == 1
+    assert template_stats.day == date(2016, 3, 30)
+
+    # move on one day
+    with freeze_time('2016-03-31'):
+        assert TemplateStatistics.query.count() == 1
+        new_notification = Notification(**data)
+        dao_create_notification(new_notification, sample_template.template_type)
+
+    assert TemplateStatistics.query.count() == 2
+    first_stats = TemplateStatistics.query.filter(TemplateStatistics.day == datetime(2016, 3, 30)).first()
+    second_stats = TemplateStatistics.query.filter(TemplateStatistics.day == datetime(2016, 3, 31)).first()
+
+    assert first_stats.template_id == second_stats.template_id
+    assert first_stats.service_id == second_stats.service_id
+
+    assert first_stats.day == date(2016, 3, 30)
+    assert first_stats.usage_count == 1
+
+    assert second_stats.day == date(2016, 3, 31)
+    assert second_stats.usage_count == 1
+
+
+def test_save_another_notification_increments_template_stats(sample_template, sample_job):
+    assert Notification.query.count() == 0
+    assert TemplateStatistics.query.count() == 0
+    data = {
+        'to': '+44709123456',
+        'job_id': sample_job.id,
+        'service': sample_template.service,
+        'service_id': sample_template.service.id,
+        'template': sample_template,
+        'template_id': sample_template.id,
+        'created_at': datetime.utcnow()
+    }
+
+    notification_1 = Notification(**data)
+    notification_2 = Notification(**data)
+    dao_create_notification(notification_1, sample_template.template_type)
+
+    assert TemplateStatistics.query.count() == 1
+    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
+                                                     TemplateStatistics.template_id == sample_template.id).first()
+    assert template_stats.service_id == sample_template.service.id
+    assert template_stats.template_id == sample_template.id
+    assert template_stats.usage_count == 1
+
+    dao_create_notification(notification_2, sample_template.template_type)
+
+    assert TemplateStatistics.query.count() == 1
+    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
+                                                     TemplateStatistics.template_id == sample_template.id).first()
+    assert template_stats.usage_count == 2
+
+
+def test_successful_notification_inserts_followed_by_failure_does_not_increment_template_stats(sample_template,
+                                                                                               sample_job):
+    assert Notification.query.count() == 0
+    assert NotificationStatistics.query.count() == 0
+    assert TemplateStatistics.query.count() == 0
+
+    data = {
+        'to': '+44709123456',
+        'job_id': sample_job.id,
+        'service': sample_template.service,
+        'service_id': sample_template.service.id,
+        'template': sample_template,
+        'template_id': sample_template.id,
+        'created_at': datetime.utcnow()
+    }
+
+    notification_1 = Notification(**data)
+    notification_2 = Notification(**data)
+    notification_3 = Notification(**data)
+    dao_create_notification(notification_1, sample_template.template_type)
+    dao_create_notification(notification_2, sample_template.template_type)
+    dao_create_notification(notification_3, sample_template.template_type)
+
+    assert NotificationStatistics.query.count() == 1
+    notication_stats = NotificationStatistics.query.filter(
+        NotificationStatistics.service_id == sample_template.service.id
+    ).first()
+    assert notication_stats.sms_requested == 3
+
+    assert TemplateStatistics.query.count() == 1
+    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
+                                                     TemplateStatistics.template_id == sample_template.id).first()
+    assert template_stats.service_id == sample_template.service.id
+    assert template_stats.template_id == sample_template.id
+    assert template_stats.usage_count == 3
+
+    failing_notification = Notification(**data)
+    try:
+        # Mess up db in really bad way
+        db.session.execute('DROP TABLE TEMPLATE_STATISTICS')
+        dao_create_notification(failing_notification, sample_template.template_type)
+    except Exception as e:
+
+        # There should be no additional notification stats or counts
+        assert NotificationStatistics.query.count() == 1
+        notication_stats = NotificationStatistics.query.filter(
+            NotificationStatistics.service_id == sample_template.service.id
+        ).first()
+        assert notication_stats.sms_requested == 3

@@ -1,15 +1,28 @@
+from sqlalchemy import desc
+from datetime import (
+    datetime,
+    timedelta,
+    date
+)
+
 from flask import current_app
+
 from app import db
 from app.models import (
     Notification,
     Job,
     NotificationStatistics,
+    TemplateStatistics,
     TEMPLATE_TYPE_SMS,
     TEMPLATE_TYPE_EMAIL,
-    Template)
-from sqlalchemy import desc
-from datetime import datetime, timedelta
-from app.clients import (STATISTICS_FAILURE, STATISTICS_DELIVERED, STATISTICS_REQUESTED)
+    Template
+)
+
+from app.clients import (
+    STATISTICS_FAILURE,
+    STATISTICS_DELIVERED,
+    STATISTICS_REQUESTED
+)
 
 
 def dao_get_notification_statistics_for_service(service_id):
@@ -48,6 +61,18 @@ def dao_create_notification(notification, notification_type):
                 emails_requested=1 if notification_type == TEMPLATE_TYPE_EMAIL else 0
             )
             db.session.add(stats)
+
+        update_count = db.session.query(TemplateStatistics).filter_by(
+            day=date.today(),
+            service_id=notification.service_id,
+            template_id=notification.template_id
+        ).update({'usage_count': TemplateStatistics.usage_count + 1})
+
+        if update_count == 0:
+            template_stats = TemplateStatistics(template_id=notification.template_id,
+                                                service_id=notification.service_id)
+            db.session.add(template_stats)
+
         db.session.add(notification)
         db.session.commit()
     except:

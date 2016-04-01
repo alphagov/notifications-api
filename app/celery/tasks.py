@@ -1,9 +1,34 @@
-from app import create_uuid, DATETIME_FORMAT, DATE_FORMAT
-from app import notify_celery, encryption, firetext_client, aws_ses_client
+from datetime import datetime
+
+from flask import current_app
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
+
+from utils.template import Template
+
+from utils.recipients import (
+    RecipientCSV,
+    validate_and_format_phone_number
+)
+
+from app import (
+    create_uuid,
+    DATETIME_FORMAT,
+    DATE_FORMAT,
+    notify_celery,
+    encryption,
+    firetext_client,
+    aws_ses_client
+)
+
+from app.aws import s3
+from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
+from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
+
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_update_notification,
@@ -12,21 +37,22 @@ from app.dao.notifications_dao import (
     dao_get_notification_statistics_for_service_and_day,
     update_notification_reference_by_id
 )
-from app.dao.jobs_dao import dao_update_job, dao_get_job_by_id
-from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
-from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
+
+from app.dao.jobs_dao import (
+    dao_update_job,
+    dao_get_job_by_id
+)
+
 from app.models import (
     Notification,
     TEMPLATE_TYPE_EMAIL,
     TEMPLATE_TYPE_SMS
 )
-from flask import current_app
-from sqlalchemy.exc import SQLAlchemyError
-from app.aws import s3
-from datetime import datetime
-from utils.template import Template
-from utils.recipients import RecipientCSV, validate_and_format_phone_number
-from app.validation import (allowed_send_to_email, allowed_send_to_number)
+
+from app.validation import (
+    allowed_send_to_email,
+    allowed_send_to_number
+)
 
 
 @notify_celery.task(name="delete-verify-codes")
