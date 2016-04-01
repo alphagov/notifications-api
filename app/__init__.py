@@ -8,6 +8,7 @@ from flask_marshmallow import Marshmallow
 from werkzeug.local import LocalProxy
 from utils import logging
 from app.celery.celery import NotifyCelery
+from app.clients.sms.mmg import MMGClient
 from app.clients.sms.twilio import TwilioClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.email.aws_ses import AwsSesClient
@@ -21,6 +22,7 @@ ma = Marshmallow()
 notify_celery = NotifyCelery()
 twilio_client = TwilioClient()
 firetext_client = FiretextClient()
+mmg_client = MMGClient()
 aws_ses_client = AwsSesClient()
 encryption = Encryption()
 
@@ -42,6 +44,7 @@ def create_app(app_name=None):
     logging.init_app(application)
     twilio_client.init_app(application)
     firetext_client.init_app(application)
+    mmg_client.init_app(application.config)
     aws_ses_client.init_app(application.config['AWS_REGION'])
     notify_celery.init_app(application)
     encryption.init_app(application)
