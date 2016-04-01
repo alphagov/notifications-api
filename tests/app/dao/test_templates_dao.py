@@ -74,8 +74,8 @@ def test_update_template(sample_service):
 
 
 def test_get_all_templates_for_service(service_factory):
-    service_1 = service_factory.get('service 1')
-    service_2 = service_factory.get('service 2')
+    service_1 = service_factory.get('service 1', email_from='service.1')
+    service_2 = service_factory.get('service 2', email_from='service.2')
 
     assert Template.query.count() == 2
     assert len(dao_get_all_templates_for_service(service_1.id)) == 1

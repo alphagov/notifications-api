@@ -115,8 +115,8 @@ def test_get_all_notifications_newest_first(notify_api, notify_db, notify_db_ses
 def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            service_1 = create_sample_service(notify_db, notify_db_session, service_name="1")
-            service_2 = create_sample_service(notify_db, notify_db_session, service_name="2")
+            service_1 = create_sample_service(notify_db, notify_db_session, service_name="1", email_from='1')
+            service_2 = create_sample_service(notify_db, notify_db_session, service_name="2", email_from='2')
 
             create_sample_notification(notify_db, notify_db_session, service=service_2)
 
@@ -586,8 +586,8 @@ def test_should_not_allow_template_from_another_service(notify_api, service_fact
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.send_sms.apply_async')
 
-            service_1 = service_factory.get('service 1', user=sample_user)
-            service_2 = service_factory.get('service 2', user=sample_user)
+            service_1 = service_factory.get('service 1', user=sample_user, email_from='service.1')
+            service_2 = service_factory.get('service 2', user=sample_user, email_from='service.2')
 
             service_2_templates = dao_get_all_templates_for_service(service_id=service_2.id)
             data = {
@@ -736,8 +736,10 @@ def test_should_not_allow_email_template_from_another_service(notify_api, servic
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.send_email.apply_async')
 
-            service_1 = service_factory.get('service 1', template_type='email', user=sample_user)
-            service_2 = service_factory.get('service 2', template_type='email', user=sample_user)
+            service_1 = service_factory.get('service 1', template_type='email', user=sample_user,
+                                            email_from='service.1')
+            service_2 = service_factory.get('service 2', template_type='email', user=sample_user,
+                                            email_from='service.2')
 
             service_2_templates = dao_get_all_templates_for_service(service_id=service_2.id)
 

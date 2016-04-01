@@ -85,20 +85,20 @@ def test_should_remove_user_from_service(sample_user):
 
 
 def test_get_all_services(service_factory):
-    service_factory.get('service 1')
+    service_factory.get('service 1', email_from='service.1')
     assert len(dao_fetch_all_services()) == 1
     assert dao_fetch_all_services()[0].name == 'service 1'
 
-    service_factory.get('service 2')
+    service_factory.get('service 2', email_from='service.2')
     assert len(dao_fetch_all_services()) == 2
     assert dao_fetch_all_services()[1].name == 'service 2'
 
 
 def test_get_all_services_should_return_in_created_order(service_factory):
-    service_factory.get('service 1')
-    service_factory.get('service 2')
-    service_factory.get('service 3')
-    service_factory.get('service 4')
+    service_factory.get('service 1', email_from='service.1')
+    service_factory.get('service 2', email_from='service.2')
+    service_factory.get('service 3', email_from='service.3')
+    service_factory.get('service 4', email_from='service.4')
     assert len(dao_fetch_all_services()) == 4
     assert dao_fetch_all_services()[0].name == 'service 1'
     assert dao_fetch_all_services()[1].name == 'service 2'
@@ -111,9 +111,9 @@ def test_get_all_services_should_return_empty_list_if_no_services():
 
 
 def test_get_all_services_for_user(service_factory, sample_user):
-    service_factory.get('service 1', sample_user)
-    service_factory.get('service 2', sample_user)
-    service_factory.get('service 3', sample_user)
+    service_factory.get('service 1', sample_user, email_from='service.1')
+    service_factory.get('service 2', sample_user, email_from='service.2')
+    service_factory.get('service 3', sample_user, email_from='service.3')
     assert len(dao_fetch_all_services_by_user(sample_user.id)) == 3
     assert dao_fetch_all_services_by_user(sample_user.id)[0].name == 'service 1'
     assert dao_fetch_all_services_by_user(sample_user.id)[1].name == 'service 2'
@@ -121,9 +121,9 @@ def test_get_all_services_for_user(service_factory, sample_user):
 
 
 def test_get_all_only_services_user_has_access_to(service_factory, sample_user):
-    service_factory.get('service 1', sample_user)
-    service_factory.get('service 2', sample_user)
-    service_3 = service_factory.get('service 3', sample_user)
+    service_factory.get('service 1', sample_user, email_from='service.1')
+    service_factory.get('service 2', sample_user, email_from='service.2')
+    service_3 = service_factory.get('service 3', sample_user, email_from='service.3')
     new_user = User(
         name='Test User',
         email_address='new_user@digital.cabinet-office.gov.uk',
@@ -151,17 +151,17 @@ def test_get_service_by_id_returns_none_if_no_service(notify_db):
 
 
 def test_get_service_by_id_returns_service(service_factory):
-    service = service_factory.get('testing')
+    service = service_factory.get('testing', email_from='testing')
     assert dao_fetch_service_by_id(service.id).name == 'testing'
 
 
 def test_can_get_service_by_id_and_user(service_factory, sample_user):
-    service = service_factory.get('service 1', sample_user)
+    service = service_factory.get('service 1', sample_user, email_from='service.1')
     assert dao_fetch_service_by_id_and_user(service.id, sample_user.id).name == 'service 1'
 
 
 def test_cannot_get_service_by_id_and_owned_by_different_user(service_factory, sample_user):
-    service1 = service_factory.get('service 1', sample_user)
+    service1 = service_factory.get('service 1', sample_user, email_from='service.1')
     new_user = User(
         name='Test User',
         email_address='new_user@digital.cabinet-office.gov.uk',
@@ -169,7 +169,7 @@ def test_cannot_get_service_by_id_and_owned_by_different_user(service_factory, s
         mobile_number='+447700900986'
     )
     save_model_user(new_user)
-    service2 = service_factory.get('service 2', new_user)
+    service2 = service_factory.get('service 2', new_user, email_from='service.2')
     assert dao_fetch_service_by_id_and_user(service1.id, sample_user.id).name == 'service 1'
     with pytest.raises(NoResultFound) as e:
         dao_fetch_service_by_id_and_user(service2.id, sample_user.id)
