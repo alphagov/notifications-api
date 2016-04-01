@@ -49,7 +49,8 @@ def test_get_jobs_for_service(notify_db, notify_db_session, sample_template):
     one_job = create_job(notify_db, notify_db_session, sample_template.service, sample_template)
 
     other_user = create_user(notify_db, notify_db_session, email="test@digital.cabinet-office.gov.uk")
-    other_service = create_service(notify_db, notify_db_session, user=other_user, service_name="other service")
+    other_service = create_service(notify_db, notify_db_session, user=other_user, service_name="other service",
+                                   email_from='other.service')
     other_template = create_template(notify_db, notify_db_session, service=other_service)
     other_job = create_job(notify_db, notify_db_session, service=other_service, template=other_template)
 

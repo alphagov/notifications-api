@@ -7,7 +7,6 @@ from flask import (
 )
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import email_safe
 from app.dao.api_key_dao import (
     save_model_api_key,
     get_model_api_keys,
@@ -72,8 +71,6 @@ def create_service():
     user = get_model_users(data['user_id'])
 
     data.pop('user_id', None)
-    if 'name' in data:
-        data['email_from'] = email_safe(data.get('name', None))
 
     valid_service, errors = service_schema.load(request.get_json())
 

@@ -303,8 +303,8 @@ def test_should_get_only_templates_for_that_servcie(notify_api, service_factory)
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
-            service_1 = service_factory.get('service 1')
-            service_2 = service_factory.get('service 2')
+            service_1 = service_factory.get('service 1', email_from='service.1')
+            service_2 = service_factory.get('service 2', email_from='service.2')
 
             auth_header_1 = create_authorization_header(
                 path='/service/{}/template'.format(service_1.id),
