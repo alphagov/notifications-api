@@ -83,7 +83,7 @@ class Development(Config):
     DEBUG = True
 
 
-class Test(Config):
+class Test(Development):
     pass
 
 configs = {
