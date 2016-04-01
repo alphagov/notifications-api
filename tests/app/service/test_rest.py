@@ -1,6 +1,7 @@
 import json
 import uuid
 from flask import url_for
+
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
 from app.models import User
@@ -301,7 +302,8 @@ def test_should_not_create_service_with_duplicate_name(notify_api,
                 'user_id': sample_service.users[0].id,
                 'limit': 1000,
                 'restricted': False,
-                'active': False}
+                'active': False,
+                'email_from': 'sample.service2'}
             auth_header = create_authorization_header(
                 path='/service',
                 method='POST',
@@ -312,10 +314,36 @@ def test_should_not_create_service_with_duplicate_name(notify_api,
                 '/service',
                 data=json.dumps(data),
                 headers=headers)
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 400
-            assert "Duplicate service name '{}'".format(
-                sample_service.name) in json_resp['message']['name']
+            assert resp.status_code == 500
+            assert 'Key (name)=(Sample service) already exists.' in resp.get_data(as_text=True)
+
+
+def test_create_service_should_throw_duplicate_key_constraint_for_existing_email_from(notify_api,
+                                                                                      notify_db,
+                                                                                      notify_db_session,
+                                                                                      service_factory):
+    first_service = service_factory.get('First service', email_from='first.service')
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = {
+                'name': 'First SERVICE',
+                'user_id': first_service.users[0].id,
+                'limit': 1000,
+                'restricted': False,
+                'active': False,
+                'email_from': 'first.service'}
+            auth_header = create_authorization_header(
+                path='/service',
+                method='POST',
+                request_body=json.dumps(data)
+            )
+            headers = [('Content-Type', 'application/json'), auth_header]
+            resp = client.post(
+                '/service',
+                data=json.dumps(data),
+                headers=headers)
+            assert resp.status_code == 500
+            assert 'Key (email_from)=(first.service) already exists.' in resp.get_data(as_text=True)
 
 
 def test_update_service(notify_api, sample_service):
@@ -363,7 +391,7 @@ def test_should_not_update_service_with_duplicate_name(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service_name = "another name"
-            another_service = create_sample_service(
+            create_sample_service(
                 notify_db,
                 notify_db_session,
                 service_name=service_name,
@@ -384,10 +412,41 @@ def test_should_not_update_service_with_duplicate_name(notify_api,
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header]
             )
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 400
-            assert "Duplicate service name '{}'".format(
-                service_name) in json_resp['message']['name']
+            assert resp.status_code == 500
+            assert 'Key (name)=(another name) already exists.' in resp.get_data(as_text=True)
+
+
+def test_should_not_update_service_with_duplicate_email_from(notify_api,
+                                                             notify_db,
+                                                             notify_db_session,
+                                                             sample_user,
+                                                             sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            email_from = "duplicate.name"
+            create_sample_service(
+                notify_db,
+                notify_db_session,
+                service_name="duplicate name",
+                user=sample_user,
+                email_from=email_from)
+            data = {
+                'email_from': email_from
+            }
+
+            auth_header = create_authorization_header(
+                path='/service/{}'.format(sample_service.id),
+                method='POST',
+                request_body=json.dumps(data)
+            )
+
+            resp = client.post(
+                '/service/{}'.format(sample_service.id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+            assert resp.status_code == 500
+            assert 'Key (email_from)=(duplicate.name) already exists.' in resp.get_data(as_text=True)
 
 
 def test_update_service_should_404_if_id_is_invalid(notify_api, notify_db, notify_db_session):

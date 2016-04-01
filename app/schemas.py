@@ -73,21 +73,6 @@ class ServiceSchema(BaseSchema):
         model = models.Service
         exclude = ("updated_at", "created_at", "api_keys", "templates", "jobs", 'old_id')
 
-    @validates_schema
-    def validate_all(self, data):
-        # There are 2 instances where we want to check
-        # for duplicate service name. One when they updating
-        # an existing service and when they are creating a service
-        name = data.get('name', None)
-        service = models.Service.query.filter_by(name=name).first()
-        error_msg = "Duplicate service name '{}'".format(name)
-        if 'id' in data:
-            if service and str(service.id) != data['id']:
-                raise ValidationError(error_msg, 'name')
-        else:
-            if service:
-                raise ValidationError(error_msg, 'name')
-
 
 class TemplateSchema(BaseSchema):
     class Meta:
