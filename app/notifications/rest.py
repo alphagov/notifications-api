@@ -20,11 +20,11 @@ from app.dao import (
     services_dao,
     notifications_dao
 )
+
 from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
     notification_status_schema,
-    template_schema,
     notifications_filter_schema
 )
 from app.celery.tasks import send_sms, send_email
@@ -321,7 +321,7 @@ def send_notification(notification_type):
         total_sms_count = service_stats.sms_requested
         total_email_count = service_stats.emails_requested
 
-        if total_email_count + total_sms_count >= service.limit:
+        if (total_email_count + total_sms_count >= service.limit) and service.restricted:
             return jsonify(result="error", message='Exceeded send limits ({}) for today'.format(service.limit)), 429
 
     notification, errors = (

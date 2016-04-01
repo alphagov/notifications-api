@@ -45,6 +45,7 @@ def notify_db(notify_api, request):
         db.get_engine(notify_api).dispose()
 
     request.addfinalizer(teardown)
+    return db
 
 
 @pytest.fixture(scope='function')

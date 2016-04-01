@@ -879,7 +879,7 @@ def test_should_block_api_call_if_over_day_limit(notify_db, notify_db_session, n
             mocker.patch('app.celery.tasks.send_email.apply_async')
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
-            service = create_sample_service(notify_db, notify_db_session, limit=1)
+            service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=True)
             email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
             create_sample_notification(
                 notify_db, notify_db_session, template=email_template, service=service, created_at=datetime.utcnow()
@@ -907,6 +907,40 @@ def test_should_block_api_call_if_over_day_limit(notify_db, notify_db_session, n
             assert 'Exceeded send limits (1) for today' in json_resp['message']
 
 
+def test_no_limit_for_live_service(notify_api,
+                                   notify_db,
+                                   notify_db_session,
+                                   mock_celery_send_email,
+                                   sample_service,
+                                   sample_email_template,
+                                   sample_notification):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            sample_service.limit = 1
+            notify_db.session.add(sample_service)
+            notify_db.session.commit()
+
+            data = {
+                'to': 'ok@ok.com',
+                'template': sample_email_template.id
+            }
+
+            auth_header = create_authorization_header(
+                request_body=json.dumps(data),
+                path='/notifications/email',
+                method='POST',
+                service_id=sample_service.id
+            )
+
+            response = client.post(
+                path='/notifications/email',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            assert response.status_code == 201
+
+
 @freeze_time("2016-01-01 12:00:00.061258")
 def test_should_block_api_call_if_over_day_limit_regardless_of_type(notify_db, notify_db_session, notify_api, mocker):
     with notify_api.test_request_context():
@@ -914,7 +948,7 @@ def test_should_block_api_call_if_over_day_limit_regardless_of_type(notify_db, n
             mocker.patch('app.celery.tasks.send_sms.apply_async')
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
-            service = create_sample_service(notify_db, notify_db_session, limit=1)
+            service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=True)
             email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
             sms_template = create_sample_template(notify_db, notify_db_session, service=service)
             create_sample_notification(
