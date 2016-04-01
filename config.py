@@ -17,12 +17,14 @@ class Config(object):
     NOTIFY_JOB_QUEUE = os.environ['NOTIFY_JOB_QUEUE']
     # Notification Queue names are a combination of a prefx plus a name
     NOTIFICATION_QUEUE_PREFIX = os.environ['NOTIFICATION_QUEUE_PREFIX']
+    MMG_API_KEY = os.environ['MMG_API_KEY']
     SECRET_KEY = os.environ['SECRET_KEY']
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False
     SQLALCHEMY_DATABASE_URI = os.environ['SQLALCHEMY_DATABASE_URI']
     SQLALCHEMY_RECORD_QUERIES = True
     VERIFY_CODE_FROM_EMAIL_ADDRESS = os.environ['VERIFY_CODE_FROM_EMAIL_ADDRESS']
     NOTIFY_EMAIL_DOMAIN = os.environ['NOTIFY_EMAIL_DOMAIN']
+    NOTIFY_FROM_NUMBER= os.environ['NOTIFY_FROM_NUMBER']
     PAGE_SIZE = 50
 
     BROKER_URL = 'sqs://'

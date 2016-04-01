@@ -22,7 +22,8 @@ from app import (
     notify_celery,
     encryption,
     firetext_client,
-    aws_ses_client
+    aws_ses_client,
+    mmg_client
 )
 
 from app.aws import s3
@@ -312,12 +313,20 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
 @notify_celery.task(name='send-sms-code')
 def send_sms_code(encrypted_verification):
     verification_message = encryption.decrypt(encrypted_verification)
+    # send_sms_via_firetext(validate_and_format_phone_number(verification_message['to']),
+    #                       verification_message['secret_code'],
+    #                       'send-sms-code')
     try:
-        firetext_client.send_sms(
-            validate_and_format_phone_number(verification_message['to']),
-            verification_message['secret_code'],
-            'send-sms-code'
-        )
+        mmg_client.send_sms(validate_and_format_phone_number(verification_message['to']),
+                            verification_message['secret_code'],
+                            'send-sms-code')
+    except Exception as e:
+        current_app.logger.exception(e)
+
+
+def send_sms_via_firetext(to, content, reference):
+    try:
+        firetext_client.send_sms(to=to, content=content, reference=reference)
     except FiretextClientException as e:
         current_app.logger.exception(e)
 
