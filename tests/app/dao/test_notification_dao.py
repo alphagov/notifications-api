@@ -1016,3 +1016,39 @@ def test_get_template_stats_for_service_returns_results_from_first_day_with_data
 def test_get_template_stats_for_service_with_limit_if_no_records_returns_empty_list(sample_template):
     template_stats = dao_get_template_statistics_for_service(sample_template.service.id, limit_days=7)
     assert len(template_stats) == 0
+
+
+def test_get_template_stats_for_service_for_day_returns_stats_in_template_name_order(sample_service, sample_job):
+
+    from app.dao.templates_dao import dao_create_template
+    from app.models import Template
+
+    template_stats = dao_get_template_statistics_for_service(sample_service.id)
+    assert len(template_stats) == 0
+
+    template_names = ['Aardvark', 'ant', 'zebra', 'walrus', 'Donkey', 'Komodo dragon']
+    for name in template_names:
+        data = {
+            'name': name,
+            'template_type': 'sms',
+            'content': 'blah',
+            'service': sample_service
+        }
+        template = Template(**data)
+        dao_create_template(template)
+
+        notification_data = {
+            'to': '+44709123456',
+            'job_id': sample_job.id,
+            'service': template.service,
+            'service_id': template.service.id,
+            'template': template,
+            'template_id': template.id,
+            'created_at': datetime.utcnow()
+        }
+        notification = Notification(**notification_data)
+        dao_create_notification(notification, template.template_type)
+        template_stats = dao_get_template_statistics_for_service(template.service.id)
+
+    for i, name in enumerate(sorted(template_names, key=str.lower)):
+        assert template_stats[i].template.name == name
