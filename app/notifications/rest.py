@@ -143,6 +143,13 @@ def is_not_a_notification(source):
     return False
 
 
+@notifications.route('/notifications/sms/mmg', methods=['POST'])
+def process_mmg_response():
+    print('here')
+    current_app.logger.info('MMG client callback json{}'.format(request.json))
+    current_app.logger.info('MMG client callback form{}'.format(request.form))
+
+
 @notifications.route('/notifications/sms/firetext', methods=['POST'])
 def process_firetext_response():
     if 'status' not in request.form:
