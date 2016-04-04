@@ -148,24 +148,38 @@ def process_mmg_response():
     print('here')
     current_app.logger.info('MMG client callback json{}'.format(request.json))
     current_app.logger.info('MMG client callback form{}'.format(request.form))
+    status, error1 = _get_from_response(form=request.form, field='status', client_name='MMG')
+    reference, error2 = _get_from_response(form=request.form, field='reference', client_name='MMG')
+    errors = [error1, error2]
+    errors.remove(None)
+    if len(errors) > 0:
+        return jsonify(result='error', message=errors), 400
+
+    if reference == 'send-sms-code':
+        return jsonify(result="success", message="MMG callback succeeded: send-sms-code"), 200
+
+
+def _get_from_response(form, field, client_name):
+    error = None
+    form_field = None
+    if len(form.get(field, '')) <= 0:
+        print(
+            "{} callback failed: {} missing".format(client_name, field)
+        )
+        error="{} callback failed: {} missing".format(client_name, field)
+    else:
+        form_field = form[field]
+    return form_field, error
 
 
 @notifications.route('/notifications/sms/firetext', methods=['POST'])
 def process_firetext_response():
-    if 'status' not in request.form:
-        current_app.logger.info(
-            "Firetext callback failed: status missing"
-        )
-        return jsonify(result="error", message="Firetext callback failed: status missing"), 400
-
-    if len(request.form.get('reference', '')) <= 0:
-        current_app.logger.info(
-            "Firetext callback with no reference"
-        )
-        return jsonify(result="error", message="Firetext callback failed: reference missing"), 400
-
-    reference = request.form['reference']
-    status = request.form['status']
+    status, error1 = _get_from_response(form=request.form, field='status', client_name='Firetext')
+    reference, error2 = _get_from_response(form=request.form, field='reference', client_name='Firetext')
+    errors = [error1, error2]
+    errors = errors.filter(None)
+    if len(errors) > 0:
+        return jsonify(result='error', message=errors), 400
 
     if reference == 'send-sms-code':
         return jsonify(result="success", message="Firetext callback succeeded: send-sms-code"), 200

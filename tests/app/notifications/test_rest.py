@@ -15,6 +15,42 @@ from app.dao.notifications_dao import get_notification_by_id, dao_get_notificati
 from freezegun import freeze_time
 
 
+def test_get_status_name_from_response_return_status():
+    from app.notifications.rest import _get_from_response
+    form = {'status': 'good'}
+    client_name = 'sms client'
+    status, error = _get_from_response(form, 'status', client_name)
+    expected = 'good'
+    assert expected == status
+    assert error is None
+
+
+def test_get_status_name_returns_error():
+    from app.notifications.rest import _get_from_response
+    form = {'status': '',
+            'another': 'some'}
+    client_name = 'sms client'
+    errors = []
+    status, error1 = _get_from_response(form, 'reference', client_name)
+    expected = "{} callback failed: reference missing".format(client_name)
+    assert expected == error1
+    assert status is None
+    errors.append(error1)
+    status, error2 = _get_from_response(form, 'status', client_name)
+    errors.append(error2)
+    another, error3 = _get_from_response(form, 'another', client_name)
+    if error3:
+        errors.append(error3)
+    assert "sms client callback failed: status missing" == error2
+    assert len(errors) == 2
+    assert error1 in errors
+    assert error2 in errors
+    assert error3 not in errors
+    err = [error1, error2, error3]
+    err = filter(None, err)
+    assert len(list(err)) == 2
+
+
 def test_get_notification_by_id(notify_api, sample_notification):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
