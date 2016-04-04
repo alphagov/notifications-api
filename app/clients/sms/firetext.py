@@ -9,8 +9,6 @@ from requests import request, RequestException, HTTPError
 from app.clients import ClientResponse, STATISTICS_DELIVERED, STATISTICS_FAILURE
 
 logger = logging.getLogger(__name__)
-
-
 class FiretextResponses(ClientResponse):
     def __init__(self):
         ClientResponse.__init__(self)
