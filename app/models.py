@@ -357,7 +357,7 @@ class TemplateStatistics(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
-    service = db.relationship('Service', backref=db.backref('template_statics', lazy='dynamic'))
+    service = db.relationship('Service', backref=db.backref('template_statistics', lazy='dynamic'))
     template_id = db.Column(db.BigInteger, db.ForeignKey('templates.id'), index=True, nullable=False, unique=False)
     template = db.relationship('Template')
     usage_count = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=1)
