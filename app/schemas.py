@@ -1,14 +1,26 @@
 from flask_marshmallow.fields import fields
-from . import ma
-from . import models
-from app.dao.permissions_dao import permission_dao
-from marshmallow import (post_load, ValidationError, validates, validates_schema, pre_load)
+
+from marshmallow import (
+    post_load,
+    ValidationError,
+    validates,
+    validates_schema,
+    pre_load
+)
+
 from marshmallow_sqlalchemy import field_for
+
 from utils.recipients import (
-    validate_email_address, InvalidEmailError,
-    validate_phone_number, InvalidPhoneError,
+    validate_email_address,
+    InvalidEmailError,
+    validate_phone_number,
+    InvalidPhoneError,
     validate_and_format_phone_number
 )
+
+from app import ma
+from app import models
+from app.dao.permissions_dao import permission_dao
 
 
 # TODO I think marshmallow provides a better integration and error handling.
@@ -19,7 +31,7 @@ from utils.recipients import (
 
 
 class BaseSchema(ma.ModelSchema):
-    def __init__(self, *args, load_json=False, **kwargs):
+    def __init__(self, load_json=False, *args, **kwargs):
         self.load_json = load_json
         super(BaseSchema, self).__init__(*args, **kwargs)
 
@@ -241,6 +253,14 @@ class NotificationsFilterSchema(ma.Schema):
             raise ValidationError("Not a positive integer")
 
 
+class TemplateStatisticsSchema(BaseSchema):
+
+    template = fields.Nested(TemplateSchema, only=["id",  "name", "template_type"], dump_only=True)
+
+    class Meta:
+        model = models.TemplateStatistics
+
+
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
 service_schema = ServiceSchema()
@@ -264,3 +284,4 @@ permission_schema = PermissionSchema()
 email_data_request_schema = EmailDataSchema()
 notifications_statistics_schema = NotificationsStatisticsSchema()
 notifications_filter_schema = NotificationsFilterSchema()
+template_statistics_schema = TemplateStatisticsSchema()
