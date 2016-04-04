@@ -24,9 +24,9 @@ def get_template_statistics_for_service(service_id):
         try:
             limit_days = int(request.args['limit_days'])
         except ValueError as e:
-            error = 'Limit days {} is not an integer'.format(request.args['limit_days'])
+            error = '{} is not an integer'.format(request.args['limit_days'])
             current_app.logger.error(error)
-            return jsonify(result="error", message=[error]), 400
+            return jsonify(result="error", message={'limit_days': [error]}), 400
     else:
         limit_days = None
     stats = dao_get_template_statistics_for_service(service_id, limit_days=limit_days)
