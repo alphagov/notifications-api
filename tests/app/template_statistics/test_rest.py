@@ -133,4 +133,4 @@ def test_get_all_template_statistics_with_bad_limit_arg_returns_400(notify_api, 
             assert response.status_code == 400
             json_resp = json.loads(response.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == ['Limit days blurk is not an integer']
+            assert json_resp['message'] == {'limit_days': ['blurk is not an integer']}
