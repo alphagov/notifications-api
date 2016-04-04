@@ -6,6 +6,7 @@ from datetime import (
 )
 
 from flask import current_app
+from werkzeug.datastructures import MultiDict
 
 from app import db
 from app.models import (
@@ -191,10 +192,16 @@ def get_notifications_for_service(service_id, filter_dict=None, page=1):
 
 
 def filter_query(query, filter_dict=None):
-    if filter_dict and 'status' in filter_dict:
-        query = query.filter_by(status=filter_dict['status'])
-    if filter_dict and 'template_type' in filter_dict:
-        query = query.join(Template).filter(Template.template_type == filter_dict['template_type'])
+    if filter_dict is None:
+        filter_dict = MultiDict()
+    else:
+        filter_dict = MultiDict(filter_dict)
+    statuses = filter_dict.getlist('status') if 'status' in filter_dict else None
+    if statuses:
+        query = query.filter(Notification.status.in_(statuses))
+    template_types = filter_dict.getlist('template_type') if 'template_type' in filter_dict else None
+    if template_types:
+        query = query.join(Template).filter(Template.template_type.in_(template_types))
     return query
 
 
