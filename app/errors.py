@@ -40,8 +40,6 @@ def register_errors(blueprint):
 
     @blueprint.app_errorhandler(500)
     def internal_server_error(e):
-        if current_app.config.get('DEBUG'):
-            raise e
         if isinstance(e, str):
             current_app.logger.exception(e)
         elif isinstance(e, Exception):
@@ -60,7 +58,5 @@ def register_errors(blueprint):
 
     @blueprint.app_errorhandler(SQLAlchemyError)
     def db_error(e):
-        if current_app.config.get('DEBUG'):
-            raise e
         current_app.logger.exception(e)
         return jsonify(result='error', message=str(e)), 500

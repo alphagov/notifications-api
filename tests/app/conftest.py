@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime
-from app import (email_safe, db)
+from app import db
 from app.models import (
     User, Service, Template, ApiKey, Job, Notification, InvitedUser, Permission)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
@@ -16,16 +16,16 @@ import uuid
 @pytest.fixture(scope='function')
 def service_factory(notify_db, notify_db_session):
     class ServiceFactory(object):
-        def get(self, service_name, user=None, template_type=None):
+        def get(self, service_name, user=None, template_type=None, email_from=None):
             if not user:
                 user = sample_user(notify_db, notify_db_session)
-            service = sample_service(notify_db, notify_db_session, service_name, user)
+            service = sample_service(notify_db, notify_db_session, service_name, user, email_from=email_from)
             if template_type == 'email':
                 sample_template(
                     notify_db,
                     notify_db_session,
                     template_type=template_type,
-                    subject_line=email_safe(service_name),
+                    subject_line=service.email_from,
                     service=service
                 )
             else:
@@ -102,7 +102,8 @@ def sample_service(notify_db,
                    service_name="Sample service",
                    user=None,
                    restricted=False,
-                   limit=1000):
+                   limit=1000,
+                   email_from="sample.service"):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
     data = {
@@ -110,7 +111,7 @@ def sample_service(notify_db,
         'limit': limit,
         'active': False,
         'restricted': restricted,
-        'email_from': email_safe(service_name)
+        'email_from': email_from
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
@@ -332,6 +333,11 @@ def mock_celery_send_email_code(mocker):
 @pytest.fixture(scope='function')
 def mock_celery_email_registration_verification(mocker):
     return mocker.patch('app.celery.tasks.email_registration_verification.apply_async')
+
+
+@pytest.fixture(scope='function')
+def mock_celery_send_email(mocker):
+    return mocker.patch('app.celery.tasks.send_email.apply_async')
 
 
 @pytest.fixture(scope='function')
