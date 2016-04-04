@@ -1,5 +1,6 @@
 from datetime import datetime
 import uuid
+import itertools
 
 from flask import (
     Blueprint,
@@ -11,6 +12,7 @@ from flask import (
 )
 
 from utils.template import Template
+from utils.recipients import allowed_to_send_to, first_column_heading
 from app.clients.sms.firetext import FiretextResponses
 from app.clients.email.aws_ses import AwsSesResponses
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT
@@ -28,7 +30,6 @@ from app.schemas import (
     notifications_filter_schema
 )
 from app.celery.tasks import send_sms, send_email
-from app.validation import allowed_send_to_number, allowed_send_to_email
 
 notifications = Blueprint('notifications', __name__)
 
@@ -356,12 +357,21 @@ def send_notification(notification_type):
             }
         ), 400
 
+    if service.restricted and not allowed_to_send_to(
+        notification['to'],
+        itertools.chain.from_iterable(
+            [user.mobile_number, user.email_address] for user in service.users
+        )
+    ):
+        return jsonify(
+            result="error", message={
+                'to': ['Invalid {} for restricted service'.format(first_column_heading[notification_type])]
+            }
+        ), 400
+
     notification_id = create_uuid()
 
     if notification_type == 'sms':
-        if not allowed_send_to_number(service, notification['to']):
-            return jsonify(
-                result="error", message={'to': ['Invalid phone number for restricted service']}), 400
         send_sms.apply_async((
             service_id,
             notification_id,
@@ -369,9 +379,6 @@ def send_notification(notification_type):
             datetime.utcnow().strftime(DATETIME_FORMAT)
         ), queue='sms')
     else:
-        if not allowed_send_to_email(service, notification['to']):
-            return jsonify(
-                result="error", message={'to': ['Email address not permitted for restricted service']}), 400
         send_email.apply_async((
             service_id,
             notification_id,

@@ -343,31 +343,6 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
     )
 
 
-def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db, notify_db_session, mocker):
-    user = sample_user(notify_db, notify_db_session, mobile_numnber="07700 900205")
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(notify_db, notify_db_session, service=service)
-
-    notification = {
-        "template": template.id,
-        "to": "07700 900849"
-    }
-    mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms')
-    mocker.patch('app.firetext_client.get_name', return_value="firetext")
-
-    notification_id = uuid.uuid4()
-    now = datetime.utcnow()
-    send_sms(
-        service.id,
-        notification_id,
-        "encrypted-in-reality",
-        now.strftime(DATETIME_FORMAT)
-    )
-
-    firetext_client.send_sms.assert_not_called()
-
-
 def test_should_send_email_if_restricted_service_and_valid_email(notify_db, notify_db_session, mocker):
     user = sample_user(notify_db, notify_db_session, email="test@restricted.com")
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
