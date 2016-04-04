@@ -32,8 +32,10 @@ class PermissionDAO(DAOClass):
     class Meta:
         model = Permission
 
-    def get_query(self, filter_by_dict={}):
-        if isinstance(filter_by_dict, dict):
+    def get_query(self, filter_by_dict=None):
+        if filter_by_dict is None:
+            filter_by_dict = MultiDict()
+        else:
             filter_by_dict = MultiDict(filter_by_dict)
         query = self.Meta.model.query
         if 'id' in filter_by_dict:
