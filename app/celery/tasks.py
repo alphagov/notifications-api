@@ -32,8 +32,7 @@ from app.dao.invited_user_dao import delete_invitations_created_more_than_two_da
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_update_notification,
-    delete_failed_notifications_created_more_than_a_week_ago,
-    delete_successful_notifications_created_more_than_a_day_ago,
+    delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
     update_notification_reference_by_id
 )
@@ -67,7 +66,7 @@ def delete_verify_codes():
 def delete_successful_notifications():
     try:
         start = datetime.utcnow()
-        deleted = delete_successful_notifications_created_more_than_a_day_ago()
+        deleted = delete_notifications_created_more_than_a_week_ago('sent')
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} successful notifications".format(
                 start,
@@ -84,7 +83,7 @@ def delete_successful_notifications():
 def delete_failed_notifications():
     try:
         start = datetime.utcnow()
-        deleted = delete_failed_notifications_created_more_than_a_week_ago()
+        deleted = delete_notifications_created_more_than_a_week_ago('failed')
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} failed notifications".format(
                 start,
