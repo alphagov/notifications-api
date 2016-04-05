@@ -1,3 +1,4 @@
+import itertools
 from datetime import datetime
 
 from flask import current_app
@@ -12,7 +13,8 @@ from utils.template import Template
 
 from utils.recipients import (
     RecipientCSV,
-    validate_and_format_phone_number
+    validate_and_format_phone_number,
+    allowed_to_send_to
 )
 
 from app import (
@@ -188,8 +190,15 @@ def process_job(job_id):
 def send_sms(service_id, notification_id, encrypted_notification, created_at):
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
-
     client = firetext_client
+
+    restricted = False
+
+    if not service_allowed_to_send_to(notification['to'], service):
+        current_app.logger.info(
+            "SMS {} failed as restricted service".format(notification_id)
+        )
+        restricted = True
 
     try:
         sent_at = datetime.utcnow()
@@ -199,13 +208,16 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             to=notification['to'],
             service_id=service_id,
             job_id=notification.get('job', None),
-            status='sent',
+            status='failed' if restricted else 'sent',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=client.get_name()
         )
 
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS)
+
+        if restricted:
+            return
 
         try:
             template = Template(
@@ -238,6 +250,15 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
 def send_email(service_id, notification_id, subject, from_address, encrypted_notification, created_at):
     notification = encryption.decrypt(encrypted_notification)
     client = aws_ses_client
+    service = dao_fetch_service_by_id(service_id)
+
+    restricted = False
+
+    if not service_allowed_to_send_to(notification['to'], service):
+        current_app.logger.info(
+            "Email {} failed as restricted service".format(notification_id)
+        )
+        restricted = True
 
     try:
         sent_at = datetime.utcnow()
@@ -247,12 +268,15 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
             to=notification['to'],
             service_id=service_id,
             job_id=notification.get('job', None),
-            status='sent',
+            status='failed' if restricted else 'sent',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=client.get_name()
         )
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL)
+
+        if restricted:
+            return
 
         try:
             template = Template(
@@ -388,3 +412,16 @@ def email_registration_verification(encrypted_verification_message):
                                                                      url=verification_message['url']))
     except AwsSesClientException as e:
         current_app.logger.exception(e)
+
+
+def service_allowed_to_send_to(recipient, service):
+
+    if not service.restricted:
+        return True
+
+    return allowed_to_send_to(
+        recipient,
+        itertools.chain.from_iterable(
+            [user.mobile_number, user.email_address] for user in service.users
+        )
+    )
