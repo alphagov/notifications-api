@@ -46,16 +46,16 @@ def firetext_error():
     return {'code': 0, 'description': 'error'}
 
 
-def test_should_call_delete_successful_notifications_in_task(notify_api, mocker):
-    mocker.patch('app.celery.tasks.delete_successful_notifications_created_more_than_a_day_ago')
+def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
+    mocker.patch('app.celery.tasks.delete_notifications_created_more_than_a_week_ago')
     delete_successful_notifications()
-    assert tasks.delete_successful_notifications_created_more_than_a_day_ago.call_count == 1
+    assert tasks.delete_notifications_created_more_than_a_week_ago.call_count == 1
 
 
-def test_should_call_delete_failed_notifications_in_task(notify_api, mocker):
-    mocker.patch('app.celery.tasks.delete_failed_notifications_created_more_than_a_week_ago')
+def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
+    mocker.patch('app.celery.tasks.delete_notifications_created_more_than_a_week_ago')
     delete_failed_notifications()
-    assert tasks.delete_failed_notifications_created_more_than_a_week_ago.call_count == 1
+    assert tasks.delete_notifications_created_more_than_a_week_ago.call_count == 1
 
 
 def test_should_call_delete_codes_on_delete_verify_codes_task(notify_api, mocker):
