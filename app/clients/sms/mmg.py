@@ -1,7 +1,6 @@
 from flask import current_app
 from monotonic import monotonic
 from requests import (request, RequestException, HTTPError)
-
 from app.clients import (ClientResponse, STATISTICS_DELIVERED, STATISTICS_FAILURE)
 from app.clients.sms import (SmsClient, SmsClientException)
 
@@ -29,7 +28,6 @@ class FiretextResponses(ClientResponse):
                 "notification_status": 'sent'
             }
         }
-
 
 
 class MMGClientException(SmsClientException):

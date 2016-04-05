@@ -16,9 +16,10 @@ from app.celery.tasks import (
     delete_failed_notifications,
     delete_successful_notifications
 )
-from app import (firetext_client, aws_ses_client, encryption, DATETIME_FORMAT)
+from app import (firetext_client, aws_ses_client, encryption, DATETIME_FORMAT, mmg_client)
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
+from app.clients.sms.mmg import MMGClientException
 from app.dao import notifications_dao, jobs_dao
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
@@ -654,23 +655,23 @@ def test_should_send_sms_code(mocker):
 
     encrypted_notification = encryption.encrypt(notification)
 
-    mocker.patch('app.firetext_client.send_sms')
+    mocker.patch('app.mmg_client.send_sms')
     send_sms_code(encrypted_notification)
-    firetext_client.send_sms.assert_called_once_with(format_phone_number(validate_phone_number(notification['to'])),
-                                                     notification['secret_code'],
-                                                     'send-sms-code')
+    mmg_client.send_sms.assert_called_once_with(format_phone_number(validate_phone_number(notification['to'])),
+                                                notification['secret_code'],
+                                                'send-sms-code')
 
 
-def test_should_throw_firetext_client_exception(mocker):
+def test_should_throw_mmg_client_exception(mocker):
     notification = {'to': '+447234123123',
                     'secret_code': '12345'}
 
     encrypted_notification = encryption.encrypt(notification)
-    mocker.patch('app.firetext_client.send_sms', side_effect=FiretextClientException(firetext_error()))
+    mocker.patch('app.mmg_client.send_sms', side_effect=MMGClientException(firetext_error()))
     send_sms_code(encrypted_notification)
-    firetext_client.send_sms.assert_called_once_with(format_phone_number(validate_phone_number(notification['to'])),
-                                                     notification['secret_code'],
-                                                     'send-sms-code')
+    mmg_client.send_sms.assert_called_once_with(format_phone_number(validate_phone_number(notification['to'])),
+                                                notification['secret_code'],
+                                                'send-sms-code')
 
 
 def test_should_send_email_code(mocker):
