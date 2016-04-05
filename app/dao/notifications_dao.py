@@ -1,4 +1,8 @@
-from sqlalchemy import desc
+from sqlalchemy import (
+    desc,
+    func
+)
+
 from datetime import (
     datetime,
     timedelta,
@@ -6,6 +10,7 @@ from datetime import (
 )
 
 from flask import current_app
+from werkzeug.datastructures import MultiDict
 
 from app import db
 from app.models import (
@@ -24,6 +29,23 @@ from app.clients import (
     STATISTICS_REQUESTED
 )
 
+from functools import wraps
+
+
+def transactional(func):
+    @wraps(func)
+    def commit_or_rollback(*args, **kwargs):
+        from flask import current_app
+        from app import db
+        try:
+            func(*args, **kwargs)
+            db.session.commit()
+        except Exception as e:
+            current_app.logger.error(e)
+            db.session.rollback()
+            raise
+    return commit_or_rollback
+
 
 def dao_get_notification_statistics_for_service(service_id):
     return NotificationStatistics.query.filter_by(
@@ -38,46 +60,56 @@ def dao_get_notification_statistics_for_service_and_day(service_id, day):
     ).order_by(desc(NotificationStatistics.day)).first()
 
 
+def dao_get_template_statistics_for_service(service_id, limit_days=None):
+    filter = [TemplateStatistics.service_id == service_id]
+    if limit_days:
+        latest_stat = TemplateStatistics.query.filter_by(service_id=service_id).order_by(
+            desc(TemplateStatistics.day)).limit(1).first()
+        if latest_stat:
+            last_date_to_fetch = latest_stat.day - timedelta(days=limit_days)
+        else:
+            last_date_to_fetch = date.today() - timedelta(days=limit_days)
+        filter.append(TemplateStatistics.day > last_date_to_fetch)
+    return TemplateStatistics.query.filter(*filter).order_by(
+        desc(TemplateStatistics.day)).join(Template).order_by(func.lower(Template.name)).all()
+
+
+@transactional
 def dao_create_notification(notification, notification_type):
-    try:
-        if notification.job_id:
-            db.session.query(Job).filter_by(
-                id=notification.job_id
-            ).update({
-                Job.notifications_sent: Job.notifications_sent + 1,
-                Job.updated_at: datetime.utcnow()
-            })
+    if notification.job_id:
+        db.session.query(Job).filter_by(
+            id=notification.job_id
+        ).update({
+            Job.notifications_sent: Job.notifications_sent + 1,
+            Job.updated_at: datetime.utcnow()
+        })
 
-        update_count = db.session.query(NotificationStatistics).filter_by(
+    update_count = db.session.query(NotificationStatistics).filter_by(
+        day=notification.created_at.strftime('%Y-%m-%d'),
+        service_id=notification.service_id
+    ).update(update_query(notification_type, 'requested'))
+
+    if update_count == 0:
+        stats = NotificationStatistics(
             day=notification.created_at.strftime('%Y-%m-%d'),
-            service_id=notification.service_id
-        ).update(update_query(notification_type, 'requested'))
-
-        if update_count == 0:
-            stats = NotificationStatistics(
-                day=notification.created_at.strftime('%Y-%m-%d'),
-                service_id=notification.service_id,
-                sms_requested=1 if notification_type == TEMPLATE_TYPE_SMS else 0,
-                emails_requested=1 if notification_type == TEMPLATE_TYPE_EMAIL else 0
-            )
-            db.session.add(stats)
-
-        update_count = db.session.query(TemplateStatistics).filter_by(
-            day=date.today(),
             service_id=notification.service_id,
-            template_id=notification.template_id
-        ).update({'usage_count': TemplateStatistics.usage_count + 1})
+            sms_requested=1 if notification_type == TEMPLATE_TYPE_SMS else 0,
+            emails_requested=1 if notification_type == TEMPLATE_TYPE_EMAIL else 0
+        )
+        db.session.add(stats)
 
-        if update_count == 0:
-            template_stats = TemplateStatistics(template_id=notification.template_id,
-                                                service_id=notification.service_id)
-            db.session.add(template_stats)
+    update_count = db.session.query(TemplateStatistics).filter_by(
+        day=date.today(),
+        service_id=notification.service_id,
+        template_id=notification.template_id
+    ).update({'usage_count': TemplateStatistics.usage_count + 1})
 
-        db.session.add(notification)
-        db.session.commit()
-    except:
-        db.session.rollback()
-        raise
+    if update_count == 0:
+        template_stats = TemplateStatistics(template_id=notification.template_id,
+                                            service_id=notification.service_id)
+        db.session.add(template_stats)
+
+    db.session.add(notification)
 
 
 def update_query(notification_type, status):
@@ -191,10 +223,16 @@ def get_notifications_for_service(service_id, filter_dict=None, page=1):
 
 
 def filter_query(query, filter_dict=None):
-    if filter_dict and 'status' in filter_dict:
-        query = query.filter_by(status=filter_dict['status'])
-    if filter_dict and 'template_type' in filter_dict:
-        query = query.join(Template).filter(Template.template_type == filter_dict['template_type'])
+    if filter_dict is None:
+        filter_dict = MultiDict()
+    else:
+        filter_dict = MultiDict(filter_dict)
+    statuses = filter_dict.getlist('status') if 'status' in filter_dict else None
+    if statuses:
+        query = query.filter(Notification.status.in_(statuses))
+    template_types = filter_dict.getlist('template_type') if 'template_type' in filter_dict else None
+    if template_types:
+        query = query.join(Template).filter(Template.template_type.in_(template_types))
     return query
 
 

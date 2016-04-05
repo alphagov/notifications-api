@@ -37,6 +37,8 @@ def get_job_by_service_and_job_id(service_id, job_id):
 def get_jobs_by_service(service_id):
     jobs = dao_get_jobs_by_service_id(service_id)
     data, errors = job_schema.dump(jobs, many=True)
+    if errors:
+        return jsonify(result="error", message=errors), 400
     return jsonify(data=data)
 
 

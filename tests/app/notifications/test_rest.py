@@ -230,28 +230,34 @@ def test_should_reject_invalid_page_param(notify_api, sample_email_template):
 def test_should_return_pagination_links(notify_api, notify_db, notify_db_session, sample_email_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            notify_api.config['PAGE_SIZE'] = 1
+            # Effectively mocking page size
+            original_page_size = notify_api.config['PAGE_SIZE']
+            try:
+                notify_api.config['PAGE_SIZE'] = 1
 
-            create_sample_notification(notify_db, notify_db_session, sample_email_template.service)
-            notification_2 = create_sample_notification(notify_db, notify_db_session, sample_email_template.service)
-            create_sample_notification(notify_db, notify_db_session, sample_email_template.service)
+                create_sample_notification(notify_db, notify_db_session, sample_email_template.service)
+                notification_2 = create_sample_notification(notify_db, notify_db_session, sample_email_template.service)
+                create_sample_notification(notify_db, notify_db_session, sample_email_template.service)
 
-            auth_header = create_authorization_header(
-                service_id=sample_email_template.service_id,
-                path='/notifications',
-                method='GET')
+                auth_header = create_authorization_header(
+                    service_id=sample_email_template.service_id,
+                    path='/notifications',
+                    method='GET')
 
-            response = client.get(
-                '/notifications?page=2',
-                headers=[auth_header])
+                response = client.get(
+                    '/notifications?page=2',
+                    headers=[auth_header])
 
-            notifications = json.loads(response.get_data(as_text=True))
-            assert len(notifications['notifications']) == 1
-            assert notifications['links']['last'] == '/notifications?page=3'
-            assert notifications['links']['prev'] == '/notifications?page=1'
-            assert notifications['links']['next'] == '/notifications?page=3'
-            assert notifications['notifications'][0]['to'] == notification_2.to
-            assert response.status_code == 200
+                notifications = json.loads(response.get_data(as_text=True))
+                assert len(notifications['notifications']) == 1
+                assert notifications['links']['last'] == '/notifications?page=3'
+                assert notifications['links']['prev'] == '/notifications?page=1'
+                assert notifications['links']['next'] == '/notifications?page=3'
+                assert notifications['notifications'][0]['to'] == notification_2.to
+                assert response.status_code == 200
+
+            finally:
+                notify_api.config['PAGE_SIZE'] = original_page_size
 
 
 def test_get_all_notifications_returns_empty_list(notify_api, sample_api_key):
@@ -301,6 +307,41 @@ def test_filter_by_template_type(notify_api, notify_db, notify_db_session, sampl
             assert response.status_code == 200
 
 
+def test_filter_by_multiple_template_types(notify_api,
+                                           notify_db,
+                                           notify_db_session,
+                                           sample_template,
+                                           sample_email_template):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            notification_1 = create_sample_notification(
+                notify_db,
+                notify_db_session,
+                service=sample_email_template.service,
+                template=sample_template)
+            notification_2 = create_sample_notification(
+                notify_db,
+                notify_db_session,
+                service=sample_email_template.service,
+                template=sample_email_template)
+
+            auth_header = create_authorization_header(
+                service_id=sample_email_template.service_id,
+                path='/notifications',
+                method='GET')
+
+            response = client.get(
+                '/notifications?template_type=sms&template_type=email',
+                headers=[auth_header])
+
+            assert response.status_code == 200
+            notifications = json.loads(response.get_data(as_text=True))
+            assert len(notifications['notifications']) == 2
+            set(['sms', 'email']) == set(
+                [x['template']['template_type'] for x in notifications['notifications']])
+
+
 def test_filter_by_status(notify_api, notify_db, notify_db_session, sample_email_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -309,7 +350,14 @@ def test_filter_by_status(notify_api, notify_db, notify_db_session, sample_email
                 notify_db,
                 notify_db_session,
                 service=sample_email_template.service,
+                template=sample_email_template,
                 status="delivered")
+
+            notification_2 = create_sample_notification(
+                notify_db,
+                notify_db_session,
+                service=sample_email_template.service,
+                template=sample_email_template)
 
             auth_header = create_authorization_header(
                 service_id=sample_email_template.service_id,
@@ -324,6 +372,42 @@ def test_filter_by_status(notify_api, notify_db, notify_db_session, sample_email
             assert len(notifications['notifications']) == 1
             assert notifications['notifications'][0]['status'] == 'delivered'
             assert response.status_code == 200
+
+
+def test_filter_by_multiple_statuss(notify_api,
+                                    notify_db,
+                                    notify_db_session,
+                                    sample_email_template):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            notification_1 = create_sample_notification(
+                notify_db,
+                notify_db_session,
+                service=sample_email_template.service,
+                template=sample_email_template,
+                status="delivered")
+
+            notification_2 = create_sample_notification(
+                notify_db,
+                notify_db_session,
+                service=sample_email_template.service,
+                template=sample_email_template)
+
+            auth_header = create_authorization_header(
+                service_id=sample_email_template.service_id,
+                path='/notifications',
+                method='GET')
+
+            response = client.get(
+                '/notifications?status=delivered&status=sent',
+                headers=[auth_header])
+
+            assert response.status_code == 200
+            notifications = json.loads(response.get_data(as_text=True))
+            assert len(notifications['notifications']) == 2
+            set(['delivered', 'sent']) == set(
+                [x['status'] for x in notifications['notifications']])
 
 
 def test_filter_by_status_and_template_type(notify_api,
@@ -795,7 +879,7 @@ def test_should_not_send_email_if_restricted_and_not_a_service_user(notify_api, 
             app.celery.tasks.send_email.apply_async.assert_not_called()
 
             assert response.status_code == 400
-            assert 'Email address not permitted for restricted service' in json_resp['message']['to']
+            assert 'Invalid email address for restricted service' in json_resp['message']['to']
 
 
 def test_should_not_send_email_for_job_if_restricted_and_not_a_service_user(
@@ -831,7 +915,7 @@ def test_should_not_send_email_for_job_if_restricted_and_not_a_service_user(
             app.celery.tasks.send_email.apply_async.assert_not_called()
 
             assert response.status_code == 400
-            assert 'Email address not permitted for restricted service' in json_resp['message']['to']
+            assert 'Invalid email address for restricted service' in json_resp['message']['to']
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
