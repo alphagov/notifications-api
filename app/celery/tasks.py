@@ -179,9 +179,17 @@ def process_job(job_id):
     job.processing_started = start
     job.processing_finished = finished
     dao_update_job(job)
+    remove_job.apply_async((str(job_id),), queue='remove-job')
     current_app.logger.info(
         "Job {} created at {} started at {} finished at {}".format(job_id, job.created_at, start, finished)
     )
+
+
+@notify_celery.task(name="remove-job")
+def remove_job(job_id):
+    job = dao_get_job_by_id(job_id)
+    s3.remove_job_from_s3(job.bucket_name, job_id)
+    current_app.logger.info("Job {} has been removed from s3.".format(job_id))
 
 
 @notify_celery.task(name="send-sms")
