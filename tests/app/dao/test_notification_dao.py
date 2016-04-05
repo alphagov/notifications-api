@@ -23,8 +23,8 @@ from app.dao.notifications_dao import (
     get_notification_for_job,
     get_notifications_for_job,
     dao_get_notification_statistics_for_service,
-    delete_successful_notifications_created_more_than_a_day_ago,
-    delete_failed_notifications_created_more_than_a_week_ago,
+    delete_notifications_created_more_than_a_day_ago,
+    delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
     update_notification_status_by_id,
     update_notification_reference_by_id,
@@ -701,21 +701,21 @@ def test_update_notification(sample_notification, sample_template):
     assert notification_from_db.status == 'failed'
 
 
-def test_should_delete_sent_notifications_after_one_day(notify_db, notify_db_session):
+def test_should_delete_notifications_after_one_day(notify_db, notify_db_session):
     created_at = datetime.utcnow() - timedelta(hours=24)
     sample_notification(notify_db, notify_db_session, created_at=created_at)
     sample_notification(notify_db, notify_db_session, created_at=created_at)
     assert len(Notification.query.all()) == 2
-    delete_successful_notifications_created_more_than_a_day_ago()
+    delete_notifications_created_more_than_a_day_ago('sent')
     assert len(Notification.query.all()) == 0
 
 
-def test_should_delete_failed_notifications_after_seven_days(notify_db, notify_db_session):
+def test_should_delete_notifications_after_seven_days(notify_db, notify_db_session):
     created_at = datetime.utcnow() - timedelta(hours=24 * 7)
     sample_notification(notify_db, notify_db_session, created_at=created_at, status="failed")
     sample_notification(notify_db, notify_db_session, created_at=created_at, status="failed")
     assert len(Notification.query.all()) == 2
-    delete_failed_notifications_created_more_than_a_week_ago()
+    delete_notifications_created_more_than_a_week_ago('failed')
     assert len(Notification.query.all()) == 0
 
 
@@ -726,7 +726,7 @@ def test_should_not_delete_sent_notifications_before_one_day(notify_db, notify_d
     sample_notification(notify_db, notify_db_session, created_at=valid, to_field="valid")
 
     assert len(Notification.query.all()) == 2
-    delete_successful_notifications_created_more_than_a_day_ago()
+    delete_notifications_created_more_than_a_day_ago('sent')
     assert len(Notification.query.all()) == 1
     assert Notification.query.first().to == 'valid'
 
@@ -737,7 +737,7 @@ def test_should_not_delete_failed_notifications_before_seven_days(notify_db, not
     sample_notification(notify_db, notify_db_session, created_at=expired, status="failed", to_field="expired")
     sample_notification(notify_db, notify_db_session, created_at=valid, status="failed", to_field="valid")
     assert len(Notification.query.all()) == 2
-    delete_failed_notifications_created_more_than_a_week_ago()
+    delete_notifications_created_more_than_a_week_ago('failed')
     assert len(Notification.query.all()) == 1
     assert Notification.query.first().to == 'valid'
 

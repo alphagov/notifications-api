@@ -236,19 +236,19 @@ def filter_query(query, filter_dict=None):
     return query
 
 
-def delete_successful_notifications_created_more_than_a_day_ago():
+def delete_notifications_created_more_than_a_day_ago(status):
     deleted = db.session.query(Notification).filter(
         Notification.created_at < datetime.utcnow() - timedelta(days=1),
-        Notification.status == 'sent'
+        Notification.status == status
     ).delete()
     db.session.commit()
     return deleted
 
 
-def delete_failed_notifications_created_more_than_a_week_ago():
+def delete_notifications_created_more_than_a_week_ago(status):
     deleted = db.session.query(Notification).filter(
         Notification.created_at < datetime.utcnow() - timedelta(days=7),
-        Notification.status == 'failed'
+        Notification.status == status
     ).delete()
     db.session.commit()
     return deleted
