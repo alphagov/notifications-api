@@ -71,7 +71,7 @@ def test_should_call_delete_invotations_on_delete_invitations_task(notify_api, m
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_sms_job(sample_job, mocker):
+def test_should_process_sms_job(sample_job, mocker, mock_celery_remove_job):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
@@ -94,7 +94,10 @@ def test_should_process_sms_job(sample_job, mocker):
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db, notify_db_session, mocker):
+def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db,
+                                                                notify_db_session,
+                                                                mocker,
+                                                                mock_celery_remove_job):
     service = sample_service(notify_db, notify_db_session, limit=9)
     job = sample_job(notify_db, notify_db_session, service=service, notification_count=10)
 
@@ -109,9 +112,13 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db, notif
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.status == 'sending limits exceeded'
     tasks.send_sms.apply_async.assert_not_called()
+    mock_celery_remove_job.assert_not_called()
 
 
-def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify_db, notify_db_session, mocker):
+def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify_db,
+                                                                          notify_db_session,
+                                                                          mocker,
+                                                                          mock_celery_remove_job):
     service = sample_service(notify_db, notify_db_session, limit=1)
     job = sample_job(notify_db, notify_db_session, service=service)
 
@@ -128,6 +135,7 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify
     assert job.status == 'sending limits exceeded'
     s3.get_job_from_s3.assert_not_called()
     tasks.send_sms.apply_async.assert_not_called()
+    mock_celery_remove_job.assert_not_called()
 
 
 def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(notify_db, notify_db_session, mocker):
@@ -170,7 +178,10 @@ def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, not
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_sms_job_if_exactly_on_send_limits(notify_db, notify_db_session, mocker):
+def test_should_process_sms_job_if_exactly_on_send_limits(notify_db,
+                                                          notify_db_session,
+                                                          mocker,
+                                                          mock_celery_remove_job):
     service = sample_service(notify_db, notify_db_session, limit=10)
     template = sample_email_template(notify_db, notify_db_session, service=service)
     job = sample_job(notify_db, notify_db_session, service=service, template=template, notification_count=10)
@@ -194,9 +205,10 @@ def test_should_process_sms_job_if_exactly_on_send_limits(notify_db, notify_db_s
          "2016-01-01T11:09:00.061258"),
         queue="bulk-email"
     )
+    mock_celery_remove_job.assert_called_once_with((str(job.id),), queue="remove-job")
 
 
-def test_should_not_create_send_task_for_empty_file(sample_job, mocker):
+def test_should_not_create_send_task_for_empty_file(sample_job, mocker, mock_celery_remove_job):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('empty'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
 
@@ -209,7 +221,7 @@ def test_should_not_create_send_task_for_empty_file(sample_job, mocker):
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_email_job(sample_email_job, mocker):
+def test_should_process_email_job(sample_email_job, mocker, mock_celery_remove_job):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
@@ -231,9 +243,13 @@ def test_should_process_email_job(sample_email_job, mocker):
     )
     job = jobs_dao.dao_get_job_by_id(sample_email_job.id)
     assert job.status == 'finished'
+    mock_celery_remove_job.assert_called_once_with((str(job.id),), queue="remove-job")
 
 
-def test_should_process_all_sms_job(sample_job, sample_job_with_placeholdered_template, mocker):
+def test_should_process_all_sms_job(sample_job,
+                                    sample_job_with_placeholdered_template,
+                                    mocker,
+                                    mock_celery_remove_job):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
