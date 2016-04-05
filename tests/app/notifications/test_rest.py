@@ -879,7 +879,7 @@ def test_should_not_send_email_if_restricted_and_not_a_service_user(notify_api, 
             app.celery.tasks.send_email.apply_async.assert_not_called()
 
             assert response.status_code == 400
-            assert 'Email address not permitted for restricted service' in json_resp['message']['to']
+            assert 'Invalid email address for restricted service' in json_resp['message']['to']
 
 
 def test_should_not_send_email_for_job_if_restricted_and_not_a_service_user(
@@ -915,7 +915,7 @@ def test_should_not_send_email_for_job_if_restricted_and_not_a_service_user(
             app.celery.tasks.send_email.apply_async.assert_not_called()
 
             assert response.status_code == 400
-            assert 'Email address not permitted for restricted service' in json_resp['message']['to']
+            assert 'Invalid email address for restricted service' in json_resp['message']['to']
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
