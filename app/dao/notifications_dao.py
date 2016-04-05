@@ -1,4 +1,8 @@
-from sqlalchemy import desc
+from sqlalchemy import (
+    desc,
+    func
+)
+
 from datetime import (
     datetime,
     timedelta,
@@ -66,7 +70,8 @@ def dao_get_template_statistics_for_service(service_id, limit_days=None):
         else:
             last_date_to_fetch = date.today() - timedelta(days=limit_days)
         filter.append(TemplateStatistics.day > last_date_to_fetch)
-    return TemplateStatistics.query.filter(*filter).order_by(desc(TemplateStatistics.day)).all()
+    return TemplateStatistics.query.filter(*filter).order_by(
+        desc(TemplateStatistics.day)).join(Template).order_by(func.lower(Template.name)).all()
 
 
 @transactional
