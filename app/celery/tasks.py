@@ -320,7 +320,7 @@ def send_sms_code(encrypted_verification):
         mmg_client.send_sms(validate_and_format_phone_number(verification_message['to']),
                             verification_message['secret_code'],
                             'send-sms-code')
-    except Exception as e:
+    except MMGClientException as e:
         current_app.logger.exception(e)
 
 

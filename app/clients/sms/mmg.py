@@ -52,16 +52,20 @@ class MMGClient(SmsClient):
             "reqType": "BULK",
             "MSISDN": to,
             "msg": content,
-            "sender": self.from_number
+            "sender": self.from_number,
+            "cid": reference
         }
 
         start_time = monotonic()
         try:
+            import json
             response = request("POST", "https://www.mmgrp.co.uk/API/json/api.php",
-                               data=data)
+                               data=json.dumps(data),
+                               headers={'Content-Type': 'application/json',
+                                        'Authorization': 'Basic {}'.format(self.api_key)})
             if response.status_code != 200:
-                error = response.json
-                raise MMGClientException(error)
+                error = response.text
+                raise MMGClientException(json.loads(error))
             response.raise_for_status()
         except RequestException as e:
             api_error = HTTPError.create(e)
