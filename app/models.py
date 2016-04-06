@@ -362,3 +362,9 @@ class TemplateStatistics(db.Model):
     template = db.relationship('Template')
     usage_count = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=1)
     day = db.Column(db.Date, index=True, nullable=False, unique=False, default=datetime.date.today)
+    updated_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=False,
+        default=datetime.datetime.utcnow)

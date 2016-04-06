@@ -67,11 +67,9 @@ def dao_get_template_statistics_for_service(service_id, limit_days=None):
             desc(TemplateStatistics.day)).limit(1).first()
         if latest_stat:
             last_date_to_fetch = latest_stat.day - timedelta(days=limit_days)
-        else:
-            last_date_to_fetch = date.today() - timedelta(days=limit_days)
-        filter.append(TemplateStatistics.day > last_date_to_fetch)
+            filter.append(TemplateStatistics.day > last_date_to_fetch)
     return TemplateStatistics.query.filter(*filter).order_by(
-        desc(TemplateStatistics.day)).join(Template).order_by(func.lower(Template.name)).all()
+        desc(TemplateStatistics.updated_at)).all()
 
 
 @transactional
@@ -102,7 +100,7 @@ def dao_create_notification(notification, notification_type):
         day=date.today(),
         service_id=notification.service_id,
         template_id=notification.template_id
-    ).update({'usage_count': TemplateStatistics.usage_count + 1})
+    ).update({'usage_count': TemplateStatistics.usage_count + 1, 'updated_at': datetime.utcnow()})
 
     if update_count == 0:
         template_stats = TemplateStatistics(template_id=notification.template_id,
