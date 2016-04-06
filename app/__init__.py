@@ -80,7 +80,8 @@ def init_app(app):
         no_auth_req = [
             url_for('status.show_status'),
             url_for('notifications.process_ses_response'),
-            url_for('notifications.process_firetext_response')
+            url_for('notifications.process_firetext_response'),
+            url_for('notifications.process_mmg_response')
         ]
         if request.path not in no_auth_req:
             from app.authentication import auth

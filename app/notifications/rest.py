@@ -1,5 +1,4 @@
 from datetime import datetime
-import uuid
 
 from flask import (
     Blueprint,
@@ -11,7 +10,6 @@ from flask import (
 )
 
 from utils.template import Template
-from app.clients.sms.firetext import FiretextResponses
 from app.clients.email.aws_ses import AwsSesResponses
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT
 from app.authentication.auth import require_admin
@@ -20,7 +18,10 @@ from app.dao import (
     services_dao,
     notifications_dao
 )
-
+from app.notifications.process_client_response import (
+    validate_callback_data,
+    process_sms_client_response
+)
 from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
@@ -35,9 +36,7 @@ notifications = Blueprint('notifications', __name__)
 from app.errors import register_errors
 
 register_errors(notifications)
-
 aws_response = AwsSesResponses()
-firetext_response = FiretextResponses()
 
 
 @notifications.route('/notifications/email/ses', methods=['POST'])
@@ -145,90 +144,43 @@ def is_not_a_notification(source):
 
 @notifications.route('/notifications/sms/mmg', methods=['POST'])
 def process_mmg_response():
-    current_app.logger.info('MMG client callback form{}'.format(request.form))
-    status, error1 = _get_from_response(form=request.form, field='status', client_name='MMG')
-    reference, error2 = _get_from_response(form=request.form, field='reference', client_name='MMG')
-    errors = [error1, error2]
-    errors.remove(None)
-    if len(errors) > 0:
+    client_name = 'MMG'
+    data = json.loads(request.data)
+    validation_errors = validate_callback_data(data=data,
+                                               fields=['status', 'CID'],
+                                               client_name=client_name)
+    if validation_errors:
+        [current_app.logger.info(e) for e in validation_errors]
+        return jsonify(result='error', message=validation_errors), 400
+
+    success, errors = process_sms_client_response(status=data.get('status'),
+                                                  reference=data.get('CID'),
+                                                  client_name='MMG')
+    if errors:
+        [current_app.logger.info(e) for e in errors]
         return jsonify(result='error', message=errors), 400
-    if reference == 'send-sms-code':
-        return jsonify(result="success", message="MMG callback succeeded: send-sms-code"), 200
-
-
-def _get_from_response(form, field, client_name):
-    error = None
-    form_field = None
-    if len(form.get(field, '')) <= 0:
-        current_app.logger.info(
-            "{} callback failed: {} missing".format(client_name, field)
-        )
-        error = "{} callback failed: {} missing".format(client_name, field)
     else:
-        form_field = form[field]
-    return form_field, error
+        return jsonify(result='success', message=success), 200
 
 
 @notifications.route('/notifications/sms/firetext', methods=['POST'])
 def process_firetext_response():
-    status, error1 = _get_from_response(form=request.form, field='status', client_name='Firetext')
-    reference, error2 = _get_from_response(form=request.form, field='reference', client_name='Firetext')
-    errors = [error1, error2]
-    errors = errors.remove(None)
+    client_name = 'Firetext'
+    validation_errors = validate_callback_data(data=request.form,
+                                               fields=['status', 'reference'],
+                                               client_name=client_name)
+    if validation_errors:
+        current_app.logger.info(validation_errors)
+        return jsonify(result='error', message=validation_errors), 400
 
-    if len(errors) > 0:
+    success, errors = process_sms_client_response(status=request.form.get('status'),
+                                                  reference=request.form.get('reference'),
+                                                  client_name=client_name)
+    if errors:
+        [current_app.logger.info(e) for e in errors]
         return jsonify(result='error', message=errors), 400
-
-    if reference == 'send-sms-code':
-        return jsonify(result="success", message="Firetext callback succeeded: send-sms-code"), 200
-
-    try:
-        uuid.UUID(reference, version=4)
-    except ValueError:
-        current_app.logger.info(
-            "Firetext callback with invalid reference {}".format(reference)
-        )
-        return jsonify(
-            result="error", message="Firetext callback with invalid reference {}".format(reference)
-        ), 400
-
-    try:
-        firetext_response.response_code_to_object(status)
-    except KeyError:
-        current_app.logger.info(
-            "Firetext callback failed: status {} not found.".format(status)
-        )
-        return jsonify(result="error", message="Firetext callback failed: status {} not found.".format(status)), 400
-
-    notification_status = firetext_response.response_code_to_notification_status(status)
-    notification_statistics_status = firetext_response.response_code_to_notification_statistics_status(status)
-
-    if notifications_dao.update_notification_status_by_id(
-            reference,
-            notification_status,
-            notification_statistics_status
-    ) == 0:
-        current_app.logger.info(
-            "Firetext callback failed: notification {} not found. Status {}".format(reference, status)
-        )
-        return jsonify(
-            result="error",
-            message="Firetext callback failed: notification {} not found. Status {}".format(
-                reference,
-                firetext_response.response_code_to_message(status)
-            )
-        ), 404
-
-    if not firetext_response.response_code_to_notification_success(status):
-        current_app.logger.info(
-            "Firetext delivery failed: notification {} has error found. Status {}".format(
-                reference,
-                FiretextResponses().response_code_to_message(status)
-            )
-        )
-    return jsonify(
-        result="success", message="Firetext callback succeeded. reference {} updated".format(reference)
-    ), 200
+    else:
+        return jsonify(result='success', message=success), 200
 
 
 @notifications.route('/notifications/<uuid:notification_id>', methods=['GET'])
