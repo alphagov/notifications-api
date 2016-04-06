@@ -1,14 +1,26 @@
 from flask_marshmallow.fields import fields
-from . import ma
-from . import models
-from app.dao.permissions_dao import permission_dao
-from marshmallow import (post_load, ValidationError, validates, validates_schema)
+
+from marshmallow import (
+    post_load,
+    ValidationError,
+    validates,
+    validates_schema,
+    pre_load
+)
+
 from marshmallow_sqlalchemy import field_for
+
 from utils.recipients import (
-    validate_email_address, InvalidEmailError,
-    validate_phone_number, InvalidPhoneError,
+    validate_email_address,
+    InvalidEmailError,
+    validate_phone_number,
+    InvalidPhoneError,
     validate_and_format_phone_number
 )
+
+from app import ma
+from app import models
+from app.dao.permissions_dao import permission_dao
 
 
 # TODO I think marshmallow provides a better integration and error handling.
@@ -19,7 +31,7 @@ from utils.recipients import (
 
 
 class BaseSchema(ma.ModelSchema):
-    def __init__(self, *args, load_json=False, **kwargs):
+    def __init__(self, load_json=False, *args, **kwargs):
         self.load_json = load_json
         super(BaseSchema, self).__init__(*args, **kwargs)
 
@@ -72,6 +84,11 @@ class ServiceSchema(BaseSchema):
     class Meta:
         model = models.Service
         exclude = ("updated_at", "created_at", "api_keys", "templates", "jobs", 'old_id')
+
+
+class NotificationModelSchema(BaseSchema):
+    class Meta:
+        model = models.Notification
 
 
 class TemplateSchema(BaseSchema):
@@ -203,9 +220,28 @@ class EmailDataSchema(ma.Schema):
 
 
 class NotificationsFilterSchema(ma.Schema):
-    template_type = field_for(models.Template, 'template_type', load_only=True, required=False)
-    status = field_for(models.Notification, 'status', load_only=True, required=False)
+    template_type = fields.Nested(TemplateSchema, only='template_type', many=True)
+    status = fields.Nested(NotificationModelSchema, only='status', many=True)
     page = fields.Int(required=False)
+
+    @pre_load
+    def handle_multidict(self, in_data):
+        if isinstance(in_data, dict) and hasattr(in_data, 'getlist'):
+            out_data = dict([(k, in_data.get(k)) for k in in_data.keys()])
+            if 'template_type' in in_data:
+                out_data['template_type'] = [{'template_type': x} for x in in_data.getlist('template_type')]
+            if 'status' in in_data:
+                out_data['status'] = [{"status": x} for x in in_data.getlist('status')]
+
+        return out_data
+
+    @post_load
+    def convert_schema_object_to_field(self, in_data):
+        if 'template_type' in in_data:
+            in_data['template_type'] = [x.template_type for x in in_data['template_type']]
+        if 'status' in in_data:
+            in_data['status'] = [x.status for x in in_data['status']]
+        return in_data
 
     @validates('page')
     def validate_page(self, value):
@@ -215,6 +251,15 @@ class NotificationsFilterSchema(ma.Schema):
                 raise ValidationError("Not a positive integer")
         except:
             raise ValidationError("Not a positive integer")
+
+
+class TemplateStatisticsSchema(BaseSchema):
+
+    template = fields.Nested(TemplateSchema, only=["id",  "name", "template_type"], dump_only=True)
+
+    class Meta:
+        model = models.TemplateStatistics
+
 
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
@@ -239,3 +284,4 @@ permission_schema = PermissionSchema()
 email_data_request_schema = EmailDataSchema()
 notifications_statistics_schema = NotificationsStatisticsSchema()
 notifications_filter_schema = NotificationsFilterSchema()
+template_statistics_schema = TemplateStatisticsSchema()

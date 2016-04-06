@@ -59,6 +59,7 @@ def create_app(app_name=None):
     from app.permission.rest import permission as permission_blueprint
     from app.accept_invite.rest import accept_invite
     from app.notifications_statistics.rest import notifications_statistics as notifications_statistics_blueprint
+    from app.template_statistics.rest import template_statistics as template_statistics_blueprint
 
     application.register_blueprint(service_blueprint, url_prefix='/service')
     application.register_blueprint(user_blueprint, url_prefix='/user')
@@ -70,6 +71,7 @@ def create_app(app_name=None):
     application.register_blueprint(permission_blueprint, url_prefix='/permission')
     application.register_blueprint(accept_invite, url_prefix='/invite')
     application.register_blueprint(notifications_statistics_blueprint)
+    application.register_blueprint(template_statistics_blueprint)
 
     return application
 

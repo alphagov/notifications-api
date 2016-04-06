@@ -1,3 +1,4 @@
+import itertools
 from datetime import datetime
 
 from flask import current_app
@@ -12,7 +13,8 @@ from utils.template import Template
 
 from utils.recipients import (
     RecipientCSV,
-    validate_and_format_phone_number
+    validate_and_format_phone_number,
+    allowed_to_send_to
 )
 
 from app import (
@@ -33,8 +35,7 @@ from app.dao.invited_user_dao import delete_invitations_created_more_than_two_da
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_update_notification,
-    delete_failed_notifications_created_more_than_a_week_ago,
-    delete_successful_notifications_created_more_than_a_day_ago,
+    delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
     update_notification_reference_by_id
 )
@@ -48,11 +49,6 @@ from app.models import (
     Notification,
     TEMPLATE_TYPE_EMAIL,
     TEMPLATE_TYPE_SMS
-)
-
-from app.validation import (
-    allowed_send_to_email,
-    allowed_send_to_number
 )
 
 
@@ -73,7 +69,7 @@ def delete_verify_codes():
 def delete_successful_notifications():
     try:
         start = datetime.utcnow()
-        deleted = delete_successful_notifications_created_more_than_a_day_ago()
+        deleted = delete_notifications_created_more_than_a_week_ago('sent')
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} successful notifications".format(
                 start,
@@ -90,7 +86,7 @@ def delete_successful_notifications():
 def delete_failed_notifications():
     try:
         start = datetime.utcnow()
-        deleted = delete_failed_notifications_created_more_than_a_week_ago()
+        deleted = delete_notifications_created_more_than_a_week_ago('failed')
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} failed notifications".format(
                 start,
@@ -185,29 +181,34 @@ def process_job(job_id):
     job.processing_started = start
     job.processing_finished = finished
     dao_update_job(job)
+    remove_job.apply_async((str(job_id),), queue='remove-job')
     current_app.logger.info(
         "Job {} created at {} started at {} finished at {}".format(job_id, job.created_at, start, finished)
     )
+
+
+@notify_celery.task(name="remove-job")
+def remove_job(job_id):
+    job = dao_get_job_by_id(job_id)
+    s3.remove_job_from_s3(job.bucket_name, job_id)
+    current_app.logger.info("Job {} has been removed from s3.".format(job_id))
 
 
 @notify_celery.task(name="send-sms")
 def send_sms(service_id, notification_id, encrypted_notification, created_at):
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
-
     client = firetext_client
 
+    restricted = False
+
+    if not service_allowed_to_send_to(notification['to'], service):
+        current_app.logger.info(
+            "SMS {} failed as restricted service".format(notification_id)
+        )
+        restricted = True
+
     try:
-        status = 'sent'
-        can_send = True
-
-        if not allowed_send_to_number(service, notification['to']):
-            current_app.logger.info(
-                "SMS {} failed as restricted service".format(notification_id)
-            )
-            status = 'failed'
-            can_send = False
-
         sent_at = datetime.utcnow()
         notification_db_object = Notification(
             id=notification_id,
@@ -215,7 +216,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             to=notification['to'],
             service_id=service_id,
             job_id=notification.get('job', None),
-            status=status,
+            status='failed' if restricted else 'sent',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=client.get_name()
@@ -223,30 +224,32 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
 
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS)
 
-        if can_send:
-            try:
-                template = Template(
-                    dao_get_template_by_id(notification['template']).__dict__,
-                    values=notification.get('personalisation', {}),
-                    prefix=service.name
-                )
+        if restricted:
+            return
 
-                client.send_sms(
-                    to=validate_and_format_phone_number(notification['to']),
-                    content=template.replaced,
-                    reference=str(notification_id)
-                )
-            except FiretextClientException as e:
-                current_app.logger.error(
-                    "SMS notification {} failed".format(notification_id)
-                )
-                current_app.logger.exception(e)
-                notification_db_object.status = 'failed'
-                dao_update_notification(notification_db_object)
-
-            current_app.logger.info(
-                "SMS {} created at {} sent at {}".format(notification_id, created_at, sent_at)
+        try:
+            template = Template(
+                dao_get_template_by_id(notification['template']).__dict__,
+                values=notification.get('personalisation', {}),
+                prefix=service.name
             )
+
+            client.send_sms(
+                to=validate_and_format_phone_number(notification['to']),
+                content=template.replaced,
+                reference=str(notification_id)
+            )
+        except FiretextClientException as e:
+            current_app.logger.error(
+                "SMS notification {} failed".format(notification_id)
+            )
+            current_app.logger.exception(e)
+            notification_db_object.status = 'failed'
+            dao_update_notification(notification_db_object)
+
+        current_app.logger.info(
+            "SMS {} created at {} sent at {}".format(notification_id, created_at, sent_at)
+        )
     except SQLAlchemyError as e:
         current_app.logger.debug(e)
 
@@ -254,21 +257,18 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
 @notify_celery.task(name="send-email")
 def send_email(service_id, notification_id, subject, from_address, encrypted_notification, created_at):
     notification = encryption.decrypt(encrypted_notification)
+    client = aws_ses_client
     service = dao_fetch_service_by_id(service_id)
 
-    client = aws_ses_client
+    restricted = False
+
+    if not service_allowed_to_send_to(notification['to'], service):
+        current_app.logger.info(
+            "Email {} failed as restricted service".format(notification_id)
+        )
+        restricted = True
 
     try:
-        status = 'sent'
-        can_send = True
-
-        if not allowed_send_to_email(service, notification['to']):
-            current_app.logger.info(
-                "Email {} failed as restricted service".format(notification_id)
-            )
-            status = 'failed'
-            can_send = False
-
         sent_at = datetime.utcnow()
         notification_db_object = Notification(
             id=notification_id,
@@ -276,36 +276,38 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
             to=notification['to'],
             service_id=service_id,
             job_id=notification.get('job', None),
-            status=status,
+            status='failed' if restricted else 'sent',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=client.get_name()
         )
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL)
 
-        if can_send:
-            try:
-                template = Template(
-                    dao_get_template_by_id(notification['template']).__dict__,
-                    values=notification.get('personalisation', {})
-                )
+        if restricted:
+            return
 
-                reference = client.send_email(
-                    from_address,
-                    notification['to'],
-                    subject,
-                    body=template.replaced,
-                    html_body=template.as_HTML_email,
-                )
-                update_notification_reference_by_id(notification_id, reference)
-            except AwsSesClientException as e:
-                current_app.logger.exception(e)
-                notification_db_object.status = 'failed'
-                dao_update_notification(notification_db_object)
-
-            current_app.logger.info(
-                "Email {} created at {} sent at {}".format(notification_id, created_at, sent_at)
+        try:
+            template = Template(
+                dao_get_template_by_id(notification['template']).__dict__,
+                values=notification.get('personalisation', {})
             )
+
+            reference = client.send_email(
+                from_address,
+                notification['to'],
+                subject,
+                body=template.replaced,
+                html_body=template.as_HTML_email,
+            )
+            update_notification_reference_by_id(notification_id, reference)
+        except AwsSesClientException as e:
+            current_app.logger.exception(e)
+            notification_db_object.status = 'failed'
+            dao_update_notification(notification_db_object)
+
+        current_app.logger.info(
+            "Email {} created at {} sent at {}".format(notification_id, created_at, sent_at)
+        )
     except SQLAlchemyError as e:
         current_app.logger.debug(e)
 
@@ -423,3 +425,16 @@ def email_registration_verification(encrypted_verification_message):
                                                                      url=verification_message['url']))
     except AwsSesClientException as e:
         current_app.logger.exception(e)
+
+
+def service_allowed_to_send_to(recipient, service):
+
+    if not service.restricted:
+        return True
+
+    return allowed_to_send_to(
+        recipient,
+        itertools.chain.from_iterable(
+            [user.mobile_number, user.email_address] for user in service.users
+        )
+    )

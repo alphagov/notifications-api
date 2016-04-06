@@ -69,6 +69,7 @@ class Config(object):
         Queue('email-code', Exchange('default'), routing_key='email-code'),
         Queue('email-reset-password', Exchange('default'), routing_key='email-reset-password'),
         Queue('process-job', Exchange('default'), routing_key='process-job'),
+        Queue('remove-job', Exchange('default'), routing_key='remove-job'),
         Queue('bulk-sms', Exchange('default'), routing_key='bulk-sms'),
         Queue('bulk-email', Exchange('default'), routing_key='bulk-email'),
         Queue('email-invited-user', Exchange('default'), routing_key='email-invited-user'),
