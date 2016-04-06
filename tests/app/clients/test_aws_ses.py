@@ -1,32 +1,33 @@
 import pytest
 
-from app.clients.email import aws_ses
-
-aws_responses = aws_ses.AwsSesResponses()
+from app.clients.email.aws_ses import get_aws_responses
 
 
 def test_should_return_correct_details_for_delivery():
-    assert aws_responses.response_code_to_message('Delivery') == 'Delivered'
-    assert aws_responses.response_code_to_notification_status('Delivery') == 'delivered'
-    assert aws_responses.response_code_to_notification_statistics_status('Delivery') == 'delivered'
-    assert aws_responses.response_code_to_notification_success('Delivery')
+    response_dict = get_aws_responses('Delivery')
+    assert response_dict['message'] == 'Delivered'
+    assert response_dict['notification_status'] == 'delivered'
+    assert response_dict['notification_statistics_status'] == 'delivered'
+    assert response_dict['success']
 
 
 def test_should_return_correct_details_for_bounced():
-    assert aws_responses.response_code_to_message('Bounce') == 'Bounced'
-    assert aws_responses.response_code_to_notification_status('Bounce') == 'bounce'
-    assert aws_responses.response_code_to_notification_statistics_status('Bounce') == 'failure'
-    assert not aws_responses.response_code_to_notification_success('Bounce')
+    response_dict = get_aws_responses('Bounce')
+    assert response_dict['message'] == 'Bounced'
+    assert response_dict['notification_status'] == 'bounce'
+    assert response_dict['notification_statistics_status'] == 'failure'
+    assert not response_dict['success']
 
 
 def test_should_return_correct_details_for_complaint():
-    assert aws_responses.response_code_to_message('Complaint') == 'Complaint'
-    assert aws_responses.response_code_to_notification_status('Complaint') == 'complaint'
-    assert aws_responses.response_code_to_notification_statistics_status('Complaint') == 'failure'
-    assert not aws_responses.response_code_to_notification_success('Complaint')
+    response_dict = get_aws_responses('Complaint')
+    assert response_dict['message'] == 'Complaint'
+    assert response_dict['notification_status'] == 'complaint'
+    assert response_dict['notification_statistics_status'] == 'failure'
+    assert not response_dict['success']
 
 
 def test_should_be_none_if_unrecognised_status_code():
     with pytest.raises(KeyError) as e:
-        aws_responses.response_code_to_object('99')
+        get_aws_responses('99')
     assert '99' in str(e.value)

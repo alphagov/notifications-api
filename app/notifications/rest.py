@@ -11,7 +11,7 @@ from flask import (
 )
 from utils.recipients import allowed_to_send_to, first_column_heading
 from utils.template import Template
-from app.clients.email.aws_ses import AwsSesResponses
+from app.clients.email.aws_ses import get_aws_responses
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT
 from app.authentication.auth import require_admin
 from app.dao import (
@@ -36,46 +36,40 @@ notifications = Blueprint('notifications', __name__)
 from app.errors import register_errors
 
 register_errors(notifications)
-aws_response = AwsSesResponses()
 
 
 @notifications.route('/notifications/email/ses', methods=['POST'])
 def process_ses_response():
+    client_name = 'SES'
     try:
         ses_request = json.loads(request.data)
-        if 'Message' not in ses_request:
-            current_app.logger.error(
-                "SES callback failed: message missing"
-            )
+
+        errors = validate_callback_data(data=ses_request, fields=['Message'], client_name=client_name)
+        if errors:
             return jsonify(
-                result="error", message="SES callback failed: message missing"
+                result="error", message=errors
             ), 400
 
         ses_message = json.loads(ses_request['Message'])
-
-        if 'notificationType' not in ses_message:
-            current_app.logger.error(
-                "SES callback failed: notificationType missing"
-            )
+        errors = validate_callback_data(data=ses_message, fields=['notificationType'], client_name=client_name)
+        if errors:
             return jsonify(
-                result="error", message="SES callback failed: notificationType missing"
+                result="error", message=errors
             ), 400
 
+        notification_type = ses_message['notificationType']
         try:
-            aws_response.response_code_to_object(ses_message['notificationType'])
+            aws_response_dict = get_aws_responses(notification_type)
         except KeyError:
-            current_app.logger.info(
-                "SES callback failed: status {} not found.".format(ses_message['notificationType'])
-            )
+            message = "{} callback failed: status {} not found".format(client_name, notification_type)
+            current_app.logger.info(message)
             return jsonify(
                 result="error",
-                message="SES callback failed: status {} not found".format(ses_message['notificationType'])
+                message=message
             ), 400
 
-        notification_status = aws_response.response_code_to_notification_status(ses_message['notificationType'])
-        notification_statistics_status = aws_response.response_code_to_notification_statistics_status(
-            ses_message['notificationType']
-        )
+        notification_status = aws_response_dict['notification_status']
+        notification_statistics_status = aws_response_dict['notification_statistics_status']
 
         try:
             source = ses_message['mail']['source']
@@ -101,11 +95,11 @@ def process_ses_response():
                     message="SES callback failed: notification not found. Status {}".format(notification_status)
                 ), 404
 
-            if not aws_response.response_code_to_notification_success(ses_message['notificationType']):
+            if not aws_response_dict['success']:
                 current_app.logger.info(
                     "SES delivery failed: notification {} has error found. Status {}".format(
                         reference,
-                        aws_response.response_code_to_message(ses_message['notificationType'])
+                        aws_response_dict['message']
                     )
                 )
 
@@ -123,10 +117,10 @@ def process_ses_response():
 
     except ValueError as ex:
         current_app.logger.exception(
-            "SES callback failed: invalid json {}".format(ex)
+            "{} callback failed: invalid json {}".format(client_name, ex)
         )
         return jsonify(
-            result="error", message="SES callback failed: invalid json"
+            result="error", message="{} callback failed: invalid json".format(client_name)
         ), 400
 
 

@@ -1,33 +1,33 @@
 import boto3
 from flask import current_app
 from monotonic import monotonic
-from app.clients import ClientResponse, STATISTICS_DELIVERED, STATISTICS_FAILURE
+from app.clients import STATISTICS_DELIVERED, STATISTICS_FAILURE
 from app.clients.email import (EmailClientException, EmailClient)
 
+ses_response_map = {
+    'Bounce': {
+        "message": 'Bounced',
+        "success": False,
+        "notification_status": 'bounce',
+        "notification_statistics_status": STATISTICS_FAILURE
+    },
+    'Delivery': {
+        "message": 'Delivered',
+        "success": True,
+        "notification_status": 'delivered',
+        "notification_statistics_status": STATISTICS_DELIVERED
+    },
+    'Complaint': {
+        "message": 'Complaint',
+        "success": False,
+        "notification_status": 'complaint',
+        "notification_statistics_status": STATISTICS_FAILURE
+    }
+}
 
-class AwsSesResponses(ClientResponse):
-    def __init__(self):
-        ClientResponse.__init__(self)
-        self.__response_model__ = {
-            'Bounce': {
-                "message": 'Bounced',
-                "success": False,
-                "notification_status": 'bounce',
-                "notification_statistics_status": STATISTICS_FAILURE
-            },
-            'Delivery': {
-                "message": 'Delivered',
-                "success": True,
-                "notification_status": 'delivered',
-                "notification_statistics_status": STATISTICS_DELIVERED
-            },
-            'Complaint': {
-                "message": 'Complaint',
-                "success": False,
-                "notification_status": 'complaint',
-                "notification_statistics_status": STATISTICS_FAILURE
-            }
-        }
+
+def get_aws_responses(status):
+    return ses_response_map[status]
 
 
 class AwsSesClientException(EmailClientException):
