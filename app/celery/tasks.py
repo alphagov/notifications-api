@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
+from app.clients.sms.mmg import MMGClientException
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 
@@ -198,7 +199,7 @@ def remove_job(job_id):
 def send_sms(service_id, notification_id, encrypted_notification, created_at):
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
-    client = firetext_client
+    client = mmg_client
 
     restricted = False
 
@@ -239,7 +240,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 content=template.replaced,
                 reference=str(notification_id)
             )
-        except FiretextClientException as e:
+        except MMGClientException as e:
             current_app.logger.error(
                 "SMS notification {} failed".format(notification_id)
             )

@@ -16,9 +16,8 @@ from app.celery.tasks import (
     delete_failed_notifications,
     delete_successful_notifications
 )
-from app import (firetext_client, aws_ses_client, encryption, DATETIME_FORMAT, mmg_client)
+from app import (aws_ses_client, encryption, DATETIME_FORMAT, mmg_client)
 from app.clients.email.aws_ses import AwsSesClientException
-from app.clients.sms.firetext import FiretextClientException
 from app.clients.sms.mmg import MMGClientException
 from app.dao import notifications_dao, jobs_dao
 from sqlalchemy.exc import SQLAlchemyError
@@ -41,10 +40,6 @@ from tests.app.conftest import (
 class AnyStringWith(str):
     def __eq__(self, other):
         return self in other
-
-
-def firetext_error():
-    return {'code': 0, 'description': 'error'}
 
 mmg_error = {'Error': '40', 'Description': 'error'}
 
@@ -278,8 +273,8 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
         "personalisation": {"name": "Jo"}
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms')
-    mocker.patch('app.firetext_client.get_name', return_value="firetext")
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="MMG")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -290,7 +285,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
         now.strftime(DATETIME_FORMAT)
     )
 
-    firetext_client.send_sms.assert_called_once_with(
+    mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
         content="Sample service: Hello Jo",
         reference=str(notification_id)
@@ -304,7 +299,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     assert persisted_notification.status == 'sent'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
-    assert persisted_notification.sent_by == 'firetext'
+    assert persisted_notification.sent_by == 'MMG'
     assert not persisted_notification.job_id
 
 
@@ -314,8 +309,8 @@ def test_should_send_sms_without_personalisation(sample_template, mocker):
         "to": "+447234123123"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms')
-    mocker.patch('app.firetext_client.get_name', return_value="firetext")
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="MMG")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -326,7 +321,7 @@ def test_should_send_sms_without_personalisation(sample_template, mocker):
         now.strftime(DATETIME_FORMAT)
     )
 
-    firetext_client.send_sms.assert_called_once_with(
+    mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
         content="Sample service: This is a template",
         reference=str(notification_id)
@@ -343,8 +338,8 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
         "to": "+447700900890"  # The user’s own number, but in a different format
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms')
-    mocker.patch('app.firetext_client.get_name', return_value="firetext")
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="MMG")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -355,7 +350,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
         now.strftime(DATETIME_FORMAT)
     )
 
-    firetext_client.send_sms.assert_called_once_with(
+    mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447700900890")),
         content="Sample service: This is a template",
         reference=str(notification_id)
@@ -372,8 +367,8 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
         "to": "07700 900849"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms')
-    mocker.patch('app.firetext_client.get_name', return_value="firetext")
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="MMG")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -384,7 +379,7 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
         now.strftime(DATETIME_FORMAT)
     )
 
-    firetext_client.send_sms.assert_not_called()
+    mmg_client.send_sms.assert_not_called()
 
 
 def test_should_send_email_if_restricted_service_and_valid_email(notify_db, notify_db_session, mocker):
@@ -435,9 +430,11 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
-    send_sms(
+    send_email(
         service.id,
         notification_id,
+        'subject',
+        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
@@ -452,8 +449,8 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
         "to": "+447234123123"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms')
-    mocker.patch('app.firetext_client.get_name', return_value="firetext")
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="MMG")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -463,7 +460,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
-    firetext_client.send_sms.assert_called_once_with(
+    mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
         content="Sample service: This is a template",
         reference=str(notification_id)
@@ -476,7 +473,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
     assert persisted_notification.status == 'sent'
     assert persisted_notification.sent_at > now
     assert persisted_notification.created_at == now
-    assert persisted_notification.sent_by == 'firetext'
+    assert persisted_notification.sent_by == 'MMG'
 
 
 def test_should_use_email_template_and_persist(sample_email_template_with_placeholders, mocker):
@@ -578,8 +575,8 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
         "to": "+447234123123"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms', side_effect=FiretextClientException(firetext_error()))
-    mocker.patch('app.firetext_client.get_name', return_value="firetext")
+    mocker.patch('app.mmg_client.send_sms', side_effect=MMGClientException(mmg_error))
+    mocker.patch('app.mmg_client.get_name', return_value="MMG")
     now = datetime.utcnow()
 
     notification_id = uuid.uuid4()
@@ -590,7 +587,7 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
-    firetext_client.send_sms.assert_called_once_with(
+    mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
         content="Sample service: This is a template",
         reference=str(notification_id)
@@ -602,7 +599,7 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
     assert persisted_notification.status == 'failed'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
-    assert persisted_notification.sent_by == 'firetext'
+    assert persisted_notification.sent_by == 'MMG'
 
 
 def test_should_persist_notification_as_failed_if_email_client_fails(sample_email_template, mocker):
@@ -649,7 +646,7 @@ def test_should_not_send_sms_if_db_peristance_failed(sample_template, mocker):
         "to": "+447234123123"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms')
+    mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.db.session.add', side_effect=SQLAlchemyError())
     now = datetime.utcnow()
 
@@ -661,7 +658,7 @@ def test_should_not_send_sms_if_db_peristance_failed(sample_template, mocker):
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
-    firetext_client.send_sms.assert_not_called()
+    mmg_client.send_sms.assert_not_called()
     with pytest.raises(NoResultFound) as e:
         notifications_dao.get_notification(sample_template.service_id, notification_id)
     assert 'No row was found for one' in str(e.value)
