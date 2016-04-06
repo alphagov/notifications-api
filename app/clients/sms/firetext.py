@@ -6,34 +6,34 @@ from app.clients.sms import (
 )
 from flask import current_app
 from requests import request, RequestException, HTTPError
-from app.clients import ClientResponse, STATISTICS_DELIVERED, STATISTICS_FAILURE
+from app.clients import STATISTICS_DELIVERED, STATISTICS_FAILURE
 
 logger = logging.getLogger(__name__)
 
+firetext_responses = {
+    '0': {
+        "message": 'Delivered',
+        "notification_statistics_status": STATISTICS_DELIVERED,
+        "success": True,
+        "notification_status": 'delivered'
+    },
+    '1': {
+        "message": 'Declined',
+        "success": False,
+        "notification_statistics_status": STATISTICS_FAILURE,
+        "notification_status": 'failed'
+    },
+    '2': {
+        "message": 'Undelivered (Pending with Network)',
+        "success": False,
+        "notification_statistics_status": None,
+        "notification_status": 'sent'
+    }
+}
 
-class FiretextResponses(ClientResponse):
-    def __init__(self):
-        ClientResponse.__init__(self)
-        self.__response_model__ = {
-            '0': {
-                "message": 'Delivered',
-                "notification_statistics_status": STATISTICS_DELIVERED,
-                "success": True,
-                "notification_status": 'delivered'
-            },
-            '1': {
-                "message": 'Declined',
-                "success": False,
-                "notification_statistics_status": STATISTICS_FAILURE,
-                "notification_status": 'failed'
-            },
-            '2': {
-                "message": 'Undelivered (Pending with Network)',
-                "success": False,
-                "notification_statistics_status": None,
-                "notification_status": 'sent'
-            }
-        }
+
+def get_firetext_responses(status):
+    return firetext_responses[status]
 
 
 class FiretextClientException(SmsClientException):

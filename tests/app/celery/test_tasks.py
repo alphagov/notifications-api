@@ -46,6 +46,8 @@ class AnyStringWith(str):
 def firetext_error():
     return {'code': 0, 'description': 'error'}
 
+mmg_error = {'Error': '40', 'Description': 'error'}
+
 
 def test_should_call_delete_successful_notifications_in_task(notify_api, mocker):
     mocker.patch('app.celery.tasks.delete_successful_notifications_created_more_than_a_day_ago')
@@ -667,7 +669,7 @@ def test_should_throw_mmg_client_exception(mocker):
                     'secret_code': '12345'}
 
     encrypted_notification = encryption.encrypt(notification)
-    mocker.patch('app.mmg_client.send_sms', side_effect=MMGClientException(firetext_error()))
+    mocker.patch('app.mmg_client.send_sms', side_effect=MMGClientException(mmg_error))
     send_sms_code(encrypted_notification)
     mmg_client.send_sms.assert_called_once_with(format_phone_number(validate_phone_number(notification['to'])),
                                                 notification['secret_code'],

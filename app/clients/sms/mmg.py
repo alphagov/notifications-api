@@ -1,33 +1,27 @@
 from flask import current_app
 from monotonic import monotonic
 from requests import (request, RequestException, HTTPError)
-from app.clients import (ClientResponse, STATISTICS_DELIVERED, STATISTICS_FAILURE)
+from app.clients import (STATISTICS_DELIVERED, STATISTICS_FAILURE)
 from app.clients.sms import (SmsClient, SmsClientException)
 
+mmg_response_map = {
+    '00': {
+        "message": 'Delivered',
+        "notification_statistics_status": STATISTICS_DELIVERED,
+        "success": True,
+        "notification_status": 'delivered'
+    },
+    'default': {
+        "message": 'Declined',
+        "success": False,
+        "notification_statistics_status": STATISTICS_FAILURE,
+        "notification_status": 'failed'
+    }
+}
 
-class FiretextResponses(ClientResponse):
-    def __init__(self):
-        ClientResponse.__init__(self)
-        self.__response_model__ = {
-            '0': {
-                "message": 'Delivered',
-                "notification_statistics_status": STATISTICS_DELIVERED,
-                "success": True,
-                "notification_status": 'delivered'
-            },
-            '1': {
-                "message": 'Declined',
-                "success": False,
-                "notification_statistics_status": STATISTICS_FAILURE,
-                "notification_status": 'failed'
-            },
-            '2': {
-                "message": 'Undelivered (Pending with Network)',
-                "success": False,
-                "notification_statistics_status": None,
-                "notification_status": 'sent'
-            }
-        }
+
+def get_mmg_responses(status):
+    return mmg_response_map.get(status, mmg_response_map.get('default'))
 
 
 class MMGClientException(SmsClientException):

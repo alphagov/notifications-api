@@ -15,42 +15,6 @@ from app.dao.notifications_dao import get_notification_by_id, dao_get_notificati
 from freezegun import freeze_time
 
 
-def test_get_status_name_from_response_return_status():
-    from app.notifications.rest import _get_from_response
-    form = {'status': 'good'}
-    client_name = 'sms client'
-    status, error = _get_from_response(form, 'status', client_name)
-    expected = 'good'
-    assert expected == status
-    assert error is None
-
-
-def test_get_status_name_returns_error():
-    from app.notifications.rest import _get_from_response
-    form = {'status': '',
-            'another': 'some'}
-    client_name = 'sms client'
-    errors = []
-    status, error1 = _get_from_response(form, 'reference', client_name)
-    expected = "{} callback failed: reference missing".format(client_name)
-    assert expected == error1
-    assert status is None
-    errors.append(error1)
-    status, error2 = _get_from_response(form, 'status', client_name)
-    errors.append(error2)
-    another, error3 = _get_from_response(form, 'another', client_name)
-    if error3:
-        errors.append(error3)
-    assert "sms client callback failed: status missing" == error2
-    assert len(errors) == 2
-    assert error1 in errors
-    assert error2 in errors
-    assert error3 not in errors
-    err = [error1, error2, error3]
-    err = filter(None, err)
-    assert len(list(err)) == 2
-
-
 def test_get_notification_by_id(notify_api, sample_notification):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -1066,7 +1030,7 @@ def test_firetext_callback_should_return_400_if_empty_reference(notify_api):
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 400
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'Firetext callback failed: reference missing'
+            assert json_resp['message'] == ['Firetext callback failed: reference missing']
 
 
 def test_firetext_callback_should_return_400_if_no_reference(notify_api):
@@ -1080,7 +1044,7 @@ def test_firetext_callback_should_return_400_if_no_reference(notify_api):
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 400
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'Firetext callback failed: reference missing'
+            assert json_resp['message'] == ['Firetext callback failed: reference missing']
 
 
 def test_firetext_callback_should_return_200_if_send_sms_reference(notify_api):
@@ -1102,13 +1066,13 @@ def test_firetext_callback_should_return_400_if_no_status(notify_api):
         with notify_api.test_client() as client:
             response = client.post(
                 path='/notifications/sms/firetext',
-                data='mobile=441234123123&time=2016-03-10 14:17:00',
+                data='mobile=441234123123&time=2016-03-10 14:17:00&reference=send-sms-code',
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 400
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'Firetext callback failed: status missing'
+            assert json_resp['message'] == ['Firetext callback failed: status missing']
 
 
 def test_firetext_callback_should_return_400_if_unknown_status(notify_api):
@@ -1151,7 +1115,7 @@ def test_firetext_callback_should_return_404_if_cannot_find_notification_id(noti
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            assert response.status_code == 404
+            assert response.status_code == 400
             assert json_resp['result'] == 'error'
             assert json_resp['message'] == 'Firetext callback failed: notification {} not found. Status {}'.format(
                 missing_notification_id,
@@ -1270,6 +1234,60 @@ def test_firetext_callback_should_update_multiple_notification_status_sent(notif
             assert dao_get_notification_statistics_for_service(notification1.service_id)[0].sms_delivered == 3
             assert dao_get_notification_statistics_for_service(notification1.service_id)[0].sms_requested == 3
             assert dao_get_notification_statistics_for_service(notification1.service_id)[0].sms_error == 0
+
+
+def test_process_mmg_response_return_200_when_cid_is_send_sms_code(notify_api):
+    with notify_api.test_request_context():
+        data = json.dumps({"reference": "10100164",
+                           "CID": "send-sms-code",
+                           "MSISDN": "447775349060",
+                           "status": "00",
+                           "deliverytime": "2016-04-05 16:01:07"})
+
+        with notify_api.test_client() as client:
+            response = client.post(path='notifications/sms/mmg',
+                                   data=data,
+                                   headers=[('Content-Type', 'application/json')])
+            assert response.status_code == 200
+            json_data = json.loads(response.data)
+            assert json_data['result'] == 'success'
+            assert json_data['message'] == 'MMG callback succeeded: send-sms-code'
+
+
+def test_process_mmg_response_returns_200_when_cid_is_valid_notification_id(notify_api, sample_notification):
+    with notify_api.test_client() as client:
+        data = json.dumps({"reference": "mmg_reference",
+                           "CID": str(sample_notification.id),
+                           "MSISDN": "447777349060",
+                           "status": "00",
+                           "deliverytime": "2016-04-05 16:01:07"})
+
+        response = client.post(path='notifications/sms/mmg',
+                               data=data,
+                               headers=[('Content-Type', 'application/json')])
+        assert response.status_code == 200
+        json_data = json.loads(response.data)
+        assert json_data['result'] == 'success'
+        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
+
+
+def test_process_mmg_response_returns_400_for_malformed_data(notify_api):
+    with notify_api.test_client() as client:
+        data = json.dumps({"reference": "mmg_reference",
+                           "monkey": 'random thing',
+                           "MSISDN": "447777349060",
+                           "no_status": "00",
+                           "deliverytime": "2016-04-05 16:01:07"})
+
+        response = client.post(path='notifications/sms/mmg',
+                               data=data,
+                               headers=[('Content-Type', 'application/json')])
+        assert response.status_code == 400
+        json_data = json.loads(response.data)
+        assert json_data['result'] == 'error'
+        assert len(json_data['message']) == 2
+        assert "{} callback failed: {} missing".format('MMG', 'status') in json_data['message']
+        assert "{} callback failed: {} missing".format('MMG', 'CID') in json_data['message']
 
 
 def test_ses_callback_should_not_need_auth(notify_api):
