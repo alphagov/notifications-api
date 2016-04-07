@@ -146,7 +146,7 @@ def process_job(job_id):
     )
 
     for recipient, personalisation in RecipientCSV(
-            s3.get_job_from_s3(job.bucket_name, job_id),
+            s3.get_job_from_s3(str(service.id), str(job_id)),
             template_type=template.template_type,
             placeholders=template.placeholders
     ).recipients_and_personalisation:
@@ -191,7 +191,7 @@ def process_job(job_id):
 @notify_celery.task(name="remove-job")
 def remove_job(job_id):
     job = dao_get_job_by_id(job_id)
-    s3.remove_job_from_s3(job.bucket_name, job_id)
+    s3.remove_job_from_s3(job.service.id, str(job_id))
     current_app.logger.info("Job {} has been removed from s3.".format(job_id))
 
 

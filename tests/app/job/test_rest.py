@@ -99,8 +99,6 @@ def test_create_job(notify_api, sample_template, mocker):
                 'service': str(sample_template.service.id),
                 'template': sample_template.id,
                 'original_file_name': 'thisisatest.csv',
-                'bucket_name': 'service-{}-notify'.format(sample_template.service.id),
-                'file_name': '{}.csv'.format(job_id),
                 'notification_count': 1
             }
             path = '/service/{}/job'.format(sample_template.service.id)
@@ -153,10 +151,8 @@ def test_create_job_returns_400_if_missing_data(notify_api, sample_template, moc
             app.celery.tasks.process_job.apply_async.assert_not_called()
             assert resp_json['result'] == 'error'
             assert 'Missing data for required field.' in resp_json['message']['original_file_name']
-            assert 'Missing data for required field.' in resp_json['message']['file_name']
             assert 'Missing data for required field.' in resp_json['message']['notification_count']
             assert 'Missing data for required field.' in resp_json['message']['id']
-            assert 'Missing data for required field.' in resp_json['message']['bucket_name']
 
 
 def test_create_job_returns_404_if_missing_service(notify_api, sample_template, mocker):

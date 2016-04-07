@@ -76,8 +76,10 @@ def test_should_process_sms_job(sample_job, mocker, mock_celery_remove_job):
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
 
     process_job(sample_job.id)
-
-    s3.get_job_from_s3.assert_called_once_with(sample_job.bucket_name, sample_job.id)
+    s3.get_job_from_s3.assert_called_once_with(
+        str(sample_job.service.id),
+        str(sample_job.id)
+    )
     assert encryption.encrypt.call_args[0][0]['to'] == '+441234123123'
     assert encryption.encrypt.call_args[0][0]['personalisation'] == {}
     tasks.send_sms.apply_async.assert_called_once_with(
@@ -191,7 +193,10 @@ def test_should_process_sms_job_if_exactly_on_send_limits(notify_db,
 
     process_job(job.id)
 
-    s3.get_job_from_s3.assert_called_once_with(job.bucket_name, job.id)
+    s3.get_job_from_s3.assert_called_once_with(
+        str(job.service.id),
+        str(job.id)
+    )
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.status == 'finished'
     tasks.send_email.apply_async.assert_called_with(
@@ -212,7 +217,10 @@ def test_should_not_create_send_task_for_empty_file(sample_job, mocker, mock_cel
 
     process_job(sample_job.id)
 
-    s3.get_job_from_s3.assert_called_once_with(sample_job.bucket_name, sample_job.id)
+    s3.get_job_from_s3.assert_called_once_with(
+        str(sample_job.service.id),
+        str(sample_job.id)
+    )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
     assert job.status == 'finished'
     tasks.send_sms.apply_async.assert_not_called
@@ -227,7 +235,10 @@ def test_should_process_email_job(sample_email_job, mocker, mock_celery_remove_j
 
     process_job(sample_email_job.id)
 
-    s3.get_job_from_s3.assert_called_once_with(sample_email_job.bucket_name, sample_email_job.id)
+    s3.get_job_from_s3.assert_called_once_with(
+        str(sample_email_job.service.id),
+        str(sample_email_job.id)
+    )
     assert encryption.encrypt.call_args[0][0]['to'] == 'test@test.com'
     assert encryption.encrypt.call_args[0][0]['personalisation'] == {}
     tasks.send_email.apply_async.assert_called_once_with(
@@ -256,8 +267,8 @@ def test_should_process_all_sms_job(sample_job,
     process_job(sample_job_with_placeholdered_template.id)
 
     s3.get_job_from_s3.assert_called_once_with(
-        sample_job_with_placeholdered_template.bucket_name,
-        sample_job_with_placeholdered_template.id
+        str(sample_job_with_placeholdered_template.service.id),
+        str(sample_job_with_placeholdered_template.id)
     )
     assert encryption.encrypt.call_args[0][0]['to'] == '+441234123120'
     assert encryption.encrypt.call_args[0][0]['personalisation'] == {'name': 'chris'}
