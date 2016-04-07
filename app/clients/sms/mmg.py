@@ -39,7 +39,7 @@ class MMGClient(SmsClient):
     '''
 
     def init_app(self, config, *args, **kwargs):
-        super(SmsClient, self).__init__(*args, *kwargs)
+        super(SmsClient, self).__init__(*args, **kwargs)
         self.api_key = config.get('MMG_API_KEY')
         self.from_number = config.get('MMG_FROM_NUMBER')
         self.name = 'MMG'
