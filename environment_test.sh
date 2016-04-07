@@ -19,4 +19,4 @@ export FIRETEXT_API_KEY="Firetext"
 export FIRETEXT_NUMBER="Firetext"
 export NOTIFY_EMAIL_DOMAIN="test.notify.com"
 export MMG_API_KEY='mmg-secret-key'
-export NOTIFY_FROM_NUMBER='test'
+export MMG_FROM_NUMBER='test'
