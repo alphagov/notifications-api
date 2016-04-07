@@ -41,7 +41,7 @@ def test_get_template_statistics_for_service_for_last_week(notify_api, sample_te
 
 
 @freeze_time('2016-04-30')
-def test_get_template_statistics_for_service_for_last_actual_week_with_data(notify_api, sample_template):
+def test_get_template_statistics_for_service_for_last_week_with_no_data(notify_api, sample_template):
 
     # make 9 stats records from 1st to 9th April
     for i in range(1, 10):
@@ -69,9 +69,17 @@ def test_get_template_statistics_for_service_for_last_actual_week_with_data(noti
 
             assert response.status_code == 200
             json_resp = json.loads(response.get_data(as_text=True))
-            assert len(json_resp['data']) == 7
-            assert json_resp['data'][0]['day'] == '2016-04-09'
-            assert json_resp['data'][6]['day'] == '2016-04-03'
+            assert len(json_resp['data']) == 0
+
+            response = client.get(
+                '/service/{}/template-statistics'.format(sample_template.service_id),
+                headers=[('Content-Type', 'application/json'), auth_header],
+                query_string={'limit_days': 30}
+            )
+
+            assert response.status_code == 200
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert len(json_resp['data']) == 9
 
 
 def test_get_all_template_statistics_for_service(notify_api, sample_template):
