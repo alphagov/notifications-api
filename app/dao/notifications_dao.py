@@ -63,11 +63,8 @@ def dao_get_notification_statistics_for_service_and_day(service_id, day):
 def dao_get_template_statistics_for_service(service_id, limit_days=None):
     filter = [TemplateStatistics.service_id == service_id]
     if limit_days:
-        latest_stat = TemplateStatistics.query.filter_by(service_id=service_id).order_by(
-            desc(TemplateStatistics.day)).limit(1).first()
-        if latest_stat:
-            last_date_to_fetch = latest_stat.day - timedelta(days=limit_days)
-            filter.append(TemplateStatistics.day > last_date_to_fetch)
+        last_date_to_fetch = date.today() - timedelta(days=limit_days)
+        filter.append(TemplateStatistics.day > last_date_to_fetch)
     return TemplateStatistics.query.filter(*filter).order_by(
         desc(TemplateStatistics.updated_at)).all()
 
