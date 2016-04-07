@@ -40,6 +40,8 @@ export SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/notification_api'
 export TWILIO_ACCOUNT_SID=[contact team member for account sid]
 export TWILIO_AUTH_TOKEN=[contact team member for auth token]
 export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.works'
+export MMG_API_KEY=mmg=secret-key
+export MMG_FROM_NUMBER="MMG
 "> environment.sh
 ```
 

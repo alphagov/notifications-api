@@ -17,6 +17,8 @@ class Config(object):
     NOTIFY_JOB_QUEUE = os.environ['NOTIFY_JOB_QUEUE']
     # Notification Queue names are a combination of a prefx plus a name
     NOTIFICATION_QUEUE_PREFIX = os.environ['NOTIFICATION_QUEUE_PREFIX']
+    MMG_API_KEY = os.environ['MMG_API_KEY']
+    MMG_FROM_NUMBER = os.environ['MMG_FROM_NUMBER']
     SECRET_KEY = os.environ['SECRET_KEY']
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False
     SQLALCHEMY_DATABASE_URI = os.environ['SQLALCHEMY_DATABASE_URI']
@@ -67,6 +69,7 @@ class Config(object):
         Queue('email-code', Exchange('default'), routing_key='email-code'),
         Queue('email-reset-password', Exchange('default'), routing_key='email-reset-password'),
         Queue('process-job', Exchange('default'), routing_key='process-job'),
+        Queue('remove-job', Exchange('default'), routing_key='remove-job'),
         Queue('bulk-sms', Exchange('default'), routing_key='bulk-sms'),
         Queue('bulk-email', Exchange('default'), routing_key='bulk-email'),
         Queue('email-invited-user', Exchange('default'), routing_key='email-invited-user'),

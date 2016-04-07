@@ -16,9 +16,9 @@ from app.celery.tasks import (
     delete_failed_notifications,
     delete_successful_notifications
 )
-from app import (firetext_client, aws_ses_client, encryption, DATETIME_FORMAT)
+from app import (aws_ses_client, encryption, DATETIME_FORMAT, mmg_client)
 from app.clients.email.aws_ses import AwsSesClientException
-from app.clients.sms.firetext import FiretextClientException
+from app.clients.sms.mmg import MMGClientException
 from app.dao import notifications_dao, jobs_dao
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
@@ -41,21 +41,19 @@ class AnyStringWith(str):
     def __eq__(self, other):
         return self in other
 
-
-def firetext_error():
-    return {'code': 0, 'description': 'error'}
+mmg_error = {'Error': '40', 'Description': 'error'}
 
 
-def test_should_call_delete_successful_notifications_in_task(notify_api, mocker):
-    mocker.patch('app.celery.tasks.delete_successful_notifications_created_more_than_a_day_ago')
+def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
+    mocker.patch('app.celery.tasks.delete_notifications_created_more_than_a_week_ago')
     delete_successful_notifications()
-    assert tasks.delete_successful_notifications_created_more_than_a_day_ago.call_count == 1
+    assert tasks.delete_notifications_created_more_than_a_week_ago.call_count == 1
 
 
-def test_should_call_delete_failed_notifications_in_task(notify_api, mocker):
-    mocker.patch('app.celery.tasks.delete_failed_notifications_created_more_than_a_week_ago')
+def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
+    mocker.patch('app.celery.tasks.delete_notifications_created_more_than_a_week_ago')
     delete_failed_notifications()
-    assert tasks.delete_failed_notifications_created_more_than_a_week_ago.call_count == 1
+    assert tasks.delete_notifications_created_more_than_a_week_ago.call_count == 1
 
 
 def test_should_call_delete_codes_on_delete_verify_codes_task(notify_api, mocker):
@@ -71,7 +69,7 @@ def test_should_call_delete_invotations_on_delete_invitations_task(notify_api, m
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_sms_job(sample_job, mocker):
+def test_should_process_sms_job(sample_job, mocker, mock_celery_remove_job):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
@@ -94,7 +92,10 @@ def test_should_process_sms_job(sample_job, mocker):
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db, notify_db_session, mocker):
+def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db,
+                                                                notify_db_session,
+                                                                mocker,
+                                                                mock_celery_remove_job):
     service = sample_service(notify_db, notify_db_session, limit=9)
     job = sample_job(notify_db, notify_db_session, service=service, notification_count=10)
 
@@ -109,9 +110,13 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db, notif
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.status == 'sending limits exceeded'
     tasks.send_sms.apply_async.assert_not_called()
+    mock_celery_remove_job.assert_not_called()
 
 
-def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify_db, notify_db_session, mocker):
+def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify_db,
+                                                                          notify_db_session,
+                                                                          mocker,
+                                                                          mock_celery_remove_job):
     service = sample_service(notify_db, notify_db_session, limit=1)
     job = sample_job(notify_db, notify_db_session, service=service)
 
@@ -128,6 +133,7 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify
     assert job.status == 'sending limits exceeded'
     s3.get_job_from_s3.assert_not_called()
     tasks.send_sms.apply_async.assert_not_called()
+    mock_celery_remove_job.assert_not_called()
 
 
 def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(notify_db, notify_db_session, mocker):
@@ -170,7 +176,10 @@ def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, not
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_sms_job_if_exactly_on_send_limits(notify_db, notify_db_session, mocker):
+def test_should_process_sms_job_if_exactly_on_send_limits(notify_db,
+                                                          notify_db_session,
+                                                          mocker,
+                                                          mock_celery_remove_job):
     service = sample_service(notify_db, notify_db_session, limit=10)
     template = sample_email_template(notify_db, notify_db_session, service=service)
     job = sample_job(notify_db, notify_db_session, service=service, template=template, notification_count=10)
@@ -194,9 +203,10 @@ def test_should_process_sms_job_if_exactly_on_send_limits(notify_db, notify_db_s
          "2016-01-01T11:09:00.061258"),
         queue="bulk-email"
     )
+    mock_celery_remove_job.assert_called_once_with((str(job.id),), queue="remove-job")
 
 
-def test_should_not_create_send_task_for_empty_file(sample_job, mocker):
+def test_should_not_create_send_task_for_empty_file(sample_job, mocker, mock_celery_remove_job):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('empty'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
 
@@ -209,7 +219,7 @@ def test_should_not_create_send_task_for_empty_file(sample_job, mocker):
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_email_job(sample_email_job, mocker):
+def test_should_process_email_job(sample_email_job, mocker, mock_celery_remove_job):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
@@ -231,9 +241,13 @@ def test_should_process_email_job(sample_email_job, mocker):
     )
     job = jobs_dao.dao_get_job_by_id(sample_email_job.id)
     assert job.status == 'finished'
+    mock_celery_remove_job.assert_called_once_with((str(job.id),), queue="remove-job")
 
 
-def test_should_process_all_sms_job(sample_job, sample_job_with_placeholdered_template, mocker):
+def test_should_process_all_sms_job(sample_job,
+                                    sample_job_with_placeholdered_template,
+                                    mocker,
+                                    mock_celery_remove_job):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
@@ -259,8 +273,8 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
         "personalisation": {"name": "Jo"}
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms')
-    mocker.patch('app.firetext_client.get_name', return_value="firetext")
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="MMG")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -271,7 +285,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
         now.strftime(DATETIME_FORMAT)
     )
 
-    firetext_client.send_sms.assert_called_once_with(
+    mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
         content="Sample service: Hello Jo",
         reference=str(notification_id)
@@ -285,7 +299,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     assert persisted_notification.status == 'sent'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
-    assert persisted_notification.sent_by == 'firetext'
+    assert persisted_notification.sent_by == 'MMG'
     assert not persisted_notification.job_id
 
 
@@ -295,8 +309,8 @@ def test_should_send_sms_without_personalisation(sample_template, mocker):
         "to": "+447234123123"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms')
-    mocker.patch('app.firetext_client.get_name', return_value="firetext")
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="MMG")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -307,7 +321,7 @@ def test_should_send_sms_without_personalisation(sample_template, mocker):
         now.strftime(DATETIME_FORMAT)
     )
 
-    firetext_client.send_sms.assert_called_once_with(
+    mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
         content="Sample service: This is a template",
         reference=str(notification_id)
@@ -324,8 +338,8 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
         "to": "+447700900890"  # The user’s own number, but in a different format
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms')
-    mocker.patch('app.firetext_client.get_name', return_value="firetext")
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="MMG")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -336,11 +350,36 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
         now.strftime(DATETIME_FORMAT)
     )
 
-    firetext_client.send_sms.assert_called_once_with(
+    mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447700900890")),
         content="Sample service: This is a template",
         reference=str(notification_id)
     )
+
+
+def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db, notify_db_session, mocker):
+    user = sample_user(notify_db, notify_db_session, mobile_numnber="07700 900205")
+    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = sample_template(notify_db, notify_db_session, service=service)
+
+    notification = {
+        "template": template.id,
+        "to": "07700 900849"
+    }
+    mocker.patch('app.encryption.decrypt', return_value=notification)
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="MMG")
+
+    notification_id = uuid.uuid4()
+    now = datetime.utcnow()
+    send_sms(
+        service.id,
+        notification_id,
+        "encrypted-in-reality",
+        now.strftime(DATETIME_FORMAT)
+    )
+
+    mmg_client.send_sms.assert_not_called()
 
 
 def test_should_send_email_if_restricted_service_and_valid_email(notify_db, notify_db_session, mocker):
@@ -375,6 +414,34 @@ def test_should_send_email_if_restricted_service_and_valid_email(notify_db, noti
     )
 
 
+def test_should_not_send_email_if_restricted_service_and_invalid_email_address(notify_db, notify_db_session, mocker):
+    user = sample_user(notify_db, notify_db_session)
+    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = sample_template(
+        notify_db, notify_db_session, service=service, template_type='email', subject_line='Hello'
+    )
+
+    notification = {
+        "template": template.id,
+        "to": "test@example.com"
+    }
+    mocker.patch('app.encryption.decrypt', return_value=notification)
+    mocker.patch('app.aws_ses_client.send_email')
+
+    notification_id = uuid.uuid4()
+    now = datetime.utcnow()
+    send_email(
+        service.id,
+        notification_id,
+        'subject',
+        'email_from',
+        "encrypted-in-reality",
+        now.strftime(DATETIME_FORMAT)
+    )
+
+    aws_ses_client.send_email.assert_not_called()
+
+
 def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sample_job, mocker):
     notification = {
         "template": sample_job.template.id,
@@ -382,8 +449,8 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
         "to": "+447234123123"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms')
-    mocker.patch('app.firetext_client.get_name', return_value="firetext")
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="MMG")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -393,7 +460,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
-    firetext_client.send_sms.assert_called_once_with(
+    mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
         content="Sample service: This is a template",
         reference=str(notification_id)
@@ -406,7 +473,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
     assert persisted_notification.status == 'sent'
     assert persisted_notification.sent_at > now
     assert persisted_notification.created_at == now
-    assert persisted_notification.sent_by == 'firetext'
+    assert persisted_notification.sent_by == 'MMG'
 
 
 def test_should_use_email_template_and_persist(sample_email_template_with_placeholders, mocker):
@@ -508,8 +575,8 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
         "to": "+447234123123"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms', side_effect=FiretextClientException(firetext_error()))
-    mocker.patch('app.firetext_client.get_name', return_value="firetext")
+    mocker.patch('app.mmg_client.send_sms', side_effect=MMGClientException(mmg_error))
+    mocker.patch('app.mmg_client.get_name', return_value="MMG")
     now = datetime.utcnow()
 
     notification_id = uuid.uuid4()
@@ -520,7 +587,7 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
-    firetext_client.send_sms.assert_called_once_with(
+    mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
         content="Sample service: This is a template",
         reference=str(notification_id)
@@ -532,7 +599,7 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
     assert persisted_notification.status == 'failed'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
-    assert persisted_notification.sent_by == 'firetext'
+    assert persisted_notification.sent_by == 'MMG'
 
 
 def test_should_persist_notification_as_failed_if_email_client_fails(sample_email_template, mocker):
@@ -579,7 +646,7 @@ def test_should_not_send_sms_if_db_peristance_failed(sample_template, mocker):
         "to": "+447234123123"
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.firetext_client.send_sms')
+    mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.db.session.add', side_effect=SQLAlchemyError())
     now = datetime.utcnow()
 
@@ -591,7 +658,7 @@ def test_should_not_send_sms_if_db_peristance_failed(sample_template, mocker):
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
-    firetext_client.send_sms.assert_not_called()
+    mmg_client.send_sms.assert_not_called()
     with pytest.raises(NoResultFound) as e:
         notifications_dao.get_notification(sample_template.service_id, notification_id)
     assert 'No row was found for one' in str(e.value)
@@ -629,23 +696,23 @@ def test_should_send_sms_code(mocker):
 
     encrypted_notification = encryption.encrypt(notification)
 
-    mocker.patch('app.firetext_client.send_sms')
+    mocker.patch('app.mmg_client.send_sms')
     send_sms_code(encrypted_notification)
-    firetext_client.send_sms.assert_called_once_with(format_phone_number(validate_phone_number(notification['to'])),
-                                                     notification['secret_code'],
-                                                     'send-sms-code')
+    mmg_client.send_sms.assert_called_once_with(format_phone_number(validate_phone_number(notification['to'])),
+                                                notification['secret_code'],
+                                                'send-sms-code')
 
 
-def test_should_throw_firetext_client_exception(mocker):
+def test_should_throw_mmg_client_exception(mocker):
     notification = {'to': '+447234123123',
                     'secret_code': '12345'}
 
     encrypted_notification = encryption.encrypt(notification)
-    mocker.patch('app.firetext_client.send_sms', side_effect=FiretextClientException(firetext_error()))
+    mocker.patch('app.mmg_client.send_sms', side_effect=MMGClientException(mmg_error))
     send_sms_code(encrypted_notification)
-    firetext_client.send_sms.assert_called_once_with(format_phone_number(validate_phone_number(notification['to'])),
-                                                     notification['secret_code'],
-                                                     'send-sms-code')
+    mmg_client.send_sms.assert_called_once_with(format_phone_number(validate_phone_number(notification['to'])),
+                                                notification['secret_code'],
+                                                'send-sms-code')
 
 
 def test_should_send_email_code(mocker):

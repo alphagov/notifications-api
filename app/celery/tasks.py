@@ -1,3 +1,4 @@
+import itertools
 from datetime import datetime
 
 from flask import current_app
@@ -5,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
+from app.clients.sms.mmg import MMGClientException
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 
@@ -12,7 +14,8 @@ from utils.template import Template
 
 from utils.recipients import (
     RecipientCSV,
-    validate_and_format_phone_number
+    validate_and_format_phone_number,
+    allowed_to_send_to
 )
 
 from app import (
@@ -22,7 +25,8 @@ from app import (
     notify_celery,
     encryption,
     firetext_client,
-    aws_ses_client
+    aws_ses_client,
+    mmg_client
 )
 
 from app.aws import s3
@@ -32,8 +36,7 @@ from app.dao.invited_user_dao import delete_invitations_created_more_than_two_da
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_update_notification,
-    delete_failed_notifications_created_more_than_a_week_ago,
-    delete_successful_notifications_created_more_than_a_day_ago,
+    delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
     update_notification_reference_by_id
 )
@@ -67,7 +70,7 @@ def delete_verify_codes():
 def delete_successful_notifications():
     try:
         start = datetime.utcnow()
-        deleted = delete_successful_notifications_created_more_than_a_day_ago()
+        deleted = delete_notifications_created_more_than_a_week_ago('sent')
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} successful notifications".format(
                 start,
@@ -84,7 +87,7 @@ def delete_successful_notifications():
 def delete_failed_notifications():
     try:
         start = datetime.utcnow()
-        deleted = delete_failed_notifications_created_more_than_a_week_ago()
+        deleted = delete_notifications_created_more_than_a_week_ago('failed')
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} failed notifications".format(
                 start,
@@ -179,17 +182,32 @@ def process_job(job_id):
     job.processing_started = start
     job.processing_finished = finished
     dao_update_job(job)
+    remove_job.apply_async((str(job_id),), queue='remove-job')
     current_app.logger.info(
         "Job {} created at {} started at {} finished at {}".format(job_id, job.created_at, start, finished)
     )
+
+
+@notify_celery.task(name="remove-job")
+def remove_job(job_id):
+    job = dao_get_job_by_id(job_id)
+    s3.remove_job_from_s3(job.bucket_name, job_id)
+    current_app.logger.info("Job {} has been removed from s3.".format(job_id))
 
 
 @notify_celery.task(name="send-sms")
 def send_sms(service_id, notification_id, encrypted_notification, created_at):
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
+    client = mmg_client
 
-    client = firetext_client
+    restricted = False
+
+    if not service_allowed_to_send_to(notification['to'], service):
+        current_app.logger.info(
+            "SMS {} failed as restricted service".format(notification_id)
+        )
+        restricted = True
 
     try:
         sent_at = datetime.utcnow()
@@ -199,13 +217,16 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             to=notification['to'],
             service_id=service_id,
             job_id=notification.get('job', None),
-            status='sent',
+            status='failed' if restricted else 'sent',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=client.get_name()
         )
 
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS)
+
+        if restricted:
+            return
 
         try:
             template = Template(
@@ -219,7 +240,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 content=template.replaced,
                 reference=str(notification_id)
             )
-        except FiretextClientException as e:
+        except MMGClientException as e:
             current_app.logger.error(
                 "SMS notification {} failed".format(notification_id)
             )
@@ -238,6 +259,15 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
 def send_email(service_id, notification_id, subject, from_address, encrypted_notification, created_at):
     notification = encryption.decrypt(encrypted_notification)
     client = aws_ses_client
+    service = dao_fetch_service_by_id(service_id)
+
+    restricted = False
+
+    if not service_allowed_to_send_to(notification['to'], service):
+        current_app.logger.info(
+            "Email {} failed as restricted service".format(notification_id)
+        )
+        restricted = True
 
     try:
         sent_at = datetime.utcnow()
@@ -247,12 +277,15 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
             to=notification['to'],
             service_id=service_id,
             job_id=notification.get('job', None),
-            status='sent',
+            status='failed' if restricted else 'sent',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=client.get_name()
         )
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL)
+
+        if restricted:
+            return
 
         try:
             template = Template(
@@ -284,11 +317,16 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
 def send_sms_code(encrypted_verification):
     verification_message = encryption.decrypt(encrypted_verification)
     try:
-        firetext_client.send_sms(
-            validate_and_format_phone_number(verification_message['to']),
-            verification_message['secret_code'],
-            'send-sms-code'
-        )
+        mmg_client.send_sms(validate_and_format_phone_number(verification_message['to']),
+                            verification_message['secret_code'],
+                            'send-sms-code')
+    except MMGClientException as e:
+        current_app.logger.exception(e)
+
+
+def send_sms_via_firetext(to, content, reference):
+    try:
+        firetext_client.send_sms(to=to, content=content, reference=reference)
     except FiretextClientException as e:
         current_app.logger.exception(e)
 
@@ -388,3 +426,16 @@ def email_registration_verification(encrypted_verification_message):
                                                                      url=verification_message['url']))
     except AwsSesClientException as e:
         current_app.logger.exception(e)
+
+
+def service_allowed_to_send_to(recipient, service):
+
+    if not service.restricted:
+        return True
+
+    return allowed_to_send_to(
+        recipient,
+        itertools.chain.from_iterable(
+            [user.mobile_number, user.email_address] for user in service.users
+        )
+    )

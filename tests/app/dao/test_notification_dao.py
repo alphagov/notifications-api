@@ -23,8 +23,8 @@ from app.dao.notifications_dao import (
     get_notification_for_job,
     get_notifications_for_job,
     dao_get_notification_statistics_for_service,
-    delete_successful_notifications_created_more_than_a_day_ago,
-    delete_failed_notifications_created_more_than_a_week_ago,
+    delete_notifications_created_more_than_a_day_ago,
+    delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
     update_notification_status_by_id,
     update_notification_reference_by_id,
@@ -701,21 +701,21 @@ def test_update_notification(sample_notification, sample_template):
     assert notification_from_db.status == 'failed'
 
 
-def test_should_delete_sent_notifications_after_one_day(notify_db, notify_db_session):
+def test_should_delete_notifications_after_one_day(notify_db, notify_db_session):
     created_at = datetime.utcnow() - timedelta(hours=24)
     sample_notification(notify_db, notify_db_session, created_at=created_at)
     sample_notification(notify_db, notify_db_session, created_at=created_at)
     assert len(Notification.query.all()) == 2
-    delete_successful_notifications_created_more_than_a_day_ago()
+    delete_notifications_created_more_than_a_day_ago('sent')
     assert len(Notification.query.all()) == 0
 
 
-def test_should_delete_failed_notifications_after_seven_days(notify_db, notify_db_session):
+def test_should_delete_notifications_after_seven_days(notify_db, notify_db_session):
     created_at = datetime.utcnow() - timedelta(hours=24 * 7)
     sample_notification(notify_db, notify_db_session, created_at=created_at, status="failed")
     sample_notification(notify_db, notify_db_session, created_at=created_at, status="failed")
     assert len(Notification.query.all()) == 2
-    delete_failed_notifications_created_more_than_a_week_ago()
+    delete_notifications_created_more_than_a_week_ago('failed')
     assert len(Notification.query.all()) == 0
 
 
@@ -726,7 +726,7 @@ def test_should_not_delete_sent_notifications_before_one_day(notify_db, notify_d
     sample_notification(notify_db, notify_db_session, created_at=valid, to_field="valid")
 
     assert len(Notification.query.all()) == 2
-    delete_successful_notifications_created_more_than_a_day_ago()
+    delete_notifications_created_more_than_a_day_ago('sent')
     assert len(Notification.query.all()) == 1
     assert Notification.query.first().to == 'valid'
 
@@ -737,7 +737,7 @@ def test_should_not_delete_failed_notifications_before_seven_days(notify_db, not
     sample_notification(notify_db, notify_db_session, created_at=expired, status="failed", to_field="expired")
     sample_notification(notify_db, notify_db_session, created_at=valid, status="failed", to_field="valid")
     assert len(Notification.query.all()) == 2
-    delete_failed_notifications_created_more_than_a_week_ago()
+    delete_notifications_created_more_than_a_week_ago('failed')
     assert len(Notification.query.all()) == 1
     assert Notification.query.first().to == 'valid'
 
@@ -974,7 +974,7 @@ def test_get_template_stats_for_service_returns_stats_returns_all_stats_if_no_li
 
 
 @freeze_time('2016-04-30')
-def test_get_template_stats_for_service_returns_results_from_first_day_with_data(sample_template):
+def test_get_template_stats_for_service_returns_no_result_if_no_usage_within_limit_days(sample_template):
 
     template_stats = dao_get_template_statistics_for_service(sample_template.service.id)
     assert len(template_stats) == 0
@@ -988,67 +988,15 @@ def test_get_template_stats_for_service_returns_results_from_first_day_with_data
             db.session.add(template_stats)
             db.session.commit()
 
-    # Retrieve one day of stats - read date is 2016-04-30
-    template_stats = dao_get_template_statistics_for_service(sample_template.service_id, limit_days=1)
-    assert len(template_stats) == 1
-    assert template_stats[0].day == date(2016, 4, 9)
+    # Retrieve a week of stats - read date is 2016-04-30
+    template_stats = dao_get_template_statistics_for_service(sample_template.service_id, limit_days=7)
+    assert len(template_stats) == 0
 
-    # Retrieve three days of stats
-    template_stats = dao_get_template_statistics_for_service(sample_template.service_id, limit_days=3)
-    assert len(template_stats) == 3
-    assert template_stats[0].day == date(2016, 4, 9)
-    assert template_stats[1].day == date(2016, 4, 8)
-    assert template_stats[2].day == date(2016, 4, 7)
-
-    # Retrieve nine days of stats
-    template_stats = dao_get_template_statistics_for_service(sample_template.service_id, limit_days=9)
+    # Retrieve a month of stats - read date is 2016-04-30
+    template_stats = dao_get_template_statistics_for_service(sample_template.service_id, limit_days=30)
     assert len(template_stats) == 9
-    assert template_stats[0].day == date(2016, 4, 9)
-    assert template_stats[8].day == date(2016, 4, 1)
-
-    # Retrieve with no limit
-    template_stats = dao_get_template_statistics_for_service(sample_template.service_id)
-    assert len(template_stats) == 9
-    assert template_stats[0].day == date(2016, 4, 9)
-    assert template_stats[8].day == date(2016, 4, 1)
 
 
 def test_get_template_stats_for_service_with_limit_if_no_records_returns_empty_list(sample_template):
     template_stats = dao_get_template_statistics_for_service(sample_template.service.id, limit_days=7)
     assert len(template_stats) == 0
-
-
-def test_get_template_stats_for_service_for_day_returns_stats_in_template_name_order(sample_service, sample_job):
-
-    from app.dao.templates_dao import dao_create_template
-    from app.models import Template
-
-    template_stats = dao_get_template_statistics_for_service(sample_service.id)
-    assert len(template_stats) == 0
-
-    template_names = ['Aardvark', 'ant', 'zebra', 'walrus', 'Donkey', 'Komodo dragon']
-    for name in template_names:
-        data = {
-            'name': name,
-            'template_type': 'sms',
-            'content': 'blah',
-            'service': sample_service
-        }
-        template = Template(**data)
-        dao_create_template(template)
-
-        notification_data = {
-            'to': '+44709123456',
-            'job_id': sample_job.id,
-            'service': template.service,
-            'service_id': template.service.id,
-            'template': template,
-            'template_id': template.id,
-            'created_at': datetime.utcnow()
-        }
-        notification = Notification(**notification_data)
-        dao_create_notification(notification, template.template_type)
-        template_stats = dao_get_template_statistics_for_service(template.service.id)
-
-    for i, name in enumerate(sorted(template_names, key=str.lower)):
-        assert template_stats[i].template.name == name
