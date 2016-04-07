@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.firetext import FiretextClientException
+from app.clients.sms.mmg import MMGClientException
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 
@@ -24,7 +25,8 @@ from app import (
     notify_celery,
     encryption,
     firetext_client,
-    aws_ses_client
+    aws_ses_client,
+    mmg_client
 )
 
 from app.aws import s3
@@ -197,7 +199,7 @@ def remove_job(job_id):
 def send_sms(service_id, notification_id, encrypted_notification, created_at):
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
-    client = firetext_client
+    client = mmg_client
 
     restricted = False
 
@@ -238,7 +240,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 content=template.replaced,
                 reference=str(notification_id)
             )
-        except FiretextClientException as e:
+        except MMGClientException as e:
             current_app.logger.error(
                 "SMS notification {} failed".format(notification_id)
             )
@@ -315,11 +317,16 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
 def send_sms_code(encrypted_verification):
     verification_message = encryption.decrypt(encrypted_verification)
     try:
-        firetext_client.send_sms(
-            validate_and_format_phone_number(verification_message['to']),
-            verification_message['secret_code'],
-            'send-sms-code'
-        )
+        mmg_client.send_sms(validate_and_format_phone_number(verification_message['to']),
+                            verification_message['secret_code'],
+                            'send-sms-code')
+    except MMGClientException as e:
+        current_app.logger.exception(e)
+
+
+def send_sms_via_firetext(to, content, reference):
+    try:
+        firetext_client.send_sms(to=to, content=content, reference=reference)
     except FiretextClientException as e:
         current_app.logger.exception(e)
 

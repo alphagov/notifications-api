@@ -1,7 +1,6 @@
 from datetime import datetime
-import uuid
-import itertools
 
+import itertools
 from flask import (
     Blueprint,
     jsonify,
@@ -10,11 +9,9 @@ from flask import (
     url_for,
     json
 )
-
-from utils.template import Template
 from utils.recipients import allowed_to_send_to, first_column_heading
-from app.clients.sms.firetext import FiretextResponses
-from app.clients.email.aws_ses import AwsSesResponses
+from utils.template import Template
+from app.clients.email.aws_ses import get_aws_responses
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT
 from app.authentication.auth import require_admin
 from app.dao import (
@@ -22,7 +19,10 @@ from app.dao import (
     services_dao,
     notifications_dao
 )
-
+from app.notifications.process_client_response import (
+    validate_callback_data,
+    process_sms_client_response
+)
 from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
@@ -37,47 +37,39 @@ from app.errors import register_errors
 
 register_errors(notifications)
 
-aws_response = AwsSesResponses()
-firetext_response = FiretextResponses()
-
 
 @notifications.route('/notifications/email/ses', methods=['POST'])
 def process_ses_response():
+    client_name = 'SES'
     try:
         ses_request = json.loads(request.data)
-        if 'Message' not in ses_request:
-            current_app.logger.error(
-                "SES callback failed: message missing"
-            )
+
+        errors = validate_callback_data(data=ses_request, fields=['Message'], client_name=client_name)
+        if errors:
             return jsonify(
-                result="error", message="SES callback failed: message missing"
+                result="error", message=errors
             ), 400
 
         ses_message = json.loads(ses_request['Message'])
-
-        if 'notificationType' not in ses_message:
-            current_app.logger.error(
-                "SES callback failed: notificationType missing"
-            )
+        errors = validate_callback_data(data=ses_message, fields=['notificationType'], client_name=client_name)
+        if errors:
             return jsonify(
-                result="error", message="SES callback failed: notificationType missing"
+                result="error", message=errors
             ), 400
 
+        notification_type = ses_message['notificationType']
         try:
-            aws_response.response_code_to_object(ses_message['notificationType'])
+            aws_response_dict = get_aws_responses(notification_type)
         except KeyError:
-            current_app.logger.info(
-                "SES callback failed: status {} not found.".format(ses_message['notificationType'])
-            )
+            message = "{} callback failed: status {} not found".format(client_name, notification_type)
+            current_app.logger.info(message)
             return jsonify(
                 result="error",
-                message="SES callback failed: status {} not found".format(ses_message['notificationType'])
+                message=message
             ), 400
 
-        notification_status = aws_response.response_code_to_notification_status(ses_message['notificationType'])
-        notification_statistics_status = aws_response.response_code_to_notification_statistics_status(
-            ses_message['notificationType']
-        )
+        notification_status = aws_response_dict['notification_status']
+        notification_statistics_status = aws_response_dict['notification_statistics_status']
 
         try:
             source = ses_message['mail']['source']
@@ -103,11 +95,11 @@ def process_ses_response():
                     message="SES callback failed: notification not found. Status {}".format(notification_status)
                 ), 404
 
-            if not aws_response.response_code_to_notification_success(ses_message['notificationType']):
+            if not aws_response_dict['success']:
                 current_app.logger.info(
                     "SES delivery failed: notification {} has error found. Status {}".format(
                         reference,
-                        aws_response.response_code_to_message(ses_message['notificationType'])
+                        aws_response_dict['message']
                     )
                 )
 
@@ -125,10 +117,10 @@ def process_ses_response():
 
     except ValueError as ex:
         current_app.logger.exception(
-            "SES callback failed: invalid json {}".format(ex)
+            "{} callback failed: invalid json {}".format(client_name, ex)
         )
         return jsonify(
-            result="error", message="SES callback failed: invalid json"
+            result="error", message="{} callback failed: invalid json".format(client_name)
         ), 400
 
 
@@ -144,73 +136,45 @@ def is_not_a_notification(source):
     return False
 
 
+@notifications.route('/notifications/sms/mmg', methods=['POST'])
+def process_mmg_response():
+    client_name = 'MMG'
+    data = json.loads(request.data)
+    validation_errors = validate_callback_data(data=data,
+                                               fields=['status', 'CID'],
+                                               client_name=client_name)
+    if validation_errors:
+        [current_app.logger.info(e) for e in validation_errors]
+        return jsonify(result='error', message=validation_errors), 400
+
+    success, errors = process_sms_client_response(status=data.get('status'),
+                                                  reference=data.get('CID'),
+                                                  client_name='MMG')
+    if errors:
+        [current_app.logger.info(e) for e in errors]
+        return jsonify(result='error', message=errors), 400
+    else:
+        return jsonify(result='success', message=success), 200
+
+
 @notifications.route('/notifications/sms/firetext', methods=['POST'])
 def process_firetext_response():
-    if 'status' not in request.form:
-        current_app.logger.info(
-            "Firetext callback failed: status missing"
-        )
-        return jsonify(result="error", message="Firetext callback failed: status missing"), 400
+    client_name = 'Firetext'
+    validation_errors = validate_callback_data(data=request.form,
+                                               fields=['status', 'reference'],
+                                               client_name=client_name)
+    if validation_errors:
+        current_app.logger.info(validation_errors)
+        return jsonify(result='error', message=validation_errors), 400
 
-    if len(request.form.get('reference', '')) <= 0:
-        current_app.logger.info(
-            "Firetext callback with no reference"
-        )
-        return jsonify(result="error", message="Firetext callback failed: reference missing"), 400
-
-    reference = request.form['reference']
-    status = request.form['status']
-
-    if reference == 'send-sms-code':
-        return jsonify(result="success", message="Firetext callback succeeded: send-sms-code"), 200
-
-    try:
-        uuid.UUID(reference, version=4)
-    except ValueError:
-        current_app.logger.info(
-            "Firetext callback with invalid reference {}".format(reference)
-        )
-        return jsonify(
-            result="error", message="Firetext callback with invalid reference {}".format(reference)
-        ), 400
-
-    try:
-        firetext_response.response_code_to_object(status)
-    except KeyError:
-        current_app.logger.info(
-            "Firetext callback failed: status {} not found.".format(status)
-        )
-        return jsonify(result="error", message="Firetext callback failed: status {} not found.".format(status)), 400
-
-    notification_status = firetext_response.response_code_to_notification_status(status)
-    notification_statistics_status = firetext_response.response_code_to_notification_statistics_status(status)
-
-    if notifications_dao.update_notification_status_by_id(
-            reference,
-            notification_status,
-            notification_statistics_status
-    ) == 0:
-        current_app.logger.info(
-            "Firetext callback failed: notification {} not found. Status {}".format(reference, status)
-        )
-        return jsonify(
-            result="error",
-            message="Firetext callback failed: notification {} not found. Status {}".format(
-                reference,
-                firetext_response.response_code_to_message(status)
-            )
-        ), 404
-
-    if not firetext_response.response_code_to_notification_success(status):
-        current_app.logger.info(
-            "Firetext delivery failed: notification {} has error found. Status {}".format(
-                reference,
-                FiretextResponses().response_code_to_message(status)
-            )
-        )
-    return jsonify(
-        result="success", message="Firetext callback succeeded. reference {} updated".format(reference)
-    ), 200
+    success, errors = process_sms_client_response(status=request.form.get('status'),
+                                                  reference=request.form.get('reference'),
+                                                  client_name=client_name)
+    if errors:
+        [current_app.logger.info(e) for e in errors]
+        return jsonify(result='error', message=errors), 400
+    else:
+        return jsonify(result='success', message=success), 200
 
 
 @notifications.route('/notifications/<uuid:notification_id>', methods=['GET'])
