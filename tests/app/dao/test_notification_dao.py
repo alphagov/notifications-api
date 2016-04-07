@@ -974,7 +974,7 @@ def test_get_template_stats_for_service_returns_stats_returns_all_stats_if_no_li
 
 
 @freeze_time('2016-04-30')
-def test_get_template_stats_for_service_returns_results_from_first_day_with_data(sample_template):
+def test_get_template_stats_for_service_returns_no_result_if_no_usage_within_limit_days(sample_template):
 
     template_stats = dao_get_template_statistics_for_service(sample_template.service.id)
     assert len(template_stats) == 0
@@ -988,29 +988,13 @@ def test_get_template_stats_for_service_returns_results_from_first_day_with_data
             db.session.add(template_stats)
             db.session.commit()
 
-    # Retrieve one day of stats - read date is 2016-04-30
-    template_stats = dao_get_template_statistics_for_service(sample_template.service_id, limit_days=1)
-    assert len(template_stats) == 1
-    assert template_stats[0].day == date(2016, 4, 9)
+    # Retrieve a week of stats - read date is 2016-04-30
+    template_stats = dao_get_template_statistics_for_service(sample_template.service_id, limit_days=7)
+    assert len(template_stats) == 0
 
-    # Retrieve three days of stats
-    template_stats = dao_get_template_statistics_for_service(sample_template.service_id, limit_days=3)
-    assert len(template_stats) == 3
-    assert template_stats[0].day == date(2016, 4, 9)
-    assert template_stats[1].day == date(2016, 4, 8)
-    assert template_stats[2].day == date(2016, 4, 7)
-
-    # Retrieve nine days of stats
-    template_stats = dao_get_template_statistics_for_service(sample_template.service_id, limit_days=9)
+    # Retrieve a month of stats - read date is 2016-04-30
+    template_stats = dao_get_template_statistics_for_service(sample_template.service_id, limit_days=30)
     assert len(template_stats) == 9
-    assert template_stats[0].day == date(2016, 4, 9)
-    assert template_stats[8].day == date(2016, 4, 1)
-
-    # Retrieve with no limit
-    template_stats = dao_get_template_statistics_for_service(sample_template.service_id)
-    assert len(template_stats) == 9
-    assert template_stats[0].day == date(2016, 4, 9)
-    assert template_stats[8].day == date(2016, 4, 1)
 
 
 def test_get_template_stats_for_service_with_limit_if_no_records_returns_empty_list(sample_template):
