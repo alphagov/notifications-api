@@ -15,14 +15,10 @@ def test_create_job(sample_template):
     assert Job.query.count() == 0
 
     job_id = uuid.uuid4()
-    bucket_name = 'service-{}-notify'.format(sample_template.service.id)
-    file_name = '{}.csv'.format(job_id)
     data = {
         'id': job_id,
         'service_id': sample_template.service.id,
         'template_id': sample_template.id,
-        'bucket_name': bucket_name,
-        'file_name': file_name,
         'original_file_name': 'some.csv',
         'notification_count': 1
     }

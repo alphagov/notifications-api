@@ -44,17 +44,21 @@ def sample_user(notify_db,
                 notify_db_session,
                 mobile_numnber="+447700900986",
                 email="notify@digital.cabinet-office.gov.uk"):
-    data = {
-        'name': 'Test User',
-        'email_address': email,
-        'password': 'password',
-        'mobile_number': mobile_numnber,
-        'state': 'active'
-    }
-    usr = User.query.filter_by(email_address=email).first()
-    if not usr:
-        usr = User(**data)
-        save_model_user(usr)
+    try:
+        data = {
+            'name': 'Test User',
+            'email_address': email,
+            'password': 'password',
+            'mobile_number': mobile_numnber,
+            'state': 'active'
+        }
+        usr = User.query.filter_by(email_address=email).first()
+        if not usr:
+            usr = User(**data)
+            save_model_user(usr)
+    except Exception:
+        import traceback
+        traceback.print_exc()
     return usr
 
 
@@ -211,14 +215,11 @@ def sample_job(notify_db,
         template = sample_template(notify_db, notify_db_session,
                                    service=service)
     job_id = uuid.uuid4()
-    bucket_name = 'service-{}-notify'.format(service.id)
-    file_name = '{}.csv'.format(job_id)
     data = {
         'id': uuid.uuid4(),
         'service_id': service.id,
+        'service': service,
         'template_id': template.id,
-        'bucket_name': bucket_name,
-        'file_name': file_name,
         'original_file_name': 'some.csv',
         'notification_count': notification_count,
         'created_at': created_at
@@ -255,14 +256,11 @@ def sample_email_job(notify_db,
             notify_db_session,
             service=service)
     job_id = uuid.uuid4()
-    bucket_name = 'service-{}-notify'.format(service.id)
-    file_name = '{}.csv'.format(job_id)
     data = {
         'id': uuid.uuid4(),
         'service_id': service.id,
+        'service': service,
         'template_id': template.id,
-        'bucket_name': bucket_name,
-        'file_name': file_name,
         'original_file_name': 'some.csv',
         'notification_count': 1
     }
