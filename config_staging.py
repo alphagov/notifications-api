@@ -16,6 +16,7 @@ class Staging(Config):
     FIRETEXT_API_KEY = os.getenv("STAGING_FIRETEXT_API_KEY")
     FIRETEXT_NUMBER = os.getenv("STAGING_FIRETEXT_NUMBER")
     TWILIO_AUTH_TOKEN = os.getenv('STAGING_TWILIO_AUTH_TOKEN')
+    MMG_API_KEY = os.environ['STAGING_MMG_API_KEY']
 
     BROKER_TRANSPORT_OPTIONS = {
         'region': 'eu-west-1',
