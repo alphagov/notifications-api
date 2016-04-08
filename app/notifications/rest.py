@@ -195,6 +195,7 @@ def get_all_notifications():
         api_user['client'],
         filter_dict=data,
         page=page)
+
     return jsonify(
         notifications=notification_status_schema.dump(pagination.items, many=True).data,
         links=pagination_links(

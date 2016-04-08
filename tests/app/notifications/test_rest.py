@@ -30,7 +30,7 @@ def test_get_notification_by_id(notify_api, sample_notification):
             notification = json.loads(response.get_data(as_text=True))['data']['notification']
             assert notification['status'] == 'sent'
             assert notification['template'] == {
-                'id': sample_notification.template.id,
+                'id': str(sample_notification.template.id),
                 'name': sample_notification.template.name,
                 'template_type': sample_notification.template.template_type}
             assert notification['job'] == {
@@ -76,7 +76,7 @@ def test_get_all_notifications(notify_api, sample_notification):
             notifications = json.loads(response.get_data(as_text=True))
             assert notifications['notifications'][0]['status'] == 'sent'
             assert notifications['notifications'][0]['template'] == {
-                'id': sample_notification.template.id,
+                'id': str(sample_notification.template.id),
                 'name': sample_notification.template.name,
                 'template_type': sample_notification.template.template_type}
             assert notifications['notifications'][0]['job'] == {
@@ -504,14 +504,14 @@ def test_should_reject_bad_phone_numbers(notify_api, sample_template, mocker):
             assert response.status_code == 400
 
 
-def test_send_notification_invalid_template_id(notify_api, sample_template, mocker):
+def test_send_notification_invalid_template_id(notify_api, sample_template, mocker, fake_uuid):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.send_sms.apply_async')
 
             data = {
                 'to': '+447700900855',
-                'template': 9999
+                'template': fake_uuid
             }
             auth_header = create_authorization_header(
                 service_id=sample_template.service.id,
@@ -707,7 +707,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
 
             data = {
                 'to': '07700 900 855',
-                'template': sample_template.id
+                'template': str(sample_template.id)
             }
 
             auth_header = create_authorization_header(
@@ -767,7 +767,7 @@ def test_should_reject_email_notification_with_bad_email(notify_api, sample_emai
             to_address = "bad-email"
             data = {
                 'to': to_address,
-                'template': sample_email_template.service.id
+                'template': str(sample_email_template.service.id)
             }
             auth_header = create_authorization_header(
                 service_id=sample_email_template.service.id,
@@ -788,13 +788,13 @@ def test_should_reject_email_notification_with_bad_email(notify_api, sample_emai
 
 
 def test_should_reject_email_notification_with_template_id_that_cant_be_found(
-        notify_api, sample_email_template, mocker):
+        notify_api, sample_email_template, mocker, fake_uuid):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.send_email.apply_async')
             data = {
                 'to': 'ok@ok.com',
-                'template': 1234
+                'template': fake_uuid
             }
             auth_header = create_authorization_header(
                 service_id=sample_email_template.service.id,
@@ -829,7 +829,7 @@ def test_should_not_allow_email_template_from_another_service(notify_api, servic
 
             data = {
                 'to': sample_user.email_address,
-                'template': service_2_templates[0].id
+                'template': str(service_2_templates[0].id)
             }
 
             auth_header = create_authorization_header(
@@ -861,7 +861,7 @@ def test_should_not_send_email_if_restricted_and_not_a_service_user(notify_api, 
 
             data = {
                 'to': "not-someone-we-trust@email-address.com",
-                'template': sample_email_template.id
+                'template': str(sample_email_template.id)
             }
 
             auth_header = create_authorization_header(
@@ -896,8 +896,8 @@ def test_should_not_send_email_for_job_if_restricted_and_not_a_service_user(
 
             data = {
                 'to': "not-someone-we-trust@email-address.com",
-                'template': sample_job.template.id,
-                'job': sample_job.id
+                'template': str(sample_job.template.id),
+                'job': (sample_job.id)
             }
 
             auth_header = create_authorization_header(
@@ -927,7 +927,7 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
 
             data = {
                 'to': 'ok@ok.com',
-                'template': sample_email_template.id
+                'template': str(sample_email_template.id)
             }
 
             auth_header = create_authorization_header(
@@ -971,7 +971,7 @@ def test_should_block_api_call_if_over_day_limit(notify_db, notify_db_session, n
 
             data = {
                 'to': 'ok@ok.com',
-                'template': email_template.id
+                'template': str(email_template.id)
             }
 
             auth_header = create_authorization_header(
@@ -1007,7 +1007,7 @@ def test_no_limit_for_live_service(notify_api,
 
             data = {
                 'to': 'ok@ok.com',
-                'template': sample_email_template.id
+                'template': str(sample_email_template.id)
             }
 
             auth_header = create_authorization_header(
@@ -1041,7 +1041,7 @@ def test_should_block_api_call_if_over_day_limit_regardless_of_type(notify_db, n
 
             data = {
                 'to': '+447234123123',
-                'template': sms_template.id
+                'template': str(sms_template.id)
             }
 
             auth_header = create_authorization_header(
@@ -1074,7 +1074,7 @@ def test_should_allow_api_call_if_under_day_limit_regardless_of_type(notify_db, 
 
             data = {
                 'to': '+447634123123',
-                'template': sms_template.id
+                'template': str(sms_template.id)
             }
 
             auth_header = create_authorization_header(

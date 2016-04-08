@@ -27,24 +27,28 @@ def notify_api(request):
 
 @pytest.fixture(scope='session')
 def notify_db(notify_api, request):
-    Migrate(notify_api, db)
-    Manager(db, MigrateCommand)
-    BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-    ALEMBIC_CONFIG = os.path.join(BASE_DIR, 'migrations')
-    config = Config(ALEMBIC_CONFIG + '/alembic.ini')
-    config.set_main_option("script_location", ALEMBIC_CONFIG)
+    try:
+        Migrate(notify_api, db)
+        Manager(db, MigrateCommand)
+        BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+        ALEMBIC_CONFIG = os.path.join(BASE_DIR, 'migrations')
+        config = Config(ALEMBIC_CONFIG + '/alembic.ini')
+        config.set_main_option("script_location", ALEMBIC_CONFIG)
 
-    with notify_api.app_context():
-        upgrade(config, 'head')
+        with notify_api.app_context():
+            upgrade(config, 'head')
 
-    def teardown():
-        db.session.remove()
-        db.engine.execute("drop sequence services_id_seq cascade")
-        db.drop_all()
-        db.engine.execute("drop table alembic_version")
-        db.get_engine(notify_api).dispose()
+        def teardown():
+            db.session.remove()
+            db.engine.execute("drop sequence services_id_seq cascade")
+            db.drop_all()
+            db.engine.execute("drop table alembic_version")
+            db.get_engine(notify_api).dispose()
 
-    request.addfinalizer(teardown)
+        request.addfinalizer(teardown)
+    except:
+        import traceback
+        traceback.print_exc()
     return db
 
 

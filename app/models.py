@@ -1,7 +1,7 @@
 import uuid
 import datetime
 
-from sqlalchemy import UniqueConstraint, Sequence
+from sqlalchemy import UniqueConstraint, Sequence, CheckConstraint
 
 from . import db
 from sqlalchemy.dialects.postgresql import (
@@ -24,7 +24,7 @@ def filter_null_value_fields(obj):
 class User(db.Model):
     __tablename__ = 'users'
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String, nullable=False, index=True, unique=False)
     email_address = db.Column(db.String(255), nullable=False, index=True, unique=True)
     created_at = db.Column(
@@ -62,7 +62,7 @@ class User(db.Model):
 user_to_service = db.Table(
     'user_to_service',
     db.Model.metadata,
-    db.Column('user_id', db.Integer, db.ForeignKey('users.id')),
+    db.Column('user_id', UUID(as_uuid=True), db.ForeignKey('users.id')),
     db.Column('service_id', UUID(as_uuid=True), db.ForeignKey('services.id')),
 
     UniqueConstraint('user_id', 'service_id', name='uix_user_to_service')
@@ -74,7 +74,6 @@ class Service(db.Model):
     __tablename__ = 'services'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    old_id = db.Column(db.Integer, Sequence('services_id_seq'), nullable=False)
     name = db.Column(db.String(255), nullable=False, unique=True)
     created_at = db.Column(
         db.DateTime,
@@ -99,9 +98,9 @@ class Service(db.Model):
 
 
 class ApiKey(db.Model):
-    __tablename__ = 'api_key'
+    __tablename__ = 'api_keys'
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), nullable=False)
     secret = db.Column(db.String(255), unique=True, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
@@ -116,7 +115,7 @@ class ApiKey(db.Model):
 class NotificationStatistics(db.Model):
     __tablename__ = 'notification_statistics'
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     day = db.Column(db.String(255), nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service', backref=db.backref('service_notification_stats', lazy='dynamic'))
@@ -142,7 +141,7 @@ TEMPLATE_TYPES = [TEMPLATE_TYPE_SMS, TEMPLATE_TYPE_EMAIL, TEMPLATE_TYPE_LETTER]
 class Template(db.Model):
     __tablename__ = 'templates'
 
-    id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), nullable=False)
     template_type = db.Column(db.Enum(*TEMPLATE_TYPES, name='template_type'), nullable=False)
     created_at = db.Column(
@@ -173,7 +172,7 @@ class Job(db.Model):
     original_file_name = db.Column(db.String, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
     service = db.relationship('Service', backref=db.backref('jobs', lazy='dynamic'))
-    template_id = db.Column(db.BigInteger, db.ForeignKey('templates.id'), index=True, unique=False)
+    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), index=True, unique=False)
     template = db.relationship('Template', backref=db.backref('jobs', lazy='dynamic'))
     created_at = db.Column(
         db.DateTime,
@@ -208,8 +207,8 @@ VERIFY_CODE_TYPES = ['email', 'sms']
 class VerifyCode(db.Model):
     __tablename__ = 'verify_codes'
 
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=False)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     user = db.relationship('User', backref=db.backref('verify_codes', lazy='dynamic'))
     _code = db.Column(db.String, nullable=False)
     code_type = db.Column(db.Enum(*VERIFY_CODE_TYPES, name='verify_code_types'),
@@ -248,7 +247,7 @@ class Notification(db.Model):
     job = db.relationship('Job', backref=db.backref('notifications', lazy='dynamic'))
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False)
     service = db.relationship('Service')
-    template_id = db.Column(db.BigInteger, db.ForeignKey('templates.id'), index=True, unique=False)
+    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), index=True, unique=False)
     template = db.relationship('Template')
     created_at = db.Column(
         db.DateTime,
@@ -281,7 +280,7 @@ class InvitedUser(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email_address = db.Column(db.String(255), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=False)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     from_user = db.relationship('User')
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False)
     service = db.relationship('Service')
@@ -332,7 +331,7 @@ class Permission(db.Model):
     # Service id is optional, if the service is omitted we will assume the permission is not service specific.
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=True)
     service = db.relationship('Service')
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), index=True, nullable=False)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     user = db.relationship('User')
     permission = db.Column(
         db.Enum(*PERMISSION_LIST, name='permission_types'),
@@ -356,7 +355,7 @@ class TemplateStatistics(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
     service = db.relationship('Service', backref=db.backref('template_statistics', lazy='dynamic'))
-    template_id = db.Column(db.BigInteger, db.ForeignKey('templates.id'), index=True, nullable=False, unique=False)
+    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), index=True, nullable=False, unique=False)
     template = db.relationship('Template')
     usage_count = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=1)
     day = db.Column(db.Date, index=True, nullable=False, unique=False, default=datetime.date.today)
