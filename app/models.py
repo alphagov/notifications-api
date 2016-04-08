@@ -88,7 +88,7 @@ class Service(db.Model):
         nullable=True,
         onupdate=datetime.datetime.now)
     active = db.Column(db.Boolean, index=False, unique=False, nullable=False)
-    limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False)
+    message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False)
     users = db.relationship(
         'User',
         secondary=user_to_service,
@@ -121,10 +121,10 @@ class NotificationStatistics(db.Model):
     service = db.relationship('Service', backref=db.backref('service_notification_stats', lazy='dynamic'))
     emails_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     emails_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
-    emails_error = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    emails_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     sms_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     sms_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
-    sms_error = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
 
     __table_args__ = (
         UniqueConstraint('service_id', 'day', name='uix_service_to_day'),
@@ -234,7 +234,7 @@ class VerifyCode(db.Model):
         return check_hash(cde, self._code)
 
 
-NOTIFICATION_STATUS_TYPES = ['sent', 'delivered', 'failed', 'complaint', 'bounce']
+NOTIFICATION_STATUS_TYPES = ['sending', 'delivered', 'failed']
 
 
 class Notification(db.Model):
@@ -267,7 +267,7 @@ class Notification(db.Model):
         nullable=True,
         onupdate=datetime.datetime.utcnow)
     status = db.Column(
-        db.Enum(*NOTIFICATION_STATUS_TYPES, name='notification_status_types'), nullable=False, default='sent')
+        db.Enum(*NOTIFICATION_STATUS_TYPES, name='notification_status_types'), nullable=False, default='sending')
     reference = db.Column(db.String, nullable=True, index=True)
 
 
