@@ -112,12 +112,12 @@ def update_query(notification_type, status):
         TEMPLATE_TYPE_SMS: {
             STATISTICS_REQUESTED: NotificationStatistics.sms_requested,
             STATISTICS_DELIVERED: NotificationStatistics.sms_delivered,
-            STATISTICS_FAILURE: NotificationStatistics.sms_error
+            STATISTICS_FAILURE: NotificationStatistics.sms_failed
         },
         TEMPLATE_TYPE_EMAIL: {
             STATISTICS_REQUESTED: NotificationStatistics.emails_requested,
             STATISTICS_DELIVERED: NotificationStatistics.emails_delivered,
-            STATISTICS_FAILURE: NotificationStatistics.emails_error
+            STATISTICS_FAILURE: NotificationStatistics.emails_failed
         }
     }
     return {

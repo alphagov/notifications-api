@@ -56,7 +56,7 @@ def test_should_by_able_to_update_status_by_reference(sample_email_template):
     notification = Notification(**data)
     dao_create_notification(notification, sample_email_template.template_type)
 
-    assert Notification.query.get(notification.id).status == "sent"
+    assert Notification.query.get(notification.id).status == "sending"
     update_notification_reference_by_id(notification.id, 'reference')
     update_notification_status_by_reference('reference', 'delivered', 'delivered')
     assert Notification.query.get(notification.id).status == 'delivered'
@@ -68,11 +68,11 @@ def test_should_by_able_to_update_status_by_reference(sample_email_template):
     ).one().emails_requested == 1
     assert NotificationStatistics.query.filter_by(
         service_id=sample_email_template.service.id
-    ).one().emails_error == 0
+    ).one().emails_failed == 0
 
 
 def test_should_by_able_to_update_status_by_id(sample_notification):
-    assert Notification.query.get(sample_notification.id).status == 'sent'
+    assert Notification.query.get(sample_notification.id).status == 'sending'
     count = update_notification_status_by_id(sample_notification.id, 'delivered', 'delivered')
     assert count == 1
     assert Notification.query.get(sample_notification.id).status == 'delivered'
@@ -84,11 +84,11 @@ def test_should_by_able_to_update_status_by_id(sample_notification):
     ).one().sms_requested == 1
     assert NotificationStatistics.query.filter_by(
         service_id=sample_notification.service.id
-    ).one().sms_error == 0
+    ).one().sms_failed == 0
 
 
 def test_should_be_able_to_record_statistics_failure_for_sms(sample_notification):
-    assert Notification.query.get(sample_notification.id).status == 'sent'
+    assert Notification.query.get(sample_notification.id).status == 'sending'
     count = update_notification_status_by_id(sample_notification.id, 'delivered', 'failure')
     assert count == 1
     assert Notification.query.get(sample_notification.id).status == 'delivered'
@@ -100,7 +100,7 @@ def test_should_be_able_to_record_statistics_failure_for_sms(sample_notification
     ).one().sms_requested == 1
     assert NotificationStatistics.query.filter_by(
         service_id=sample_notification.service.id
-    ).one().sms_error == 1
+    ).one().sms_failed == 1
 
 
 def test_should_be_able_to_record_statistics_failure_for_email(sample_email_template):
@@ -117,9 +117,9 @@ def test_should_be_able_to_record_statistics_failure_for_email(sample_email_temp
     dao_create_notification(notification, sample_email_template.template_type)
 
     update_notification_reference_by_id(notification.id, 'reference')
-    count = update_notification_status_by_reference('reference', 'bounce', 'failure')
+    count = update_notification_status_by_reference('reference', 'failed', 'failure')
     assert count == 1
-    assert Notification.query.get(notification.id).status == 'bounce'
+    assert Notification.query.get(notification.id).status == 'failed'
     assert NotificationStatistics.query.filter_by(
         service_id=notification.service.id
     ).one().emails_delivered == 0
@@ -128,7 +128,7 @@ def test_should_be_able_to_record_statistics_failure_for_email(sample_email_temp
     ).one().emails_requested == 1
     assert NotificationStatistics.query.filter_by(
         service_id=notification.service.id
-    ).one().emails_error == 1
+    ).one().emails_failed == 1
 
 
 def test_should_return_zero_count_if_no_notification_with_id():
@@ -157,12 +157,12 @@ def test_should_be_able_to_get_statistics_for_a_service(sample_template):
     assert stats[0].emails_requested == 0
     assert stats[0].sms_requested == 1
     assert stats[0].sms_delivered == 0
-    assert stats[0].sms_error == 0
+    assert stats[0].sms_failed == 0
     assert stats[0].day == notification.created_at.strftime(DATE_FORMAT)
     assert stats[0].service_id == notification.service_id
     assert stats[0].emails_requested == 0
     assert stats[0].emails_delivered == 0
-    assert stats[0].emails_error == 0
+    assert stats[0].emails_failed == 0
 
 
 def test_should_be_able_to_get_statistics_for_a_service_for_a_day(sample_template):
@@ -182,10 +182,10 @@ def test_should_be_able_to_get_statistics_for_a_service_for_a_day(sample_templat
         sample_template.service.id, now.strftime(DATE_FORMAT)
     )
     assert stat.emails_requested == 0
-    assert stat.emails_error == 0
+    assert stat.emails_failed == 0
     assert stat.emails_delivered == 0
     assert stat.sms_requested == 1
-    assert stat.sms_error == 0
+    assert stat.sms_failed == 0
     assert stat.sms_delivered == 0
     assert stat.day == notification.created_at.strftime(DATE_FORMAT)
     assert stat.service_id == notification.service_id
@@ -303,7 +303,7 @@ def test_save_notification_creates_sms_and_template_stats(sample_template, sampl
     assert data['service'] == notification_from_db.service
     assert data['template'] == notification_from_db.template
     assert data['created_at'] == notification_from_db.created_at
-    assert 'sent' == notification_from_db.status
+    assert 'sending' == notification_from_db.status
     assert Job.query.get(sample_job.id).notifications_sent == 1
 
     stats = NotificationStatistics.query.filter(
@@ -348,7 +348,7 @@ def test_save_notification_and_create_email_and_template_stats(sample_email_temp
     assert data['service'] == notification_from_db.service
     assert data['template'] == notification_from_db.template
     assert data['created_at'] == notification_from_db.created_at
-    assert 'sent' == notification_from_db.status
+    assert 'sending' == notification_from_db.status
     assert Job.query.get(sample_job.id).notifications_sent == 1
 
     stats = NotificationStatistics.query.filter(
@@ -537,7 +537,7 @@ def test_save_notification_and_increment_job(sample_template, sample_job):
     assert data['service'] == notification_from_db.service
     assert data['template'] == notification_from_db.template
     assert data['created_at'] == notification_from_db.created_at
-    assert 'sent' == notification_from_db.status
+    assert 'sending' == notification_from_db.status
     assert Job.query.get(sample_job.id).notifications_sent == 1
 
     notification_2 = Notification(**data)
@@ -603,7 +603,7 @@ def test_save_notification_and_increment_correct_job(notify_db, notify_db_sessio
     assert data['service'] == notification_from_db.service
     assert data['template'] == notification_from_db.template
     assert data['created_at'] == notification_from_db.created_at
-    assert 'sent' == notification_from_db.status
+    assert 'sending' == notification_from_db.status
     assert Job.query.get(job_1.id).notifications_sent == 1
     assert Job.query.get(job_2.id).notifications_sent == 0
 
@@ -629,7 +629,7 @@ def test_save_notification_with_no_job(sample_template):
     assert data['service'] == notification_from_db.service
     assert data['template'] == notification_from_db.template
     assert data['created_at'] == notification_from_db.created_at
-    assert 'sent' == notification_from_db.status
+    assert 'sending' == notification_from_db.status
 
 
 def test_get_notification(sample_notification):
@@ -660,7 +660,7 @@ def test_save_notification_no_job_id(sample_template):
     assert data['to'] == notification_from_db.to
     assert data['service'] == notification_from_db.service
     assert data['template'] == notification_from_db.template
-    assert 'sent' == notification_from_db.status
+    assert 'sending' == notification_from_db.status
 
 
 def test_get_notification_for_job(sample_notification):
@@ -694,7 +694,7 @@ def test_get_all_notifications_for_job(notify_db, notify_db_session, sample_job)
 
 
 def test_update_notification(sample_notification, sample_template):
-    assert sample_notification.status == 'sent'
+    assert sample_notification.status == 'sending'
     sample_notification.status = 'failed'
     dao_update_notification(sample_notification)
     notification_from_db = Notification.query.get(sample_notification.id)
@@ -706,7 +706,7 @@ def test_should_delete_notifications_after_one_day(notify_db, notify_db_session)
     sample_notification(notify_db, notify_db_session, created_at=created_at)
     sample_notification(notify_db, notify_db_session, created_at=created_at)
     assert len(Notification.query.all()) == 2
-    delete_notifications_created_more_than_a_day_ago('sent')
+    delete_notifications_created_more_than_a_day_ago('sending')
     assert len(Notification.query.all()) == 0
 
 
@@ -726,7 +726,7 @@ def test_should_not_delete_sent_notifications_before_one_day(notify_db, notify_d
     sample_notification(notify_db, notify_db_session, created_at=valid, to_field="valid")
 
     assert len(Notification.query.all()) == 2
-    delete_notifications_created_more_than_a_day_ago('sent')
+    delete_notifications_created_more_than_a_day_ago('sending')
     assert len(Notification.query.all()) == 1
     assert Notification.query.first().to == 'valid'
 

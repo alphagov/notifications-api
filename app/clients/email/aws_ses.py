@@ -8,7 +8,7 @@ ses_response_map = {
     'Bounce': {
         "message": 'Bounced',
         "success": False,
-        "notification_status": 'bounce',
+        "notification_status": 'failed',
         "notification_statistics_status": STATISTICS_FAILURE
     },
     'Delivery': {
@@ -19,9 +19,9 @@ ses_response_map = {
     },
     'Complaint': {
         "message": 'Complaint',
-        "success": False,
-        "notification_status": 'complaint',
-        "notification_statistics_status": STATISTICS_FAILURE
+        "success": True,
+        "notification_status": 'delivered',
+        "notification_statistics_status": STATISTICS_DELIVERED
     }
 }
 

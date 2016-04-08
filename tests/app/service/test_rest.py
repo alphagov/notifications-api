@@ -178,7 +178,7 @@ def test_create_service(notify_api, sample_user):
             data = {
                 'name': 'created service',
                 'user_id': str(sample_user.id),
-                'limit': 1000,
+                'message_limit': 1000,
                 'restricted': False,
                 'active': False,
                 'email_from': 'created.service'}
@@ -218,7 +218,7 @@ def test_should_not_create_service_with_missing_user_id_field(notify_api):
             data = {
                 'email_from': 'service',
                 'name': 'created service',
-                'limit': 1000,
+                'message_limit': 1000,
                 'restricted': False,
                 'active': False
             }
@@ -248,7 +248,7 @@ def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(no
                 'email_from': 'service',
                 'user_id': fake_uuid,
                 'name': 'created service',
-                'limit': 1000,
+                'message_limit': 1000,
                 'restricted': False,
                 'active': False
             }
@@ -289,7 +289,7 @@ def test_should_not_create_service_if_missing_data(notify_api, sample_user):
             assert json_resp['result'] == 'error'
             assert 'Missing data for required field.' in json_resp['message']['name']
             assert 'Missing data for required field.' in json_resp['message']['active']
-            assert 'Missing data for required field.' in json_resp['message']['limit']
+            assert 'Missing data for required field.' in json_resp['message']['message_limit']
             assert 'Missing data for required field.' in json_resp['message']['restricted']
 
 
@@ -303,7 +303,7 @@ def test_should_not_create_service_with_duplicate_name(notify_api,
             data = {
                 'name': sample_service.name,
                 'user_id': str(sample_service.users[0].id),
-                'limit': 1000,
+                'message_limit': 1000,
                 'restricted': False,
                 'active': False,
                 'email_from': 'sample.service2'}
@@ -331,7 +331,7 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_email
             data = {
                 'name': 'First SERVICE',
                 'user_id': str(first_service.users[0].id),
-                'limit': 1000,
+                'message_limit': 1000,
                 'restricted': False,
                 'active': False,
                 'email_from': 'first.service'}
@@ -547,7 +547,7 @@ def test_default_permissions_are_added_for_user_service(notify_api,
             data = {
                 'name': 'created service',
                 'user_id': str(sample_user.id),
-                'limit': 1000,
+                'message_limit': 1000,
                 'restricted': False,
                 'active': False,
                 'email_from': 'created.service'}

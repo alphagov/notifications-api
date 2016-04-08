@@ -28,7 +28,7 @@ def test_get_notification_by_id(notify_api, sample_notification):
                 headers=[auth_header])
 
             notification = json.loads(response.get_data(as_text=True))['data']['notification']
-            assert notification['status'] == 'sent'
+            assert notification['status'] == 'sending'
             assert notification['template'] == {
                 'id': str(sample_notification.template.id),
                 'name': sample_notification.template.name,
@@ -74,7 +74,7 @@ def test_get_all_notifications(notify_api, sample_notification):
                 headers=[auth_header])
 
             notifications = json.loads(response.get_data(as_text=True))
-            assert notifications['notifications'][0]['status'] == 'sent'
+            assert notifications['notifications'][0]['status'] == 'sending'
             assert notifications['notifications'][0]['template'] == {
                 'id': str(sample_notification.template.id),
                 'name': sample_notification.template.name,
@@ -400,13 +400,13 @@ def test_filter_by_multiple_statuss(notify_api,
                 method='GET')
 
             response = client.get(
-                '/notifications?status=delivered&status=sent',
+                '/notifications?status=delivered&status=sending',
                 headers=[auth_header])
 
             assert response.status_code == 200
             notifications = json.loads(response.get_data(as_text=True))
             assert len(notifications['notifications']) == 2
-            set(['delivered', 'sent']) == set(
+            set(['delivered', 'sending']) == set(
                 [x['status'] for x in notifications['notifications']])
 
 
@@ -1001,7 +1001,7 @@ def test_no_limit_for_live_service(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
-            sample_service.limit = 1
+            sample_service.message_limit = 1
             notify_db.session.add(sample_service)
             notify_db.session.commit()
 
@@ -1211,7 +1211,7 @@ def test_firetext_callback_should_update_notification_status(notify_api, sample_
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             original = get_notification_by_id(sample_notification.id)
-            assert original.status == 'sent'
+            assert original.status == 'sending'
 
             response = client.post(
                 path='/notifications/sms/firetext',
@@ -1231,14 +1231,14 @@ def test_firetext_callback_should_update_notification_status(notify_api, sample_
             assert get_notification_by_id(sample_notification.id).status == 'delivered'
             assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_delivered == 1
             assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_requested == 1
-            assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_error == 0
+            assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_failed == 0
 
 
 def test_firetext_callback_should_update_notification_status_failed(notify_api, sample_notification):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             original = get_notification_by_id(sample_notification.id)
-            assert original.status == 'sent'
+            assert original.status == 'sending'
 
             response = client.post(
                 path='/notifications/sms/firetext',
@@ -1257,7 +1257,7 @@ def test_firetext_callback_should_update_notification_status_failed(notify_api, 
             assert updated.status == 'failed'
             assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_delivered == 0
             assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_requested == 1
-            assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_error == 1
+            assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_failed == 1
 
 
 def test_firetext_callback_should_update_notification_status_sent(notify_api, notify_db, notify_db_session):
@@ -1275,16 +1275,17 @@ def test_firetext_callback_should_update_notification_status_sent(notify_api, no
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
             json_resp = json.loads(response.get_data(as_text=True))
+            print(json_resp)
             assert response.status_code == 200
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
                 notification.id
             )
             updated = get_notification_by_id(notification.id)
-            assert updated.status == 'sent'
-            assert dao_get_notification_statistics_for_service(notification.service_id)[0].sms_delivered == 0
+            assert updated.status == 'delivered'
+            assert dao_get_notification_statistics_for_service(notification.service_id)[0].sms_delivered == 1
             assert dao_get_notification_statistics_for_service(notification.service_id)[0].sms_requested == 1
-            assert dao_get_notification_statistics_for_service(notification.service_id)[0].sms_error == 0
+            assert dao_get_notification_statistics_for_service(notification.service_id)[0].sms_failed == 0
 
 
 def test_firetext_callback_should_update_multiple_notification_status_sent(notify_api, notify_db, notify_db_session):
@@ -1317,7 +1318,7 @@ def test_firetext_callback_should_update_multiple_notification_status_sent(notif
 
             assert dao_get_notification_statistics_for_service(notification1.service_id)[0].sms_delivered == 3
             assert dao_get_notification_statistics_for_service(notification1.service_id)[0].sms_requested == 3
-            assert dao_get_notification_statistics_for_service(notification1.service_id)[0].sms_error == 0
+            assert dao_get_notification_statistics_for_service(notification1.service_id)[0].sms_failed == 0
 
 
 def test_process_mmg_response_return_200_when_cid_is_send_sms_code(notify_api):
@@ -1458,7 +1459,7 @@ def test_ses_callback_should_update_notification_status(
                 reference='ref'
             )
 
-            assert get_notification_by_id(notification.id).status == 'sent'
+            assert get_notification_by_id(notification.id).status == 'sending'
 
             response = client.post(
                 path='/notifications/email/ses',
@@ -1472,7 +1473,7 @@ def test_ses_callback_should_update_notification_status(
             assert get_notification_by_id(notification.id).status == 'delivered'
             assert dao_get_notification_statistics_for_service(notification.service_id)[0].emails_delivered == 1
             assert dao_get_notification_statistics_for_service(notification.service_id)[0].emails_requested == 1
-            assert dao_get_notification_statistics_for_service(notification.service_id)[0].emails_error == 0
+            assert dao_get_notification_statistics_for_service(notification.service_id)[0].emails_failed == 0
 
 
 def test_ses_callback_should_update_multiple_notification_status_sent(
@@ -1527,7 +1528,7 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
 
             assert dao_get_notification_statistics_for_service(notification1.service_id)[0].emails_delivered == 3
             assert dao_get_notification_statistics_for_service(notification1.service_id)[0].emails_requested == 3
-            assert dao_get_notification_statistics_for_service(notification1.service_id)[0].emails_error == 0
+            assert dao_get_notification_statistics_for_service(notification1.service_id)[0].emails_failed == 0
 
 
 def test_should_handle_invite_email_callbacks(notify_api, notify_db, notify_db_session):
