@@ -80,20 +80,20 @@ class Config(object):
     TWILIO_NUMBER = os.getenv('TWILIO_NUMBER')
     FIRETEXT_NUMBER = os.getenv('FIRETEXT_NUMBER')
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
-    CSV_UPLOAD_BUCKET_NAME = '{}-notifications-csv-upload'.format(
-        os.environ['NOTIFY_API_ENVIRONMENT'].split('config.')[1].lower())
+    CSV_UPLOAD_BUCKET_NAME = 'local-notifications-csv-upload'
 
 
 class Development(Config):
     DEBUG = True
+    CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
 
 
 class Preview(Config):
-    pass
+    CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
 
 
 class Test(Development):
-    pass
+    CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
 
 
 configs = {
