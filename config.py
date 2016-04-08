@@ -17,7 +17,6 @@ class Config(object):
     NOTIFY_JOB_QUEUE = os.environ['NOTIFY_JOB_QUEUE']
     # Notification Queue names are a combination of a prefx plus a name
     NOTIFICATION_QUEUE_PREFIX = os.environ['NOTIFICATION_QUEUE_PREFIX']
-    MMG_API_KEY = os.environ['MMG_API_KEY']
     MMG_FROM_NUMBER = os.environ['MMG_FROM_NUMBER']
     SECRET_KEY = os.environ['SECRET_KEY']
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False
@@ -85,14 +84,17 @@ class Config(object):
 
 class Development(Config):
     DEBUG = True
+    MMG_API_KEY = os.environ['MMG_API_KEY']
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
 
 
 class Preview(Config):
+    MMG_API_KEY = os.environ['MMG_API_KEY']
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
 
 
 class Test(Development):
+    MMG_API_KEY = os.environ['MMG_API_KEY']
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
 
 
