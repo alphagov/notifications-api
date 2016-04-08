@@ -17,6 +17,7 @@ class Live(Config):
     FIRETEXT_NUMBER = os.getenv("LIVE_FIRETEXT_NUMBER")
     TWILIO_AUTH_TOKEN = os.getenv('LIVE_TWILIO_AUTH_TOKEN')
     MMG_API_KEY = os.environ['LIVE_MMG_API_KEY']
+    CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
 
     BROKER_TRANSPORT_OPTIONS = {
         'region': 'eu-west-1',
