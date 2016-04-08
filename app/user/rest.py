@@ -51,7 +51,7 @@ def create_user():
     return jsonify(data=user_schema.dump(user_to_create).data), 201
 
 
-@user.route('/<int:user_id>', methods=['PUT'])
+@user.route('/<uuid:user_id>', methods=['PUT'])
 def update_user(user_id):
     user_to_update = get_model_users(user_id=user_id)
     req_json = request.get_json()
@@ -68,7 +68,7 @@ def update_user(user_id):
     return jsonify(data=user_schema.dump(user_to_update).data), status_code
 
 
-@user.route('/<int:user_id>/verify/password', methods=['POST'])
+@user.route('/<uuid:user_id>/verify/password', methods=['POST'])
 def verify_user_password(user_id):
     user_to_verify = get_model_users(user_id=user_id)
 
@@ -89,7 +89,7 @@ def verify_user_password(user_id):
         return jsonify(result='error', message={'password': ['Incorrect password']}), 400
 
 
-@user.route('/<int:user_id>/verify/code', methods=['POST'])
+@user.route('/<uuid:user_id>/verify/code', methods=['POST'])
 def verify_user_code(user_id):
     user_to_verify = get_model_users(user_id=user_id)
 
@@ -116,7 +116,7 @@ def verify_user_code(user_id):
     return jsonify({}), 204
 
 
-@user.route('/<int:user_id>/sms-code', methods=['POST'])
+@user.route('/<uuid:user_id>/sms-code', methods=['POST'])
 def send_user_sms_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
     verify_code, errors = request_verify_code_schema.load(request.get_json())
@@ -135,7 +135,7 @@ def send_user_sms_code(user_id):
     return jsonify({}), 204
 
 
-@user.route('/<int:user_id>/email-code', methods=['POST'])
+@user.route('/<uuid:user_id>/email-code', methods=['POST'])
 def send_user_email_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
     verify_code, errors = request_verify_code_schema.load(request.get_json())
@@ -154,7 +154,7 @@ def send_user_email_code(user_id):
     return jsonify({}), 204
 
 
-@user.route('/<int:user_id>/email-verification', methods=['POST'])
+@user.route('/<uuid:user_id>/email-verification', methods=['POST'])
 def send_user_email_verification(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
     verify_code, errors = request_verify_code_schema.load(request.get_json())
@@ -176,7 +176,7 @@ def send_user_email_verification(user_id):
     return jsonify({}), 204
 
 
-@user.route('/<int:user_id>', methods=['GET'])
+@user.route('/<uuid:user_id>', methods=['GET'])
 @user.route('', methods=['GET'])
 def get_user(user_id=None):
     users = get_model_users(user_id=user_id)
@@ -184,7 +184,7 @@ def get_user(user_id=None):
     return jsonify(data=result.data)
 
 
-@user.route('/<int:user_id>/service/<uuid:service_id>/permission', methods=['POST'])
+@user.route('/<uuid:user_id>/service/<uuid:service_id>/permission', methods=['POST'])
 def set_permissions(user_id, service_id):
     # TODO fix security hole, how do we verify that the user
     # who is making this request has permission to make the request.
@@ -240,7 +240,7 @@ def _create_reset_password_url(email):
 def _create_verification_url(user, secret_code):
     from utils.url_safe_token import generate_token
     import json
-    data = json.dumps({'user_id': user.id, 'email': user.email_address, 'secret_code': secret_code})
+    data = json.dumps({'user_id': str(user.id), 'email': user.email_address, 'secret_code': secret_code})
     token = generate_token(data, current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
 
     return current_app.config['ADMIN_BASE_URL'] + '/verify-email/' + token

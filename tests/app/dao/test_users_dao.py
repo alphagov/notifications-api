@@ -54,9 +54,9 @@ def test_get_user(notify_api, notify_db, notify_db_session):
     assert get_model_users(user_id=another_user.id).email_address == email
 
 
-def test_get_user_not_exists(notify_api, notify_db, notify_db_session):
+def test_get_user_not_exists(notify_api, notify_db, notify_db_session, fake_uuid):
     try:
-        get_model_users(user_id="12345")
+        get_model_users(user_id=fake_uuid)
         pytest.fail("NoResultFound exception not thrown.")
     except NoResultFound as e:
         pass

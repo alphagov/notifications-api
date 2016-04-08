@@ -336,7 +336,10 @@ def test_send_user_email_code(notify_api,
                                                                                  queue='email-code')
 
 
-def test_send_user_email_code_returns_404_for_when_user_does_not_exist(notify_api, notify_db, notify_db_session):
+def test_send_user_email_code_returns_404_for_when_user_does_not_exist(notify_api,
+                                                                       notify_db,
+                                                                       notify_db_session,
+                                                                       fake_uuid):
     """
     Tests POST endpoint /user/<user_id>/email-code return 404 for missing user
     """
@@ -344,11 +347,11 @@ def test_send_user_email_code_returns_404_for_when_user_does_not_exist(notify_ap
         with notify_api.test_client() as client:
             data = json.dumps({})
             auth_header = create_authorization_header(
-                path=url_for('user.send_user_email_code', user_id=1),
+                path=url_for('user.send_user_email_code', user_id=fake_uuid),
                 method='POST',
                 request_body=data)
             resp = client.post(
-                url_for('user.send_user_email_code', user_id=1),
+                url_for('user.send_user_email_code', user_id=fake_uuid),
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 404
@@ -364,11 +367,11 @@ def test_send_user_email_verification(notify_api,
         with notify_api.test_client() as client:
             data = json.dumps({})
             auth_header = create_authorization_header(
-                path=url_for('user.send_user_email_verification', user_id=sample_email_code.user.id),
+                path=url_for('user.send_user_email_verification', user_id=str(sample_email_code.user.id)),
                 method='POST',
                 request_body=data)
             resp = client.post(
-                url_for('user.send_user_email_verification', user_id=sample_email_code.user.id),
+                url_for('user.send_user_email_verification', user_id=str(sample_email_code.user.id)),
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 204

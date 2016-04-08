@@ -19,7 +19,7 @@ def test_create_invited_user(notify_api, sample_service, mocker):
             data = {
                 'service': str(sample_service.id),
                 'email_address': email_address,
-                'from_user': invite_from.id,
+                'from_user': str(invite_from.id),
                 'permissions': 'send_messages,manage_service,manage_api_keys'
             }
 
@@ -41,7 +41,7 @@ def test_create_invited_user(notify_api, sample_service, mocker):
 
             assert json_resp['data']['service'] == str(sample_service.id)
             assert json_resp['data']['email_address'] == email_address
-            assert json_resp['data']['from_user'] == invite_from.id
+            assert json_resp['data']['from_user'] == str(invite_from.id)
             assert json_resp['data']['permissions'] == 'send_messages,manage_service,manage_api_keys'
             assert json_resp['data']['id']
             invitation_expiration_days = notify_api.config['INVITATION_EXPIRATION_DAYS']
@@ -70,7 +70,7 @@ def test_create_invited_user_invalid_email(notify_api, sample_service, mocker):
             data = {
                 'service': str(sample_service.id),
                 'email_address': email_address,
-                'from_user': invite_from.id,
+                'from_user': str(invite_from.id),
                 'permissions': 'send_messages,manage_service,manage_api_keys'
             }
 
@@ -128,7 +128,7 @@ def test_get_all_invited_users_by_service(notify_api, notify_db, notify_db_sessi
 
             for invite in json_resp['data']:
                 assert invite['service'] == str(sample_service.id)
-                assert invite['from_user'] == invite_from.id
+                assert invite['from_user'] == str(invite_from.id)
                 assert invite['id']
 
 
@@ -176,7 +176,7 @@ def test_get_invited_user_by_service_and_id(notify_api, sample_service, sample_i
 
             assert json_resp['data']['service'] == str(sample_service.id)
             assert json_resp['data']['email_address'] == invite_email_address
-            assert json_resp['data']['from_user'] == invite_from.id
+            assert json_resp['data']['from_user'] == str(invite_from.id)
             assert json_resp['data']['id']
 
 
@@ -218,12 +218,11 @@ def test_update_invited_user_set_status_to_cancelled(notify_api, sample_invited_
             assert json_resp['status'] == 'cancelled'
 
 
-def test_update_invited_user_for_wrong_service_returns_404(notify_api, sample_invited_user):
+def test_update_invited_user_for_wrong_service_returns_404(notify_api, sample_invited_user, fake_uuid):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {'status': 'cancelled'}
-            bad_service_id = uuid.uuid4()
-            url = '/service/{0}/invite/{1}'.format(bad_service_id, sample_invited_user.id)
+            url = '/service/{0}/invite/{1}'.format(fake_uuid, sample_invited_user.id)
             auth_header = create_authorization_header(
                 path=url,
                 method='POST',

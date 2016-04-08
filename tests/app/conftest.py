@@ -421,3 +421,8 @@ def sample_service_permission(notify_db,
         db.session.add(p_model)
         db.session.commit()
     return p_model
+
+
+@pytest.fixture(scope='function')
+def fake_uuid():
+    return "6ce466d0-fd6a-11e5-82f5-e0accb9d11a6"

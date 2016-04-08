@@ -91,10 +91,21 @@ class NotificationModelSchema(BaseSchema):
         model = models.Notification
 
 
-class TemplateSchema(BaseSchema):
+class BaseTemplateSchema(BaseSchema):
     class Meta:
         model = models.Template
         exclude = ("updated_at", "created_at", "service_id", "jobs")
+
+
+class TemplateSchema(BaseTemplateSchema):
+
+    @validates_schema
+    def validate_type(self, data):
+        template_type = data.get('template_type')
+        if template_type and template_type == 'email':
+            subject = data.get('subject')
+            if not subject or subject.strip() == '':
+                raise ValidationError('Invalid template subject', 'subject')
 
 
 class NotificationsStatisticsSchema(BaseSchema):
@@ -140,7 +151,7 @@ class SmsNotificationSchema(NotificationSchema):
 
 class EmailNotificationSchema(NotificationSchema):
     to = fields.Str(required=True)
-    template = fields.Int(required=True)
+    template = fields.Str(required=True)
 
     @validates('to')
     def validate_to(self, value):
@@ -151,17 +162,17 @@ class EmailNotificationSchema(NotificationSchema):
 
 
 class SmsTemplateNotificationSchema(SmsNotificationSchema):
-    template = fields.Int(required=True)
+    template = fields.Str(required=True)
     job = fields.String()
 
 
 class JobSmsTemplateNotificationSchema(SmsNotificationSchema):
-    template = fields.Int(required=True)
+    template = fields.Str(required=True)
     job = fields.String(required=True)
 
 
 class JobEmailTemplateNotificationSchema(EmailNotificationSchema):
-    template = fields.Int(required=True)
+    template = fields.Str(required=True)
     job = fields.String(required=True)
 
 
@@ -220,8 +231,8 @@ class EmailDataSchema(ma.Schema):
 
 
 class NotificationsFilterSchema(ma.Schema):
-    template_type = fields.Nested(TemplateSchema, only='template_type', many=True)
-    status = fields.Nested(NotificationModelSchema, only='status', many=True)
+    template_type = fields.Nested(BaseTemplateSchema, only=['template_type'], many=True)
+    status = fields.Nested(NotificationModelSchema, only=['status'], many=True)
     page = fields.Int(required=False)
 
     @pre_load

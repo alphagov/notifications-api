@@ -108,7 +108,7 @@ def renew_api_key(service_id=None):
     return jsonify(data=unsigned_api_key), 201
 
 
-@service.route('/<uuid:service_id>/api-key/revoke/<int:api_key_id>', methods=['POST'])
+@service.route('/<uuid:service_id>/api-key/revoke/<uuid:api_key_id>', methods=['POST'])
 def revoke_api_key(service_id, api_key_id):
     service_api_key = get_model_api_keys(service_id=service_id, id=api_key_id)
 
@@ -117,7 +117,7 @@ def revoke_api_key(service_id, api_key_id):
 
 
 @service.route('/<uuid:service_id>/api-keys', methods=['GET'])
-@service.route('/<uuid:service_id>/api-keys/<int:key_id>', methods=['GET'])
+@service.route('/<uuid:service_id>/api-keys/<uuid:key_id>', methods=['GET'])
 def get_api_keys(service_id, key_id=None):
     dao_fetch_service_by_id(service_id=service_id)
 
