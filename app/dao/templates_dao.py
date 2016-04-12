@@ -22,4 +22,8 @@ def dao_get_template_by_id(template_id):
 
 
 def dao_get_all_templates_for_service(service_id):
-    return Template.query.filter_by(service=Service.query.get(service_id)).order_by(asc(Template.created_at)).all()
+    return Template.query.filter_by(
+        service=Service.query.get(service_id)
+    ).order_by(
+        asc(Template.updated_at), asc(Template.created_at)
+    ).all()

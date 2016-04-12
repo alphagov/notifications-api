@@ -136,6 +136,10 @@ def test_get_all_templates_for_service_in_created_order(sample_service):
     assert dao_get_all_templates_for_service(sample_service.id)[1].name == 'Sample Template 2'
     assert dao_get_all_templates_for_service(sample_service.id)[2].name == 'Sample Template 3'
 
+    template_2.name = 'Sample Template 2 (updated)'
+    dao_update_template(template_2)
+    assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'Sample Template 2 (updated)'
+
 
 def test_get_all_returns_empty_list_if_no_templates(sample_service):
     assert Template.query.count() == 0
