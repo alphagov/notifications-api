@@ -307,7 +307,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == '+447234123123'
     assert persisted_notification.template_id == sample_template_with_placeholders.id
-    assert persisted_notification.status == 'sent'
+    assert persisted_notification.status == 'sending'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
     assert persisted_notification.sent_by == 'MMG'
@@ -481,7 +481,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
     assert persisted_notification.to == '+447234123123'
     assert persisted_notification.job_id == sample_job.id
     assert persisted_notification.template_id == sample_job.template.id
-    assert persisted_notification.status == 'sent'
+    assert persisted_notification.status == 'sending'
     assert persisted_notification.sent_at > now
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_by == 'MMG'
@@ -522,7 +522,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     assert persisted_notification.template_id == sample_email_template_with_placeholders.id
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
-    assert persisted_notification.status == 'sent'
+    assert persisted_notification.status == 'sending'
     assert persisted_notification.sent_by == 'ses'
 
 

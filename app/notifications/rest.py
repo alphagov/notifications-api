@@ -195,6 +195,7 @@ def get_all_notifications():
         api_user['client'],
         filter_dict=data,
         page=page)
+
     return jsonify(
         notifications=notification_status_schema.dump(pagination.items, many=True).data,
         links=pagination_links(
@@ -286,8 +287,9 @@ def send_notification(notification_type):
         total_sms_count = service_stats.sms_requested
         total_email_count = service_stats.emails_requested
 
-        if (total_email_count + total_sms_count >= service.limit) and service.restricted:
-            return jsonify(result="error", message='Exceeded send limits ({}) for today'.format(service.limit)), 429
+        if (total_email_count + total_sms_count >= service.message_limit) and service.restricted:
+            return jsonify(result="error", message='Exceeded send limits ({}) for today'.format(
+                service.message_limit)), 429
 
     notification, errors = (
         sms_template_notification_schema if notification_type == 'sms' else email_notification_schema

@@ -17,7 +17,7 @@ from sqlalchemy.exc import IntegrityError
 
 def test_create_service(sample_user):
     assert Service.query.count() == 0
-    service = Service(name="service_name", email_from="email_from", limit=1000, active=True, restricted=False)
+    service = Service(name="service_name", email_from="email_from", message_limit=1000, active=True, restricted=False)
     dao_create_service(service, sample_user)
     assert Service.query.count() == 1
     assert Service.query.first().name == "service_name"
@@ -27,8 +27,8 @@ def test_create_service(sample_user):
 
 def test_cannot_create_two_services_with_same_name(sample_user):
     assert Service.query.count() == 0
-    service1 = Service(name="service_name", email_from="email_from1", limit=1000, active=True, restricted=False)
-    service2 = Service(name="service_name", email_from="email_from2", limit=1000, active=True, restricted=False)
+    service1 = Service(name="service_name", email_from="email_from1", message_limit=1000, active=True, restricted=False)
+    service2 = Service(name="service_name", email_from="email_from2", message_limit=1000, active=True, restricted=False)
     with pytest.raises(IntegrityError) as excinfo:
         dao_create_service(service1, sample_user)
         dao_create_service(service2, sample_user)
@@ -37,8 +37,8 @@ def test_cannot_create_two_services_with_same_name(sample_user):
 
 def test_cannot_create_two_services_with_same_email_from(sample_user):
     assert Service.query.count() == 0
-    service1 = Service(name="service_name1", email_from="email_from", limit=1000, active=True, restricted=False)
-    service2 = Service(name="service_name2", email_from="email_from", limit=1000, active=True, restricted=False)
+    service1 = Service(name="service_name1", email_from="email_from", message_limit=1000, active=True, restricted=False)
+    service2 = Service(name="service_name2", email_from="email_from", message_limit=1000, active=True, restricted=False)
     with pytest.raises(IntegrityError) as excinfo:
         dao_create_service(service1, sample_user)
         dao_create_service(service2, sample_user)
@@ -47,14 +47,14 @@ def test_cannot_create_two_services_with_same_email_from(sample_user):
 
 def test_cannot_create_service_with_no_user(notify_db_session):
     assert Service.query.count() == 0
-    service = Service(name="service_name", email_from="email_from", limit=1000, active=True, restricted=False)
+    service = Service(name="service_name", email_from="email_from", message_limit=1000, active=True, restricted=False)
     with pytest.raises(FlushError) as excinfo:
         dao_create_service(service, None)
     assert "Can't flush None value found in collection Service.users" in str(excinfo.value)
 
 
 def test_should_add_user_to_service(sample_user):
-    service = Service(name="service_name", email_from="email_from", limit=1000, active=True, restricted=False)
+    service = Service(name="service_name", email_from="email_from", message_limit=1000, active=True, restricted=False)
     dao_create_service(service, sample_user)
     assert sample_user in Service.query.first().users
     new_user = User(
@@ -69,7 +69,7 @@ def test_should_add_user_to_service(sample_user):
 
 
 def test_should_remove_user_from_service(sample_user):
-    service = Service(name="service_name", email_from="email_from", limit=1000, active=True, restricted=False)
+    service = Service(name="service_name", email_from="email_from", message_limit=1000, active=True, restricted=False)
     dao_create_service(service, sample_user)
     new_user = User(
         name='Test User',

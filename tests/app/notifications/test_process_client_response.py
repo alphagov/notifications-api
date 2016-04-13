@@ -58,7 +58,7 @@ def test_process_sms_response_updates_notification_stats_for_valid_request(notif
     assert len(stats) == 1
     assert stats[0].sms_requested == 1
     assert stats[0].sms_delivered == 0
-    assert stats[0].sms_error == 0
+    assert stats[0].sms_failed == 0
     success, error = process_sms_client_response(status='0', reference=str(sample_notification.id),
                                                  client_name='Firetext')
     assert error is None
@@ -67,7 +67,7 @@ def test_process_sms_response_updates_notification_stats_for_valid_request(notif
     assert len(stats) == 1
     assert stats[0].sms_requested == 1
     assert stats[0].sms_delivered == 1
-    assert stats[0].sms_error == 0
+    assert stats[0].sms_failed == 0
 
 
 def test_process_sms_response_updates_notification_stats_for_valid_request_with_failed_status(notify_api,
@@ -79,7 +79,7 @@ def test_process_sms_response_updates_notification_stats_for_valid_request_with_
         assert len(stats) == 1
         assert stats[0].sms_requested == 1
         assert stats[0].sms_delivered == 0
-        assert stats[0].sms_error == 0
+        assert stats[0].sms_failed == 0
         success, error = process_sms_client_response(status='1', reference=str(sample_notification.id),
                                                      client_name='Firetext')
         assert success == "{} callback succeeded. reference {} updated".format('Firetext', sample_notification.id)
@@ -88,4 +88,4 @@ def test_process_sms_response_updates_notification_stats_for_valid_request_with_
         assert len(stats) == 1
         assert stats[0].sms_requested == 1
         assert stats[0].sms_delivered == 0
-        assert stats[0].sms_error == 1
+        assert stats[0].sms_failed == 1

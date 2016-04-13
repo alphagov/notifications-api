@@ -112,7 +112,7 @@ def sample_service(notify_db,
         user = sample_user(notify_db, notify_db_session)
     data = {
         'name': service_name,
-        'limit': limit,
+        'message_limit': limit,
         'active': False,
         'restricted': restricted,
         'email_from': email_from
@@ -285,7 +285,7 @@ def sample_notification(notify_db,
                         template=None,
                         job=None,
                         to_field=None,
-                        status='sent',
+                        status='sending',
                         reference=None,
                         created_at=datetime.utcnow()):
     if service is None:
@@ -421,3 +421,8 @@ def sample_service_permission(notify_db,
         db.session.add(p_model)
         db.session.commit()
     return p_model
+
+
+@pytest.fixture(scope='function')
+def fake_uuid():
+    return "6ce466d0-fd6a-11e5-82f5-e0accb9d11a6"

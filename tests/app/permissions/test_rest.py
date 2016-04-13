@@ -22,7 +22,7 @@ def test_get_permission_list(notify_api, notify_db, notify_db_session, sample_pe
             assert len(json_resp['data']) == 1
             expected = {
                 "permission": sample_permission.permission,
-                "user": sample_permission.user.id,
+                "user": str(sample_permission.user.id),
                 "id": str(sample_permission.id),
                 "service": None
             }
@@ -52,7 +52,7 @@ def test_get_permission_filter(notify_api,
                 service_id=str(sample_service.id)).first()
             expected = {
                 "permission": another_permission.permission,
-                "user": sample_user.id,
+                "user": str(sample_user.id),
                 "id": str(another_permission.id),
                 "service": str(sample_service.id)
             }
@@ -75,7 +75,7 @@ def test_get_permission(notify_api, notify_db, notify_db_session, sample_permiss
             json_resp = json.loads(response.get_data(as_text=True))
             expected = {
                 "permission": sample_permission.permission,
-                "user": sample_permission.user.id,
+                "user": str(sample_permission.user.id),
                 "id": str(sample_permission.id),
                 "service": None
             }
