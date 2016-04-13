@@ -70,7 +70,7 @@ def delete_verify_codes():
 def delete_successful_notifications():
     try:
         start = datetime.utcnow()
-        deleted = delete_notifications_created_more_than_a_week_ago('sending')
+        deleted = delete_notifications_created_more_than_a_week_ago('delivered')
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} successful notifications".format(
                 start,
