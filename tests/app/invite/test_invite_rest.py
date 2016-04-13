@@ -12,7 +12,7 @@ def test_create_invited_user(notify_api, sample_service, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.email_invited_user.apply_async')
-            mocker.patch('utils.url_safe_token.generate_token', return_value='the-token')
+            mocker.patch('notifications_utils.url_safe_token.generate_token', return_value='the-token')
             email_address = 'invited_user@service.gov.uk'
             invite_from = sample_service.users[0]
 
