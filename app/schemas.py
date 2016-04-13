@@ -10,7 +10,7 @@ from marshmallow import (
 
 from marshmallow_sqlalchemy import field_for
 
-from utils.recipients import (
+from notifications_utils.recipients import (
     validate_email_address,
     InvalidEmailError,
     validate_phone_number,

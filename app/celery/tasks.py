@@ -10,9 +10,9 @@ from app.clients.sms.mmg import MMGClientException
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 
-from utils.template import Template
+from notifications_utils.template import Template
 
-from utils.recipients import (
+from notifications_utils.recipients import (
     RecipientCSV,
     validate_and_format_phone_number,
     allowed_to_send_to
@@ -172,7 +172,6 @@ def process_job(job_id):
             send_email.apply_async((
                 str(job.service_id),
                 str(create_uuid()),
-                template.subject,
                 "{}@{}".format(job.service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
@@ -257,7 +256,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
 
 
 @notify_celery.task(name="send-email")
-def send_email(service_id, notification_id, subject, from_address, encrypted_notification, created_at):
+def send_email(service_id, notification_id, from_address, encrypted_notification, created_at):
     notification = encryption.decrypt(encrypted_notification)
     client = aws_ses_client
     service = dao_fetch_service_by_id(service_id)
@@ -293,11 +292,10 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
                 dao_get_template_by_id(notification['template']).__dict__,
                 values=notification.get('personalisation', {})
             )
-
             reference = client.send_email(
                 from_address,
                 notification['to'],
-                subject,
+                template.replaced_subject,
                 body=template.replaced,
                 html_body=template.as_HTML_email,
             )

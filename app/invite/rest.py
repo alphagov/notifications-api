@@ -61,7 +61,7 @@ def update_invited_user(service_id, invited_user_id):
 
 
 def _create_invitation(invited_user):
-    from utils.url_safe_token import generate_token
+    from notifications_utils.url_safe_token import generate_token
     token = generate_token(str(invited_user.id), current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
     # TODO: confirm what we want to do for this - the idea is that we say expires tomorrow at midnight
     # and give 48 hours as the max_age
