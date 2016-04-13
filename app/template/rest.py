@@ -47,7 +47,7 @@ def create_template(service_id):
     return jsonify(data=template_schema.dump(new_template).data), 201
 
 
-@template.route('/<int:template_id>', methods=['POST'])
+@template.route('/<uuid:template_id>', methods=['POST'])
 def update_template(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
 
@@ -70,7 +70,7 @@ def get_all_templates_for_service(service_id):
     return jsonify(data=data)
 
 
-@template.route('/<int:template_id>', methods=['GET'])
+@template.route('/<uuid:template_id>', methods=['GET'])
 def get_template_by_id_and_service_id(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
     data, errors = template_schema.dump(fetched_template)

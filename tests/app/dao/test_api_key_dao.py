@@ -42,10 +42,13 @@ def test_save_api_key_should_update_the_api_key(notify_api, notify_db, notify_db
     assert all_api_keys[0].service_id == saved_api_key.service_id
 
 
-def test_get_api_key_should_raise_exception_when_api_key_does_not_exist(notify_api, notify_db, notify_db_session,
-                                                                        sample_service):
+def test_get_api_key_should_raise_exception_when_api_key_does_not_exist(notify_api,
+                                                                        notify_db,
+                                                                        notify_db_session,
+                                                                        sample_service,
+                                                                        fake_uuid):
     try:
-        get_model_api_keys(sample_service.id, id=123)
+        get_model_api_keys(sample_service.id, id=fake_uuid)
         fail("Should have thrown a NoResultFound exception")
     except NoResultFound:
         pass
@@ -78,9 +81,10 @@ def test_get_unsigned_secret_returns_key(notify_api,
 def test_should_not_allow_duplicate_key_names_per_service(notify_api,
                                                           notify_db,
                                                           notify_db_session,
-                                                          sample_api_key):
+                                                          sample_api_key,
+                                                          fake_uuid):
     api_key = ApiKey(
-        **{'id': sample_api_key.id + 1, 'service_id': sample_api_key.service_id, 'name': sample_api_key.name})
+        **{'id': fake_uuid, 'service_id': sample_api_key.service_id, 'name': sample_api_key.name})
     try:
         save_model_api_key(api_key)
         fail("should throw IntegrityError")

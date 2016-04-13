@@ -45,14 +45,16 @@ mmg_error = {'Error': '40', 'Description': 'error'}
 
 
 def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
-    mocker.patch('app.celery.tasks.delete_notifications_created_more_than_a_week_ago')
+    mocked = mocker.patch('app.celery.tasks.delete_notifications_created_more_than_a_week_ago')
     delete_successful_notifications()
+    assert mocked.assert_called_with('delivered')
     assert tasks.delete_notifications_created_more_than_a_week_ago.call_count == 1
 
 
 def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
-    mocker.patch('app.celery.tasks.delete_notifications_created_more_than_a_week_ago')
+    mocked = mocker.patch('app.celery.tasks.delete_notifications_created_more_than_a_week_ago')
     delete_failed_notifications()
+    mocked.assert_called_with('failed')
     assert tasks.delete_notifications_created_more_than_a_week_ago.call_count == 1
 
 
@@ -307,7 +309,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == '+447234123123'
     assert persisted_notification.template_id == sample_template_with_placeholders.id
-    assert persisted_notification.status == 'sent'
+    assert persisted_notification.status == 'sending'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
     assert persisted_notification.sent_by == 'MMG'
@@ -481,7 +483,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
     assert persisted_notification.to == '+447234123123'
     assert persisted_notification.job_id == sample_job.id
     assert persisted_notification.template_id == sample_job.template.id
-    assert persisted_notification.status == 'sent'
+    assert persisted_notification.status == 'sending'
     assert persisted_notification.sent_at > now
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_by == 'MMG'
@@ -522,7 +524,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     assert persisted_notification.template_id == sample_email_template_with_placeholders.id
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
-    assert persisted_notification.status == 'sent'
+    assert persisted_notification.status == 'sending'
     assert persisted_notification.sent_by == 'ses'
 
 

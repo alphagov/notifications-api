@@ -70,7 +70,7 @@ def delete_verify_codes():
 def delete_successful_notifications():
     try:
         start = datetime.utcnow()
-        deleted = delete_notifications_created_more_than_a_week_ago('sent')
+        deleted = delete_notifications_created_more_than_a_week_ago('delivered')
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} successful notifications".format(
                 start,
@@ -129,12 +129,13 @@ def process_job(job_id):
     if stats:
         total_sent = stats.emails_requested + stats.sms_requested
 
-    if total_sent + job.notification_count > service.limit:
+    if total_sent + job.notification_count > service.message_limit:
         job.status = 'sending limits exceeded'
         job.processing_finished = datetime.utcnow()
         dao_update_job(job)
         current_app.logger.info(
-            "Job {} size {} error. Sending limits {} exceeded".format(job_id, job.notification_count, service.limit)
+            "Job {} size {} error. Sending limits {} exceeded".format(
+                job_id, job.notification_count, service.message_limit)
         )
         return
 
@@ -152,7 +153,7 @@ def process_job(job_id):
     ).recipients_and_personalisation:
 
         encrypted = encryption.encrypt({
-            'template': template.id,
+            'template': str(template.id),
             'job': str(job.id),
             'to': recipient,
             'personalisation': personalisation
@@ -217,7 +218,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             to=notification['to'],
             service_id=service_id,
             job_id=notification.get('job', None),
-            status='failed' if restricted else 'sent',
+            status='failed' if restricted else 'sending',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=client.get_name()
@@ -277,7 +278,7 @@ def send_email(service_id, notification_id, subject, from_address, encrypted_not
             to=notification['to'],
             service_id=service_id,
             job_id=notification.get('job', None),
-            status='failed' if restricted else 'sent',
+            status='failed' if restricted else 'sending',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=client.get_name()
