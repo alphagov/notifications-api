@@ -133,7 +133,7 @@ def sample_template(notify_db,
                     template_name="Template Name",
                     template_type="sms",
                     content="This is a template",
-                    subject_line=None,
+                    subject_line='Subject',
                     service=None):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
@@ -187,7 +187,11 @@ def sample_email_template(
 
 @pytest.fixture(scope='function')
 def sample_email_template_with_placeholders(notify_db, notify_db_session):
-    return sample_email_template(notify_db, notify_db_session, content="Hello ((name))")
+    return sample_email_template(
+        notify_db,
+        notify_db_session,
+        content="Hello ((name))",
+        subject_line="((name))")
 
 
 @pytest.fixture(scope='function')

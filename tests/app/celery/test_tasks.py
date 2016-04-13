@@ -1,7 +1,7 @@
 import uuid
 import pytest
 from flask import current_app
-from utils.recipients import validate_phone_number, format_phone_number
+from notifications_utils.recipients import validate_phone_number, format_phone_number
 
 from app.celery.tasks import (
     send_sms,
@@ -204,7 +204,6 @@ def test_should_process_sms_job_if_exactly_on_send_limits(notify_db,
     tasks.send_email.apply_async.assert_called_with(
         (str(job.service_id),
          "uuid",
-         job.template.subject,
          "{}@{}".format(job.service.email_from, "test.notify.com"),
          "something_encrypted",
          "2016-01-01T11:09:00.061258"),
@@ -246,7 +245,6 @@ def test_should_process_email_job(sample_email_job, mocker, mock_celery_remove_j
     tasks.send_email.apply_async.assert_called_once_with(
         (str(sample_email_job.service_id),
          "uuid",
-         sample_email_job.template.subject,
          "{}@{}".format(sample_email_job.service.email_from, "test.notify.com"),
          "something_encrypted",
          "2016-01-01T11:09:00.061258"),
@@ -398,7 +396,11 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
 def test_should_send_email_if_restricted_service_and_valid_email(notify_db, notify_db_session, mocker):
     user = sample_user(notify_db, notify_db_session, email="test@restricted.com")
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(notify_db, notify_db_session, service=service)
+    template = sample_template(
+        notify_db,
+        notify_db_session,
+        service=service,
+        template_type='email')
 
     notification = {
         "template": template.id,
@@ -412,7 +414,6 @@ def test_should_send_email_if_restricted_service_and_valid_email(notify_db, noti
     send_email(
         service.id,
         notification_id,
-        'subject',
         'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
@@ -421,7 +422,7 @@ def test_should_send_email_if_restricted_service_and_valid_email(notify_db, noti
     aws_ses_client.send_email.assert_called_once_with(
         "email_from",
         "test@restricted.com",
-        "subject",
+        template.subject,
         body=template.content,
         html_body=AnyStringWith(template.content)
     )
@@ -446,7 +447,6 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
     send_email(
         service.id,
         notification_id,
-        'subject',
         'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
@@ -504,7 +504,6 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     send_email(
         sample_email_template_with_placeholders.service_id,
         notification_id,
-        'subject',
         'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
@@ -512,7 +511,45 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     aws_ses_client.send_email.assert_called_once_with(
         "email_from",
         "my_email@my_email.com",
-        "subject",
+        notification['personalisation']['name'],
+        body="Hello Jo",
+        html_body=AnyStringWith("Hello Jo")
+    )
+    persisted_notification = notifications_dao.get_notification(
+        sample_email_template_with_placeholders.service_id, notification_id
+    )
+    assert persisted_notification.id == notification_id
+    assert persisted_notification.to == 'my_email@my_email.com'
+    assert persisted_notification.template_id == sample_email_template_with_placeholders.id
+    assert persisted_notification.created_at == now
+    assert persisted_notification.sent_at > now
+    assert persisted_notification.status == 'sending'
+    assert persisted_notification.sent_by == 'ses'
+
+
+def test_should_use_email_template_subject_placeholders(sample_email_template_with_placeholders, mocker):
+    notification = {
+        "template": sample_email_template_with_placeholders.id,
+        "to": "my_email@my_email.com",
+        "personalisation": {"name": "Jo"}
+    }
+    mocker.patch('app.encryption.decrypt', return_value=notification)
+    mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.aws_ses_client.get_name', return_value='ses')
+
+    notification_id = uuid.uuid4()
+    now = datetime.utcnow()
+    send_email(
+        sample_email_template_with_placeholders.service_id,
+        notification_id,
+        'email_from',
+        "encrypted-in-reality",
+        now.strftime(DATETIME_FORMAT)
+    )
+    aws_ses_client.send_email.assert_called_once_with(
+        "email_from",
+        "my_email@my_email.com",
+        notification['personalisation']['name'],
         body="Hello Jo",
         html_body=AnyStringWith("Hello Jo")
     )
@@ -542,7 +579,6 @@ def test_should_use_email_template_and_persist_ses_reference(sample_email_templa
     send_email(
         sample_email_template_with_placeholders.service_id,
         notification_id,
-        'subject',
         'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
@@ -568,7 +604,6 @@ def test_should_use_email_template_and_persist_without_personalisation(
     send_email(
         sample_email_template.service_id,
         notification_id,
-        'subject',
         'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
@@ -576,7 +611,7 @@ def test_should_use_email_template_and_persist_without_personalisation(
     aws_ses_client.send_email.assert_called_once_with(
         "email_from",
         "my_email@my_email.com",
-        "subject",
+        sample_email_template.subject,
         body="This is a template",
         html_body=AnyStringWith("This is a template")
     )
@@ -631,7 +666,6 @@ def test_should_persist_notification_as_failed_if_email_client_fails(sample_emai
     send_email(
         sample_email_template.service_id,
         notification_id,
-        'subject',
         'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
@@ -639,7 +673,7 @@ def test_should_persist_notification_as_failed_if_email_client_fails(sample_emai
     aws_ses_client.send_email.assert_called_once_with(
         "email_from",
         "my_email@my_email.com",
-        "subject",
+        sample_email_template.subject,
         body=sample_email_template.content,
         html_body=AnyStringWith(sample_email_template.content)
     )
@@ -692,7 +726,6 @@ def test_should_not_send_email_if_db_peristance_failed(sample_email_template, mo
     send_email(
         sample_email_template.service_id,
         notification_id,
-        'subject',
         'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)

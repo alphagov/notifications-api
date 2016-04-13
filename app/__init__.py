@@ -6,7 +6,7 @@ from flask import Flask, _request_ctx_stack
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from werkzeug.local import LocalProxy
-from utils import logging
+from notifications_utils import logging
 from app.celery.celery import NotifyCelery
 from app.clients.sms.mmg import MMGClient
 from app.clients.sms.twilio import TwilioClient
