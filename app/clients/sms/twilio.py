@@ -44,8 +44,10 @@ class TwilioClient(SmsClient):
     def status(self, message_id):
         try:
             response = self.client.messages.get(message_id)
-            if response.status in ('delivered', 'undelivered', 'failed'):
+            if response.status in ('delivered', 'failed'):
                 return response.status
+            elif response.status == 'undelivered':
+                return 'sending'
             return None
         except TwilioRestException as e:
             current_app.logger.exception(e)

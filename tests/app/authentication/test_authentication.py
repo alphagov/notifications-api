@@ -133,7 +133,7 @@ def test_should_allow_valid_token_with_post_body(notify_api, sample_api_key):
                 'email_from': 'new name',
                 'name': 'new name',
                 'users': [service.users[0].id],
-                'limit': 1000,
+                'message_limit': 1000,
                 'restricted': False,
                 'active': False}
 

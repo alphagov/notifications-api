@@ -27,7 +27,7 @@ def test_get_user_list(notify_api, notify_db, notify_db_session, sample_service)
             expected_permissions = default_service_permissions
             fetched = json_resp['data'][0]
 
-            assert sample_user.id == fetched['id']
+            assert str(sample_user.id) == fetched['id']
             assert sample_user.name == fetched['name']
             assert sample_user.mobile_number == fetched['mobile_number']
             assert sample_user.email_address == fetched['email_address']
@@ -53,7 +53,7 @@ def test_get_user(notify_api, notify_db, notify_db_session, sample_service):
             expected_permissions = default_service_permissions
             fetched = json_resp['data']
 
-            assert sample_user.id == fetched['id']
+            assert str(sample_user.id) == fetched['id']
             assert sample_user.name == fetched['name']
             assert sample_user.mobile_number == fetched['mobile_number']
             assert sample_user.email_address == fetched['email_address']
@@ -90,9 +90,8 @@ def test_post_user(notify_api, notify_db, notify_db_session):
             assert resp.status_code == 201
             user = User.query.filter_by(email_address='user@digital.cabinet-office.gov.uk').first()
             json_resp = json.loads(resp.get_data(as_text=True))
-            json_resp['data'] == {"email_address": user.email_address, "id": user.id}
             assert json_resp['data']['email_address'] == user.email_address
-            assert json_resp['data']['id'] == user.id
+            assert json_resp['data']['id'] == str(user.id)
 
 
 def test_post_user_missing_attribute_email(notify_api, notify_db, notify_db_session):
@@ -186,7 +185,7 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_service):
             expected_permissions = default_service_permissions
             fetched = json_resp['data']
 
-            assert sample_user.id == fetched['id']
+            assert str(sample_user.id) == fetched['id']
             assert sample_user.name == fetched['name']
             assert sample_user.mobile_number == fetched['mobile_number']
             assert new_email == fetched['email_address']
@@ -230,13 +229,13 @@ def test_put_user_update_password(notify_api,
                                                       request_body=json.dumps(data))
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
-                url_for('user.verify_user_password', user_id=sample_user.id),
+                url_for('user.verify_user_password', user_id=str(sample_user.id)),
                 data=json.dumps(data),
                 headers=headers)
             assert resp.status_code == 204
 
 
-def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_user):
+def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_user, fake_uuid):
     """
     Tests PUT endpoint '/' to update a user doesn't exist.
     """
@@ -245,17 +244,17 @@ def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_us
             assert User.query.count() == 1
             new_email = 'new@digital.cabinet-office.gov.uk'
             data = {'email_address': new_email}
-            auth_header = create_authorization_header(path=url_for('user.update_user', user_id="9999"),
+            auth_header = create_authorization_header(path=url_for('user.update_user', user_id=fake_uuid),
                                                       method='PUT',
                                                       request_body=json.dumps(data))
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.put(
-                url_for('user.update_user', user_id="9999"),
+                url_for('user.update_user', user_id=fake_uuid),
                 data=json.dumps(data),
                 headers=headers)
             assert resp.status_code == 404
             assert User.query.count() == 1
-            user = User.query.filter_by(id=sample_user.id).first()
+            user = User.query.filter_by(id=str(sample_user.id)).first()
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == "error"
             assert json_resp['message'] == 'No result found'
@@ -278,7 +277,7 @@ def test_get_user_by_email(notify_api, notify_db, notify_db_session, sample_serv
             expected_permissions = default_service_permissions
             fetched = json_resp['data']
 
-            assert sample_user.id == fetched['id']
+            assert str(sample_user.id) == fetched['id']
             assert sample_user.name == fetched['name']
             assert sample_user.mobile_number == fetched['mobile_number']
             assert sample_user.email_address == fetched['email_address']
@@ -325,9 +324,9 @@ def test_get_user_with_permissions(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             header = create_authorization_header(
-                path=url_for('user.get_user', user_id=sample_service_permission.user.id),
+                path=url_for('user.get_user', user_id=str(sample_service_permission.user.id)),
                 method='GET')
-            response = client.get(url_for('user.get_user', user_id=sample_service_permission.user.id),
+            response = client.get(url_for('user.get_user', user_id=str(sample_service_permission.user.id)),
                                   headers=[header])
             assert response.status_code == 200
             permissions = json.loads(response.get_data(as_text=True))['data']['permissions']
@@ -345,7 +344,7 @@ def test_set_user_permissions(notify_api,
             header = create_authorization_header(
                 path=url_for(
                     'user.set_permissions',
-                    user_id=sample_user.id,
+                    user_id=str(sample_user.id),
                     service_id=str(sample_service.id)),
                 method='POST',
                 request_body=data)
@@ -353,7 +352,7 @@ def test_set_user_permissions(notify_api,
             response = client.post(
                 url_for(
                     'user.set_permissions',
-                    user_id=sample_user.id,
+                    user_id=str(sample_user.id),
                     service_id=str(sample_service.id)),
                 headers=headers,
                 data=data)
@@ -376,7 +375,7 @@ def test_set_user_permissions_multiple(notify_api,
             header = create_authorization_header(
                 path=url_for(
                     'user.set_permissions',
-                    user_id=sample_user.id,
+                    user_id=str(sample_user.id),
                     service_id=str(sample_service.id)),
                 method='POST',
                 request_body=data)
@@ -384,7 +383,7 @@ def test_set_user_permissions_multiple(notify_api,
             response = client.post(
                 url_for(
                     'user.set_permissions',
-                    user_id=sample_user.id,
+                    user_id=str(sample_user.id),
                     service_id=str(sample_service.id)),
                 headers=headers,
                 data=data)
@@ -411,7 +410,7 @@ def test_set_user_permissions_remove_old(notify_api,
             header = create_authorization_header(
                 path=url_for(
                     'user.set_permissions',
-                    user_id=sample_user.id,
+                    user_id=str(sample_user.id),
                     service_id=str(sample_service.id)),
                 method='POST',
                 request_body=data)
@@ -419,7 +418,7 @@ def test_set_user_permissions_remove_old(notify_api,
             response = client.post(
                 url_for(
                     'user.set_permissions',
-                    user_id=sample_user.id,
+                    user_id=str(sample_user.id),
                     service_id=str(sample_service.id)),
                 headers=headers,
                 data=data)

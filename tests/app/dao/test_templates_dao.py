@@ -42,20 +42,6 @@ def test_create_email_template(sample_service):
     assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'Sample Template'
 
 
-def test_create_email_template_fails_if_no_subject(sample_service):
-    data = {
-        'name': 'Sample Template',
-        'template_type': "email",
-        'content': "Template content",
-        'service': sample_service
-    }
-    template = Template(**data)
-
-    with pytest.raises(IntegrityError) as e:
-        dao_create_template(template)
-    assert 'new row for relation "templates" violates check constraint "ch_email_template_has_subject"' in str(e.value)
-
-
 def test_update_template(sample_service):
     data = {
         'name': 'Sample Template',
@@ -158,7 +144,7 @@ def test_get_template_by_id_and_service(notify_db, notify_db_session, sample_ser
     assert Template.query.count() == 1
 
 
-def test_get_template_by_id_and_service_returns_none_if_no_template(sample_service):
+def test_get_template_by_id_and_service_returns_none_if_no_template(sample_service, fake_uuid):
     with pytest.raises(NoResultFound) as e:
-        dao_get_template_by_id_and_service_id(template_id=999, service_id=sample_service.id)
+        dao_get_template_by_id_and_service_id(template_id=fake_uuid, service_id=sample_service.id)
     assert 'No row was found for one' in str(e.value)

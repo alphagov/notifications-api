@@ -54,12 +54,11 @@ def test_get_job_with_invalid_job_id_returns404(notify_api, sample_template):
             assert resp_json['message'] == 'No result found'
 
 
-def test_get_job_with_unknown_id_returns404(notify_api, sample_template):
-    random_id = str(uuid.uuid4())
+def test_get_job_with_unknown_id_returns404(notify_api, sample_template, fake_uuid):
     service_id = sample_template.service.id
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            path = '/service/{}/job/{}'.format(service_id, random_id)
+            path = '/service/{}/job/{}'.format(service_id, fake_uuid)
             auth_header = create_authorization_header(
                 service_id=sample_template.service.id,
                 path=path,
@@ -89,15 +88,14 @@ def test_get_job_by_id(notify_api, sample_job):
             assert resp_json['data']['id'] == job_id
 
 
-def test_create_job(notify_api, sample_template, mocker):
+def test_create_job(notify_api, sample_template, mocker, fake_uuid):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.process_job.apply_async')
-            job_id = uuid.uuid4()
             data = {
-                'id': str(job_id),
+                'id': fake_uuid,
                 'service': str(sample_template.service.id),
-                'template': sample_template.id,
+                'template': str(sample_template.id),
                 'original_file_name': 'thisisatest.csv',
                 'notification_count': 1
             }
@@ -115,15 +113,15 @@ def test_create_job(notify_api, sample_template, mocker):
             assert response.status_code == 201
 
             app.celery.tasks.process_job.apply_async.assert_called_once_with(
-                ([str(job_id)]),
+                ([str(fake_uuid)]),
                 queue="process-job"
             )
 
             resp_json = json.loads(response.get_data(as_text=True))
 
-            assert resp_json['data']['id'] == str(job_id)
+            assert resp_json['data']['id'] == fake_uuid
             assert resp_json['data']['service'] == str(sample_template.service.id)
-            assert resp_json['data']['template'] == sample_template.id
+            assert resp_json['data']['template'] == str(sample_template.id)
             assert resp_json['data']['original_file_name'] == 'thisisatest.csv'
 
 
