@@ -6,7 +6,7 @@ from flask import (
 
 from itsdangerous import SignatureExpired
 
-from utils.url_safe_token import check_token
+from notifications_utils.url_safe_token import check_token
 
 from app.dao.invited_user_dao import get_invited_user_by_id
 

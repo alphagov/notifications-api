@@ -9,8 +9,8 @@ from flask import (
     url_for,
     json
 )
-from utils.recipients import allowed_to_send_to, first_column_heading
-from utils.template import Template
+from notifications_utils.recipients import allowed_to_send_to, first_column_heading
+from notifications_utils.template import Template
 from app.clients.email.aws_ses import get_aws_responses
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT
 from app.authentication.auth import require_admin
@@ -348,7 +348,6 @@ def send_notification(notification_type):
         send_email.apply_async((
             service_id,
             notification_id,
-            template.subject,
             "{}@{}".format(service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
             encryption.encrypt(notification),
             datetime.utcnow().strftime(DATETIME_FORMAT)

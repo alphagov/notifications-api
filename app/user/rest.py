@@ -229,7 +229,7 @@ def send_user_reset_password():
 
 
 def _create_reset_password_url(email):
-    from utils.url_safe_token import generate_token
+    from notifications_utils.url_safe_token import generate_token
     import json
     data = json.dumps({'email': email, 'created_at': str(datetime.now())})
     token = generate_token(data, current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
@@ -238,7 +238,7 @@ def _create_reset_password_url(email):
 
 
 def _create_verification_url(user, secret_code):
-    from utils.url_safe_token import generate_token
+    from notifications_utils.url_safe_token import generate_token
     import json
     data = json.dumps({'user_id': str(user.id), 'email': user.email_address, 'secret_code': secret_code})
     token = generate_token(data, current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
