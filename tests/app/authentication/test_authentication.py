@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+import pytest
 from notifications_python_client.authentication import create_jwt_token
 from flask import json, url_for, current_app
 from app.dao.api_key_dao import get_unsigned_secrets, save_model_api_key, get_unsigned_secret
@@ -37,7 +38,7 @@ def test_should_not_allow_request_with_incorrect_token(notify_api, sample_user):
             assert data['message'] == 'Invalid token: signature'
 
 
-def test_should_not_allow_incorrect_path(notify_api, sample_api_key):
+def test_should_ignore_path(notify_api, sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             token = create_jwt_token(
@@ -49,12 +50,10 @@ def test_should_not_allow_incorrect_path(notify_api, sample_api_key):
             response = client.get(
                 '/service',
                 headers={'Authorization': "Bearer {}".format(token)})
-            assert response.status_code == 403
-            data = json.loads(response.get_data())
-            assert data['message'] == 'Invalid token: request'
+            assert response.status_code == 200
 
 
-def test_should_not_allow_incorrect_method(notify_api, sample_api_key):
+def test_should_ignore_request(notify_api, sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             token = __create_post_token(sample_api_key.service_id, {})
@@ -62,9 +61,7 @@ def test_should_not_allow_incorrect_method(notify_api, sample_api_key):
                 '/service',
                 headers={'Authorization': "Bearer {}".format(token)}
             )
-            assert response.status_code == 403
-            data = json.loads(response.get_data())
-            assert data['message'] == 'Invalid token: request'
+            assert response.status_code == 200
 
 
 def test_should_not_allow_invalid_secret(notify_api, sample_api_key):
@@ -152,17 +149,16 @@ def test_should_allow_valid_token_with_post_body(notify_api, sample_api_key):
             assert response.status_code == 200
 
 
-def test_should_not_allow_valid_token_with_invalid_post_body(notify_api, notify_db, notify_db_session, sample_api_key):
+def test_should_allow_valid_token_with_invalid_post_body_but_fail_at_endpoint(notify_api, sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             token = __create_post_token(str(sample_api_key.service_id), JSON_BODY)
-            response = client.post(
-                '/service',
-                data="spurious",
-                headers={'Authorization': 'Bearer {}'.format(token)})
-            assert response.status_code == 403
-            data = json.loads(response.get_data())
-            assert data['message'] == 'Invalid token: payload'
+            with pytest.raises(AttributeError):
+                response = client.post(
+                    '/service',
+                    data="spurious",
+                    headers={'Authorization': 'Bearer {}'.format(token)})
+                assert response.status_code == 400
 
 
 def test_authentication_passes_admin_client_token(notify_api,
