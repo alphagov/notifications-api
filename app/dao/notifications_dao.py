@@ -30,22 +30,7 @@ from app.clients import (
     STATISTICS_REQUESTED
 )
 
-from functools import wraps
-
-
-def transactional(func):
-    @wraps(func)
-    def commit_or_rollback(*args, **kwargs):
-        from flask import current_app
-        from app import db
-        try:
-            func(*args, **kwargs)
-            db.session.commit()
-        except Exception as e:
-            current_app.logger.error(e)
-            db.session.rollback()
-            raise
-    return commit_or_rollback
+from app.dao.dao_utils import transactional
 
 
 def get_character_count_of_content(content, encoding='utf-8'):
