@@ -10,7 +10,7 @@ from app.clients.sms.mmg import MMGClientException
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 
-from notifications_utils.template import Template
+from notifications_utils.template import Template, unlink_govuk_escaped
 
 from notifications_utils.recipients import (
     RecipientCSV,
@@ -296,7 +296,7 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
                 from_address,
                 notification['to'],
                 template.replaced_subject,
-                body=template.replaced,
+                body=template.replaced_govuk_escaped,
                 html_body=template.as_HTML_email,
             )
             update_notification_reference_by_id(notification_id, reference)
@@ -350,13 +350,17 @@ def invitation_template(user_name, service_name, url, expiry_date):
         'GOV.UK Notify makes it easy to keep people updated by helping you send text messages, emails and letters.\n\n'
         'Click this link to create an account on GOV.UK Notify:\n$url\n\n'
         'This invitation will stop working at midnight tomorrow. This is to keep $service_name secure.')
-    return t.substitute(user_name=user_name, service_name=service_name, url=url, expiry_date=expiry_date)
+    return unlink_govuk_escaped(
+        t.substitute(user_name=user_name, service_name=service_name, url=url, expiry_date=expiry_date)
+    )
 
 
 def invitation_subject_line(user_name, service_name):
     from string import Template
     t = Template('$user_name has invited you to collaborate on $service_name on GOV.UK Notify')
-    return t.substitute(user_name=user_name, service_name=service_name)
+    return unlink_govuk_escaped(
+        t.substitute(user_name=user_name, service_name=service_name)
+    )
 
 
 def invited_user_url(base_url, token):
@@ -391,7 +395,9 @@ def password_reset_message(name, url):
                  "If you didn't request this email, you can ignore it – your password has not been changed.\n\n"
                  "To reset your password, click this link:\n\n"
                  "$url")
-    return t.substitute(user_name=name, url=url)
+    return unlink_govuk_escaped(
+        t.substitute(user_name=name, url=url)
+    )
 
 
 @notify_celery.task(name='email-reset-password')
@@ -411,7 +417,9 @@ def registration_verification_template(name, url):
     from string import Template
     t = Template("Hi $name,\n\n"
                  "To complete your registration for GOV.UK Notify please click the link below\n\n $url")
-    return t.substitute(name=name, url=url)
+    return unlink_govuk_escaped(
+        t.substitute(name=name, url=url)
+    )
 
 
 @notify_celery.task(name='email-registration-verification')
