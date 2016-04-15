@@ -38,7 +38,8 @@ from app.dao.notifications_dao import (
     dao_update_notification,
     delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
-    update_notification_reference_by_id
+    update_notification_reference_by_id,
+    get_character_count_of_content
 )
 
 from app.dao.jobs_dao import (
@@ -240,6 +241,9 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 content=template.replaced,
                 reference=str(notification_id)
             )
+            # Record the character count of the content after placeholders included
+            notification_db_object.content_char_count = get_character_count_of_content(template.replaced)
+            dao_update_notification(notification_db_object)
         except MMGClientException as e:
             current_app.logger.error(
                 "SMS notification {} failed".format(notification_id)

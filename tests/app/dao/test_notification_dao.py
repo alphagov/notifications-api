@@ -29,7 +29,9 @@ from app.dao.notifications_dao import (
     update_notification_status_by_id,
     update_notification_reference_by_id,
     update_notification_status_by_reference,
-    dao_get_template_statistics_for_service
+    dao_get_template_statistics_for_service,
+    get_character_count_of_content,
+    get_sms_message_count
 )
 
 from tests.app.conftest import sample_job
@@ -238,7 +240,7 @@ def test_should_be_able_to_get_all_statistics_for_a_service_for_several_days(sam
         'service': sample_template.service,
         'service_id': sample_template.service.id,
         'template': sample_template,
-        'template_id': sample_template.id,
+        'template_id': sample_template.id
     }
 
     today = datetime.utcnow()
@@ -1000,3 +1002,31 @@ def test_get_template_stats_for_service_returns_no_result_if_no_usage_within_lim
 def test_get_template_stats_for_service_with_limit_if_no_records_returns_empty_list(sample_template):
     template_stats = dao_get_template_statistics_for_service(sample_template.service.id, limit_days=7)
     assert len(template_stats) == 0
+
+
+@pytest.mark.parametrize(
+    "content,encoding,expected_length",
+    [
+        ("The quick brown fox jumped over the lazy dog", "utf-8", 44),
+        ("深", "utf-8", 3),
+        ("'First line.\n", 'utf-8', 13),
+        ("\t\n\r", 'utf-8', 3)
+    ])
+def test_get_character_count_of_content(content, encoding, expected_length):
+    assert get_character_count_of_content(content, encoding=encoding) == expected_length
+
+
+@pytest.mark.parametrize(
+    "char_count, expected_sms_fragment_count",
+    [
+        (159, 1),
+        (160, 1),
+        (161, 2),
+        (306, 2),
+        (307, 3),
+        (459, 3),
+        (460, 4),
+        (461, 4)
+    ])
+def test_sms_fragment_count(char_count, expected_sms_fragment_count):
+    assert get_sms_message_count(char_count) == expected_sms_fragment_count
