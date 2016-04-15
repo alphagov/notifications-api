@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 from notifications_python_client.authentication import create_jwt_token
-from flask import json, url_for, current_app
+from flask import json, current_app
 from app.dao.api_key_dao import get_unsigned_secrets, save_model_api_key, get_unsigned_secret
 from app.models import ApiKey, Service
 
