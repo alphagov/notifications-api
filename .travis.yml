@@ -77,7 +77,7 @@ deploy:
   key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
   bundle_type: zip
   application: notifications-api
-  deployment_group: notifications_delivery_api_deployment_group
+  deployment_group: staging_delivery_api_deployment_group
   region: eu-west-1
   on: *2
 - provider: codedeploy
@@ -87,7 +87,7 @@ deploy:
   key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
   bundle_type: zip
   application: notifications-api
-  deployment_group: notifications_api_deployment_group
+  deployment_group: staging_public_api_deployment_group
   region: eu-west-1
   on: *2
 - provider: codedeploy
@@ -97,7 +97,7 @@ deploy:
   key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
   bundle_type: zip
   application: notifications-api
-  deployment_group: notifications_admin_api_deployment_group
+  deployment_group: staging_admin_api_deployment_group
   region: eu-west-1
   on: *2
 - provider: s3
@@ -118,7 +118,7 @@ deploy:
   key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
   bundle_type: zip
   application: notifications-api
-  deployment_group: live_notifications_delivery_api_deployment_group
+  deployment_group: live_delivery_api_deployment_group
   region: eu-west-1
   on: *2
 - provider: codedeploy
@@ -128,7 +128,7 @@ deploy:
   key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
   bundle_type: zip
   application: notifications-api
-  deployment_group: live_notifications_api_deployment_group
+  deployment_group: live_public_api_deployment_group
   region: eu-west-1
   on: *2
 - provider: codedeploy
@@ -138,7 +138,7 @@ deploy:
   key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
   bundle_type: zip
   application: notifications-api
-  deployment_group: live_notifications_admin_api_deployment_group
+  deployment_group: live_admin_api_deployment_group
   region: eu-west-1
   on: *2
 before_deploy:
