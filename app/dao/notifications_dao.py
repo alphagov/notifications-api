@@ -1,3 +1,4 @@
+import math
 from sqlalchemy import (
     desc,
     func
@@ -45,6 +46,14 @@ def transactional(func):
             db.session.rollback()
             raise
     return commit_or_rollback
+
+
+def get_character_count_of_content(content, encoding='utf-8'):
+    return len(content.encode(encoding))
+
+
+def get_sms_message_count(char_count):
+    return 1 if char_count <= 160 else math.ceil(float(char_count) / 153)
 
 
 def dao_get_notification_statistics_for_service(service_id):
