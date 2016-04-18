@@ -64,9 +64,7 @@ user_to_service = db.Table(
     db.Model.metadata,
     db.Column('user_id', UUID(as_uuid=True), db.ForeignKey('users.id')),
     db.Column('service_id', UUID(as_uuid=True), db.ForeignKey('services.id')),
-
     UniqueConstraint('user_id', 'service_id', name='uix_user_to_service')
-
 )
 
 
@@ -249,6 +247,7 @@ class Notification(db.Model):
     service = db.relationship('Service')
     template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), index=True, unique=False)
     template = db.relationship('Template')
+    content_char_count = db.Column(db.Integer, nullable=True)
     created_at = db.Column(
         db.DateTime,
         index=False,
