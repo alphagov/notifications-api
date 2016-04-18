@@ -1,3 +1,4 @@
+import json
 from flask import current_app
 from monotonic import monotonic
 from requests import (request, RequestException, HTTPError)
@@ -47,18 +48,18 @@ class MMGClient(SmsClient):
     def get_name(self):
         return self.name
 
-    def send_sms(self, to, content, reference):
+    def send_sms(self, to, content, reference, multi=True):
         data = {
             "reqType": "BULK",
             "MSISDN": to,
             "msg": content,
             "sender": self.from_number,
-            "cid": reference
+            "cid": reference,
+            "multi": multi
         }
 
         start_time = monotonic()
         try:
-            import json
             response = request("POST", "https://www.mmgrp.co.uk/API/json/api.php",
                                data=json.dumps(data),
                                headers={'Content-Type': 'application/json',
