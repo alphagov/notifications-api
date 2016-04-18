@@ -4,7 +4,7 @@ from app import create_app
 from credstash import getAllSecrets
 
 
-default_env_file = '/home/notify-app/environment'
+default_env_file = '/home/ubuntu/environment'
 environment = 'live'
 
 if os.path.isfile(default_env_file):
