@@ -3,7 +3,7 @@ from app import notify_celery, create_app
 from credstash import getAllSecrets
 import os
 
-default_env_file = '/home/notify-app/environment'
+default_env_file = '/home/ubuntu/environment'
 environment = 'live'
 
 if os.path.isfile(default_env_file):
