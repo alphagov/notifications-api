@@ -1,18 +1,18 @@
 import uuid
 import datetime
 
-from sqlalchemy import UniqueConstraint, Sequence, CheckConstraint
+from sqlalchemy.dialects.postgresql import UUID
 
-from . import db
-from sqlalchemy.dialects.postgresql import (
-    UUID,
-    ARRAY
-)
+from sqlalchemy import UniqueConstraint
 
 from app.encryption import (
     hashpw,
     check_hash
 )
+
+from app import db
+
+from app.history_meta import Versioned
 
 
 def filter_null_value_fields(obj):
@@ -68,7 +68,7 @@ user_to_service = db.Table(
 )
 
 
-class Service(db.Model):
+class Service(db.Model, Versioned):
     __tablename__ = 'services'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -93,6 +93,13 @@ class Service(db.Model):
         backref=db.backref('user_to_service', lazy='dynamic'))
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
     email_from = db.Column(db.Text, index=False, unique=True, nullable=False)
+    created_by = db.relationship('User')
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+
+    @classmethod
+    def get_history_model(cls):
+        history_mapper = cls.__history_mapper__
+        return history_mapper.class_
 
 
 class ApiKey(db.Model):
