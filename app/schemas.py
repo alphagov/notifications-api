@@ -234,6 +234,7 @@ class NotificationsFilterSchema(ma.Schema):
     template_type = fields.Nested(BaseTemplateSchema, only=['template_type'], many=True)
     status = fields.Nested(NotificationModelSchema, only=['status'], many=True)
     page = fields.Int(required=False)
+    page_size = fields.Int(required=False)
 
     @pre_load
     def handle_multidict(self, in_data):
@@ -254,14 +255,21 @@ class NotificationsFilterSchema(ma.Schema):
             in_data['status'] = [x.status for x in in_data['status']]
         return in_data
 
-    @validates('page')
-    def validate_page(self, value):
+    def _validate_positive_number(self, value):
         try:
             page_int = int(value)
             if page_int < 1:
                 raise ValidationError("Not a positive integer")
         except:
             raise ValidationError("Not a positive integer")
+
+    @validates('page')
+    def validate_page(self, value):
+        self._validate_positive_number(value)
+
+    @validates('page_size')
+    def validate_page_size(self, value):
+        self._validate_positive_number(value)
 
 
 class TemplateStatisticsSchema(BaseSchema):

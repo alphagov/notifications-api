@@ -1,3 +1,4 @@
+import math
 from sqlalchemy import (
     desc,
     func
@@ -45,6 +46,14 @@ def transactional(func):
             db.session.rollback()
             raise
     return commit_or_rollback
+
+
+def get_character_count_of_content(content, encoding='utf-8'):
+    return len(content.encode(encoding))
+
+
+def get_sms_message_count(char_count):
+    return 1 if char_count <= 160 else math.ceil(float(char_count) / 153)
 
 
 def dao_get_notification_statistics_for_service(service_id):
@@ -189,12 +198,14 @@ def get_notification_for_job(service_id, job_id, notification_id):
     return Notification.query.filter_by(service_id=service_id, job_id=job_id, id=notification_id).one()
 
 
-def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1):
+def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page_size=None):
+    if page_size is None:
+        page_size = current_app.config['PAGE_SIZE']
     query = Notification.query.filter_by(service_id=service_id, job_id=job_id)
     query = filter_query(query, filter_dict)
     pagination = query.order_by(desc(Notification.created_at)).paginate(
         page=page,
-        per_page=current_app.config['PAGE_SIZE']
+        per_page=page_size
     )
     return pagination
 
@@ -207,12 +218,14 @@ def get_notification_by_id(notification_id):
     return Notification.query.filter_by(id=notification_id).first()
 
 
-def get_notifications_for_service(service_id, filter_dict=None, page=1):
+def get_notifications_for_service(service_id, filter_dict=None, page=1, page_size=None):
+    if page_size is None:
+        page_size = current_app.config['PAGE_SIZE']
     query = Notification.query.filter_by(service_id=service_id)
     query = filter_query(query, filter_dict)
     pagination = query.order_by(desc(Notification.created_at)).paginate(
         page=page,
-        per_page=current_app.config['PAGE_SIZE']
+        per_page=page_size
     )
     return pagination
 
