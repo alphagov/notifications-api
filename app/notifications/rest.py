@@ -190,14 +190,17 @@ def get_all_notifications():
         return jsonify(result="error", message=errors), 400
 
     page = data['page'] if 'page' in data else 1
+    page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
 
     pagination = notifications_dao.get_notifications_for_service(
         api_user['client'],
         filter_dict=data,
-        page=page)
-
+        page=page,
+        page_size=page_size)
     return jsonify(
         notifications=notification_status_schema.dump(pagination.items, many=True).data,
+        page_size=page_size,
+        total=pagination.total,
         links=pagination_links(
             pagination,
             '.get_all_notifications',
@@ -214,15 +217,19 @@ def get_all_notifications_for_service(service_id):
         return jsonify(result="error", message=errors), 400
 
     page = data['page'] if 'page' in data else 1
+    page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
 
     pagination = notifications_dao.get_notifications_for_service(
         service_id,
         filter_dict=data,
-        page=page)
+        page=page,
+        page_size=page_size)
     kwargs = request.args.to_dict()
     kwargs['service_id'] = service_id
     return jsonify(
         notifications=notification_status_schema.dump(pagination.items, many=True).data,
+        page_size=page_size,
+        total=pagination.total,
         links=pagination_links(
             pagination,
             '.get_all_notifications_for_service',
@@ -239,17 +246,21 @@ def get_all_notifications_for_service_job(service_id, job_id):
         return jsonify(result="error", message=errors), 400
 
     page = data['page'] if 'page' in data else 1
+    page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
 
     pagination = notifications_dao.get_notifications_for_job(
         service_id,
         job_id,
         filter_dict=data,
-        page=page)
+        page=page,
+        page_size=page_size)
     kwargs = request.args.to_dict()
     kwargs['service_id'] = service_id
     kwargs['job_id'] = job_id
     return jsonify(
         notifications=notification_status_schema.dump(pagination.items, many=True).data,
+        page_size=page_size,
+        total=pagination.total,
         links=pagination_links(
             pagination,
             '.get_all_notifications_for_service_job',
