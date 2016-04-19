@@ -115,7 +115,8 @@ def sample_service(notify_db,
         'message_limit': limit,
         'active': False,
         'restricted': restricted,
-        'email_from': email_from
+        'email_from': email_from,
+        'created_by': user
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
