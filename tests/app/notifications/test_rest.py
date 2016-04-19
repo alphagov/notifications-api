@@ -227,6 +227,47 @@ def test_should_reject_invalid_page_param(notify_api, sample_email_template):
             assert 'Not a valid integer.' in notifications['message']['page']
 
 
+def test_valid_page_size_param(notify_api, notify_db, notify_db_session, sample_email_template):
+    with notify_api.test_request_context():
+        n1 = create_sample_notification(notify_db, notify_db_session)
+        n2 = create_sample_notification(notify_db, notify_db_session)
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(
+                service_id=sample_email_template.service_id,
+                path='/notifications',
+                method='GET')
+
+            response = client.get(
+                '/notifications?page=1&page_size=1',
+                headers=[auth_header])
+
+            notifications = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
+            assert len(notifications['notifications']) == 1
+            assert notifications['total'] == 2
+            assert notifications['page_size'] == 1
+
+
+def test_invalid_page_size_param(notify_api, notify_db, notify_db_session, sample_email_template):
+    with notify_api.test_request_context():
+        n1 = create_sample_notification(notify_db, notify_db_session)
+        n2 = create_sample_notification(notify_db, notify_db_session)
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(
+                service_id=sample_email_template.service_id,
+                path='/notifications',
+                method='GET')
+
+            response = client.get(
+                '/notifications?page=1&page_size=invalid',
+                headers=[auth_header])
+
+            notifications = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 400
+            assert notifications['result'] == 'error'
+            assert 'Not a valid integer.' in notifications['message']['page_size']
+
+
 def test_should_return_pagination_links(notify_api, notify_db, notify_db_session, sample_email_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -1274,7 +1315,6 @@ def test_firetext_callback_should_update_notification_status_sent(notify_api, no
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            print(json_resp)
             assert response.status_code == 200
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
