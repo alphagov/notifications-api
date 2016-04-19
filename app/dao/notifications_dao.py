@@ -198,12 +198,14 @@ def get_notification_for_job(service_id, job_id, notification_id):
     return Notification.query.filter_by(service_id=service_id, job_id=job_id, id=notification_id).one()
 
 
-def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1):
+def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page_size=None):
+    if page_size is None:
+        page_size = current_app.config['PAGE_SIZE']
     query = Notification.query.filter_by(service_id=service_id, job_id=job_id)
     query = filter_query(query, filter_dict)
     pagination = query.order_by(desc(Notification.created_at)).paginate(
         page=page,
-        per_page=current_app.config['PAGE_SIZE']
+        per_page=page_size
     )
     return pagination
 
@@ -216,12 +218,14 @@ def get_notification_by_id(notification_id):
     return Notification.query.filter_by(id=notification_id).first()
 
 
-def get_notifications_for_service(service_id, filter_dict=None, page=1):
+def get_notifications_for_service(service_id, filter_dict=None, page=1, page_size=None):
+    if page_size is None:
+        page_size = current_app.config['PAGE_SIZE']
     query = Notification.query.filter_by(service_id=service_id)
     query = filter_query(query, filter_dict)
     pagination = query.order_by(desc(Notification.created_at)).paginate(
         page=page,
-        per_page=current_app.config['PAGE_SIZE']
+        per_page=page_size
     )
     return pagination
 
