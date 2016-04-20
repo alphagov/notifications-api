@@ -96,13 +96,8 @@ class Service(db.Model, Versioned):
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
 
-    @classmethod
-    def get_history_model(cls):
-        history_mapper = cls.__history_mapper__
-        return history_mapper.class_
 
-
-class ApiKey(db.Model):
+class ApiKey(db.Model, Versioned):
     __tablename__ = 'api_keys'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -111,6 +106,20 @@ class ApiKey(db.Model):
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service', backref=db.backref('api_keys', lazy='dynamic'))
     expiry_date = db.Column(db.DateTime)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=False,
+        default=datetime.datetime.now)
+    updated_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True,
+        onupdate=datetime.datetime.now)
+    created_by = db.relationship('User')
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
 
     __table_args__ = (
         UniqueConstraint('service_id', 'name', name='uix_service_to_key_name'),

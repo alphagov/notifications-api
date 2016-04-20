@@ -97,21 +97,21 @@ def update_service(service_id):
 def renew_api_key(service_id=None):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
 
-    # create a new one
-    # TODO: what validation should be done here?
-    secret_name = request.get_json()['name']
-    key = ApiKey(service=fetched_service, name=secret_name)
-    save_model_api_key(key)
+    valid_api_key, errors = api_key_schema.load(request.get_json())
+    if errors:
+        return jsonify(result="error", message=errors), 400
+    valid_api_key.service = fetched_service
 
-    unsigned_api_key = get_unsigned_secret(key.id)
+    save_model_api_key(valid_api_key)
+
+    unsigned_api_key = get_unsigned_secret(valid_api_key.id)
     return jsonify(data=unsigned_api_key), 201
 
 
 @service.route('/<uuid:service_id>/api-key/revoke/<uuid:api_key_id>', methods=['POST'])
 def revoke_api_key(service_id, api_key_id):
     service_api_key = get_model_api_keys(service_id=service_id, id=api_key_id)
-
-    save_model_api_key(service_api_key, update_dict={'id': service_api_key.id, 'expiry_date': datetime.utcnow()})
+    save_model_api_key(service_api_key, update_dict={'expiry_date': datetime.utcnow()})
     return jsonify(), 202
 
 
