@@ -1,8 +1,5 @@
 import math
-from sqlalchemy import (
-    desc,
-    func
-)
+from sqlalchemy import desc
 
 from datetime import (
     datetime,
@@ -59,7 +56,7 @@ def dao_get_notification_statistics_for_service_and_previous_days(service_id, li
         service_id=service_id
     ).filter(
         NotificationStatistics.day.in_((
-            (date.today() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
+            (date.today() - timedelta(days=days_ago))
             for days_ago in range(0, limit_days + 1)
         ))
     ).order_by(
@@ -87,13 +84,13 @@ def dao_create_notification(notification, notification_type):
         })
 
     update_count = db.session.query(NotificationStatistics).filter_by(
-        day=notification.created_at.strftime('%Y-%m-%d'),
+        day=notification.created_at.date(),
         service_id=notification.service_id
     ).update(update_query(notification_type, 'requested'))
 
     if update_count == 0:
         stats = NotificationStatistics(
-            day=notification.created_at.strftime('%Y-%m-%d'),
+            day=notification.created_at.date(),
             service_id=notification.service_id,
             sms_requested=1 if notification_type == TEMPLATE_TYPE_SMS else 0,
             emails_requested=1 if notification_type == TEMPLATE_TYPE_EMAIL else 0
@@ -149,7 +146,7 @@ def update_notification_status_by_id(notification_id, status, notification_stati
         notification = Notification.query.get(notification_id)
 
         db.session.query(NotificationStatistics).filter_by(
-            day=notification.created_at.strftime('%Y-%m-%d'),
+            day=notification.created_at.date(),
             service_id=notification.service_id
         ).update(
             update_query(notification.template.template_type, notification_statistics_status)
@@ -172,7 +169,7 @@ def update_notification_status_by_reference(reference, status, notification_stat
         ).first()
 
         db.session.query(NotificationStatistics).filter_by(
-            day=notification.created_at.strftime('%Y-%m-%d'),
+            day=notification.created_at.date(),
             service_id=notification.service_id
         ).update(
             update_query(notification.template.template_type, notification_statistics_status)

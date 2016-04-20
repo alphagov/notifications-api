@@ -1385,7 +1385,7 @@ def test_firetext_callback_should_update_multiple_notification_status_sent(notif
 
 def test_process_mmg_response_return_200_when_cid_is_send_sms_code(notify_api):
     with notify_api.test_request_context():
-        data = '{"reference": "10100164", "CID": "send-sms-code", "MSISDN": "447775349060", "status": "00", \
+        data = '{"reference": "10100164", "CID": "send-sms-code", "MSISDN": "447775349060", "status": "3", \
         "deliverytime": "2016-04-05 16:01:07"}'
 
         with notify_api.test_client() as client:
@@ -1403,7 +1403,7 @@ def test_process_mmg_response_returns_200_when_cid_is_valid_notification_id(noti
         data = json.dumps({"reference": "mmg_reference",
                            "CID": str(sample_notification.id),
                            "MSISDN": "447777349060",
-                           "status": "00",
+                           "status": "3",
                            "deliverytime": "2016-04-05 16:01:07"})
 
         response = client.post(path='notifications/sms/mmg',

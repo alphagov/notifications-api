@@ -744,9 +744,10 @@ def test_should_send_sms_code(mocker):
 
     mocker.patch('app.mmg_client.send_sms')
     send_sms_code(encrypted_notification)
-    mmg_client.send_sms.assert_called_once_with(format_phone_number(validate_phone_number(notification['to'])),
-                                                notification['secret_code'],
-                                                'send-sms-code')
+    mmg_client.send_sms.assert_called_once_with(
+        format_phone_number(validate_phone_number(notification['to'])),
+        "{} is your Notify authentication code".format(notification['secret_code']),
+        'send-sms-code')
 
 
 def test_should_throw_mmg_client_exception(mocker):
@@ -756,9 +757,10 @@ def test_should_throw_mmg_client_exception(mocker):
     encrypted_notification = encryption.encrypt(notification)
     mocker.patch('app.mmg_client.send_sms', side_effect=MMGClientException(mmg_error))
     send_sms_code(encrypted_notification)
-    mmg_client.send_sms.assert_called_once_with(format_phone_number(validate_phone_number(notification['to'])),
-                                                notification['secret_code'],
-                                                'send-sms-code')
+    mmg_client.send_sms.assert_called_once_with(
+        format_phone_number(validate_phone_number(notification['to'])),
+        "{} is your Notify authentication code".format(notification['secret_code']),
+        'send-sms-code')
 
 
 def test_should_send_email_code(mocker):
@@ -774,7 +776,7 @@ def test_should_send_email_code(mocker):
         current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
         verification['to'],
         "Verification code",
-        verification['secret_code']
+        "{} is your Notify authentication code".format(verification['secret_code'])
     )
 
 
