@@ -54,6 +54,19 @@ def dao_get_notification_statistics_for_service_and_day(service_id, day):
     ).order_by(desc(NotificationStatistics.day)).first()
 
 
+def dao_get_notification_statistics_for_service_and_previous_days(service_id, limit_days):
+    return NotificationStatistics.query.filter_by(
+        service_id=service_id
+    ).filter(
+        NotificationStatistics.day.in_((
+            (date.today() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
+            for days_ago in range(0, limit_days + 1)
+        ))
+    ).order_by(
+        desc(NotificationStatistics.day)
+    ).all()
+
+
 def dao_get_template_statistics_for_service(service_id, limit_days=None):
     filter = [TemplateStatistics.service_id == service_id]
     if limit_days:
