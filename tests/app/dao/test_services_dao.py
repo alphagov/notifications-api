@@ -7,7 +7,8 @@ from app.dao.services_dao import (
     dao_fetch_all_services,
     dao_fetch_service_by_id,
     dao_fetch_all_services_by_user,
-    dao_fetch_service_by_id_and_user
+    dao_fetch_service_by_id_and_user,
+    dao_update_service
 )
 from app.dao.users_dao import save_model_user
 from app.models import Service, User
@@ -17,7 +18,12 @@ from sqlalchemy.exc import IntegrityError
 
 def test_create_service(sample_user):
     assert Service.query.count() == 0
-    service = Service(name="service_name", email_from="email_from", message_limit=1000, active=True, restricted=False)
+    service = Service(name="service_name",
+                      email_from="email_from",
+                      message_limit=1000,
+                      active=True,
+                      restricted=False,
+                      created_by=sample_user)
     dao_create_service(service, sample_user)
     assert Service.query.count() == 1
     assert Service.query.first().name == "service_name"
@@ -27,8 +33,19 @@ def test_create_service(sample_user):
 
 def test_cannot_create_two_services_with_same_name(sample_user):
     assert Service.query.count() == 0
-    service1 = Service(name="service_name", email_from="email_from1", message_limit=1000, active=True, restricted=False)
-    service2 = Service(name="service_name", email_from="email_from2", message_limit=1000, active=True, restricted=False)
+    service1 = Service(name="service_name",
+                       email_from="email_from1",
+                       message_limit=1000,
+                       active=True,
+                       restricted=False,
+                       created_by=sample_user)
+
+    service2 = Service(name="service_name",
+                       email_from="email_from2",
+                       message_limit=1000,
+                       active=True,
+                       restricted=False,
+                       created_by=sample_user)
     with pytest.raises(IntegrityError) as excinfo:
         dao_create_service(service1, sample_user)
         dao_create_service(service2, sample_user)
@@ -37,24 +54,44 @@ def test_cannot_create_two_services_with_same_name(sample_user):
 
 def test_cannot_create_two_services_with_same_email_from(sample_user):
     assert Service.query.count() == 0
-    service1 = Service(name="service_name1", email_from="email_from", message_limit=1000, active=True, restricted=False)
-    service2 = Service(name="service_name2", email_from="email_from", message_limit=1000, active=True, restricted=False)
+    service1 = Service(name="service_name1",
+                       email_from="email_from",
+                       message_limit=1000,
+                       active=True,
+                       restricted=False,
+                       created_by=sample_user)
+    service2 = Service(name="service_name2",
+                       email_from="email_from",
+                       message_limit=1000,
+                       active=True,
+                       restricted=False,
+                       created_by=sample_user)
     with pytest.raises(IntegrityError) as excinfo:
         dao_create_service(service1, sample_user)
         dao_create_service(service2, sample_user)
     assert 'duplicate key value violates unique constraint "services_email_from_key"' in str(excinfo.value)
 
 
-def test_cannot_create_service_with_no_user(notify_db_session):
+def test_cannot_create_service_with_no_user(notify_db_session, sample_user):
     assert Service.query.count() == 0
-    service = Service(name="service_name", email_from="email_from", message_limit=1000, active=True, restricted=False)
+    service = Service(name="service_name",
+                      email_from="email_from",
+                      message_limit=1000,
+                      active=True,
+                      restricted=False,
+                      created_by=sample_user)
     with pytest.raises(FlushError) as excinfo:
         dao_create_service(service, None)
     assert "Can't flush None value found in collection Service.users" in str(excinfo.value)
 
 
 def test_should_add_user_to_service(sample_user):
-    service = Service(name="service_name", email_from="email_from", message_limit=1000, active=True, restricted=False)
+    service = Service(name="service_name",
+                      email_from="email_from",
+                      message_limit=1000,
+                      active=True,
+                      restricted=False,
+                      created_by=sample_user)
     dao_create_service(service, sample_user)
     assert sample_user in Service.query.first().users
     new_user = User(
@@ -69,7 +106,12 @@ def test_should_add_user_to_service(sample_user):
 
 
 def test_should_remove_user_from_service(sample_user):
-    service = Service(name="service_name", email_from="email_from", message_limit=1000, active=True, restricted=False)
+    service = Service(name="service_name",
+                      email_from="email_from",
+                      message_limit=1000,
+                      active=True,
+                      restricted=False,
+                      created_by=sample_user)
     dao_create_service(service, sample_user)
     new_user = User(
         name='Test User',
@@ -174,3 +216,74 @@ def test_cannot_get_service_by_id_and_owned_by_different_user(service_factory, s
     with pytest.raises(NoResultFound) as e:
         dao_fetch_service_by_id_and_user(service2.id, sample_user.id)
     assert 'No row was found for one()' in str(e)
+
+
+def test_create_service_creates_a_history_record_with_current_data(sample_user):
+    assert Service.query.count() == 0
+    assert Service.get_history_model().query.count() == 0
+    service = Service(name="service_name",
+                      email_from="email_from",
+                      message_limit=1000,
+                      active=True,
+                      restricted=False,
+                      created_by=sample_user)
+    dao_create_service(service, sample_user)
+    assert Service.query.count() == 1
+    assert Service.get_history_model().query.count() == 1
+
+    service_from_db = Service.query.first()
+    service_history = Service.get_history_model().query.first()
+
+    assert service_from_db.id == service_history.id
+    assert service_from_db.name == service_history.name
+    assert service_from_db.version == 1
+    assert service_from_db.version == service_history.version
+    assert sample_user.id == service_history.created_by_id
+    assert service_from_db.created_by.id == service_history.created_by_id
+
+
+def test_update_service_creates_a_history_record_with_current_data(sample_user):
+    assert Service.query.count() == 0
+    assert Service.get_history_model().query.count() == 0
+    service = Service(name="service_name",
+                      email_from="email_from",
+                      message_limit=1000,
+                      active=True,
+                      restricted=False,
+                      created_by=sample_user)
+    dao_create_service(service, sample_user)
+
+    assert Service.query.count() == 1
+    assert Service.query.first().version == 1
+    assert Service.get_history_model().query.count() == 1
+
+    service.name = 'updated_service_name'
+    dao_update_service(service)
+
+    assert Service.query.count() == 1
+    assert Service.get_history_model().query.count() == 2
+
+    service_from_db = Service.query.first()
+
+    assert service_from_db.version == 2
+
+    assert Service.get_history_model().query.filter_by(name='service_name').one().version == 1
+    assert Service.get_history_model().query.filter_by(name='updated_service_name').one().version == 2
+
+
+def test_create_service_and_history_is_transactional(sample_user):
+    assert Service.query.count() == 0
+    assert Service.get_history_model().query.count() == 0
+    service = Service(name=None,
+                      email_from="email_from",
+                      message_limit=1000,
+                      active=True,
+                      restricted=False,
+                      created_by=sample_user)
+
+    with pytest.raises(IntegrityError) as excinfo:
+        dao_create_service(service, sample_user)
+
+    assert 'column "name" violates not-null constraint' in str(excinfo.value)
+    assert Service.query.count() == 0
+    assert Service.get_history_model().query.count() == 0
