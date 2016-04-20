@@ -492,6 +492,31 @@ def test_filter_by_status_and_template_type(notify_api,
             assert response.status_code == 200
 
 
+def test_get_notification_statistics(
+    notify_api,
+    notify_db,
+    notify_db_session,
+    sample_template,
+    sample_email_template
+):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            path = '/service/{}/notifications-statistics'.format(sample_email_template.service)
+
+            auth_header = create_authorization_header(
+                service_id=sample_email_template.service_id,
+                path=path,
+                method='GET')
+
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 404
+
+            stats = json.loads(response.get_data(as_text=True))
+            assert stats['result'] == 'error'
+            assert stats['message'] == 'No result found'
+
+
 def test_create_sms_should_reject_if_missing_required_fields(notify_api, sample_api_key, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
