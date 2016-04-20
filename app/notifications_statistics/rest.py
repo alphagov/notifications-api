@@ -1,6 +1,7 @@
 from flask import (
     Blueprint,
     jsonify,
+    request
 )
 
 from app.dao.notifications_dao import (
