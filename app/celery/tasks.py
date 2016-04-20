@@ -321,7 +321,8 @@ def send_sms_code(encrypted_verification):
     verification_message = encryption.decrypt(encrypted_verification)
     try:
         mmg_client.send_sms(validate_and_format_phone_number(verification_message['to']),
-                            verification_message['secret_code'],
+                            "{} is your Notify authentication code".format(
+                                verification_message['secret_code']),
                             'send-sms-code')
     except MMGClientException as e:
         current_app.logger.exception(e)
@@ -341,7 +342,8 @@ def send_email_code(encrypted_verification_message):
         aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
                                   verification_message['to'],
                                   "Verification code",
-                                  verification_message['secret_code'])
+                                  "{} is your Notify authentication code".format(
+                                      verification_message['secret_code']))
     except AwsSesClientException as e:
         current_app.logger.exception(e)
 
