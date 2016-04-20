@@ -161,7 +161,7 @@ def test_should_be_able_to_get_statistics_for_a_service(sample_template):
     assert stats[0].sms_requested == 1
     assert stats[0].sms_delivered == 0
     assert stats[0].sms_failed == 0
-    assert stats[0].day == notification.created_at.strftime(DATE_FORMAT)
+    assert stats[0].day == notification.created_at.date()
     assert stats[0].service_id == notification.service_id
     assert stats[0].emails_requested == 0
     assert stats[0].emails_delivered == 0
@@ -182,7 +182,7 @@ def test_should_be_able_to_get_statistics_for_a_service_for_a_day(sample_templat
     notification = Notification(**data)
     dao_create_notification(notification, sample_template.template_type)
     stat = dao_get_notification_statistics_for_service_and_day(
-        sample_template.service.id, now.strftime(DATE_FORMAT)
+        sample_template.service.id, now.date()
     )
     assert stat.emails_requested == 0
     assert stat.emails_failed == 0
@@ -190,7 +190,7 @@ def test_should_be_able_to_get_statistics_for_a_service_for_a_day(sample_templat
     assert stat.sms_requested == 1
     assert stat.sms_failed == 0
     assert stat.sms_delivered == 0
-    assert stat.day == notification.created_at.strftime(DATE_FORMAT)
+    assert stat.day == notification.created_at.date()
     assert stat.service_id == notification.service_id
 
 
@@ -208,7 +208,7 @@ def test_should_return_none_if_no_statistics_for_a_service_for_a_day(sample_temp
     notification = Notification(**data)
     dao_create_notification(notification, sample_template.template_type)
     assert not dao_get_notification_statistics_for_service_and_day(
-        sample_template.service.id, (datetime.utcnow() - timedelta(days=1)).strftime(DATE_FORMAT)
+        sample_template.service.id, (datetime.utcnow() - timedelta(days=1)).date()
     )
 
 
@@ -267,13 +267,13 @@ def test_should_be_able_to_get_all_statistics_for_a_service_for_several_days(sam
     assert len(stats) == 3
     assert stats[0].emails_requested == 0
     assert stats[0].sms_requested == 1
-    assert stats[0].day == today.strftime(DATE_FORMAT)
+    assert stats[0].day == today.date()
     assert stats[1].emails_requested == 0
     assert stats[1].sms_requested == 1
-    assert stats[1].day == yesterday.strftime(DATE_FORMAT)
+    assert stats[1].day == yesterday.date()
     assert stats[2].emails_requested == 0
     assert stats[2].sms_requested == 1
-    assert stats[2].day == two_days_ago.strftime(DATE_FORMAT)
+    assert stats[2].day == two_days_ago.date()
 
 
 def test_should_be_empty_list_if_no_statistics_for_a_service(sample_service):
@@ -314,10 +314,10 @@ def test_should_be_able_to_get_all_statistics_for_a_service_for_several_days_pre
     assert len(stats) == 2
     assert stats[0].emails_requested == 0
     assert stats[0].sms_requested == 1
-    assert stats[0].day == today.strftime(DATE_FORMAT)
+    assert stats[0].day == today.date()
     assert stats[1].emails_requested == 0
     assert stats[1].sms_requested == 1
-    assert stats[1].day == seven_days_ago.strftime(DATE_FORMAT)
+    assert stats[1].day == seven_days_ago.date()
 
 
 def test_save_notification_creates_sms_and_template_stats(sample_template, sample_job):
@@ -431,7 +431,7 @@ def test_save_notification_handles_midnight_properly(sample_template, sample_job
         NotificationStatistics.service_id == sample_template.service.id
     ).first()
 
-    assert stats.day == '2016-01-01'
+    assert stats.day == date(2016, 1, 1)
 
 
 @freeze_time("2016-01-01 23:59:59.999999")
@@ -456,7 +456,7 @@ def test_save_notification_handles_just_before_midnight_properly(sample_template
         NotificationStatistics.service_id == sample_template.service.id
     ).first()
 
-    assert stats.day == '2016-01-01'
+    assert stats.day == date(2016, 1, 1)
 
 
 def test_save_notification_and_increment_email_stats(sample_email_template, sample_job):
