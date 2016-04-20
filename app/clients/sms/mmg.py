@@ -6,7 +6,7 @@ from app.clients import (STATISTICS_DELIVERED, STATISTICS_FAILURE)
 from app.clients.sms import (SmsClient, SmsClientException)
 
 mmg_response_map = {
-    '00': {
+    '0': {
         "message": 'Delivered',
         "notification_statistics_status": STATISTICS_DELIVERED,
         "success": True,
