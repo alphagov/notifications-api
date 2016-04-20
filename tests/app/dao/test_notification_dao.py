@@ -26,6 +26,7 @@ from app.dao.notifications_dao import (
     delete_notifications_created_more_than_a_day_ago,
     delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
+    dao_get_notification_statistics_for_service_and_previous_days,
     update_notification_status_by_id,
     update_notification_reference_by_id,
     update_notification_status_by_reference,
@@ -277,6 +278,46 @@ def test_should_be_able_to_get_all_statistics_for_a_service_for_several_days(sam
 
 def test_should_be_empty_list_if_no_statistics_for_a_service(sample_service):
     assert len(dao_get_notification_statistics_for_service(sample_service.id)) == 0
+
+
+def test_should_be_able_to_get_all_statistics_for_a_service_for_several_days_previous(sample_template):
+    data = {
+        'to': '+44709123456',
+        'service': sample_template.service,
+        'service_id': sample_template.service.id,
+        'template': sample_template,
+        'template_id': sample_template.id
+    }
+
+    today = datetime.utcnow()
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+    data.update({
+        'created_at': today
+    })
+    notification_1 = Notification(**data)
+    data.update({
+        'created_at': seven_days_ago
+    })
+    notification_2 = Notification(**data)
+    data.update({
+        'created_at': eight_days_ago
+    })
+    notification_3 = Notification(**data)
+    dao_create_notification(notification_1, sample_template.template_type)
+    dao_create_notification(notification_2, sample_template.template_type)
+    dao_create_notification(notification_3, sample_template.template_type)
+
+    stats = dao_get_notification_statistics_for_service_and_previous_days(
+        sample_template.service.id, 7
+    )
+    assert len(stats) == 2
+    assert stats[0].emails_requested == 0
+    assert stats[0].sms_requested == 1
+    assert stats[0].day == today.strftime(DATE_FORMAT)
+    assert stats[1].emails_requested == 0
+    assert stats[1].sms_requested == 1
+    assert stats[1].day == seven_days_ago.strftime(DATE_FORMAT)
 
 
 def test_save_notification_creates_sms_and_template_stats(sample_template, sample_job):

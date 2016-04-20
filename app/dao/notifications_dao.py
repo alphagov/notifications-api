@@ -30,22 +30,7 @@ from app.clients import (
     STATISTICS_REQUESTED
 )
 
-from functools import wraps
-
-
-def transactional(func):
-    @wraps(func)
-    def commit_or_rollback(*args, **kwargs):
-        from flask import current_app
-        from app import db
-        try:
-            func(*args, **kwargs)
-            db.session.commit()
-        except Exception as e:
-            current_app.logger.error(e)
-            db.session.rollback()
-            raise
-    return commit_or_rollback
+from app.dao.dao_utils import transactional
 
 
 def get_character_count_of_content(content, encoding='utf-8'):
@@ -67,6 +52,19 @@ def dao_get_notification_statistics_for_service_and_day(service_id, day):
         service_id=service_id,
         day=day
     ).order_by(desc(NotificationStatistics.day)).first()
+
+
+def dao_get_notification_statistics_for_service_and_previous_days(service_id, limit_days):
+    return NotificationStatistics.query.filter_by(
+        service_id=service_id
+    ).filter(
+        NotificationStatistics.day.in_((
+            (date.today() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
+            for days_ago in range(0, limit_days + 1)
+        ))
+    ).order_by(
+        desc(NotificationStatistics.day)
+    ).all()
 
 
 def dao_get_template_statistics_for_service(service_id, limit_days=None):

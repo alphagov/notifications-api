@@ -71,7 +71,6 @@ def create_service():
     user = get_model_users(data['user_id'])
 
     data.pop('user_id', None)
-
     valid_service, errors = service_schema.load(request.get_json())
 
     if errors:

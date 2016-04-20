@@ -181,7 +181,8 @@ def test_create_service(notify_api, sample_user):
                 'message_limit': 1000,
                 'restricted': False,
                 'active': False,
-                'email_from': 'created.service'}
+                'email_from': 'created.service',
+                'created_by': str(sample_user.id)}
             auth_header = create_authorization_header(
                 path='/service',
                 method='POST',
@@ -212,7 +213,7 @@ def test_create_service(notify_api, sample_user):
             assert json_resp['data']['name'] == 'created service'
 
 
-def test_should_not_create_service_with_missing_user_id_field(notify_api):
+def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_uuid):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
@@ -220,7 +221,8 @@ def test_should_not_create_service_with_missing_user_id_field(notify_api):
                 'name': 'created service',
                 'message_limit': 1000,
                 'restricted': False,
-                'active': False
+                'active': False,
+                'created_by': str(fake_uuid)
             }
             auth_header = create_authorization_header(
                 path='/service',
@@ -250,7 +252,8 @@ def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(no
                 'name': 'created service',
                 'message_limit': 1000,
                 'restricted': False,
-                'active': False
+                'active': False,
+                'created_by': str(fake_uuid)
             }
             auth_header = create_authorization_header(
                 path='/service',
@@ -306,7 +309,8 @@ def test_should_not_create_service_with_duplicate_name(notify_api,
                 'message_limit': 1000,
                 'restricted': False,
                 'active': False,
-                'email_from': 'sample.service2'}
+                'email_from': 'sample.service2',
+                'created_by': str(sample_user.id)}
             auth_header = create_authorization_header(
                 path='/service',
                 method='POST',
@@ -324,7 +328,8 @@ def test_should_not_create_service_with_duplicate_name(notify_api,
 def test_create_service_should_throw_duplicate_key_constraint_for_existing_email_from(notify_api,
                                                                                       notify_db,
                                                                                       notify_db_session,
-                                                                                      service_factory):
+                                                                                      service_factory,
+                                                                                      sample_user):
     first_service = service_factory.get('First service', email_from='first.service')
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -334,7 +339,8 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_email
                 'message_limit': 1000,
                 'restricted': False,
                 'active': False,
-                'email_from': 'first.service'}
+                'email_from': 'first.service',
+                'created_by': str(sample_user.id)}
             auth_header = create_authorization_header(
                 path='/service',
                 method='POST',
@@ -550,7 +556,8 @@ def test_default_permissions_are_added_for_user_service(notify_api,
                 'message_limit': 1000,
                 'restricted': False,
                 'active': False,
-                'email_from': 'created.service'}
+                'email_from': 'created.service',
+                'created_by': str(sample_user.id)}
             auth_header = create_authorization_header(
                 path='/service',
                 method='POST',
