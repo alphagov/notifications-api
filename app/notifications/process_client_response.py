@@ -12,7 +12,7 @@ sms_response_mapper = {'MMG': get_mmg_responses,
 def validate_callback_data(data, fields, client_name):
     errors = []
     for f in fields:
-        if len(data.get(f, '')) <= 0:
+        if not str(data.get(f, '')):
             error = "{} callback failed: {} missing".format(client_name, f)
             errors.append(error)
     return errors if len(errors) > 0 else None

@@ -1318,8 +1318,7 @@ def test_firetext_callback_should_update_notification_status_failed(notify_api, 
             assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
                 sample_notification.id
             )
-            updated = get_notification_by_id(sample_notification.id)
-            assert updated.status == 'failed'
+            assert get_notification_by_id(sample_notification.id).status == 'failed'
             assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_delivered == 0
             assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_requested == 1
             assert dao_get_notification_statistics_for_service(sample_notification.service_id)[0].sms_failed == 1
@@ -1345,8 +1344,7 @@ def test_firetext_callback_should_update_notification_status_sent(notify_api, no
             assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
                 notification.id
             )
-            updated = get_notification_by_id(notification.id)
-            assert updated.status == 'delivered'
+            assert get_notification_by_id(notification.id).status == 'delivered'
             assert dao_get_notification_statistics_for_service(notification.service_id)[0].sms_delivered == 1
             assert dao_get_notification_statistics_for_service(notification.service_id)[0].sms_requested == 1
             assert dao_get_notification_statistics_for_service(notification.service_id)[0].sms_failed == 0
@@ -1387,11 +1385,8 @@ def test_firetext_callback_should_update_multiple_notification_status_sent(notif
 
 def test_process_mmg_response_return_200_when_cid_is_send_sms_code(notify_api):
     with notify_api.test_request_context():
-        data = json.dumps({"reference": "10100164",
-                           "CID": "send-sms-code",
-                           "MSISDN": "447775349060",
-                           "status": "00",
-                           "deliverytime": "2016-04-05 16:01:07"})
+        data = '{"reference": "10100164", "CID": "send-sms-code", "MSISDN": "447775349060", "status": "00", \
+        "deliverytime": "2016-04-05 16:01:07"}'
 
         with notify_api.test_client() as client:
             response = client.post(path='notifications/sms/mmg',
@@ -1418,6 +1413,25 @@ def test_process_mmg_response_returns_200_when_cid_is_valid_notification_id(noti
         json_data = json.loads(response.data)
         assert json_data['result'] == 'success'
         assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
+        assert get_notification_by_id(sample_notification.id).status == 'delivered'
+
+
+def test_process_mmg_response_updates_notification_with_failed_status(notify_api, sample_notification):
+    with notify_api.test_client() as client:
+        data = json.dumps({"reference": "mmg_reference",
+                           "CID": str(sample_notification.id),
+                           "MSISDN": "447777349060",
+                           "status": 5,
+                           "deliverytime": "2016-04-05 16:01:07"})
+
+        response = client.post(path='notifications/sms/mmg',
+                               data=data,
+                               headers=[('Content-Type', 'application/json')])
+        assert response.status_code == 200
+        json_data = json.loads(response.data)
+        assert json_data['result'] == 'success'
+        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
+        assert get_notification_by_id(sample_notification.id).status == 'failed'
 
 
 def test_process_mmg_response_returns_400_for_malformed_data(notify_api):
@@ -1425,7 +1439,7 @@ def test_process_mmg_response_returns_400_for_malformed_data(notify_api):
         data = json.dumps({"reference": "mmg_reference",
                            "monkey": 'random thing',
                            "MSISDN": "447777349060",
-                           "no_status": "00",
+                           "no_status": 00,
                            "deliverytime": "2016-04-05 16:01:07"})
 
         response = client.post(path='notifications/sms/mmg',

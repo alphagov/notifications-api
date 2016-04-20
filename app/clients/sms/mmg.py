@@ -12,6 +12,12 @@ mmg_response_map = {
         "success": True,
         "notification_status": 'delivered'
     },
+    '0': {
+        "message": 'Delivered',
+        "notification_statistics_status": STATISTICS_DELIVERED,
+        "success": True,
+        "notification_status": 'delivered'
+    },
     'default': {
         "message": 'Declined',
         "success": False,
