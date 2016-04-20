@@ -121,7 +121,7 @@ class NotificationStatistics(db.Model):
     __tablename__ = 'notification_statistics'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    day = db.Column(db.String(255), nullable=False)
+    day = db.Column(db.Date, index=True, nullable=False, unique=False, default=datetime.date.today)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service', backref=db.backref('service_notification_stats', lazy='dynamic'))
     emails_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
