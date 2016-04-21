@@ -280,6 +280,29 @@ class TemplateStatisticsSchema(BaseSchema):
         model = models.TemplateStatistics
 
 
+class ServiceHistorySchema(ma.Schema):
+    id = fields.UUID()
+    name = fields.String()
+    created_at = fields.DateTime()
+    updated_at = fields.DateTime()
+    active = fields.Boolean()
+    message_limit = fields.Integer()
+    restricted = fields.Boolean()
+    email_from = fields.String()
+    created_by_id = fields.UUID()
+    version = fields.Integer()
+
+
+class ApiKeyHistorySchema(ma.Schema):
+    id = fields.UUID()
+    name = fields.String()
+    service_id = fields.UUID()
+    expiry_date = fields.DateTime()
+    created_at = fields.DateTime()
+    updated_at = fields.DateTime()
+    created_by_id = fields.UUID()
+
+
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
 service_schema = ServiceSchema()
@@ -304,3 +327,5 @@ email_data_request_schema = EmailDataSchema()
 notifications_statistics_schema = NotificationsStatisticsSchema()
 notifications_filter_schema = NotificationsFilterSchema()
 template_statistics_schema = TemplateStatisticsSchema()
+service_history_schema = ServiceHistorySchema()
+api_key_history_schema = ApiKeyHistorySchema()
