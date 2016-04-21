@@ -7,12 +7,12 @@ from app.models import ApiKey
 
 from app.dao.dao_utils import (
     transactional,
-    versioned
+    version_class
 )
 
 
 @transactional
-@versioned
+@version_class(ApiKey)
 def save_model_api_key(api_key, update_dict={}):
     if update_dict:
         update_dict.pop('id', None)

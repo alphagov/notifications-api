@@ -111,3 +111,18 @@ def test_should_not_allow_duplicate_key_names_per_service(notify_api,
         fail("should throw IntegrityError")
     except:
         pass
+
+
+def test_save_api_key_should_not_create_new_service_history(notify_api, notify_db, notify_db_session, sample_service):
+
+    from app.models import Service
+
+    assert Service.query.count() == 1
+    assert Service.get_history_model().query.count() == 1
+
+    api_key = ApiKey(**{'service': sample_service,
+                        'name': sample_service.name,
+                        'created_by': sample_service.created_by})
+    save_model_api_key(api_key)
+
+    assert Service.get_history_model().query.count() == 1
