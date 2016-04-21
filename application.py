@@ -4,7 +4,7 @@ from __future__ import print_function
 import os
 from flask.ext.script import Manager, Server
 from flask.ext.migrate import Migrate, MigrateCommand
-from app import (create_app, db)
+from app import (create_app, db, commands)
 
 application = create_app()
 manager = Manager(application)
@@ -13,6 +13,7 @@ manager.add_command("runserver", Server(host='0.0.0.0', port=port))
 
 migrate = Migrate(application, db)
 manager.add_command('db', MigrateCommand)
+manager.add_command('create_provider_rate', commands.CreateProviderRateCommand)
 
 
 @manager.command
