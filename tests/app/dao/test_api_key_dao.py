@@ -21,16 +21,27 @@ def test_secret_is_signed_and_can_be_read_again(notify_api):
         assert signed_secret != token
 
 
-def test_save_api_key_should_create_new_api_key(notify_api, notify_db, notify_db_session, sample_service):
-    api_key = ApiKey(**{'service_id': sample_service.id, 'name': sample_service.name})
+def test_save_api_key_should_create_new_api_key_and_history(notify_api, notify_db, notify_db_session, sample_service):
+    api_key = ApiKey(**{'service': sample_service,
+                        'name': sample_service.name,
+                        'created_by': sample_service.created_by})
     save_model_api_key(api_key)
 
     all_api_keys = get_model_api_keys(service_id=sample_service.id)
     assert len(all_api_keys) == 1
     assert all_api_keys[0] == api_key
+    assert api_key.version == 1
+
+    all_history = api_key.get_history_model().query.all()
+    assert len(all_history) == 1
+    assert all_history[0].id == api_key.id
+    assert all_history[0].version == api_key.version
 
 
-def test_save_api_key_should_update_the_api_key(notify_api, notify_db, notify_db_session, sample_api_key):
+def test_expire_api_key_should_update_the_api_key_and_create_history_record(notify_api,
+                                                                            notify_db,
+                                                                            notify_db_session,
+                                                                            sample_api_key):
     now = datetime.utcnow()
     saved_api_key = get_model_api_keys(service_id=sample_api_key.service_id, id=sample_api_key.id)
     save_model_api_key(saved_api_key, update_dict={'id': saved_api_key.id, 'expiry_date': now})
@@ -40,6 +51,14 @@ def test_save_api_key_should_update_the_api_key(notify_api, notify_db, notify_db
     assert all_api_keys[0].secret == saved_api_key.secret
     assert all_api_keys[0].id == saved_api_key.id
     assert all_api_keys[0].service_id == saved_api_key.service_id
+
+    all_history = saved_api_key.get_history_model().query.all()
+    assert len(all_history) == 2
+    assert all_history[0].id == saved_api_key.id
+    assert all_history[1].id == saved_api_key.id
+    sorted_all_history = sorted(all_history, key=lambda hist: hist.version)
+    sorted_all_history[0].version = 1
+    sorted_all_history[1].version = 2
 
 
 def test_get_api_key_should_raise_exception_when_api_key_does_not_exist(notify_api,
@@ -83,8 +102,10 @@ def test_should_not_allow_duplicate_key_names_per_service(notify_api,
                                                           notify_db_session,
                                                           sample_api_key,
                                                           fake_uuid):
-    api_key = ApiKey(
-        **{'id': fake_uuid, 'service_id': sample_api_key.service_id, 'name': sample_api_key.name})
+    api_key = ApiKey(**{'id': fake_uuid,
+                        'service': sample_api_key.service,
+                        'name': sample_api_key.name,
+                        'created_by': sample_api_key.created_by})
     try:
         save_model_api_key(api_key)
         fail("should throw IntegrityError")

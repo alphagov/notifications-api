@@ -105,7 +105,10 @@ def test_should_allow_valid_token_for_request_with_path_params(notify_api, sampl
 def test_should_allow_valid_token_when_service_has_multiple_keys(notify_api, sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            data = {'service_id': sample_api_key.service_id, 'name': 'some key name'}
+            data = {'service': sample_api_key.service,
+                    'name': 'some key name',
+                    'created_by': sample_api_key.created_by
+                    }
             api_key = ApiKey(**data)
             save_model_api_key(api_key)
             token = __create_get_token(sample_api_key.service_id)
@@ -185,11 +188,17 @@ def test_authentication_passes_when_service_has_multiple_keys_some_expired(
         sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            exprired_key = {'service_id': sample_api_key.service_id, 'name': 'expired_key',
-                            'expiry_date': datetime.now()}
-            expired_api_key = ApiKey(**exprired_key)
-            save_model_api_key(expired_api_key)
-            another_key = {'service_id': sample_api_key.service_id, 'name': 'another_key'}
+            expired_key_data = {'service': sample_api_key.service,
+                                'name': 'expired_key',
+                                'expiry_date': datetime.now(),
+                                'created_by': sample_api_key.created_by
+                                }
+            expired_key = ApiKey(**expired_key_data)
+            save_model_api_key(expired_key)
+            another_key = {'service': sample_api_key.service,
+                           'name': 'another_key',
+                           'created_by': sample_api_key.created_by
+                           }
             api_key = ApiKey(**another_key)
             save_model_api_key(api_key)
             token = create_jwt_token(
@@ -209,10 +218,16 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
                                                                                                   sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            expired_key = {'service_id': sample_api_key.service_id, 'name': 'expired_key'}
+            expired_key = {'service': sample_api_key.service,
+                           'name': 'expired_key',
+                           'created_by': sample_api_key.created_by
+                           }
             expired_api_key = ApiKey(**expired_key)
             save_model_api_key(expired_api_key)
-            another_key = {'service_id': sample_api_key.service_id, 'name': 'another_key'}
+            another_key = {'service': sample_api_key.service,
+                           'name': 'another_key',
+                           'created_by': sample_api_key.created_by
+                           }
             api_key = ApiKey(**another_key)
             save_model_api_key(api_key)
             token = create_jwt_token(
@@ -222,9 +237,10 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
                 client_id=str(sample_api_key.service_id))
             # expire the key
             expire_the_key = {'id': expired_api_key.id,
-                              'service_id': str(sample_api_key.service_id),
+                              'service': sample_api_key.service,
                               'name': 'expired_key',
-                              'expiry_date': datetime.now() + timedelta(hours=-2)}
+                              'expiry_date': datetime.now() + timedelta(hours=-2),
+                              'created_by': sample_api_key.created_by}
             save_model_api_key(expired_api_key, expire_the_key)
             response = client.get(
                 '/service',

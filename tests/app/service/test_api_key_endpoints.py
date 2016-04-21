@@ -15,7 +15,7 @@ def test_api_key_should_create_new_api_key_for_service(notify_api, notify_db,
                                                        sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            data = {'name': 'some secret name'}
+            data = {'name': 'some secret name', 'created_by': str(sample_service.created_by.id)}
             auth_header = create_authorization_header(path=url_for('service.renew_api_key',
                                                                    service_id=sample_service.id),
                                                       method='POST',
@@ -68,7 +68,7 @@ def test_api_key_should_create_multiple_new_api_key_for_service(notify_api, noti
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             assert ApiKey.query.count() == 0
-            data = {'name': 'some secret name'}
+            data = {'name': 'some secret name', 'created_by': str(sample_service.created_by.id)}
             auth_header = create_authorization_header(path=url_for('service.renew_api_key',
                                                                    service_id=sample_service.id),
                                                       method='POST',
@@ -78,7 +78,7 @@ def test_api_key_should_create_multiple_new_api_key_for_service(notify_api, noti
                                    headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 201
             assert ApiKey.query.count() == 1
-            data = {'name': 'another secret name'}
+            data = {'name': 'another secret name', 'created_by': str(sample_service.created_by.id)}
             auth_header = create_authorization_header(path=url_for('service.renew_api_key',
                                                                    service_id=sample_service.id),
                                                       method='POST',
@@ -97,14 +97,17 @@ def test_get_api_keys_should_return_all_keys_for_service(notify_api, notify_db,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             another_user = create_user(notify_db, notify_db_session, email='another@it.gov.uk')
+
             another_service = create_sample_service(notify_db, notify_db_session, service_name='another',
                                                     user=another_user, email_from='another')
+            # key for another service
             create_sample_api_key(notify_db, notify_db_session, service=another_service)
-            api_key2 = ApiKey(**{'service_id': sample_api_key.service_id, 'name': 'second_api_key'})
-            api_key3 = ApiKey(**{'service_id': sample_api_key.service_id, 'name': 'third_api_key',
-                                 'expiry_date': datetime.utcnow() + timedelta(hours=-1)})
-            save_model_api_key(api_key2)
-            save_model_api_key(api_key3)
+
+            # this service already has one key, add two more, one expired
+            create_sample_api_key(notify_db, notify_db_session, service=sample_api_key.service)
+            one_to_expire = create_sample_api_key(notify_db, notify_db_session, service=sample_api_key.service)
+            save_model_api_key(one_to_expire, update_dict={'expiry_date': datetime.utcnow()})
+
             assert ApiKey.query.count() == 4
 
             auth_header = create_authorization_header(path=url_for('service.get_api_keys',
