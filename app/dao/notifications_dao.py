@@ -18,7 +18,8 @@ from app.models import (
     TemplateStatistics,
     TEMPLATE_TYPE_SMS,
     TEMPLATE_TYPE_EMAIL,
-    Template
+    Template,
+    ProviderStatistics
 )
 
 from app.clients import (
@@ -74,7 +75,7 @@ def dao_get_template_statistics_for_service(service_id, limit_days=None):
 
 
 @transactional
-def dao_create_notification(notification, notification_type):
+def dao_create_notification(notification, notification_type, provider):
     if notification.job_id:
         db.session.query(Job).filter_by(
             id=notification.job_id
@@ -107,6 +108,22 @@ def dao_create_notification(notification, notification_type):
         template_stats = TemplateStatistics(template_id=notification.template_id,
                                             service_id=notification.service_id)
         db.session.add(template_stats)
+
+    update_count = db.session.query(ProviderStatistics).filter_by(
+        day=date.today(),
+        service_id=notification.service_id,
+        provider=provider
+    ).update({'unit_count': ProviderStatistics.unit_count + (
+        1 if notification_type == TEMPLATE_TYPE_EMAIL else get_sms_message_count(notification.content_char_count))})
+
+    if update_count == 0:
+        provider_stats = ProviderStatistics(
+            day=notification.created_at.date(),
+            service_id=notification.service_id,
+            provider=provider,
+            unit_count=1 if notification_type == TEMPLATE_TYPE_EMAIL else get_sms_message_count(
+                notification.content_char_count))
+        db.session.add(provider_stats)
 
     db.session.add(notification)
 

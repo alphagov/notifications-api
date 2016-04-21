@@ -167,6 +167,34 @@ class Template(db.Model):
     subject = db.Column(db.Text, index=False, unique=True, nullable=True)
 
 
+MMG_PROVIDER = "mmg"
+TWILIO_PROVIDER = "twilio"
+FIRETEXT_PROVIDER = "firetext"
+SES_PROVIDER = 'ses'
+
+PROVIDERS = [MMG_PROVIDER, TWILIO_PROVIDER, FIRETEXT_PROVIDER, SES_PROVIDER]
+
+
+class ProviderStatistics(db.Model):
+    __tablename__ = 'provider_statistics'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    day = db.Column(db.Date, nullable=False)
+    provider = db.Column(db.Enum(*PROVIDERS, name='providers'), nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
+    service = db.relationship('Service', backref=db.backref('service_provider_stats', lazy='dynamic'))
+    unit_count = db.Column(db.BigInteger, nullable=False)
+
+
+class ProviderRates(db.Model):
+    __tablename__ = 'provider_rates'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    valid_from = db.Column(db.DateTime, nullable=False)
+    provider = db.Column(db.Enum(*PROVIDERS, name='providers'), nullable=False)
+    rate = db.Column(db.Numeric(), nullable=False)
+
+
 JOB_STATUS_TYPES = ['pending', 'in progress', 'finished', 'sending limits exceeded']
 
 
