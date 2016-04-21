@@ -15,10 +15,9 @@ from app.dao.dao_utils import (
 @versioned
 def save_model_api_key(api_key, update_dict={}):
     if update_dict:
-        if update_dict.get('id'):
-            del update_dict['id']
+        update_dict.pop('id', None)
         for key, value in update_dict.items():
-            setattr(api_key, key, update_dict[key])
+            setattr(api_key, key, value)
         db.session.add(api_key)
     else:
         if not api_key.id:
