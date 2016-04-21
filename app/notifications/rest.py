@@ -149,7 +149,7 @@ def process_mmg_response():
 
     success, errors = process_sms_client_response(status=str(data.get('status')),
                                                   reference=data.get('CID'),
-                                                  client_name='MMG')
+                                                  client_name=client_name)
     if errors:
         [current_app.logger.info(e) for e in errors]
         return jsonify(result='error', message=errors), 400

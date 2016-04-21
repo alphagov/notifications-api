@@ -211,6 +211,13 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
         restricted = True
 
     try:
+
+        template = Template(
+            dao_get_template_by_id(notification['template']).__dict__,
+            values=notification.get('personalisation', {}),
+            prefix=service.name
+        )
+
         sent_at = datetime.utcnow()
         notification_db_object = Notification(
             id=notification_id,
@@ -221,42 +228,35 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             status='failed' if restricted else 'sending',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
-            sent_by=client.get_name()
+            sent_by=client.get_name(),
+            content_char_count=get_character_count_of_content(template.replaced)
         )
 
-        dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS)
+        dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS, client.get_name())
 
         if restricted:
             return
 
         try:
-            template = Template(
-                dao_get_template_by_id(notification['template']).__dict__,
-                values=notification.get('personalisation', {}),
-                prefix=service.name
-            )
-
             client.send_sms(
                 to=validate_and_format_phone_number(notification['to']),
                 content=template.replaced,
                 reference=str(notification_id)
             )
-            # Record the character count of the content after placeholders included
-            notification_db_object.content_char_count = get_character_count_of_content(template.replaced)
-            dao_update_notification(notification_db_object)
+
         except MMGClientException as e:
             current_app.logger.error(
                 "SMS notification {} failed".format(notification_id)
             )
             current_app.logger.exception(e)
             notification_db_object.status = 'failed'
-            dao_update_notification(notification_db_object)
 
+        dao_update_notification(notification_db_object)
         current_app.logger.info(
             "SMS {} created at {} sent at {}".format(notification_id, created_at, sent_at)
         )
     except SQLAlchemyError as e:
-        current_app.logger.debug(e)
+        current_app.logger.exception(e)
 
 
 @notify_celery.task(name="send-email")
@@ -286,7 +286,8 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
             sent_at=sent_at,
             sent_by=client.get_name()
         )
-        dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL)
+
+        dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL, client.get_name())
 
         if restricted:
             return
@@ -307,13 +308,13 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
         except AwsSesClientException as e:
             current_app.logger.exception(e)
             notification_db_object.status = 'failed'
-            dao_update_notification(notification_db_object)
 
+        dao_update_notification(notification_db_object)
         current_app.logger.info(
             "Email {} created at {} sent at {}".format(notification_id, created_at, sent_at)
         )
     except SQLAlchemyError as e:
-        current_app.logger.debug(e)
+        current_app.logger.exception(e)
 
 
 @notify_celery.task(name='send-sms-code')
