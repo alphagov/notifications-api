@@ -285,7 +285,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="MMG")
+    mocker.patch('app.mmg_client.get_name', return_value="mmg")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -310,7 +310,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     assert persisted_notification.status == 'sending'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
-    assert persisted_notification.sent_by == 'MMG'
+    assert persisted_notification.sent_by == 'mmg'
     assert not persisted_notification.job_id
 
 
@@ -321,7 +321,7 @@ def test_should_send_sms_without_personalisation(sample_template, mocker):
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="MMG")
+    mocker.patch('app.mmg_client.get_name', return_value="mmg")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -350,7 +350,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="MMG")
+    mocker.patch('app.mmg_client.get_name', return_value="mmg")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -379,7 +379,7 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="MMG")
+    mocker.patch('app.mmg_client.get_name', return_value="mmg")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -463,7 +463,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="MMG")
+    mocker.patch('app.mmg_client.get_name', return_value="mmg")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -486,7 +486,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
     assert persisted_notification.status == 'sending'
     assert persisted_notification.sent_at > now
     assert persisted_notification.created_at == now
-    assert persisted_notification.sent_by == 'MMG'
+    assert persisted_notification.sent_by == 'mmg'
 
 
 def test_should_use_email_template_and_persist(sample_email_template_with_placeholders, mocker):
@@ -624,7 +624,7 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.mmg_client.send_sms', side_effect=MMGClientException(mmg_error))
-    mocker.patch('app.mmg_client.get_name', return_value="MMG")
+    mocker.patch('app.mmg_client.get_name', return_value="mmg")
     now = datetime.utcnow()
 
     notification_id = uuid.uuid4()
@@ -647,7 +647,7 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
     assert persisted_notification.status == 'failed'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
-    assert persisted_notification.sent_by == 'MMG'
+    assert persisted_notification.sent_by == 'mmg'
 
 
 def test_should_persist_notification_as_failed_if_email_client_fails(sample_email_template, mocker):

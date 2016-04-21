@@ -292,7 +292,10 @@ def sample_notification(notify_db,
                         to_field=None,
                         status='sending',
                         reference=None,
-                        created_at=datetime.utcnow()):
+                        created_at=datetime.utcnow(),
+                        provider_name=None,
+                        content_char_count=160,
+                        create=True):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:
@@ -301,6 +304,9 @@ def sample_notification(notify_db,
         job = sample_job(notify_db, notify_db_session, service=service, template=template)
 
     notification_id = uuid.uuid4()
+
+    if provider_name is None:
+        provider_name = mmg_provider_name() if template.template_type == 'sms' else ses_provider_name()
 
     if to_field:
         to = to_field
@@ -316,10 +322,12 @@ def sample_notification(notify_db,
         'template': template,
         'status': status,
         'reference': reference,
-        'created_at': created_at
+        'created_at': created_at,
+        'content_char_count': content_char_count
     }
     notification = Notification(**data)
-    dao_create_notification(notification, template.template_type)
+    if create:
+        dao_create_notification(notification, template.template_type, provider_name)
     return notification
 
 
@@ -431,3 +439,13 @@ def sample_service_permission(notify_db,
 @pytest.fixture(scope='function')
 def fake_uuid():
     return "6ce466d0-fd6a-11e5-82f5-e0accb9d11a6"
+
+
+@pytest.fixture(scope='function')
+def ses_provider_name():
+    return 'ses'
+
+
+@pytest.fixture(scope='function')
+def mmg_provider_name():
+    return 'mmg'
