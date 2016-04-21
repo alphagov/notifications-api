@@ -179,3 +179,27 @@ def _process_permissions(user, service, permission_groups):
         permission.user = user
         permission.service = service
     return permissions
+
+
+# This is placeholder get method until more thought
+# goes into how we want to fetch and view various items in history
+# tables. This is so product owner can pass stories as done
+@service.route('/<uuid:service_id>/history', methods=['GET'])
+def get_service_and_api_key_history(service_id):
+    from app.models import Service, ApiKey
+    from app.schemas import service_history_schema, api_key_history_schema
+
+    service_history = Service.get_history_model().query.filter_by(id=service_id).all()
+    service_data, errors = service_history_schema.dump(service_history, many=True)
+    if errors:
+        return jsonify(result="error", message=errors), 400
+
+    api_key_history = ApiKey.get_history_model().query.filter_by(service_id=service_id).all()
+
+    api_keys_data, errors = api_key_history_schema.dump(api_key_history, many=True)
+    if errors:
+        return jsonify(result="error", message=errors), 400
+
+    data = {'service_history': service_data, 'api_key_history': api_keys_data}
+
+    return jsonify(data=data)
