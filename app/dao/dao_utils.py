@@ -18,13 +18,16 @@ def transactional(func):
     return commit_or_rollback
 
 
-def versioned(func):
-    @wraps(func)
-    def record_version(*args, **kwargs):
-        from app import db
-        func(*args, **kwargs)
-        history_objects = [create_history(obj) for obj in
-                           versioned_objects(itertools.chain(db.session.new, db.session.dirty))]
-        for h_obj in history_objects:
-            db.session.add(h_obj)
-    return record_version
+def version_class(model_class):
+    def versioned(func):
+        @wraps(func)
+        def record_version(*args, **kwargs):
+            from app import db
+            func(*args, **kwargs)
+            history_objects = [create_history(obj) for obj in
+                               versioned_objects(itertools.chain(db.session.new, db.session.dirty))
+                               if isinstance(obj, model_class)]
+            for h_obj in history_objects:
+                db.session.add(h_obj)
+        return record_version
+    return versioned

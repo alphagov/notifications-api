@@ -6,7 +6,7 @@ from sqlalchemy import asc
 
 from app.dao.dao_utils import (
     transactional,
-    versioned
+    version_class
 )
 
 
@@ -27,7 +27,7 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
 
 
 @transactional
-@versioned
+@version_class(Service)
 def dao_create_service(service, user):
     from app.dao.permissions_dao import permission_dao
     service.users.append(user)
@@ -37,7 +37,7 @@ def dao_create_service(service, user):
 
 
 @transactional
-@versioned
+@version_class(Service)
 def dao_update_service(service):
     db.session.add(service)
 
