@@ -185,9 +185,13 @@ def _process_permissions(user, service, permission_groups):
 # goes into how we want to fetch and view various items in history
 # tables. This is so product owner can pass stories as done
 @service.route('/<uuid:service_id>/history', methods=['GET'])
-def get_service_and_api_key_history(service_id):
-    from app.models import Service, ApiKey
-    from app.schemas import service_history_schema, api_key_history_schema
+def get_service_history(service_id):
+    from app.models import (Service, ApiKey, Template)
+    from app.schemas import (
+        service_history_schema,
+        api_key_history_schema,
+        template_history_schema
+    )
 
     service_history = Service.get_history_model().query.filter_by(id=service_id).all()
     service_data, errors = service_history_schema.dump(service_history, many=True)
@@ -200,6 +204,12 @@ def get_service_and_api_key_history(service_id):
     if errors:
         return jsonify(result="error", message=errors), 400
 
-    data = {'service_history': service_data, 'api_key_history': api_keys_data}
+    template_history = Template.get_history_model().query.filter_by(service_id=service_id).all()
+    template_data, errors = template_history_schema.dump(template_history, many=True)
+
+    data = {
+        'service_history': service_data,
+        'api_key_history': api_keys_data,
+        'template_history': template_data}
 
     return jsonify(data=data)

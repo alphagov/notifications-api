@@ -152,7 +152,7 @@ TEMPLATE_TYPE_LETTER = 'letter'
 TEMPLATE_TYPES = [TEMPLATE_TYPE_SMS, TEMPLATE_TYPE_EMAIL, TEMPLATE_TYPE_LETTER]
 
 
-class Template(db.Model):
+class Template(db.Model, Versioned):
     __tablename__ = 'templates'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -174,6 +174,8 @@ class Template(db.Model):
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
     service = db.relationship('Service', backref=db.backref('templates', lazy='dynamic'))
     subject = db.Column(db.Text, index=False, unique=True, nullable=True)
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+    created_by = db.relationship('User')
 
 
 MMG_PROVIDER = "mmg"

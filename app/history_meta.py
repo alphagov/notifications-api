@@ -180,7 +180,6 @@ def create_history(obj):
 
     obj_state = attributes.instance_state(obj)
     data = {}
-
     for prop in obj_mapper.iterate_properties:
 
         # expired object attributes and also deferred cols might not
