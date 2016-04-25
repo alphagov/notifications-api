@@ -413,12 +413,3 @@ class TemplateStatistics(db.Model):
         unique=False,
         nullable=False,
         default=datetime.datetime.utcnow)
-
-
-class Event(object):
-
-    __tablename__ = 'events'
-
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    type = db.Column(db.String(255), nullable=False)
-    details = db.Column(JSON, nullable=False)
