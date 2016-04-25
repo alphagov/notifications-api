@@ -256,16 +256,6 @@ def filter_query(query, filter_dict=None):
     return query
 
 
-def delete_notifications_created_more_than_a_day_ago(status):
-    one_day_ago = date.today() - timedelta(days=1)
-    deleted = db.session.query(Notification).filter(
-        func.date(Notification.created_at) < one_day_ago,
-        Notification.status == status
-    ).delete(synchronize_session='fetch')
-    db.session.commit()
-    return deleted
-
-
 def delete_notifications_created_more_than_a_week_ago(status):
     seven_days_ago = date.today() - timedelta(days=7)
     deleted = db.session.query(Notification).filter(
