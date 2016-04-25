@@ -313,51 +313,6 @@ def test_send_sms_code_returns_404_for_bad_input_data(notify_api, notify_db, not
             assert json.loads(resp.get_data(as_text=True))['message'] == 'No result found'
 
 
-def test_send_user_email_code(notify_api,
-                              sample_email_code,
-                              mock_celery_send_email_code,
-                              mock_encryption):
-    """
-    Tests POST endpoint /user/<user_id>/email-code
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = json.dumps({})
-            auth_header = create_authorization_header(
-                path=url_for('user.send_user_email_code', user_id=sample_email_code.user.id),
-                method='POST',
-                request_body=data)
-            resp = client.post(
-                url_for('user.send_user_email_code', user_id=sample_email_code.user.id),
-                data=data,
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 204
-            app.celery.tasks.send_email_code.apply_async.assert_called_once_with(['something_encrypted'],
-                                                                                 queue='email-code')
-
-
-def test_send_user_email_code_returns_404_for_when_user_does_not_exist(notify_api,
-                                                                       notify_db,
-                                                                       notify_db_session,
-                                                                       fake_uuid):
-    """
-    Tests POST endpoint /user/<user_id>/email-code return 404 for missing user
-    """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = json.dumps({})
-            auth_header = create_authorization_header(
-                path=url_for('user.send_user_email_code', user_id=fake_uuid),
-                method='POST',
-                request_body=data)
-            resp = client.post(
-                url_for('user.send_user_email_code', user_id=fake_uuid),
-                data=data,
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 404
-            assert json.loads(resp.get_data(as_text=True))['message'] == 'No result found'
-
-
 def test_send_user_email_verification(notify_api,
                                       sample_email_code,
                                       mock_celery_email_registration_verification,

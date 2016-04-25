@@ -26,7 +26,6 @@ from app.schemas import (
 
 from app.celery.tasks import (
     send_sms_code,
-    send_email_code,
     email_reset_password,
     email_registration_verification
 )
@@ -131,25 +130,6 @@ def send_user_sms_code(user_id):
     verification_message = {'to': mobile, 'secret_code': secret_code}
 
     send_sms_code.apply_async([encryption.encrypt(verification_message)], queue='sms-code')
-
-    return jsonify({}), 204
-
-
-@user.route('/<uuid:user_id>/email-code', methods=['POST'])
-def send_user_email_code(user_id):
-    user_to_send_to = get_model_users(user_id=user_id)
-    verify_code, errors = request_verify_code_schema.load(request.get_json())
-    if errors:
-        return jsonify(result="error", message=errors), 400
-
-    from app.dao.users_dao import create_secret_code
-    secret_code = create_secret_code()
-    create_user_code(user_to_send_to, secret_code, 'email')
-
-    email = user_to_send_to.email_address if verify_code.get('to', None) is None else verify_code.get('to')
-    verification_message = {'to': email, 'secret_code': secret_code}
-
-    send_email_code.apply_async([encryption.encrypt(verification_message)], queue='email-code')
 
     return jsonify({}), 204
 
