@@ -132,10 +132,11 @@ def test_should_allow_valid_token_with_post_body(notify_api, sample_api_key):
             data = {
                 'email_from': 'new name',
                 'name': 'new name',
-                'users': [service.users[0].id],
+                'users': [str(service.users[0].id)],
                 'message_limit': 1000,
                 'restricted': False,
-                'active': False}
+                'active': False,
+                'created_by': str(service.users[0].id)}
 
             token = create_jwt_token(
                 request_method="POST",

@@ -486,10 +486,10 @@ def test_filter_by_status_and_template_type(notify_api,
                 headers=[auth_header])
 
             notifications = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
             assert len(notifications['notifications']) == 1
             assert notifications['notifications'][0]['template']['template_type'] == 'email'
             assert notifications['notifications'][0]['status'] == 'delivered'
-            assert response.status_code == 200
 
 
 def test_get_notification_statistics(
