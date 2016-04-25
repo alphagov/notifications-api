@@ -1,7 +1,10 @@
 import uuid
 import datetime
 
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import (
+    UUID,
+    JSON
+)
 
 from sqlalchemy import UniqueConstraint
 

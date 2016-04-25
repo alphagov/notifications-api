@@ -1,4 +1,5 @@
 from datetime import timedelta
+from celery.schedules import crontab
 from kombu import Exchange, Queue
 import os
 
@@ -51,12 +52,12 @@ class Config(object):
         },
         'delete-failed-notifications': {
             'task': 'delete-failed-notifications',
-            'schedule': timedelta(minutes=60),
+            'schedule': crontab(minute=0, hour=0),
             'options': {'queue': 'periodic'}
         },
         'delete-successful-notifications': {
             'task': 'delete-successful-notifications',
-            'schedule': timedelta(minutes=31),
+            'schedule': crontab(minute=0, hour=0),
             'options': {'queue': 'periodic'}
         }
     }
