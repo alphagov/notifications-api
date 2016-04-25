@@ -22,7 +22,6 @@ from app.dao.notifications_dao import (
     get_notification_for_job,
     get_notifications_for_job,
     dao_get_notification_statistics_for_service,
-    delete_notifications_created_more_than_a_day_ago,
     delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
     dao_get_notification_statistics_for_service_and_previous_days,
@@ -765,15 +764,6 @@ def test_update_notification(sample_notification, sample_template):
     assert notification_from_db.status == 'failed'
 
 
-def test_should_delete_notifications_after_one_day(notify_db, notify_db_session):
-    created_at = datetime.utcnow() - timedelta(days=2)
-    sample_notification(notify_db, notify_db_session, created_at=created_at)
-    sample_notification(notify_db, notify_db_session, created_at=created_at)
-    assert len(Notification.query.all()) == 2
-    delete_notifications_created_more_than_a_day_ago('sending')
-    assert len(Notification.query.all()) == 0
-
-
 @freeze_time("2016-01-10 12:00:00.000000")
 def test_should_delete_notifications_after_seven_days(notify_db, notify_db_session):
 
@@ -793,18 +783,6 @@ def test_should_delete_notifications_after_seven_days(notify_db, notify_db_sessi
     remaining_notifications = Notification.query.all()
     assert len(remaining_notifications) == 8
     assert remaining_notifications[0].created_at.date() == date(2016, 1, 3)
-
-
-def test_should_not_delete_sent_notifications_before_one_day(notify_db, notify_db_session):
-    should_delete = datetime.utcnow() - timedelta(days=2)
-    do_not_delete = datetime.utcnow() - timedelta(days=1)
-    sample_notification(notify_db, notify_db_session, created_at=should_delete, to_field="expired")
-    sample_notification(notify_db, notify_db_session, created_at=do_not_delete, to_field="valid")
-
-    assert len(Notification.query.all()) == 2
-    delete_notifications_created_more_than_a_day_ago('sending')
-    assert len(Notification.query.all()) == 1
-    assert Notification.query.first().to == 'valid'
 
 
 def test_should_not_delete_failed_notifications_before_seven_days(notify_db, notify_db_session):
