@@ -3,7 +3,6 @@ import uuid
 
 import pytest
 
-from app import DATE_FORMAT
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
@@ -767,7 +766,7 @@ def test_update_notification(sample_notification, sample_template):
 
 
 def test_should_delete_notifications_after_one_day(notify_db, notify_db_session):
-    created_at = datetime.utcnow() - timedelta(hours=24)
+    created_at = datetime.utcnow() - timedelta(days=2)
     sample_notification(notify_db, notify_db_session, created_at=created_at)
     sample_notification(notify_db, notify_db_session, created_at=created_at)
     assert len(Notification.query.all()) == 2
@@ -775,20 +774,32 @@ def test_should_delete_notifications_after_one_day(notify_db, notify_db_session)
     assert len(Notification.query.all()) == 0
 
 
+@freeze_time("2016-01-10 12:00:00.000000")
 def test_should_delete_notifications_after_seven_days(notify_db, notify_db_session):
-    created_at = datetime.utcnow() - timedelta(hours=24 * 7)
-    sample_notification(notify_db, notify_db_session, created_at=created_at, status="failed")
-    sample_notification(notify_db, notify_db_session, created_at=created_at, status="failed")
-    assert len(Notification.query.all()) == 2
-    delete_notifications_created_more_than_a_week_ago('failed')
+
     assert len(Notification.query.all()) == 0
+
+    # create one notification a day between 1st and 9th from 11:00 to 19:00
+    for i in range(1, 11):
+        past_date = '2016-01-{0:02d}  {0:02d}:00:00.000000'.format(i, i)
+        with freeze_time(past_date):
+            sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow(), status="failed")
+
+    all_notifications = Notification.query.all()
+    assert len(all_notifications) == 10
+
+    # Records from before 3rd should be deleted
+    delete_notifications_created_more_than_a_week_ago('failed')
+    remaining_notifications = Notification.query.all()
+    assert len(remaining_notifications) == 8
+    assert remaining_notifications[0].created_at.date() == date(2016, 1, 3)
 
 
 def test_should_not_delete_sent_notifications_before_one_day(notify_db, notify_db_session):
-    expired = datetime.utcnow() - timedelta(hours=24)
-    valid = datetime.utcnow() - timedelta(hours=23, minutes=59, seconds=59)
-    sample_notification(notify_db, notify_db_session, created_at=expired, to_field="expired")
-    sample_notification(notify_db, notify_db_session, created_at=valid, to_field="valid")
+    should_delete = datetime.utcnow() - timedelta(days=2)
+    do_not_delete = datetime.utcnow() - timedelta(days=1)
+    sample_notification(notify_db, notify_db_session, created_at=should_delete, to_field="expired")
+    sample_notification(notify_db, notify_db_session, created_at=do_not_delete, to_field="valid")
 
     assert len(Notification.query.all()) == 2
     delete_notifications_created_more_than_a_day_ago('sending')
@@ -797,14 +808,16 @@ def test_should_not_delete_sent_notifications_before_one_day(notify_db, notify_d
 
 
 def test_should_not_delete_failed_notifications_before_seven_days(notify_db, notify_db_session):
-    expired = datetime.utcnow() - timedelta(hours=24 * 7)
-    valid = datetime.utcnow() - timedelta(hours=(24 * 6) + 23, minutes=59, seconds=59)
-    sample_notification(notify_db, notify_db_session, created_at=expired, status="failed", to_field="expired")
-    sample_notification(notify_db, notify_db_session, created_at=valid, status="failed", to_field="valid")
+    should_delete = datetime.utcnow() - timedelta(days=8)
+    do_not_delete = datetime.utcnow() - timedelta(days=7)
+    sample_notification(notify_db, notify_db_session, created_at=should_delete, status="failed",
+                        to_field="should_delete")
+    sample_notification(notify_db, notify_db_session, created_at=do_not_delete, status="failed",
+                        to_field="do_not_delete")
     assert len(Notification.query.all()) == 2
     delete_notifications_created_more_than_a_week_ago('failed')
     assert len(Notification.query.all()) == 1
-    assert Notification.query.first().to == 'valid'
+    assert Notification.query.first().to == 'do_not_delete'
 
 
 @freeze_time("2016-03-30")

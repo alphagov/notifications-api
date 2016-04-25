@@ -1,5 +1,5 @@
 import math
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 
 from datetime import (
     datetime,
@@ -257,18 +257,20 @@ def filter_query(query, filter_dict=None):
 
 
 def delete_notifications_created_more_than_a_day_ago(status):
+    one_day_ago = date.today() - timedelta(days=1)
     deleted = db.session.query(Notification).filter(
-        Notification.created_at < datetime.utcnow() - timedelta(days=1),
+        func.date(Notification.created_at) < one_day_ago,
         Notification.status == status
-    ).delete()
+    ).delete(synchronize_session='fetch')
     db.session.commit()
     return deleted
 
 
 def delete_notifications_created_more_than_a_week_ago(status):
+    seven_days_ago = date.today() - timedelta(days=7)
     deleted = db.session.query(Notification).filter(
-        Notification.created_at < datetime.utcnow() - timedelta(days=7),
+        func.date(Notification.created_at) < seven_days_ago,
         Notification.status == status
-    ).delete()
+    ).delete(synchronize_session='fetch')
     db.session.commit()
     return deleted
