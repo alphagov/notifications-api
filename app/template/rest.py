@@ -28,7 +28,6 @@ register_errors(template)
 @template.route('', methods=['POST'])
 def create_template(service_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
-
     new_template, errors = template_schema.load(request.get_json())
     if errors:
         return jsonify(result="error", message=errors), 400
