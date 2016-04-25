@@ -25,7 +25,7 @@ def upgrade():
     sa.Column('content', sa.Text(), nullable=False),
     sa.Column('service_id', postgresql.UUID(as_uuid=True), nullable=False),
     sa.Column('subject', sa.Text(), nullable=True),
-    sa.Column('created_by_id', postgresql.UUID(as_uuid=True), nullable=False),
+    sa.Column('created_by_id', postgresql.UUID(as_uuid=True), nullable=True),
     sa.Column('version', sa.Integer(), autoincrement=False, nullable=False),
     sa.PrimaryKeyConstraint('id', 'version')
     )
