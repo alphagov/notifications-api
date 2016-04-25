@@ -7,8 +7,9 @@ from marshmallow import (
     validates_schema,
     pre_load
 )
-
+from sqlalchemy.dialects.postgresql import UUID
 from marshmallow_sqlalchemy import field_for
+from marshmallow_sqlalchemy.convert import ModelConverter
 
 from notifications_utils.recipients import (
     validate_email_address,
@@ -35,17 +36,6 @@ class BaseSchema(ma.ModelSchema):
         self.load_json = load_json
         super(BaseSchema, self).__init__(*args, **kwargs)
 
-    __envelope__ = {
-        'single': None,
-        'many': None
-    }
-
-    def get_envelope_key(self, many):
-        """Helper to get the envelope key."""
-        key = self.__envelope__['many'] if many else self.__envelope__['single']
-        assert key is not None, "Envelope key undefined"
-        return key
-
     @post_load
     def make_instance(self, data):
         """Deserialize data to an instance of the model. Update an existing row
@@ -56,6 +46,25 @@ class BaseSchema(ma.ModelSchema):
         if self.load_json:
             return data
         return super(BaseSchema, self).make_instance(data)
+
+
+class CreatedBySchema(ma.Schema):
+
+    created_by = fields.Str(required=True, load_only=True)
+
+    @validates_schema
+    def validates_created_by(self, data):
+        try:
+            if not isinstance(data.get('created_by'), models.User):
+                created_by = models.User.query.filter_by(id=data.get('created_by')).one()
+        except:
+            raise ValidationError('Invalid template created_by: {}'.format(data))
+
+    @post_load
+    def format_created_by(self, item):
+        if not isinstance(item.get('created_by'), models.User):
+            item['created_by'] = models.User.query.filter_by(id=item.get('created_by')).one()
+        return item
 
 
 class UserSchema(BaseSchema):
@@ -80,7 +89,7 @@ class UserSchema(BaseSchema):
             "_password", "verify_codes")
 
 
-class ServiceSchema(BaseSchema):
+class ServiceSchema(BaseSchema, CreatedBySchema):
     class Meta:
         model = models.Service
         exclude = ("updated_at", "created_at", "api_keys", "templates", "jobs", 'old_id')
@@ -92,12 +101,13 @@ class NotificationModelSchema(BaseSchema):
 
 
 class BaseTemplateSchema(BaseSchema):
+
     class Meta:
         model = models.Template
         exclude = ("updated_at", "created_at", "service_id", "jobs")
 
 
-class TemplateSchema(BaseTemplateSchema):
+class TemplateSchema(BaseTemplateSchema, CreatedBySchema):
 
     @validates_schema
     def validate_type(self, data):
@@ -113,7 +123,7 @@ class NotificationsStatisticsSchema(BaseSchema):
         model = models.NotificationStatistics
 
 
-class ApiKeySchema(BaseSchema):
+class ApiKeySchema(BaseSchema, CreatedBySchema):
     class Meta:
         model = models.ApiKey
         exclude = ("service", "secret")
@@ -303,6 +313,18 @@ class ApiKeyHistorySchema(ma.Schema):
     created_by_id = fields.UUID()
 
 
+class TemplateHistorySchema(ma.Schema):
+    id = fields.UUID()
+    name = fields.String()
+    template_type = fields.String()
+    created_at = fields.DateTime()
+    updated_at = fields.DateTime()
+    content = fields.String()
+    service_id = fields.UUID()
+    subject = fields.String()
+    created_by_id = fields.UUID()
+
+
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
 service_schema = ServiceSchema()
@@ -329,3 +351,4 @@ notifications_filter_schema = NotificationsFilterSchema()
 template_statistics_schema = TemplateStatisticsSchema()
 service_history_schema = ServiceHistorySchema()
 api_key_history_schema = ApiKeyHistorySchema()
+template_history_schema = TemplateHistorySchema()

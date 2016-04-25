@@ -135,7 +135,10 @@ def sample_template(notify_db,
                     template_type="sms",
                     content="This is a template",
                     subject_line='Subject',
+                    user=None,
                     service=None):
+    if user is None:
+        user = sample_user(notify_db, notify_db_session)
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     sample_api_key(notify_db, notify_db_session, service=service)
@@ -143,7 +146,8 @@ def sample_template(notify_db,
         'name': template_name,
         'template_type': template_type,
         'content': content,
-        'service': service
+        'service': service,
+        'created_by': user
     }
     if template_type == 'email':
         data.update({
@@ -165,9 +169,12 @@ def sample_email_template(
         notify_db_session,
         template_name="Email Template Name",
         template_type="email",
+        user=None,
         content="This is a template",
         subject_line='Email Subject',
         service=None):
+    if user is None:
+        user = sample_user(notify_db, notify_db_session)
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     sample_api_key(notify_db, notify_db_session, service=service)
@@ -175,7 +182,8 @@ def sample_email_template(
         'name': template_name,
         'template_type': template_type,
         'content': content,
-        'service': service
+        'service': service,
+        'created_by': user
     }
     if subject_line:
         data.update({
