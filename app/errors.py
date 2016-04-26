@@ -64,6 +64,8 @@ def register_errors(blueprint):
                 'duplicate key value violates unique constraint "services_email_from_key"' in e.orig.pgerror):
             return jsonify(
                 result='error',
-                message={'name': ["Duplicate service name '{}'".format(e.params.get('name', ''))]}
+                message={'name': ["Duplicate service name '{}'".format(
+                    e.params.get('name', e.params.get('email_from', ''))
+                )]}
             ), 400
         return jsonify(result='error', message="Internal server error"), 500
