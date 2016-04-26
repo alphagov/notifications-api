@@ -345,11 +345,6 @@ def mock_celery_send_sms_code(mocker):
 
 
 @pytest.fixture(scope='function')
-def mock_celery_send_email_code(mocker):
-    return mocker.patch('app.celery.tasks.send_email_code.apply_async')
-
-
-@pytest.fixture(scope='function')
 def mock_celery_email_registration_verification(mocker):
     return mocker.patch('app.celery.tasks.email_registration_verification.apply_async')
 
