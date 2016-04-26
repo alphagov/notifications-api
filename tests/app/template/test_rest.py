@@ -1,6 +1,6 @@
 import json
 import uuid
-
+from app.models import Template
 from tests import create_authorization_header
 
 
@@ -273,6 +273,38 @@ def test_should_be_able_to_update_a_template(notify_api, sample_user, sample_ser
             assert update_response.status_code == 200
             update_json_resp = json.loads(update_response.get_data(as_text=True))
             assert update_json_resp['data']['content'] == 'my template has new content alert("foo")'
+
+
+def test_should_be_able_to_archive_template(notify_api, sample_user, sample_service, sample_template):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = {
+                'name': sample_template.name,
+                'template_type': sample_template.template_type,
+                'content': sample_template.content,
+                'archived': True,
+                'service': str(sample_template.service.id),
+                'created_by': str(sample_template.created_by.id)
+            }
+
+            json_data = json.dumps(data)
+
+            auth_header = create_authorization_header(
+                path='/service/{}/template/{}'.format(
+                    str(sample_template.service.id),
+                    str(sample_template.id)),
+                method='POST',
+                request_body=json_data
+            )
+
+            resp = client.post(
+                '/service/{}/template/{}'.format(sample_template.service.id, sample_template.id),
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=json_data
+            )
+
+            assert resp.status_code == 200
+            assert Template.query.first().archived
 
 
 def test_should_be_able_to_get_all_templates_for_a_service(notify_api, sample_user, sample_service):

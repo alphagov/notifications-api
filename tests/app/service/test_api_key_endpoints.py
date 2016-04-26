@@ -98,8 +98,13 @@ def test_get_api_keys_should_return_all_keys_for_service(notify_api, notify_db,
         with notify_api.test_client() as client:
             another_user = create_user(notify_db, notify_db_session, email='another@it.gov.uk')
 
-            another_service = create_sample_service(notify_db, notify_db_session, service_name='another',
-                                                    user=another_user, email_from='another')
+            another_service = create_sample_service(
+                notify_db,
+                notify_db_session,
+                service_name='another',
+                user=another_user,
+                email_from='another'
+            )
             # key for another service
             create_sample_api_key(notify_db, notify_db_session, service=another_service)
 

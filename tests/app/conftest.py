@@ -44,21 +44,18 @@ def sample_user(notify_db,
                 notify_db_session,
                 mobile_numnber="+447700900986",
                 email="notify@digital.cabinet-office.gov.uk"):
-    try:
-        data = {
-            'name': 'Test User',
-            'email_address': email,
-            'password': 'password',
-            'mobile_number': mobile_numnber,
-            'state': 'active'
-        }
-        usr = User.query.filter_by(email_address=email).first()
-        if not usr:
-            usr = User(**data)
-            save_model_user(usr)
-    except Exception:
-        import traceback
-        traceback.print_exc()
+    data = {
+        'name': 'Test User',
+        'email_address': email,
+        'password': 'password',
+        'mobile_number': mobile_numnber,
+        'state': 'active'
+    }
+    usr = User.query.filter_by(email_address=email).first()
+    if not usr:
+        usr = User(**data)
+        save_model_user(usr)
+
     return usr
 
 
@@ -134,20 +131,24 @@ def sample_template(notify_db,
                     template_name="Template Name",
                     template_type="sms",
                     content="This is a template",
+                    archived=False,
                     subject_line='Subject',
                     user=None,
-                    service=None):
+                    service=None,
+                    created_by=None):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
     if service is None:
         service = sample_service(notify_db, notify_db_session)
-    sample_api_key(notify_db, notify_db_session, service=service)
+    if created_by is None:
+        created_by = sample_user(notify_db, notify_db_session)
     data = {
         'name': template_name,
         'template_type': template_type,
         'content': content,
         'service': service,
-        'created_by': user
+        'created_by': created_by,
+        'archived': archived
     }
     if template_type == 'email':
         data.update({
@@ -177,7 +178,6 @@ def sample_email_template(
         user = sample_user(notify_db, notify_db_session)
     if service is None:
         service = sample_service(notify_db, notify_db_session)
-    sample_api_key(notify_db, notify_db_session, service=service)
     data = {
         'name': template_name,
         'template_type': template_type,
