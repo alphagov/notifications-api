@@ -179,10 +179,10 @@ def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, not
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_sms_job_if_exactly_on_send_limits(notify_db,
-                                                          notify_db_session,
-                                                          mocker,
-                                                          mock_celery_remove_job):
+def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
+                                                            notify_db_session,
+                                                            mocker,
+                                                            mock_celery_remove_job):
     service = sample_service(notify_db, notify_db_session, limit=10)
     template = sample_email_template(notify_db, notify_db_session, service=service)
     job = sample_job(notify_db, notify_db_session, service=service, template=template, notification_count=10)
@@ -201,11 +201,17 @@ def test_should_process_sms_job_if_exactly_on_send_limits(notify_db,
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.status == 'finished'
     tasks.send_email.apply_async.assert_called_with(
-        (str(job.service_id),
-         "uuid",
-         "{}@{}".format(job.service.email_from, "test.notify.com"),
-         "something_encrypted",
-         "2016-01-01T11:09:00.061258"),
+        (
+            str(job.service_id),
+            "uuid",
+            "\"{}\" <{}@{}>".format(
+                service.name,
+                service.email_from,
+                "test.notify.com"
+            ),
+            "something_encrypted",
+            "2016-01-01T11:09:00.061258"
+        ),
         queue="bulk-email"
     )
     mock_celery_remove_job.assert_called_once_with((str(job.id),), queue="remove-job")
@@ -242,11 +248,17 @@ def test_should_process_email_job(sample_email_job, mocker, mock_celery_remove_j
     assert encryption.encrypt.call_args[0][0]['to'] == 'test@test.com'
     assert encryption.encrypt.call_args[0][0]['personalisation'] == {}
     tasks.send_email.apply_async.assert_called_once_with(
-        (str(sample_email_job.service_id),
-         "uuid",
-         "{}@{}".format(sample_email_job.service.email_from, "test.notify.com"),
-         "something_encrypted",
-         "2016-01-01T11:09:00.061258"),
+        (
+            str(sample_email_job.service_id),
+            "uuid",
+            "\"{}\" <{}@{}>".format(
+                sample_email_job.service.name,
+                sample_email_job.service.email_from,
+                "test.notify.com"
+            ),
+            "something_encrypted",
+            "2016-01-01T11:09:00.061258"
+        ),
         queue="bulk-email"
     )
     job = jobs_dao.dao_get_job_by_id(sample_email_job.id)
@@ -781,8 +793,10 @@ def test_email_invited_user_should_send_email(notify_api, mocker):
                                                      invitation['expiry_date'])
 
         email_invited_user(encryption.encrypt(invitation))
-        email_from = "{}@{}".format(current_app.config['INVITATION_EMAIL_FROM'],
-                                    current_app.config['NOTIFY_EMAIL_DOMAIN'])
+        email_from = '"GOV.UK Notify" <{}@{}>'.format(
+            current_app.config['INVITATION_EMAIL_FROM'],
+            current_app.config['NOTIFY_EMAIL_DOMAIN']
+        )
         expected_subject = tasks.invitation_subject_line(invitation['user_name'], invitation['service_name'])
         aws_ses_client.send_email.assert_called_once_with(email_from,
                                                           invitation['to'],
