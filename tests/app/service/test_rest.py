@@ -494,7 +494,10 @@ def test_should_not_update_service_with_duplicate_email_from(notify_api,
             assert resp.status_code == 400
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert "Duplicate service name '{}'".format(service_name) in json_resp['message']['name']
+            assert (
+                "Duplicate service name '{}'".format(service_name) in json_resp['message']['name'] or
+                "Duplicate service name '{}'".format(email_from) in json_resp['message']['name']
+            )
 
 
 def test_update_service_should_404_if_id_is_invalid(notify_api, notify_db, notify_db_session):
