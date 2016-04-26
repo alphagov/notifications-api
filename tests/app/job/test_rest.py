@@ -97,7 +97,8 @@ def test_create_job(notify_api, sample_template, mocker, fake_uuid):
                 'service': str(sample_template.service.id),
                 'template': str(sample_template.id),
                 'original_file_name': 'thisisatest.csv',
-                'notification_count': 1
+                'notification_count': 1,
+                'created_by': str(sample_template.created_by.id)
             }
             path = '/service/{}/job'.format(sample_template.service.id)
             auth_header = create_authorization_header(
