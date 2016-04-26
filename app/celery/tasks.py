@@ -336,19 +336,6 @@ def send_sms_via_firetext(to, content, reference):
         current_app.logger.exception(e)
 
 
-@notify_celery.task(name='send-email-code')
-def send_email_code(encrypted_verification_message):
-    verification_message = encryption.decrypt(encrypted_verification_message)
-    try:
-        aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
-                                  verification_message['to'],
-                                  "Verification code",
-                                  "{} is your Notify authentication code".format(
-                                      verification_message['secret_code']))
-    except AwsSesClientException as e:
-        current_app.logger.exception(e)
-
-
 # TODO: when placeholders in templates work, this will be a real template
 def invitation_template(user_name, service_name, url, expiry_date):
     from string import Template

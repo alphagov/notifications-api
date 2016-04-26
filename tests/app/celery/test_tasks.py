@@ -6,7 +6,6 @@ from notifications_utils.recipients import validate_phone_number, format_phone_n
 from app.celery.tasks import (
     send_sms,
     send_sms_code,
-    send_email_code,
     send_email,
     process_job,
     email_invited_user,
@@ -761,23 +760,6 @@ def test_should_throw_mmg_client_exception(mocker):
         format_phone_number(validate_phone_number(notification['to'])),
         "{} is your Notify authentication code".format(notification['secret_code']),
         'send-sms-code')
-
-
-def test_should_send_email_code(mocker):
-    verification = {'to': 'someone@it.gov.uk',
-                    'secret_code': 11111}
-
-    encrypted_verification = encryption.encrypt(verification)
-    mocker.patch('app.aws_ses_client.send_email')
-
-    send_email_code(encrypted_verification)
-
-    aws_ses_client.send_email.assert_called_once_with(
-        current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
-        verification['to'],
-        "Verification code",
-        "{} is your Notify authentication code".format(verification['secret_code'])
-    )
 
 
 def test_email_invited_user_should_send_email(notify_api, mocker):
