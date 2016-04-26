@@ -21,7 +21,10 @@ def test_secret_is_signed_and_can_be_read_again(notify_api):
         assert signed_secret != token
 
 
-def test_save_api_key_should_create_new_api_key_and_history(notify_api, notify_db, notify_db_session, sample_service):
+def test_save_api_key_should_create_new_api_key_and_history(notify_api,
+                                                            notify_db,
+                                                            notify_db_session,
+                                                            sample_service):
     api_key = ApiKey(**{'service': sample_service,
                         'name': sample_service.name,
                         'created_by': sample_service.created_by})
