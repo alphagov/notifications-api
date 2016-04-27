@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0009_events_table
-Revises: 0008_archive_template
+Revision ID: 0010_events_table
+Revises: 0009_created_by_for_jobs
 Create Date: 2016-04-26 13:08:42.892813
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0009_events_table'
-down_revision = '0008_archive_template'
+revision = '0010_events_table'
+down_revision = '0009_created_by_for_jobs'
 
 from alembic import op
 import sqlalchemy as sa
