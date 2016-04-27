@@ -247,6 +247,8 @@ class Job(db.Model):
         index=False,
         unique=False,
         nullable=True)
+    created_by = db.relationship('User')
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
 
 
 VERIFY_CODE_TYPES = ['email', 'sms']

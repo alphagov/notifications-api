@@ -97,7 +97,8 @@ def test_create_job(notify_api, sample_template, mocker, fake_uuid):
                 'service': str(sample_template.service.id),
                 'template': str(sample_template.id),
                 'original_file_name': 'thisisatest.csv',
-                'notification_count': 1
+                'notification_count': 1,
+                'created_by': str(sample_template.created_by.id)
             }
             path = '/service/{}/job'.format(sample_template.service.id)
             auth_header = create_authorization_header(
@@ -177,35 +178,6 @@ def test_create_job_returns_404_if_missing_service(notify_api, sample_template, 
             app.celery.tasks.process_job.apply_async.assert_not_called()
             assert resp_json['result'] == 'error'
             assert resp_json['message'] == 'No result found'
-
-
-def test_get_update_job(notify_api, sample_job):
-    assert sample_job.status == 'pending'
-
-    job_id = str(sample_job.id)
-    service_id = str(sample_job.service.id)
-
-    update_data = {
-        'status': 'in progress'
-    }
-
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            path = '/service/{}/job/{}'.format(service_id, job_id)
-
-            auth_header = create_authorization_header(
-                service_id=service_id,
-                path=path,
-                method='POST',
-                request_body=json.dumps(update_data))
-
-            headers = [('Content-Type', 'application/json'), auth_header]
-
-            response = client.post(path, headers=headers, data=json.dumps(update_data))
-
-            resp_json = json.loads(response.get_data(as_text=True))
-            assert response.status_code == 200
-            assert resp_json['data']['status'] == 'in progress'
 
 
 def _setup_jobs(notify_db, notify_db_session, template, number_of_jobs=5):

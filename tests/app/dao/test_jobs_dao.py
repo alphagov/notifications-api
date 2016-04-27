@@ -20,7 +20,8 @@ def test_create_job(sample_template):
         'service_id': sample_template.service.id,
         'template_id': sample_template.id,
         'original_file_name': 'some.csv',
-        'notification_count': 1
+        'notification_count': 1,
+        'created_by': sample_template.created_by
     }
 
     job = Job(**data)
