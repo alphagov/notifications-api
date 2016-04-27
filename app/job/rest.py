@@ -7,8 +7,7 @@ from flask import (
 from app.dao.jobs_dao import (
     dao_create_job,
     dao_get_job_by_service_id_and_job_id,
-    dao_get_jobs_by_service_id,
-    dao_update_job
+    dao_get_jobs_by_service_id
 )
 
 from app.dao.services_dao import (
@@ -57,16 +56,3 @@ def create_job(service_id):
     dao_create_job(job)
     process_job.apply_async([str(job.id)], queue="process-job")
     return jsonify(data=job_schema.dump(job).data), 201
-
-
-@job.route('/<job_id>', methods=['POST'])
-def update_job(service_id, job_id):
-    fetched_job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
-    current_data = dict(job_schema.dump(fetched_job).data.items())
-    current_data.update(request.get_json())
-
-    update_dict, errors = job_schema.load(current_data)
-    if errors:
-        return jsonify(result="error", message=errors), 400
-    dao_update_job(update_dict)
-    return jsonify(data=job_schema.dump(update_dict).data), 200
