@@ -14,10 +14,10 @@ Lastly when to create a version is done manually in dao_utils version decorator 
 session events.
 
 """
-
-
+import datetime
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import mapper
+from sqlalchemy.orm import mapper, attributes, object_mapper
+from sqlalchemy.orm.properties import RelationshipProperty, ColumnProperty
 from sqlalchemy import Table, Column, ForeignKeyConstraint, Integer
 from sqlalchemy import util
 
@@ -160,8 +160,59 @@ class Versioned(object):
             return mp
         return map
 
+    @classmethod
+    def get_history_model(cls):
+        history_mapper = cls.__history_mapper__
+        return history_mapper.class_
+
 
 def versioned_objects(iter):
     for obj in iter:
         if hasattr(obj, '__history_mapper__'):
             yield obj
+
+
+def create_history(obj):
+    obj_mapper = object_mapper(obj)
+    history_mapper = obj.__history_mapper__
+    history_cls = history_mapper.class_
+    history = history_cls()
+
+    obj_state = attributes.instance_state(obj)
+    data = {}
+    for prop in obj_mapper.iterate_properties:
+
+        # expired object attributes and also deferred cols might not
+        # be in the dict.  force it them load no matter what by using getattr().
+        if prop.key not in obj_state.dict:
+            getattr(obj, prop.key)
+
+        # if prop is a normal col just set it on history model
+        if isinstance(prop, ColumnProperty):
+            if not data.get(prop.key):
+                data[prop.key] = getattr(obj, prop.key)
+
+        # if the prop is a relationship property and there is a
+        # corresponding prop on hist object then set the
+        # relevant "_id" prop to the id of the current object.prop.id.
+        # This is so foreign keys get set on history when
+        # the source object is new and therefore property foo_id does
+        # not yet have a value before insert
+
+        elif isinstance(prop, RelationshipProperty):
+            if hasattr(history, prop.key+'_id'):
+                data[prop.key+'_id'] = getattr(obj, prop.key).id
+
+    if not obj.version:
+        obj.version = 1
+        obj.created_at = datetime.datetime.now()
+    else:
+        obj.version += 1
+
+    data['version'] = obj.version
+    data['created_at'] = obj.created_at
+
+    for key, value in data.items():
+        setattr(history, key, value)
+
+    return history

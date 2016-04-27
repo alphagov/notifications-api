@@ -59,4 +59,13 @@ def register_errors(blueprint):
     @blueprint.app_errorhandler(SQLAlchemyError)
     def db_error(e):
         current_app.logger.exception(e)
-        return jsonify(result='error', message=str(e)), 500
+        if e.orig.pgerror and \
+            ('duplicate key value violates unique constraint "services_name_key"' in e.orig.pgerror or
+                'duplicate key value violates unique constraint "services_email_from_key"' in e.orig.pgerror):
+            return jsonify(
+                result='error',
+                message={'name': ["Duplicate service name '{}'".format(
+                    e.params.get('name', e.params.get('email_from', ''))
+                )]}
+            ), 400
+        return jsonify(result='error', message="Internal server error"), 500

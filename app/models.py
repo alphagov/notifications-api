@@ -1,7 +1,10 @@
 import uuid
 import datetime
 
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import (
+    UUID,
+    JSON
+)
 
 from sqlalchemy import UniqueConstraint
 
@@ -32,13 +35,13 @@ class User(db.Model):
         index=False,
         unique=False,
         nullable=False,
-        default=datetime.datetime.now)
+        default=datetime.datetime.utcnow)
     updated_at = db.Column(
         db.DateTime,
         index=False,
         unique=False,
         nullable=True,
-        onupdate=datetime.datetime.now)
+        onupdate=datetime.datetime.utcnow)
     _password = db.Column(db.String, index=False, unique=False, nullable=False)
     mobile_number = db.Column(db.String, index=False, unique=False, nullable=False)
     password_changed_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
@@ -96,13 +99,8 @@ class Service(db.Model, Versioned):
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
 
-    @classmethod
-    def get_history_model(cls):
-        history_mapper = cls.__history_mapper__
-        return history_mapper.class_
 
-
-class ApiKey(db.Model):
+class ApiKey(db.Model, Versioned):
     __tablename__ = 'api_keys'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -111,6 +109,20 @@ class ApiKey(db.Model):
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service', backref=db.backref('api_keys', lazy='dynamic'))
     expiry_date = db.Column(db.DateTime)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=False,
+        default=datetime.datetime.now)
+    updated_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True,
+        onupdate=datetime.datetime.now)
+    created_by = db.relationship('User')
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
 
     __table_args__ = (
         UniqueConstraint('service_id', 'name', name='uix_service_to_key_name'),
@@ -143,7 +155,7 @@ TEMPLATE_TYPE_LETTER = 'letter'
 TEMPLATE_TYPES = [TEMPLATE_TYPE_SMS, TEMPLATE_TYPE_EMAIL, TEMPLATE_TYPE_LETTER]
 
 
-class Template(db.Model):
+class Template(db.Model, Versioned):
     __tablename__ = 'templates'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -162,9 +174,12 @@ class Template(db.Model):
         nullable=True,
         onupdate=datetime.datetime.utcnow)
     content = db.Column(db.Text, index=False, unique=False, nullable=False)
+    archived = db.Column(db.Boolean, index=False, nullable=False, default=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
     service = db.relationship('Service', backref=db.backref('templates', lazy='dynamic'))
     subject = db.Column(db.Text, index=False, unique=True, nullable=True)
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+    created_by = db.relationship('User')
 
 
 MMG_PROVIDER = "mmg"
@@ -232,6 +247,8 @@ class Job(db.Model):
         index=False,
         unique=False,
         nullable=True)
+    created_by = db.relationship('User')
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
 
 
 VERIFY_CODE_TYPES = ['email', 'sms']
@@ -399,3 +416,18 @@ class TemplateStatistics(db.Model):
         unique=False,
         nullable=False,
         default=datetime.datetime.utcnow)
+
+
+class Event(db.Model):
+
+    __tablename__ = 'events'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_type = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=False,
+        default=datetime.datetime.utcnow)
+    data = db.Column(JSON, nullable=False)

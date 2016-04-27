@@ -1,19 +1,29 @@
+import uuid
 from flask import current_app
 from itsdangerous import URLSafeSerializer
 
 from app import db
 from app.models import ApiKey
 
+from app.dao.dao_utils import (
+    transactional,
+    version_class
+)
 
+
+@transactional
+@version_class(ApiKey)
 def save_model_api_key(api_key, update_dict={}):
     if update_dict:
-        if update_dict['id']:
-            del update_dict['id']
-        db.session.query(ApiKey).filter_by(id=api_key.id).update(update_dict)
+        update_dict.pop('id', None)
+        for key, value in update_dict.items():
+            setattr(api_key, key, value)
+        db.session.add(api_key)
     else:
+        if not api_key.id:
+            api_key.id = uuid.uuid4()  # must be set now so version history model can use same id
         api_key.secret = _generate_secret()
         db.session.add(api_key)
-    db.session.commit()
 
 
 def get_model_api_keys(service_id, id=None):

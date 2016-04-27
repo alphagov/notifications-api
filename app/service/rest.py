@@ -97,21 +97,21 @@ def update_service(service_id):
 def renew_api_key(service_id=None):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
 
-    # create a new one
-    # TODO: what validation should be done here?
-    secret_name = request.get_json()['name']
-    key = ApiKey(service=fetched_service, name=secret_name)
-    save_model_api_key(key)
+    valid_api_key, errors = api_key_schema.load(request.get_json())
+    if errors:
+        return jsonify(result="error", message=errors), 400
+    valid_api_key.service = fetched_service
 
-    unsigned_api_key = get_unsigned_secret(key.id)
+    save_model_api_key(valid_api_key)
+
+    unsigned_api_key = get_unsigned_secret(valid_api_key.id)
     return jsonify(data=unsigned_api_key), 201
 
 
 @service.route('/<uuid:service_id>/api-key/revoke/<uuid:api_key_id>', methods=['POST'])
 def revoke_api_key(service_id, api_key_id):
     service_api_key = get_model_api_keys(service_id=service_id, id=api_key_id)
-
-    save_model_api_key(service_api_key, update_dict={'id': service_api_key.id, 'expiry_date': datetime.utcnow()})
+    save_model_api_key(service_api_key, update_dict={'expiry_date': datetime.utcnow()})
     return jsonify(), 202
 
 
@@ -179,3 +179,37 @@ def _process_permissions(user, service, permission_groups):
         permission.user = user
         permission.service = service
     return permissions
+
+
+# This is placeholder get method until more thought
+# goes into how we want to fetch and view various items in history
+# tables. This is so product owner can pass stories as done
+@service.route('/<uuid:service_id>/history', methods=['GET'])
+def get_service_history(service_id):
+    from app.models import (Service, ApiKey, Template)
+    from app.schemas import (
+        service_history_schema,
+        api_key_history_schema,
+        template_history_schema
+    )
+
+    service_history = Service.get_history_model().query.filter_by(id=service_id).all()
+    service_data, errors = service_history_schema.dump(service_history, many=True)
+    if errors:
+        return jsonify(result="error", message=errors), 400
+
+    api_key_history = ApiKey.get_history_model().query.filter_by(service_id=service_id).all()
+
+    api_keys_data, errors = api_key_history_schema.dump(api_key_history, many=True)
+    if errors:
+        return jsonify(result="error", message=errors), 400
+
+    template_history = Template.get_history_model().query.filter_by(service_id=service_id).all()
+    template_data, errors = template_history_schema.dump(template_history, many=True)
+
+    data = {
+        'service_history': service_data,
+        'api_key_history': api_keys_data,
+        'template_history': template_data}
+
+    return jsonify(data=data)

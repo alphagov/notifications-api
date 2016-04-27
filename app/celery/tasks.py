@@ -173,7 +173,11 @@ def process_job(job_id):
             send_email.apply_async((
                 str(job.service_id),
                 str(create_uuid()),
-                "{}@{}".format(job.service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
+                '"{}" <{}@{}>'.format(
+                    service.name,
+                    service.email_from,
+                    current_app.config['NOTIFY_EMAIL_DOMAIN']
+                ).encode('ascii', 'ignore').decode('ascii'),
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
                 queue='bulk-email')
@@ -336,19 +340,6 @@ def send_sms_via_firetext(to, content, reference):
         current_app.logger.exception(e)
 
 
-@notify_celery.task(name='send-email-code')
-def send_email_code(encrypted_verification_message):
-    verification_message = encryption.decrypt(encrypted_verification_message)
-    try:
-        aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
-                                  verification_message['to'],
-                                  "Verification code",
-                                  "{} is your Notify authentication code".format(
-                                      verification_message['secret_code']))
-    except AwsSesClientException as e:
-        current_app.logger.exception(e)
-
-
 # TODO: when placeholders in templates work, this will be a real template
 def invitation_template(user_name, service_name, url, expiry_date):
     from string import Template
@@ -384,8 +375,10 @@ def email_invited_user(encrypted_invitation):
                                              url,
                                              invitation['expiry_date'])
     try:
-        email_from = "{}@{}".format(current_app.config['INVITATION_EMAIL_FROM'],
-                                    current_app.config['NOTIFY_EMAIL_DOMAIN'])
+        email_from = '"GOV.UK Notify" <{}@{}>'.format(
+            current_app.config['INVITATION_EMAIL_FROM'],
+            current_app.config['NOTIFY_EMAIL_DOMAIN']
+        )
         subject_line = invitation_subject_line(invitation['user_name'], invitation['service_name'])
         aws_ses_client.send_email(email_from,
                                   invitation['to'],
@@ -411,7 +404,10 @@ def password_reset_message(name, url):
 def email_reset_password(encrypted_reset_password_message):
     reset_password_message = encryption.decrypt(encrypted_reset_password_message)
     try:
-        aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
+        email_from = '"GOV.UK Notify" <{}>'.format(
+            current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS']
+        )
+        aws_ses_client.send_email(email_from,
                                   reset_password_message['to'],
                                   "Reset your GOV.UK Notify password",
                                   password_reset_message(name=reset_password_message['name'],
@@ -433,7 +429,10 @@ def registration_verification_template(name, url):
 def email_registration_verification(encrypted_verification_message):
     verification_message = encryption.decrypt(encrypted_verification_message)
     try:
-        aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
+        email_from = '"GOV.UK Notify" <{}>'.format(
+            current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS']
+        )
+        aws_ses_client.send_email(email_from,
                                   verification_message['to'],
                                   "Confirm GOV.UK Notify registration",
                                   registration_verification_template(name=verification_message['name'],

@@ -1,17 +1,18 @@
 import json
 import uuid
-
+from app.models import Template
 from tests import create_authorization_header
 
 
-def test_should_create_a_new_sms_template_for_a_service(notify_api, sample_service):
+def test_should_create_a_new_sms_template_for_a_service(notify_api, sample_user, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
                 'name': 'my template',
                 'template_type': 'sms',
                 'content': 'template <b>content</b>',
-                'service': str(sample_service.id)
+                'service': str(sample_service.id),
+                'created_by': str(sample_user.id)
             }
             data = json.dumps(data)
             auth_header = create_authorization_header(
@@ -35,7 +36,7 @@ def test_should_create_a_new_sms_template_for_a_service(notify_api, sample_servi
             assert not json_resp['data']['subject']
 
 
-def test_should_create_a_new_email_template_for_a_service(notify_api, sample_service):
+def test_should_create_a_new_email_template_for_a_service(notify_api, sample_user, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
@@ -43,7 +44,8 @@ def test_should_create_a_new_email_template_for_a_service(notify_api, sample_ser
                 'template_type': 'email',
                 'subject': 'subject',
                 'content': 'template <b>content</b>',
-                'service': str(sample_service.id)
+                'service': str(sample_service.id),
+                'created_by': str(sample_user.id)
             }
             data = json.dumps(data)
             auth_header = create_authorization_header(
@@ -67,14 +69,15 @@ def test_should_create_a_new_email_template_for_a_service(notify_api, sample_ser
             assert json_resp['data']['id']
 
 
-def test_should_be_error_if_service_does_not_exist_on_create(notify_api, fake_uuid):
+def test_should_be_error_if_service_does_not_exist_on_create(notify_api, sample_user, fake_uuid):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
                 'name': 'my template',
                 'template_type': 'sms',
                 'content': 'template content',
-                'service': fake_uuid
+                'service': fake_uuid,
+                'created_by': str(sample_user.id)
             }
             data = json.dumps(data)
             auth_header = create_authorization_header(
@@ -92,6 +95,33 @@ def test_should_be_error_if_service_does_not_exist_on_create(notify_api, fake_uu
             assert response.status_code == 404
             assert json_resp['result'] == 'error'
             assert json_resp['message'] == 'No result found'
+
+
+def test_should_error_if_created_by_missing(notify_api, sample_user, sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            service_id = str(sample_service.id)
+            data = {
+                'name': 'my template',
+                'template_type': 'sms',
+                'content': 'template content',
+                'service': service_id
+            }
+            data = json.dumps(data)
+            auth_header = create_authorization_header(
+                path='/service/{}/template'.format(service_id),
+                method='POST',
+                request_body=data
+            )
+
+            response = client.post(
+                '/service/{}/template'.format(service_id),
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=data
+            )
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 400
+            assert json_resp['result'] == 'error'
 
 
 def test_should_be_error_if_service_does_not_exist_on_update(notify_api, fake_uuid):
@@ -118,14 +148,15 @@ def test_should_be_error_if_service_does_not_exist_on_update(notify_api, fake_uu
             assert json_resp['message'] == 'No result found'
 
 
-def test_must_have_a_subject_on_an_email_template(notify_api, sample_service):
+def test_must_have_a_subject_on_an_email_template(notify_api, sample_user, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
                 'name': 'my template',
                 'template_type': 'email',
                 'content': 'template content',
-                'service': str(sample_service.id)
+                'service': str(sample_service.id),
+                'created_by': str(sample_user.id)
             }
             data = json.dumps(data)
             auth_header = create_authorization_header(
@@ -145,7 +176,7 @@ def test_must_have_a_subject_on_an_email_template(notify_api, sample_service):
             assert json_resp['message'] == {'subject': ['Invalid template subject']}
 
 
-def test_must_have_a_uniqe_subject_on_an_email_template(notify_api, sample_service):
+def test_must_have_a_uniqe_subject_on_an_email_template(notify_api, sample_user, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
@@ -153,7 +184,8 @@ def test_must_have_a_uniqe_subject_on_an_email_template(notify_api, sample_servi
                 'template_type': 'email',
                 'subject': 'subject',
                 'content': 'template content',
-                'service': str(sample_service.id)
+                'service': str(sample_service.id),
+                'created_by': str(sample_user.id)
             }
             data = json.dumps(data)
             auth_header = create_authorization_header(
@@ -174,7 +206,8 @@ def test_must_have_a_uniqe_subject_on_an_email_template(notify_api, sample_servi
                 'template_type': 'email',
                 'subject': 'subject',
                 'content': 'template content',
-                'service': str(sample_service.id)
+                'service': str(sample_service.id),
+                'created_by': str(sample_user.id)
             }
             data = json.dumps(data)
             auth_header = create_authorization_header(
@@ -194,7 +227,7 @@ def test_must_have_a_uniqe_subject_on_an_email_template(notify_api, sample_servi
             assert json_resp['message'][0]['subject'] == 'Duplicate template subject'
 
 
-def test_should_be_able_to_update_a_template(notify_api, sample_service):
+def test_should_be_able_to_update_a_template(notify_api, sample_user, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
@@ -202,7 +235,8 @@ def test_should_be_able_to_update_a_template(notify_api, sample_service):
                 'template_type': 'email',
                 'subject': 'subject',
                 'content': 'template content',
-                'service': str(sample_service.id)
+                'service': str(sample_service.id),
+                'created_by': str(sample_user.id)
             }
             data = json.dumps(data)
             auth_header = create_authorization_header(
@@ -220,7 +254,8 @@ def test_should_be_able_to_update_a_template(notify_api, sample_service):
             json_resp = json.loads(create_response.get_data(as_text=True))
             assert json_resp['data']['name'] == 'my template'
             data = {
-                'content': 'my template has new content <script type="text/javascript">alert("foo")</script>'
+                'content': 'my template has new content <script type="text/javascript">alert("foo")</script>',
+                'created_by': str(sample_user.id)
             }
             data = json.dumps(data)
             auth_header = create_authorization_header(
@@ -240,7 +275,39 @@ def test_should_be_able_to_update_a_template(notify_api, sample_service):
             assert update_json_resp['data']['content'] == 'my template has new content alert("foo")'
 
 
-def test_should_be_able_to_get_all_templates_for_a_service(notify_api, sample_service):
+def test_should_be_able_to_archive_template(notify_api, sample_user, sample_service, sample_template):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = {
+                'name': sample_template.name,
+                'template_type': sample_template.template_type,
+                'content': sample_template.content,
+                'archived': True,
+                'service': str(sample_template.service.id),
+                'created_by': str(sample_template.created_by.id)
+            }
+
+            json_data = json.dumps(data)
+
+            auth_header = create_authorization_header(
+                path='/service/{}/template/{}'.format(
+                    str(sample_template.service.id),
+                    str(sample_template.id)),
+                method='POST',
+                request_body=json_data
+            )
+
+            resp = client.post(
+                '/service/{}/template/{}'.format(sample_template.service.id, sample_template.id),
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=json_data
+            )
+
+            assert resp.status_code == 200
+            assert Template.query.first().archived
+
+
+def test_should_be_able_to_get_all_templates_for_a_service(notify_api, sample_user, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
@@ -248,7 +315,8 @@ def test_should_be_able_to_get_all_templates_for_a_service(notify_api, sample_se
                 'template_type': 'email',
                 'subject': 'subject 1',
                 'content': 'template content',
-                'service': str(sample_service.id)
+                'service': str(sample_service.id),
+                'created_by': str(sample_user.id)
             }
             data_1 = json.dumps(data)
             data = {
@@ -256,7 +324,8 @@ def test_should_be_able_to_get_all_templates_for_a_service(notify_api, sample_se
                 'template_type': 'email',
                 'subject': 'subject 2',
                 'content': 'template content',
-                'service': str(sample_service.id)
+                'service': str(sample_service.id),
+                'created_by': str(sample_user.id)
             }
             data_2 = json.dumps(data)
             auth_header = create_authorization_header(
@@ -297,7 +366,7 @@ def test_should_be_able_to_get_all_templates_for_a_service(notify_api, sample_se
             assert update_json_resp['data'][1]['name'] == 'my template 2'
 
 
-def test_should_get_only_templates_for_that_servcie(notify_api, service_factory):
+def test_should_get_only_templates_for_that_service(notify_api, sample_user, service_factory):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
@@ -338,7 +407,8 @@ def test_should_get_only_templates_for_that_servcie(notify_api, service_factory)
                 'template_type': 'email',
                 'subject': 'subject 2',
                 'content': 'template content',
-                'service': str(service_1.id)
+                'service': str(service_1.id),
+                'created_by': str(sample_user.id)
             }
             data = json.dumps(data)
             create_auth_header = create_authorization_header(

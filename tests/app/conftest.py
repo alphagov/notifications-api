@@ -44,21 +44,18 @@ def sample_user(notify_db,
                 notify_db_session,
                 mobile_numnber="+447700900986",
                 email="notify@digital.cabinet-office.gov.uk"):
-    try:
-        data = {
-            'name': 'Test User',
-            'email_address': email,
-            'password': 'password',
-            'mobile_number': mobile_numnber,
-            'state': 'active'
-        }
-        usr = User.query.filter_by(email_address=email).first()
-        if not usr:
-            usr = User(**data)
-            save_model_user(usr)
-    except Exception:
-        import traceback
-        traceback.print_exc()
+    data = {
+        'name': 'Test User',
+        'email_address': email,
+        'password': 'password',
+        'mobile_number': mobile_numnber,
+        'state': 'active'
+    }
+    usr = User.query.filter_by(email_address=email).first()
+    if not usr:
+        usr = User(**data)
+        save_model_user(usr)
+
     return usr
 
 
@@ -134,16 +131,24 @@ def sample_template(notify_db,
                     template_name="Template Name",
                     template_type="sms",
                     content="This is a template",
+                    archived=False,
                     subject_line='Subject',
-                    service=None):
+                    user=None,
+                    service=None,
+                    created_by=None):
+    if user is None:
+        user = sample_user(notify_db, notify_db_session)
     if service is None:
         service = sample_service(notify_db, notify_db_session)
-    sample_api_key(notify_db, notify_db_session, service=service)
+    if created_by is None:
+        created_by = sample_user(notify_db, notify_db_session)
     data = {
         'name': template_name,
         'template_type': template_type,
         'content': content,
-        'service': service
+        'service': service,
+        'created_by': created_by,
+        'archived': archived
     }
     if template_type == 'email':
         data.update({
@@ -165,17 +170,20 @@ def sample_email_template(
         notify_db_session,
         template_name="Email Template Name",
         template_type="email",
+        user=None,
         content="This is a template",
         subject_line='Email Subject',
         service=None):
+    if user is None:
+        user = sample_user(notify_db, notify_db_session)
     if service is None:
         service = sample_service(notify_db, notify_db_session)
-    sample_api_key(notify_db, notify_db_session, service=service)
     data = {
         'name': template_name,
         'template_type': template_type,
         'content': content,
-        'service': service
+        'service': service,
+        'created_by': user
     }
     if subject_line:
         data.update({
@@ -201,7 +209,7 @@ def sample_api_key(notify_db,
                    service=None):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
-    data = {'service_id': service.id, 'name': uuid.uuid4()}
+    data = {'service': service, 'name': uuid.uuid4(), 'created_by': service.created_by}
     api_key = ApiKey(**data)
     save_model_api_key(api_key)
     return api_key
@@ -227,7 +235,8 @@ def sample_job(notify_db,
         'template_id': template.id,
         'original_file_name': 'some.csv',
         'notification_count': notification_count,
-        'created_at': created_at
+        'created_at': created_at,
+        'created_by': service.created_by
     }
     job = Job(**data)
     dao_create_job(job)
@@ -267,7 +276,8 @@ def sample_email_job(notify_db,
         'service': service,
         'template_id': template.id,
         'original_file_name': 'some.csv',
-        'notification_count': 1
+        'notification_count': 1,
+        'created_by': service.created_by
     }
     job = Job(**data)
     dao_create_job(job)
@@ -334,11 +344,6 @@ def sample_notification(notify_db,
 @pytest.fixture(scope='function')
 def mock_celery_send_sms_code(mocker):
     return mocker.patch('app.celery.tasks.send_sms_code.apply_async')
-
-
-@pytest.fixture(scope='function')
-def mock_celery_send_email_code(mocker):
-    return mocker.patch('app.celery.tasks.send_email_code.apply_async')
 
 
 @pytest.fixture(scope='function')

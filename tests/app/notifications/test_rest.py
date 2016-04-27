@@ -486,10 +486,10 @@ def test_filter_by_status_and_template_type(notify_api,
                 headers=[auth_header])
 
             notifications = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
             assert len(notifications['notifications']) == 1
             assert notifications['notifications'][0]['template']['template_type'] == 'email'
             assert notifications['notifications'][0]['status'] == 'delivered'
-            assert response.status_code == 200
 
 
 def test_get_notification_statistics(
@@ -1012,7 +1012,7 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
             app.celery.tasks.send_email.apply_async.assert_called_once_with(
                 (str(sample_email_template.service_id),
                  notification_id,
-                 "sample.service@test.notify.com",
+                 "\"Sample service\" <sample.service@test.notify.com>",
                  "something_encrypted",
                  "2016-01-01T11:09:00.061258"),
                 queue="email"
