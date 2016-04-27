@@ -325,6 +325,11 @@ class TemplateHistorySchema(ma.Schema):
     created_by_id = fields.UUID()
 
 
+class EventSchema(BaseSchema):
+    class Meta:
+        model = models.Event
+
+
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
 service_schema = ServiceSchema()
@@ -352,3 +357,4 @@ template_statistics_schema = TemplateStatisticsSchema()
 service_history_schema = ServiceHistorySchema()
 api_key_history_schema = ApiKeyHistorySchema()
 template_history_schema = TemplateHistorySchema()
+event_schema = EventSchema()

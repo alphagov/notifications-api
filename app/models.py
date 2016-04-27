@@ -35,13 +35,13 @@ class User(db.Model):
         index=False,
         unique=False,
         nullable=False,
-        default=datetime.datetime.now)
+        default=datetime.datetime.utcnow)
     updated_at = db.Column(
         db.DateTime,
         index=False,
         unique=False,
         nullable=True,
-        onupdate=datetime.datetime.now)
+        onupdate=datetime.datetime.utcnow)
     _password = db.Column(db.String, index=False, unique=False, nullable=False)
     mobile_number = db.Column(db.String, index=False, unique=False, nullable=False)
     password_changed_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
@@ -416,3 +416,18 @@ class TemplateStatistics(db.Model):
         unique=False,
         nullable=False,
         default=datetime.datetime.utcnow)
+
+
+class Event(db.Model):
+
+    __tablename__ = 'events'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    event_type = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=False,
+        default=datetime.datetime.utcnow)
+    data = db.Column(JSON, nullable=False)
