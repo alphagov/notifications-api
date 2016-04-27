@@ -58,7 +58,7 @@ class CreatedBySchema(ma.Schema):
             if not isinstance(data.get('created_by'), models.User):
                 created_by = models.User.query.filter_by(id=data.get('created_by')).one()
         except:
-            raise ValidationError('Invalid template created_by: {}'.format(data))
+            raise ValidationError('Invalid created_by: {}'.format(data))
 
     @post_load
     def format_created_by(self, item):

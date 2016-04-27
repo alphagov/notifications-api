@@ -235,7 +235,8 @@ def sample_job(notify_db,
         'template_id': template.id,
         'original_file_name': 'some.csv',
         'notification_count': notification_count,
-        'created_at': created_at
+        'created_at': created_at,
+        'created_by': service.created_by
     }
     job = Job(**data)
     dao_create_job(job)
@@ -275,7 +276,8 @@ def sample_email_job(notify_db,
         'service': service,
         'template_id': template.id,
         'original_file_name': 'some.csv',
-        'notification_count': 1
+        'notification_count': 1,
+        'created_by': service.created_by
     }
     job = Job(**data)
     dao_create_job(job)
