@@ -4,10 +4,7 @@ from flask import (
     request
 )
 
-from app.dao.notifications_dao import (
-    dao_get_notification_statistics_for_service,
-    dao_get_notification_statistics_for_service_and_previous_days
-)
+from app.dao.notifications_dao import dao_get_notification_statistics_for_service
 from app.schemas import notifications_statistics_schema
 
 notifications_statistics = Blueprint(
@@ -25,7 +22,7 @@ def get_all_notification_statistics_for_service(service_id):
 
     if request.args.get('limit_days'):
         try:
-            statistics = dao_get_notification_statistics_for_service_and_previous_days(
+            statistics = dao_get_notification_statistics_for_service(
                 service_id=service_id,
                 limit_days=int(request.args['limit_days'])
             )

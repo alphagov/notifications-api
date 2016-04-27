@@ -39,10 +39,15 @@ def get_sms_message_count(char_count):
     return 1 if char_count <= 160 else math.ceil(float(char_count) / 153)
 
 
-def dao_get_notification_statistics_for_service(service_id):
-    return NotificationStatistics.query.filter_by(
-        service_id=service_id
-    ).order_by(desc(NotificationStatistics.day)).all()
+def dao_get_notification_statistics_for_service(service_id, limit_days=None):
+    filter = [NotificationStatistics.service_id == service_id]
+    if limit_days is not None:
+        filter.append(NotificationStatistics.day >= days_ago(limit_days))
+    return NotificationStatistics.query.filter(
+        *filter
+    ).order_by(
+        desc(NotificationStatistics.day)
+    ).all()
 
 
 def dao_get_notification_statistics_for_service_and_day(service_id, day):
@@ -52,24 +57,10 @@ def dao_get_notification_statistics_for_service_and_day(service_id, day):
     ).order_by(desc(NotificationStatistics.day)).first()
 
 
-def dao_get_notification_statistics_for_service_and_previous_days(service_id, limit_days):
-    return NotificationStatistics.query.filter_by(
-        service_id=service_id
-    ).filter(
-        NotificationStatistics.day.in_((
-            (date.today() - timedelta(days=days_ago))
-            for days_ago in range(0, limit_days + 1)
-        ))
-    ).order_by(
-        desc(NotificationStatistics.day)
-    ).all()
-
-
 def dao_get_template_statistics_for_service(service_id, limit_days=None):
     filter = [TemplateStatistics.service_id == service_id]
-    if limit_days:
-        last_date_to_fetch = date.today() - timedelta(days=limit_days)
-        filter.append(TemplateStatistics.day > last_date_to_fetch)
+    if limit_days is not None:
+        filter.append(TemplateStatistics.day >= days_ago(limit_days))
     return TemplateStatistics.query.filter(*filter).order_by(
         desc(TemplateStatistics.updated_at)).all()
 
@@ -264,3 +255,7 @@ def delete_notifications_created_more_than_a_week_ago(status):
     ).delete(synchronize_session='fetch')
     db.session.commit()
     return deleted
+
+
+def days_ago(number_of_days):
+    return date.today() - timedelta(days=number_of_days)

@@ -24,7 +24,6 @@ from app.dao.notifications_dao import (
     dao_get_notification_statistics_for_service,
     delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
-    dao_get_notification_statistics_for_service_and_previous_days,
     update_notification_status_by_id,
     update_notification_reference_by_id,
     update_notification_status_by_reference,
@@ -316,7 +315,7 @@ def test_should_be_able_to_get_all_statistics_for_a_service_for_several_days_pre
     dao_create_notification(notification_2, sample_template.template_type, mmg_provider_name)
     dao_create_notification(notification_3, sample_template.template_type, mmg_provider_name)
 
-    stats = dao_get_notification_statistics_for_service_and_previous_days(
+    stats = dao_get_notification_statistics_for_service(
         sample_template.service.id, 7
     )
     assert len(stats) == 2
@@ -1000,7 +999,7 @@ def test_get_template_stats_for_service_returns_stats_can_limit_number_of_days_r
     template_stats = dao_get_template_statistics_for_service(sample_template.service.id)
     assert len(template_stats) == 0
 
-    # make 9 stats records from 1st to 9th April
+    # Make 9 stats records from 1st to 9th April
     for i in range(1, 10):
         past_date = '2016-04-0{}'.format(i)
         with freeze_time(past_date):
@@ -1011,9 +1010,11 @@ def test_get_template_stats_for_service_returns_stats_can_limit_number_of_days_r
 
     # Retrieve last week of stats
     template_stats = dao_get_template_statistics_for_service(sample_template.service_id, limit_days=7)
-    assert len(template_stats) == 7
+    assert len(template_stats) == 8
     assert template_stats[0].day == date(2016, 4, 9)
-    assert template_stats[6].day == date(2016, 4, 3)
+    # Final day of stats should be the same as today, eg Monday
+    assert template_stats[0].day.isoweekday() == template_stats[7].day.isoweekday()
+    assert template_stats[7].day == date(2016, 4, 2)
 
 
 @freeze_time('2016-04-09')
