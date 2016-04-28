@@ -221,10 +221,16 @@ def get_notification_by_id(notification_id):
     return Notification.query.filter_by(id=notification_id).first()
 
 
-def get_notifications_for_service(service_id, filter_dict=None, page=1, page_size=None):
+def get_notifications_for_service(service_id, filter_dict=None, page=1, page_size=None, limit_days=None):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
-    query = Notification.query.filter_by(service_id=service_id)
+    filters = [Notification.service_id == service_id]
+
+    if limit_days is not None:
+        days_ago = date.today() - timedelta(days=limit_days)
+        filters.append(func.date(Notification.created_at) >= days_ago)
+
+    query = Notification.query.filter(*filters)
     query = filter_query(query, filter_dict)
     pagination = query.order_by(desc(Notification.created_at)).paginate(
         page=page,
