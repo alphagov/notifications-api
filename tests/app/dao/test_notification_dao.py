@@ -29,7 +29,8 @@ from app.dao.notifications_dao import (
     update_notification_status_by_reference,
     dao_get_template_statistics_for_service,
     get_character_count_of_content,
-    get_sms_message_count
+    get_sms_message_count,
+    get_notifications_for_service
 )
 
 from tests.app.conftest import sample_job
@@ -1065,6 +1066,27 @@ def test_get_template_stats_for_service_returns_no_result_if_no_usage_within_lim
 def test_get_template_stats_for_service_with_limit_if_no_records_returns_empty_list(sample_template):
     template_stats = dao_get_template_statistics_for_service(sample_template.service.id, limit_days=7)
     assert len(template_stats) == 0
+
+
+@freeze_time("2016-01-10")
+def test_should_limit_notifications_return_by_day_limit_plus_one(notify_db, notify_db_session, sample_service):
+
+    assert len(Notification.query.all()) == 0
+
+    # create one notification a day between 1st and 9th
+    for i in range(1, 11):
+        past_date = '2016-01-{0:02d}'.format(i)
+        with freeze_time(past_date):
+            sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow(), status="failed")
+
+    all_notifications = Notification.query.all()
+    assert len(all_notifications) == 10
+
+    all_notifications = get_notifications_for_service(sample_service.id, limit_days=10).items
+    assert len(all_notifications) == 10
+
+    all_notifications = get_notifications_for_service(sample_service.id, limit_days=1).items
+    assert len(all_notifications) == 2
 
 
 @pytest.mark.parametrize(

@@ -191,12 +191,14 @@ def get_all_notifications():
 
     page = data['page'] if 'page' in data else 1
     page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
+    limit_days = data.get('limit_days')
 
     pagination = notifications_dao.get_notifications_for_service(
         api_user['client'],
         filter_dict=data,
         page=page,
-        page_size=page_size)
+        page_size=page_size,
+        limit_days=limit_days)
     return jsonify(
         notifications=notification_status_schema.dump(pagination.items, many=True).data,
         page_size=page_size,
@@ -218,12 +220,14 @@ def get_all_notifications_for_service(service_id):
 
     page = data['page'] if 'page' in data else 1
     page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
+    limit_days = data.get('limit_days')
 
     pagination = notifications_dao.get_notifications_for_service(
         service_id,
         filter_dict=data,
         page=page,
-        page_size=page_size)
+        page_size=page_size,
+        limit_days=limit_days)
     kwargs = request.args.to_dict()
     kwargs['service_id'] = service_id
     return jsonify(

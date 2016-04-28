@@ -245,6 +245,7 @@ class NotificationsFilterSchema(ma.Schema):
     status = fields.Nested(NotificationModelSchema, only=['status'], many=True)
     page = fields.Int(required=False)
     page_size = fields.Int(required=False)
+    limit_days = fields.Int(required=False)
 
     @pre_load
     def handle_multidict(self, in_data):
