@@ -52,12 +52,12 @@ class Config(object):
         },
         'delete-failed-notifications': {
             'task': 'delete-failed-notifications',
-            'schedule': crontab(minute=0, hour=0),
+            'schedule': crontab(minute=0, hour='0,1,2'),
             'options': {'queue': 'periodic'}
         },
         'delete-successful-notifications': {
             'task': 'delete-successful-notifications',
-            'schedule': crontab(minute=0, hour=0),
+            'schedule': crontab(minute=0, hour='0,1,2'),
             'options': {'queue': 'periodic'}
         }
     }
