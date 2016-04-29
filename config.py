@@ -82,6 +82,7 @@ class Config(object):
     FIRETEXT_NUMBER = os.getenv('FIRETEXT_NUMBER')
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
     CSV_UPLOAD_BUCKET_NAME = 'local-notifications-csv-upload'
+    NOTIFICATIONS_ALERT = 5  # five mins
 
 
 class Development(Config):
