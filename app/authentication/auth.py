@@ -48,6 +48,8 @@ def requires_auth():
         except TokenDecodeError:
             errors_resp = authentication_response("Invalid token: signature", 403)
 
+    if not api_client['secret']:
+        errors_resp = authentication_response("Invalid token: signature", 403)
     return errors_resp
 
 
