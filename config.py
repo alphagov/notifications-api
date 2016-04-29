@@ -26,6 +26,7 @@ class Config(object):
     VERIFY_CODE_FROM_EMAIL_ADDRESS = os.environ['VERIFY_CODE_FROM_EMAIL_ADDRESS']
     NOTIFY_EMAIL_DOMAIN = os.environ['NOTIFY_EMAIL_DOMAIN']
     PAGE_SIZE = 50
+    SMS_CHAR_COUNT_LIMIT = 495
 
     BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {
@@ -52,12 +53,12 @@ class Config(object):
         },
         'delete-failed-notifications': {
             'task': 'delete-failed-notifications',
-            'schedule': crontab(minute=0, hour=0),
+            'schedule': crontab(minute=0, hour='0,1,2'),
             'options': {'queue': 'periodic'}
         },
         'delete-successful-notifications': {
             'task': 'delete-successful-notifications',
-            'schedule': crontab(minute=0, hour=0),
+            'schedule': crontab(minute=0, hour='0,1,2'),
             'options': {'queue': 'periodic'}
         }
     }

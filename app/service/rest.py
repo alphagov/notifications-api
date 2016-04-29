@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import (datetime, date)
 
 from flask import Blueprint
 from flask import (
@@ -23,12 +23,15 @@ from app.dao.services_dao import (
     dao_remove_user_from_service
 )
 
+from app.dao.provider_statistics_dao import get_fragment_count
+
 from app.dao.users_dao import get_model_users
 from app.models import ApiKey
 from app.schemas import (
     service_schema,
     api_key_schema,
-    user_schema
+    user_schema,
+    from_to_date_schema
 )
 
 from app.errors import register_errors
@@ -181,16 +184,31 @@ def _process_permissions(user, service, permission_groups):
     return permissions
 
 
+@service.route('/<uuid:service_id>/fragment/aggregate_statistics')
+def get_service_provider_aggregate_statistics(service_id):
+    service = dao_fetch_service_by_id(service_id)
+    data, errors = from_to_date_schema.load(request.args)
+    if errors:
+        return jsonify(result='error', message=errors), 400
+
+    return jsonify(data=get_fragment_count(
+        service,
+        date_from=(data.pop('date_from') if 'date_from' in data else date.today()),
+        date_to=(data.pop('date_to') if 'date_to' in data else date.today())
+    ))
+
+
 # This is placeholder get method until more thought
 # goes into how we want to fetch and view various items in history
 # tables. This is so product owner can pass stories as done
 @service.route('/<uuid:service_id>/history', methods=['GET'])
 def get_service_history(service_id):
-    from app.models import (Service, ApiKey, Template)
+    from app.models import (Service, ApiKey, Template, Event)
     from app.schemas import (
         service_history_schema,
         api_key_history_schema,
-        template_history_schema
+        template_history_schema,
+        event_schema
     )
 
     service_history = Service.get_history_model().query.filter_by(id=service_id).all()
@@ -207,9 +225,13 @@ def get_service_history(service_id):
     template_history = Template.get_history_model().query.filter_by(service_id=service_id).all()
     template_data, errors = template_history_schema.dump(template_history, many=True)
 
+    events = Event.query.all()
+    events_data, errors = event_schema.dump(events, many=True)
+
     data = {
         'service_history': service_data,
         'api_key_history': api_keys_data,
-        'template_history': template_data}
+        'template_history': template_data,
+        'events': events_data}
 
     return jsonify(data=data)

@@ -1,8 +1,19 @@
 import pytest
-from datetime import datetime
+from datetime import (datetime, date)
 from app import db
 from app.models import (
-    User, Service, Template, ApiKey, Job, Notification, InvitedUser, Permission)
+    User,
+    Service,
+    Template,
+    ApiKey,
+    Job,
+    Notification,
+    InvitedUser,
+    Permission,
+    MMG_PROVIDER,
+    SES_PROVIDER,
+    TWILIO_PROVIDER,
+    ProviderStatistics)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
@@ -448,9 +459,35 @@ def fake_uuid():
 
 @pytest.fixture(scope='function')
 def ses_provider_name():
-    return 'ses'
+    return SES_PROVIDER
 
 
 @pytest.fixture(scope='function')
 def mmg_provider_name():
-    return 'mmg'
+    return MMG_PROVIDER
+
+
+@pytest.fixture(scope='function')
+def twilio_provider_name():
+    return TWILIO_PROVIDER
+
+
+@pytest.fixture(scope='function')
+def sample_provider_statistics(notify_db,
+                               notify_db_session,
+                               sample_service,
+                               provider=None,
+                               day=None,
+                               unit_count=1):
+    if provider is None:
+        provider = mmg_provider_name()
+    if day is None:
+        day = date.today()
+    stats = ProviderStatistics(
+        service=sample_service,
+        provider=provider,
+        day=day,
+        unit_count=unit_count)
+    notify_db.session.add(stats)
+    notify_db.session.commit()
+    return stats

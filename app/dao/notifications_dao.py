@@ -22,6 +22,8 @@ from app.models import (
     ProviderStatistics
 )
 
+from notifications_utils.template import get_sms_fragment_count
+
 from app.clients import (
     STATISTICS_FAILURE,
     STATISTICS_DELIVERED,
@@ -29,14 +31,6 @@ from app.clients import (
 )
 
 from app.dao.dao_utils import transactional
-
-
-def get_character_count_of_content(content, encoding='utf-8'):
-    return len(content.encode(encoding))
-
-
-def get_sms_message_count(char_count):
-    return 1 if char_count <= 160 else math.ceil(float(char_count) / 153)
 
 
 def dao_get_notification_statistics_for_service(service_id, limit_days=None):
@@ -105,14 +99,14 @@ def dao_create_notification(notification, notification_type, provider):
         service_id=notification.service_id,
         provider=provider
     ).update({'unit_count': ProviderStatistics.unit_count + (
-        1 if notification_type == TEMPLATE_TYPE_EMAIL else get_sms_message_count(notification.content_char_count))})
+        1 if notification_type == TEMPLATE_TYPE_EMAIL else get_sms_fragment_count(notification.content_char_count))})
 
     if update_count == 0:
         provider_stats = ProviderStatistics(
             day=notification.created_at.date(),
             service_id=notification.service_id,
             provider=provider,
-            unit_count=1 if notification_type == TEMPLATE_TYPE_EMAIL else get_sms_message_count(
+            unit_count=1 if notification_type == TEMPLATE_TYPE_EMAIL else get_sms_fragment_count(
                 notification.content_char_count))
         db.session.add(provider_stats)
 
@@ -221,10 +215,16 @@ def get_notification_by_id(notification_id):
     return Notification.query.filter_by(id=notification_id).first()
 
 
-def get_notifications_for_service(service_id, filter_dict=None, page=1, page_size=None):
+def get_notifications_for_service(service_id, filter_dict=None, page=1, page_size=None, limit_days=None):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
-    query = Notification.query.filter_by(service_id=service_id)
+    filters = [Notification.service_id == service_id]
+
+    if limit_days is not None:
+        days_ago = date.today() - timedelta(days=limit_days)
+        filters.append(func.date(Notification.created_at) >= days_ago)
+
+    query = Notification.query.filter(*filters)
     query = filter_query(query, filter_dict)
     pagination = query.order_by(desc(Notification.created_at)).paginate(
         page=page,
