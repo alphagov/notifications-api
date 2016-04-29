@@ -276,14 +276,14 @@ def test_authentication_returns_error_when_api_client_has_no_secrets(notify_api,
 def test_authentication_returns_error_when_service_has_no_secrets(notify_api,
                                                                   notify_db,
                                                                   notify_db_session,
-                                                                  sample_service):
+                                                                  sample_service,
+                                                                  fake_uuid):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            import uuid
             token = create_jwt_token(
                 request_method="GET",
                 request_path='/service',
-                secret=str(uuid.uuid4()),
+                secret=fake_uuid,
                 client_id=str(sample_service.id))
 
             response = client.get(

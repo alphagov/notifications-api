@@ -163,7 +163,7 @@ def process_job(job_id):
         if template.template_type == 'sms':
             send_sms.apply_async((
                 str(job.service_id),
-                str(create_uuid()),
+                create_uuid(),
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
                 queue='bulk-sms'
@@ -172,7 +172,7 @@ def process_job(job_id):
         if template.template_type == 'email':
             send_email.apply_async((
                 str(job.service_id),
-                str(create_uuid()),
+                create_uuid(),
                 '"{}" <{}@{}>'.format(
                     service.name,
                     service.email_from,
