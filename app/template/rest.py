@@ -13,9 +13,8 @@ from app.dao.templates_dao import (
     dao_get_template_by_id_and_service_id,
     dao_get_all_templates_for_service
 )
-from app.dao.services_dao import (
-    dao_fetch_service_by_id
-)
+from notifications_utils.template import Template
+from app.dao.services_dao import dao_fetch_service_by_id
 from app.schemas import template_schema
 
 template = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
@@ -23,6 +22,18 @@ template = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id
 from app.errors import register_errors
 
 register_errors(template)
+
+
+def _content_count_greater_than_limit(content, template_type):
+    template = Template({'content': content, 'template_type': template_type})
+    if template_type == 'sms' and \
+       template.content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT'):
+        return True, jsonify(
+            result="error",
+            message={'content': ['Content has a character count greater than the limit of {}'.format(
+                current_app.config.get('SMS_CHAR_COUNT_LIMIT'))]}
+        )
+    return False, ''
 
 
 @template.route('', methods=['POST'])
@@ -33,6 +44,11 @@ def create_template(service_id):
         return jsonify(result="error", message=errors), 400
     new_template.service = fetched_service
     new_template.content = _strip_html(new_template.content)
+    over_limit, json_resp = _content_count_greater_than_limit(
+        new_template.content,
+        new_template.template_type)
+    if over_limit:
+        return json_resp, 400
     try:
         dao_create_template(new_template)
     except IntegrityError as ex:
@@ -40,7 +56,7 @@ def create_template(service_id):
         message = "Failed to create template"
         if "templates_subject_key" in str(ex):
             message = 'Duplicate template subject'
-            return jsonify(result="error", message=[{'subject': message}]), 400
+            return jsonify(result="error", message={'subject': [message]}), 400
         return jsonify(result="error", message=message), 500
 
     return jsonify(data=template_schema.dump(new_template).data), 201
@@ -57,7 +73,11 @@ def update_template(service_id, template_id):
     update_dict, errors = template_schema.load(current_data)
     if errors:
         return jsonify(result="error", message=errors), 400
-
+    over_limit, json_resp = _content_count_greater_than_limit(
+        current_data['content'],
+        fetched_template.template_type)
+    if over_limit:
+        return json_resp, 400
     dao_update_template(update_dict)
     return jsonify(data=template_schema.dump(update_dict).data), 200
 

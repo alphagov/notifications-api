@@ -28,10 +28,10 @@ from app.dao.notifications_dao import (
     update_notification_reference_by_id,
     update_notification_status_by_reference,
     dao_get_template_statistics_for_service,
-    get_character_count_of_content,
-    get_sms_message_count,
     get_notifications_for_service
 )
+
+from notifications_utils.template import get_sms_fragment_count
 
 from tests.app.conftest import sample_job
 from tests.app.conftest import sample_notification
@@ -1090,18 +1090,6 @@ def test_should_limit_notifications_return_by_day_limit_plus_one(notify_db, noti
 
 
 @pytest.mark.parametrize(
-    "content,encoding,expected_length",
-    [
-        ("The quick brown fox jumped over the lazy dog", "utf-8", 44),
-        ("深", "utf-8", 3),
-        ("'First line.\n", 'utf-8', 13),
-        ("\t\n\r", 'utf-8', 3)
-    ])
-def test_get_character_count_of_content(content, encoding, expected_length):
-    assert get_character_count_of_content(content, encoding=encoding) == expected_length
-
-
-@pytest.mark.parametrize(
     "char_count, expected_sms_fragment_count",
     [
         (159, 1),
@@ -1114,4 +1102,4 @@ def test_get_character_count_of_content(content, encoding, expected_length):
         (461, 4)
     ])
 def test_sms_fragment_count(char_count, expected_sms_fragment_count):
-    assert get_sms_message_count(char_count) == expected_sms_fragment_count
+    assert get_sms_fragment_count(char_count) == expected_sms_fragment_count

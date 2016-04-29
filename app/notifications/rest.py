@@ -338,6 +338,12 @@ def send_notification(notification_type):
             }
         ), 400
 
+    if template_object.replaced_content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT'):
+        return jsonify(
+            result="error",
+            message={'content': ['Content has a character count greater than the limit of {}'.format(
+                current_app.config.get('SMS_CHAR_COUNT_LIMIT'))]}), 400
+
     if service.restricted and not allowed_to_send_to(
         notification['to'],
         itertools.chain.from_iterable(
