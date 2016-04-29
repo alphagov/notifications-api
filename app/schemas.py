@@ -1,3 +1,4 @@
+from datetime import date
 from flask_marshmallow.fields import fields
 
 from marshmallow import (
@@ -331,6 +332,31 @@ class EventSchema(BaseSchema):
         model = models.Event
 
 
+class FromToDateSchema(ma.Schema):
+
+    date_from = fields.Date()
+    date_to = fields.Date()
+
+    def _validate_not_in_future(self, dte):
+        if dte > date.today():
+            raise ValidationError('Date cannot be in the future')
+
+    @validates('date_from')
+    def validate_date_from(self, value):
+        self._validate_not_in_future(value)
+
+    @validates('date_to')
+    def validate_date_to(self, value):
+        self._validate_not_in_future(value)
+
+    @validates_schema
+    def validate_dates(self, data):
+        df = data.get('date_from')
+        dt = data.get('date_to')
+        if (df and dt) and (df > dt):
+            raise ValidationError("date_from needs to be greater than date_to")
+
+
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
 service_schema = ServiceSchema()
@@ -359,3 +385,4 @@ service_history_schema = ServiceHistorySchema()
 api_key_history_schema = ApiKeyHistorySchema()
 template_history_schema = TemplateHistorySchema()
 event_schema = EventSchema()
+from_to_date_schema = FromToDateSchema()
