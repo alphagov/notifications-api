@@ -1,5 +1,7 @@
 from datetime import datetime
 import uuid
+import random
+import string
 import app.celery.tasks
 from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
@@ -7,7 +9,7 @@ from tests.app.conftest import sample_job as create_sample_job
 from tests.app.conftest import sample_service as create_sample_service
 from tests.app.conftest import sample_email_template as create_sample_email_template
 from tests.app.conftest import sample_template as create_sample_template
-from flask import json
+from flask import (json, current_app, url_for)
 from app.models import Service
 from app.dao.templates_dao import dao_get_all_templates_for_service
 from app.dao.services_dao import dao_update_service
@@ -762,6 +764,37 @@ def test_should_not_allow_template_from_another_service(notify_api, service_fact
             assert response.status_code == 404
             test_string = 'No result found'
             assert test_string in json_resp['message']
+
+
+def test_should_not_allow_template_content_too_large(notify_api, notify_db, notify_db_session, sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            template = create_sample_template(notify_db, notify_db_session, content="((long_text))")
+            limit = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+            json_data = json.dumps({
+                'to': sample_user.mobile_number,
+                'template': template.id,
+                'personalisation': {
+                    'long_text': ''.join(
+                        random.choice(string.ascii_uppercase + string.digits) for _ in range(limit + 1))
+                }
+            })
+            endpoint = url_for('notifications.send_notification', notification_type='sms')
+            auth_header = create_authorization_header(
+                service_id=template.service.id,
+                request_body=json_data,
+                path=endpoint,
+                method='POST')
+
+            resp = client.post(
+                path=endpoint,
+                data=json_data,
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert resp.status_code == 400
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert json_resp['message']['content'][0] == (
+                'Content has a character count greater'
+                ' than the limit of {}').format(limit)
 
 
 @freeze_time("2016-01-01 11:09:00.061258")

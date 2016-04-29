@@ -38,8 +38,7 @@ from app.dao.notifications_dao import (
     dao_update_notification,
     delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
-    update_notification_reference_by_id,
-    get_character_count_of_content
+    update_notification_reference_by_id
 )
 
 from app.dao.jobs_dao import (
@@ -233,7 +232,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=client.get_name(),
-            content_char_count=get_character_count_of_content(template.replaced)
+            content_char_count=template.replaced_content_count
         )
 
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS, client.get_name())
