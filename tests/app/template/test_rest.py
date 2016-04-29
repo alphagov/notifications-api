@@ -1,5 +1,7 @@
 import json
 import uuid
+import random
+import string
 from app.models import Template
 from tests import create_authorization_header
 
@@ -224,7 +226,7 @@ def test_must_have_a_uniqe_subject_on_an_email_template(notify_api, sample_user,
             assert response.status_code == 400
             json_resp = json.loads(response.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'][0]['subject'] == 'Duplicate template subject'
+            assert json_resp['message']['subject'][0] == 'Duplicate template subject'
 
 
 def test_should_be_able_to_update_a_template(notify_api, sample_user, sample_service):
@@ -479,3 +481,59 @@ def test_should_return_404_if_no_templates_for_service_with_id(notify_api, sampl
             json_resp = json.loads(response.get_data(as_text=True))
             assert json_resp['result'] == 'error'
             assert json_resp['message'] == 'No result found'
+
+
+def test_create_400_for_over_limit_content(notify_api, sample_user, sample_service, fake_uuid):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            limit = notify_api.config.get('SMS_CHAR_COUNT_LIMIT')
+            content = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(limit + 1))
+            data = {
+                'name': 'too big template',
+                'template_type': 'sms',
+                'content': content,
+                'service': str(sample_service.id),
+                'created_by': str(sample_user.id)
+            }
+            data = json.dumps(data)
+            auth_header = create_authorization_header(
+                path='/service/{}/template'.format(sample_service.id),
+                method='POST',
+                request_body=data
+            )
+
+            response = client.post(
+                '/service/{}/template'.format(sample_service.id),
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=data
+            )
+            assert response.status_code == 400
+            json_resp = json.loads(response.get_data(as_text=True))
+            assert (
+                'Content has a character count greater than the limit of {}'
+            ).format(limit) in json_resp['message']['content']
+
+
+def test_update_400_for_over_limit_content(notify_api, sample_user, sample_template):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            limit = notify_api.config.get('SMS_CHAR_COUNT_LIMIT')
+            json_data = json.dumps({
+                'content': ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(limit + 1)),
+                'created_by': str(sample_user.id)
+            })
+            auth_header = create_authorization_header(
+                path='/service/{}/template/{}'.format(sample_template.service.id, sample_template.id),
+                method='POST',
+                request_body=json_data
+            )
+            resp = client.post(
+                '/service/{}/template/{}'.format(sample_template.service.id, sample_template.id),
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=json_data
+            )
+            assert resp.status_code == 400
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert (
+                'Content has a character count greater than the limit of {}'
+            ).format(limit) in json_resp['message']['content']
