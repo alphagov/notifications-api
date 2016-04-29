@@ -273,6 +273,27 @@ def test_authentication_returns_error_when_api_client_has_no_secrets(notify_api,
             notify_api.config['ADMIN_CLIENT_SECRET'] = api_secret
 
 
+def test_authentication_returns_error_when_service_has_no_secrets(notify_api,
+                                                                  notify_db,
+                                                                  notify_db_session,
+                                                                  sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            import uuid
+            token = create_jwt_token(
+                request_method="GET",
+                request_path='/service',
+                secret=str(uuid.uuid4()),
+                client_id=str(sample_service.id))
+
+            response = client.get(
+                '/service',
+                headers={'Authorization': 'Bearer {}'.format(token)})
+            assert response.status_code == 403
+            error_message = json.loads(response.get_data())
+            assert error_message['message'] == 'Invalid token: signature'
+
+
 def __create_get_token(service_id):
     if service_id:
         return create_jwt_token(request_method="GET",
