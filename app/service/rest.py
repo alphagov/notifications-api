@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import (datetime, date)
 
 from flask import Blueprint
 from flask import (
@@ -23,12 +23,15 @@ from app.dao.services_dao import (
     dao_remove_user_from_service
 )
 
+from app.dao.provider_statistics_dao import get_fragment_count
+
 from app.dao.users_dao import get_model_users
 from app.models import ApiKey
 from app.schemas import (
     service_schema,
     api_key_schema,
-    user_schema
+    user_schema,
+    from_to_date_schema
 )
 
 from app.errors import register_errors
@@ -179,6 +182,20 @@ def _process_permissions(user, service, permission_groups):
         permission.user = user
         permission.service = service
     return permissions
+
+
+@service.route('/<uuid:service_id>/fragment/aggregate_statistics')
+def get_service_provider_aggregate_statistics(service_id):
+    service = dao_fetch_service_by_id(service_id)
+    data, errors = from_to_date_schema.load(request.args)
+    if errors:
+        return jsonify(result='error', message=errors), 400
+
+    return jsonify(data=get_fragment_count(
+        service,
+        date_from=(data.pop('date_from') if 'date_from' in data else date.today()),
+        date_to=(data.pop('date_to') if 'date_to' in data else date.today())
+    ))
 
 
 # This is placeholder get method until more thought
