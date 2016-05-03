@@ -8,9 +8,7 @@ from marshmallow import (
     validates_schema,
     pre_load
 )
-from sqlalchemy.dialects.postgresql import UUID
 from marshmallow_sqlalchemy import field_for
-from marshmallow_sqlalchemy.convert import ModelConverter
 
 from notifications_utils.recipients import (
     validate_email_address,
@@ -49,25 +47,6 @@ class BaseSchema(ma.ModelSchema):
         return super(BaseSchema, self).make_instance(data)
 
 
-class CreatedBySchema(ma.Schema):
-
-    created_by = fields.Str(required=True, load_only=True)
-
-    @validates_schema
-    def validates_created_by(self, data):
-        try:
-            if not isinstance(data.get('created_by'), models.User):
-                created_by = models.User.query.filter_by(id=data.get('created_by')).one()
-        except:
-            raise ValidationError('Invalid created_by: {}'.format(data))
-
-    @post_load
-    def format_created_by(self, item):
-        if not isinstance(item.get('created_by'), models.User):
-            item['created_by'] = models.User.query.filter_by(id=item.get('created_by')).one()
-        return item
-
-
 class UserSchema(BaseSchema):
 
     permissions = fields.Method("user_permissions", dump_only=True)
@@ -90,7 +69,10 @@ class UserSchema(BaseSchema):
             "_password", "verify_codes")
 
 
-class ServiceSchema(BaseSchema, CreatedBySchema):
+class ServiceSchema(BaseSchema):
+
+    created_by = field_for(models.Service, 'created_by', required=True)
+
     class Meta:
         model = models.Service
         exclude = ("updated_at", "created_at", "api_keys", "templates", "jobs", 'old_id')
@@ -108,7 +90,9 @@ class BaseTemplateSchema(BaseSchema):
         exclude = ("updated_at", "created_at", "service_id", "jobs")
 
 
-class TemplateSchema(BaseTemplateSchema, CreatedBySchema):
+class TemplateSchema(BaseTemplateSchema):
+
+    created_by = field_for(models.Template, 'created_by', required=True)
 
     @validates_schema
     def validate_type(self, data):
@@ -124,7 +108,10 @@ class NotificationsStatisticsSchema(BaseSchema):
         model = models.NotificationStatistics
 
 
-class ApiKeySchema(BaseSchema, CreatedBySchema):
+class ApiKeySchema(BaseSchema):
+
+    created_by = field_for(models.ApiKey, 'created_by', required=True)
+
     class Meta:
         model = models.ApiKey
         exclude = ("service", "secret")
