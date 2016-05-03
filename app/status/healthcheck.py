@@ -1,8 +1,17 @@
-from flask import jsonify
+from datetime import (
+    datetime,
+    timedelta
+)
 
-from flask import Blueprint, request
+from flask import (
+    jsonify,
+    Blueprint,
+    request,
+    current_app
+)
 
 from app import db, version
+from app.models import Notification
 
 status = Blueprint('status', __name__)
 
@@ -14,6 +23,34 @@ def show_status():
     else:
         return jsonify(
             status="ok",
+            travis_commit=version.__travis_commit__,
+            travis_build_number=version.__travis_job_number__,
+            build_time=version.__time__,
+            db_version=get_db_version()), 200
+
+
+@status.route('/_delivery_status')
+def show_delivery_status():
+    if request.args.get('elb', None):
+        return jsonify(status="ok"), 200
+    else:
+        notifications_alert = current_app.config['NOTIFICATIONS_ALERT']
+        some_number_of_minutes_ago = datetime.now() - timedelta(minutes=notifications_alert)
+        notifications = Notification.query.filter(Notification.status == 'sending',
+                                                  Notification.created_at < some_number_of_minutes_ago).all()
+        message = "{} notifications in sending state over {} minutes".format(len(notifications), notifications_alert)
+        if notifications:
+            return jsonify(
+                status="error",
+                message=message,
+                travis_commit=version.__travis_commit__,
+                travis_build_number=version.__travis_job_number__,
+                build_time=version.__time__,
+                db_version=get_db_version()), 500
+
+        return jsonify(
+            status="ok",
+            message=message,
             travis_commit=version.__travis_commit__,
             travis_build_number=version.__travis_job_number__,
             build_time=version.__time__,
