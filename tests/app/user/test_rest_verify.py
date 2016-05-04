@@ -32,10 +32,7 @@ def test_user_verify_code_sms(notify_api,
             data = json.dumps({
                 'code_type': sample_sms_code.code_type,
                 'code': sample_sms_code.txt_code})
-            auth_header = create_authorization_header(
-                path=url_for('user.verify_user_code', user_id=sample_sms_code.user.id),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.verify_user_code', user_id=sample_sms_code.user.id),
                 data=data,
@@ -53,10 +50,7 @@ def test_user_verify_code_sms_missing_code(notify_api,
         with notify_api.test_client() as client:
             assert not VerifyCode.query.first().code_used
             data = json.dumps({'code_type': sample_sms_code.code_type})
-            auth_header = create_authorization_header(
-                path=url_for('user.verify_user_code', user_id=sample_sms_code.user.id),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.verify_user_code', user_id=sample_sms_code.user.id),
                 data=data,
@@ -78,10 +72,7 @@ def test_user_verify_code_email(notify_api,
             data = json.dumps({
                 'code_type': sample_email_code.code_type,
                 'code': sample_email_code.txt_code})
-            auth_header = create_authorization_header(
-                path=url_for('user.verify_user_code', user_id=sample_email_code.user.id),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.verify_user_code', user_id=sample_email_code.user.id),
                 data=data,
@@ -101,10 +92,7 @@ def test_user_verify_code_email_bad_code(notify_api,
             data = json.dumps({
                 'code_type': sample_email_code.code_type,
                 'code': "blah"})
-            auth_header = create_authorization_header(
-                path=url_for('user.verify_user_code', user_id=sample_email_code.user.id),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.verify_user_code', user_id=sample_email_code.user.id),
                 data=data,
@@ -128,10 +116,7 @@ def test_user_verify_code_email_expired_code(notify_api,
             data = json.dumps({
                 'code_type': sample_email_code.code_type,
                 'code': sample_email_code.txt_code})
-            auth_header = create_authorization_header(
-                path=url_for('user.verify_user_code', user_id=sample_email_code.user.id),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.verify_user_code', user_id=sample_email_code.user.id),
                 data=data,
@@ -151,10 +136,7 @@ def test_user_verify_password(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = json.dumps({'password': 'password'})
-            auth_header = create_authorization_header(
-                path=url_for('user.verify_user_password', user_id=sample_user.id),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.verify_user_password', user_id=sample_user.id),
                 data=data,
@@ -171,10 +153,7 @@ def test_user_verify_password_invalid_password(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = json.dumps({'password': 'bad password'})
-            auth_header = create_authorization_header(
-                path=url_for('user.verify_user_password', user_id=sample_user.id),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
 
             assert sample_user.failed_login_count == 0
 
@@ -193,10 +172,7 @@ def test_user_verify_password_valid_password_resets_failed_logins(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = json.dumps({'password': 'bad password'})
-            auth_header = create_authorization_header(
-                path=url_for('user.verify_user_password', user_id=sample_user.id),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
 
             assert sample_user.failed_login_count == 0
 
@@ -211,10 +187,7 @@ def test_user_verify_password_valid_password_resets_failed_logins(notify_api,
             assert sample_user.failed_login_count == 1
 
             data = json.dumps({'password': 'password'})
-            auth_header = create_authorization_header(
-                path=url_for('user.verify_user_password', user_id=sample_user.id),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.verify_user_password', user_id=sample_user.id),
                 data=data,
@@ -232,10 +205,7 @@ def test_user_verify_password_missing_password(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = json.dumps({'bingo': 'bongo'})
-            auth_header = create_authorization_header(
-                path=url_for('user.verify_user_password', user_id=sample_user.id),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.verify_user_password', user_id=sample_user.id),
                 data=data,
@@ -255,10 +225,7 @@ def test_send_user_sms_code(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = json.dumps({})
-            auth_header = create_authorization_header(
-                path=url_for('user.send_user_sms_code', user_id=sample_sms_code.user.id),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.send_user_sms_code', user_id=sample_sms_code.user.id),
                 data=data,
@@ -278,10 +245,7 @@ def test_send_user_code_for_sms_with_optional_to_field(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = json.dumps({'to': '+441119876757'})
-            auth_header = create_authorization_header(
-                path=url_for('user.send_user_sms_code', user_id=sample_sms_code.user.id),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.send_user_sms_code', user_id=sample_sms_code.user.id),
                 data=data,
@@ -301,10 +265,7 @@ def test_send_sms_code_returns_404_for_bad_input_data(notify_api, notify_db, not
             data = json.dumps({})
             import uuid
             uuid_ = uuid.uuid4()
-            auth_header = create_authorization_header(
-                path=url_for('user.send_user_sms_code', user_id=uuid_),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.send_user_sms_code', user_id=uuid_),
                 data=data,
@@ -321,10 +282,7 @@ def test_send_user_email_verification(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = json.dumps({})
-            auth_header = create_authorization_header(
-                path=url_for('user.send_user_email_verification', user_id=str(sample_email_code.user.id)),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.send_user_email_verification', user_id=str(sample_email_code.user.id)),
                 data=data,

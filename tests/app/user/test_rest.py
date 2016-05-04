@@ -1,12 +1,10 @@
 import json
-import uuid
 
 from flask import url_for
 
 import app
 from app.models import (User, Permission, MANAGE_SETTINGS, MANAGE_TEMPLATES)
 from app.dao.permissions_dao import default_service_permissions
-from app import db, encryption
 from tests import create_authorization_header
 
 
@@ -16,8 +14,7 @@ def test_get_user_list(notify_api, notify_db, notify_db_session, sample_service)
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            header = create_authorization_header(path=url_for('user.get_user'),
-                                                 method='GET')
+            header = create_authorization_header()
             response = client.get(url_for('user.get_user'),
                                   headers=[header])
             assert response.status_code == 200
@@ -42,8 +39,7 @@ def test_get_user(notify_api, notify_db, notify_db_session, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             sample_user = sample_service.users[0]
-            header = create_authorization_header(path=url_for('user.get_user', user_id=sample_user.id),
-                                                 method='GET')
+            header = create_authorization_header()
             resp = client.get(url_for('user.get_user',
                                       user_id=sample_user.id),
                               headers=[header])
@@ -79,9 +75,7 @@ def test_post_user(notify_api, notify_db, notify_db_session):
                 "failed_login_count": 0,
                 "permissions": {}
             }
-            auth_header = create_authorization_header(path=url_for('user.create_user'),
-                                                      method='POST',
-                                                      request_body=json.dumps(data))
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
                 url_for('user.create_user'),
@@ -111,9 +105,7 @@ def test_post_user_missing_attribute_email(notify_api, notify_db, notify_db_sess
                 "failed_login_count": 0,
                 "permissions": {}
             }
-            auth_header = create_authorization_header(path=url_for('user.create_user'),
-                                                      method='POST',
-                                                      request_body=json.dumps(data))
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
                 url_for('user.create_user'),
@@ -142,9 +134,7 @@ def test_post_user_missing_attribute_password(notify_api, notify_db, notify_db_s
                 "failed_login_count": 0,
                 "permissions": {}
             }
-            auth_header = create_authorization_header(path=url_for('user.create_user'),
-                                                      method='POST',
-                                                      request_body=json.dumps(data))
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
                 url_for('user.create_user'),
@@ -170,9 +160,7 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_service):
                 'email_address': new_email,
                 'mobile_number': sample_user.mobile_number
             }
-            auth_header = create_authorization_header(path=url_for('user.update_user', user_id=sample_user.id),
-                                                      method='PUT',
-                                                      request_body=json.dumps(data))
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.put(
                 url_for('user.update_user', user_id=sample_user.id),
@@ -211,9 +199,7 @@ def test_put_user_update_password(notify_api,
                 'mobile_number': sample_user.mobile_number,
                 'password': new_password
             }
-            auth_header = create_authorization_header(path=url_for('user.update_user', user_id=sample_user.id),
-                                                      method='PUT',
-                                                      request_body=json.dumps(data))
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.put(
                 url_for('user.update_user', user_id=sample_user.id),
@@ -224,9 +210,7 @@ def test_put_user_update_password(notify_api,
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['data']['password_changed_at'] is not None
             data = {'password': new_password}
-            auth_header = create_authorization_header(path=url_for('user.verify_user_password', user_id=sample_user.id),
-                                                      method='POST',
-                                                      request_body=json.dumps(data))
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
                 url_for('user.verify_user_password', user_id=str(sample_user.id)),
@@ -244,9 +228,7 @@ def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_us
             assert User.query.count() == 1
             new_email = 'new@digital.cabinet-office.gov.uk'
             data = {'email_address': new_email}
-            auth_header = create_authorization_header(path=url_for('user.update_user', user_id=fake_uuid),
-                                                      method='PUT',
-                                                      request_body=json.dumps(data))
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.put(
                 url_for('user.update_user', user_id=fake_uuid),
@@ -268,7 +250,7 @@ def test_get_user_by_email(notify_api, notify_db, notify_db_session, sample_serv
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             sample_user = sample_service.users[0]
-            header = create_authorization_header(path=url_for('user.get_by_email'), method='GET')
+            header = create_authorization_header()
             url = url_for('user.get_by_email', email=sample_user.email_address)
             resp = client.get(url, headers=[header])
             assert resp.status_code == 200
@@ -292,7 +274,7 @@ def test_get_user_by_email_not_found_returns_404(notify_api,
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            header = create_authorization_header(path=url_for('user.get_by_email'), method='GET')
+            header = create_authorization_header()
             url = url_for('user.get_by_email', email='no_user@digital.gov.uk')
             resp = client.get(url, headers=[header])
             assert resp.status_code == 404
@@ -308,7 +290,7 @@ def test_get_user_by_email_bad_url_returns_404(notify_api,
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            header = create_authorization_header(path=url_for('user.get_by_email'), method='GET')
+            header = create_authorization_header()
             url = '/user/email'
             resp = client.get(url, headers=[header])
             assert resp.status_code == 400
@@ -323,9 +305,7 @@ def test_get_user_with_permissions(notify_api,
                                    sample_service_permission):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            header = create_authorization_header(
-                path=url_for('user.get_user', user_id=str(sample_service_permission.user.id)),
-                method='GET')
+            header = create_authorization_header()
             response = client.get(url_for('user.get_user', user_id=str(sample_service_permission.user.id)),
                                   headers=[header])
             assert response.status_code == 200
@@ -341,13 +321,7 @@ def test_set_user_permissions(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = json.dumps([{'permission': MANAGE_SETTINGS}])
-            header = create_authorization_header(
-                path=url_for(
-                    'user.set_permissions',
-                    user_id=str(sample_user.id),
-                    service_id=str(sample_service.id)),
-                method='POST',
-                request_body=data)
+            header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), header]
             response = client.post(
                 url_for(
@@ -372,13 +346,7 @@ def test_set_user_permissions_multiple(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = json.dumps([{'permission': MANAGE_SETTINGS}, {'permission': MANAGE_TEMPLATES}])
-            header = create_authorization_header(
-                path=url_for(
-                    'user.set_permissions',
-                    user_id=str(sample_user.id),
-                    service_id=str(sample_service.id)),
-                method='POST',
-                request_body=data)
+            header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), header]
             response = client.post(
                 url_for(
@@ -407,13 +375,7 @@ def test_set_user_permissions_remove_old(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = json.dumps([{'permission': MANAGE_SETTINGS}])
-            header = create_authorization_header(
-                path=url_for(
-                    'user.set_permissions',
-                    user_id=str(sample_user.id),
-                    service_id=str(sample_service.id)),
-                method='POST',
-                request_body=data)
+            header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), header]
             response = client.post(
                 url_for(
@@ -437,10 +399,7 @@ def test_send_user_reset_password_should_send_reset_password_link(notify_api,
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.email_reset_password.apply_async')
             data = json.dumps({'email': sample_user.email_address})
-            auth_header = create_authorization_header(
-                path=url_for('user.send_user_reset_password'),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.send_user_reset_password'),
                 data=data,
@@ -457,10 +416,7 @@ def test_send_user_reset_password_should_return_400_when_user_doesnot_exist(noti
         with notify_api.test_client() as client:
             bad_email_address = 'bad@email.gov.uk'
             data = json.dumps({'email': bad_email_address})
-            auth_header = create_authorization_header(
-                path=url_for('user.send_user_reset_password'),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
 
         resp = client.post(
             url_for('user.send_user_reset_password'),
@@ -476,10 +432,7 @@ def test_send_user_reset_password_should_return_400_when_data_is_not_email_addre
         with notify_api.test_client() as client:
             bad_email_address = 'bad.email.gov.uk'
             data = json.dumps({'email': bad_email_address})
-            auth_header = create_authorization_header(
-                path=url_for('user.send_user_reset_password'),
-                method='POST',
-                request_body=data)
+            auth_header = create_authorization_header()
 
         resp = client.post(
             url_for('user.send_user_reset_password'),
