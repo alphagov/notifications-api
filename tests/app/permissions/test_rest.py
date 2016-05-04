@@ -11,9 +11,7 @@ def test_get_permission_list(notify_api, notify_db, notify_db_session, sample_pe
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            header = create_authorization_header(
-                path=url_for('permission.get_permissions'),
-                method='GET')
+            header = create_authorization_header()
             response = client.get(
                 url_for('permission.get_permissions'),
                 headers=[header])
@@ -40,9 +38,7 @@ def test_get_permission_filter(notify_api,
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            header = create_authorization_header(
-                path=url_for('permission.get_permissions'),
-                method='GET')
+            header = create_authorization_header()
             response = client.get(
                 url_for('permission.get_permissions', service=str(sample_service.id)),
                 headers=[header])
@@ -65,9 +61,7 @@ def test_get_permission(notify_api, notify_db, notify_db_session, sample_permiss
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            header = create_authorization_header(
-                path=url_for('permission.get_permission', permission_id=str(sample_permission.id)),
-                method='GET')
+            header = create_authorization_header()
             response = client.get(
                 url_for('permission.get_permission', permission_id=str(sample_permission.id)),
                 headers=[header])
@@ -88,9 +82,7 @@ def test_get_permission_404(notify_api, notify_db, notify_db_session, sample_per
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            header = create_authorization_header(
-                path=url_for('permission.get_permission', permission_id="123"),
-                method='GET')
+            header = create_authorization_header()
             response = client.get(
                 url_for('permission.get_permission', permission_id="123"),
                 headers=[header])

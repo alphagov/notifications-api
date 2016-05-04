@@ -10,10 +10,7 @@ def test_fragment_count(notify_api, sample_provider_statistics):
             endpoint = url_for(
                 'service.get_service_provider_aggregate_statistics',
                 service_id=str(sample_provider_statistics.service.id))
-            auth_header = create_authorization_header(
-                path=endpoint,
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             resp = client.get(
                 endpoint,
                 headers=[auth_header]
@@ -32,10 +29,7 @@ def test_fragment_count_from_to(notify_api, sample_provider_statistics):
                 service_id=str(sample_provider_statistics.service.id),
                 date_from=today_str,
                 date_to=today_str)
-            auth_header = create_authorization_header(
-                path=endpoint,
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             resp = client.get(
                 endpoint,
                 headers=[auth_header]
@@ -55,10 +49,7 @@ def test_fragment_count_from_greater_than_to(notify_api, sample_provider_statist
                 service_id=str(sample_provider_statistics.service.id),
                 date_from=today_str,
                 date_to=yesterday_str)
-            auth_header = create_authorization_header(
-                path=endpoint,
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             resp = client.get(
                 endpoint,
                 headers=[auth_header]
@@ -76,10 +67,7 @@ def test_fragment_count_in_future(notify_api, sample_provider_statistics):
                 'service.get_service_provider_aggregate_statistics',
                 service_id=str(sample_provider_statistics.service.id),
                 date_from=tomorrow_str)
-            auth_header = create_authorization_header(
-                path=endpoint,
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             resp = client.get(
                 endpoint,
                 headers=[auth_header]

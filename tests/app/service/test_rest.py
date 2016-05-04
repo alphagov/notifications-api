@@ -17,10 +17,7 @@ def test_get_service_list(notify_api, service_factory):
             service_factory.get('one', email_from='one')
             service_factory.get('two', email_from='two')
             service_factory.get('three', email_from='three')
-            auth_header = create_authorization_header(
-                path='/service',
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             response = client.get(
                 '/service',
                 headers=[auth_header]
@@ -41,10 +38,7 @@ def test_get_service_list_by_user(notify_api, sample_user, service_factory):
             service_factory.get('two', sample_user, email_from='two')
             service_factory.get('three', sample_user, email_from='three')
 
-            auth_header = create_authorization_header(
-                path='/service',
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             response = client.get(
                 '/service?user_id='.format(sample_user.id),
                 headers=[auth_header]
@@ -72,10 +66,7 @@ def test_get_service_list_by_user_should_return_empty_list_if_no_services(notify
             service_factory.get('two', sample_user, email_from='two')
             service_factory.get('three', sample_user, email_from='three')
 
-            auth_header = create_authorization_header(
-                path='/service',
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             response = client.get(
                 '/service?user_id={}'.format(new_user.id),
                 headers=[auth_header]
@@ -88,10 +79,7 @@ def test_get_service_list_by_user_should_return_empty_list_if_no_services(notify
 def test_get_service_list_should_return_empty_list_if_no_services(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            auth_header = create_authorization_header(
-                path='/service',
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             response = client.get(
                 '/service',
                 headers=[auth_header]
@@ -104,10 +92,7 @@ def test_get_service_list_should_return_empty_list_if_no_services(notify_api, no
 def test_get_service_by_id(notify_api, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            auth_header = create_authorization_header(
-                path='/service/{}'.format(sample_service.id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             resp = client.get(
                 '/service/{}'.format(sample_service.id),
                 headers=[auth_header]
@@ -122,10 +107,7 @@ def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service_id = str(uuid.uuid4())
-            auth_header = create_authorization_header(
-                path='/service/{}'.format(service_id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             resp = client.get(
                 '/service/{}'.format(service_id),
                 headers=[auth_header]
@@ -140,10 +122,7 @@ def test_get_service_by_id_and_user(notify_api, service_factory, sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service = service_factory.get('new service', sample_user, email_from='new.service')
-            auth_header = create_authorization_header(
-                path='/service/{}'.format(service.id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             resp = client.get(
                 '/service/{}?user_id={}'.format(service.id, sample_user.id),
                 headers=[auth_header]
@@ -158,10 +137,7 @@ def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service_id = str(uuid.uuid4())
-            auth_header = create_authorization_header(
-                path='/service/{}'.format(service_id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             resp = client.get(
                 '/service/{}?user_id={}'.format(service_id, sample_user.id),
                 headers=[auth_header]
@@ -183,11 +159,7 @@ def test_create_service(notify_api, sample_user):
                 'active': False,
                 'email_from': 'created.service',
                 'created_by': str(sample_user.id)}
-            auth_header = create_authorization_header(
-                path='/service',
-                method='POST',
-                request_body=json.dumps(data)
-            )
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
                 '/service',
@@ -199,10 +171,7 @@ def test_create_service(notify_api, sample_user):
             assert json_resp['data']['name'] == 'created service'
             assert json_resp['data']['email_from'] == 'created.service'
 
-            auth_header_fetch = create_authorization_header(
-                path='/service/{}'.format(json_resp['data']['id']),
-                method='GET'
-            )
+            auth_header_fetch = create_authorization_header()
 
             resp = client.get(
                 '/service/{}?user_id={}'.format(json_resp['data']['id'], sample_user.id),
@@ -224,11 +193,7 @@ def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_u
                 'active': False,
                 'created_by': str(fake_uuid)
             }
-            auth_header = create_authorization_header(
-                path='/service',
-                method='POST',
-                request_body=json.dumps(data)
-            )
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
                 '/service',
@@ -251,11 +216,7 @@ def test_should_error_if_created_by_missing(notify_api, sample_user):
                 'active': False,
                 'user_id': str(sample_user.id)
             }
-            auth_header = create_authorization_header(
-                path='/service',
-                method='POST',
-                request_body=json.dumps(data)
-            )
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
                 '/service',
@@ -282,11 +243,7 @@ def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(no
                 'active': False,
                 'created_by': str(fake_uuid)
             }
-            auth_header = create_authorization_header(
-                path='/service',
-                method='POST',
-                request_body=json.dumps(data)
-            )
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
                 '/service',
@@ -304,11 +261,7 @@ def test_should_not_create_service_if_missing_data(notify_api, sample_user):
             data = {
                 'user_id': str(sample_user.id)
             }
-            auth_header = create_authorization_header(
-                path='/service',
-                method='POST',
-                request_body=json.dumps(data)
-            )
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
                 '/service',
@@ -338,11 +291,7 @@ def test_should_not_create_service_with_duplicate_name(notify_api,
                 'active': False,
                 'email_from': 'sample.service2',
                 'created_by': str(sample_user.id)}
-            auth_header = create_authorization_header(
-                path='/service',
-                method='POST',
-                request_body=json.dumps(data)
-            )
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
                 '/service',
@@ -370,11 +319,7 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_email
                 'active': False,
                 'email_from': 'first.service',
                 'created_by': str(sample_user.id)}
-            auth_header = create_authorization_header(
-                path='/service',
-                method='POST',
-                request_body=json.dumps(data)
-            )
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
                 '/service',
@@ -388,10 +333,7 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_email
 def test_update_service(notify_api, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            auth_header = create_authorization_header(
-                path='/service/{}'.format(sample_service.id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             resp = client.get(
                 '/service/{}'.format(sample_service.id),
                 headers=[auth_header]
@@ -406,11 +348,7 @@ def test_update_service(notify_api, sample_service):
                 'created_by': str(sample_service.created_by.id)
             }
 
-            auth_header = create_authorization_header(
-                path='/service/{}'.format(sample_service.id),
-                method='POST',
-                request_body=json.dumps(data)
-            )
+            auth_header = create_authorization_header()
 
             resp = client.post(
                 '/service/{}'.format(sample_service.id),
@@ -442,11 +380,7 @@ def test_should_not_update_service_with_duplicate_name(notify_api,
                 'created_by': str(service.created_by.id)
             }
 
-            auth_header = create_authorization_header(
-                path='/service/{}'.format(sample_service.id),
-                method='POST',
-                request_body=json.dumps(data)
-            )
+            auth_header = create_authorization_header()
 
             resp = client.post(
                 '/service/{}'.format(sample_service.id),
@@ -480,11 +414,7 @@ def test_should_not_update_service_with_duplicate_email_from(notify_api,
                 'created_by': str(service.created_by.id)
             }
 
-            auth_header = create_authorization_header(
-                path='/service/{}'.format(sample_service.id),
-                method='POST',
-                request_body=json.dumps(data)
-            )
+            auth_header = create_authorization_header()
 
             resp = client.post(
                 '/service/{}'.format(sample_service.id),
@@ -509,11 +439,7 @@ def test_update_service_should_404_if_id_is_invalid(notify_api, notify_db, notif
 
             missing_service_id = uuid.uuid4()
 
-            auth_header = create_authorization_header(
-                path='/service/{}'.format(missing_service_id),
-                method='POST',
-                request_body=json.dumps(data)
-            )
+            auth_header = create_authorization_header()
 
             resp = client.post(
                 '/service/{}'.format(missing_service_id),
@@ -527,10 +453,7 @@ def test_get_users_by_service(notify_api, notify_db, notify_db_session, sample_s
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             user_on_service = sample_service.users[0]
-            auth_header = create_authorization_header(
-                path='/service/{}/users'.format(sample_service.id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
 
             resp = client.get(
                 '/service/{}/users'.format(sample_service.id),
@@ -552,10 +475,7 @@ def test_get_users_for_service_returns_empty_list_if_no_users_associated_with_se
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             dao_remove_user_from_service(sample_service, sample_service.users[0])
-            auth_header = create_authorization_header(
-                path='/service/{}/users'.format(sample_service.id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
 
             response = client.get(
                 '/service/{}/users'.format(sample_service.id),
@@ -570,10 +490,7 @@ def test_get_users_for_service_returns_404_when_service_does_not_exist(notify_ap
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service_id = uuid.uuid4()
-            auth_header = create_authorization_header(
-                path='/service/{}/users'.format(service_id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
 
             response = client.get(
                 '/service/{}/users'.format(service_id),
@@ -600,11 +517,7 @@ def test_default_permissions_are_added_for_user_service(notify_api,
                 'active': False,
                 'email_from': 'created.service',
                 'created_by': str(sample_user.id)}
-            auth_header = create_authorization_header(
-                path='/service',
-                method='POST',
-                request_body=json.dumps(data)
-            )
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
                 '/service',
@@ -616,19 +529,14 @@ def test_default_permissions_are_added_for_user_service(notify_api,
             assert json_resp['data']['name'] == 'created service'
             assert json_resp['data']['email_from'] == 'created.service'
 
-            auth_header_fetch = create_authorization_header(
-                path='/service/{}'.format(json_resp['data']['id']),
-                method='GET'
-            )
+            auth_header_fetch = create_authorization_header()
 
             resp = client.get(
                 '/service/{}?user_id={}'.format(json_resp['data']['id'], sample_user.id),
                 headers=[auth_header_fetch]
             )
             assert resp.status_code == 200
-            header = create_authorization_header(
-                path=url_for('user.get_user', user_id=sample_user.id),
-                method='GET')
+            header = create_authorization_header()
             response = client.get(
                 url_for('user.get_user', user_id=sample_user.id),
                 headers=[header])
@@ -649,10 +557,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
 
             # check which users part of service
             user_already_in_service = sample_service.users[0]
-            auth_header = create_authorization_header(
-                path='/service/{}/users'.format(sample_service.id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
 
             resp = client.get(
                 '/service/{}/users'.format(sample_service.id),
@@ -676,11 +581,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
 
             data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
 
-            auth_header = create_authorization_header(
-                path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
-                request_body=json.dumps(data),
-                method='POST'
-            )
+            auth_header = create_authorization_header()
 
             resp = client.post(
                 '/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
@@ -691,10 +592,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
             assert resp.status_code == 201
 
             # check new user added to service
-            auth_header = create_authorization_header(
-                path='/service/{}'.format(sample_service.id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
 
             resp = client.get(
                 '/service/{}'.format(sample_service.id),
@@ -705,10 +603,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
             assert str(user_to_add.id) in json_resp['data']['users']
 
             # check user has all permissions
-            auth_header = create_authorization_header(
-                path=url_for('user.get_user', user_id=user_to_add.id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             resp = client.get(url_for('user.get_user', user_id=user_to_add.id),
                               headers=[('Content-Type', 'application/json'), auth_header])
 
@@ -738,11 +633,7 @@ def test_add_existing_user_to_another_service_with_send_permissions(notify_api,
             save_model_user(user_to_add)
 
             data = {'permissions': ['send_messages']}
-            auth_header = create_authorization_header(
-                path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
-                request_body=json.dumps(data),
-                method='POST'
-            )
+            auth_header = create_authorization_header()
 
             resp = client.post(
                 '/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
@@ -753,10 +644,7 @@ def test_add_existing_user_to_another_service_with_send_permissions(notify_api,
             assert resp.status_code == 201
 
             # check user has send permissions
-            auth_header = create_authorization_header(
-                path=url_for('user.get_user', user_id=user_to_add.id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             resp = client.get(url_for('user.get_user', user_id=user_to_add.id),
                               headers=[('Content-Type', 'application/json'), auth_header])
 
@@ -786,11 +674,7 @@ def test_add_existing_user_to_another_service_with_manage_permissions(notify_api
             save_model_user(user_to_add)
 
             data = {'permissions': ['manage_service']}
-            auth_header = create_authorization_header(
-                path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
-                request_body=json.dumps(data),
-                method='POST'
-            )
+            auth_header = create_authorization_header()
 
             resp = client.post(
                 '/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
@@ -801,10 +685,7 @@ def test_add_existing_user_to_another_service_with_manage_permissions(notify_api
             assert resp.status_code == 201
 
             # check user has send permissions
-            auth_header = create_authorization_header(
-                path=url_for('user.get_user', user_id=user_to_add.id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             resp = client.get(url_for('user.get_user', user_id=user_to_add.id),
                               headers=[('Content-Type', 'application/json'), auth_header])
 
@@ -834,11 +715,7 @@ def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
             save_model_user(user_to_add)
 
             data = {'permissions': ['manage_api_keys']}
-            auth_header = create_authorization_header(
-                path='/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
-                request_body=json.dumps(data),
-                method='POST'
-            )
+            auth_header = create_authorization_header()
 
             resp = client.post(
                 '/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
@@ -849,10 +726,7 @@ def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
             assert resp.status_code == 201
 
             # check user has send permissions
-            auth_header = create_authorization_header(
-                path=url_for('user.get_user', user_id=user_to_add.id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             resp = client.get(url_for('user.get_user', user_id=user_to_add.id),
                               headers=[('Content-Type', 'application/json'), auth_header])
 
@@ -882,11 +756,7 @@ def test_add_existing_user_to_non_existing_service_returns404(notify_api,
             incorrect_id = uuid.uuid4()
 
             data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
-            auth_header = create_authorization_header(
-                path='/service/{}/users/{}'.format(incorrect_id, user_to_add.id),
-                request_body=json.dumps(data),
-                method='POST'
-            )
+            auth_header = create_authorization_header()
 
             resp = client.post(
                 '/service/{}/users/{}'.format(incorrect_id, user_to_add.id),
@@ -909,11 +779,7 @@ def test_add_existing_user_of_service_to_service_returns400(notify_api, notify_d
             existing_user_id = sample_service.users[0].id
 
             data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
-            auth_header = create_authorization_header(
-                path='/service/{}/users/{}'.format(sample_service.id, existing_user_id),
-                request_body=json.dumps(data),
-                method='POST'
-            )
+            auth_header = create_authorization_header()
 
             resp = client.post(
                 '/service/{}/users/{}'.format(sample_service.id, existing_user_id),
@@ -936,11 +802,7 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db
             incorrect_id = 9876
 
             data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
-            auth_header = create_authorization_header(
-                path='/service/{}/users/{}'.format(sample_service.id, incorrect_id),
-                request_body=json.dumps(data),
-                method='POST'
-            )
+            auth_header = create_authorization_header()
 
             resp = client.post(
                 '/service/{}/users/{}'.format(sample_service.id, incorrect_id),
@@ -972,10 +834,7 @@ def test_remove_user_from_service(notify_api, notify_db, notify_db_session, samp
                 'service.remove_user_from_service',
                 service_id=str(second_permission.service.id),
                 user_id=str(second_permission.user.id))
-            auth_header = create_authorization_header(
-                path=endpoint,
-                method='DELETE'
-            )
+            auth_header = create_authorization_header()
             resp = client.delete(
                 endpoint,
                 headers=[('Content-Type', 'application/json'), auth_header])
@@ -993,10 +852,7 @@ def test_remove_user_from_service(notify_api, notify_db, notify_db_session, samp
                 'service.remove_user_from_service',
                 service_id=str(sample_service_permission.service.id),
                 user_id=str(second_user.id))
-            auth_header = create_authorization_header(
-                path=endpoint,
-                method='DELETE'
-            )
+            auth_header = create_authorization_header()
             resp = client.delete(
                 endpoint,
                 headers=[('Content-Type', 'application/json'), auth_header])
@@ -1013,10 +869,7 @@ def test_cannot_remove_only_user_from_service(notify_api,
                 'service.remove_user_from_service',
                 service_id=str(sample_service_permission.service.id),
                 user_id=str(sample_service_permission.user.id))
-            auth_header = create_authorization_header(
-                path=endpoint,
-                method='DELETE'
-            )
+            auth_header = create_authorization_header()
             resp = client.delete(
                 endpoint,
                 headers=[('Content-Type', 'application/json'), auth_header])
@@ -1035,10 +888,7 @@ def test_get_service_and_api_key_history(notify_api, notify_db, notify_db_sessio
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
-            auth_header = create_authorization_header(
-                path='/service/{}/history'.format(sample_service.id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
             response = client.get(
                 path='/service/{}/history'.format(sample_service.id),
                 headers=[auth_header]

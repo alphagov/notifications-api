@@ -22,10 +22,7 @@ def test_get_template_statistics_for_service_for_last_week(notify_api, sample_te
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
-            auth_header = create_authorization_header(
-                path='/service/{}/template-statistics'.format(sample_template.service_id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
 
             response = client.get(
                 '/service/{}/template-statistics'.format(sample_template.service_id),
@@ -55,10 +52,7 @@ def test_get_template_statistics_for_service_for_last_week_with_no_data(notify_a
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
-            auth_header = create_authorization_header(
-                path='/service/{}/template-statistics'.format(sample_template.service_id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
 
             # Date is frozen at 2016-04-30 and no data written since
             response = client.get(
@@ -96,10 +90,7 @@ def test_get_all_template_statistics_for_service(notify_api, sample_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
-            auth_header = create_authorization_header(
-                path='/service/{}/template-statistics'.format(sample_template.service_id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
 
             response = client.get(
                 '/service/{}/template-statistics'.format(sample_template.service_id),
@@ -127,10 +118,7 @@ def test_get_all_template_statistics_with_bad_limit_arg_returns_400(notify_api, 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
-            auth_header = create_authorization_header(
-                path='/service/{}/template-statistics'.format(sample_template.service_id),
-                method='GET'
-            )
+            auth_header = create_authorization_header()
 
             response = client.get(
                 '/service/{}/template-statistics'.format(sample_template.service_id),
