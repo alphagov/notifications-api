@@ -156,7 +156,10 @@ def process_job(job_id):
             'template': str(template.id),
             'job': str(job.id),
             'to': recipient,
-            'personalisation': personalisation
+            'personalisation': {
+                key: personalisation.get(key)
+                for key in template.placeholders
+            }
         })
 
         if template.template_type == 'sms':
