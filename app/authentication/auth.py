@@ -8,7 +8,6 @@ from functools import wraps
 
 
 def authentication_response(message, code):
-    current_app.logger.info(message)
     return jsonify(result='error',
                    message=message
                    ), code
@@ -36,10 +35,7 @@ def requires_auth():
         try:
             decode_jwt_token(
                 auth_token,
-                secret,
-                request.method,
-                request.path,
-                request.data.decode() if request.data else None
+                secret
             )
             _request_ctx_stack.top.api_user = api_client
             return
@@ -50,6 +46,7 @@ def requires_auth():
 
     if not api_client['secret']:
         errors_resp = authentication_response("Invalid token: signature", 403)
+    current_app.logger.info(errors_resp)
     return errors_resp
 
 
