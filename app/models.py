@@ -191,13 +191,15 @@ SMS_PROVIDERS = [MMG_PROVIDER, TWILIO_PROVIDER, FIRETEXT_PROVIDER]
 EMAIL_PROVIDERS = [SES_PROVIDER]
 PROVIDERS = SMS_PROVIDERS + EMAIL_PROVIDERS
 
+NOTIFICATION_TYPE = ['email', 'sms', 'letter']
 
 class ProviderStatistics(db.Model):
     __tablename__ = 'provider_statistics'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     day = db.Column(db.Date, nullable=False)
-    provider = db.Column(db.Enum(*PROVIDERS, name='providers'), nullable=False)
+    provider_id = db.Column(UUID(as_uuid=True), db.ForeignKey('provider_details.id'), index=True, nullable=False)
+    provider_stats_to_provider = db.relationship('ProviderDetails', backref=db.backref('provider_stats', lazy='dynamic'))
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service', backref=db.backref('service_provider_stats', lazy='dynamic'))
     unit_count = db.Column(db.BigInteger, nullable=False)
@@ -208,8 +210,20 @@ class ProviderRates(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     valid_from = db.Column(db.DateTime, nullable=False)
-    provider = db.Column(db.Enum(*PROVIDERS, name='providers'), nullable=False)
     rate = db.Column(db.Numeric(), nullable=False)
+    provider_id = db.Column(UUID(as_uuid=True), db.ForeignKey('provider_details.id'), index=True, nullable=False)
+    provider_rate_to_provider = db.relationship('ProviderDetails', backref=db.backref('provider_rates', lazy='dynamic'))
+
+
+class ProviderDetails(db.Model):
+    __tablename__ = 'provider_details'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    display_name = db.Column(db.String, nullable=False)
+    identifier = db.Column(db.String, nullable=False)
+    priority = db.Column(db.Integer, nullable=False)
+    notification_type = db.Column(db.Enum(*NOTIFICATION_TYPE, name='notification_type'), nullable=False)
+    active = db.Column(db.Boolean, default=False)
 
 
 JOB_STATUS_TYPES = ['pending', 'in progress', 'finished', 'sending limits exceeded']
