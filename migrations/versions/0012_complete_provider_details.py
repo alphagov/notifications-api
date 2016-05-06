@@ -26,7 +26,6 @@ def upgrade():
     op.drop_column('provider_statistics', 'provider')
 
 
-
 def downgrade():
 
     op.add_column('provider_statistics', sa.Column('provider', postgresql.ENUM('mmg', 'twilio', 'firetext', 'ses', name='providers'), autoincrement=False, nullable=False))
@@ -37,4 +36,3 @@ def downgrade():
     op.alter_column('provider_rates', 'provider_id',
                existing_type=postgresql.UUID(),
                nullable=True)
-

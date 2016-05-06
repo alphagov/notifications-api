@@ -62,7 +62,6 @@ def upgrade():
         "UPDATE provider_statistics set provider_id = (select id from provider_details where identifier = 'ses') where provider = 'ses'"
     )
 
-
 def downgrade():
 
     op.drop_constraint(None, 'provider_statistics', type_='foreignkey')
@@ -73,4 +72,3 @@ def downgrade():
     op.drop_column('provider_rates', 'provider_id')
 
     op.drop_table('provider_details')
-    ### end Alembic commands ###

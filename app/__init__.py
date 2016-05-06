@@ -1,6 +1,5 @@
 import uuid
 import os
-import re
 from flask import request, url_for
 from flask import Flask, _request_ctx_stack
 from flask.ext.sqlalchemy import SQLAlchemy
@@ -25,6 +24,9 @@ firetext_client = FiretextClient()
 mmg_client = MMGClient()
 aws_ses_client = AwsSesClient()
 encryption = Encryption()
+
+sms_clients = []
+email_clients = []
 
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 
@@ -74,6 +76,9 @@ def create_app(app_name=None):
     application.register_blueprint(notifications_statistics_blueprint)
     application.register_blueprint(template_statistics_blueprint)
     application.register_blueprint(events_blueprint)
+
+    email_clients = [aws_ses_client]
+    sms_clients = [mmg_client, firetext_client]
 
     return application
 

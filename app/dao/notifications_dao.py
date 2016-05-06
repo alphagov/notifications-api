@@ -1,4 +1,3 @@
-import math
 from sqlalchemy import desc, func
 
 from datetime import (
@@ -19,8 +18,8 @@ from app.models import (
     TEMPLATE_TYPE_SMS,
     TEMPLATE_TYPE_EMAIL,
     Template,
-    ProviderStatistics
-)
+    ProviderStatistics,
+    ProviderDetails)
 
 from notifications_utils.template import get_sms_fragment_count
 
@@ -60,7 +59,9 @@ def dao_get_template_statistics_for_service(service_id, limit_days=None):
 
 
 @transactional
-def dao_create_notification(notification, notification_type, provider):
+def dao_create_notification(notification, notification_type, provider_identifier):
+    provider = ProviderDetails.query.filter_by(identifier=provider_identifier).one()
+
     if notification.job_id:
         db.session.query(Job).filter_by(
             id=notification.job_id
@@ -97,7 +98,7 @@ def dao_create_notification(notification, notification_type, provider):
     update_count = db.session.query(ProviderStatistics).filter_by(
         day=date.today(),
         service_id=notification.service_id,
-        provider=provider
+        provider_id=provider.id
     ).update({'unit_count': ProviderStatistics.unit_count + (
         1 if notification_type == TEMPLATE_TYPE_EMAIL else get_sms_fragment_count(notification.content_char_count))})
 
@@ -105,7 +106,7 @@ def dao_create_notification(notification, notification_type, provider):
         provider_stats = ProviderStatistics(
             day=notification.created_at.date(),
             service_id=notification.service_id,
-            provider=provider,
+            provider_id=provider.id,
             unit_count=1 if notification_type == TEMPLATE_TYPE_EMAIL else get_sms_fragment_count(
                 notification.content_char_count))
         db.session.add(provider_stats)

@@ -41,6 +41,7 @@ def notify_db(notify_api, request):
         db.session.remove()
         db.drop_all()
         db.engine.execute("drop table alembic_version")
+        db.engine.execute("drop type providers")
         db.get_engine(notify_api).dispose()
 
     request.addfinalizer(teardown)
@@ -52,7 +53,8 @@ def notify_db_session(request):
     def teardown():
         db.session.remove()
         for tbl in reversed(meta.sorted_tables):
-            db.engine.execute(tbl.delete())
+            if tbl.name not in ["provider_details"]:
+                db.engine.execute(tbl.delete())
         db.session.commit()
 
     meta = MetaData(bind=db.engine, reflect=True)
