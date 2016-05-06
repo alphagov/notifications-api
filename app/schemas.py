@@ -1,5 +1,6 @@
 from datetime import date
 from flask_marshmallow.fields import fields
+from sqlalchemy.orm import load_only
 
 from marshmallow import (
     post_load,
@@ -93,6 +94,11 @@ class BaseTemplateSchema(BaseSchema):
 class TemplateSchema(BaseTemplateSchema):
 
     created_by = field_for(models.Template, 'created_by', required=True)
+    versions = fields.Method("template_versions", dump_only=True)
+
+    def template_versions(self, template):
+        return [x.version for x in models.Template.get_history_model().query.filter_by(
+                id=template.id).options(load_only("version"))]
 
     @validates_schema
     def validate_type(self, data):
@@ -101,6 +107,11 @@ class TemplateSchema(BaseTemplateSchema):
             subject = data.get('subject')
             if not subject or subject.strip() == '':
                 raise ValidationError('Invalid template subject', 'subject')
+
+
+class TemplateHistorySchema(BaseTemplateSchema):
+
+    created_by = field_for(models.Template, 'created_by', required=True)
 
 
 class NotificationsStatisticsSchema(BaseSchema):
@@ -299,18 +310,6 @@ class ApiKeyHistorySchema(ma.Schema):
     expiry_date = fields.DateTime()
     created_at = fields.DateTime()
     updated_at = fields.DateTime()
-    created_by_id = fields.UUID()
-
-
-class TemplateHistorySchema(ma.Schema):
-    id = fields.UUID()
-    name = fields.String()
-    template_type = fields.String()
-    created_at = fields.DateTime()
-    updated_at = fields.DateTime()
-    content = fields.String()
-    service_id = fields.UUID()
-    subject = fields.String()
     created_by_id = fields.UUID()
 
 

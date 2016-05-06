@@ -15,7 +15,7 @@ from app.dao.templates_dao import (
 )
 from notifications_utils.template import Template
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.schemas import template_schema
+from app.schemas import (template_schema, template_history_schema)
 
 template = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
 
@@ -93,6 +93,19 @@ def get_all_templates_for_service(service_id):
 def get_template_by_id_and_service_id(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
     data, errors = template_schema.dump(fetched_template)
+    return jsonify(data=data)
+
+
+@template.route('/<uuid:template_id>/version/<int:version>')
+def get_template_version(service_id, template_id, version):
+    fetched_template = dao_get_template_by_id_and_service_id(
+        template_id=template_id,
+        service_id=service_id,
+        version=version
+    )
+    data, errors = template_history_schema.dump(fetched_template)
+    if errors:
+        return json_resp(result=error, message=errors), 400
     return jsonify(data=data)
 
 
