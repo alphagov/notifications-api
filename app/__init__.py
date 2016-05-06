@@ -7,6 +7,7 @@ from flask_marshmallow import Marshmallow
 from werkzeug.local import LocalProxy
 from notifications_utils import logging
 from app.celery.celery import NotifyCelery
+from app.clients import Clients
 from app.clients.sms.mmg import MMGClient
 from app.clients.sms.twilio import TwilioClient
 from app.clients.sms.firetext import FiretextClient
@@ -25,8 +26,7 @@ mmg_client = MMGClient()
 aws_ses_client = AwsSesClient()
 encryption = Encryption()
 
-sms_clients = []
-email_clients = []
+clients = Clients()
 
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 
@@ -50,6 +50,7 @@ def create_app(app_name=None):
     aws_ses_client.init_app(application.config['AWS_REGION'])
     notify_celery.init_app(application)
     encryption.init_app(application)
+    clients.init_app(sms_clients=[firetext_client, mmg_client], email_clients=[aws_ses_client])
 
     from app.service.rest import service as service_blueprint
     from app.user.rest import user as user_blueprint
@@ -76,9 +77,6 @@ def create_app(app_name=None):
     application.register_blueprint(notifications_statistics_blueprint)
     application.register_blueprint(template_statistics_blueprint)
     application.register_blueprint(events_blueprint)
-
-    email_clients = [aws_ses_client]
-    sms_clients = [mmg_client, firetext_client]
 
     return application
 
