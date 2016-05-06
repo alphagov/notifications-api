@@ -413,6 +413,8 @@ def sample_permission(notify_db,
         'user': user,
         'permission': permission
     }
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
     if service:
         data['service'] = service
     p_model = Permission.query.filter_by(
