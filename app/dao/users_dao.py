@@ -67,6 +67,11 @@ def delete_model_user(user):
     db.session.commit()
 
 
+def delete_user_verify_codes(user):
+    VerifyCode.query.filter_by(user=user).delete()
+    db.session.commit()
+
+
 def get_model_users(user_id=None):
     if user_id:
         return User.query.filter_by(id=user_id).one()

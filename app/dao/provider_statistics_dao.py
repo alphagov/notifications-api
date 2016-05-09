@@ -1,4 +1,5 @@
 from sqlalchemy import func
+from app import db
 from app.models import (ProviderStatistics, SMS_PROVIDERS, EMAIL_PROVIDERS)
 
 
