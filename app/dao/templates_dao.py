@@ -1,7 +1,7 @@
 import uuid
 from app import db
 from app.models import (Template, Service)
-from sqlalchemy import asc
+from sqlalchemy import (asc, desc)
 
 from app.dao.dao_utils import (
     transactional,
@@ -45,3 +45,8 @@ def dao_get_all_templates_for_service(service_id):
     ).order_by(
         asc(Template.updated_at), asc(Template.created_at)
     ).all()
+
+
+def dao_get_template_versions(service_id, template_id):
+    history_model = Template.get_history_model()
+    return history_model.query.filter_by(service_id=service_id, id=template_id).order_by(desc(history_model.version))
