@@ -11,7 +11,8 @@ from app.dao.templates_dao import (
     dao_update_template,
     dao_create_template,
     dao_get_template_by_id_and_service_id,
-    dao_get_all_templates_for_service
+    dao_get_all_templates_for_service,
+    dao_get_template_versions
 )
 from notifications_utils.template import Template
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -105,7 +106,16 @@ def get_template_version(service_id, template_id, version):
     )
     data, errors = template_history_schema.dump(fetched_template)
     if errors:
-        return json_resp(result=error, message=errors), 400
+        return json_resp(result='error', message=errors), 400
+    return jsonify(data=data)
+
+
+@template.route('/<uuid:template_id>/version')
+def get_template_versions(service_id, template_id):
+    fetched_templates = dao_get_template_versions(service_id, template_id)
+    data, errors = template_history_schema.dump(fetched_templates, many=True)
+    if errors:
+        return json_resp(result='error', message=errors), 400
     return jsonify(data=data)
 
 
