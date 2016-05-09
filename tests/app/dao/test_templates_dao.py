@@ -218,3 +218,15 @@ def test_update_template_creates_a_history_record_with_current_data(sample_servi
 
     assert Template.get_history_model().query.filter_by(name='Sample Template').one().version == 1
     assert Template.get_history_model().query.filter_by(name='new name').one().version == 2
+
+
+def test_get_template_history_version(sample_user, sample_service, sample_template):
+    old_content = sample_template.content
+    sample_template.content = "New content"
+    dao_update_template(sample_template)
+    old_template = dao_get_template_by_id_and_service_id(
+        sample_template.id,
+        sample_service.id,
+        '1'
+    )
+    assert old_template.content == old_content

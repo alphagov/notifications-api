@@ -22,11 +22,20 @@ def dao_update_template(template):
     db.session.add(template)
 
 
-def dao_get_template_by_id_and_service_id(template_id, service_id):
+def dao_get_template_by_id_and_service_id(template_id, service_id, version=None):
+    if version is not None:
+        return Template.get_history_model().query.filter_by(
+            id=template_id,
+            service_id=service_id,
+            version=version).one()
     return Template.query.filter_by(id=template_id, service_id=service_id).one()
 
 
-def dao_get_template_by_id(template_id):
+def dao_get_template_by_id(template_id, version=None):
+    if version is not None:
+        return Template.get_history_model().query.filter_by(
+            id=template_id,
+            version=version).one()
     return Template.query.filter_by(id=template_id).one()
 
 
