@@ -17,12 +17,12 @@ def test_get_permission_list(notify_api, notify_db, notify_db_session, sample_pe
                 headers=[header])
             assert response.status_code == 200
             json_resp = json.loads(response.get_data(as_text=True))
-            assert len(json_resp['data']) == 1
+            assert len(json_resp['data']) == 8
             expected = {
                 "permission": sample_permission.permission,
                 "user": str(sample_permission.user.id),
                 "id": str(sample_permission.id),
-                "service": None
+                "service": str(sample_permission.service.id)
             }
             assert expected in json_resp['data']
 
@@ -71,7 +71,7 @@ def test_get_permission(notify_api, notify_db, notify_db_session, sample_permiss
                 "permission": sample_permission.permission,
                 "user": str(sample_permission.user.id),
                 "id": str(sample_permission.id),
-                "service": None
+                "service": str(sample_permission.service.id)
             }
             assert expected == json_resp['data']
 

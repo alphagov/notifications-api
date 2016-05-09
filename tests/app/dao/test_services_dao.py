@@ -8,10 +8,24 @@ from app.dao.services_dao import (
     dao_fetch_service_by_id,
     dao_fetch_all_services_by_user,
     dao_fetch_service_by_id_and_user,
-    dao_update_service
+    dao_update_service,
+    delete_service_and_all_associated_db_objects
 )
 from app.dao.users_dao import save_model_user
-from app.models import Service, User
+from app.models import (
+    NotificationStatistics,
+    TemplateStatistics,
+    ProviderStatistics,
+    VerifyCode,
+    ApiKey,
+    Template,
+    Job,
+    Notification,
+    Permission,
+    User,
+    InvitedUser,
+    Service
+)
 from sqlalchemy.orm.exc import FlushError, NoResultFound
 from sqlalchemy.exc import IntegrityError
 
@@ -287,3 +301,32 @@ def test_create_service_and_history_is_transactional(sample_user):
     assert 'column "name" violates not-null constraint' in str(excinfo.value)
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
+
+
+def test_delete_service_and_associated_objects(notify_db,
+                                               notify_db_session,
+                                               sample_user,
+                                               sample_service,
+                                               sample_email_code,
+                                               sample_sms_code,
+                                               sample_template,
+                                               sample_email_template,
+                                               sample_api_key,
+                                               sample_job,
+                                               sample_notification,
+                                               sample_invited_user,
+                                               sample_permission,
+                                               sample_provider_statistics):
+    delete_service_and_all_associated_db_objects(sample_service)
+    assert NotificationStatistics.query.count() == 0
+    assert TemplateStatistics.query.count() == 0
+    assert ProviderStatistics.query.count() == 0
+    assert VerifyCode.query.count() == 0
+    assert ApiKey.query.count() == 0
+    assert Template.query.count() == 0
+    assert Job.query.count() == 0
+    assert Notification.query.count() == 0
+    assert Permission.query.count() == 0
+    assert User.query.count() == 0
+    assert InvitedUser.query.count() == 0
+    assert Service.query.count() == 0
