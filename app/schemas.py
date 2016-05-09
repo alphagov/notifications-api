@@ -24,6 +24,20 @@ from app import models
 from app.dao.permissions_dao import permission_dao
 
 
+def _validate_positive_number(value, msg="Not a positive integer"):
+    try:
+        page_int = int(value)
+        if page_int < 1:
+            raise ValidationError(msg)
+    except:
+        raise ValidationError(msg)
+
+
+def _validate_not_in_future(dte, msg="Date cannot be in the future"):
+    if dte > date.today():
+        raise ValidationError(msg)
+
+
 # TODO I think marshmallow provides a better integration and error handling.
 # Would be better to replace functionality in dao with the marshmallow supported
 # functionality.
@@ -265,21 +279,13 @@ class NotificationsFilterSchema(ma.Schema):
             in_data['status'] = [x.status for x in in_data['status']]
         return in_data
 
-    def _validate_positive_number(self, value):
-        try:
-            page_int = int(value)
-            if page_int < 1:
-                raise ValidationError("Not a positive integer")
-        except:
-            raise ValidationError("Not a positive integer")
-
     @validates('page')
     def validate_page(self, value):
-        self._validate_positive_number(value)
+        _validate_positive_number(value)
 
     @validates('page_size')
     def validate_page_size(self, value):
-        self._validate_positive_number(value)
+        _validate_positive_number(value)
 
 
 class TemplateStatisticsSchema(BaseSchema):
@@ -323,17 +329,13 @@ class FromToDateSchema(ma.Schema):
     date_from = fields.Date()
     date_to = fields.Date()
 
-    def _validate_not_in_future(self, dte):
-        if dte > date.today():
-            raise ValidationError('Date cannot be in the future')
-
     @validates('date_from')
     def validate_date_from(self, value):
-        self._validate_not_in_future(value)
+        _validate_not_in_future(value)
 
     @validates('date_to')
     def validate_date_to(self, value):
-        self._validate_not_in_future(value)
+        _validate_not_in_future(value)
 
     @validates_schema
     def validate_dates(self, data):
@@ -341,6 +343,20 @@ class FromToDateSchema(ma.Schema):
         dt = data.get('date_to')
         if (df and dt) and (df > dt):
             raise ValidationError("date_from needs to be greater than date_to")
+
+
+class WeekAggregateNotificationStatisticsSchema(ma.Schema):
+
+    date_from = fields.Date()
+    week_count = fields.Int()
+
+    @validates('date_from')
+    def validate_date_from(self, value):
+        _validate_not_in_future(value)
+
+    @validates('week_count')
+    def validate_week_count(self, value):
+        _validate_positive_number(value)
 
 
 user_schema = UserSchema()
@@ -372,3 +388,4 @@ api_key_history_schema = ApiKeyHistorySchema()
 template_history_schema = TemplateHistorySchema()
 event_schema = EventSchema()
 from_to_date_schema = FromToDateSchema()
+week_aggregate_notification_statistics_schema = WeekAggregateNotificationStatisticsSchema()
