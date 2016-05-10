@@ -10,10 +10,7 @@ def test_create_event(notify_api):
                 'data': {'something': 'random', 'in_fact': 'could be anything'}
             }
             path = '/events'
-            auth_header = create_authorization_header(
-                path=path,
-                method='POST',
-                request_body=json.dumps(data))
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             response = client.post(
                 path,

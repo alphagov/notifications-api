@@ -38,38 +38,10 @@ def test_should_not_allow_request_with_incorrect_token(notify_api, sample_user):
             assert data['message'] == 'Invalid token: signature'
 
 
-def test_should_ignore_path(notify_api, sample_api_key):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            token = create_jwt_token(
-                request_method="GET",
-                request_path="/bad",
-                secret=get_unsigned_secrets(sample_api_key.service_id)[0],
-                client_id=str(sample_api_key.service_id)
-            )
-            response = client.get(
-                '/service',
-                headers={'Authorization': "Bearer {}".format(token)})
-            assert response.status_code == 200
-
-
-def test_should_ignore_request(notify_api, sample_api_key):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            token = __create_post_token(sample_api_key.service_id, {})
-            response = client.get(
-                '/service',
-                headers={'Authorization': "Bearer {}".format(token)}
-            )
-            assert response.status_code == 200
-
-
 def test_should_not_allow_invalid_secret(notify_api, sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             token = create_jwt_token(
-                request_method="POST",
-                request_path="/service",
                 secret="not-so-secret",
                 client_id=str(sample_api_key.service_id))
             response = client.get(
@@ -125,46 +97,6 @@ JSON_BODY = json.dumps({
 })
 
 
-def test_should_allow_valid_token_with_post_body(notify_api, sample_api_key):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            service = Service.query.get(sample_api_key.service_id)
-            data = {
-                'email_from': 'new name',
-                'name': 'new name',
-                'users': [str(service.users[0].id)],
-                'message_limit': 1000,
-                'restricted': False,
-                'active': False,
-                'created_by': str(service.users[0].id)}
-
-            token = create_jwt_token(
-                request_method="POST",
-                request_path='/service/{}'.format(str(sample_api_key.service_id)),
-                secret=get_unsigned_secret(sample_api_key.id),
-                client_id=str(sample_api_key.service_id),
-                request_body=json.dumps(data)
-            )
-            headers = [('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(token))]
-            response = client.post(
-                '/service/{}'.format(service.id),
-                data=json.dumps(data),
-                headers=headers)
-            assert response.status_code == 200
-
-
-def test_should_allow_valid_token_with_invalid_post_body_but_fail_at_endpoint(notify_api, sample_api_key):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            token = __create_post_token(str(sample_api_key.service_id), JSON_BODY)
-            with pytest.raises(AttributeError):
-                response = client.post(
-                    '/service',
-                    data="spurious",
-                    headers={'Authorization': 'Bearer {}'.format(token)})
-                assert response.status_code == 400
-
-
 def test_authentication_passes_admin_client_token(notify_api,
                                                   notify_db,
                                                   notify_db_session,
@@ -172,8 +104,6 @@ def test_authentication_passes_admin_client_token(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             token = create_jwt_token(
-                request_method="GET",
-                request_path='/service',
                 secret=current_app.config.get('ADMIN_CLIENT_SECRET'),
                 client_id=current_app.config.get('ADMIN_CLIENT_USER_NAME'))
             response = client.get(
@@ -203,8 +133,6 @@ def test_authentication_passes_when_service_has_multiple_keys_some_expired(
             api_key = ApiKey(**another_key)
             save_model_api_key(api_key)
             token = create_jwt_token(
-                request_method="GET",
-                request_path='/service',
                 secret=get_unsigned_secret(api_key.id),
                 client_id=str(sample_api_key.service_id))
             response = client.get(
@@ -232,8 +160,6 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
             api_key = ApiKey(**another_key)
             save_model_api_key(api_key)
             token = create_jwt_token(
-                request_method="GET",
-                request_path='/service',
                 secret=get_unsigned_secret(expired_api_key.id),
                 client_id=str(sample_api_key.service_id))
             # expire the key
@@ -258,8 +184,6 @@ def test_authentication_returns_error_when_api_client_has_no_secrets(notify_api,
         with notify_api.test_client() as client:
             api_secret = notify_api.config.get('ADMIN_CLIENT_SECRET')
             token = create_jwt_token(
-                request_method="GET",
-                request_path='/service',
                 secret=api_secret,
                 client_id=notify_api.config.get('ADMIN_CLIENT_USER_NAME')
             )
@@ -281,8 +205,6 @@ def test_authentication_returns_error_when_service_has_no_secrets(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             token = create_jwt_token(
-                request_method="GET",
-                request_path='/service',
                 secret=fake_uuid,
                 client_id=str(sample_service.id))
 
@@ -296,22 +218,15 @@ def test_authentication_returns_error_when_service_has_no_secrets(notify_api,
 
 def __create_get_token(service_id):
     if service_id:
-        return create_jwt_token(request_method="GET",
-                                request_path='/service/{}'.format(service_id),
-                                secret=get_unsigned_secrets(service_id)[0],
+        return create_jwt_token(secret=get_unsigned_secrets(service_id)[0],
                                 client_id=str(service_id))
     else:
-        return create_jwt_token(request_method="GET",
-                                request_path='/service',
-                                secret=get_unsigned_secrets(service_id)[0],
+        return create_jwt_token(secret=get_unsigned_secrets(service_id)[0],
                                 client_id=service_id)
 
 
 def __create_post_token(service_id, request_body):
     return create_jwt_token(
-        request_method="POST",
-        request_path='/service',
         secret=get_unsigned_secrets(service_id)[0],
-        client_id=str(service_id),
-        request_body=request_body
+        client_id=str(service_id)
     )

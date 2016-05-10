@@ -1,5 +1,6 @@
 import math
-from sqlalchemy import desc, func
+from sqlalchemy import (desc, func, Integer)
+from sqlalchemy.sql.expression import cast
 
 from datetime import (
     datetime,
@@ -49,6 +50,33 @@ def dao_get_notification_statistics_for_service_and_day(service_id, day):
         service_id=service_id,
         day=day
     ).order_by(desc(NotificationStatistics.day)).first()
+
+
+def dao_get_7_day_agg_notification_statistics_for_service(service_id,
+                                                          date_from,
+                                                          week_count=52):
+    doy = date_from.timetuple().tm_yday
+    return db.session.query(
+        cast(func.floor((func.extract('doy', NotificationStatistics.day) - doy) / 7), Integer),
+        cast(func.sum(NotificationStatistics.emails_requested), Integer),
+        cast(func.sum(NotificationStatistics.emails_delivered), Integer),
+        cast(func.sum(NotificationStatistics.emails_failed), Integer),
+        cast(func.sum(NotificationStatistics.sms_requested), Integer),
+        cast(func.sum(NotificationStatistics.sms_delivered), Integer),
+        cast(func.sum(NotificationStatistics.sms_failed), Integer)
+    ).filter(
+        NotificationStatistics.service_id == service_id
+    ).filter(
+        NotificationStatistics.day >= date_from
+    ).filter(
+        NotificationStatistics.day < date_from + timedelta(days=7 * week_count)
+    ).group_by(
+        func.floor(((func.extract('doy', NotificationStatistics.day) - doy) / 7))
+    ).order_by(
+        desc(func.floor(((func.extract('doy', NotificationStatistics.day) - doy) / 7)))
+    ).limit(
+        week_count
+    )
 
 
 def dao_get_template_statistics_for_service(service_id, limit_days=None):
@@ -200,11 +228,10 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
         page_size = current_app.config['PAGE_SIZE']
     query = Notification.query.filter_by(service_id=service_id, job_id=job_id)
     query = filter_query(query, filter_dict)
-    pagination = query.order_by(desc(Notification.created_at)).paginate(
+    return query.order_by(desc(Notification.created_at)).paginate(
         page=page,
         per_page=page_size
     )
-    return pagination
 
 
 def get_notification(service_id, notification_id):
@@ -215,7 +242,11 @@ def get_notification_by_id(notification_id):
     return Notification.query.filter_by(id=notification_id).first()
 
 
-def get_notifications_for_service(service_id, filter_dict=None, page=1, page_size=None, limit_days=None):
+def get_notifications_for_service(service_id,
+                                  filter_dict=None,
+                                  page=1,
+                                  page_size=None,
+                                  limit_days=None):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
     filters = [Notification.service_id == service_id]
@@ -226,11 +257,10 @@ def get_notifications_for_service(service_id, filter_dict=None, page=1, page_siz
 
     query = Notification.query.filter(*filters)
     query = filter_query(query, filter_dict)
-    pagination = query.order_by(desc(Notification.created_at)).paginate(
+    return query.order_by(desc(Notification.created_at)).paginate(
         page=page,
         per_page=page_size
     )
-    return pagination
 
 
 def filter_query(query, filter_dict=None):
