@@ -3,6 +3,7 @@ from app.dao.dao_utils import transactional
 from app.models import ProviderDetails
 from app import db
 
+
 def get_provider_details():
     return ProviderDetails.query.order_by(asc(ProviderDetails.priority)).all()
 

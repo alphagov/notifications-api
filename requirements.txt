@@ -19,7 +19,7 @@ twilio==4.6.0
 monotonic==0.3
 
 
-git+https://github.com/alphagov/notifications-python-client.git@0.5.0#egg=notifications-python-client==0.5.0
+git+https://github.com/alphagov/notifications-python-client.git@1.0.0#egg=notifications-python-client==1.0.0
 
 
 git+https://github.com/alphagov/notifications-utils.git@5.2.0#egg=notifications-utils==5.2.0
