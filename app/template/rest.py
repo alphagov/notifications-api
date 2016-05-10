@@ -99,12 +99,13 @@ def get_template_by_id_and_service_id(service_id, template_id):
 
 @template.route('/<uuid:template_id>/version/<int:version>')
 def get_template_version(service_id, template_id, version):
-    fetched_template = dao_get_template_by_id_and_service_id(
-        template_id=template_id,
-        service_id=service_id,
-        version=version
+    data, errors = template_history_schema.dump(
+        dao_get_template_by_id_and_service_id(
+            template_id=template_id,
+            service_id=service_id,
+            version=version
+        )
     )
-    data, errors = template_history_schema.dump(fetched_template)
     if errors:
         return json_resp(result='error', message=errors), 400
     return jsonify(data=data)
@@ -112,8 +113,10 @@ def get_template_version(service_id, template_id, version):
 
 @template.route('/<uuid:template_id>/version')
 def get_template_versions(service_id, template_id):
-    fetched_templates = dao_get_template_versions(service_id, template_id)
-    data, errors = template_history_schema.dump(fetched_templates, many=True)
+    data, errors = template_history_schema.dump(
+        dao_get_template_versions(service_id, template_id),
+        many=True
+    )
     if errors:
         return json_resp(result='error', message=errors), 400
     return jsonify(data=data)
