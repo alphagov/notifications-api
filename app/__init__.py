@@ -64,6 +64,7 @@ def create_app(app_name=None):
     from app.notifications_statistics.rest import notifications_statistics as notifications_statistics_blueprint
     from app.template_statistics.rest import template_statistics as template_statistics_blueprint
     from app.events.rest import events as events_blueprint
+    from app.provider_details.rest import provider_details as provider_details_blueprint
 
     application.register_blueprint(service_blueprint, url_prefix='/service')
     application.register_blueprint(user_blueprint, url_prefix='/user')
@@ -77,6 +78,7 @@ def create_app(app_name=None):
     application.register_blueprint(notifications_statistics_blueprint)
     application.register_blueprint(template_statistics_blueprint)
     application.register_blueprint(events_blueprint)
+    application.register_blueprint(provider_details_blueprint, url_prefix='/provider-details')
 
     return application
 
@@ -90,6 +92,8 @@ def init_app(app):
             url_for('notifications.process_firetext_response'),
             url_for('notifications.process_mmg_response'),
             url_for('status.show_delivery_status'),
+            url_for('provider_details.get_providers'),
+            "/provider-details/41ade136-33bc-4151-be23-a04084cde50b"
         ]
         if request.path not in no_auth_req:
             from app.authentication import auth

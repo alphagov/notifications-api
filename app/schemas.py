@@ -69,6 +69,12 @@ class UserSchema(BaseSchema):
             "_password", "verify_codes")
 
 
+class ProviderDetailsSchema(BaseSchema):
+    class Meta:
+        model = models.ProviderDetails
+        exclude = ("provider_rates", "provider_stats")
+
+
 class ServiceSchema(BaseSchema):
 
     created_by = field_for(models.Service, 'created_by', required=True)
@@ -373,3 +379,4 @@ api_key_history_schema = ApiKeyHistorySchema()
 template_history_schema = TemplateHistorySchema()
 event_schema = EventSchema()
 from_to_date_schema = FromToDateSchema()
+provider_details_schema = ProviderDetailsSchema()
