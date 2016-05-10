@@ -10,11 +10,9 @@ from app.models import (
     Notification,
     InvitedUser,
     Permission,
-    MMG_PROVIDER,
-    SES_PROVIDER,
-    TWILIO_PROVIDER,
     ProviderStatistics,
-    ProviderDetails)
+    ProviderDetails,
+    NotificationStatistics)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
@@ -414,6 +412,8 @@ def sample_permission(notify_db,
         'user': user,
         'permission': permission
     }
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
     if service:
         data['service'] = service
     p_model = Permission.query.filter_by(
@@ -490,6 +490,35 @@ def sample_provider_statistics(notify_db,
         provider_id=provider.id,
         day=day,
         unit_count=unit_count)
+    notify_db.session.add(stats)
+    notify_db.session.commit()
+    return stats
+
+
+@pytest.fixture(scope='function')
+def sample_notification_statistics(notify_db,
+                                   notify_db_session,
+                                   service=None,
+                                   day=None,
+                                   emails_requested=2,
+                                   emails_delivered=1,
+                                   emails_failed=1,
+                                   sms_requested=2,
+                                   sms_delivered=1,
+                                   sms_failed=1):
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
+    if day is None:
+        day = date.today()
+    stats = NotificationStatistics(
+        service=service,
+        day=day,
+        emails_requested=emails_requested,
+        emails_delivered=emails_delivered,
+        emails_failed=emails_failed,
+        sms_requested=sms_requested,
+        sms_delivered=sms_delivered,
+        sms_failed=sms_failed)
     notify_db.session.add(stats)
     notify_db.session.commit()
     return stats

@@ -6,7 +6,7 @@ from app.dao.api_key_dao import (get_unsigned_secrets, save_model_api_key)
 from app.dao.services_dao import dao_fetch_service_by_id
 
 
-def create_authorization_header(path, method, request_body=None, service_id=None):
+def create_authorization_header(service_id=None):
     if service_id:
         client_id = str(service_id)
         secrets = get_unsigned_secrets(service_id)
@@ -23,18 +23,5 @@ def create_authorization_header(path, method, request_body=None, service_id=None
         client_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
         secret = current_app.config.get('ADMIN_CLIENT_SECRET')
 
-    if request_body:
-        token = create_jwt_token(
-            request_method=method,
-            request_path=path,
-            secret=secret,
-            client_id=client_id,
-            request_body=request_body)
-
-    else:
-        token = create_jwt_token(request_method=method,
-                                 request_path=path,
-                                 secret=secret,
-                                 client_id=client_id)
-
+    token = create_jwt_token(secret=secret, client_id=client_id)
     return 'Authorization', 'Bearer {}'.format(token)

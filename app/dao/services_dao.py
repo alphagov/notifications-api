@@ -9,6 +9,21 @@ from app.dao.dao_utils import (
     version_class
 )
 
+from app.models import (
+    NotificationStatistics,
+    TemplateStatistics,
+    ProviderStatistics,
+    VerifyCode,
+    ApiKey,
+    Template,
+    Job,
+    Notification,
+    Permission,
+    User,
+    InvitedUser,
+    Service
+)
+
 
 def dao_fetch_all_services():
     return Service.query.order_by(asc(Service.created_at)).all()
@@ -66,3 +81,31 @@ def dao_remove_user_from_service(service, user):
         raise e
     else:
         db.session.commit()
+
+
+def delete_service_and_all_associated_db_objects(service):
+
+    def _delete_commit(query):
+        query.delete()
+        db.session.commit()
+
+    _delete_commit(NotificationStatistics.query.filter_by(service=service))
+    _delete_commit(TemplateStatistics.query.filter_by(service=service))
+    _delete_commit(ProviderStatistics.query.filter_by(service=service))
+    _delete_commit(InvitedUser.query.filter_by(service=service))
+    _delete_commit(Permission.query.filter_by(service=service))
+    _delete_commit(ApiKey.query.filter_by(service=service))
+    _delete_commit(Notification.query.filter_by(service=service))
+    _delete_commit(Job.query.filter_by(service=service))
+    _delete_commit(Template.query.filter_by(service=service))
+
+    verify_codes = VerifyCode.query.join(User).filter(User.id.in_([x.id for x in service.users]))
+    list(map(db.session.delete, verify_codes))
+    db.session.commit()
+    users = [x for x in service.users]
+    map(service.users.remove, users)
+    [service.users.remove(x) for x in users]
+    db.session.delete(service)
+    db.session.commit()
+    list(map(db.session.delete, users))
+    db.session.commit()

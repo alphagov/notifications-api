@@ -11,20 +11,18 @@ def test_get_permission_list(notify_api, notify_db, notify_db_session, sample_pe
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            header = create_authorization_header(
-                path=url_for('permission.get_permissions'),
-                method='GET')
+            header = create_authorization_header()
             response = client.get(
                 url_for('permission.get_permissions'),
                 headers=[header])
             assert response.status_code == 200
             json_resp = json.loads(response.get_data(as_text=True))
-            assert len(json_resp['data']) == 1
+            assert len(json_resp['data']) == 8
             expected = {
                 "permission": sample_permission.permission,
                 "user": str(sample_permission.user.id),
                 "id": str(sample_permission.id),
-                "service": None
+                "service": str(sample_permission.service.id)
             }
             assert expected in json_resp['data']
 
@@ -40,9 +38,7 @@ def test_get_permission_filter(notify_api,
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            header = create_authorization_header(
-                path=url_for('permission.get_permissions'),
-                method='GET')
+            header = create_authorization_header()
             response = client.get(
                 url_for('permission.get_permissions', service=str(sample_service.id)),
                 headers=[header])
@@ -65,9 +61,7 @@ def test_get_permission(notify_api, notify_db, notify_db_session, sample_permiss
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            header = create_authorization_header(
-                path=url_for('permission.get_permission', permission_id=str(sample_permission.id)),
-                method='GET')
+            header = create_authorization_header()
             response = client.get(
                 url_for('permission.get_permission', permission_id=str(sample_permission.id)),
                 headers=[header])
@@ -77,7 +71,7 @@ def test_get_permission(notify_api, notify_db, notify_db_session, sample_permiss
                 "permission": sample_permission.permission,
                 "user": str(sample_permission.user.id),
                 "id": str(sample_permission.id),
-                "service": None
+                "service": str(sample_permission.service.id)
             }
             assert expected == json_resp['data']
 
@@ -88,9 +82,7 @@ def test_get_permission_404(notify_api, notify_db, notify_db_session, sample_per
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            header = create_authorization_header(
-                path=url_for('permission.get_permission', permission_id="123"),
-                method='GET')
+            header = create_authorization_header()
             response = client.get(
                 url_for('permission.get_permission', permission_id="123"),
                 headers=[header])

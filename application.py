@@ -14,6 +14,7 @@ manager.add_command("runserver", Server(host='0.0.0.0', port=port))
 migrate = Migrate(application, db)
 manager.add_command('db', MigrateCommand)
 manager.add_command('create_provider_rate', commands.CreateProviderRateCommand)
+manager.add_command('purge_functional_test_data', commands.PurgeFunctionalTestDataCommand)
 
 
 @manager.command
