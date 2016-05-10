@@ -5,7 +5,7 @@ from app import db
 
 
 def get_provider_details():
-    return ProviderDetails.query.order_by(asc(ProviderDetails.priority)).all()
+    return ProviderDetails.query.order_by(asc(ProviderDetails.priority), asc(ProviderDetails.notification_type)).all()
 
 
 def get_provider_details_by_id(provider_details_id):
