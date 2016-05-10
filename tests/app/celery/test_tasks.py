@@ -40,6 +40,7 @@ class AnyStringWith(str):
     def __eq__(self, other):
         return self in other
 
+
 mmg_error = {'Error': '40', 'Description': 'error'}
 
 
@@ -804,7 +805,7 @@ def test_email_invited_user_should_send_email(notify_api, mocker):
                                                           expected_content)
 
 
-def test_email_reset_password_should_send_email(notify_api, mocker):
+def test_email_reset_password_should_send_email(notify_db, notify_db_session, notify_api, mocker):
     with notify_api.test_request_context():
         reset_password_message = {'to': 'someone@it.gov.uk',
                                   'name': 'Some One',
