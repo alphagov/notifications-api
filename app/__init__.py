@@ -91,9 +91,7 @@ def init_app(app):
             url_for('notifications.process_ses_response'),
             url_for('notifications.process_firetext_response'),
             url_for('notifications.process_mmg_response'),
-            url_for('status.show_delivery_status'),
-            url_for('provider_details.get_providers'),
-            "/provider-details/41ade136-33bc-4151-be23-a04084cde50b"
+            url_for('status.show_delivery_status')
         ]
         if request.path not in no_auth_req:
             from app.authentication import auth
