@@ -1,6 +1,5 @@
 from sqlalchemy import func
-from app import db
-from app.models import (ProviderStatistics, SMS_PROVIDERS, EMAIL_PROVIDERS)
+from app.models import (ProviderStatistics, SMS_PROVIDERS, EMAIL_PROVIDERS, ProviderDetails)
 
 
 def get_provider_statistics(service, **kwargs):
@@ -33,7 +32,9 @@ def get_fragment_count(service, date_from, date_to):
 def filter_query(query, service, **kwargs):
     query = query.filter_by(service=service)
     if 'providers' in kwargs:
-        query = query.filter(ProviderStatistics.provider.in_(kwargs['providers']))
+        providers = ProviderDetails.query.filter(ProviderDetails.identifier.in_(kwargs['providers'])).all()
+        provider_ids = [provider.id for provider in providers]
+        query = query.filter(ProviderStatistics.provider_id.in_(provider_ids))
     if 'date_from' in kwargs:
         query.filter(ProviderStatistics.day >= kwargs['date_from'])
     if 'date_to' in kwargs:

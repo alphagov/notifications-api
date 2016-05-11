@@ -13,12 +13,13 @@ from app.celery.tasks import (
     delete_verify_codes,
     delete_invitations,
     delete_failed_notifications,
-    delete_successful_notifications
+    delete_successful_notifications,
+    provider_to_use
 )
 from app import (aws_ses_client, encryption, DATETIME_FORMAT, mmg_client)
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.mmg import MMGClientException
-from app.dao import notifications_dao, jobs_dao
+from app.dao import notifications_dao, jobs_dao, provider_details_dao
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 from app.celery.tasks import s3
@@ -40,7 +41,38 @@ class AnyStringWith(str):
     def __eq__(self, other):
         return self in other
 
+
 mmg_error = {'Error': '40', 'Description': 'error'}
+
+
+def test_should_return_highest_priority_active_provider(notify_db, notify_db_session):
+    providers = provider_details_dao.get_provider_details_by_notification_type('sms')
+    first = providers[0]
+    second = providers[1]
+
+    assert provider_to_use('sms', '1234').name == first.identifier
+
+    first.priority = 20
+    second.priority = 10
+
+    provider_details_dao.dao_update_provider_details(first)
+    provider_details_dao.dao_update_provider_details(second)
+
+    assert provider_to_use('sms', '1234').name == second.identifier
+
+    first.priority = 10
+    first.active = False
+    second.priority = 20
+
+    provider_details_dao.dao_update_provider_details(first)
+    provider_details_dao.dao_update_provider_details(second)
+
+    assert provider_to_use('sms', '1234').name == second.identifier
+
+    first.active = True
+    provider_details_dao.dao_update_provider_details(first)
+
+    assert provider_to_use('sms', '1234').name == first.identifier
 
 
 def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
@@ -804,7 +836,7 @@ def test_email_invited_user_should_send_email(notify_api, mocker):
                                                           expected_content)
 
 
-def test_email_reset_password_should_send_email(notify_api, mocker):
+def test_email_reset_password_should_send_email(notify_db, notify_db_session, notify_api, mocker):
     with notify_api.test_request_context():
         reset_password_message = {'to': 'someone@it.gov.uk',
                                   'name': 'Some One',
