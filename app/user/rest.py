@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from flask import (jsonify, request, abort, Blueprint, current_app)
 from app import encryption
@@ -109,7 +110,7 @@ def verify_user_code(user_id):
     code = get_user_code(user_to_verify, txt_code, txt_type)
     if not code:
         return jsonify(result="error", message="Code not found"), 404
-    if datetime.now() > code.expiry_datetime or code.code_used:
+    if datetime.utcnow() > code.expiry_datetime or code.code_used:
         return jsonify(result="error", message="Code has expired"), 400
     use_user_code(code.id)
     return jsonify({}), 204
@@ -210,8 +211,7 @@ def send_user_reset_password():
 
 def _create_reset_password_url(email):
     from notifications_utils.url_safe_token import generate_token
-    import json
-    data = json.dumps({'email': email, 'created_at': str(datetime.now())})
+    data = json.dumps({'email': email, 'created_at': str(datetime.utcnow())})
     token = generate_token(data, current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
 
     return current_app.config['ADMIN_BASE_URL'] + '/new-password/' + token
@@ -219,7 +219,6 @@ def _create_reset_password_url(email):
 
 def _create_verification_url(user, secret_code):
     from notifications_utils.url_safe_token import generate_token
-    import json
     data = json.dumps({'user_id': str(user.id), 'email': user.email_address, 'secret_code': secret_code})
     token = generate_token(data, current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
 
