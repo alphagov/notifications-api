@@ -50,7 +50,6 @@ def get_unsigned_secret(key_id):
 
 
 def _generate_secret(token=None):
-    import uuid
     if not token:
         token = uuid.uuid4()
     serializer = URLSafeSerializer(current_app.config.get('SECRET_KEY'))

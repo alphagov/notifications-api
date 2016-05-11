@@ -323,10 +323,13 @@ def test_delete_service_and_associated_objects(notify_db,
     assert ProviderStatistics.query.count() == 0
     assert VerifyCode.query.count() == 0
     assert ApiKey.query.count() == 0
+    assert ApiKey.get_history_model().query.count() == 0
     assert Template.query.count() == 0
+    assert Template.get_history_model().query.count() == 0
     assert Job.query.count() == 0
     assert Notification.query.count() == 0
     assert Permission.query.count() == 0
     assert User.query.count() == 0
     assert InvitedUser.query.count() == 0
     assert Service.query.count() == 0
+    assert Service.get_history_model().query.count() == 0
