@@ -35,13 +35,13 @@ def upgrade():
     op.create_foreign_key(None, 'provider_statistics', 'provider_details', ['provider_id'], ['id'])
 
     op.execute(
-        "INSERT INTO provider_details (id, display_name, identifier, priority, notification_type, active) values ('{}', 'MMG', 'mmg', 1, 'sms', true)".format(str(uuid.uuid4()))
+        "INSERT INTO provider_details (id, display_name, identifier, priority, notification_type, active) values ('{}', 'MMG', 'mmg', 10, 'sms', true)".format(str(uuid.uuid4()))
     )
     op.execute(
-        "INSERT INTO provider_details (id, display_name, identifier, priority, notification_type, active) values ('{}', 'Firetext', 'firetext', 2, 'sms', true)".format(str(uuid.uuid4()))
+        "INSERT INTO provider_details (id, display_name, identifier, priority, notification_type, active) values ('{}', 'Firetext', 'firetext', 20, 'sms', true)".format(str(uuid.uuid4()))
     )
     op.execute(
-        "INSERT INTO provider_details (id, display_name, identifier, priority, notification_type, active) values ('{}', 'AWS SES', 'ses', 1, 'email', true)".format(str(uuid.uuid4()))
+        "INSERT INTO provider_details (id, display_name, identifier, priority, notification_type, active) values ('{}', 'AWS SES', 'ses', 10, 'email', true)".format(str(uuid.uuid4()))
     )
     op.execute(
         "UPDATE provider_rates set provider_id = (select id from provider_details where identifier = 'mmg') where provider = 'mmg'"
