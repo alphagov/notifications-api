@@ -200,7 +200,7 @@ class ProviderStatistics(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     day = db.Column(db.Date, nullable=False)
     provider_id = db.Column(UUID(as_uuid=True), db.ForeignKey('provider_details.id'), index=True, nullable=False)
-    provider_stats_to_provider = db.relationship(
+    provider = db.relationship(
         'ProviderDetails', backref=db.backref('provider_stats', lazy='dynamic')
     )
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
@@ -215,7 +215,7 @@ class ProviderRates(db.Model):
     valid_from = db.Column(db.DateTime, nullable=False)
     rate = db.Column(db.Numeric(), nullable=False)
     provider_id = db.Column(UUID(as_uuid=True), db.ForeignKey('provider_details.id'), index=True, nullable=False)
-    provider_rate_to_provider = db.relationship('ProviderDetails', backref=db.backref('provider_rates', lazy='dynamic'))
+    provider = db.relationship('ProviderDetails', backref=db.backref('provider_rates', lazy='dynamic'))
 
 
 class ProviderDetails(db.Model):
