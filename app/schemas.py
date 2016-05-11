@@ -153,6 +153,10 @@ class ApiKeySchema(BaseSchema):
 
 
 class JobSchema(BaseSchema):
+    created_by_user = fields.Nested(UserSchema, attribute="created_by",
+                                    dump_to="created_by", only=["id", "name"], dump_only=True)
+    created_by = field_for(models.Job, 'created_by', required=True, load_only=True)
+
     class Meta:
         model = models.Job
 
