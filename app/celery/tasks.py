@@ -467,7 +467,7 @@ def provider_to_use(notification_type, notification_id):
         provider for provider in get_provider_details_by_notification_type(notification_type) if provider.active
     ]
 
-    if len(active_providers_in_order) == 0:
+    if not active_providers_in_order:
         current_app.logger.error(
             "{} {} failed as no active providers".format(notification_type, notification_id)
         )

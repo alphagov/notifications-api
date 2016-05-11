@@ -29,10 +29,10 @@ def upgrade():
 
     op.add_column('provider_rates', sa.Column('provider_id', postgresql.UUID(as_uuid=True), nullable=True))
     op.create_index(op.f('ix_provider_rates_provider_id'), 'provider_rates', ['provider_id'], unique=False)
-    op.create_foreign_key(None, 'provider_rates', 'provider_details', ['provider_id'], ['id'])
+    op.create_foreign_key("provider_rate_to_provider_fk", 'provider_rates', 'provider_details', ['provider_id'], ['id'])
     op.add_column('provider_statistics', sa.Column('provider_id', postgresql.UUID(as_uuid=True), nullable=True))
     op.create_index(op.f('ix_provider_statistics_provider_id'), 'provider_statistics', ['provider_id'], unique=False)
-    op.create_foreign_key(None, 'provider_statistics', 'provider_details', ['provider_id'], ['id'])
+    op.create_foreign_key('provider_stats_to_provider_fk', 'provider_statistics', 'provider_details', ['provider_id'], ['id'])
 
     op.execute(
         "INSERT INTO provider_details (id, display_name, identifier, priority, notification_type, active) values ('{}', 'MMG', 'mmg', 10, 'sms', true)".format(str(uuid.uuid4()))
@@ -64,11 +64,10 @@ def upgrade():
 
 def downgrade():
 
-    op.drop_constraint(None, 'provider_statistics', type_='foreignkey')
     op.drop_index(op.f('ix_provider_statistics_provider_id'), table_name='provider_statistics')
     op.drop_column('provider_statistics', 'provider_id')
-    op.drop_constraint(None, 'provider_rates', type_='foreignkey')
     op.drop_index(op.f('ix_provider_rates_provider_id'), table_name='provider_rates')
     op.drop_column('provider_rates', 'provider_id')
 
     op.drop_table('provider_details')
+    op.execute('drop type notification_type')

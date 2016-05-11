@@ -1,11 +1,13 @@
 import json
+from datetime import (datetime, date)
 from flask import url_for
 from app.models import Template
+from freezegun import freeze_time
 from app.dao.templates_dao import dao_update_template
 from tests import create_authorization_header
 
 
-def test_template_history_version(notify_api, sample_template):
+def test_template_history_version(notify_api, sample_user, sample_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header()
@@ -23,6 +25,8 @@ def test_template_history_version(notify_api, sample_template):
             assert json_resp['data']['id'] == str(sample_template.id)
             assert json_resp['data']['content'] == sample_template.content
             assert json_resp['data']['version'] == 1
+            assert json_resp['data']['created_by']['name'] == sample_user.name
+            assert datetime.strptime(json_resp['data']['created_at'], '%Y-%m-%d %H:%M:%S.%f').date() == date.today()
 
 
 def test_previous_template_history_version(notify_api, sample_template):
