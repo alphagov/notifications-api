@@ -121,7 +121,7 @@ def test_authentication_passes_when_service_has_multiple_keys_some_expired(
         with notify_api.test_client() as client:
             expired_key_data = {'service': sample_api_key.service,
                                 'name': 'expired_key',
-                                'expiry_date': datetime.now(),
+                                'expiry_date': datetime.utcnow(),
                                 'created_by': sample_api_key.created_by
                                 }
             expired_key = ApiKey(**expired_key_data)
@@ -166,7 +166,7 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
             expire_the_key = {'id': expired_api_key.id,
                               'service': sample_api_key.service,
                               'name': 'expired_key',
-                              'expiry_date': datetime.now() + timedelta(hours=-2),
+                              'expiry_date': datetime.utcnow() + timedelta(hours=-2),
                               'created_by': sample_api_key.created_by}
             save_model_api_key(expired_api_key, expire_the_key)
             response = client.get(

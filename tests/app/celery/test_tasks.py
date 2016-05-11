@@ -813,7 +813,7 @@ def test_email_invited_user_should_send_email(notify_api, mocker):
                       'service_id': '123123',
                       'service_name': 'Blacksmith Service',
                       'token': 'the-token',
-                      'expiry_date': str(datetime.now() + timedelta(days=1))
+                      'expiry_date': str(datetime.utcnow() + timedelta(days=1))
                       }
 
         mocker.patch('app.aws_ses_client.send_email')

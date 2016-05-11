@@ -35,7 +35,7 @@ def show_delivery_status():
         return jsonify(status="ok"), 200
     else:
         notifications_alert = current_app.config['NOTIFICATIONS_ALERT']
-        some_number_of_minutes_ago = datetime.now() - timedelta(minutes=notifications_alert)
+        some_number_of_minutes_ago = datetime.utcnow() - timedelta(minutes=notifications_alert)
         notifications = Notification.query.filter(Notification.status == 'sending',
                                                   Notification.created_at < some_number_of_minutes_ago).all()
         message = "{} notifications in sending state over {} minutes".format(len(notifications), notifications_alert)

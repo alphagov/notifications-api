@@ -205,7 +205,7 @@ def create_history(obj):
 
     if not obj.version:
         obj.version = 1
-        obj.created_at = datetime.datetime.now()
+        obj.created_at = datetime.datetime.utcnow()
     else:
         obj.version += 1
 
