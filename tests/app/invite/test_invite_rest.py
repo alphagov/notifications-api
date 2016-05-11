@@ -41,9 +41,10 @@ def test_create_invited_user(notify_api, sample_service, mocker):
             assert json_resp['data']['permissions'] == 'send_messages,manage_service,manage_api_keys'
             assert json_resp['data']['id']
             invitation_expiration_days = notify_api.config['INVITATION_EXPIRATION_DAYS']
-            expiry_date = (datetime.now() + timedelta(days=invitation_expiration_days)).replace(hour=0, minute=0,
-                                                                                                second=0,
-                                                                                                microsecond=0)
+            expiry_date = (datetime.utcnow() + timedelta(days=invitation_expiration_days)).replace(hour=0,
+                                                                                                   minute=0,
+                                                                                                   second=0,
+                                                                                                   microsecond=0)
             encrypted_invitation = {'to': email_address,
                                     'user_name': invite_from.name,
                                     'service_id': str(sample_service.id),
