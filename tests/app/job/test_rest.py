@@ -71,6 +71,7 @@ def test_get_job_by_id(notify_api, sample_job):
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
             assert resp_json['data']['id'] == job_id
+            assert resp_json['data']['created_by']['name'] == 'Test User'
 
 
 def test_create_job(notify_api, sample_template, mocker, fake_uuid):

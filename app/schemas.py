@@ -123,9 +123,19 @@ class TemplateSchema(BaseTemplateSchema):
                 raise ValidationError('Invalid template subject', 'subject')
 
 
-class TemplateHistorySchema(BaseTemplateSchema):
+class TemplateHistorySchema(BaseSchema):
 
-    created_by = field_for(models.Template, 'created_by', required=True)
+    class Meta:
+        # Use the base model class that the history class is created from
+        model = models.Template
+    # We have to use a method here because the relationship field on the
+    # history object is not created.
+    created_by = fields.Method("populate_created_by", dump_only=True)
+    created_at = field_for(models.Template, 'created_at', format='%Y-%m-%d %H:%M:%S.%f')
+
+    def populate_created_by(self, data):
+        usr = models.User.query.filter_by(id=data.created_by_id).one()
+        return {'id': str(usr.id), 'name': usr.name, 'email_address': usr.email_address}
 
 
 class NotificationsStatisticsSchema(BaseSchema):
@@ -143,6 +153,10 @@ class ApiKeySchema(BaseSchema):
 
 
 class JobSchema(BaseSchema):
+    created_by_user = fields.Nested(UserSchema, attribute="created_by",
+                                    dump_to="created_by", only=["id", "name"], dump_only=True)
+    created_by = field_for(models.Job, 'created_by', required=True, load_only=True)
+
     class Meta:
         model = models.Job
 

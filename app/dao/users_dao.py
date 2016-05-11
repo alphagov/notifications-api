@@ -12,7 +12,7 @@ def create_secret_code():
 def save_model_user(usr, update_dict={}, pwd=None):
     if pwd:
         usr.password = pwd
-        usr.password_changed_at = datetime.now()
+        usr.password_changed_at = datetime.utcnow()
     if update_dict:
         if update_dict.get('id'):
             del update_dict['id']
@@ -25,7 +25,7 @@ def save_model_user(usr, update_dict={}, pwd=None):
 
 def create_user_code(user, code, code_type):
     verify_code = VerifyCode(code_type=code_type,
-                             expiry_datetime=datetime.now() + timedelta(hours=1),
+                             expiry_datetime=datetime.utcnow() + timedelta(hours=1),
                              user=user)
     verify_code.code = code
     db.session.add(verify_code)
