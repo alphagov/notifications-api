@@ -31,7 +31,7 @@ def upgrade():
 
 def downgrade():
 
-    provider_enum = ENUM('loadtesting', 'firetext', 'mmg', 'ses', name='providers', create_type=True)
+    provider_enum = ENUM('loadtesting', 'firetext', 'mmg', 'ses', 'twilio', name='providers', create_type=True)
     provider_enum.create(op.get_bind(), checkfirst=False)
 
     op.add_column('provider_statistics', sa.Column('provider', provider_enum, autoincrement=False, nullable=True))
