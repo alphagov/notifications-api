@@ -41,7 +41,6 @@ def notify_db(notify_api, request):
         db.session.remove()
         db.drop_all()
         db.engine.execute("drop table alembic_version")
-        db.engine.execute("drop type providers")
         db.get_engine(notify_api).dispose()
 
     request.addfinalizer(teardown)

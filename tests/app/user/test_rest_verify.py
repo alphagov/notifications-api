@@ -110,7 +110,7 @@ def test_user_verify_code_email_expired_code(notify_api,
         with notify_api.test_client() as client:
             assert not VerifyCode.query.first().code_used
             sample_email_code.expiry_datetime = (
-                datetime.now() - timedelta(hours=1))
+                datetime.utcnow() - timedelta(hours=1))
             db.session.add(sample_email_code)
             db.session.commit()
             data = json.dumps({
