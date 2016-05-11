@@ -7,11 +7,11 @@ from app.dao.provider_details_dao import (
 
 
 def test_can_get_all_providers(notify_db, notify_db_session):
-    assert len(get_provider_details()) == 3
+    assert len(get_provider_details()) == 4
 
 
 def test_can_get_sms_providers(notify_db, notify_db_session):
-    assert len(get_provider_details_by_notification_type('sms')) == 2
+    assert len(get_provider_details_by_notification_type('sms')) == 3
     types = [provider.notification_type for provider in get_provider_details_by_notification_type('sms')]
     assert all('sms' == notification_type for notification_type in types)
 
@@ -21,6 +21,7 @@ def test_can_get_sms_providers_in_order(notify_db, notify_db_session):
 
     assert providers[0].identifier == "mmg"
     assert providers[1].identifier == "firetext"
+    assert providers[2].identifier == "loadtesting"
 
 
 def test_can_get_email_providers_in_order(notify_db, notify_db_session):
