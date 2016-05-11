@@ -81,13 +81,13 @@ class Service(db.Model, Versioned):
         index=False,
         unique=False,
         nullable=False,
-        default=datetime.datetime.now)
+        default=datetime.datetime.utcnow)
     updated_at = db.Column(
         db.DateTime,
         index=False,
         unique=False,
         nullable=True,
-        onupdate=datetime.datetime.now)
+        onupdate=datetime.datetime.utcnow)
     active = db.Column(db.Boolean, index=False, unique=False, nullable=False)
     message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False)
     users = db.relationship(
@@ -114,13 +114,13 @@ class ApiKey(db.Model, Versioned):
         index=False,
         unique=False,
         nullable=False,
-        default=datetime.datetime.now)
+        default=datetime.datetime.utcnow)
     updated_at = db.Column(
         db.DateTime,
         index=False,
         unique=False,
         nullable=True,
-        onupdate=datetime.datetime.now)
+        onupdate=datetime.datetime.utcnow)
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
 
