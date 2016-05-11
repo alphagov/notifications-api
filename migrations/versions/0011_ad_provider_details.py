@@ -64,10 +64,8 @@ def upgrade():
 
 def downgrade():
 
-    op.drop_constraint('provider_stats_to_provider_fk', 'provider_statistics', type_='foreignkey')
     op.drop_index(op.f('ix_provider_statistics_provider_id'), table_name='provider_statistics')
     op.drop_column('provider_statistics', 'provider_id')
-    op.drop_constraint('provider_rate_to_provider_fk', 'provider_rates', type_='foreignkey')
     op.drop_index(op.f('ix_provider_rates_provider_id'), table_name='provider_rates')
     op.drop_column('provider_rates', 'provider_id')
 
