@@ -113,6 +113,7 @@ def test_create_job_returns_400_if_missing_data(notify_api, sample_template, moc
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.process_job.apply_async')
             data = {
+                'template': str(sample_template.id)
             }
             path = '/service/{}/job'.format(sample_template.service.id)
             auth_header = create_authorization_header(service_id=sample_template.service.id)
@@ -132,12 +133,35 @@ def test_create_job_returns_400_if_missing_data(notify_api, sample_template, moc
             assert 'Missing data for required field.' in resp_json['message']['id']
 
 
+def test_create_job_returns_404_if_template_does_not_exist(notify_api, sample_service, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.process_job.apply_async')
+            data = {
+                'template': str(sample_service.id)
+            }
+            path = '/service/{}/job'.format(sample_service.id)
+            auth_header = create_authorization_header(service_id=sample_service.id)
+            headers = [('Content-Type', 'application/json'), auth_header]
+            response = client.post(
+                path,
+                data=json.dumps(data),
+                headers=headers)
+
+            resp_json = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 404
+
+            app.celery.tasks.process_job.apply_async.assert_not_called()
+            assert resp_json['result'] == 'error'
+            assert resp_json['message'] == 'No result found'
+
+
 def test_create_job_returns_404_if_missing_service(notify_api, sample_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.process_job.apply_async')
             random_id = str(uuid.uuid4())
-            data = {}
+            data = {'template': str(sample_template.id)}
             path = '/service/{}/job'.format(random_id)
             auth_header = create_authorization_header(service_id=sample_template.service.id)
             headers = [('Content-Type', 'application/json'), auth_header]

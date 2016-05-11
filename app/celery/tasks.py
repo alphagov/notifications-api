@@ -143,7 +143,7 @@ def process_job(job_id):
     dao_update_job(job)
 
     template = Template(
-        dao_get_template_by_id(job.template_id).__dict__
+        dao_get_template_by_id(job.template_id, job.template_version).__dict__
     )
 
     for recipient, personalisation in RecipientCSV(
@@ -154,6 +154,7 @@ def process_job(job_id):
 
         encrypted = encryption.encrypt({
             'template': str(template.id),
+            'template_version': job.template_version,
             'job': str(job.id),
             'to': recipient,
             'personalisation': {
@@ -219,7 +220,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
     try:
 
         template = Template(
-            dao_get_template_by_id(notification['template']).__dict__,
+            dao_get_template_by_id(notification['template'], notification['template_version']).__dict__,
             values=notification.get('personalisation', {}),
             prefix=service.name
         )
@@ -228,6 +229,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
         notification_db_object = Notification(
             id=notification_id,
             template_id=notification['template'],
+            template_version=notification['template_version'],
             to=notification['to'],
             service_id=service_id,
             job_id=notification.get('job', None),
