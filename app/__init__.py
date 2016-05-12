@@ -1,9 +1,10 @@
 import uuid
 import os
-from flask import request, url_for
+from flask import request, url_for, g
 from flask import Flask, _request_ctx_stack
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
+from monotonic import monotonic
 from werkzeug.local import LocalProxy
 from notifications_utils import logging
 from app.celery.celery import NotifyCelery
@@ -101,6 +102,10 @@ def init_app(app):
             error = auth.requires_auth()
             if error:
                 return error
+
+    @app.before_request
+    def record_start_time():
+        g.start = monotonic()
 
     @app.after_request
     def after_request(response):
