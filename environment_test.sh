@@ -20,5 +20,5 @@ export FIRETEXT_NUMBER="Firetext"
 export NOTIFY_EMAIL_DOMAIN="test.notify.com"
 export MMG_API_KEY='mmg-secret-key'
 export MMG_FROM_NUMBER='test'
-export LOADTESTING_API_KEY="kIaXyfhsnUh0hfWLG0sKnhObUPmJx3"
+export LOADTESTING_API_KEY="loadtesting"
 export LOADTESTING_NUMBER="loadtesting"
