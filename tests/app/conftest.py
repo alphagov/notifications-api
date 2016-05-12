@@ -10,10 +10,8 @@ from app.models import (
     Notification,
     InvitedUser,
     Permission,
-    MMG_PROVIDER,
-    SES_PROVIDER,
-    TWILIO_PROVIDER,
     ProviderStatistics,
+    ProviderDetails,
     NotificationStatistics)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
@@ -329,7 +327,7 @@ def sample_notification(notify_db,
     notification_id = uuid.uuid4()
 
     if provider_name is None:
-        provider_name = mmg_provider_name() if template.template_type == 'sms' else ses_provider_name()
+        provider = mmg_provider() if template.template_type == 'sms' else ses_provider()
 
     if to_field:
         to = to_field
@@ -351,7 +349,7 @@ def sample_notification(notify_db,
     }
     notification = Notification(**data)
     if create:
-        dao_create_notification(notification, template.template_type, provider_name)
+        dao_create_notification(notification, template.template_type, provider.identifier)
     return notification
 
 
@@ -463,18 +461,18 @@ def fake_uuid():
 
 
 @pytest.fixture(scope='function')
-def ses_provider_name():
-    return SES_PROVIDER
+def ses_provider():
+    return ProviderDetails.query.filter_by(identifier='ses').one()
 
 
 @pytest.fixture(scope='function')
-def mmg_provider_name():
-    return MMG_PROVIDER
+def firetext_provider():
+    return ProviderDetails.query.filter_by(identifier='mmg').one()
 
 
 @pytest.fixture(scope='function')
-def twilio_provider_name():
-    return TWILIO_PROVIDER
+def mmg_provider():
+    return ProviderDetails.query.filter_by(identifier='mmg').one()
 
 
 @pytest.fixture(scope='function')
@@ -484,13 +482,14 @@ def sample_provider_statistics(notify_db,
                                provider=None,
                                day=None,
                                unit_count=1):
+
     if provider is None:
-        provider = mmg_provider_name()
+        provider = ProviderDetails.query.filter_by(identifier='mmg').first()
     if day is None:
         day = date.today()
     stats = ProviderStatistics(
         service=sample_service,
-        provider=provider,
+        provider_id=provider.id,
         day=day,
         unit_count=unit_count)
     notify_db.session.add(stats)
