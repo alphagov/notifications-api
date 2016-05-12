@@ -82,6 +82,8 @@ class Config(object):
     TWILIO_NUMBER = os.getenv('TWILIO_NUMBER')
     FIRETEXT_NUMBER = os.getenv('FIRETEXT_NUMBER')
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
+    LOADTESTING_NUMBER = os.getenv('LOADTESTING_NUMBER')
+    LOADTESTING_API_KEY = os.getenv("LOADTESTING_API_KEY")
     CSV_UPLOAD_BUCKET_NAME = 'local-notifications-csv-upload'
     NOTIFICATIONS_ALERT = 5  # five mins
 
