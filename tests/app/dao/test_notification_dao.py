@@ -474,9 +474,10 @@ def test_save_notification_and_increment_job(sample_template, sample_job, mmg_pr
 def test_should_not_increment_job_if_notification_fails_to_persist(sample_template, sample_job, mmg_provider_name):
     random_id = str(uuid.uuid4())
     assert Notification.query.count() == 0
-    data = data = {
+    data = {
         'id': random_id,
         'to': '+44709123456',
+        'job_id': sample_job.id,
         'service': sample_template.service,
         'service_id': sample_template.service.id,
         'template': sample_template,
