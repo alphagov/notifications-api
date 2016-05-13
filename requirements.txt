@@ -22,4 +22,4 @@ monotonic==0.3
 git+https://github.com/alphagov/notifications-python-client.git@1.0.0#egg=notifications-python-client==1.0.0
 
 
-git+https://github.com/alphagov/notifications-utils.git@5.2.2#egg=notifications-utils==5.2.2
+git+https://github.com/alphagov/notifications-utils.git@5.2.3#egg=notifications-utils==5.2.3
