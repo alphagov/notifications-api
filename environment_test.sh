@@ -23,6 +23,6 @@ export MMG_FROM_NUMBER='test'
 export LOADTESTING_API_KEY="loadtesting"
 export LOADTESTING_NUMBER="loadtesting"
 export STATSD_ENABLED=True
-export STATSD_HOST="somehost"
+export STATSD_HOST="localhost"
 export STATSD_PORT=1000
 export STATSD_PREFIX="stats-prefix"

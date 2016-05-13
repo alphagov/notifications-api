@@ -102,6 +102,7 @@ class Development(Config):
     STATSD_PORT = os.getenv('STATSD_PORT')
     STATSD_PREFIX = os.getenv('STATSD_PREFIX')
 
+
 class Preview(Config):
     MMG_API_KEY = os.environ['MMG_API_KEY']
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
