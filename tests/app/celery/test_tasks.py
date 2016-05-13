@@ -353,7 +353,9 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     freezer.stop()
 
     statsd_client.timing_with_dates.assert_called_once_with(
-        "notifications.tasks.send-sms.queued-for", datetime(2016, 1, 1, 11, 10, 0, 00000), datetime(2016, 1, 1, 11, 9, 0, 00000)
+        "notifications.tasks.send-sms.queued-for",
+        datetime(2016, 1, 1, 11, 10, 0, 00000),
+        datetime(2016, 1, 1, 11, 9, 0, 00000)
     )
 
     mmg_client.send_sms.assert_called_once_with(
@@ -591,7 +593,9 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
 
     statsd_client.incr.assert_called_once_with("notifications.tasks.send-email")
     statsd_client.timing_with_dates.assert_called_once_with(
-        "notifications.tasks.send-email.queued-for", datetime(2016, 1, 1, 11, 10, 0, 00000), datetime(2016, 1, 1, 11, 9, 0, 00000)
+        "notifications.tasks.send-email.queued-for",
+        datetime(2016, 1, 1, 11, 10, 0, 00000),
+        datetime(2016, 1, 1, 11, 9, 0, 00000)
     )
 
     persisted_notification = notifications_dao.get_notification(
