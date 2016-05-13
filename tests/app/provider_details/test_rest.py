@@ -12,11 +12,12 @@ def test_get_provider_details_in_type_and_identifier_order(notify_db, notify_db_
             )
             assert response.status_code == 200
             json_resp = json.loads(response.get_data(as_text=True))['provider_details']
-            assert len(json_resp) == 3
+            assert len(json_resp) == 4
 
             assert json_resp[0]['identifier'] == 'ses'
             assert json_resp[1]['identifier'] == 'mmg'
             assert json_resp[2]['identifier'] == 'firetext'
+            assert json_resp[3]['identifier'] == 'loadtesting'
 
 
 def test_get_provider_details_by_id(notify_db, notify_db_session, notify_api):
