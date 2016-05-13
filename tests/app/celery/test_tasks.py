@@ -16,7 +16,7 @@ from app.celery.tasks import (
     delete_successful_notifications,
     provider_to_use
 )
-from app import (aws_ses_client, encryption, DATETIME_FORMAT, mmg_client)
+from app import (aws_ses_client, encryption, DATETIME_FORMAT, mmg_client, statsd_client)
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.mmg import MMGClientException
 from app.dao import notifications_dao, jobs_dao, provider_details_dao
@@ -103,6 +103,7 @@ def test_should_call_delete_invotations_on_delete_invitations_task(notify_api, m
 
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_should_process_sms_job(sample_job, mocker, mock_celery_remove_job):
+    mocker.patch('app.statsd_client.incr')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
@@ -124,6 +125,7 @@ def test_should_process_sms_job(sample_job, mocker, mock_celery_remove_job):
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
     assert job.status == 'finished'
+    statsd_client.incr.assert_called_once_with("notifications.tasks.process-job")
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -329,14 +331,29 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
+    mocker.patch('app.statsd_client.incr')
+    mocker.patch('app.statsd_client.timing_with_dates')
 
     notification_id = uuid.uuid4()
+
+    freezer = freeze_time("2016-01-01 11:09:00.00000")
+    freezer.start()
     now = datetime.utcnow()
+    freezer.stop()
+
+    freezer = freeze_time("2016-01-01 11:10:00.00000")
+    freezer.start()
+
     send_sms(
         sample_template_with_placeholders.service_id,
         notification_id,
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
+    )
+    freezer.stop()
+
+    statsd_client.timing_with_dates.assert_called_once_with(
+        "notifications.tasks.send-sms.queued-for", datetime(2016, 1, 1, 11, 10, 0, 00000), datetime(2016, 1, 1, 11, 9, 0, 00000)
     )
 
     mmg_client.send_sms.assert_called_once_with(
@@ -344,6 +361,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
         content="Sample service: Hello Jo",
         reference=str(notification_id)
     )
+    statsd_client.incr.assert_called_once_with("notifications.tasks.send-sms")
     persisted_notification = notifications_dao.get_notification(
         sample_template_with_placeholders.service_id, notification_id
     )
@@ -539,11 +557,21 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
         "personalisation": {"name": "Jo"}
     }
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.statsd_client.incr')
+    mocker.patch('app.statsd_client.timing_with_dates')
     mocker.patch('app.aws_ses_client.get_name', return_value='ses')
+    mocker.patch('app.aws_ses_client.send_email', return_value='ses')
 
     notification_id = uuid.uuid4()
+
+    freezer = freeze_time("2016-01-01 11:09:00.00000")
+    freezer.start()
     now = datetime.utcnow()
+    freezer.stop()
+
+    freezer = freeze_time("2016-01-01 11:10:00.00000")
+    freezer.start()
+
     send_email(
         sample_email_template_with_placeholders.service_id,
         notification_id,
@@ -551,6 +579,8 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
+    freezer.stop()
+
     aws_ses_client.send_email.assert_called_once_with(
         "email_from",
         "my_email@my_email.com",
@@ -558,9 +588,16 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
         body="Hello Jo",
         html_body=AnyStringWith("Hello Jo")
     )
+
+    statsd_client.incr.assert_called_once_with("notifications.tasks.send-email")
+    statsd_client.timing_with_dates.assert_called_once_with(
+        "notifications.tasks.send-email.queued-for", datetime(2016, 1, 1, 11, 10, 0, 00000), datetime(2016, 1, 1, 11, 9, 0, 00000)
+    )
+
     persisted_notification = notifications_dao.get_notification(
         sample_email_template_with_placeholders.service_id, notification_id
     )
+
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template_with_placeholders.id

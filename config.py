@@ -87,12 +87,20 @@ class Config(object):
     CSV_UPLOAD_BUCKET_NAME = 'local-notifications-csv-upload'
     NOTIFICATIONS_ALERT = 5  # five mins
 
+    STATSD_ENABLED = False
+    STATSD_HOST = "localhost"
+    STATSD_PORT = None
+    STATSD_PREFIX = None
+
 
 class Development(Config):
     DEBUG = True
     MMG_API_KEY = os.environ['MMG_API_KEY']
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
-
+    STATSD_ENABLED = True
+    STATSD_HOST = os.getenv('STATSD_HOST')
+    STATSD_PORT = os.getenv('STATSD_PORT')
+    STATSD_PREFIX = os.getenv('STATSD_PREFIX')
 
 class Preview(Config):
     MMG_API_KEY = os.environ['MMG_API_KEY']

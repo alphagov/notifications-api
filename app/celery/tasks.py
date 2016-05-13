@@ -3,7 +3,7 @@ from datetime import datetime
 
 from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
-from app import clients
+from app import clients, statsd_client
 from app.clients.email import EmailClientException
 from app.clients.sms import SmsClientException
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -190,6 +190,7 @@ def process_job(job_id):
     current_app.logger.info(
         "Job {} created at {} started at {} finished at {}".format(job_id, job.created_at, start, finished)
     )
+    statsd_client.incr("notifications.tasks.process-job")
 
 
 @notify_celery.task(name="remove-job")
@@ -235,7 +236,11 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             sent_by=provider.get_name(),
             content_char_count=template.replaced_content_count
         )
-
+        statsd_client.timing_with_dates(
+            "notifications.tasks.send-sms.queued-for",
+            sent_at,
+            datetime.strptime(created_at, DATETIME_FORMAT)
+        )
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS, provider.get_name())
 
         if restricted:
@@ -259,6 +264,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
         current_app.logger.info(
             "SMS {} created at {} sent at {}".format(notification_id, created_at, sent_at)
         )
+        statsd_client.incr("notifications.tasks.send-sms")
     except SQLAlchemyError as e:
         current_app.logger.exception(e)
 
@@ -293,6 +299,11 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
         )
 
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL, provider.get_name())
+        statsd_client.timing_with_dates(
+            "notifications.tasks.send-email.queued-for",
+            sent_at,
+            datetime.strptime(created_at, DATETIME_FORMAT)
+        )
 
         if restricted:
             return
@@ -309,15 +320,18 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
                 body=template.replaced_govuk_escaped,
                 html_body=template.as_HTML_email,
             )
+
             update_notification_reference_by_id(notification_id, reference)
+
         except EmailClientException as e:
             current_app.logger.exception(e)
             notification_db_object.status = 'failed'
+            dao_update_notification(notification_db_object)
 
-        dao_update_notification(notification_db_object)
         current_app.logger.info(
             "Email {} created at {} sent at {}".format(notification_id, created_at, sent_at)
         )
+        statsd_client.incr("notifications.tasks.send-email")
     except SQLAlchemyError as e:
         current_app.logger.exception(e)
 

@@ -39,11 +39,12 @@ class MMGClient(SmsClient):
     MMG sms client
     '''
 
-    def init_app(self, config, *args, **kwargs):
+    def init_app(self, config, statsd_client, *args, **kwargs):
         super(SmsClient, self).__init__(*args, **kwargs)
         self.api_key = config.get('MMG_API_KEY')
         self.from_number = config.get('MMG_FROM_NUMBER')
         self.name = 'mmg'
+        self.statsd_client = statsd_client
 
     def get_name(self):
         return self.name
@@ -78,8 +79,10 @@ class MMGClient(SmsClient):
                     api_error.message
                 )
             )
+            self.statsd_client.incr("notifications.clients.mmg.error")
             raise api_error
         finally:
             elapsed_time = monotonic() - start_time
+            self.statsd_client.timing("notifications.clients.mmg.request-time", elapsed_time)
             current_app.logger.info("MMG request finished in {}".format(elapsed_time))
         return response

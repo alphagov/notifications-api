@@ -50,11 +50,12 @@ class FiretextClient(SmsClient):
     FireText sms client.
     '''
 
-    def init_app(self, config, *args, **kwargs):
+    def init_app(self, config, statsd_client, *args, **kwargs):
         super(SmsClient, self).__init__(*args, **kwargs)
         self.api_key = config.config.get('FIRETEXT_API_KEY')
         self.from_number = config.config.get('FIRETEXT_NUMBER')
         self.name = 'firetext'
+        self.statsd_client = statsd_client
 
     def get_name(self):
         return self.name
@@ -90,8 +91,10 @@ class FiretextClient(SmsClient):
                     api_error.message
                 )
             )
+            self.statsd_client.incr("notifications.clients.firetext.error")
             raise api_error
         finally:
             elapsed_time = monotonic() - start_time
             current_app.logger.info("Firetext request finished in {}".format(elapsed_time))
+            self.statsd_client.timing("notifications.clients.firetext.request-time", elapsed_time)
         return response

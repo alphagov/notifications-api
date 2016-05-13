@@ -39,10 +39,11 @@ class AwsSesClient(EmailClient):
     Amazon SES email client.
     '''
 
-    def init_app(self, region, *args, **kwargs):
+    def init_app(self, region, statsd_client, *args, **kwargs):
         self._client = boto3.client('ses', region_name=region)
         super(AwsSesClient, self).__init__(*args, **kwargs)
         self.name = 'ses'
+        self.statsd_client = statsd_client
 
     def get_name(self):
         return self.name
@@ -88,7 +89,9 @@ class AwsSesClient(EmailClient):
                 ReplyToAddresses=reply_to_addresses)
             elapsed_time = monotonic() - start_time
             current_app.logger.info("AWS SES request finished in {}".format(elapsed_time))
+            self.statsd_client.timing("notifications.clients.ses.request-time", elapsed_time)
             return response['MessageId']
         except Exception as e:
             # TODO logging exceptions
+            self.statsd_client.incr("notifications.clients.ses.error")
             raise AwsSesClientException(str(e))

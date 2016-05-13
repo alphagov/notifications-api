@@ -1510,6 +1510,110 @@ def test_should_handle_validation_code_callbacks(notify_api, notify_db, notify_d
             assert json_resp['message'] == 'SES callback succeeded'
 
 
+def test_should_record_email_request_in_statsd(notify_api, notify_db, notify_db_session, sample_email_template, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
+            mocker.patch('app.celery.tasks.send_email.apply_async')
+            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+
+            data = {
+                'to': 'ok@ok.com',
+                'template': str(sample_email_template.id)
+            }
+
+            auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+
+            response = client.post(
+                path='/notifications/email',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert response.status_code == 201
+            app.statsd_client.incr.assert_called_once_with("notification.api.email")
+
+
+def test_should_record_sms_request_in_statsd(notify_api, notify_db, notify_db_session, sample_template, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+
+            data = {
+                'to': '07123123123',
+                'template': str(sample_template.id)
+            }
+
+            auth_header = create_authorization_header(service_id=sample_template.service_id)
+
+            response = client.post(
+                path='/notifications/sms',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert response.status_code == 201
+            app.statsd_client.incr.assert_called_once_with("notification.api.sms")
+
+
+def test_ses_callback_should_update_record_statsd(
+        notify_api,
+        notify_db,
+        notify_db_session,
+        sample_email_template,
+        mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
+
+            notification = create_sample_notification(
+                notify_db,
+                notify_db_session,
+                template=sample_email_template,
+                reference='ref'
+            )
+
+            assert get_notification_by_id(notification.id).status == 'sending'
+
+            client.post(
+                path='/notifications/email/ses',
+                data=ses_notification_callback(),
+                headers=[('Content-Type', 'text/plain; charset=UTF-8')]
+            )
+            app.statsd_client.incr.assert_called_once_with("notifications.callback.ses.delivered")
+
+
+def test_process_mmg_response_records_statsd(notify_api, sample_notification, mocker):
+    with notify_api.test_client() as client:
+        mocker.patch('app.statsd_client.incr')
+        data = json.dumps({"reference": "mmg_reference",
+                           "CID": str(sample_notification.id),
+                           "MSISDN": "447777349060",
+                           "status": "3",
+                           "deliverytime": "2016-04-05 16:01:07"})
+
+        client.post(path='notifications/sms/mmg',
+                               data=data,
+                               headers=[('Content-Type', 'application/json')])
+        app.statsd_client.incr.assert_called_once_with("notifications.callback.mmg.delivered")
+
+
+
+def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db_session, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
+            notification = create_sample_notification(notify_db, notify_db_session, status='delivered')
+
+            client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=2&time=2016-03-10 14:17:00&reference={}'.format(
+                    notification.id
+                ),
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            app.statsd_client.incr.assert_called_once_with("notifications.callback.firetext.delivered")
+
+
+
 def ses_validation_code_callback():
     return b'{\n  "Type" : "Notification",\n  "MessageId" : "ref",\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",\n  "Message" : "{\\"notificationType\\":\\"Delivery\\",\\"mail\\":{\\"timestamp\\":\\"2016-03-14T12:35:25.909Z\\",\\"source\\":\\"valid-code@test.com\\",\\"sourceArn\\":\\"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify\\",\\"sendingAccountId\\":\\"123456789012\\",\\"messageId\\":\\"ref\\",\\"destination\\":[\\"testing@digital.cabinet-office.gov.uk\\"]},\\"delivery\\":{\\"timestamp\\":\\"2016-03-14T12:35:26.567Z\\",\\"processingTimeMillis\\":658,\\"recipients\\":[\\"testing@digital.cabinet-office.gov.u\\"],\\"smtpResponse\\":\\"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp\\",\\"reportingMTA\\":\\"a6-238.smtp-out.eu-west-1.amazonses.com\\"}}",\n  "Timestamp" : "2016-03-14T12:35:26.665Z",\n  "SignatureVersion" : "1",\n  "Signature" : "X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==",\n  "SigningCertURL" : "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem",\n  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"\n}'  # noqa
 
