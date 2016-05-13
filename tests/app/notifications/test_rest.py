@@ -1517,7 +1517,7 @@ def test_should_record_email_request_in_statsd(notify_api, notify_db, notify_db_
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 201
-            app.statsd_client.incr.assert_called_once_with("notification.api.email")
+            app.statsd_client.incr.assert_called_once_with("notifications.api.email")
 
 
 def test_should_record_sms_request_in_statsd(notify_api, notify_db, notify_db_session, sample_template, mocker):
@@ -1539,7 +1539,7 @@ def test_should_record_sms_request_in_statsd(notify_api, notify_db, notify_db_se
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 201
-            app.statsd_client.incr.assert_called_once_with("notification.api.sms")
+            app.statsd_client.incr.assert_called_once_with("notifications.api.sms")
 
 
 def test_ses_callback_should_update_record_statsd(
