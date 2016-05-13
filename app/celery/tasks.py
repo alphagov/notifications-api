@@ -3,12 +3,12 @@ from datetime import datetime
 
 from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
-
-from app.clients.email.aws_ses import AwsSesClientException
-from app.clients.sms.firetext import FiretextClientException
-from app.clients.sms.mmg import MMGClientException
+from app import clients
+from app.clients.email import EmailClientException
+from app.clients.sms import SmsClientException
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
+from app.dao.provider_details_dao import get_provider_details_by_notification_type
 
 from notifications_utils.template import Template, unlink_govuk_escaped
 
@@ -23,10 +23,7 @@ from app import (
     DATETIME_FORMAT,
     DATE_FORMAT,
     notify_celery,
-    encryption,
-    firetext_client,
-    aws_ses_client,
-    mmg_client
+    encryption
 )
 
 from app.aws import s3
@@ -159,7 +156,7 @@ def process_job(job_id):
             'personalisation': {
                 key: personalisation.get(key)
                 for key in template.placeholders
-            }
+                }
         })
 
         if template.template_type == 'sms':
@@ -206,7 +203,8 @@ def remove_job(job_id):
 def send_sms(service_id, notification_id, encrypted_notification, created_at):
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
-    client = mmg_client
+
+    provider = provider_to_use('sms', notification_id)
 
     restricted = False
 
@@ -234,23 +232,23 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             status='failed' if restricted else 'sending',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
-            sent_by=client.get_name(),
+            sent_by=provider.get_name(),
             content_char_count=template.replaced_content_count
         )
 
-        dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS, client.get_name())
+        dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS, provider.get_name())
 
         if restricted:
             return
 
         try:
-            client.send_sms(
+            provider.send_sms(
                 to=validate_and_format_phone_number(notification['to']),
                 content=template.replaced,
                 reference=str(notification_id)
             )
 
-        except MMGClientException as e:
+        except SmsClientException as e:
             current_app.logger.error(
                 "SMS notification {} failed".format(notification_id)
             )
@@ -268,8 +266,9 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
 @notify_celery.task(name="send-email")
 def send_email(service_id, notification_id, from_address, encrypted_notification, created_at):
     notification = encryption.decrypt(encrypted_notification)
-    client = aws_ses_client
     service = dao_fetch_service_by_id(service_id)
+
+    provider = provider_to_use('email', notification_id)
 
     restricted = False
 
@@ -290,10 +289,10 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
             status='failed' if restricted else 'sending',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
-            sent_by=client.get_name()
+            sent_by=provider.get_name()
         )
 
-        dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL, client.get_name())
+        dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL, provider.get_name())
 
         if restricted:
             return
@@ -303,7 +302,7 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
                 dao_get_template_by_id(notification['template']).__dict__,
                 values=notification.get('personalisation', {})
             )
-            reference = client.send_email(
+            reference = provider.send_email(
                 from_address,
                 notification['to'],
                 template.replaced_subject,
@@ -311,7 +310,7 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
                 html_body=template.as_HTML_email,
             )
             update_notification_reference_by_id(notification_id, reference)
-        except AwsSesClientException as e:
+        except EmailClientException as e:
             current_app.logger.exception(e)
             notification_db_object.status = 'failed'
 
@@ -325,20 +324,15 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
 
 @notify_celery.task(name='send-sms-code')
 def send_sms_code(encrypted_verification):
+    provider = provider_to_use('sms', 'send-sms-code')
+
     verification_message = encryption.decrypt(encrypted_verification)
     try:
-        mmg_client.send_sms(validate_and_format_phone_number(verification_message['to']),
-                            "{} is your Notify authentication code".format(
-                                verification_message['secret_code']),
-                            'send-sms-code')
-    except MMGClientException as e:
-        current_app.logger.exception(e)
-
-
-def send_sms_via_firetext(to, content, reference):
-    try:
-        firetext_client.send_sms(to=to, content=content, reference=reference)
-    except FiretextClientException as e:
+        provider.send_sms(validate_and_format_phone_number(verification_message['to']),
+                          "{} is your Notify authentication code".format(
+                              verification_message['secret_code']),
+                          'send-sms-code')
+    except SmsClientException as e:
         current_app.logger.exception(e)
 
 
@@ -369,6 +363,8 @@ def invited_user_url(base_url, token):
 
 @notify_celery.task(name='email-invited-user')
 def email_invited_user(encrypted_invitation):
+    provider = provider_to_use('email', 'email-invited-user')
+
     invitation = encryption.decrypt(encrypted_invitation)
     url = invited_user_url(current_app.config['ADMIN_BASE_URL'],
                            invitation['token'])
@@ -382,11 +378,11 @@ def email_invited_user(encrypted_invitation):
             current_app.config['NOTIFY_EMAIL_DOMAIN']
         )
         subject_line = invitation_subject_line(invitation['user_name'], invitation['service_name'])
-        aws_ses_client.send_email(email_from,
-                                  invitation['to'],
-                                  subject_line,
-                                  invitation_content)
-    except AwsSesClientException as e:
+        provider.send_email(email_from,
+                            invitation['to'],
+                            subject_line,
+                            invitation_content)
+    except EmailClientException as e:
         current_app.logger.exception(e)
 
 
@@ -404,17 +400,23 @@ def password_reset_message(name, url):
 
 @notify_celery.task(name='email-reset-password')
 def email_reset_password(encrypted_reset_password_message):
+    provider = provider_to_use('email', 'email-reset-password')
+
     reset_password_message = encryption.decrypt(encrypted_reset_password_message)
     try:
         email_from = '"GOV.UK Notify" <{}>'.format(
             current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS']
         )
-        aws_ses_client.send_email(email_from,
-                                  reset_password_message['to'],
-                                  "Reset your GOV.UK Notify password",
-                                  password_reset_message(name=reset_password_message['name'],
-                                                         url=reset_password_message['reset_password_url']))
-    except AwsSesClientException as e:
+        provider.send_email(
+            email_from,
+            reset_password_message['to'],
+            "Reset your GOV.UK Notify password",
+            password_reset_message(
+                name=reset_password_message['name'],
+                url=reset_password_message['reset_password_url']
+            )
+        )
+    except EmailClientException as e:
         current_app.logger.exception(e)
 
 
@@ -429,22 +431,26 @@ def registration_verification_template(name, url):
 
 @notify_celery.task(name='email-registration-verification')
 def email_registration_verification(encrypted_verification_message):
+    provider = provider_to_use('email', 'email-reset-password')
+
     verification_message = encryption.decrypt(encrypted_verification_message)
     try:
         email_from = '"GOV.UK Notify" <{}>'.format(
             current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS']
         )
-        aws_ses_client.send_email(email_from,
-                                  verification_message['to'],
-                                  "Confirm GOV.UK Notify registration",
-                                  registration_verification_template(name=verification_message['name'],
-                                                                     url=verification_message['url']))
-    except AwsSesClientException as e:
+        provider.send_email(
+            email_from,
+            verification_message['to'],
+            "Confirm GOV.UK Notify registration",
+            registration_verification_template(
+                name=verification_message['name'],
+                url=verification_message['url'])
+        )
+    except EmailClientException as e:
         current_app.logger.exception(e)
 
 
 def service_allowed_to_send_to(recipient, service):
-
     if not service.restricted:
         return True
 
@@ -454,3 +460,17 @@ def service_allowed_to_send_to(recipient, service):
             [user.mobile_number, user.email_address] for user in service.users
         )
     )
+
+
+def provider_to_use(notification_type, notification_id):
+    active_providers_in_order = [
+        provider for provider in get_provider_details_by_notification_type(notification_type) if provider.active
+    ]
+
+    if not active_providers_in_order:
+        current_app.logger.error(
+            "{} {} failed as no active providers".format(notification_type, notification_id)
+        )
+        raise Exception("No active {} providers".format(notification_type))
+
+    return clients.get_client_by_name_and_type(active_providers_in_order[0].identifier, notification_type)
