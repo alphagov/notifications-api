@@ -107,18 +107,18 @@ def get_template_version(service_id, template_id, version):
         )
     )
     if errors:
-        return json_resp(result='error', message=errors), 400
+        return jsonify(result='error', message=errors), 400
     return jsonify(data=data)
 
 
-@template.route('/<uuid:template_id>/version')
+@template.route('/<uuid:template_id>/versions')
 def get_template_versions(service_id, template_id):
     data, errors = template_history_schema.dump(
-        dao_get_template_versions(service_id, template_id),
+        dao_get_template_versions(service_id=service_id, template_id=template_id),
         many=True
     )
     if errors:
-        return json_resp(result='error', message=errors), 400
+        return jsonify(result='error', message=errors), 400
     return jsonify(data=data)
 
 

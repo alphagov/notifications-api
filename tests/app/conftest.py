@@ -237,13 +237,12 @@ def sample_job(notify_db,
     if template is None:
         template = sample_template(notify_db, notify_db_session,
                                    service=service)
-    job_id = uuid.uuid4()
     data = {
         'id': uuid.uuid4(),
         'service_id': service.id,
         'service': service,
         'template_id': template.id,
-        'template_version': 1,
+        'template_version': template.version,
         'original_file_name': 'some.csv',
         'notification_count': notification_count,
         'created_at': created_at,
@@ -286,6 +285,7 @@ def sample_email_job(notify_db,
         'service_id': service.id,
         'service': service,
         'template_id': template.id,
+        'template_version': template.version,
         'original_file_name': 'some.csv',
         'notification_count': 1,
         'created_by': service.created_by

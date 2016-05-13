@@ -357,7 +357,7 @@ def send_notification(notification_type):
         ), 400
 
     notification_id = create_uuid()
-
+    notification.update({"template_version": template.version})
     if notification_type == 'sms':
         send_sms.apply_async((
             service_id,

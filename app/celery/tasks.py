@@ -285,6 +285,7 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
         notification_db_object = Notification(
             id=notification_id,
             template_id=notification['template'],
+            template_version=notification['template_version'],
             to=notification['to'],
             service_id=service_id,
             job_id=notification.get('job', None),
@@ -301,7 +302,7 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
 
         try:
             template = Template(
-                dao_get_template_by_id(notification['template']).__dict__,
+                dao_get_template_by_id(notification['template'], notification['template_version']).__dict__,
                 values=notification.get('personalisation', {})
             )
             reference = provider.send_email(
@@ -315,8 +316,8 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
         except EmailClientException as e:
             current_app.logger.exception(e)
             notification_db_object.status = 'failed'
+            dao_update_notification(notification_db_object)
 
-        dao_update_notification(notification_db_object)
         current_app.logger.info(
             "Email {} created at {} sent at {}".format(notification_id, created_at, sent_at)
         )
