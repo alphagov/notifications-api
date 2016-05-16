@@ -23,6 +23,14 @@ def upgrade():
     op.alter_column('jobs', 'template_version', nullable=False)
     op.alter_column('notifications', 'template_version', nullable=False)
 
+    # fix template_history where created_by_id is not set.
+    query = "update templates_history set created_by_id = " \
+            "         (select created_by_id from templates " \
+            "           where templates.id = templates_history.id " \
+            "           and templates.version = templates_history.version) " \
+            "where templates_history.created_by_id is null"
+    op.execute(query)
+
 
 def downgrade():
     op.drop_column('notifications', 'template_version')
