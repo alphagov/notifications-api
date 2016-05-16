@@ -42,6 +42,10 @@ export TWILIO_AUTH_TOKEN=[contact team member for auth token]
 export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.works'
 export MMG_API_KEY=mmg=secret-key
 export MMG_FROM_NUMBER="MMG
+export STATSD_ENABLED=True
+export STATSD_HOST="localhost"
+export STATSD_PORT=1000
+export STATSD_PREFIX="stats-prefix"
 "> environment.sh
 ```
 
