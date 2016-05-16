@@ -87,6 +87,11 @@ class Config(object):
     CSV_UPLOAD_BUCKET_NAME = 'local-notifications-csv-upload'
     NOTIFICATIONS_ALERT = 5  # five mins
 
+    STATSD_ENABLED = False
+    STATSD_HOST = "localhost"
+    STATSD_PORT = None
+    STATSD_PREFIX = None
+
 
 class Development(Config):
     DEBUG = True

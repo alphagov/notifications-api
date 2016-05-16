@@ -241,6 +241,7 @@ class Job(db.Model):
     service = db.relationship('Service', backref=db.backref('jobs', lazy='dynamic'))
     template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), index=True, unique=False)
     template = db.relationship('Template', backref=db.backref('jobs', lazy='dynamic'))
+    template_version = db.Column(db.Integer, nullable=False)
     created_at = db.Column(
         db.DateTime,
         index=False,
@@ -318,6 +319,7 @@ class Notification(db.Model):
     service = db.relationship('Service')
     template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), index=True, unique=False)
     template = db.relationship('Template')
+    template_version = db.Column(db.Integer, nullable=False)
     content_char_count = db.Column(db.Integer, nullable=True)
     created_at = db.Column(
         db.DateTime,

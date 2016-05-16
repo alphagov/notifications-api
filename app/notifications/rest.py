@@ -1,5 +1,5 @@
 from datetime import datetime
-
+import statsd
 import itertools
 from flask import (
     Blueprint,
@@ -12,7 +12,7 @@ from flask import (
 from notifications_utils.recipients import allowed_to_send_to, first_column_heading
 from notifications_utils.template import Template
 from app.clients.email.aws_ses import get_aws_responses
-from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT
+from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT, statsd_client
 from app.authentication.auth import require_admin
 from app.dao import (
     templates_dao,
@@ -103,6 +103,7 @@ def process_ses_response():
                     )
                 )
 
+            statsd_client.incr('notifications.callback.ses.{}'.format(notification_statistics_status))
             return jsonify(
                 result="success", message="SES callback succeeded"
             ), 200
@@ -357,7 +358,7 @@ def send_notification(notification_type):
         ), 400
 
     notification_id = create_uuid()
-
+    notification.update({"template_version": template.version})
     if notification_type == 'sms':
         send_sms.apply_async((
             service_id,
@@ -374,4 +375,5 @@ def send_notification(notification_type):
             datetime.utcnow().strftime(DATETIME_FORMAT)
         ), queue='email')
 
+    statsd_client.incr('notifications.api.{}'.format(notification_type))
     return jsonify(data={"notification": {"id": notification_id}}), 201

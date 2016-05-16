@@ -14,6 +14,8 @@ from app.dao.services_dao import (
     dao_fetch_service_by_id
 )
 
+from app.dao.templates_dao import (dao_get_template_by_id)
+
 from app.schemas import job_schema
 
 from app.celery.tasks import process_job
@@ -49,6 +51,8 @@ def create_job(service_id):
     data.update({
         "service": service_id
     })
+    template = dao_get_template_by_id(data['template'])
+    data.update({"template_version": template.version})
     job, errors = job_schema.load(data)
     if errors:
         return jsonify(result="error", message=errors), 400

@@ -1,11 +1,10 @@
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.exc import IntegrityError
 from app.dao.templates_dao import (
     dao_create_template,
     dao_get_template_by_id_and_service_id,
     dao_get_all_templates_for_service,
-    dao_update_template
-)
+    dao_update_template,
+    dao_get_template_versions)
 from tests.app.conftest import sample_template as create_sample_template
 from app.models import Template
 import pytest
@@ -230,3 +229,19 @@ def test_get_template_history_version(sample_user, sample_service, sample_templa
         '1'
     )
     assert old_template.content == old_content
+
+
+def test_get_template_versions(sample_template):
+    original_content = sample_template.content
+    sample_template.content = 'new version'
+    dao_update_template(sample_template)
+    versions = dao_get_template_versions(service_id=sample_template.service_id, template_id=sample_template.id)
+    assert versions.__len__() == 2
+    for x in versions:
+        if x.version == 2:
+            assert x.content == 'new version'
+        else:
+            assert x.content == original_content
+    from app.schemas import (template_history_schema)
+    v = template_history_schema.load(versions, many=True)
+    assert v.__len__() == 2
