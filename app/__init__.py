@@ -1,5 +1,7 @@
 import uuid
 import os
+
+import statsd
 from flask import request, url_for, g
 from flask import Flask, _request_ctx_stack
 from flask.ext.sqlalchemy import SQLAlchemy
@@ -10,10 +12,10 @@ from notifications_utils import logging
 from app.celery.celery import NotifyCelery
 from app.clients import Clients
 from app.clients.sms.mmg import MMGClient
-from app.clients.sms.twilio import TwilioClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.loadtesting import LoadtestingClient
 from app.clients.email.aws_ses import AwsSesClient
+from app.clients.statsd.statsd_client import StatsdClient
 from app.encryption import Encryption
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
@@ -22,12 +24,12 @@ DATE_FORMAT = "%Y-%m-%d"
 db = SQLAlchemy()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
-twilio_client = TwilioClient()
 firetext_client = FiretextClient()
 loadtest_client = LoadtestingClient()
 mmg_client = MMGClient()
 aws_ses_client = AwsSesClient()
 encryption = Encryption()
+statsd_client = StatsdClient()
 
 clients = Clients()
 
@@ -47,11 +49,11 @@ def create_app(app_name=None):
     ma.init_app(application)
     init_app(application)
     logging.init_app(application)
-    twilio_client.init_app(application)
-    firetext_client.init_app(application)
-    loadtest_client.init_app(application)
-    mmg_client.init_app(application.config)
-    aws_ses_client.init_app(application.config['AWS_REGION'])
+    statsd_client.init_app(application)
+    firetext_client.init_app(application, statsd_client=statsd_client)
+    loadtest_client.init_app(application, statsd_client=statsd_client)
+    mmg_client.init_app(application.config, statsd_client=statsd_client)
+    aws_ses_client.init_app(application.config['AWS_REGION'], statsd_client=statsd_client)
     notify_celery.init_app(application)
     encryption.init_app(application)
     clients.init_app(sms_clients=[firetext_client, mmg_client, loadtest_client], email_clients=[aws_ses_client])

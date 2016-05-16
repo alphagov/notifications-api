@@ -18,6 +18,10 @@ class Live(Config):
     TWILIO_AUTH_TOKEN = os.getenv('LIVE_TWILIO_AUTH_TOKEN')
     MMG_API_KEY = os.environ['LIVE_MMG_API_KEY']
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
+    STATSD_ENABLED = True
+    STATSD_HOST = os.getenv('LIVE_STATSD_HOST')
+    STATSD_PORT = os.getenv('LIVE_STATSD_PORT')
+    STATSD_PREFIX = os.getenv('LIVE_STATSD_PREFIX')
 
     BROKER_TRANSPORT_OPTIONS = {
         'region': 'eu-west-1',

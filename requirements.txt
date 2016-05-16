@@ -17,7 +17,7 @@ boto==2.39.0
 celery==3.1.20
 twilio==4.6.0
 monotonic==0.3
-
+statsd==3.2.1
 
 git+https://github.com/alphagov/notifications-python-client.git@1.0.0#egg=notifications-python-client==1.0.0
 

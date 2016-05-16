@@ -287,7 +287,6 @@ def test_get_all_notifications_returns_empty_list(notify_api, sample_api_key):
 def test_filter_by_template_type(notify_api, notify_db, notify_db_session, sample_template, sample_email_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             notification_1 = create_sample_notification(
                 notify_db,
                 notify_db_session,
@@ -318,7 +317,6 @@ def test_filter_by_multiple_template_types(notify_api,
                                            sample_email_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             notification_1 = create_sample_notification(
                 notify_db,
                 notify_db_session,
@@ -346,7 +344,6 @@ def test_filter_by_multiple_template_types(notify_api,
 def test_filter_by_status(notify_api, notify_db, notify_db_session, sample_email_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             notification_1 = create_sample_notification(
                 notify_db,
                 notify_db_session,
@@ -378,7 +375,6 @@ def test_filter_by_multiple_statuss(notify_api,
                                     sample_email_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             notification_1 = create_sample_notification(
                 notify_db,
                 notify_db_session,
@@ -412,7 +408,6 @@ def test_filter_by_status_and_template_type(notify_api,
                                             sample_email_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             notification_1 = create_sample_notification(
                 notify_db,
                 notify_db_session,
@@ -955,7 +950,6 @@ def test_no_limit_for_live_service(notify_api,
                                    sample_notification):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             sample_service.message_limit = 1
             notify_db.session.add(sample_service)
             notify_db.session.commit()
@@ -1356,7 +1350,6 @@ def test_ses_callback_should_fail_if_invalid_json(notify_api):
 def test_ses_callback_should_fail_if_invalid_notification_type(notify_api):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             response = client.post(
                 path='/notifications/email/ses',
                 data=ses_invalid_notification_type_callback(),
@@ -1371,7 +1364,6 @@ def test_ses_callback_should_fail_if_invalid_notification_type(notify_api):
 def test_ses_callback_should_fail_if_missing_message_id(notify_api):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             response = client.post(
                 path='/notifications/email/ses',
                 data=ses_missing_notification_id_callback(),
@@ -1386,7 +1378,6 @@ def test_ses_callback_should_fail_if_missing_message_id(notify_api):
 def test_ses_callback_should_fail_if_notification_cannot_be_found(notify_db, notify_db_session, notify_api):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             response = client.post(
                 path='/notifications/email/ses',
                 data=ses_invalid_notification_id_callback(),
@@ -1436,7 +1427,6 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
         sample_email_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             notification1 = create_sample_notification(
                 notify_db,
                 notify_db_session,
@@ -1487,7 +1477,6 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
 def test_should_handle_invite_email_callbacks(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             notify_api.config['INVITATION_EMAIL_FROM'] = 'test-invite'
             notify_api.config['NOTIFY_EMAIL_DOMAIN'] = 'test-domain.com'
 
@@ -1505,7 +1494,6 @@ def test_should_handle_invite_email_callbacks(notify_api, notify_db, notify_db_s
 def test_should_handle_validation_code_callbacks(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             notify_api.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'] = 'valid-code@test.com'
 
             response = client.post(
@@ -1517,6 +1505,108 @@ def test_should_handle_validation_code_callbacks(notify_api, notify_db, notify_d
             assert response.status_code == 200
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'SES callback succeeded'
+
+
+def test_should_record_email_request_in_statsd(notify_api, notify_db, notify_db_session, sample_email_template, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
+            mocker.patch('app.celery.tasks.send_email.apply_async')
+            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+
+            data = {
+                'to': 'ok@ok.com',
+                'template': str(sample_email_template.id)
+            }
+
+            auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+
+            response = client.post(
+                path='/notifications/email',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert response.status_code == 201
+            app.statsd_client.incr.assert_called_once_with("notifications.api.email")
+
+
+def test_should_record_sms_request_in_statsd(notify_api, notify_db, notify_db_session, sample_template, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+
+            data = {
+                'to': '07123123123',
+                'template': str(sample_template.id)
+            }
+
+            auth_header = create_authorization_header(service_id=sample_template.service_id)
+
+            response = client.post(
+                path='/notifications/sms',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert response.status_code == 201
+            app.statsd_client.incr.assert_called_once_with("notifications.api.sms")
+
+
+def test_ses_callback_should_update_record_statsd(
+        notify_api,
+        notify_db,
+        notify_db_session,
+        sample_email_template,
+        mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
+
+            notification = create_sample_notification(
+                notify_db,
+                notify_db_session,
+                template=sample_email_template,
+                reference='ref'
+            )
+
+            assert get_notification_by_id(notification.id).status == 'sending'
+
+            client.post(
+                path='/notifications/email/ses',
+                data=ses_notification_callback(),
+                headers=[('Content-Type', 'text/plain; charset=UTF-8')]
+            )
+            app.statsd_client.incr.assert_called_once_with("notifications.callback.ses.delivered")
+
+
+def test_process_mmg_response_records_statsd(notify_api, sample_notification, mocker):
+    with notify_api.test_client() as client:
+        mocker.patch('app.statsd_client.incr')
+        data = json.dumps({"reference": "mmg_reference",
+                           "CID": str(sample_notification.id),
+                           "MSISDN": "447777349060",
+                           "status": "3",
+                           "deliverytime": "2016-04-05 16:01:07"})
+
+        client.post(path='notifications/sms/mmg',
+                    data=data,
+                    headers=[('Content-Type', 'application/json')])
+        app.statsd_client.incr.assert_called_once_with("notifications.callback.mmg.delivered")
+
+
+def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db_session, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
+            notification = create_sample_notification(notify_db, notify_db_session, status='delivered')
+
+            client.post(
+                path='/notifications/sms/firetext',
+                data='mobile=441234123123&status=2&time=2016-03-10 14:17:00&reference={}'.format(
+                    notification.id
+                ),
+                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+            app.statsd_client.incr.assert_called_once_with("notifications.callback.firetext.delivered")
 
 
 def ses_validation_code_callback():
