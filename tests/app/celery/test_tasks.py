@@ -1,6 +1,7 @@
 import uuid
 import pytest
 from flask import current_app
+from mock import ANY
 from notifications_utils.recipients import validate_phone_number, format_phone_number
 
 from app.celery.tasks import (
@@ -104,6 +105,7 @@ def test_should_call_delete_invotations_on_delete_invitations_task(notify_api, m
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_should_process_sms_job(sample_job, mocker, mock_celery_remove_job):
     mocker.patch('app.statsd_client.incr')
+    mocker.patch('app.statsd_client.timing')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
@@ -126,6 +128,7 @@ def test_should_process_sms_job(sample_job, mocker, mock_celery_remove_job):
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
     assert job.status == 'finished'
     statsd_client.incr.assert_called_once_with("notifications.tasks.process-job")
+    statsd_client.timing.assert_called_once_with("notifications.tasks.process-job.task-time", ANY)
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -333,6 +336,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
     mocker.patch('app.statsd_client.incr')
     mocker.patch('app.statsd_client.timing_with_dates')
+    mocker.patch('app.statsd_client.timing')
 
     notification_id = uuid.uuid4()
 
@@ -357,6 +361,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
         datetime(2016, 1, 1, 11, 10, 0, 00000),
         datetime(2016, 1, 1, 11, 9, 0, 00000)
     )
+    statsd_client.timing.assert_called_once_with("notifications.tasks.send-sms.task-time", ANY)
 
     mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
@@ -561,6 +566,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.statsd_client.incr')
     mocker.patch('app.statsd_client.timing_with_dates')
+    mocker.patch('app.statsd_client.timing')
     mocker.patch('app.aws_ses_client.get_name', return_value='ses')
     mocker.patch('app.aws_ses_client.send_email', return_value='ses')
 
@@ -597,7 +603,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
         datetime(2016, 1, 1, 11, 10, 0, 00000),
         datetime(2016, 1, 1, 11, 9, 0, 00000)
     )
-
+    statsd_client.timing.assert_called_once_with("notifications.tasks.send-email.task-time", ANY)
     persisted_notification = notifications_dao.get_notification(
         sample_email_template_with_placeholders.service_id, notification_id
     )

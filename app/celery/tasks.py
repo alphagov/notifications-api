@@ -2,6 +2,7 @@ import itertools
 from datetime import datetime
 
 from flask import current_app
+from monotonic import monotonic
 from sqlalchemy.exc import SQLAlchemyError
 from app import clients, statsd_client
 from app.clients.email import EmailClientException
@@ -112,6 +113,7 @@ def delete_invitations():
 
 @notify_celery.task(name="process-job")
 def process_job(job_id):
+    task_start = monotonic()
     start = datetime.utcnow()
     job = dao_get_job_by_id(job_id)
 
@@ -191,6 +193,7 @@ def process_job(job_id):
         "Job {} created at {} started at {} finished at {}".format(job_id, job.created_at, start, finished)
     )
     statsd_client.incr("notifications.tasks.process-job")
+    statsd_client.timing("notifications.tasks.process-job.task-time", monotonic() - task_start)
 
 
 @notify_celery.task(name="remove-job")
@@ -202,6 +205,7 @@ def remove_job(job_id):
 
 @notify_celery.task(name="send-sms")
 def send_sms(service_id, notification_id, encrypted_notification, created_at):
+    task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
@@ -265,12 +269,14 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             "SMS {} created at {} sent at {}".format(notification_id, created_at, sent_at)
         )
         statsd_client.incr("notifications.tasks.send-sms")
+        statsd_client.timing("notifications.tasks.send-sms.task-time", monotonic() - task_start)
     except SQLAlchemyError as e:
         current_app.logger.exception(e)
 
 
 @notify_celery.task(name="send-email")
 def send_email(service_id, notification_id, from_address, encrypted_notification, created_at):
+    task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
@@ -332,6 +338,7 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
             "Email {} created at {} sent at {}".format(notification_id, created_at, sent_at)
         )
         statsd_client.incr("notifications.tasks.send-email")
+        statsd_client.timing("notifications.tasks.send-email.task-time", monotonic() - task_start)
     except SQLAlchemyError as e:
         current_app.logger.exception(e)
 
