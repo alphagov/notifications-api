@@ -13,6 +13,7 @@ from app.dao.dao_utils import (
 @version_class(Template)
 def dao_create_template(template):
     template.id = uuid.uuid4()  # must be set now so version history model can use same id
+    template.archived = False
     db.session.add(template)
 
 
