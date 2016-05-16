@@ -19,6 +19,7 @@ def test_create_job(sample_template):
         'id': job_id,
         'service_id': sample_template.service.id,
         'template_id': sample_template.id,
+        'template_version': sample_template.version,
         'original_file_name': 'some.csv',
         'notification_count': 1,
         'created_by': sample_template.created_by

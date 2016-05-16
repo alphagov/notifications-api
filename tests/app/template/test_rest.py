@@ -460,3 +460,27 @@ def test_update_400_for_over_limit_content(notify_api, sample_user, sample_templ
             assert (
                 'Content has a character count greater than the limit of {}'
             ).format(limit) in json_resp['message']['content']
+
+
+def test_should_return_all_template_versions_for_service_and_template_id(notify_api, sample_template):
+    original_content = sample_template.content
+    from app.dao.templates_dao import dao_update_template
+    sample_template.content = original_content + '1'
+    dao_update_template(sample_template)
+    sample_template.content = original_content + '2'
+    dao_update_template(sample_template)
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header()
+            resp = client.get('/service/{}/template/{}/versions'.format(sample_template.service_id, sample_template.id),
+                              headers=[('Content-Type', 'application/json'), auth_header])
+            assert resp.status_code == 200
+            resp_json = json.loads(resp.get_data(as_text=True))['data']
+            assert len(resp_json) == 3
+            for x in resp_json:
+                if x['version'] == 1:
+                    assert x['content'] == original_content
+                elif x['version'] == 2:
+                    assert x['content'] == original_content + '1'
+                else:
+                    assert x['content'] == original_content + '2'

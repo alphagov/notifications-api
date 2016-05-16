@@ -49,4 +49,5 @@ def dao_get_all_templates_for_service(service_id):
 
 def dao_get_template_versions(service_id, template_id):
     history_model = Template.get_history_model()
-    return history_model.query.filter_by(service_id=service_id, id=template_id).order_by(desc(history_model.version))
+    return history_model.query.filter_by(service_id=service_id, id=template_id).order_by(
+        desc(history_model.version)).all()

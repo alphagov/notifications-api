@@ -3,6 +3,7 @@ import uuid
 import random
 import string
 import app.celery.tasks
+from app import encryption
 from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
 from tests.app.conftest import sample_job as create_sample_job
@@ -516,11 +517,10 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_templat
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.send_sms.apply_async')
-            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             data = {
                 'to': '+447700900855',
-                'template': sample_template_with_placeholders.id,
+                'template': str(sample_template_with_placeholders.id),
                 'personalisation': {
                     'name': 'Jo'
                 }
@@ -533,11 +533,13 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_templat
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             notification_id = json.loads(response.data)['data']['notification']['id']
+            data.update({"template_version": sample_template_with_placeholders.version})
+            encrypted_notification = encryption.encrypt(data)
 
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 (str(sample_template_with_placeholders.service.id),
                  notification_id,
-                 "something_encrypted",
+                 encrypted_notification,
                  "2016-01-01T11:09:00.061258"),
                 queue="sms"
             )
@@ -705,6 +707,9 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
 
             notification_id = json.loads(response.data)['data']['notification']['id']
             assert app.encryption.encrypt.call_args[0][0]['to'] == '+447700900855'
+            assert app.encryption.encrypt.call_args[0][0]['template'] == str(sample_template.id)
+            assert app.encryption.encrypt.call_args[0][0]['template_version'] == sample_template.version
+
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 (str(sample_template.service_id),
                  notification_id,
@@ -895,6 +900,9 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 201
             notification_id = json.loads(response.get_data(as_text=True))['data']['notification']['id']
+            assert app.encryption.encrypt.call_args[0][0]['to'] == 'ok@ok.com'
+            assert app.encryption.encrypt.call_args[0][0]['template'] == str(sample_email_template.id)
+            assert app.encryption.encrypt.call_args[0][0]['template_version'] == sample_email_template.version
             app.celery.tasks.send_email.apply_async.assert_called_once_with(
                 (str(sample_email_template.service_id),
                  notification_id,
@@ -903,6 +911,7 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
                  "2016-01-01T11:09:00.061258"),
                 queue="email"
             )
+
             assert response.status_code == 201
             assert notification_id
 
