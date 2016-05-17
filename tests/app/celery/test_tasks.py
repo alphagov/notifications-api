@@ -945,7 +945,56 @@ def test_email_reset_password_should_send_email(notify_db, notify_db_session, no
         aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
                                   reset_password_message['to'],
                                   "Reset password for GOV.UK Notify",
+
                                   message)
+
+
+def test_process_email_job_should_use_email_from_if_no_reply_to(sample_email_job, mocker, mock_celery_remove_job):
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
+    mocker.patch('app.celery.tasks.send_email.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value='something_encrypted')
+    mocker.patch('app.celery.tasks.create_uuid', return_value='uuid')
+
+    sample_email_job.service.reply_to_email_address = None
+
+    process_job(sample_email_job.id)
+
+    tasks.send_email.apply_async.assert_called_once_with(
+        (
+            str(sample_email_job.service_id),
+            'uuid',
+            "\"{}\" <{}@{}>".format(
+                sample_email_job.service.name,
+                sample_email_job.service.email_from,
+                current_app.config['NOTIFY_EMAIL_DOMAIN']
+            ),
+            'something_encrypted',
+            ANY
+        ),
+        queue="bulk-email"
+    )
+
+
+def test_process_email_job_should_use_reply_to_email(sample_email_job, mocker, mock_celery_remove_job):
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
+    mocker.patch('app.celery.tasks.send_email.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value='something_encrypted')
+    mocker.patch('app.celery.tasks.create_uuid', return_value='uuid')
+
+    sample_email_job.service.reply_to_email_address = 'somereply@testservice.gov.uk'
+
+    process_job(sample_email_job.id)
+
+    tasks.send_email.apply_async.assert_called_once_with(
+        (
+            str(sample_email_job.service_id),
+            'uuid',
+            'somereply@testservice.gov.uk',
+            'something_encrypted',
+            ANY
+        ),
+        queue="bulk-email"
+    )
 
 
 def _notification_json(template, to, personalisation=None, job_id=None):

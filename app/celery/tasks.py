@@ -172,14 +172,18 @@ def process_job(job_id):
             )
 
         if template.template_type == 'email':
-            send_email.apply_async((
-                str(job.service_id),
-                create_uuid(),
-                '"{}" <{}@{}>'.format(
+            if service.reply_to_email_address:
+                from_email = service.reply_to_email_address
+            else:
+                from_email = '"{}" <{}@{}>'.format(
                     service.name,
                     service.email_from,
                     current_app.config['NOTIFY_EMAIL_DOMAIN']
-                ).encode('ascii', 'ignore').decode('ascii'),
+                )
+            send_email.apply_async((
+                str(job.service_id),
+                create_uuid(),
+                from_email.encode('ascii', 'ignore').decode('ascii'),
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
                 queue='bulk-email')
