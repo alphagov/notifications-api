@@ -58,6 +58,11 @@ def process_ses_response():
             ), 400
 
         notification_type = ses_message['notificationType']
+        if notification_type == 'Bounce':
+            if ses_message['bounce']['bounceType'] == 'Permanent':
+                notification_type = ses_message['bounce']['bounceType']  # permanent or not
+            else:
+                notification_type = 'Temporary'
         try:
             aws_response_dict = get_aws_responses(notification_type)
         except KeyError:
@@ -87,12 +92,14 @@ def process_ses_response():
                     notification_status,
                     notification_statistics_status
             ) == 0:
+                message = "SES callback failed: notification either not found or already updated " \
+                          "from sending. Status {}".format(notification_status)
                 current_app.logger.info(
-                    "SES callback failed: notification not found. Status {}".format(notification_status)
+                    message
                 )
                 return jsonify(
                     result="error",
-                    message="SES callback failed: notification not found. Status {}".format(notification_status)
+                    message=message
                 ), 404
 
             if not aws_response_dict['success']:

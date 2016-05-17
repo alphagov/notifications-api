@@ -86,6 +86,9 @@ def delete_failed_notifications():
     try:
         start = datetime.utcnow()
         deleted = delete_notifications_created_more_than_a_week_ago('failed')
+        deleted += delete_notifications_created_more_than_a_week_ago('technical-failure')
+        deleted += delete_notifications_created_more_than_a_week_ago('temporary-failure')
+        deleted += delete_notifications_created_more_than_a_week_ago('permanent-failure')
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} failed notifications".format(
                 start,
@@ -172,16 +175,19 @@ def process_job(job_id):
             )
 
         if template.template_type == 'email':
+            from_email = '"{}" <{}@{}>'.format(
+                service.name,
+                service.email_from,
+                current_app.config['NOTIFY_EMAIL_DOMAIN']
+            )
+
             send_email.apply_async((
                 str(job.service_id),
                 create_uuid(),
-                '"{}" <{}@{}>'.format(
-                    service.name,
-                    service.email_from,
-                    current_app.config['NOTIFY_EMAIL_DOMAIN']
-                ).encode('ascii', 'ignore').decode('ascii'),
+                from_email.encode('ascii', 'ignore').decode('ascii'),
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
+                {'reply_to_addresses': service.reply_to_email_address},
                 queue='bulk-email')
 
     finished = datetime.utcnow()
@@ -264,7 +270,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 "SMS notification {} failed".format(notification_id)
             )
             current_app.logger.exception(e)
-            notification_db_object.status = 'failed'
+            notification_db_object.status = 'technical-failure'
 
         dao_update_notification(notification_db_object)
         current_app.logger.info(
@@ -277,7 +283,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
 
 
 @notify_celery.task(name="send-email")
-def send_email(service_id, notification_id, from_address, encrypted_notification, created_at):
+def send_email(service_id, notification_id, from_address, encrypted_notification, created_at, reply_to_addresses=None):
     task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
@@ -322,19 +328,21 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
                 dao_get_template_by_id(notification['template'], notification['template_version']).__dict__,
                 values=notification.get('personalisation', {})
             )
+
             reference = provider.send_email(
                 from_address,
                 notification['to'],
                 template.replaced_subject,
                 body=template.replaced_govuk_escaped,
                 html_body=template.as_HTML_email,
+                reply_to_addresses=reply_to_addresses,
             )
 
             update_notification_reference_by_id(notification_id, reference)
 
         except EmailClientException as e:
             current_app.logger.exception(e)
-            notification_db_object.status = 'failed'
+            notification_db_object.status = 'technical-failure'
             dao_update_notification(notification_db_object)
 
         current_app.logger.info(

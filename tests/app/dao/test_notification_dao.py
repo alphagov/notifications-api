@@ -84,6 +84,33 @@ def test_should_by_able_to_update_status_by_id(sample_notification):
     ).one().sms_failed == 0
 
 
+def test_should_not_update_status_one_notification_status_is_delivered(sample_email_template, ses_provider):
+    data = _notification_json(sample_email_template)
+
+    notification = Notification(**data)
+    dao_create_notification(
+        notification,
+        sample_email_template.template_type,
+        ses_provider.identifier)
+
+    assert Notification.query.get(notification.id).status == "sending"
+    update_notification_reference_by_id(notification.id, 'reference')
+    update_notification_status_by_reference('reference', 'delivered', 'delivered')
+    assert Notification.query.get(notification.id).status == 'delivered'
+
+    update_notification_status_by_reference('reference', 'delivered', 'temporary-failure')
+    assert Notification.query.get(notification.id).status == 'delivered'
+    assert NotificationStatistics.query.filter_by(
+        service_id=sample_email_template.service.id
+    ).one().emails_delivered == 1
+    assert NotificationStatistics.query.filter_by(
+        service_id=sample_email_template.service.id
+    ).one().emails_requested == 1
+    assert NotificationStatistics.query.filter_by(
+        service_id=sample_email_template.service.id
+    ).one().emails_failed == 0
+
+
 def test_should_be_able_to_record_statistics_failure_for_sms(sample_notification):
     assert Notification.query.get(sample_notification.id).status == 'sending'
     count = update_notification_status_by_id(sample_notification.id, 'delivered', 'failure')

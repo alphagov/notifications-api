@@ -98,6 +98,7 @@ class Service(db.Model, Versioned):
     email_from = db.Column(db.Text, index=False, unique=True, nullable=False)
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+    reply_to_email_address = db.Column(db.Text, index=False, unique=False, nullable=True)
 
 
 class ApiKey(db.Model, Versioned):
@@ -304,7 +305,8 @@ class VerifyCode(db.Model):
         return check_hash(cde, self._code)
 
 
-NOTIFICATION_STATUS_TYPES = ['sending', 'delivered', 'failed']
+NOTIFICATION_STATUS_TYPES = ['sending', 'delivered', 'failed',
+                             'technical-failure', 'temporary-failure', 'permanent-failure']
 
 
 class Notification(db.Model):
@@ -339,7 +341,7 @@ class Notification(db.Model):
         nullable=True,
         onupdate=datetime.datetime.utcnow)
     status = db.Column(
-        db.Enum(*NOTIFICATION_STATUS_TYPES, name='notification_status_types'), nullable=False, default='sending')
+        db.Enum(*NOTIFICATION_STATUS_TYPES, name='notification_status_type'), nullable=False, default='sending')
     reference = db.Column(db.String, nullable=True, index=True)
 
 

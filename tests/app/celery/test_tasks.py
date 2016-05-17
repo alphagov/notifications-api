@@ -84,10 +84,9 @@ def test_should_call_delete_notifications_more_than_week_in_task(notify_api, moc
 
 
 def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
-    mocked = mocker.patch('app.celery.tasks.delete_notifications_created_more_than_a_week_ago')
+    mocker.patch('app.celery.tasks.delete_notifications_created_more_than_a_week_ago')
     delete_failed_notifications()
-    mocked.assert_called_with('failed')
-    assert tasks.delete_notifications_created_more_than_a_week_ago.call_count == 1
+    assert tasks.delete_notifications_created_more_than_a_week_ago.call_count == 4
 
 
 def test_should_call_delete_codes_on_delete_verify_codes_task(notify_api, mocker):
@@ -251,6 +250,7 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
             "something_encrypted",
             "2016-01-01T11:09:00.061258"
         ),
+        {'reply_to_addresses': None},
         queue="bulk-email"
     )
     mock_celery_remove_job.assert_called_once_with((str(job.id),), queue="remove-job")
@@ -300,6 +300,7 @@ def test_should_process_email_job(sample_email_job, mocker, mock_celery_remove_j
             "something_encrypted",
             "2016-01-01T11:09:00.061258"
         ),
+        {'reply_to_addresses': None},
         queue="bulk-email"
     )
     job = jobs_dao.dao_get_job_by_id(sample_email_job.id)
@@ -528,7 +529,8 @@ def test_should_send_email_if_restricted_service_and_valid_email(notify_db, noti
         "test@restricted.com",
         template.subject,
         body=template.content,
-        html_body=AnyStringWith(template.content)
+        html_body=AnyStringWith(template.content),
+        reply_to_addresses=None
     )
 
 
@@ -619,7 +621,8 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
         "my_email@my_email.com",
         notification['personalisation']['name'],
         body="Hello Jo",
-        html_body=AnyStringWith("Hello Jo")
+        html_body=AnyStringWith("Hello Jo"),
+        reply_to_addresses=None
     )
 
     statsd_client.incr.assert_called_once_with("notifications.tasks.send-email")
@@ -670,7 +673,8 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
         "my_email@my_email.com",
         sample_email_template.subject,
         body="This is a template",
-        html_body=AnyStringWith("This is a template")
+        html_body=AnyStringWith("This is a template"),
+        reply_to_addresses=None
     )
 
     persisted_notification = notifications_dao.get_notification(sample_email_template.service_id, notification_id)
@@ -705,7 +709,8 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
         "my_email@my_email.com",
         notification['personalisation']['name'],
         body="Hello Jo",
-        html_body=AnyStringWith("Hello Jo")
+        html_body=AnyStringWith("Hello Jo"),
+        reply_to_addresses=None
     )
     persisted_notification = notifications_dao.get_notification(
         sample_email_template_with_placeholders.service_id, notification_id
@@ -759,7 +764,8 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
         "my_email@my_email.com",
         sample_email_template.subject,
         body="This is a template",
-        html_body=AnyStringWith("This is a template")
+        html_body=AnyStringWith("This is a template"),
+        reply_to_addresses=None
     )
 
 
@@ -788,7 +794,7 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
     assert persisted_notification.to == '+447234123123'
     assert persisted_notification.template_id == sample_template.id
     assert persisted_notification.template_version == sample_template.version
-    assert persisted_notification.status == 'failed'
+    assert persisted_notification.status == 'technical-failure'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
     assert persisted_notification.sent_by == 'mmg'
@@ -816,14 +822,15 @@ def test_should_persist_notification_as_failed_if_email_client_fails(sample_emai
         "my_email@my_email.com",
         sample_email_template.subject,
         body=sample_email_template.content,
-        html_body=AnyStringWith(sample_email_template.content)
+        html_body=AnyStringWith(sample_email_template.content),
+        reply_to_addresses=None
     )
     persisted_notification = notifications_dao.get_notification(sample_email_template.service_id, notification_id)
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template.id
     assert persisted_notification.template_version == sample_email_template.version
-    assert persisted_notification.status == 'failed'
+    assert persisted_notification.status == 'technical-failure'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_by == 'ses'
     assert persisted_notification.sent_at > now
@@ -945,7 +952,35 @@ def test_email_reset_password_should_send_email(notify_db, notify_db_session, no
         aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
                                   reset_password_message['to'],
                                   "Reset password for GOV.UK Notify",
+
                                   message)
+
+
+def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job, mocker, mock_celery_remove_job):
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
+    mocker.patch('app.celery.tasks.send_email.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value='something_encrypted')
+    mocker.patch('app.celery.tasks.create_uuid', return_value='uuid')
+
+    sample_email_job.service.reply_to_email_address = 'somereply@testservice.gov.uk'
+
+    process_job(sample_email_job.id)
+
+    tasks.send_email.apply_async.assert_called_once_with(
+        (
+            str(sample_email_job.service_id),
+            "uuid",
+            "\"{}\" <{}@{}>".format(
+                sample_email_job.service.name,
+                sample_email_job.service.email_from,
+                "test.notify.com"
+            ),
+            "something_encrypted",
+            ANY
+        ),
+        {'reply_to_addresses': 'somereply@testservice.gov.uk'},
+        queue="bulk-email"
+    )
 
 
 def _notification_json(template, to, personalisation=None, job_id=None):
