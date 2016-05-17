@@ -5,10 +5,16 @@ from app.clients import STATISTICS_DELIVERED, STATISTICS_FAILURE
 from app.clients.email import (EmailClientException, EmailClient)
 
 ses_response_map = {
-    'Bounce': {
-        "message": 'Bounced',
+    'Permanent': {
+        "message": 'Hard bounced',
         "success": False,
-        "notification_status": 'failed',
+        "notification_status": 'permanent-failure',
+        "notification_statistics_status": STATISTICS_FAILURE
+    },
+    'Temporary': {
+        "message": 'Soft bounced',
+        "success": False,
+        "notification_status": 'temporary-failure',
         "notification_statistics_status": STATISTICS_FAILURE
     },
     'Delivery': {

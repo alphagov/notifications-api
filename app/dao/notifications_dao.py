@@ -1,4 +1,4 @@
-from sqlalchemy import (desc, func, Integer)
+from sqlalchemy import (desc, func, Integer, and_)
 from sqlalchemy.sql.expression import cast
 
 from datetime import (
@@ -188,11 +188,9 @@ def update_notification_status_by_id(notification_id, status, notification_stati
 
 
 def update_notification_status_by_reference(reference, status, notification_statistics_status):
-    count = db.session.query(Notification).filter_by(
-        reference=reference
-    ).update({
-        Notification.status: status
-    })
+    count = db.session.query(Notification).filter(Notification.reference == reference,
+                                                  Notification.status == 'sending').update(
+        {Notification.status: status})
 
     if count == 1:
         notification = Notification.query.filter_by(
