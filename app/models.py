@@ -304,7 +304,8 @@ class VerifyCode(db.Model):
         return check_hash(cde, self._code)
 
 
-NOTIFICATION_STATUS_TYPES = ['sending', 'delivered', 'failed']
+NOTIFICATION_STATUS_TYPES = ['sending', 'delivered', 'failed',
+                             'technical_failure', 'temporary_failure', 'permanent_failure']
 
 
 class Notification(db.Model):
@@ -339,7 +340,7 @@ class Notification(db.Model):
         nullable=True,
         onupdate=datetime.datetime.utcnow)
     status = db.Column(
-        db.Enum(*NOTIFICATION_STATUS_TYPES, name='notification_status_types'), nullable=False, default='sending')
+        db.Enum(*NOTIFICATION_STATUS_TYPES, name='notification_status_type'), nullable=False, default='sending')
     reference = db.Column(db.String, nullable=True, index=True)
 
 
