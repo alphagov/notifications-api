@@ -949,7 +949,7 @@ def test_email_reset_password_should_send_email(notify_db, notify_db_session, no
                                   message)
 
 
-def test_process_email_job_should_use_email_from_if_no_reply_to(sample_email_job, mocker):
+def test_process_email_job_should_use_email_from_if_no_reply_to(sample_email_job, mocker, mock_celery_remove_job):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value='something_encrypted')
@@ -975,7 +975,7 @@ def test_process_email_job_should_use_email_from_if_no_reply_to(sample_email_job
     )
 
 
-def test_process_email_job_should_use_reply_to_email(sample_email_job, mocker):
+def test_process_email_job_should_use_reply_to_email(sample_email_job, mocker, mock_celery_remove_job):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value='something_encrypted')
