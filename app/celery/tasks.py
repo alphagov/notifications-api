@@ -175,20 +175,19 @@ def process_job(job_id):
             )
 
         if template.template_type == 'email':
-            if service.reply_to_email_address:
-                from_email = service.reply_to_email_address
-            else:
-                from_email = '"{}" <{}@{}>'.format(
-                    service.name,
-                    service.email_from,
-                    current_app.config['NOTIFY_EMAIL_DOMAIN']
-                )
+            from_email = '"{}" <{}@{}>'.format(
+                service.name,
+                service.email_from,
+                current_app.config['NOTIFY_EMAIL_DOMAIN']
+            )
+
             send_email.apply_async((
                 str(job.service_id),
                 create_uuid(),
                 from_email.encode('ascii', 'ignore').decode('ascii'),
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
+                {'reply_to_addresses': service.reply_to_email_address},
                 queue='bulk-email')
 
     finished = datetime.utcnow()
@@ -284,7 +283,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
 
 
 @notify_celery.task(name="send-email")
-def send_email(service_id, notification_id, from_address, encrypted_notification, created_at):
+def send_email(service_id, notification_id, from_address, encrypted_notification, created_at, reply_to_addresses=None):
     task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
@@ -329,12 +328,14 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
                 dao_get_template_by_id(notification['template'], notification['template_version']).__dict__,
                 values=notification.get('personalisation', {})
             )
+
             reference = provider.send_email(
                 from_address,
                 notification['to'],
                 template.replaced_subject,
                 body=template.replaced_govuk_escaped,
                 html_body=template.as_HTML_email,
+                reply_to_addresses=reply_to_addresses,
             )
 
             update_notification_reference_by_id(notification_id, reference)
