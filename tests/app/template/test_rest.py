@@ -30,7 +30,7 @@ def test_should_create_a_new_sms_template_for_a_service(notify_api, sample_user,
             assert json_resp['data']['content'] == 'template content'
             assert json_resp['data']['service'] == str(sample_service.id)
             assert json_resp['data']['id']
-            assert json_resp['data']['versions'] == [1]
+            assert json_resp['data']['version'] == 1
             assert not json_resp['data']['subject']
 
 
@@ -60,7 +60,7 @@ def test_should_create_a_new_email_template_for_a_service(notify_api, sample_use
             assert json_resp['data']['content'] == 'template content'
             assert json_resp['data']['service'] == str(sample_service.id)
             assert json_resp['data']['subject'] == 'subject'
-            assert json_resp['data']['versions'] == [1]
+            assert json_resp['data']['version'] == 1
             assert json_resp['data']['id']
 
 
@@ -220,6 +220,7 @@ def test_should_be_able_to_update_a_template(notify_api, sample_user, sample_ser
             assert create_response.status_code == 201
             json_resp = json.loads(create_response.get_data(as_text=True))
             assert json_resp['data']['name'] == 'my template'
+            assert json_resp['data']['version'] == 1
             data = {
                 'content': 'my template has new content <script type="text/javascript">alert("foo")</script>',
                 'created_by': str(sample_user.id)
@@ -236,7 +237,7 @@ def test_should_be_able_to_update_a_template(notify_api, sample_user, sample_ser
             assert update_response.status_code == 200
             update_json_resp = json.loads(update_response.get_data(as_text=True))
             assert update_json_resp['data']['content'] == 'my template has new content alert("foo")'
-            assert update_json_resp['data']['versions'] == [1, 2]
+            assert update_json_resp['data']['version'] == 2
 
 
 def test_should_be_able_to_archive_template(notify_api, sample_user, sample_service, sample_template):
@@ -310,9 +311,9 @@ def test_should_be_able_to_get_all_templates_for_a_service(notify_api, sample_us
             assert response.status_code == 200
             update_json_resp = json.loads(response.get_data(as_text=True))
             assert update_json_resp['data'][0]['name'] == 'my template 1'
-            assert update_json_resp['data'][0]['versions'] == [1]
+            assert update_json_resp['data'][0]['version'] == 1
             assert update_json_resp['data'][1]['name'] == 'my template 2'
-            assert update_json_resp['data'][1]['versions'] == [1]
+            assert update_json_resp['data'][1]['version'] == 1
 
 
 def test_should_get_only_templates_for_that_service(notify_api, sample_user, service_factory):

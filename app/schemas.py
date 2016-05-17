@@ -114,11 +114,6 @@ class BaseTemplateSchema(BaseSchema):
 class TemplateSchema(BaseTemplateSchema):
 
     created_by = field_for(models.Template, 'created_by', required=True)
-    versions = fields.Method("template_versions", dump_only=True)
-
-    def template_versions(self, template):
-        return [x.version for x in models.Template.get_history_model().query.filter_by(
-                id=template.id).options(load_only("version"))]
 
     @validates_schema
     def validate_type(self, data):
