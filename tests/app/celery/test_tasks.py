@@ -84,10 +84,9 @@ def test_should_call_delete_notifications_more_than_week_in_task(notify_api, moc
 
 
 def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
-    mocked = mocker.patch('app.celery.tasks.delete_notifications_created_more_than_a_week_ago')
+    mocker.patch('app.celery.tasks.delete_notifications_created_more_than_a_week_ago')
     delete_failed_notifications()
-    mocked.assert_called_with('failed')
-    assert tasks.delete_notifications_created_more_than_a_week_ago.call_count == 1
+    assert tasks.delete_notifications_created_more_than_a_week_ago.call_count == 4
 
 
 def test_should_call_delete_codes_on_delete_verify_codes_task(notify_api, mocker):
@@ -788,7 +787,7 @@ def test_should_persist_notification_as_failed_if_sms_client_fails(sample_templa
     assert persisted_notification.to == '+447234123123'
     assert persisted_notification.template_id == sample_template.id
     assert persisted_notification.template_version == sample_template.version
-    assert persisted_notification.status == 'failed'
+    assert persisted_notification.status == 'technical-failure'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_at > now
     assert persisted_notification.sent_by == 'mmg'
@@ -823,7 +822,7 @@ def test_should_persist_notification_as_failed_if_email_client_fails(sample_emai
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template.id
     assert persisted_notification.template_version == sample_email_template.version
-    assert persisted_notification.status == 'failed'
+    assert persisted_notification.status == 'technical-failure'
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_by == 'ses'
     assert persisted_notification.sent_at > now

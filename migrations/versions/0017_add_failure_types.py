@@ -1,14 +1,14 @@
 """empty message
 
 Revision ID: 0017_add_failure_types
-Revises: 0015_fix_template_data
+Revises: 0016_reply_to_email
 Create Date: 2016-05-17 11:23:36.881219
 
 """
 
 # revision identifiers, used by Alembic.
 revision = '0017_add_failure_types'
-down_revision = '0015_fix_template_data'
+down_revision = '0016_reply_to_email'
 
 from alembic import op
 import sqlalchemy as sa
@@ -20,7 +20,7 @@ from sqlalchemy.dialects import postgresql
 
 def upgrade():
     status_type = sa.Enum('sending', 'delivered', 'failed',
-                          'technical_failure', 'temporary_failure', 'permanent_failure',
+                          'technical-failure', 'temporary-failure', 'permanent-failure',
                           name='notification_status_type')
     status_type.create(op.get_bind())
     op.add_column('notifications', sa.Column('new_status', status_type, nullable=True))
@@ -38,6 +38,8 @@ def downgrade():
                           name='notification_status_types')
     status_type.create(op.get_bind())
     op.add_column('notifications', sa.Column('old_status', status_type, nullable=True))
+
+    op.execute("update notifications set status = 'failed' where status in ('technical-failure', 'temporary-failure', 'permanent-failure')")
     op.execute('update notifications set old_status = CAST(CAST(status as text) as notification_status_types)')
     op.alter_column('notifications', 'status', new_column_name='new_status')
     op.alter_column('notifications', 'old_status', new_column_name='status')

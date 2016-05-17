@@ -86,6 +86,9 @@ def delete_failed_notifications():
     try:
         start = datetime.utcnow()
         deleted = delete_notifications_created_more_than_a_week_ago('failed')
+        deleted += delete_notifications_created_more_than_a_week_ago('technical-failure')
+        deleted += delete_notifications_created_more_than_a_week_ago('temporary-failure')
+        deleted += delete_notifications_created_more_than_a_week_ago('permanent-failure')
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} failed notifications".format(
                 start,
@@ -264,7 +267,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                 "SMS notification {} failed".format(notification_id)
             )
             current_app.logger.exception(e)
-            notification_db_object.status = 'failed'
+            notification_db_object.status = 'technical-failure'
 
         dao_update_notification(notification_db_object)
         current_app.logger.info(
@@ -334,7 +337,7 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
 
         except EmailClientException as e:
             current_app.logger.exception(e)
-            notification_db_object.status = 'failed'
+            notification_db_object.status = 'technical-failure'
             dao_update_notification(notification_db_object)
 
         current_app.logger.info(

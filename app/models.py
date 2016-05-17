@@ -306,7 +306,7 @@ class VerifyCode(db.Model):
 
 
 NOTIFICATION_STATUS_TYPES = ['sending', 'delivered', 'failed',
-                             'technical_failure', 'temporary_failure', 'permanent_failure']
+                             'technical-failure', 'temporary-failure', 'permanent-failure']
 
 
 class Notification(db.Model):
