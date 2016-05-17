@@ -11,10 +11,18 @@ def test_should_return_correct_details_for_delivery():
     assert response_dict['success']
 
 
-def test_should_return_correct_details_for_bounced():
-    response_dict = get_aws_responses('Bounce')
-    assert response_dict['message'] == 'Bounced'
-    assert response_dict['notification_status'] == 'failed'
+def test_should_return_correct_details_for_hard_bounced():
+    response_dict = get_aws_responses('Permanent')
+    assert response_dict['message'] == 'Hard bounced'
+    assert response_dict['notification_status'] == 'permanent-failure'
+    assert response_dict['notification_statistics_status'] == 'failure'
+    assert not response_dict['success']
+
+
+def test_should_return_correct_details_for_soft_bounced():
+    response_dict = get_aws_responses('Temporary')
+    assert response_dict['message'] == 'Soft bounced'
+    assert response_dict['notification_status'] == 'temporary-failure'
     assert response_dict['notification_statistics_status'] == 'failure'
     assert not response_dict['success']
 
