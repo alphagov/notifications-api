@@ -98,6 +98,7 @@ class Service(db.Model, Versioned):
     email_from = db.Column(db.Text, index=False, unique=True, nullable=False)
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+    reply_to_email_address = db.Column(db.Text, index=False, unique=False, nullable=True)
 
 
 class ApiKey(db.Model, Versioned):

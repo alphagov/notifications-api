@@ -898,3 +898,31 @@ def test_get_service_and_api_key_history(notify_api, notify_db, notify_db_sessio
             json_resp = json.loads(response.get_data(as_text=True))
             assert json_resp['data']['service_history'][0]['id'] == str(sample_service.id)
             assert json_resp['data']['api_key_history'][0]['id'] == str(api_key.id)
+
+
+def test_set_reply_to_email_for_service(notify_api, sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header()
+            resp = client.get(
+                '/service/{}'.format(sample_service.id),
+                headers=[auth_header]
+            )
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 200
+            assert json_resp['data']['name'] == sample_service.name
+
+            data = {
+                'reply_to_email_address': 'reply_test@service.gov.uk',
+            }
+
+            auth_header = create_authorization_header()
+
+            resp = client.post(
+                '/service/{}'.format(sample_service.id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+            result = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 200
+            assert result['data']['reply_to_email_address'] == 'reply_test@service.gov.uk'

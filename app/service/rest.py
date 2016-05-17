@@ -86,7 +86,6 @@ def create_service():
 @service.route('/<uuid:service_id>', methods=['POST'])
 def update_service(service_id):
     fetched_service = dao_fetch_service_by_id(service_id)
-
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())
     update_dict, errors = service_schema.load(current_data)
