@@ -50,16 +50,7 @@ def create_template(service_id):
         new_template.template_type)
     if over_limit:
         return json_resp, 400
-    try:
-        dao_create_template(new_template)
-    except IntegrityError as ex:
-        current_app.logger.debug(ex)
-        message = "Failed to create template"
-        if "templates_subject_key" in str(ex):
-            message = 'Duplicate template subject'
-            return jsonify(result="error", message={'subject': [message]}), 400
-        return jsonify(result="error", message=message), 500
-
+    dao_create_template(new_template)
     return jsonify(data=template_schema.dump(new_template).data), 201
 
 
