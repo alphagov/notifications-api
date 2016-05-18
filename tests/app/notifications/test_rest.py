@@ -3,6 +3,7 @@ import uuid
 import random
 import string
 import app.celery.tasks
+from mock import ANY
 from app import encryption
 from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
@@ -534,11 +535,12 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_templat
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 (str(sample_template_with_placeholders.service.id),
                  notification_id,
-                 encrypted_notification,
+                 ANY,
                  "2016-01-01T11:09:00.061258"),
                 queue="sms"
             )
             assert response.status_code == 201
+            assert encryption.decrypt(app.celery.tasks.send_sms.apply_async.call_args[0][0][2]) == data
 
 
 def test_send_notification_with_missing_personalisation(notify_api, sample_template_with_placeholders, mocker):
