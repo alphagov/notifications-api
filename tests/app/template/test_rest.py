@@ -155,49 +155,6 @@ def test_must_have_a_subject_on_an_email_template(notify_api, sample_user, sampl
             assert json_resp['message'] == {'subject': ['Invalid template subject']}
 
 
-def test_must_have_a_uniqe_subject_on_an_email_template(notify_api, sample_user, sample_service):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = {
-                'name': 'my template',
-                'template_type': 'email',
-                'subject': 'subject',
-                'content': 'template content',
-                'service': str(sample_service.id),
-                'created_by': str(sample_user.id)
-            }
-            data = json.dumps(data)
-            auth_header = create_authorization_header()
-
-            response = client.post(
-                '/service/{}/template'.format(sample_service.id),
-                headers=[('Content-Type', 'application/json'), auth_header],
-                data=data
-            )
-            assert response.status_code == 201
-
-            data = {
-                'name': 'my template',
-                'template_type': 'email',
-                'subject': 'subject',
-                'content': 'template content',
-                'service': str(sample_service.id),
-                'created_by': str(sample_user.id)
-            }
-            data = json.dumps(data)
-            auth_header = create_authorization_header()
-
-            response = client.post(
-                '/service/{}/template'.format(sample_service.id),
-                headers=[('Content-Type', 'application/json'), auth_header],
-                data=data
-            )
-            assert response.status_code == 400
-            json_resp = json.loads(response.get_data(as_text=True))
-            assert json_resp['result'] == 'error'
-            assert json_resp['message']['subject'][0] == 'Duplicate template subject'
-
-
 def test_should_be_able_to_update_a_template(notify_api, sample_user, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
