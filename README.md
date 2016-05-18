@@ -73,3 +73,19 @@ scripts/run_celery.sh
 ```
 scripts/run_celery_beat.sh
 ```
+
+
+## To remove functional test data
+
+NOTE: There is assumption that both the server name prefix and user name prefix are followed by a uuid.
+The script will search for all services/users with that prefix and only remove it if the prefix is followed by a uuid otherwise it will be skipped.
+
+Locally
+```
+python application.py purge_functional_test_data -u <functional tests user name prefix> # Remove the user and associated services.
+```
+
+On the server
+```
+python server_commands.py purge_functional_test_data -u <functional tests user name prefix> # Remove the user and associated services.
+```
