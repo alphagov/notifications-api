@@ -148,17 +148,18 @@ def process_job(job_id):
         dao_get_template_by_id(job.template_id, job.template_version).__dict__
     )
 
-    for recipient, personalisation in RecipientCSV(
+    for row_number, recipient, personalisation in RecipientCSV(
             s3.get_job_from_s3(str(service.id), str(job_id)),
             template_type=template.template_type,
             placeholders=template.placeholders
-    ).recipients_and_personalisation:
+    ).enumerated_recipients_and_personalisation:
 
         encrypted = encryption.encrypt({
             'template': str(template.id),
             'template_version': job.template_version,
             'job': str(job.id),
             'to': recipient,
+            'row_number': row_number,
             'personalisation': {
                 key: personalisation.get(key)
                 for key in template.placeholders
@@ -242,6 +243,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             to=notification['to'],
             service_id=service_id,
             job_id=notification.get('job', None),
+            job_row_number=notification.get('row_number', None),
             status='failed' if restricted else 'sending',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
@@ -307,6 +309,7 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
             to=notification['to'],
             service_id=service_id,
             job_id=notification.get('job', None),
+            job_row_number=notification.get('row_number', None),
             status='failed' if restricted else 'sending',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,

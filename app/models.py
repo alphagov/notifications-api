@@ -317,6 +317,7 @@ class Notification(db.Model):
     to = db.Column(db.String, nullable=False)
     job_id = db.Column(UUID(as_uuid=True), db.ForeignKey('jobs.id'), index=True, unique=False)
     job = db.relationship('Job', backref=db.backref('notifications', lazy='dynamic'))
+    job_row_number = db.Column(db.Integer, nullable=True)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False)
     service = db.relationship('Service')
     template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), index=True, unique=False)

@@ -310,6 +310,7 @@ def sample_notification(notify_db,
                         service=None,
                         template=None,
                         job=None,
+                        job_row_number=None,
                         to_field=None,
                         status='sending',
                         reference=None,
@@ -347,6 +348,8 @@ def sample_notification(notify_db,
         'created_at': created_at,
         'content_char_count': content_char_count
     }
+    if job_row_number:
+        data['job_row_number'] = job_row_number
     notification = Notification(**data)
     if create:
         dao_create_notification(notification, template.template_type, provider.identifier)
