@@ -178,7 +178,7 @@ class Template(db.Model, Versioned):
     archived = db.Column(db.Boolean, index=False, nullable=False, default=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
     service = db.relationship('Service', backref=db.backref('templates', lazy='dynamic'))
-    subject = db.Column(db.Text, index=False, unique=True, nullable=True)
+    subject = db.Column(db.Text, index=False, unique=False, nullable=True)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     created_by = db.relationship('User')
 
@@ -317,6 +317,7 @@ class Notification(db.Model):
     to = db.Column(db.String, nullable=False)
     job_id = db.Column(UUID(as_uuid=True), db.ForeignKey('jobs.id'), index=True, unique=False)
     job = db.relationship('Job', backref=db.backref('notifications', lazy='dynamic'))
+    job_row_number = db.Column(db.Integer, nullable=True)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False)
     service = db.relationship('Service')
     template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), index=True, unique=False)

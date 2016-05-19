@@ -3,6 +3,7 @@ import uuid
 import random
 import string
 import app.celery.tasks
+from mock import ANY
 from app import encryption
 from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
@@ -129,20 +130,38 @@ def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notif
             assert response.status_code == 200
 
 
-def test_get_all_notifications_for_job_in_order(notify_api, notify_db, notify_db_session, sample_service):
+def test_get_all_notifications_for_job_in_order_of_job_number(notify_api,
+                                                              notify_db,
+                                                              notify_db_session,
+                                                              sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             main_job = create_sample_job(notify_db, notify_db_session, service=sample_service)
             another_job = create_sample_job(notify_db, notify_db_session, service=sample_service)
 
             notification_1 = create_sample_notification(
-                notify_db, notify_db_session, job=main_job, to_field="1", created_at=datetime.utcnow()
+                notify_db,
+                notify_db_session,
+                job=main_job,
+                to_field="1",
+                created_at=datetime.utcnow(),
+                job_row_number=1
             )
             notification_2 = create_sample_notification(
-                notify_db, notify_db_session, job=main_job, to_field="2", created_at=datetime.utcnow()
+                notify_db,
+                notify_db_session,
+                job=main_job,
+                to_field="2",
+                created_at=datetime.utcnow(),
+                job_row_number=2
             )
             notification_3 = create_sample_notification(
-                notify_db, notify_db_session, job=main_job, to_field="3", created_at=datetime.utcnow()
+                notify_db,
+                notify_db_session,
+                job=main_job,
+                to_field="3",
+                created_at=datetime.utcnow(),
+                job_row_number=3
             )
             create_sample_notification(notify_db, notify_db_session, job=another_job)
 
@@ -154,9 +173,12 @@ def test_get_all_notifications_for_job_in_order(notify_api, notify_db, notify_db
 
             resp = json.loads(response.get_data(as_text=True))
             assert len(resp['notifications']) == 3
-            assert resp['notifications'][0]['to'] == notification_3.to
+            assert resp['notifications'][0]['to'] == notification_1.to
+            assert resp['notifications'][0]['job_row_number'] == notification_1.job_row_number
             assert resp['notifications'][1]['to'] == notification_2.to
-            assert resp['notifications'][2]['to'] == notification_1.to
+            assert resp['notifications'][1]['job_row_number'] == notification_2.job_row_number
+            assert resp['notifications'][2]['to'] == notification_3.to
+            assert resp['notifications'][2]['job_row_number'] == notification_3.job_row_number
             assert response.status_code == 200
 
 
@@ -534,11 +556,12 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_templat
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 (str(sample_template_with_placeholders.service.id),
                  notification_id,
-                 encrypted_notification,
+                 ANY,
                  "2016-01-01T11:09:00.061258"),
                 queue="sms"
             )
             assert response.status_code == 201
+            assert encryption.decrypt(app.celery.tasks.send_sms.apply_async.call_args[0][0][2]) == data
 
 
 def test_send_notification_with_missing_personalisation(notify_api, sample_template_with_placeholders, mocker):
@@ -1289,13 +1312,63 @@ def test_process_mmg_response_returns_200_when_cid_is_valid_notification_id(noti
         assert get_notification_by_id(sample_notification.id).status == 'delivered'
 
 
-def test_process_mmg_response_updates_notification_with_failed_status(notify_api, sample_notification):
+def test_process_mmg_response_status_5_updates_notification_with_permanently_failed(notify_api,
+                                                                                    sample_notification):
     with notify_api.test_client() as client:
         data = json.dumps({"reference": "mmg_reference",
                            "CID": str(sample_notification.id),
                            "MSISDN": "447777349060",
-                           "status": 5,
-                           "deliverytime": "2016-04-05 16:01:07"})
+                           "status": 5})
+
+        response = client.post(path='notifications/sms/mmg',
+                               data=data,
+                               headers=[('Content-Type', 'application/json')])
+        assert response.status_code == 200
+        json_data = json.loads(response.data)
+        assert json_data['result'] == 'success'
+        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
+        assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
+
+
+def test_process_mmg_response_status_2_or_4_updates_notification_with_temporary_failed(notify_api,
+                                                                                       sample_notification):
+    with notify_api.test_client() as client:
+        data = json.dumps({"reference": "mmg_reference",
+                           "CID": str(sample_notification.id),
+                           "MSISDN": "447777349060",
+                           "status": 2})
+
+        response = client.post(path='notifications/sms/mmg',
+                               data=data,
+                               headers=[('Content-Type', 'application/json')])
+        assert response.status_code == 200
+        json_data = json.loads(response.data)
+        assert json_data['result'] == 'success'
+        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
+        assert get_notification_by_id(sample_notification.id).status == 'temporary-failure'
+
+        data = json.dumps({"reference": "mmg_reference",
+                           "CID": str(sample_notification.id),
+                           "MSISDN": "447777349060",
+                           "status": 4})
+
+        response = client.post(path='notifications/sms/mmg',
+                               data=data,
+                               headers=[('Content-Type', 'application/json')])
+        assert response.status_code == 200
+        json_data = json.loads(response.data)
+        assert json_data['result'] == 'success'
+        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
+        assert get_notification_by_id(sample_notification.id).status == 'temporary-failure'
+
+
+def test_process_mmg_response_unknown_status_updates_notification_with_failed(notify_api,
+                                                                              sample_notification):
+    with notify_api.test_client() as client:
+        data = json.dumps({"reference": "mmg_reference",
+                           "CID": str(sample_notification.id),
+                           "MSISDN": "447777349060",
+                           "status": 10})
 
         response = client.post(path='notifications/sms/mmg',
                                data=data,

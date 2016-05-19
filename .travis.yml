@@ -27,6 +27,7 @@ deploy:
   skip_cleanup: true
   region: eu-west-1
   bucket: notifications-api-codedeploy
+  wait-until-deployed: true
   on:
     repo: alphagov/notifications-api
 - provider: codedeploy
@@ -38,6 +39,7 @@ deploy:
   application: notifications-api
   deployment_group: notifications_api_deployment_group
   region: eu-west-1
+  wait-until-deployed: true
   on: *2
 - provider: codedeploy
   access_key_id: AKIAJQPPNM6P6V53SWKA
@@ -48,6 +50,7 @@ deploy:
   application: notifications-api
   deployment_group: notifications_admin_api_deployment_group
   region: eu-west-1
+  wait-until-deployed: true
   on: *2
 - provider: codedeploy
   access_key_id: AKIAJQPPNM6P6V53SWKA
@@ -58,6 +61,7 @@ deploy:
   application: notifications-api
   deployment_group: notifications_delivery_api_deployment_group
   region: eu-west-1
+  wait-until-deployed: true
   on: *2
 - provider: s3
   access_key_id: AKIAJ5MKF6G3P2JQP4QQ
@@ -66,6 +70,7 @@ deploy:
   local_dir: dpl_cd_upload
   skip_cleanup: true
   region: eu-west-1
+  wait-until-deployed: true
   on: &2
     repo: alphagov/notifications-api
     branch: staging
@@ -79,6 +84,7 @@ deploy:
   application: notifications-api
   deployment_group: staging_delivery_api_deployment_group
   region: eu-west-1
+  wait-until-deployed: true
   on: *2
 - provider: codedeploy
   access_key_id: AKIAJ5MKF6G3P2JQP4QQ
@@ -89,6 +95,7 @@ deploy:
   application: notifications-api
   deployment_group: staging_public_api_deployment_group
   region: eu-west-1
+  wait-until-deployed: true
   on: *2
 - provider: codedeploy
   access_key_id: AKIAJ5MKF6G3P2JQP4QQ
@@ -99,6 +106,7 @@ deploy:
   application: notifications-api
   deployment_group: staging_admin_api_deployment_group
   region: eu-west-1
+  wait-until-deployed: true
   on: *2
 - provider: s3
   access_key_id: AKIAJ5MKF6G3P2JQP4QQ
@@ -107,6 +115,7 @@ deploy:
   local_dir: dpl_cd_upload
   skip_cleanup: true
   region: eu-west-1
+  wait-until-deployed: true
   on: &2
     repo: alphagov/notifications-api
     branch: live
@@ -120,6 +129,7 @@ deploy:
   application: notifications-api
   deployment_group: live_delivery_api_deployment_group
   region: eu-west-1
+  wait-until-deployed: true
   on: *2
 - provider: codedeploy
   access_key_id: AKIAJ5MKF6G3P2JQP4QQ
@@ -130,6 +140,7 @@ deploy:
   application: notifications-api
   deployment_group: live_public_api_deployment_group
   region: eu-west-1
+  wait-until-deployed: true
   on: *2
 - provider: codedeploy
   access_key_id: AKIAJ5MKF6G3P2JQP4QQ
@@ -140,6 +151,7 @@ deploy:
   application: notifications-api
   deployment_group: live_admin_api_deployment_group
   region: eu-west-1
+  wait-until-deployed: true
   on: *2
 before_deploy:
 - ./scripts/update_version_file.sh

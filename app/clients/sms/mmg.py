@@ -6,11 +6,29 @@ from app.clients import (STATISTICS_DELIVERED, STATISTICS_FAILURE)
 from app.clients.sms import (SmsClient, SmsClientException)
 
 mmg_response_map = {
+    '2': {
+        "message": ' Temporary failure',
+        "notification_statistics_status": STATISTICS_FAILURE,
+        "success": False,
+        "notification_status": 'temporary-failure'
+    },
     '3': {
         "message": 'Delivered',
         "notification_statistics_status": STATISTICS_DELIVERED,
         "success": True,
         "notification_status": 'delivered'
+    },
+    '4': {
+        "message": ' Temporary failure',
+        "notification_statistics_status": STATISTICS_FAILURE,
+        "success": False,
+        "notification_status": 'temporary-failure'
+    },
+    '5': {
+        "message": 'Permanent failure',
+        "notification_statistics_status": STATISTICS_FAILURE,
+        "success": False,
+        "notification_status": 'permanent-failure'
     },
     'default': {
         "message": 'Declined',

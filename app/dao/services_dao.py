@@ -95,9 +95,11 @@ def delete_service_and_all_associated_db_objects(service):
     _delete_commit(InvitedUser.query.filter_by(service=service))
     _delete_commit(Permission.query.filter_by(service=service))
     _delete_commit(ApiKey.query.filter_by(service=service))
+    _delete_commit(ApiKey.get_history_model().query.filter_by(service_id=service.id))
     _delete_commit(Notification.query.filter_by(service=service))
     _delete_commit(Job.query.filter_by(service=service))
     _delete_commit(Template.query.filter_by(service=service))
+    _delete_commit(Template.get_history_model().query.filter_by(service_id=service.id))
 
     verify_codes = VerifyCode.query.join(User).filter(User.id.in_([x.id for x in service.users]))
     list(map(db.session.delete, verify_codes))
@@ -105,6 +107,7 @@ def delete_service_and_all_associated_db_objects(service):
     users = [x for x in service.users]
     map(service.users.remove, users)
     [service.users.remove(x) for x in users]
+    _delete_commit(Service.get_history_model().query.filter_by(id=service.id))
     db.session.delete(service)
     db.session.commit()
     list(map(db.session.delete, users))
