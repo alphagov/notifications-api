@@ -108,7 +108,7 @@ class BaseTemplateSchema(BaseSchema):
 
     class Meta:
         model = models.Template
-        exclude = ("updated_at", "created_at", "service_id", "jobs")
+        exclude = ("service_id", "jobs")
 
 
 class TemplateSchema(BaseTemplateSchema):
