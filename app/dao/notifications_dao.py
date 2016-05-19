@@ -51,6 +51,12 @@ def dao_get_notification_statistics_for_service_and_day(service_id, day):
     ).order_by(desc(NotificationStatistics.day)).first()
 
 
+def dao_get_notification_statistics_for_day(day):
+    return NotificationStatistics.query.filter_by(
+        day=day
+    ).all()
+
+
 def dao_get_7_day_agg_notification_statistics_for_service(service_id,
                                                           date_from,
                                                           week_count=52):

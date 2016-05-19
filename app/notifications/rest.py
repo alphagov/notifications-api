@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 import statsd
 import itertools
 from flask import (
@@ -27,7 +27,8 @@ from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
     notification_status_schema,
-    notifications_filter_schema
+    notifications_filter_schema,
+    notifications_statistics_schema
 )
 from app.celery.tasks import send_sms, send_email
 
@@ -384,3 +385,12 @@ def send_notification(notification_type):
 
     statsd_client.incr('notifications.api.{}'.format(notification_type))
     return jsonify(data={"notification": {"id": notification_id}}), 201
+
+
+@notifications.route('/notifications/statistics')
+def get_notification_statistics_for_today():
+    today = date.today()
+    statistics = notifications_dao.dao_get_notification_statistics_for_day(day=today)
+
+    data, errors = notifications_statistics_schema.dump(statistics, many=True)
+    return jsonify(data=data, date=today.isoformat()), 200
