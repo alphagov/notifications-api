@@ -1,4 +1,4 @@
-from sqlalchemy import (desc, func, Integer, and_)
+from sqlalchemy import (desc, func, Integer, and_, asc)
 from sqlalchemy.sql.expression import cast
 
 from datetime import (
@@ -227,7 +227,7 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
         page_size = current_app.config['PAGE_SIZE']
     query = Notification.query.filter_by(service_id=service_id, job_id=job_id)
     query = filter_query(query, filter_dict)
-    return query.order_by(desc(Notification.created_at)).paginate(
+    return query.order_by(asc(Notification.job_row_number)).paginate(
         page=page,
         per_page=page_size
     )

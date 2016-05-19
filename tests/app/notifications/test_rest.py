@@ -129,20 +129,38 @@ def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notif
             assert response.status_code == 200
 
 
-def test_get_all_notifications_for_job_in_order(notify_api, notify_db, notify_db_session, sample_service):
+def test_get_all_notifications_for_job_in_order_of_job_number(notify_api,
+                                                              notify_db,
+                                                              notify_db_session,
+                                                              sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             main_job = create_sample_job(notify_db, notify_db_session, service=sample_service)
             another_job = create_sample_job(notify_db, notify_db_session, service=sample_service)
 
             notification_1 = create_sample_notification(
-                notify_db, notify_db_session, job=main_job, to_field="1", created_at=datetime.utcnow()
+                notify_db,
+                notify_db_session,
+                job=main_job,
+                to_field="1",
+                created_at=datetime.utcnow(),
+                job_row_number=1
             )
             notification_2 = create_sample_notification(
-                notify_db, notify_db_session, job=main_job, to_field="2", created_at=datetime.utcnow()
+                notify_db,
+                notify_db_session,
+                job=main_job,
+                to_field="2",
+                created_at=datetime.utcnow(),
+                job_row_number=2
             )
             notification_3 = create_sample_notification(
-                notify_db, notify_db_session, job=main_job, to_field="3", created_at=datetime.utcnow()
+                notify_db,
+                notify_db_session,
+                job=main_job,
+                to_field="3",
+                created_at=datetime.utcnow(),
+                job_row_number=3
             )
             create_sample_notification(notify_db, notify_db_session, job=another_job)
 
@@ -154,9 +172,12 @@ def test_get_all_notifications_for_job_in_order(notify_api, notify_db, notify_db
 
             resp = json.loads(response.get_data(as_text=True))
             assert len(resp['notifications']) == 3
-            assert resp['notifications'][0]['to'] == notification_3.to
+            assert resp['notifications'][0]['to'] == notification_1.to
+            assert resp['notifications'][0]['job_row_number'] == notification_1.job_row_number
             assert resp['notifications'][1]['to'] == notification_2.to
-            assert resp['notifications'][2]['to'] == notification_1.to
+            assert resp['notifications'][1]['job_row_number'] == notification_2.job_row_number
+            assert resp['notifications'][2]['to'] == notification_3.to
+            assert resp['notifications'][2]['job_row_number'] == notification_3.job_row_number
             assert response.status_code == 200
 
 

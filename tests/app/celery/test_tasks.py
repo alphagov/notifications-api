@@ -119,6 +119,7 @@ def test_should_process_sms_job(sample_job, mocker, mock_celery_remove_job):
     assert encryption.encrypt.call_args[0][0]['template'] == str(sample_job.template.id)
     assert encryption.encrypt.call_args[0][0]['template_version'] == sample_job.template.version
     assert encryption.encrypt.call_args[0][0]['personalisation'] == {}
+    assert encryption.encrypt.call_args[0][0]['row_number'] == 0
     tasks.send_sms.apply_async.assert_called_once_with(
         (str(sample_job.service_id),
          "uuid",
@@ -559,7 +560,11 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
 
 
 def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sample_job, mocker):
-    notification = _notification_json(sample_job.template, to="+447234123123", job_id=sample_job.id)
+    notification = _notification_json(
+        sample_job.template,
+        to="+447234123123",
+        job_id=sample_job.id,
+        row_number=2)
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
@@ -586,10 +591,15 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
     assert persisted_notification.sent_at > now
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_by == 'mmg'
+    assert persisted_notification.job_row_number == 2
 
 
 def test_should_use_email_template_and_persist(sample_email_template_with_placeholders, mocker):
-    notification = _notification_json(sample_email_template_with_placeholders, "my_email@my_email.com", {"name": "Jo"})
+    notification = _notification_json(
+        sample_email_template_with_placeholders,
+        "my_email@my_email.com",
+        {"name": "Jo"},
+        row_number=1)
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.statsd_client.incr')
     mocker.patch('app.statsd_client.timing_with_dates')
@@ -644,6 +654,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     assert persisted_notification.sent_at > now
     assert persisted_notification.status == 'sending'
     assert persisted_notification.sent_by == 'ses'
+    assert persisted_notification.job_row_number == 1
 
 
 def test_send_email_should_use_template_version_from_job_not_latest(sample_email_template, mocker):
@@ -952,7 +963,6 @@ def test_email_reset_password_should_send_email(notify_db, notify_db_session, no
         aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
                                   reset_password_message['to'],
                                   "Reset password for GOV.UK Notify",
-
                                   message)
 
 
@@ -983,7 +993,7 @@ def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job
     )
 
 
-def _notification_json(template, to, personalisation=None, job_id=None):
+def _notification_json(template, to, personalisation=None, job_id=None, row_number=None):
     notification = {
         "template": template.id,
         "template_version": template.version,
@@ -993,4 +1003,6 @@ def _notification_json(template, to, personalisation=None, job_id=None):
         notification.update({"personalisation": personalisation})
     if job_id:
         notification.update({"job": job_id})
+    if row_number:
+        notification['row_number'] = row_number
     return notification
