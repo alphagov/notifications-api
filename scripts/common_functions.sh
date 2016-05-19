@@ -374,10 +374,10 @@ get_elb_name_for_instance_name() {
 
     elb_to_instance_mapping['live_notify_api']='live-notify-api-elb'
     elb_to_instance_mapping['staging_notify_api']='staging-notify-api-elb'
-    elb_to_instance_mapping['notify_api']='notify-api-elb'
+    elb_to_instance_mapping['NotifyApi']='notify-api-elb'
     elb_to_instance_mapping['live_notify_admin_api']='live-notify-admin-api-elb'
     elb_to_instance_mapping['staging_notify_admin_api']='staging-notify-admin-api-elb'
-    elb_to_instance_mapping['notify_admin_api']='notify-admin-api-elb'
+    elb_to_instance_mapping['NotifyAdminApi']='notify-admin-api-elb'
 
     local elb_name=${elb_to_instance_mapping[${instance_name}]}
     if [ -z $elb_name ]; then
