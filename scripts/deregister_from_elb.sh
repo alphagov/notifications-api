@@ -30,7 +30,7 @@ start_sec=$(/bin/date +%s.%N)
 msg "Getting relevant load balancer"
 INSTANCE_NAME=$(get_instance_name_from_tags $INSTANCE_ID)
 
-if [[ $INSTANCE_NAME =~ 'delivery' ]]; then
+if [[ "$(tr [:upper:] [:lower:] <<< "${INSTANCE_NAME}")" =~ 'delivery' ]]; then
     msg "NO ELBs for delivery"
     exit 0
 fi
