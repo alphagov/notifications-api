@@ -1291,13 +1291,63 @@ def test_process_mmg_response_returns_200_when_cid_is_valid_notification_id(noti
         assert get_notification_by_id(sample_notification.id).status == 'delivered'
 
 
-def test_process_mmg_response_updates_notification_with_failed_status(notify_api, sample_notification):
+def test_process_mmg_response_status_5_updates_notification_with_permanently_failed(notify_api,
+                                                                                    sample_notification):
     with notify_api.test_client() as client:
         data = json.dumps({"reference": "mmg_reference",
                            "CID": str(sample_notification.id),
                            "MSISDN": "447777349060",
-                           "status": 5,
-                           "deliverytime": "2016-04-05 16:01:07"})
+                           "status": 5})
+
+        response = client.post(path='notifications/sms/mmg',
+                               data=data,
+                               headers=[('Content-Type', 'application/json')])
+        assert response.status_code == 200
+        json_data = json.loads(response.data)
+        assert json_data['result'] == 'success'
+        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
+        assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
+
+
+def test_process_mmg_response_status_2_or_4_updates_notification_with_temporary_failed(notify_api,
+                                                                                       sample_notification):
+    with notify_api.test_client() as client:
+        data = json.dumps({"reference": "mmg_reference",
+                           "CID": str(sample_notification.id),
+                           "MSISDN": "447777349060",
+                           "status": 2})
+
+        response = client.post(path='notifications/sms/mmg',
+                               data=data,
+                               headers=[('Content-Type', 'application/json')])
+        assert response.status_code == 200
+        json_data = json.loads(response.data)
+        assert json_data['result'] == 'success'
+        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
+        assert get_notification_by_id(sample_notification.id).status == 'temporary-failure'
+
+        data = json.dumps({"reference": "mmg_reference",
+                           "CID": str(sample_notification.id),
+                           "MSISDN": "447777349060",
+                           "status": 4})
+
+        response = client.post(path='notifications/sms/mmg',
+                               data=data,
+                               headers=[('Content-Type', 'application/json')])
+        assert response.status_code == 200
+        json_data = json.loads(response.data)
+        assert json_data['result'] == 'success'
+        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
+        assert get_notification_by_id(sample_notification.id).status == 'temporary-failure'
+
+
+def test_process_mmg_response_unknown_status_updates_notification_with_failed(notify_api,
+                                                                              sample_notification):
+    with notify_api.test_client() as client:
+        data = json.dumps({"reference": "mmg_reference",
+                           "CID": str(sample_notification.id),
+                           "MSISDN": "447777349060",
+                           "status": 10})
 
         response = client.post(path='notifications/sms/mmg',
                                data=data,
