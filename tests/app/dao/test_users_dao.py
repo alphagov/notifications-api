@@ -97,6 +97,12 @@ def test_get_user_by_email(sample_user):
     assert sample_user == user_from_db
 
 
+def test_get_user_by_email_is_case_insensitive(sample_user):
+    email = sample_user.email_address
+    user_from_db = get_user_by_email(email.upper())
+    assert sample_user == user_from_db
+
+
 def test_should_delete_all_verification_codes_more_than_one_day_old(sample_user):
     make_verify_code(sample_user, age=timedelta(hours=24), code="54321")
     make_verify_code(sample_user, age=timedelta(hours=24), code="54321")
