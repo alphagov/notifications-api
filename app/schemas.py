@@ -168,7 +168,6 @@ class RequestVerifyCodeSchema(ma.Schema):
 
 class NotificationSchema(ma.Schema):
     personalisation = fields.Dict(required=False)
-    pass
 
 
 class SmsNotificationSchema(NotificationSchema):
@@ -360,6 +359,14 @@ class FromToDateSchema(ma.Schema):
             raise ValidationError("date_from needs to be greater than date_to")
 
 
+class DaySchema(ma.Schema):
+    day = fields.Date(required=True)
+
+    @validates('day')
+    def validate_day(self, value):
+        _validate_not_in_future(value)
+
+
 class WeekAggregateNotificationStatisticsSchema(ma.Schema):
 
     date_from = fields.Date()
@@ -405,3 +412,4 @@ event_schema = EventSchema()
 from_to_date_schema = FromToDateSchema()
 provider_details_schema = ProviderDetailsSchema()
 week_aggregate_notification_statistics_schema = WeekAggregateNotificationStatisticsSchema()
+day_schema = DaySchema()
