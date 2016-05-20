@@ -91,5 +91,7 @@ def test_all_versions_of_template(notify_api, sample_template):
             json_resp = json.loads(resp.get_data(as_text=True))
             assert len(json_resp['data']) == 3
             assert json_resp['data'][0]['content'] == newest_content
+            assert json_resp['data'][0]['updated_at']
             assert json_resp['data'][1]['content'] == newer_content
+            assert json_resp['data'][1]['updated_at']
             assert json_resp['data'][2]['content'] == old_content

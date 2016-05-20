@@ -1,6 +1,8 @@
 import random
 from datetime import (datetime, timedelta)
 
+from sqlalchemy import func
+
 from app import db
 from app.models import (User, VerifyCode)
 
@@ -79,7 +81,7 @@ def get_model_users(user_id=None):
 
 
 def get_user_by_email(email):
-    return User.query.filter_by(email_address=email).one()
+    return User.query.filter(func.lower(User.email_address) == func.lower(email)).one()
 
 
 def increment_failed_login_count(user):
