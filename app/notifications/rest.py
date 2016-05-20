@@ -388,9 +388,16 @@ def send_notification(notification_type):
 
 
 @notifications.route('/notifications/statistics')
-def get_notification_statistics_for_today():
-    today = date.today()
-    statistics = notifications_dao.dao_get_notification_statistics_for_day(day=today)
+def get_notification_statistics_for_day():
+    data, errors = notifications_statistics_schema.load(request.args)
+    if errors:
+        return jsonify(result='error', message=errors), 400
+    if not data.day:
+        return jsonify(result='error', message='Please provide day as query parameter.'), 400
+
+    statistics = notifications_dao.dao_get_notification_statistics_for_day(
+        day=data.day
+    )
 
     data, errors = notifications_statistics_schema.dump(statistics, many=True)
-    return jsonify(data=data, date=today.isoformat()), 200
+    return jsonify(data=data), 200

@@ -15,11 +15,13 @@ def test_get_notification_statistics(notify_api, sample_notification_statistics)
             )
 
             response = client.get(
-                '/notifications/statistics',
+                '/notifications/statistics?day={}'.format(date.today().isoformat()),
                 headers=[auth_header]
             )
 
             notifications = json.loads(response.get_data(as_text=True))
+
+            assert len(notifications['data']) == 1
             stats = notifications['data'][0]
             assert stats['emails_requested'] == 2
             assert stats['emails_delivered'] == 1
@@ -58,11 +60,46 @@ def test_get_notification_statistics_only_returns_today(notify_api, notify_db, n
             )
 
             response = client.get(
-                '/notifications/statistics',
+                '/notifications/statistics?day={}'.format(date.today().isoformat()),
                 headers=[auth_header]
             )
 
             notifications = json.loads(response.get_data(as_text=True))
+
             assert len(notifications['data']) == 1
             assert notifications['data'][0]['day'] == date.today().isoformat()
             assert response.status_code == 200
+
+
+def test_get_notification_statistics_fails_if_no_date(notify_api, sample_notification_statistics):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(
+                service_id=sample_notification_statistics.service_id
+            )
+
+            response = client.get(
+                '/notifications/statistics',
+                headers=[auth_header]
+            )
+
+            resp = json.loads(response.get_data(as_text=True))
+            assert resp['result'] == 'error'
+            assert response.status_code == 400
+
+
+def test_get_notification_statistics_fails_if_invalid_date(notify_api, sample_notification_statistics):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(
+                service_id=sample_notification_statistics.service_id
+            )
+
+            response = client.get(
+                '/notifications/statistics?day=2016-99-99',
+                headers=[auth_header]
+            )
+
+            resp = json.loads(response.get_data(as_text=True))
+            assert resp['result'] == 'error'
+            assert response.status_code == 400
