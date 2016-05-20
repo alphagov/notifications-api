@@ -1158,7 +1158,8 @@ def test_firetext_callback_should_return_404_if_cannot_find_notification_id(noti
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 400
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'Firetext callback failed: notification {} not found. Status {}'.format(
+            assert json_resp['message'] == 'Firetext callback failed: notification {} either not found ' \
+                                           'or already updated from sending. Status {}'.format(
                 missing_notification_id,
                 'Delivered'
             )
@@ -1221,9 +1222,9 @@ def test_firetext_callback_should_update_notification_status_failed(notify_api, 
 def test_firetext_callback_should_update_notification_status_sent(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            notification = create_sample_notification(notify_db, notify_db_session, status='delivered')
+            notification = create_sample_notification(notify_db, notify_db_session, status='sending')
             original = get_notification_by_id(notification.id)
-            assert original.status == 'delivered'
+            assert original.status == 'sending'
 
             response = client.post(
                 path='/notifications/sms/firetext',
@@ -1248,9 +1249,9 @@ def test_firetext_callback_should_update_notification_status_sent(notify_api, no
 def test_firetext_callback_should_update_multiple_notification_status_sent(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            notification1 = create_sample_notification(notify_db, notify_db_session, status='delivered')
-            notification2 = create_sample_notification(notify_db, notify_db_session, status='delivered')
-            notification3 = create_sample_notification(notify_db, notify_db_session, status='delivered')
+            notification1 = create_sample_notification(notify_db, notify_db_session, status='sending')
+            notification2 = create_sample_notification(notify_db, notify_db_session, status='sending')
+            notification3 = create_sample_notification(notify_db, notify_db_session, status='sending')
 
             client.post(
                 path='/notifications/sms/firetext',
@@ -1330,8 +1331,8 @@ def test_process_mmg_response_status_5_updates_notification_with_permanently_fai
         assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
 
 
-def test_process_mmg_response_status_2_or_4_updates_notification_with_temporary_failed(notify_api,
-                                                                                       sample_notification):
+def test_process_mmg_response_status_2_updates_notification_with_temporary_failed(notify_api,
+                                                                                  sample_notification):
     with notify_api.test_client() as client:
         data = json.dumps({"reference": "mmg_reference",
                            "CID": str(sample_notification.id),
@@ -1347,6 +1348,10 @@ def test_process_mmg_response_status_2_or_4_updates_notification_with_temporary_
         assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
         assert get_notification_by_id(sample_notification.id).status == 'temporary-failure'
 
+
+def test_process_mmg_response_status_4_updates_notification_with_temporary_failed(notify_api,
+                                                                                  sample_notification):
+    with notify_api.test_client() as client:
         data = json.dumps({"reference": "mmg_reference",
                            "CID": str(sample_notification.id),
                            "MSISDN": "447777349060",
@@ -1510,21 +1515,21 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
                 notify_db_session,
                 template=sample_email_template,
                 reference='ref1',
-                status='delivered')
+                status='sending')
 
             notification2 = create_sample_notification(
                 notify_db,
                 notify_db_session,
                 template=sample_email_template,
                 reference='ref2',
-                status='delivered')
+                status='sending')
 
             notification3 = create_sample_notification(
                 notify_db,
                 notify_db_session,
                 template=sample_email_template,
                 reference='ref2',
-                status='delivered')
+                status='sending')
 
             client.post(
                 path='/notifications/sms/firetext',
@@ -1766,7 +1771,7 @@ def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.statsd_client.incr')
-            notification = create_sample_notification(notify_db, notify_db_session, status='delivered')
+            notification = create_sample_notification(notify_db, notify_db_session, status='sending')
 
             client.post(
                 path='/notifications/sms/firetext',

@@ -58,9 +58,10 @@ def process_sms_client_response(status, reference, client_name):
                                                                         notification_status,
                                                                         notification_statistics_status)
     if update_success == 0:
-        status_error = "{} callback failed: notification {} not found. Status {}".format(client_name,
-                                                                                         reference,
-                                                                                         notification_status_message)
+        status_error = "{} callback failed: notification {} either not found or already updated " \
+                       "from sending. Status {}".format(client_name,
+                                                        reference,
+                                                        notification_status_message)
         return success, status_error
 
     if not notification_success:
