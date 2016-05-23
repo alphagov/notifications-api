@@ -1,7 +1,7 @@
 ---
 files:
   -
-    destination: /home/ubuntu/notifications-api
+    destination: /home/notify-app/notifications-api
     source: /
 hooks:
   AfterInstall:
