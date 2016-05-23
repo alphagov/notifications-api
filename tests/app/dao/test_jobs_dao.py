@@ -31,6 +31,8 @@ def test_create_job(sample_template):
     assert Job.query.count() == 1
     job_from_db = Job.query.get(job_id)
     assert job == job_from_db
+    assert job_from_db.notifications_delivered == 0
+    assert job_from_db.notifications_failed == 0
 
 
 def test_get_job_by_id(sample_job):
