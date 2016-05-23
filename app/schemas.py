@@ -381,6 +381,15 @@ class WeekAggregateNotificationStatisticsSchema(ma.Schema):
         _validate_positive_number(value)
 
 
+class UnarchivedTemplateSchema(BaseSchema):
+    archived = fields.Boolean(required=True)
+
+    @validates_schema
+    def validate_archived(self, data):
+        if data['archived']:
+            raise ValidationError('Template has been deleted', 'template')
+
+
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
 service_schema = ServiceSchema()
@@ -413,3 +422,4 @@ from_to_date_schema = FromToDateSchema()
 provider_details_schema = ProviderDetailsSchema()
 week_aggregate_notification_statistics_schema = WeekAggregateNotificationStatisticsSchema()
 day_schema = DaySchema()
+unarchived_template_schema = UnarchivedTemplateSchema()

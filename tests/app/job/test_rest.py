@@ -4,6 +4,7 @@ import app.celery.tasks
 
 from tests import create_authorization_header
 from tests.app.conftest import sample_job as create_job
+from app.dao.templates_dao import dao_update_template
 
 
 def test_get_jobs(notify_api, notify_db, notify_db_session, sample_template):
@@ -176,6 +177,31 @@ def test_create_job_returns_404_if_missing_service(notify_api, sample_template, 
             app.celery.tasks.process_job.apply_async.assert_not_called()
             assert resp_json['result'] == 'error'
             assert resp_json['message'] == 'No result found'
+
+
+def test_create_job_returns_400_if_archived_template(notify_api, sample_template, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.process_job.apply_async')
+            sample_template.archived = True
+            dao_update_template(sample_template)
+            data = {
+                'template': str(sample_template.id)
+            }
+            path = '/service/{}/job'.format(sample_template.service.id)
+            auth_header = create_authorization_header(service_id=sample_template.service.id)
+            headers = [('Content-Type', 'application/json'), auth_header]
+            response = client.post(
+                path,
+                data=json.dumps(data),
+                headers=headers)
+
+            resp_json = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 400
+
+            app.celery.tasks.process_job.apply_async.assert_not_called()
+            assert resp_json['result'] == 'error'
+            assert 'Template has been deleted' in resp_json['message']['template']
 
 
 def _setup_jobs(notify_db, notify_db_session, template, number_of_jobs=5):
