@@ -219,8 +219,9 @@ def dao_update_notification(notification):
 
 
 def update_notification_status_by_id(notification_id, status, notification_statistics_status):
-    count = db.session.query(Notification).filter_by(
-        id=notification_id
+    count = db.session.query(Notification).filter(
+        Notification.id == notification_id,
+        Notification.status == 'sending'
     ).update({
         Notification.status: status
     })
