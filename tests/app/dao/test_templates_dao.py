@@ -140,6 +140,30 @@ def test_get_all_returns_empty_list_if_no_templates(sample_service):
     assert len(dao_get_all_templates_for_service(sample_service.id)) == 0
 
 
+def test_get_all_templates_ignores_archived_templates(notify_db, notify_db_session, sample_service):
+    normal_template = create_sample_template(
+        notify_db,
+        notify_db_session,
+        template_name='Normal Template',
+        service=sample_service,
+        archived=False
+    )
+    archived_template = create_sample_template(
+        notify_db,
+        notify_db_session,
+        template_name='Archived Template',
+        service=sample_service
+    )
+    # sample_template fixture uses dao, which forces archived = False at creation.
+    archived_template.archived = True
+    dao_update_template(archived_template)
+
+    templates = dao_get_all_templates_for_service(sample_service.id)
+
+    assert len(templates) == 1
+    assert templates[0] == normal_template
+
+
 def test_get_template_by_id_and_service(notify_db, notify_db_session, sample_service):
     sample_template = create_sample_template(
         notify_db,
