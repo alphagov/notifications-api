@@ -21,7 +21,7 @@ firetext_responses = {
         "message": 'Declined',
         "success": False,
         "notification_statistics_status": STATISTICS_FAILURE,
-        "notification_status": 'failed'
+        "notification_status": 'permanent-failure'
     },
     '2': {
         "message": 'Undelivered (Pending with Network)',

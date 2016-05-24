@@ -1234,7 +1234,7 @@ def test_firetext_callback_should_update_notification_status_failed(notify_api, 
             assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
                 sample_notification.id
             )
-            assert get_notification_by_id(sample_notification.id).status == 'failed'
+            assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
             stats = dao_get_notification_statistics_for_service(sample_notification.service_id)[0]
             assert stats.sms_delivered == 0
             assert stats.sms_requested == 1

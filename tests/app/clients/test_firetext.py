@@ -14,7 +14,7 @@ def test_should_return_correct_details_for_delivery():
 def test_should_return_correct_details_for_bounced():
     response_dict = get_firetext_responses('1')
     assert response_dict['message'] == 'Declined'
-    assert response_dict['notification_status'] == 'failed'
+    assert response_dict['notification_status'] == 'permanent-failure'
     assert response_dict['notification_statistics_status'] == 'failure'
     assert not response_dict['success']
 
