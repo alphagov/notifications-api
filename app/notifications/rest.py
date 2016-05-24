@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime
 import statsd
 import itertools
 from flask import (
@@ -30,6 +30,7 @@ from app.schemas import (
     notifications_filter_schema,
     notifications_statistics_schema,
     day_schema,
+    unarchived_template_schema
 )
 from app.celery.tasks import send_sms, send_email
 
@@ -327,6 +328,10 @@ def send_notification(notification_type):
         template_id=notification['template'],
         service_id=service_id
     )
+
+    errors = unarchived_template_schema.validate({'archived': template.archived})
+    if errors:
+        return jsonify(result='error', message=errors), 400
 
     template_object = Template(template.__dict__, notification.get('personalisation', {}))
     if template_object.missing_data:

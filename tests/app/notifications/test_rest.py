@@ -13,7 +13,7 @@ from tests.app.conftest import sample_email_template as create_sample_email_temp
 from tests.app.conftest import sample_template as create_sample_template
 from flask import (json, current_app, url_for)
 from app.models import Service
-from app.dao.templates_dao import dao_get_all_templates_for_service
+from app.dao.templates_dao import dao_get_all_templates_for_service, dao_update_template
 from app.dao.services_dao import dao_update_service
 from app.dao.notifications_dao import get_notification_by_id, dao_get_notification_statistics_for_service
 from freezegun import freeze_time
@@ -562,6 +562,28 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_templat
             )
             assert response.status_code == 201
             assert encryption.decrypt(app.celery.tasks.send_sms.apply_async.call_args[0][0][2]) == data
+
+
+def test_should_not_send_notification_for_archived_template(notify_api, sample_template, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            sample_template.archived = True
+            dao_update_template(sample_template)
+            limit = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+            json_data = json.dumps({
+                'to': '+447700900855',
+                'template': sample_template.id
+            })
+            endpoint = url_for('notifications.send_notification', notification_type='sms')
+            auth_header = create_authorization_header(service_id=sample_template.service.id)
+
+            resp = client.post(
+                path=endpoint,
+                data=json_data,
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert resp.status_code == 400
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert 'Template has been deleted' in json_resp['message']['template']
 
 
 def test_send_notification_with_missing_personalisation(notify_api, sample_template_with_placeholders, mocker):
