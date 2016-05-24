@@ -1,8 +1,15 @@
 import boto3
+import logging
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from flask import current_app
 from monotonic import monotonic
 from app.clients import STATISTICS_DELIVERED, STATISTICS_FAILURE
 from app.clients.email import (EmailClientException, EmailClient)
+
+
+logger = logging.getLogger(__name__)
+
 
 ses_response_map = {
     'Permanent': {
@@ -60,7 +67,8 @@ class AwsSesClient(EmailClient):
                    subject,
                    body,
                    html_body='',
-                   reply_to_addresses=None):
+                   reply_to_addresses=None,
+                   headers=None):
         try:
             if isinstance(to_addresses, str):
                 to_addresses = [to_addresses]
@@ -69,35 +77,31 @@ class AwsSesClient(EmailClient):
             elif reply_to_addresses is None:
                 reply_to_addresses = []
 
-            body = {
-                'Text': {'Data': body}
-            }
-
-            if html_body:
-                body.update({
-                    'Html': {'Data': html_body}
-                })
-
             start_time = monotonic()
-            response = self._client.send_email(
-                Source=source,
-                Destination={
-                    'ToAddresses': to_addresses,
-                    'CcAddresses': [],
-                    'BccAddresses': []
-                },
-                Message={
-                    'Subject': {
-                        'Data': subject,
-                    },
-                    'Body': body
-                },
-                ReplyToAddresses=reply_to_addresses)
+
+            msg = MIMEMultipart()
+            msg['Subject'] = subject
+            msg['From'] = source
+            msg['To'] = ','.join(to_addresses)
+            msg['ReplyToAddresses'] = ','.join(reply_to_addresses)
+            msg.attach(MIMEText(body, 'plain'))
+            msg.attach(MIMEText(html_body, 'html'))
+            for k, v in headers.items():
+                msg.add_header(k, v)
+
+            response = self._client.send_raw_email(
+                Source=msg['From'],
+                Destinations=to_addresses,
+                RawMessage={
+                    'Data': msg.as_bytes()
+                }
+            )
+
             elapsed_time = monotonic() - start_time
             current_app.logger.info("AWS SES request finished in {}".format(elapsed_time))
             self.statsd_client.timing("notifications.clients.ses.request-time", elapsed_time)
             return response['MessageId']
         except Exception as e:
-            # TODO logging exceptions
+            logger.exception(e)
             self.statsd_client.incr("notifications.clients.ses.error")
             raise AwsSesClientException(str(e))
