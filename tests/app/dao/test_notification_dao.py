@@ -73,15 +73,18 @@ def test_should_by_able_to_update_status_by_id(sample_notification):
     count = update_notification_status_by_id(sample_notification.id, 'delivered', 'delivered')
     assert count == 1
     assert Notification.query.get(sample_notification.id).status == 'delivered'
-    assert NotificationStatistics.query.filter_by(
-        service_id=sample_notification.service.id
-    ).one().sms_delivered == 1
-    assert NotificationStatistics.query.filter_by(
-        service_id=sample_notification.service.id
-    ).one().sms_requested == 1
-    assert NotificationStatistics.query.filter_by(
-        service_id=sample_notification.service.id
-    ).one().sms_failed == 0
+    stats = NotificationStatistics.query.filter_by(service_id=sample_notification.service.id).one()
+    assert stats.sms_delivered == 1
+    assert stats.sms_requested == 1
+    assert stats.sms_failed == 0
+
+
+def test_should_not_update_status_by_id_if_not_sending(notify_db, notify_db_session):
+    notification = sample_notification(notify_db, notify_db_session, status='delivered')
+    assert Notification.query.get(notification.id).status == 'delivered'
+    count = update_notification_status_by_id(notification.id, 'failed', 'failure')
+    assert count == 0
+    assert Notification.query.get(notification.id).status == 'delivered'
 
 
 def test_should_not_update_status_one_notification_status_is_delivered(sample_email_template, ses_provider):
@@ -100,15 +103,10 @@ def test_should_not_update_status_one_notification_status_is_delivered(sample_em
 
     update_notification_status_by_reference('reference', 'delivered', 'temporary-failure')
     assert Notification.query.get(notification.id).status == 'delivered'
-    assert NotificationStatistics.query.filter_by(
-        service_id=sample_email_template.service.id
-    ).one().emails_delivered == 1
-    assert NotificationStatistics.query.filter_by(
-        service_id=sample_email_template.service.id
-    ).one().emails_requested == 1
-    assert NotificationStatistics.query.filter_by(
-        service_id=sample_email_template.service.id
-    ).one().emails_failed == 0
+    stats = NotificationStatistics.query.filter_by(service_id=sample_email_template.service.id).one()
+    assert stats.emails_delivered == 1
+    assert stats.emails_requested == 1
+    assert stats.emails_failed == 0
 
 
 def test_should_be_able_to_record_statistics_failure_for_sms(sample_notification):
@@ -116,15 +114,10 @@ def test_should_be_able_to_record_statistics_failure_for_sms(sample_notification
     count = update_notification_status_by_id(sample_notification.id, 'delivered', 'failure')
     assert count == 1
     assert Notification.query.get(sample_notification.id).status == 'delivered'
-    assert NotificationStatistics.query.filter_by(
-        service_id=sample_notification.service.id
-    ).one().sms_delivered == 0
-    assert NotificationStatistics.query.filter_by(
-        service_id=sample_notification.service.id
-    ).one().sms_requested == 1
-    assert NotificationStatistics.query.filter_by(
-        service_id=sample_notification.service.id
-    ).one().sms_failed == 1
+    stats = NotificationStatistics.query.filter_by(service_id=sample_notification.service.id).one()
+    assert stats.sms_delivered == 0
+    assert stats.sms_requested == 1
+    assert stats.sms_failed == 1
 
 
 def test_should_be_able_to_record_statistics_failure_for_email(sample_email_template, ses_provider):
@@ -137,15 +130,10 @@ def test_should_be_able_to_record_statistics_failure_for_email(sample_email_temp
     count = update_notification_status_by_reference('reference', 'failed', 'failure')
     assert count == 1
     assert Notification.query.get(notification.id).status == 'failed'
-    assert NotificationStatistics.query.filter_by(
-        service_id=notification.service.id
-    ).one().emails_delivered == 0
-    assert NotificationStatistics.query.filter_by(
-        service_id=notification.service.id
-    ).one().emails_requested == 1
-    assert NotificationStatistics.query.filter_by(
-        service_id=notification.service.id
-    ).one().emails_failed == 1
+    stats = NotificationStatistics.query.filter_by(service_id=notification.service.id).one()
+    assert stats.emails_delivered == 0
+    assert stats.emails_requested == 1
+    assert stats.emails_failed == 1
 
 
 def test_should_return_zero_count_if_no_notification_with_id():
