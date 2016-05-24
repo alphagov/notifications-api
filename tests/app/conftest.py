@@ -281,7 +281,7 @@ def sample_email_job(notify_db,
             service=service)
     job_id = uuid.uuid4()
     data = {
-        'id': uuid.uuid4(),
+        'id': job_id,
         'service_id': service.id,
         'service': service,
         'template_id': template.id,
