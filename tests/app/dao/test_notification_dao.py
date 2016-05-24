@@ -76,6 +76,9 @@ def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_
     assert stats.sms_failed == 0
     job = Job.query.get(sample_job.id)
     assert job.notification_count == 1
+    assert job.notifications_sent == 1
+    assert job.notifications_delivered == 1
+    assert job.notifications_failed == 0
 
 
 def test_should_not_update_status_by_id_if_not_sending_and_does_not_update_job(notify_db, notify_db_session):
@@ -933,7 +936,7 @@ def test_sms_fragment_count(char_count, expected_sms_fragment_count):
     assert get_sms_fragment_count(char_count) == expected_sms_fragment_count
 
 
-def _notification_json(sample_template, job_id=None, id=None, reference=None, status=None):
+def _notification_json(sample_template, job_id=None, id=None):
     data = {
         'to': '+44709123456',
         'service': sample_template.service,
@@ -948,8 +951,4 @@ def _notification_json(sample_template, job_id=None, id=None, reference=None, st
         data.update({'job_id': job_id})
     if id:
         data.update({'id': id})
-    if reference:
-        data.update({'reference': reference})
-    if status:
-        data.update({'status': status})
     return data
