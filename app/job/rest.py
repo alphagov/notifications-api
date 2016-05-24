@@ -1,8 +1,8 @@
 from flask import (
     Blueprint,
     jsonify,
-    request
-)
+    request,
+    current_app)
 
 from app.dao.jobs_dao import (
     dao_create_job,
@@ -36,7 +36,17 @@ def get_job_by_service_and_job_id(service_id, job_id):
 
 @job.route('', methods=['GET'])
 def get_jobs_by_service(service_id):
-    jobs = dao_get_jobs_by_service_id(service_id)
+    if request.args.get('limit_days'):
+        try:
+            limit_days = int(request.args['limit_days'])
+        except ValueError as e:
+            error = '{} is not an integer'.format(request.args['limit_days'])
+            current_app.logger.error(error)
+            return jsonify(result="error", message={'limit_days': [error]}), 400
+    else:
+        limit_days = None
+
+    jobs = dao_get_jobs_by_service_id(service_id, limit_days)
     data, errors = job_schema.dump(jobs, many=True)
     if errors:
         return jsonify(result="error", message=errors), 400
