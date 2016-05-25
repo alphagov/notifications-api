@@ -1,4 +1,4 @@
-from sqlalchemy import (desc, func, Integer, and_, or_, asc)
+from sqlalchemy import (desc, func, Integer, or_, asc)
 from sqlalchemy.sql.expression import cast
 
 from datetime import (
@@ -11,6 +11,7 @@ from flask import current_app
 from werkzeug.datastructures import MultiDict
 
 from app import db
+from app.dao import days_ago
 from app.models import (
     Service,
     Notification,
@@ -35,11 +36,11 @@ from app.dao.dao_utils import transactional
 
 
 def dao_get_notification_statistics_for_service(service_id, limit_days=None):
-    filter = [NotificationStatistics.service_id == service_id]
+    query_filter = [NotificationStatistics.service_id == service_id]
     if limit_days is not None:
-        filter.append(NotificationStatistics.day >= days_ago(limit_days))
+        query_filter.append(NotificationStatistics.day >= days_ago(limit_days))
     return NotificationStatistics.query.filter(
-        *filter
+        *query_filter
     ).order_by(
         desc(NotificationStatistics.day)
     ).all()
@@ -53,9 +54,7 @@ def dao_get_notification_statistics_for_service_and_day(service_id, day):
 
 
 def dao_get_notification_statistics_for_day(day):
-    return NotificationStatistics.query.filter_by(
-        day=day
-    ).all()
+    return NotificationStatistics.query.filter_by(day=day).all()
 
 
 def dao_get_potential_notification_statistics_for_day(day):
@@ -131,10 +130,10 @@ def dao_get_7_day_agg_notification_statistics_for_service(service_id,
 
 
 def dao_get_template_statistics_for_service(service_id, limit_days=None):
-    filter = [TemplateStatistics.service_id == service_id]
+    query_filter = [TemplateStatistics.service_id == service_id]
     if limit_days is not None:
-        filter.append(TemplateStatistics.day >= days_ago(limit_days))
-    return TemplateStatistics.query.filter(*filter).order_by(
+        query_filter.append(TemplateStatistics.day >= days_ago(limit_days))
+    return TemplateStatistics.query.filter(*query_filter).order_by(
         desc(TemplateStatistics.updated_at)).all()
 
 
@@ -153,7 +152,7 @@ def dao_create_notification(notification, notification_type, provider_identifier
     update_count = db.session.query(NotificationStatistics).filter_by(
         day=notification.created_at.date(),
         service_id=notification.service_id
-    ).update(update_query(notification_type, 'requested'))
+    ).update(update_notification_stats_query(notification_type, 'requested'))
 
     if update_count == 0:
         stats = NotificationStatistics(
@@ -194,7 +193,7 @@ def dao_create_notification(notification, notification_type, provider_identifier
     db.session.add(notification)
 
 
-def update_query(notification_type, status):
+def update_notification_stats_query(notification_type, status):
     mapping = {
         TEMPLATE_TYPE_SMS: {
             STATISTICS_REQUESTED: NotificationStatistics.sms_requested,
@@ -210,6 +209,26 @@ def update_query(notification_type, status):
     return {
         mapping[notification_type][status]: mapping[notification_type][status] + 1
     }
+
+
+def _update_statistics(notification, notification_statistics_status):
+    db.session.query(NotificationStatistics).filter_by(
+        day=notification.created_at.date(),
+        service_id=notification.service_id
+    ).update(
+        update_notification_stats_query(notification.template.template_type, notification_statistics_status)
+    )
+    if notification.job_id:
+        db.session.query(Job).filter_by(id=notification.job_id
+                                        ).update(update_job_stats_query(notification_statistics_status))
+
+
+def update_job_stats_query(status):
+    mapping = {
+        STATISTICS_FAILURE: Job.notifications_failed,
+        STATISTICS_DELIVERED: Job.notifications_delivered
+    }
+    return {mapping[status]: mapping[status] + 1}
 
 
 def dao_update_notification(notification):
@@ -229,12 +248,7 @@ def update_notification_status_by_id(notification_id, status, notification_stati
     if count == 1 and notification_statistics_status:
         notification = Notification.query.get(notification_id)
 
-        db.session.query(NotificationStatistics).filter_by(
-            day=notification.created_at.date(),
-            service_id=notification.service_id
-        ).update(
-            update_query(notification.template.template_type, notification_statistics_status)
-        )
+        _update_statistics(notification, notification_statistics_status)
 
     db.session.commit()
     return count
@@ -246,16 +260,8 @@ def update_notification_status_by_reference(reference, status, notification_stat
         {Notification.status: status})
 
     if count == 1:
-        notification = Notification.query.filter_by(
-            reference=reference
-        ).first()
-
-        db.session.query(NotificationStatistics).filter_by(
-            day=notification.created_at.date(),
-            service_id=notification.service_id
-        ).update(
-            update_query(notification.template.template_type, notification_statistics_status)
-        )
+        notification = Notification.query.filter_by(reference=reference).first()
+        _update_statistics(notification, notification_statistics_status)
 
     db.session.commit()
     return count
@@ -279,7 +285,7 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
     query = Notification.query.filter_by(service_id=service_id, job_id=job_id)
-    query = filter_query(query, filter_dict)
+    query = _filter_query(query, filter_dict)
     return query.order_by(asc(Notification.job_row_number)).paginate(
         page=page,
         per_page=page_size
@@ -308,14 +314,14 @@ def get_notifications_for_service(service_id,
         filters.append(func.date(Notification.created_at) >= days_ago)
 
     query = Notification.query.filter(*filters)
-    query = filter_query(query, filter_dict)
+    query = _filter_query(query, filter_dict)
     return query.order_by(desc(Notification.created_at)).paginate(
         page=page,
         per_page=page_size
     )
 
 
-def filter_query(query, filter_dict=None):
+def _filter_query(query, filter_dict=None):
     if filter_dict is None:
         filter_dict = MultiDict()
     else:
@@ -337,7 +343,3 @@ def delete_notifications_created_more_than_a_week_ago(status):
     ).delete(synchronize_session='fetch')
     db.session.commit()
     return deleted
-
-
-def days_ago(number_of_days):
-    return date.today() - timedelta(days=number_of_days)
