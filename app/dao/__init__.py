@@ -28,3 +28,8 @@ class DAOClass(object):
         db.session.delete(inst)
         if _commit:
             db.session.commit()
+
+
+def days_ago(number_of_days):
+    from datetime import date, timedelta
+    return date.today() - timedelta(days=number_of_days)

@@ -1,4 +1,4 @@
-from sqlalchemy import (desc, func, Integer, and_, or_, asc)
+from sqlalchemy import (desc, func, Integer, or_, asc)
 from sqlalchemy.sql.expression import cast
 
 from datetime import (
@@ -11,6 +11,7 @@ from flask import current_app
 from werkzeug.datastructures import MultiDict
 
 from app import db
+from app.dao import days_ago
 from app.models import (
     Service,
     Notification,
@@ -337,7 +338,3 @@ def delete_notifications_created_more_than_a_week_ago(status):
     ).delete(synchronize_session='fetch')
     db.session.commit()
     return deleted
-
-
-def days_ago(number_of_days):
-    return date.today() - timedelta(days=number_of_days)
