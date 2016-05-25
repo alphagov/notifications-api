@@ -26,13 +26,13 @@ def upgrade():
         if x.job_id:
             op.execute("update jobs set notifications_delivered = ("
                        "select count(status) from notifications where status = 'delivered' and job_id = '{}' "
-                       "group by status, job_id)"
+                       "group by job_id)"
                        "where jobs.id = '{}'".format(x.job_id, x.job_id))
 
             op.execute("update jobs set notifications_failed = ("
                        "select count(status) from notifications "
                        "where status in ('failed','technical-failure', 'temporary-failure', 'permanent-failure') "
-                       "and job_id = '{}' group by status, job_id)"
+                       "and job_id = '{}' group by job_id)"
                        "where jobs.id = '{}'".format(x.job_id, x.job_id))
     op.execute("update jobs set notifications_delivered = 0 where notifications_delivered is null")
     op.execute("update jobs set notifications_failed = 0 where notifications_failed is null")
