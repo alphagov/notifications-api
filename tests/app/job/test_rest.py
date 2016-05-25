@@ -1,5 +1,7 @@
 import json
 import uuid
+from datetime import datetime, timedelta
+
 import app.celery.tasks
 
 from tests import create_authorization_header
@@ -20,6 +22,32 @@ def test_get_jobs(notify_api, notify_db, notify_db_session, sample_template):
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
             assert len(resp_json['data']) == 5
+
+
+def test_get_jobs_with_limit_days(notify_api, notify_db, notify_db_session, sample_template):
+    create_job(
+        notify_db,
+        notify_db_session,
+        service=sample_template.service,
+        template=sample_template,
+    )
+    create_job(
+        notify_db,
+        notify_db_session,
+        service=sample_template.service,
+        template=sample_template,
+        created_at=datetime.now() - timedelta(days=7))
+
+    service_id = sample_template.service.id
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = '/service/{}/job'.format(service_id)
+            auth_header = create_authorization_header(service_id=service_id)
+            response = client.get(path, headers=[auth_header], query_string={'limit_days': 5})
+            assert response.status_code == 200
+            resp_json = json.loads(response.get_data(as_text=True))
+            assert len(resp_json['data']) == 1
 
 
 def test_get_job_with_invalid_service_id_returns404(notify_api, sample_api_key, sample_service):

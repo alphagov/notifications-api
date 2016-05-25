@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import (datetime, timedelta)
 import uuid
 
 from app.dao.jobs_dao import (
@@ -64,6 +64,46 @@ def test_get_jobs_for_service(notify_db, notify_db_session, sample_template):
     assert other_job == other_job_from_db[0]
 
     assert one_job_from_db != other_job_from_db
+
+
+def test_get_jobs_for_service_with_limit_days_param(notify_db, notify_db_session, sample_template):
+    from tests.app.conftest import sample_job as create_job
+
+    one_job = create_job(notify_db, notify_db_session, sample_template.service, sample_template)
+    old_job = create_job(notify_db, notify_db_session, sample_template.service, sample_template,
+                         created_at=datetime.now() - timedelta(days=8))
+
+    jobs = dao_get_jobs_by_service_id(one_job.service_id)
+
+    assert len(jobs) == 2
+    assert one_job in jobs
+    assert old_job in jobs
+
+    jobs_limit_days = dao_get_jobs_by_service_id(one_job.service_id, limit_days=7)
+    assert len(jobs_limit_days) == 1
+    assert one_job in jobs_limit_days
+    assert old_job not in jobs_limit_days
+
+
+def test_get_jobs_for_service_with_limit_days_edge_case(notify_db, notify_db_session, sample_template):
+    from tests.app.conftest import sample_job as create_job
+
+    one_job = create_job(notify_db, notify_db_session, sample_template.service, sample_template)
+    job_two = create_job(notify_db, notify_db_session, sample_template.service, sample_template,
+                         created_at=(datetime.now() - timedelta(days=7)).date())
+    one_second_after_midnight = datetime.combine((datetime.now() - timedelta(days=7)).date(),
+                                                 datetime.strptime("000001", "%H%M%S").time())
+    just_after_midnight_job = create_job(notify_db, notify_db_session, sample_template.service, sample_template,
+                                         created_at=one_second_after_midnight)
+    job_eight_days_old = create_job(notify_db, notify_db_session, sample_template.service, sample_template,
+                                    created_at=datetime.now() - timedelta(days=8))
+
+    jobs_limit_days = dao_get_jobs_by_service_id(one_job.service_id, limit_days=7)
+    assert len(jobs_limit_days) == 3
+    assert one_job in jobs_limit_days
+    assert job_two in jobs_limit_days
+    assert just_after_midnight_job in jobs_limit_days
+    assert job_eight_days_old not in jobs_limit_days
 
 
 def test_get_jobs_for_service_in_created_at_order(notify_db, notify_db_session, sample_template):
