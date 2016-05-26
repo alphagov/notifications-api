@@ -22,8 +22,8 @@ def test_should_return_correct_details_for_bounced():
 def test_should_return_correct_details_for_complaint():
     response_dict = get_firetext_responses('2')
     assert response_dict['message'] == 'Undelivered (Pending with Network)'
-    assert response_dict['notification_status'] == 'delivered'
-    assert response_dict['notification_statistics_status'] == 'delivered'
+    assert response_dict['notification_status'] == 'pending'
+    assert response_dict['notification_statistics_status'] is None
     assert response_dict['success']
 
 

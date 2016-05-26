@@ -26,8 +26,8 @@ firetext_responses = {
     '2': {
         "message": 'Undelivered (Pending with Network)',
         "success": True,
-        "notification_statistics_status": STATISTICS_DELIVERED,
-        "notification_status": 'delivered'
+        "notification_statistics_status": None,
+        "notification_status": 'pending'
     }
 }
 

@@ -308,7 +308,7 @@ class VerifyCode(db.Model):
         return check_hash(cde, self._code)
 
 
-NOTIFICATION_STATUS_TYPES = ['sending', 'delivered', 'failed',
+NOTIFICATION_STATUS_TYPES = ['sending', 'delivered', 'pending', 'failed',
                              'technical-failure', 'temporary-failure', 'permanent-failure']
 
 

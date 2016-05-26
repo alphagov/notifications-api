@@ -152,7 +152,7 @@ def dao_create_notification(notification, notification_type, provider_identifier
     update_count = db.session.query(NotificationStatistics).filter_by(
         day=notification.created_at.date(),
         service_id=notification.service_id
-    ).update(update_notification_stats_query(notification_type, 'requested'))
+    ).update(_update_notification_stats_query(notification_type, 'requested'))
 
     if update_count == 0:
         stats = NotificationStatistics(
@@ -193,7 +193,7 @@ def dao_create_notification(notification, notification_type, provider_identifier
     db.session.add(notification)
 
 
-def update_notification_stats_query(notification_type, status):
+def _update_notification_stats_query(notification_type, status):
     mapping = {
         TEMPLATE_TYPE_SMS: {
             STATISTICS_REQUESTED: NotificationStatistics.sms_requested,
@@ -216,14 +216,14 @@ def _update_statistics(notification, notification_statistics_status):
         day=notification.created_at.date(),
         service_id=notification.service_id
     ).update(
-        update_notification_stats_query(notification.template.template_type, notification_statistics_status)
+        _update_notification_stats_query(notification.template.template_type, notification_statistics_status)
     )
     if notification.job_id:
         db.session.query(Job).filter_by(id=notification.job_id
-                                        ).update(update_job_stats_query(notification_statistics_status))
+                                        ).update(_update_job_stats_query(notification_statistics_status))
 
 
-def update_job_stats_query(status):
+def _update_job_stats_query(status):
     mapping = {
         STATISTICS_FAILURE: Job.notifications_failed,
         STATISTICS_DELIVERED: Job.notifications_delivered
@@ -231,23 +231,32 @@ def update_job_stats_query(status):
     return {mapping[status]: mapping[status] + 1}
 
 
-def dao_update_notification(notification):
-    notification.updated_at = datetime.utcnow()
-    db.session.add(notification)
-    db.session.commit()
+def _set_firetext_status(notification, status):
+    # Firetext will send pending, then send either succes or fail.
+    # If we go from pending to delivered we need to set failure type as temporary-failure
+    if notification.status == 'pending':
+        if status == 'permanent-failure':
+            status = 'temporary-failure'
+    return status
 
 
-def update_notification_status_by_id(notification_id, status, notification_statistics_status):
+def _update_notification_status(notification, status):
+    if not notification:
+        return 0
+    status = _set_firetext_status(notification=notification, status=status)
+
     count = db.session.query(Notification).filter(
-        Notification.id == notification_id,
-        Notification.status == 'sending'
-    ).update({
-        Notification.status: status
-    })
+        Notification.id == notification.id,
+        or_(Notification.status == 'sending',
+            Notification.status == 'pending')).update({Notification.status: status})
+    return count
+
+
+def update_notification_status_by_id(notification_id, status, notification_statistics_status=None):
+    notification = Notification.query.get(notification_id)
+    count = _update_notification_status(notification=notification, status=status)
 
     if count == 1 and notification_statistics_status:
-        notification = Notification.query.get(notification_id)
-
         _update_statistics(notification, notification_statistics_status)
 
     db.session.commit()
@@ -255,16 +264,20 @@ def update_notification_status_by_id(notification_id, status, notification_stati
 
 
 def update_notification_status_by_reference(reference, status, notification_statistics_status):
-    count = db.session.query(Notification).filter(Notification.reference == reference,
-                                                  Notification.status == 'sending').update(
-        {Notification.status: status})
+    notification = Notification.query.filter_by(reference=reference).first()
+    count = _update_notification_status(notification=notification, status=status)
 
     if count == 1:
-        notification = Notification.query.filter_by(reference=reference).first()
         _update_statistics(notification, notification_statistics_status)
 
     db.session.commit()
     return count
+
+
+def dao_update_notification(notification):
+    notification.updated_at = datetime.utcnow()
+    db.session.add(notification)
+    db.session.commit()
 
 
 def update_notification_reference_by_id(id, reference):
