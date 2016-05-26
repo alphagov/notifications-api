@@ -194,3 +194,32 @@ def test_get_notification_statistics_returns_both_existing_stats_and_generated_z
             assert generated_stats['service'] == str(service_without_stats.id)
 
             assert response.status_code == 200
+
+
+@freeze_time('1955-11-05T12:00:00')
+def test_get_notification_statistics_returns_zeros_when_only_stats_for_different_date(
+    notify_api,
+    sample_notification_statistics
+):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            with freeze_time('1985-10-26T00:06:00'):
+                auth_header = create_authorization_header(
+                    service_id=sample_notification_statistics.service_id
+                )
+                response = client.get(
+                    '/notifications/statistics?day={}'.format(date.today().isoformat()),
+                    headers=[auth_header]
+                )
+
+            notifications = json.loads(response.get_data(as_text=True))
+
+            assert response.status_code == 200
+            assert len(notifications['data']) == 1
+            assert notifications['data'][0]['emails_requested'] == 0
+            assert notifications['data'][0]['emails_delivered'] == 0
+            assert notifications['data'][0]['emails_failed'] == 0
+            assert notifications['data'][0]['sms_requested'] == 0
+            assert notifications['data'][0]['sms_delivered'] == 0
+            assert notifications['data'][0]['sms_failed'] == 0
+            assert notifications['data'][0]['service'] == str(sample_notification_statistics.service_id)
