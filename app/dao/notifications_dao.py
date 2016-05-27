@@ -1,4 +1,4 @@
-from sqlalchemy import (desc, func, Integer, or_, asc)
+from sqlalchemy import (desc, func, Integer, or_, and_, asc)
 from sqlalchemy.sql.expression import cast
 
 from datetime import (
@@ -62,11 +62,13 @@ def dao_get_potential_notification_statistics_for_day(day):
         Service.id,
         NotificationStatistics
     ).outerjoin(
-        Service.service_notification_stats
-    ).filter(
-        or_(
-            NotificationStatistics.day == day,
-            NotificationStatistics.day == None  # noqa
+        NotificationStatistics,
+        and_(
+            Service.id == NotificationStatistics.service_id,
+            or_(
+                NotificationStatistics.day == day,
+                NotificationStatistics.day == None  # noqa
+            )
         )
     ).order_by(
         asc(Service.created_at)
