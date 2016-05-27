@@ -1234,14 +1234,14 @@ def test_firetext_callback_should_update_notification_status_failed(notify_api, 
             assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
                 sample_notification.id
             )
-            assert get_notification_by_id(sample_notification.id).status == 'failed'
+            assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
             stats = dao_get_notification_statistics_for_service(sample_notification.service_id)[0]
             assert stats.sms_delivered == 0
             assert stats.sms_requested == 1
             assert stats.sms_failed == 1
 
 
-def test_firetext_callback_should_update_notification_status_sent(notify_api, notify_db, notify_db_session):
+def test_firetext_callback_should_update_notification_status_pending(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             notification = create_sample_notification(notify_db, notify_db_session, status='sending')
@@ -1261,9 +1261,9 @@ def test_firetext_callback_should_update_notification_status_sent(notify_api, no
             assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
                 notification.id
             )
-            assert get_notification_by_id(notification.id).status == 'delivered'
+            assert get_notification_by_id(notification.id).status == 'pending'
             stats = dao_get_notification_statistics_for_service(notification.service_id)[0]
-            assert stats.sms_delivered == 1
+            assert stats.sms_delivered == 0
             assert stats.sms_requested == 1
             assert stats.sms_failed == 0
 
@@ -1797,7 +1797,7 @@ def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db
 
             client.post(
                 path='/notifications/sms/firetext',
-                data='mobile=441234123123&status=2&time=2016-03-10 14:17:00&reference={}'.format(
+                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
                     notification.id
                 ),
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
