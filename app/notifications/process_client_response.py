@@ -54,10 +54,9 @@ def process_sms_client_response(status, reference, client_name):
     notification_success = response_dict['success']
 
     # record stats
-    update_success = notifications_dao.update_notification_status_by_id(reference,
-                                                                        notification_status,
-                                                                        notification_statistics_status)
-    if update_success == 0:
+    if not notifications_dao.update_notification_status_by_id(reference,
+                                                              notification_status,
+                                                              notification_statistics_status):
         status_error = "{} callback failed: notification {} either not found or already updated " \
                        "from sending. Status {}".format(client_name,
                                                         reference,

@@ -90,11 +90,11 @@ def process_ses_response():
                 ), 200
 
             reference = ses_message['mail']['messageId']
-            if notifications_dao.update_notification_status_by_reference(
+            if not notifications_dao.update_notification_status_by_reference(
                     reference,
                     notification_status,
                     notification_statistics_status
-            ) == 0:
+            ):
                 message = "SES callback failed: notification either not found or already updated " \
                           "from sending. Status {}".format(notification_status)
                 current_app.logger.info(

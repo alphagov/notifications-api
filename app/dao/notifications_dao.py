@@ -214,15 +214,16 @@ def _update_notification_stats_query(notification_type, status):
 
 
 def _update_statistics(notification, notification_statistics_status):
+    if notification.job_id:
+        db.session.query(Job).filter_by(id=notification.job_id
+                                        ).update(_update_job_stats_query(notification_statistics_status))
+
     db.session.query(NotificationStatistics).filter_by(
         day=notification.created_at.date(),
         service_id=notification.service_id
     ).update(
         _update_notification_stats_query(notification.template.template_type, notification_statistics_status)
     )
-    if notification.job_id:
-        db.session.query(Job).filter_by(id=notification.job_id
-                                        ).update(_update_job_stats_query(notification_statistics_status))
 
 
 def _update_job_stats_query(status):
@@ -243,16 +244,14 @@ def _decide_permanent_temporary_failure(current_status, status):
 
 
 def _update_notification_status(notification, status, notification_statistics_status):
-    if not notification:
-        return 0
     status = _decide_permanent_temporary_failure(current_status=notification.status, status=status)
 
-    count = db.session.query(Notification).filter(Notification.id == notification.id
-                                                  ).update({Notification.status: status})
-    if count == 1 and notification_statistics_status:
+    if notification_statistics_status:
         _update_statistics(notification, notification_statistics_status)
 
-    return count
+    db.session.query(Notification).filter(Notification.id == notification.id
+                                          ).update({Notification.status: status})
+    return True
 
 
 @transactional
@@ -262,10 +261,14 @@ def update_notification_status_by_id(notification_id, status, notification_stati
                                                  Notification.status == 'pending')
                                              ).first()
 
-    count = _update_notification_status(notification=notification,
-                                        status=status,
-                                        notification_statistics_status=notification_statistics_status)
-    return count
+    if not notification:
+        return False
+
+    return _update_notification_status(
+        notification=notification,
+        status=status,
+        notification_statistics_status=notification_statistics_status
+    )
 
 
 @transactional
@@ -274,10 +277,14 @@ def update_notification_status_by_reference(reference, status, notification_stat
                                              or_(Notification.status == 'sending',
                                                  Notification.status == 'pending')
                                              ).first()
+    if not notification:
+        return False
 
-    return _update_notification_status(notification=notification,
-                                       status=status,
-                                       notification_statistics_status=notification_statistics_status)
+    return _update_notification_status(
+        notification=notification,
+        status=status,
+        notification_statistics_status=notification_statistics_status
+    )
 
 
 def dao_update_notification(notification):

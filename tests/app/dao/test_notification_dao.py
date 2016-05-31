@@ -64,8 +64,7 @@ def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_
     notification = Notification(**data)
     dao_create_notification(notification, sample_template.template_type, 'mmg')
     assert Notification.query.get(notification.id).status == 'sending'
-    count = update_notification_status_by_id(notification.id, 'delivered', 'delivered')
-    assert count == 1
+    assert update_notification_status_by_id(notification.id, 'delivered', 'delivered')
     assert Notification.query.get(notification.id).status == 'delivered'
     _assert_notification_stats(notification.service_id, sms_delivered=1, sms_requested=1, sms_failed=0)
     _assert_job_stats(notification.job_id, sent=1, count=1, delivered=1, failed=0)
@@ -75,8 +74,7 @@ def test_should_not_update_status_by_id_if_not_sending_and_does_not_update_job(n
     notification = sample_notification(notify_db, notify_db_session, status='delivered')
     job = Job.query.get(notification.job_id)
     assert Notification.query.get(notification.id).status == 'delivered'
-    count = update_notification_status_by_id(notification.id, 'failed', 'failure')
-    assert count == 0
+    assert not update_notification_status_by_id(notification.id, 'failed', 'failure')
     assert Notification.query.get(notification.id).status == 'delivered'
     assert job == Job.query.get(notification.job_id)
 
@@ -86,14 +84,12 @@ def test_should_by_able_to_update_status_by_id_from_pending_to_delivered(sample_
     notification = Notification(**data)
     dao_create_notification(notification, sample_template.template_type, 'mmg')
     assert Notification.query.get(notification.id).status == 'sending'
-    count = update_notification_status_by_id(notification_id=notification.id, status='pending')
-    assert count == 1
+    assert update_notification_status_by_id(notification_id=notification.id, status='pending')
     assert Notification.query.get(notification.id).status == 'pending'
     _assert_notification_stats(notification.service_id, sms_requested=1, sms_delivered=0, sms_failed=0)
     _assert_job_stats(sample_job.id, sent=1, count=1, delivered=0, failed=0)
 
-    count = update_notification_status_by_id(notification.id, 'delivered', 'delivered')
-    assert count == 1
+    assert update_notification_status_by_id(notification.id, 'delivered', 'delivered')
     assert Notification.query.get(notification.id).status == 'delivered'
     _assert_notification_stats(notification.service_id, sms_requested=1, sms_delivered=1, sms_failed=0)
     _assert_job_stats(notification.job_id, sent=1, count=1, delivered=1, failed=0)
@@ -104,15 +100,15 @@ def test_should_by_able_to_update_status_by_id_from_pending_to_temporary_failure
     notification = Notification(**data)
     dao_create_notification(notification, sample_template.template_type, 'mmg')
     assert Notification.query.get(notification.id).status == 'sending'
-    count = update_notification_status_by_id(notification_id=notification.id, status='pending')
-    assert count == 1
+    assert update_notification_status_by_id(notification_id=notification.id, status='pending')
     assert Notification.query.get(notification.id).status == 'pending'
     _assert_notification_stats(notification.service_id, sms_requested=1, sms_delivered=0, sms_failed=0)
     _assert_job_stats(notification.job_id, sent=1, count=1, delivered=0, failed=0)
 
-    count = update_notification_status_by_id(notification.id, status='permanent-failure',
-                                             notification_statistics_status='failure')
-    assert count == 1
+    assert update_notification_status_by_id(
+        notification.id,
+        status='permanent-failure',
+        notification_statistics_status='failure')
     assert Notification.query.get(notification.id).status == 'temporary-failure'
     _assert_notification_stats(notification.service_id, sms_delivered=0, sms_requested=1, sms_failed=1)
     _assert_job_stats(sample_job.id, sent=1, count=1, delivered=0, failed=1)
@@ -124,9 +120,11 @@ def test_should_by_able_to_update_status_by_id_from_sending_to_permanent_failure
     dao_create_notification(notification, sample_template.template_type, 'firetext')
     assert Notification.query.get(notification.id).status == 'sending'
 
-    count = update_notification_status_by_id(notification.id, status='permanent-failure',
-                                             notification_statistics_status='failure')
-    assert count == 1
+    assert update_notification_status_by_id(
+        notification.id,
+        status='permanent-failure',
+        notification_statistics_status='failure'
+    )
     assert Notification.query.get(notification.id).status == 'permanent-failure'
     _assert_notification_stats(notification.service_id, sms_requested=1, sms_delivered=0, sms_failed=1)
     _assert_job_stats(sample_job.id, sent=1, count=1, delivered=0, failed=1)
@@ -154,8 +152,7 @@ def test_should_not_update_status_one_notification_status_is_delivered(sample_em
 
 def test_should_be_able_to_record_statistics_failure_for_sms(sample_notification):
     assert Notification.query.get(sample_notification.id).status == 'sending'
-    count = update_notification_status_by_id(sample_notification.id, 'permanent-failure', 'failure')
-    assert count == 1
+    assert update_notification_status_by_id(sample_notification.id, 'permanent-failure', 'failure')
     assert Notification.query.get(sample_notification.id).status == 'permanent-failure'
     _assert_notification_stats(sample_notification.service_id, sms_requested=1, sms_delivered=0, sms_failed=1)
     _assert_job_stats(sample_notification.job_id, sent=1, count=1, delivered=0, failed=1)
@@ -175,11 +172,11 @@ def test_should_be_able_to_record_statistics_failure_for_email(sample_email_temp
 
 
 def test_should_return_zero_count_if_no_notification_with_id():
-    assert update_notification_status_by_id(str(uuid.uuid4()), 'delivered', 'delivered') == 0
+    assert not update_notification_status_by_id(str(uuid.uuid4()), 'delivered', 'delivered')
 
 
 def test_should_return_zero_count_if_no_notification_with_reference():
-    assert update_notification_status_by_reference('something', 'delivered', 'delivered') == 0
+    assert not update_notification_status_by_reference('something', 'delivered', 'delivered')
 
 
 def test_should_be_able_to_get_statistics_for_a_service(sample_template, mmg_provider):
