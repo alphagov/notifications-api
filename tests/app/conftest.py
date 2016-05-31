@@ -1,3 +1,4 @@
+import requests_mock
 import pytest
 from datetime import (datetime, date)
 from app import db
@@ -21,6 +22,12 @@ from app.dao.jobs_dao import dao_create_job
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
 import uuid
+
+
+@pytest.yield_fixture
+def rmock():
+    with requests_mock.mock() as rmock:
+        yield rmock
 
 
 @pytest.fixture(scope='function')

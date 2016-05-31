@@ -10,6 +10,7 @@ from app.clients.sms import SmsClientException
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.provider_details_dao import get_provider_details_by_notification_type
+from app.celery.research_mode_tasks import send_email_response, send_sms_response
 
 from notifications_utils.template import Template, unlink_govuk_escaped
 
@@ -261,11 +262,14 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             return
 
         try:
-            provider.send_sms(
-                to=validate_and_format_phone_number(notification['to']),
-                content=template.replaced,
-                reference=str(notification_id)
-            )
+            if service.research_mode:
+                send_sms_response.apply_async((provider.get_name(), str(notification_id), notification['to']), queue='sms')
+            else:
+                provider.send_sms(
+                    to=validate_and_format_phone_number(notification['to']),
+                    content=template.replaced,
+                    reference=str(notification_id)
+                )
 
         except SmsClientException as e:
             current_app.logger.error(
@@ -332,14 +336,18 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
                 values=notification.get('personalisation', {})
             )
 
-            reference = provider.send_email(
-                from_address,
-                notification['to'],
-                template.replaced_subject,
-                body=template.replaced_govuk_escaped,
-                html_body=template.as_HTML_email,
-                reply_to_addresses=reply_to_addresses,
-            )
+            if service.research_mode:
+                reference = create_uuid()
+                send_email_response.apply_async((provider.get_name(), str(reference), notification['to']), queue='email')
+            else:
+                reference = provider.send_email(
+                    from_address,
+                    notification['to'],
+                    template.replaced_subject,
+                    body=template.replaced_govuk_escaped,
+                    html_body=template.as_HTML_email,
+                    reply_to_addresses=reply_to_addresses,
+                )
 
             update_notification_reference_by_id(notification_id, reference)
 
@@ -500,7 +508,7 @@ def service_allowed_to_send_to(recipient, service):
 def provider_to_use(notification_type, notification_id):
     active_providers_in_order = [
         provider for provider in get_provider_details_by_notification_type(notification_type) if provider.active
-    ]
+        ]
 
     if not active_providers_in_order:
         current_app.logger.error(
