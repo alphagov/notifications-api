@@ -42,6 +42,7 @@ def test_create_service(sample_user):
     assert Service.query.count() == 1
     assert Service.query.first().name == "service_name"
     assert Service.query.first().id == service.id
+    assert not Service.query.first().research_mode
     assert sample_user in Service.query.first().users
 
 
