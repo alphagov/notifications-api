@@ -10,6 +10,11 @@ from app.clients import STATISTICS_DELIVERED, STATISTICS_FAILURE
 
 logger = logging.getLogger(__name__)
 
+# Firetext will send a delivery receipt with three different status codes.
+# The `firetext_response` maps these codes to the notification statistics status and notification status.
+# If we get a pending (status = 2) delivery receipt followed by a declined (status = 1) delivery receipt we will set
+# the notification status to temporary-failure rather than permanent failure.
+#  See the code in the notification_dao.update_notifications_status_by_id
 firetext_responses = {
     '0': {
         "message": 'Delivered',
@@ -21,13 +26,13 @@ firetext_responses = {
         "message": 'Declined',
         "success": False,
         "notification_statistics_status": STATISTICS_FAILURE,
-        "notification_status": 'failed'
+        "notification_status": 'permanent-failure'
     },
     '2': {
         "message": 'Undelivered (Pending with Network)',
         "success": True,
-        "notification_statistics_status": STATISTICS_DELIVERED,
-        "notification_status": 'delivered'
+        "notification_statistics_status": None,
+        "notification_status": 'pending'
     }
 }
 

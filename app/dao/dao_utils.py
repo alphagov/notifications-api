@@ -9,8 +9,9 @@ def transactional(func):
         from flask import current_app
         from app import db
         try:
-            func(*args, **kwargs)
+            res = func(*args, **kwargs)
             db.session.commit()
+            return res
         except Exception as e:
             current_app.logger.error(e)
             db.session.rollback()
