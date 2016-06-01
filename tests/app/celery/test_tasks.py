@@ -460,8 +460,9 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
-
     mmg_client.send_sms.assert_not_called()
+    with pytest.raises(NoResultFound):
+        notifications_dao.get_notification(service.id, notification_id)
 
 
 def test_send_sms_should_use_template_version_from_job_not_latest(sample_template, mocker):
@@ -561,6 +562,8 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
     )
 
     aws_ses_client.send_email.assert_not_called()
+    with pytest.raises(NoResultFound):
+        notifications_dao.get_notification(service.id, notification_id)
 
 
 def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sample_job, mocker):
