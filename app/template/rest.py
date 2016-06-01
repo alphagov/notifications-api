@@ -5,7 +5,6 @@ from flask import (
     current_app
 )
 import bleach
-from sqlalchemy.exc import IntegrityError
 
 from app.dao.templates_dao import (
     dao_update_template,
@@ -59,18 +58,18 @@ def update_template(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
 
     current_data = dict(template_schema.dump(fetched_template).data.items())
-    update_template = dict(template_schema.dump(fetched_template).data.items())
-    update_template.update(request.get_json())
-    update_template['content'] = _strip_html(update_template['content'])
+    updated_template = dict(template_schema.dump(fetched_template).data.items())
+    updated_template.update(request.get_json())
+    updated_template['content'] = _strip_html(updated_template['content'])
     # Check if there is a change to make.
-    if current_data == update_template:
-        return jsonify(data=update_template), 304
+    if _template_has_not_changed(current_data, updated_template):
+        return jsonify(data=updated_template), 200
 
-    update_dict, errors = template_schema.load(update_template)
+    update_dict, errors = template_schema.load(updated_template)
     if errors:
         return jsonify(result="error", message=errors), 400
     over_limit, json_resp = _content_count_greater_than_limit(
-        update_template['content'],
+        updated_template['content'],
         fetched_template.template_type)
     if over_limit:
         return json_resp, 400
@@ -119,3 +118,13 @@ def get_template_versions(service_id, template_id):
 
 def _strip_html(content):
     return bleach.clean(content, tags=[], strip=True)
+
+
+def _template_has_not_changed(current_data, updated_template):
+    if (current_data['name'] == updated_template['name'] and
+            current_data['content'] == updated_template['content'] and
+            current_data['subject'] == updated_template['subject']and
+            current_data['archived'] == updated_template['archived']):
+        return True
+    else:
+        return False
