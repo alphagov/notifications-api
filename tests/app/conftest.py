@@ -90,40 +90,54 @@ def sample_user(notify_db,
 
 def create_code(notify_db, notify_db_session, code_type, usr=None, code=None):
     if code is None:
-        code = create_secret_code()
+        code = "12345"
     if usr is None:
         usr = sample_user(notify_db, notify_db_session)
-    return create_user_code(usr, code, code_type), code
+    vcode = create_model('VerifyCode', **{
+        'code_type': code_type,
+        'expiry_datetime': datetime.utcnow() + timedelta(hours=1),
+        'user': usr,
+        'code': code
+    })
+    return vcode, code
 
 
 @pytest.fixture(scope='function')
-def sample_email_code(notify_db,
-                      notify_db_session,
-                      code=None,
-                      code_type="email",
-                      usr=None):
-    code, txt_code = create_code(notify_db,
-                                 notify_db_session,
-                                 code_type,
-                                 usr=usr,
-                                 code=code)
-    code.txt_code = txt_code
-    return code
+def sample_email_code(notify_db, notify_db_session):
+    return create_code(
+        notify_db,
+        notify_db_session,
+        'email'
+    )[0]
 
 
 @pytest.fixture(scope='function')
-def sample_sms_code(notify_db,
-                    notify_db_session,
-                    code=None,
-                    code_type="sms",
-                    usr=None):
-    code, txt_code = create_code(notify_db,
-                                 notify_db_session,
-                                 code_type,
-                                 usr=usr,
-                                 code=code)
-    code.txt_code = txt_code
-    return code
+def sample_email_code_plus_code(notify_db, notify_db_session):
+    return create_code(
+        notify_db,
+        notify_db_session,
+        'email'
+    )
+
+
+@pytest.fixture(scope='function')
+def sample_sms_code(notify_db, notify_db_session):
+    return create_code(
+        notify_db,
+        notify_db_session,
+        'sms'
+    )[0]
+
+
+@pytest.fixture(scope='function')
+def sample_sms_code_plus_code(notify_db, notify_db_session):
+    return create_code(
+        notify_db,
+        notify_db_session,
+        'sms'
+    )
+
+
 
 
 @pytest.fixture(scope='function')
