@@ -64,7 +64,7 @@ def update_template(service_id, template_id):
     update_template['content'] = _strip_html(update_template['content'])
     # Check if there is a change to make.
     if current_data == update_template:
-        return jsonify(data=update_template), 200
+        return jsonify(data=update_template), 304
 
     update_dict, errors = template_schema.load(update_template)
     if errors:

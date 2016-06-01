@@ -3,6 +3,7 @@ import random
 import string
 from app.models import Template
 from tests import create_authorization_header
+from app.dao.templates_dao import dao_get_template_by_id
 
 
 def test_should_create_a_new_sms_template_for_a_service(notify_api, sample_user, sample_service):
@@ -439,7 +440,6 @@ def test_update_does_not_create_new_version_when_there_is_no_change(notify_api, 
             resp = client.post('/service/{}/template/{}'.format(sample_template.service_id, sample_template.id),
                                data=json.dumps(data),
                                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 200
-    from app.dao.templates_dao import dao_get_template_by_id
+            assert resp.status_code == 304
     template = dao_get_template_by_id(sample_template.id)
     assert template.version == 1
