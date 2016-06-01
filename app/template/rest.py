@@ -121,10 +121,7 @@ def _strip_html(content):
 
 
 def _template_has_not_changed(current_data, updated_template):
-    if (current_data['name'] == updated_template['name'] and
-            current_data['content'] == updated_template['content'] and
-            current_data['subject'] == updated_template['subject']and
-            current_data['archived'] == updated_template['archived']):
-        return True
-    else:
-        return False
+    return all(
+        current_data[key] == updated_template[key]
+        for key in ('name', 'content', 'subject', 'archived')
+    )
