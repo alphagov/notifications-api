@@ -508,7 +508,7 @@ def test_send_sms_should_use_template_version_from_job_not_latest(sample_templat
 
 
 def test_should_send_email_if_restricted_service_and_valid_email(notify_db, notify_db_session, mocker):
-    user = sample_user(notify_db, notify_db_session, email="test@restricted.com")
+    user = sample_user(notify_db, notify_db_session, email_address="test@restricted.com")
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
     template = sample_template(
         notify_db,

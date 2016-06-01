@@ -41,7 +41,7 @@ def test_get_all_users(notify_api, notify_db, notify_db_session, sample_user):
     email = "another.notify@digital.cabinet-office.gov.uk"
     another_user = create_sample_user(notify_db,
                                       notify_db_session,
-                                      email=email)
+                                      email_address=email)
     assert User.query.count() == 2
     assert len(get_model_users()) == 2
 
@@ -50,7 +50,7 @@ def test_get_user(notify_api, notify_db, notify_db_session):
     email = "another.notify@digital.cabinet-office.gov.uk"
     another_user = create_sample_user(notify_db,
                                       notify_db_session,
-                                      email=email)
+                                      email_address=email)
     assert get_model_users(user_id=another_user.id).email_address == email
 
 

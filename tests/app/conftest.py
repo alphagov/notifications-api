@@ -71,20 +71,20 @@ def service_factory(notify_db, notify_db_session):
 @pytest.fixture(scope='function')
 def sample_user(notify_db,
                 notify_db_session,
+                name="Test User",
+                email_address="notify@digital.cabinet-office.gov.uk",
+                password='password',
                 mobile_numnber="+447700900986",
-                email="notify@digital.cabinet-office.gov.uk"):
-    data = {
-        'name': 'Test User',
-        'email_address': email,
-        'password': 'password',
-        'mobile_number': mobile_numnber,
-        'state': 'active'
-    }
-    usr = User.query.filter_by(email_address=email).first()
+                state='active'):
+    usr = User.query.filter_by(email_address=email_address).first()
     if not usr:
-        usr = User(**data)
-        save_model_user(usr)
-
+        usr = create_model('User', **{
+            'name': name,
+            'email_address': email_address,
+            'password': password,
+            'mobile_number': mobile_numnber,
+            'state': state
+        })
     return usr
 
 

@@ -11,12 +11,6 @@ from sqlalchemy.schema import MetaData
 
 from app import create_app, db
 
-from tests.app import (
-    create_model,
-    add_user_to_service,
-    create_history_from_model
-)
-
 
 @pytest.fixture(scope='session')
 def notify_api(request):

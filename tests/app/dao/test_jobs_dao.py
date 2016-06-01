@@ -10,6 +10,11 @@ from app.dao.jobs_dao import (
 
 from app.models import Job
 
+from tests.app.conftest import sample_job as create_job
+from tests.app.conftest import sample_service as create_service
+from tests.app.conftest import sample_template as create_template
+from tests.app.conftest import sample_user as create_user
+
 
 def test_create_job(sample_template):
     assert Job.query.count() == 0
@@ -41,14 +46,10 @@ def test_get_job_by_id(sample_job):
 
 
 def test_get_jobs_for_service(notify_db, notify_db_session, sample_template):
-    from tests.app.conftest import sample_job as create_job
-    from tests.app.conftest import sample_service as create_service
-    from tests.app.conftest import sample_template as create_template
-    from tests.app.conftest import sample_user as create_user
 
     one_job = create_job(notify_db, notify_db_session, sample_template.service, sample_template)
 
-    other_user = create_user(notify_db, notify_db_session, email="test@digital.cabinet-office.gov.uk")
+    other_user = create_user(notify_db, notify_db_session, email_address="test@digital.cabinet-office.gov.uk")
     other_service = create_service(notify_db, notify_db_session, user=other_user, service_name="other service",
                                    email_from='other.service')
     other_template = create_template(notify_db, notify_db_session, service=other_service)

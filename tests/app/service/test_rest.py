@@ -854,7 +854,7 @@ def test_remove_user_from_service(notify_api, notify_db, notify_db_session, samp
             second_user = create_sample_user(
                 notify_db,
                 notify_db_session,
-                email="new@digital.cabinet-office.gov.uk")
+                email_address="new@digital.cabinet-office.gov.uk")
             # Simulates successfully adding a user to the service
             second_permission = create_sample_service_permission(
                 notify_db,
@@ -877,7 +877,7 @@ def test_remove_user_from_service(notify_api, notify_db, notify_db_session, samp
             second_user = create_sample_user(
                 notify_db,
                 notify_db_session,
-                email="new@digital.cabinet-office.gov.uk")
+                email_address="new@digital.cabinet-office.gov.uk")
             endpoint = url_for(
                 'service.remove_user_from_service',
                 service_id=str(sample_service_permission.service.id),
