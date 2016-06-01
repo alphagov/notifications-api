@@ -1020,7 +1020,9 @@ def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_s
         now.strftime(DATETIME_FORMAT)
     )
     assert not mmg_client.send_sms.called
-    send_sms_response.apply_async.assert_called_once_with(('mmg', str(notification_id), "+447234123123"))
+    send_sms_response.apply_async.assert_called_once_with(
+        ('mmg', str(notification_id), "+447234123123"), queue='research-mode'
+    )
 
     persisted_notification = notifications_dao.get_notification(sample_service.id, notification_id)
     assert persisted_notification.id == notification_id
@@ -1064,7 +1066,9 @@ def test_should_call_send_email_response_task_if_research_mode(
         now.strftime(DATETIME_FORMAT)
     )
     assert not aws_ses_client.send_email.called
-    send_email_response.apply_async.assert_called_once_with(('ses', str(reference), 'john@smith.com'))
+    send_email_response.apply_async.assert_called_once_with(
+        ('ses', str(reference), 'john@smith.com'), queue="research-mode"
+    )
 
     persisted_notification = notifications_dao.get_notification(sample_service.id, notification_id)
     assert persisted_notification.id == notification_id

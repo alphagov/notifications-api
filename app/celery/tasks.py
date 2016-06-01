@@ -263,7 +263,9 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
 
         try:
             if service.research_mode:
-                send_sms_response.apply_async((provider.get_name(), str(notification_id), notification['to']), queue='sms')
+                send_sms_response.apply_async(
+                    (provider.get_name(), str(notification_id), notification['to']), queue='research-mode'
+                )
             else:
                 provider.send_sms(
                     to=validate_and_format_phone_number(notification['to']),
@@ -338,7 +340,9 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
 
             if service.research_mode:
                 reference = create_uuid()
-                send_email_response.apply_async((provider.get_name(), str(reference), notification['to']), queue='email')
+                send_email_response.apply_async(
+                    (provider.get_name(), str(reference), notification['to']), queue='research-mode'
+                )
             else:
                 reference = provider.send_email(
                     from_address,
