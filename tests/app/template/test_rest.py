@@ -155,29 +155,9 @@ def test_must_have_a_subject_on_an_email_template(notify_api, sample_user, sampl
             assert json_resp['message'] == {'subject': ['Invalid template subject']}
 
 
-def test_should_be_able_to_update_a_template(notify_api, sample_user, sample_service):
+def test_update_should_update_a_template(notify_api, sample_user, sample_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            data = {
-                'name': 'my template',
-                'template_type': 'email',
-                'subject': 'subject',
-                'content': 'template content',
-                'service': str(sample_service.id),
-                'created_by': str(sample_user.id)
-            }
-            data = json.dumps(data)
-            auth_header = create_authorization_header()
-
-            create_response = client.post(
-                '/service/{}/template'.format(sample_service.id),
-                headers=[('Content-Type', 'application/json'), auth_header],
-                data=data
-            )
-            assert create_response.status_code == 201
-            json_resp = json.loads(create_response.get_data(as_text=True))
-            assert json_resp['data']['name'] == 'my template'
-            assert json_resp['data']['version'] == 1
             data = {
                 'content': 'my template has new content <script type="text/javascript">alert("foo")</script>',
                 'created_by': str(sample_user.id)
@@ -186,7 +166,7 @@ def test_should_be_able_to_update_a_template(notify_api, sample_user, sample_ser
             auth_header = create_authorization_header()
 
             update_response = client.post(
-                '/service/{}/template/{}'.format(sample_service.id, json_resp['data']['id']),
+                '/service/{}/template/{}'.format(sample_template.service_id, sample_template.id),
                 headers=[('Content-Type', 'application/json'), auth_header],
                 data=data
             )
@@ -194,10 +174,12 @@ def test_should_be_able_to_update_a_template(notify_api, sample_user, sample_ser
             assert update_response.status_code == 200
             update_json_resp = json.loads(update_response.get_data(as_text=True))
             assert update_json_resp['data']['content'] == 'my template has new content alert("foo")'
+            assert update_json_resp['data']['name'] == sample_template.name
+            assert update_json_resp['data']['template_type'] == sample_template.template_type
             assert update_json_resp['data']['version'] == 2
 
 
-def test_should_be_able_to_archive_template(notify_api, sample_user, sample_service, sample_template):
+def test_should_be_able_to_archive_template(notify_api, sample_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
@@ -444,3 +426,20 @@ def test_should_return_all_template_versions_for_service_and_template_id(notify_
                     assert x['content'] == original_content + '1'
                 else:
                     assert x['content'] == original_content + '2'
+
+
+def test_update_does_not_create_new_version_when_there_is_no_change(notify_api, sample_template):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header()
+            data = {
+                'template_type': sample_template.template_type,
+                'content': sample_template.content,
+            }
+            resp = client.post('/service/{}/template/{}'.format(sample_template.service_id, sample_template.id),
+                               data=json.dumps(data),
+                               headers=[('Content-Type', 'application/json'), auth_header])
+            assert resp.status_code == 200
+    from app.dao.templates_dao import dao_get_template_by_id
+    template = dao_get_template_by_id(sample_template.id)
+    assert template.version == 1

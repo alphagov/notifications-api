@@ -59,14 +59,18 @@ def update_template(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
 
     current_data = dict(template_schema.dump(fetched_template).data.items())
-    current_data.update(request.get_json())
-    current_data['content'] = _strip_html(current_data['content'])
+    update_template = dict(template_schema.dump(fetched_template).data.items())
+    update_template.update(request.get_json())
+    update_template['content'] = _strip_html(update_template['content'])
+    # Check if there is a change to make.
+    if current_data == update_template:
+        return jsonify(data=update_template), 200
 
-    update_dict, errors = template_schema.load(current_data)
+    update_dict, errors = template_schema.load(update_template)
     if errors:
         return jsonify(result="error", message=errors), 400
     over_limit, json_resp = _content_count_greater_than_limit(
-        current_data['content'],
+        update_template['content'],
         fetched_template.template_type)
     if over_limit:
         return json_resp, 400
