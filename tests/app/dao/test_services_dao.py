@@ -11,6 +11,7 @@ from app.dao.services_dao import (
     dao_update_service,
     delete_service_and_all_associated_db_objects
 )
+from app.dao.permissions_dao import (permission_dao, default_service_permissions)
 from app.dao.users_dao import save_model_user
 from app.models import (
     NotificationStatistics,
@@ -302,6 +303,24 @@ def test_create_service_and_history_is_transactional(sample_user):
     assert 'column "name" violates not-null constraint' in str(excinfo.value)
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
+
+
+def test_default_permissions_are_added_for_service_creation(notify_api,
+                                                            notify_db,
+                                                            notify_db_session,
+                                                            sample_user):
+    assert Service.query.count() == 0
+    service = Service(**{
+        'name': 'created service',
+        'message_limit': 1000,
+        'restricted': False,
+        'active': False,
+        'email_from': 'created.service',
+        'created_by': sample_user
+    })
+    dao_create_service(service, sample_user)
+    permissions = permission_dao.get_query(filter_by_dict={'service': str(service.id)})
+    assert sorted(default_service_permissions) == sorted([x.permission for x in permissions])
 
 
 def test_delete_service_and_associated_objects(notify_db,

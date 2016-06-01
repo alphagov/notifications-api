@@ -35,6 +35,12 @@ def rmock():
     with requests_mock.mock() as rmock:
         yield rmock
 
+from tests.app import (
+    create_model,
+    add_user_to_service,
+    create_history_from_model
+)
+
 
 @pytest.fixture(scope='function')
 def service_factory(notify_db, notify_db_session):
@@ -125,27 +131,54 @@ def sample_service(notify_db,
                    notify_db_session,
                    service_name="Sample service",
                    user=None,
+                   active=False,
                    restricted=False,
-                   limit=1000,
-                   email_from="sample.service"):
+                   message_limit=1000,
+                   email_from="sample.service",
+                   with_history=False,
+                   version=1):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
-    data = {
-        'name': service_name,
-        'message_limit': limit,
-        'active': False,
-        'restricted': restricted,
-        'email_from': email_from,
-        'created_by': user
-    }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
-        service = Service(**data)
-        dao_create_service(service, user)
+        service = create_model('Service', **{
+            'name': service_name,
+            'message_limit': message_limit,
+            'active': active,
+            'restricted': restricted,
+            'email_from': email_from,
+            'created_by': user,
+            'users': [user]
+        })
     else:
         if user not in service.users:
-            dao_add_user_to_service(service, user)
+            add_user_to_service(service, user)
+    if with_history:
+        history = service_history(
+            notify_db,
+            notify_db_session,
+            service=service,
+            version=1
+        )
     return service
+
+
+@pytest.fixture(scope='function')
+def service_history(notify_db,
+                    notify_db_session,
+                    service=None,
+                    version=1):
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
+    history = Service.get_history_model().query.filter_by(id=service.id, version=version).first()
+    if not history:
+        history = create_history_from_model(service, version=version)
+    return history
+
+
+@pytest.fixture(scope='function')
+def sample_service_history(notify_db, notify_db_session):
+    return sample_service(notify_db, notify_db_session, with_history=True)
 
 
 @pytest.fixture(scope='function')
