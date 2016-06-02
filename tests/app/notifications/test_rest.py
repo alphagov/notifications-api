@@ -1173,7 +1173,12 @@ def test_firetext_callback_should_return_400_if_invalid_guid_notification_id(not
             assert json_resp['message'] == 'Firetext callback with invalid reference 1234'
 
 
-def test_firetext_callback_should_return_404_if_cannot_find_notification_id(notify_db, notify_db_session, notify_api, mocker):
+def test_firetext_callback_should_return_404_if_cannot_find_notification_id(
+    notify_db,
+    notify_db_session,
+    notify_api,
+    mocker
+):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.statsd_client.incr')
@@ -1279,7 +1284,12 @@ def test_firetext_callback_should_update_notification_status_pending(notify_api,
             assert stats.sms_failed == 0
 
 
-def test_firetext_callback_should_update_multiple_notification_status_sent(notify_api, notify_db, notify_db_session, mocker):
+def test_firetext_callback_should_update_multiple_notification_status_sent(
+    notify_api,
+    notify_db,
+    notify_db_session,
+    mocker
+):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.statsd_client.incr')
@@ -1563,29 +1573,28 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
                 notify_db,
                 notify_db_session,
                 template=sample_email_template,
-                reference='ref2',
+                reference='ref3',
                 status='sending')
 
-            client.post(
-                path='/notifications/sms/firetext',
-                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-                    notification1.id
-                ),
-                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+            resp1 = client.post(
+                path='/notifications/email/ses',
+                data=ses_notification_callback(ref='ref1'),
+                headers=[('Content-Type', 'text/plain; charset=UTF-8')]
+            )
+            resp2 = client.post(
+                path='/notifications/email/ses',
+                data=ses_notification_callback(ref='ref2'),
+                headers=[('Content-Type', 'text/plain; charset=UTF-8')]
+            )
+            resp3 = client.post(
+                path='/notifications/email/ses',
+                data=ses_notification_callback(ref='ref3'),
+                headers=[('Content-Type', 'text/plain; charset=UTF-8')]
+            )
 
-            client.post(
-                path='/notifications/sms/firetext',
-                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-                    notification2.id
-                ),
-                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
-
-            client.post(
-                path='/notifications/sms/firetext',
-                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-                    notification3.id
-                ),
-                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+            assert resp1.status_code == 200
+            assert resp2.status_code == 200
+            assert resp3.status_code == 200
 
             stats = dao_get_notification_statistics_for_service(notification1.service_id)[0]
             assert stats.emails_delivered == 3
