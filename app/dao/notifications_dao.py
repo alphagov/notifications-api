@@ -281,24 +281,32 @@ def dao_update_notification(notification):
 def update_notification_after_sent_to_provider(id_, notification_type, provider_name, reference=None):
     provider = ProviderDetails.query.filter_by(identifier=provider_name).one()
     notification = Notification.query.filter(Notification.id == id_).one()
-    if reference:
-        notification.reference = reference
-        db.session.add(notification)
+
+    def unit_count():
+        if notification_type == TEMPLATE_TYPE_EMAIL:
+            return 1
+        else:
+            return get_sms_fragment_count(notification.content_char_count)
+
     update_count = db.session.query(ProviderStatistics).filter_by(
         day=date.today(),
         service_id=notification.service_id,
         provider_id=provider.id
-    ).update({'unit_count': ProviderStatistics.unit_count + (
-        1 if notification_type == TEMPLATE_TYPE_EMAIL else get_sms_fragment_count(notification.content_char_count))})
+    ).update({'unit_count': ProviderStatistics.unit_count + unit_count()})
 
     if update_count == 0:
         provider_stats = ProviderStatistics(
             day=notification.created_at.date(),
             service_id=notification.service_id,
             provider_id=provider.id,
-            unit_count=1 if notification_type == TEMPLATE_TYPE_EMAIL else get_sms_fragment_count(
-                notification.content_char_count))
+            unit_count=unit_count()
+        )
+
         db.session.add(provider_stats)
+
+    if reference:
+        notification.reference = reference
+        db.session.add(notification)
 
 
 def get_notification_for_job(service_id, job_id, notification_id):
