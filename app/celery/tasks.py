@@ -274,8 +274,8 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             )
             current_app.logger.exception(e)
             notification_db_object.status = 'technical-failure'
+            dao_update_notification(notification_db_object)
 
-        dao_update_notification(notification_db_object)
         current_app.logger.info(
             "SMS {} created at {} sent at {}".format(notification_id, created_at, sent_at)
         )
