@@ -72,16 +72,16 @@ def test_process_sms_response_returns_error_for_unknown_status():
 
 def test_process_sms_response_updates_notification_stats_for_valid_request(notify_db,
                                                                            notify_db_session,
-                                                                           sample_notification):
+                                                                           sample_dao_notification):
     stats = NotificationStatistics.query.all()
     assert len(stats) == 1
     assert stats[0].sms_requested == 1
     assert stats[0].sms_delivered == 0
     assert stats[0].sms_failed == 0
-    success, error = process_sms_client_response(status='0', reference=str(sample_notification.id),
+    success, error = process_sms_client_response(status='0', reference=str(sample_dao_notification.id),
                                                  client_name='Firetext')
     assert error is None
-    assert success == "{} callback succeeded. reference {} updated".format('Firetext', sample_notification.id)
+    assert success == "{} callback succeeded. reference {} updated".format('Firetext', sample_dao_notification.id)
     stats = NotificationStatistics.query.all()
     assert len(stats) == 1
     assert stats[0].sms_requested == 1
@@ -92,16 +92,16 @@ def test_process_sms_response_updates_notification_stats_for_valid_request(notif
 def test_process_sms_response_updates_notification_stats_for_valid_request_with_failed_status(notify_api,
                                                                                               notify_db,
                                                                                               notify_db_session,
-                                                                                              sample_notification):
+                                                                                              sample_dao_notification):
     with notify_api.test_request_context():
         stats = NotificationStatistics.query.all()
         assert len(stats) == 1
         assert stats[0].sms_requested == 1
         assert stats[0].sms_delivered == 0
         assert stats[0].sms_failed == 0
-        success, error = process_sms_client_response(status='1', reference=str(sample_notification.id),
+        success, error = process_sms_client_response(status='1', reference=str(sample_dao_notification.id),
                                                      client_name='Firetext')
-        assert success == "{} callback succeeded. reference {} updated".format('Firetext', sample_notification.id)
+        assert success == "{} callback succeeded. reference {} updated".format('Firetext', sample_dao_notification.id)
         assert error is None
         stats = NotificationStatistics.query.all()
         assert len(stats) == 1

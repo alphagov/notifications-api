@@ -28,9 +28,9 @@ from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
 
 from tests.app import (
-create_model,
-add_user_to_service,
-create_history_from_model
+    create_model,
+    add_user_to_service,
+    create_history_from_model
 )
 
 
@@ -439,7 +439,7 @@ def sample_notification(notify_db,
                         created_at=datetime.utcnow(),
                         provider_name=None,
                         content_char_count=160,
-                        create=True):
+                        dao_create=False):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:
@@ -472,10 +472,18 @@ def sample_notification(notify_db,
     }
     if job_row_number:
         data['job_row_number'] = job_row_number
-    notification = Notification(**data)
-    if create:
+
+    if dao_create:
+        notification = Notification(**data)
         dao_create_notification(notification, template.template_type, provider_name)
+    else:
+        notification = create_model('Notification', **data)
     return notification
+
+
+@pytest.fixture(scope='function')
+def sample_dao_notification(notify_db, notify_db_session):
+    return sample_notification(notify_db, notify_db_session, dao_create=True)
 
 
 @pytest.fixture(scope='function')
@@ -522,8 +530,7 @@ def sample_invited_user(notify_db,
         'from_user': from_user,
         'permissions': 'send_messages,manage_service,manage_api_keys'
     }
-    invited_user = InvitedUser(**data)
-    save_invited_user(invited_user)
+    invited_user = create_model('InvitedUser', **data)
     return invited_user
 
 

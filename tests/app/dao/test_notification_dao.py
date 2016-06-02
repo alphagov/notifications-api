@@ -150,12 +150,12 @@ def test_should_not_update_status_one_notification_status_is_delivered(sample_em
     _assert_job_stats(notification.job_id, sent=1, count=1, delivered=1, failed=0)
 
 
-def test_should_be_able_to_record_statistics_failure_for_sms(sample_notification):
-    assert Notification.query.get(sample_notification.id).status == 'sending'
-    assert update_notification_status_by_id(sample_notification.id, 'permanent-failure', 'failure')
-    assert Notification.query.get(sample_notification.id).status == 'permanent-failure'
-    _assert_notification_stats(sample_notification.service_id, sms_requested=1, sms_delivered=0, sms_failed=1)
-    _assert_job_stats(sample_notification.job_id, sent=1, count=1, delivered=0, failed=1)
+def test_should_be_able_to_record_statistics_failure_for_sms(sample_dao_notification):
+    assert Notification.query.get(sample_dao_notification.id).status == 'sending'
+    assert update_notification_status_by_id(sample_dao_notification.id, 'permanent-failure', 'failure')
+    assert Notification.query.get(sample_dao_notification.id).status == 'permanent-failure'
+    _assert_notification_stats(sample_dao_notification.service_id, sms_requested=1, sms_delivered=0, sms_failed=1)
+    _assert_job_stats(sample_dao_notification.job_id, sent=1, count=1, delivered=0, failed=1)
 
 
 def test_should_be_able_to_record_statistics_failure_for_email(sample_email_template, sample_job, ses_provider):
