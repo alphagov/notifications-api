@@ -328,7 +328,7 @@ def sample_notification(notify_db,
     notification_id = uuid.uuid4()
 
     if provider_name is None:
-        provider = mmg_provider() if template.template_type == 'sms' else ses_provider()
+        provider_name = mmg_provider().identifier if template.template_type == 'sms' else ses_provider().identifier
 
     if to_field:
         to = to_field
@@ -352,7 +352,7 @@ def sample_notification(notify_db,
         data['job_row_number'] = job_row_number
     notification = Notification(**data)
     if create:
-        dao_create_notification(notification, template.template_type, provider.identifier)
+        dao_create_notification(notification, template.template_type, provider_name)
     return notification
 
 
