@@ -39,6 +39,8 @@ def process_sms_client_response(status, reference, client_name):
     except KeyError:
         return success, 'unknown sms client: {}'.format(client_name)
 
+    statsd_client.incr('notifications.callback.{}.status.{}'.format(client_name.lower(), status))
+
     # validate  status
     try:
         response_dict = response_parser(status)
