@@ -19,27 +19,25 @@ from app.models import (
     ProviderStatistics,
     ProviderDetails,
     NotificationStatistics)
-from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
-from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
-from app.dao.templates_dao import dao_create_template
-from app.dao.api_key_dao import save_model_api_key
-from app.dao.jobs_dao import dao_create_job
+
+from app.dao.users_dao import create_secret_code
+from app.dao.api_key_dao import _generate_secret
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
+
+from tests.app import (
+create_model,
+add_user_to_service,
+create_history_from_model
+)
 
 
 @pytest.yield_fixture
 def rmock():
     with requests_mock.mock() as rmock:
         yield rmock
-
-from tests.app import (
-    create_model,
-    add_user_to_service,
-    create_history_from_model
-)
 
 
 @pytest.fixture(scope='function')
@@ -304,13 +302,25 @@ def sample_email_template_history_with_placeholders(notify_db, notify_db_session
 @pytest.fixture(scope='function')
 def sample_api_key(notify_db,
                    notify_db_session,
-                   service=None):
+                   service=None,
+                   version=1,
+                   with_history=True):
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
-    data = {'service': service, 'name': uuid.uuid4(), 'created_by': service.created_by}
-    api_key = ApiKey(**data)
-    save_model_api_key(api_key)
+        service = sample_service(notify_db, notify_db_session, with_history=with_history)
+    data = {
+        'service': service,
+        'name': uuid.uuid4(),
+        'created_by': service.created_by,
+        'secret': _generate_secret()}
+    api_key = create_model('ApiKey', **data)
+    if with_history:
+        history = create_history_from_model(api_key, version=version)
     return api_key
+
+
+@pytest.fixture(scope='function')
+def sample_api_key_history(notify_db, notify_db_session):
+    return sample_api_key(notify_db, notify_db_session, with_history=True)
 
 
 @pytest.fixture(scope='function')

@@ -910,23 +910,26 @@ def test_cannot_remove_only_user_from_service(notify_api,
 
 # This test is just here verify get_service_and_api_key_history that is a temp solution
 # until proper ui is sorted out on admin app
-def test_get_service_and_api_key_history(notify_api, notify_db, notify_db_session, sample_service):
+def test_get_service_and_api_key_history(notify_api,
+                                         notify_db,
+                                         notify_db_session,
+                                         sample_service_history):
 
     from tests.app.conftest import sample_api_key as create_sample_api_key
-    api_key = create_sample_api_key(notify_db, notify_db_session, service=sample_service)
+    api_key = create_sample_api_key(notify_db, notify_db_session, service=sample_service_history)
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
             auth_header = create_authorization_header()
             response = client.get(
-                path='/service/{}/history'.format(sample_service.id),
+                path='/service/{}/history'.format(sample_service_history.id),
                 headers=[auth_header]
             )
             assert response.status_code == 200
 
             json_resp = json.loads(response.get_data(as_text=True))
-            assert json_resp['data']['service_history'][0]['id'] == str(sample_service.id)
+            assert json_resp['data']['service_history'][0]['id'] == str(sample_service_history.id)
             assert json_resp['data']['api_key_history'][0]['id'] == str(api_key.id)
 
 

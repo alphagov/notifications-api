@@ -121,11 +121,11 @@ def test_save_api_key_should_not_create_new_service_history(notify_api, notify_d
     from app.models import Service
 
     assert Service.query.count() == 1
-    assert Service.get_history_model().query.count() == 1
+    assert Service.get_history_model().query.count() == 0
 
     api_key = ApiKey(**{'service': sample_service,
                         'name': sample_service.name,
                         'created_by': sample_service.created_by})
     save_model_api_key(api_key)
 
-    assert Service.get_history_model().query.count() == 1
+    assert Service.get_history_model().query.count() == 0
