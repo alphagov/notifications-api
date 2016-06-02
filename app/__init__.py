@@ -52,7 +52,7 @@ def create_app(app_name=None):
     statsd_client.init_app(application)
     firetext_client.init_app(application, statsd_client=statsd_client)
     loadtest_client.init_app(application, statsd_client=statsd_client)
-    mmg_client.init_app(application.config, statsd_client=statsd_client)
+    mmg_client.init_app(application, statsd_client=statsd_client)
     aws_ses_client.init_app(application.config['AWS_REGION'], statsd_client=statsd_client)
     notify_celery.init_app(application)
     encryption.init_app(application)
