@@ -1,8 +1,6 @@
 import json
 from datetime import (datetime, date)
 from flask import url_for
-from app.models import Template
-from freezegun import freeze_time
 from app.dao.templates_dao import dao_update_template
 from tests import create_authorization_header
 
