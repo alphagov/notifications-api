@@ -328,27 +328,43 @@ def sample_job(notify_db,
                notify_db_session,
                service=None,
                template=None,
+               original_file_name="some.csv",
                notification_count=1,
-               created_at=datetime.utcnow()):
+               created_at=datetime.utcnow(),
+               with_history=False):
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = sample_service(notify_db, notify_db_session, with_history=with_history)
     if template is None:
-        template = sample_template(notify_db, notify_db_session,
-                                   service=service)
+        template = sample_template(
+            notify_db,
+            notify_db_session,
+            service=service,
+            with_history=with_history)
     data = {
         'id': uuid.uuid4(),
         'service_id': service.id,
         'service': service,
         'template_id': template.id,
         'template_version': template.version,
-        'original_file_name': 'some.csv',
+        'original_file_name': original_file_name,
         'notification_count': notification_count,
         'created_at': created_at,
         'created_by': service.created_by
     }
-    job = Job(**data)
-    dao_create_job(job)
+    job = create_model('Job', **data)
     return job
+
+
+@pytest.fixture(scope='function')
+def sample_job_history(notify_db,
+                       notify_db_session,
+                       service=None,
+                       template=None):
+    if service is None:
+        service = sample_service(notify_db, notify_db_session, with_history=True)
+    if template is None:
+        template = sample_template(notify_db, notify_db_session, service=service, with_history=True)
+    return sample_job(notify_db, notify_db_session, service=service, template=template)
 
 
 @pytest.fixture(scope='function')
@@ -366,6 +382,15 @@ def sample_job_with_placeholdered_template(
 
 
 @pytest.fixture(scope='function')
+def sample_job_history_with_placeholdered_template(notify_db, notify_db_session):
+    return sample_job(
+        notify_db,
+        notify_db_session,
+        template=sample_template_history_with_placeholders(notify_db, notify_db_session)
+    )
+
+
+@pytest.fixture(scope='function')
 def sample_email_job(notify_db,
                      notify_db_session,
                      service=None,
@@ -376,21 +401,29 @@ def sample_email_job(notify_db,
         template = sample_email_template(
             notify_db,
             notify_db_session,
+            template_type='email',
             service=service)
-    job_id = uuid.uuid4()
-    data = {
-        'id': job_id,
-        'service_id': service.id,
-        'service': service,
-        'template_id': template.id,
-        'template_version': template.version,
-        'original_file_name': 'some.csv',
-        'notification_count': 1,
-        'created_by': service.created_by
-    }
-    job = Job(**data)
-    dao_create_job(job)
-    return job
+    return sample_job(
+        notify_db,
+        notify_db_session,
+        service=service,
+        template=template)
+
+
+@pytest.fixture(scope='function')
+def sample_email_job_history(notify_db,
+                             notify_db_session,
+                             service=None,
+                             template=None):
+    if service is None:
+        service = sample_service(notify_db, notify_db_session, with_history=True)
+    if template is None:
+        template = sample_template(notify_db, notify_db_session, template_type='email', with_history=True)
+    return sample_job(
+        notify_db,
+        notify_db_session,
+        service=service,
+        template=template)
 
 
 @pytest.fixture(scope='function')

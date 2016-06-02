@@ -41,6 +41,7 @@ from tests.app.conftest import (
     sample_template_history,
     sample_email_template_history,
     sample_job,
+    sample_job_history,
     sample_email_template,
     sample_notification
 )
@@ -110,7 +111,7 @@ def test_should_call_delete_invotations_on_delete_invitations_task(notify_api, m
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_sms_job(sample_job, mocker, mock_celery_remove_job):
+def test_should_process_sms_job(sample_job_history, mocker, mock_celery_remove_job):
     mocker.patch('app.statsd_client.incr')
     mocker.patch('app.statsd_client.timing')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
@@ -118,24 +119,24 @@ def test_should_process_sms_job(sample_job, mocker, mock_celery_remove_job):
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
 
-    process_job(sample_job.id)
+    process_job(sample_job_history.id)
     s3.get_job_from_s3.assert_called_once_with(
-        str(sample_job.service.id),
-        str(sample_job.id)
+        str(sample_job_history.service.id),
+        str(sample_job_history.id)
     )
     assert encryption.encrypt.call_args[0][0]['to'] == '+441234123123'
-    assert encryption.encrypt.call_args[0][0]['template'] == str(sample_job.template.id)
-    assert encryption.encrypt.call_args[0][0]['template_version'] == sample_job.template.version
+    assert encryption.encrypt.call_args[0][0]['template'] == str(sample_job_history.template.id)
+    assert encryption.encrypt.call_args[0][0]['template_version'] == sample_job_history.template.version
     assert encryption.encrypt.call_args[0][0]['personalisation'] == {}
     assert encryption.encrypt.call_args[0][0]['row_number'] == 0
     tasks.send_sms.apply_async.assert_called_once_with(
-        (str(sample_job.service_id),
+        (str(sample_job_history.service_id),
          "uuid",
          "something_encrypted",
          "2016-01-01T11:09:00.061258"),
         queue="bulk-sms"
     )
-    job = jobs_dao.dao_get_job_by_id(sample_job.id)
+    job = jobs_dao.dao_get_job_by_id(sample_job_history.id)
     assert job.status == 'finished'
     statsd_client.incr.assert_called_once_with("notifications.tasks.process-job")
     statsd_client.timing.assert_called_once_with("notifications.tasks.process-job.task-time", ANY)
@@ -146,8 +147,8 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db,
                                                                 notify_db_session,
                                                                 mocker,
                                                                 mock_celery_remove_job):
-    service = sample_service(notify_db, notify_db_session, limit=9)
-    job = sample_job(notify_db, notify_db_session, service=service, notification_count=10)
+    service = sample_service(notify_db, notify_db_session, message_limit=9, with_history=True)
+    job = sample_job(notify_db, notify_db_session, service=service, notification_count=10, with_history=True)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
@@ -167,8 +168,8 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify
                                                                           notify_db_session,
                                                                           mocker,
                                                                           mock_celery_remove_job):
-    service = sample_service(notify_db, notify_db_session, message_limit=1)
-    job = sample_job(notify_db, notify_db_session, service=service)
+    service = sample_service(notify_db, notify_db_session, message_limit=1, with_history=True)
+    job = sample_job(notify_db, notify_db_session, service=service, with_history=True)
 
     sample_notification(notify_db, notify_db_session, service=service, job=job)
 
@@ -189,7 +190,12 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify
 def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(notify_db, notify_db_session, mocker):
     service = sample_service(notify_db, notify_db_session, message_limit=1, with_history=True)
     template = sample_email_template_history(notify_db, notify_db_session)
-    job = sample_job(notify_db, notify_db_session, service=service, template=template)
+    job = sample_job(
+        notify_db,
+        notify_db_session,
+        service=service,
+        template=template,
+        notification_count=2)
 
     sample_notification(notify_db, notify_db_session, service=service, job=job)
 
@@ -210,7 +216,7 @@ def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(noti
 def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, notify_db_session, mocker):
     service = sample_service(notify_db, notify_db_session, message_limit=0)
     template = sample_email_template(notify_db, notify_db_session)
-    job = sample_job(notify_db, notify_db_session, service=service, template=template)
+    job = sample_job_history(notify_db, notify_db_session, service=service, template=template)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
@@ -232,7 +238,13 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
                                                             mock_celery_remove_job):
     service = sample_service(notify_db, notify_db_session, message_limit=10)
     template = sample_email_template_history(notify_db, notify_db_session)
-    job = sample_job(notify_db, notify_db_session, service=service, template=template, notification_count=10)
+    job = sample_job(
+        notify_db,
+        notify_db_session,
+        service=service,
+        template=template,
+        notification_count=10,
+        with_history=True)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
@@ -265,45 +277,45 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
     mock_celery_remove_job.assert_called_once_with((str(job.id),), queue="remove-job")
 
 
-def test_should_not_create_send_task_for_empty_file(sample_job, mocker, mock_celery_remove_job):
+def test_should_not_create_send_task_for_empty_file(sample_job_history, mocker, mock_celery_remove_job):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('empty'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
 
-    process_job(sample_job.id)
+    process_job(sample_job_history.id)
 
     s3.get_job_from_s3.assert_called_once_with(
-        str(sample_job.service.id),
-        str(sample_job.id)
+        str(sample_job_history.service.id),
+        str(sample_job_history.id)
     )
-    job = jobs_dao.dao_get_job_by_id(sample_job.id)
+    job = jobs_dao.dao_get_job_by_id(sample_job_history.id)
     assert job.status == 'finished'
     tasks.send_sms.apply_async.assert_not_called
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_email_job(sample_email_job, mocker, mock_celery_remove_job):
+def test_should_process_email_job(sample_email_job_history, mocker, mock_celery_remove_job):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
 
-    process_job(sample_email_job.id)
+    process_job(sample_email_job_history.id)
 
     s3.get_job_from_s3.assert_called_once_with(
-        str(sample_email_job.service.id),
-        str(sample_email_job.id)
+        str(sample_email_job_history.service.id),
+        str(sample_email_job_history.id)
     )
     assert encryption.encrypt.call_args[0][0]['to'] == 'test@test.com'
-    assert encryption.encrypt.call_args[0][0]['template'] == str(sample_email_job.template.id)
-    assert encryption.encrypt.call_args[0][0]['template_version'] == sample_email_job.template.version
+    assert encryption.encrypt.call_args[0][0]['template'] == str(sample_email_job_history.template.id)
+    assert encryption.encrypt.call_args[0][0]['template_version'] == sample_email_job_history.template.version
     assert encryption.encrypt.call_args[0][0]['personalisation'] == {}
     tasks.send_email.apply_async.assert_called_once_with(
         (
-            str(sample_email_job.service_id),
+            str(sample_email_job_history.service_id),
             "uuid",
             "\"{}\" <{}@{}>".format(
-                sample_email_job.service.name,
-                sample_email_job.service.email_from,
+                sample_email_job_history.service.name,
+                sample_email_job_history.service.email_from,
                 "test.notify.com"
             ),
             "something_encrypted",
@@ -312,12 +324,12 @@ def test_should_process_email_job(sample_email_job, mocker, mock_celery_remove_j
         {'reply_to_addresses': None},
         queue="bulk-email"
     )
-    job = jobs_dao.dao_get_job_by_id(sample_email_job.id)
+    job = jobs_dao.dao_get_job_by_id(sample_email_job_history.id)
     assert job.status == 'finished'
     mock_celery_remove_job.assert_called_once_with((str(job.id),), queue="remove-job")
 
 
-def test_should_process_all_sms_job(sample_job,
+def test_should_process_all_sms_job(sample_job_history,
                                     sample_job_history_with_placeholdered_template,
                                     mocker,
                                     mock_celery_remove_job):
@@ -576,11 +588,11 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
         notifications_dao.get_notification(service.id, notification_id)
 
 
-def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sample_job, mocker):
+def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sample_job_history, mocker):
     notification = _notification_json(
-        sample_job.template,
+        sample_job_history.template,
         to="+447234123123",
-        job_id=sample_job.id,
+        job_id=sample_job_history.id,
         row_number=2)
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.mmg_client.send_sms')
@@ -589,7 +601,7 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
     send_sms(
-        sample_job.service.id,
+        sample_job_history.service.id,
         notification_id,
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
@@ -599,11 +611,11 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
         content="Sample service: This is a template",
         reference=str(notification_id)
     )
-    persisted_notification = notifications_dao.get_notification(sample_job.template.service_id, notification_id)
+    persisted_notification = notifications_dao.get_notification(sample_job_history.template.service_id, notification_id)
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == '+447234123123'
-    assert persisted_notification.job_id == sample_job.id
-    assert persisted_notification.template_id == sample_job.template.id
+    assert persisted_notification.job_id == sample_job_history.id
+    assert persisted_notification.template_id == sample_job_history.template.id
     assert persisted_notification.status == 'sending'
     assert persisted_notification.sent_at > now
     assert persisted_notification.created_at == now
@@ -956,23 +968,25 @@ def test_email_reset_password_should_send_email(notify_db, notify_db_session, no
                                   message)
 
 
-def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job, mocker, mock_celery_remove_job):
+def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job_history,
+                                                                mocker,
+                                                                mock_celery_remove_job):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value='something_encrypted')
     mocker.patch('app.celery.tasks.create_uuid', return_value='uuid')
 
-    sample_email_job.service.reply_to_email_address = 'somereply@testservice.gov.uk'
+    sample_email_job_history.service.reply_to_email_address = 'somereply@testservice.gov.uk'
 
-    process_job(sample_email_job.id)
+    process_job(sample_email_job_history.id)
 
     tasks.send_email.apply_async.assert_called_once_with(
         (
-            str(sample_email_job.service_id),
+            str(sample_email_job_history.service_id),
             "uuid",
             "\"{}\" <{}@{}>".format(
-                sample_email_job.service.name,
-                sample_email_job.service.email_from,
+                sample_email_job_history.service.name,
+                sample_email_job_history.service.email_from,
                 "test.notify.com"
             ),
             "something_encrypted",
