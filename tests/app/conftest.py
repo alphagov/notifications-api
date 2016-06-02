@@ -203,9 +203,11 @@ def sample_template(notify_db,
                     content="This is a template",
                     archived=False,
                     subject_line='Subject',
+                    template_version=1,
                     user=None,
                     service=None,
-                    created_by=None):
+                    created_by=None,
+                    with_history=False):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
     if service is None:
@@ -218,15 +220,41 @@ def sample_template(notify_db,
         'content': content,
         'service': service,
         'created_by': created_by,
-        'archived': archived
+        'archived': archived,
+        'version': template_version
     }
     if template_type == 'email':
         data.update({
             'subject': subject_line
         })
-    template = Template(**data)
-    dao_create_template(template)
+    template = create_model('Template', **data)
+    if with_history:
+        history = template_history(
+            notify_db,
+            notify_db_session,
+            template=template,
+            version=template_version
+        )
     return template
+
+
+@pytest.fixture(scope='function')
+def template_history(notify_db, notify_db_session, template=None, version=1):
+    if template is None:
+        template = sample_template(notify_db, notify_db_session)
+    history = Template.get_history_model().query.filter_by(id=template.id, version=version).first()
+    if not history:
+        history = create_history_from_model(template, version=version)
+    return history
+
+
+@pytest.fixture(scope='function')
+def sample_template_history(notify_db, notify_db_session):
+    return sample_template(
+        notify_db,
+        notify_db_session,
+        with_history=True
+    )
 
 
 @pytest.fixture(scope='function')
@@ -235,33 +263,22 @@ def sample_template_with_placeholders(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def sample_email_template(
+def sample_template_history_with_placeholders(notify_db, notify_db_session):
+    return sample_template(notify_db, notify_db_session, content="Hello ((name))", with_history=True)
+
+
+@pytest.fixture(scope='function')
+def sample_email_template(notify_db, notify_db_session):
+    return sample_template(notify_db, notify_db_session, template_type='email')
+
+
+@pytest.fixture(scope='function')
+def sample_email_template_history(notify_db, notify_db_session):
+    return sample_template(
         notify_db,
         notify_db_session,
-        template_name="Email Template Name",
-        template_type="email",
-        user=None,
-        content="This is a template",
-        subject_line='Email Subject',
-        service=None):
-    if user is None:
-        user = sample_user(notify_db, notify_db_session)
-    if service is None:
-        service = sample_service(notify_db, notify_db_session)
-    data = {
-        'name': template_name,
-        'template_type': template_type,
-        'content': content,
-        'service': service,
-        'created_by': user
-    }
-    if subject_line:
-        data.update({
-            'subject': subject_line
-        })
-    template = Template(**data)
-    dao_create_template(template)
-    return template
+        template_type='email',
+        with_history=True)
 
 
 @pytest.fixture(scope='function')
@@ -271,6 +288,17 @@ def sample_email_template_with_placeholders(notify_db, notify_db_session):
         notify_db_session,
         content="Hello ((name))",
         subject_line="((name))")
+
+
+@pytest.fixture(scope='function')
+def sample_email_template_history_with_placeholders(notify_db, notify_db_session):
+    return sample_template(
+        notify_db,
+        notify_db_session,
+        template_type="email",
+        content="Hello ((name))",
+        subject_line="((name))",
+        with_history=True)
 
 
 @pytest.fixture(scope='function')

@@ -5,14 +5,14 @@ from app.dao.templates_dao import dao_update_template
 from tests import create_authorization_header
 
 
-def test_template_history_version(notify_api, sample_user, sample_template):
+def test_template_history_version(notify_api, sample_user, sample_template_history):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header()
             endpoint = url_for(
                 'template.get_template_version',
-                service_id=sample_template.service.id,
-                template_id=sample_template.id,
+                service_id=sample_template_history.service.id,
+                template_id=sample_template_history.id,
                 version=1)
             resp = client.get(
                 endpoint,
@@ -20,24 +20,24 @@ def test_template_history_version(notify_api, sample_user, sample_template):
             )
             assert resp.status_code == 200
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp['data']['id'] == str(sample_template.id)
-            assert json_resp['data']['content'] == sample_template.content
+            assert json_resp['data']['id'] == str(sample_template_history.id)
+            assert json_resp['data']['content'] == sample_template_history.content
             assert json_resp['data']['version'] == 1
             assert json_resp['data']['created_by']['name'] == sample_user.name
             assert datetime.strptime(json_resp['data']['created_at'], '%Y-%m-%d %H:%M:%S.%f').date() == date.today()
 
 
-def test_previous_template_history_version(notify_api, sample_template):
-    old_content = sample_template.content
-    sample_template.content = "New content"
-    dao_update_template(sample_template)
+def test_previous_template_history_version(notify_api, sample_template_history):
+    old_content = sample_template_history.content
+    sample_template_history.content = "New content"
+    dao_update_template(sample_template_history)
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header()
             endpoint = url_for(
                 'template.get_template_version',
-                service_id=sample_template.service.id,
-                template_id=sample_template.id,
+                service_id=sample_template_history.service.id,
+                template_id=sample_template_history.id,
                 version=1)
             resp = client.get(
                 endpoint,
@@ -45,19 +45,19 @@ def test_previous_template_history_version(notify_api, sample_template):
             )
             assert resp.status_code == 200
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp['data']['id'] == str(sample_template.id)
+            assert json_resp['data']['id'] == str(sample_template_history.id)
             assert json_resp['data']['version'] == 1
             assert json_resp['data']['content'] == old_content
 
 
-def test_404_missing_template_version(notify_api, sample_template):
+def test_404_missing_template_version(notify_api, sample_template_history):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header()
             endpoint = url_for(
                 'template.get_template_version',
-                service_id=sample_template.service.id,
-                template_id=sample_template.id,
+                service_id=sample_template_history.service.id,
+                template_id=sample_template_history.id,
                 version=2)
             resp = client.get(
                 endpoint,
@@ -66,21 +66,21 @@ def test_404_missing_template_version(notify_api, sample_template):
             assert resp.status_code == 404
 
 
-def test_all_versions_of_template(notify_api, sample_template):
+def test_all_versions_of_template(notify_api, sample_template_history):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            old_content = sample_template.content
+            old_content = sample_template_history.content
             newer_content = "Newer content"
             newest_content = "Newest content"
-            sample_template.content = newer_content
-            dao_update_template(sample_template)
-            sample_template.content = newest_content
-            dao_update_template(sample_template)
+            sample_template_history.content = newer_content
+            dao_update_template(sample_template_history)
+            sample_template_history.content = newest_content
+            dao_update_template(sample_template_history)
             auth_header = create_authorization_header()
             endpoint = url_for(
                 'template.get_template_versions',
-                service_id=sample_template.service.id,
-                template_id=sample_template.id
+                service_id=sample_template_history.service.id,
+                template_id=sample_template_history.id
             )
             resp = client.get(
                 endpoint,
