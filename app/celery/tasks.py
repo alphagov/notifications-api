@@ -37,7 +37,7 @@ from app.dao.notifications_dao import (
     dao_update_notification,
     delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
-    update_notification_after_sent_to_provider
+    update_provider_stats
 )
 
 from app.dao.jobs_dao import (
@@ -268,7 +268,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                     reference=str(notification_id)
                 )
 
-                update_notification_after_sent_to_provider(
+                update_provider_stats(
                     notification_id,
                     'sms',
                     provider.get_name()
@@ -349,12 +349,14 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
                     reply_to_addresses=reply_to_addresses,
                 )
 
-                update_notification_after_sent_to_provider(
+                update_provider_stats(
                     notification_id,
                     'email',
-                    provider.get_name(),
-                    reference=reference
+                    provider.get_name()
                 )
+
+            notification_db_object.reference = reference
+            dao_update_notification(notification_db_object)
 
         except EmailClientException as e:
             current_app.logger.exception(e)

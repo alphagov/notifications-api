@@ -518,7 +518,7 @@ def test_should_send_email_if_restricted_service_and_valid_email(notify_db, noti
 
     notification = _notification_json(template, "test@restricted.com")
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.aws_ses_client.send_email', return_value="1234")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -667,7 +667,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
 def test_send_email_should_use_template_version_from_job_not_latest(sample_email_template, mocker):
     notification = _notification_json(sample_email_template, 'my_email@my_email.com')
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.aws_ses_client.send_email', return_value="1234")
     mocker.patch('app.aws_ses_client.get_name', return_value='ses')
     version_on_notification = sample_email_template.version
     # Change the template
@@ -710,7 +710,7 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
     notification = _notification_json(sample_email_template_with_placeholders,
                                       "my_email@my_email.com", {"name": "Jo"})
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.aws_ses_client.send_email', return_value="1234")
     mocker.patch('app.aws_ses_client.get_name', return_value='ses')
 
     notification_id = uuid.uuid4()
@@ -1046,7 +1046,6 @@ def test_should_call_send_email_response_task_if_research_mode(
         sample_email_template,
         to="john@smith.com"
     )
-
     reference = uuid.uuid4()
 
     mocker.patch('app.uuid.uuid4', return_value=reference)
@@ -1060,6 +1059,7 @@ def test_should_call_send_email_response_task_if_research_mode(
     notify_db.session.commit()
 
     notification_id = uuid.uuid4()
+
     now = datetime.utcnow()
     send_email(
         sample_service.id,

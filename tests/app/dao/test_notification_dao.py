@@ -25,7 +25,7 @@ from app.dao.notifications_dao import (
     delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
     update_notification_status_by_id,
-    update_notification_after_sent_to_provider,
+    update_provider_stats,
     update_notification_status_by_reference,
     dao_get_template_statistics_for_service,
     get_notifications_for_service
@@ -38,7 +38,7 @@ from tests.app.conftest import (sample_notification)
 
 def test_should_by_able_to_update_reference_by_notification_id(sample_notification, mmg_provider):
     assert not Notification.query.get(sample_notification.id).reference
-    update_notification_after_sent_to_provider(
+    update_provider_stats(
         sample_notification.id,
         'sms',
         mmg_provider.identifier,
@@ -56,7 +56,7 @@ def test_should_by_able_to_update_status_by_reference(sample_email_template, ses
         ses_provider.identifier)
 
     assert Notification.query.get(notification.id).status == "sending"
-    update_notification_after_sent_to_provider(
+    update_provider_stats(
         notification.id,
         'email',
         ses_provider.identifier,
@@ -147,7 +147,7 @@ def test_should_not_update_status_one_notification_status_is_delivered(sample_em
         ses_provider.identifier)
 
     assert Notification.query.get(notification.id).status == "sending"
-    update_notification_after_sent_to_provider(
+    update_provider_stats(
         notification.id,
         'email',
         ses_provider.identifier,
@@ -174,7 +174,7 @@ def test_should_be_able_to_record_statistics_failure_for_email(sample_email_temp
     notification = Notification(**data)
     dao_create_notification(notification, sample_email_template.template_type, ses_provider.identifier)
 
-    update_notification_after_sent_to_provider(
+    update_provider_stats(
         notification.id,
         'email',
         ses_provider.identifier,
