@@ -36,15 +36,6 @@ from notifications_utils.template import get_sms_fragment_count
 from tests.app.conftest import (sample_notification)
 
 
-def test_should_by_able_to_update_reference_by_notification_id(sample_notification, mmg_provider):
-    assert not Notification.query.get(sample_notification.id).reference
-    update_provider_stats(
-        sample_notification.id,
-        'sms',
-        mmg_provider.identifier,
-        reference='reference')
-    assert Notification.query.get(sample_notification.id).reference == 'reference'
-
 
 def test_should_by_able_to_update_status_by_reference(sample_email_template, ses_provider):
     data = _notification_json(sample_email_template)
@@ -56,11 +47,9 @@ def test_should_by_able_to_update_status_by_reference(sample_email_template, ses
         ses_provider.identifier)
 
     assert Notification.query.get(notification.id).status == "sending"
-    update_provider_stats(
-        notification.id,
-        'email',
-        ses_provider.identifier,
-        reference="reference")
+    notification.reference = 'reference'
+    dao_update_notification(notification)
+
     update_notification_status_by_reference('reference', 'delivered', 'delivered')
     assert Notification.query.get(notification.id).status == 'delivered'
     _assert_notification_stats(notification.service_id, emails_delivered=1, emails_requested=1, emails_failed=0)
@@ -150,8 +139,9 @@ def test_should_not_update_status_one_notification_status_is_delivered(sample_em
     update_provider_stats(
         notification.id,
         'email',
-        ses_provider.identifier,
-        reference='reference')
+        ses_provider.identifier)
+    notification.reference = 'reference'
+    dao_update_notification(notification)
     update_notification_status_by_reference('reference', 'delivered', 'delivered')
     assert Notification.query.get(notification.id).status == 'delivered'
 
@@ -177,8 +167,9 @@ def test_should_be_able_to_record_statistics_failure_for_email(sample_email_temp
     update_provider_stats(
         notification.id,
         'email',
-        ses_provider.identifier,
-        reference='reference')
+        ses_provider.identifier)
+    notification.reference = 'reference'
+    dao_update_notification(notification)
     count = update_notification_status_by_reference('reference', 'failed', 'failure')
     assert count == 1
     assert Notification.query.get(notification.id).status == 'failed'

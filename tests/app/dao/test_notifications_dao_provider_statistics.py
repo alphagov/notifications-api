@@ -29,7 +29,7 @@ def test_should_update_provider_statistics_email(notify_db,
         notify_db,
         notify_db_session,
         template=sample_email_template)
-    update_provider_stats(n1.id, 'email', ses_provider.identifier, reference="reference")
+    update_provider_stats(n1.id, 'email', ses_provider.identifier)
     provider_stats = get_provider_statistics(
         sample_email_template.service,
         providers=[ses_provider.identifier]).one()
@@ -76,19 +76,19 @@ def test_should_update_provider_statistics_email_multi(notify_db,
         notify_db_session,
         template=sample_email_template,
         provider_name=ses_provider.identifier)
-    update_provider_stats(n1.id, 'email', ses_provider.identifier, reference="reference")
+    update_provider_stats(n1.id, 'email', ses_provider.identifier)
     n2 = create_sample_notification(
         notify_db,
         notify_db_session,
         template=sample_email_template,
         provider_name=ses_provider.identifier)
-    update_provider_stats(n2.id, 'email', ses_provider.identifier, reference="reference")
+    update_provider_stats(n2.id, 'email', ses_provider.identifier)
     n3 = create_sample_notification(
         notify_db,
         notify_db_session,
         template=sample_email_template,
         provider_name=ses_provider.identifier)
-    update_provider_stats(n3.id, 'email', ses_provider.identifier, reference="reference")
+    update_provider_stats(n3.id, 'email', ses_provider.identifier)
     provider_stats = get_provider_statistics(
         sample_email_template.service,
         providers=[ses_provider.identifier]).one()
