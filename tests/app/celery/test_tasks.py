@@ -331,8 +331,7 @@ def test_should_process_all_sms_job(sample_job,
     )
     assert encryption.encrypt.call_args[0][0]['to'] == '+441234123120'
     assert encryption.encrypt.call_args[0][0]['template'] == str(sample_job_with_placeholdered_template.template.id)
-    assert encryption.encrypt.call_args[0][0][
-               'template_version'] == sample_job_with_placeholdered_template.template.version
+    assert encryption.encrypt.call_args[0][0]['template_version'] == sample_job_with_placeholdered_template.template.version  # noqa
     assert encryption.encrypt.call_args[0][0]['personalisation'] == {'name': 'chris'}
     tasks.send_sms.apply_async.call_count == 10
     job = jobs_dao.dao_get_job_by_id(sample_job_with_placeholdered_template.id)

@@ -268,11 +268,11 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
                     reference=str(notification_id)
                 )
 
-            update_notification_after_sent_to_provider(
-                notification_id,
-                'sms',
-                provider.get_name()
-            )
+                update_notification_after_sent_to_provider(
+                    notification_id,
+                    'sms',
+                    provider.get_name()
+                )
 
         except SmsClientException as e:
             current_app.logger.error(
@@ -349,12 +349,12 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
                     reply_to_addresses=reply_to_addresses,
                 )
 
-            update_notification_after_sent_to_provider(
-                notification_id,
-                'email',
-                provider.get_name(),
-                reference=reference
-            )
+                update_notification_after_sent_to_provider(
+                    notification_id,
+                    'email',
+                    provider.get_name(),
+                    reference=reference
+                )
 
         except EmailClientException as e:
             current_app.logger.exception(e)
