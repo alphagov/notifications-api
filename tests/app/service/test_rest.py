@@ -101,6 +101,7 @@ def test_get_service_by_id(notify_api, sample_service):
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['data']['name'] == sample_service.name
             assert json_resp['data']['id'] == str(sample_service.id)
+            assert not json_resp['data']['research_mode']
 
 
 def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
@@ -170,6 +171,7 @@ def test_create_service(notify_api, sample_user):
             assert json_resp['data']['id']
             assert json_resp['data']['name'] == 'created service'
             assert json_resp['data']['email_from'] == 'created.service'
+            assert not json_resp['data']['research_mode']
 
             auth_header_fetch = create_authorization_header()
 
@@ -180,6 +182,7 @@ def test_create_service(notify_api, sample_user):
             assert resp.status_code == 200
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['data']['name'] == 'created service'
+            assert not json_resp['data']['research_mode']
 
 
 def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_uuid):
@@ -359,6 +362,64 @@ def test_update_service(notify_api, sample_service):
             assert resp.status_code == 200
             assert result['data']['name'] == 'updated service name'
             assert result['data']['email_from'] == 'updated.service.name'
+
+
+def test_update_service_research_mode(notify_api, sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header()
+            resp = client.get(
+                '/service/{}'.format(sample_service.id),
+                headers=[auth_header]
+            )
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 200
+            assert json_resp['data']['name'] == sample_service.name
+            assert not json_resp['data']['research_mode']
+
+            data = {
+                'research_mode': True
+            }
+
+            auth_header = create_authorization_header()
+
+            resp = client.post(
+                '/service/{}'.format(sample_service.id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+            result = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 200
+            assert result['data']['research_mode']
+
+
+def test_update_service_research_mode_throws_validation_error(notify_api, sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header()
+            resp = client.get(
+                '/service/{}'.format(sample_service.id),
+                headers=[auth_header]
+            )
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 200
+            assert json_resp['data']['name'] == sample_service.name
+            assert not json_resp['data']['research_mode']
+
+            data = {
+                'research_mode': "dedede"
+            }
+
+            auth_header = create_authorization_header()
+
+            resp = client.post(
+                '/service/{}'.format(sample_service.id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+            result = json.loads(resp.get_data(as_text=True))
+            result['message']['research_mode'][0] == "Not a valid boolean."
+            assert resp.status_code == 400
 
 
 def test_should_not_update_service_with_duplicate_name(notify_api,

@@ -1,3 +1,5 @@
+import requests_mock
+import pytest
 import uuid
 from datetime import (datetime, date)
 
@@ -25,6 +27,12 @@ from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
+
+
+@pytest.yield_fixture
+def rmock():
+    with requests_mock.mock() as rmock:
+        yield rmock
 
 
 @pytest.fixture(scope='function')
