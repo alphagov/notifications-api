@@ -10,6 +10,7 @@ from app.clients.sms import SmsClientException
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.provider_details_dao import get_provider_details_by_notification_type
+from app.celery.research_mode_tasks import send_email_response, send_sms_response
 
 from notifications_utils.template import Template, unlink_govuk_escaped
 
@@ -36,7 +37,7 @@ from app.dao.notifications_dao import (
     dao_update_notification,
     delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
-    update_notification_after_sent_to_provider
+    update_provider_stats
 )
 
 from app.dao.jobs_dao import (
@@ -256,17 +257,22 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS, provider.get_name())
 
         try:
-            provider.send_sms(
-                to=validate_and_format_phone_number(notification['to']),
-                content=template.replaced,
-                reference=str(notification_id)
-            )
+            if service.research_mode:
+                send_sms_response.apply_async(
+                    (provider.get_name(), str(notification_id), notification['to']), queue='research-mode'
+                )
+            else:
+                provider.send_sms(
+                    to=validate_and_format_phone_number(notification['to']),
+                    content=template.replaced,
+                    reference=str(notification_id)
+                )
 
-            update_notification_after_sent_to_provider(
-                notification_id,
-                'sms',
-                provider.get_name()
-            )
+                update_provider_stats(
+                    notification_id,
+                    'sms',
+                    provider.get_name()
+                )
 
         except SmsClientException as e:
             current_app.logger.error(
@@ -274,8 +280,8 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             )
             current_app.logger.exception(e)
             notification_db_object.status = 'technical-failure'
+            dao_update_notification(notification_db_object)
 
-        dao_update_notification(notification_db_object)
         current_app.logger.info(
             "SMS {} created at {} sent at {}".format(notification_id, created_at, sent_at)
         )
@@ -328,21 +334,29 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
                 values=notification.get('personalisation', {})
             )
 
-            reference = provider.send_email(
-                from_address,
-                notification['to'],
-                template.replaced_subject,
-                body=template.replaced_govuk_escaped,
-                html_body=template.as_HTML_email,
-                reply_to_addresses=reply_to_addresses,
-            )
+            if service.research_mode:
+                reference = create_uuid()
+                send_email_response.apply_async(
+                    (provider.get_name(), str(reference), notification['to']), queue='research-mode'
+                )
+            else:
+                reference = provider.send_email(
+                    from_address,
+                    notification['to'],
+                    template.replaced_subject,
+                    body=template.replaced_govuk_escaped,
+                    html_body=template.as_HTML_email,
+                    reply_to_addresses=reply_to_addresses,
+                )
 
-            update_notification_after_sent_to_provider(
-                notification_id,
-                'email',
-                provider.get_name(),
-                reference=reference
-            )
+                update_provider_stats(
+                    notification_id,
+                    'email',
+                    provider.get_name()
+                )
+
+            notification_db_object.reference = reference
+            dao_update_notification(notification_db_object)
 
         except EmailClientException as e:
             current_app.logger.exception(e)
@@ -501,7 +515,7 @@ def service_allowed_to_send_to(recipient, service):
 def provider_to_use(notification_type, notification_id):
     active_providers_in_order = [
         provider for provider in get_provider_details_by_notification_type(notification_type) if provider.active
-    ]
+        ]
 
     if not active_providers_in_order:
         current_app.logger.error(

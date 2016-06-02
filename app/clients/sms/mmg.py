@@ -1,5 +1,4 @@
 import json
-from flask import current_app
 from monotonic import monotonic
 from requests import (request, RequestException, HTTPError)
 from app.clients import (STATISTICS_DELIVERED, STATISTICS_FAILURE)
@@ -57,10 +56,11 @@ class MMGClient(SmsClient):
     MMG sms client
     '''
 
-    def init_app(self, config, statsd_client, *args, **kwargs):
+    def init_app(self, current_app, statsd_client, *args, **kwargs):
         super(SmsClient, self).__init__(*args, **kwargs)
-        self.api_key = config.get('MMG_API_KEY')
-        self.from_number = config.get('MMG_FROM_NUMBER')
+        self.current_app = current_app
+        self.api_key = current_app.config.get('MMG_API_KEY')
+        self.from_number = current_app.config.get('MMG_FROM_NUMBER')
         self.name = 'mmg'
         self.statsd_client = statsd_client
 
@@ -84,12 +84,19 @@ class MMGClient(SmsClient):
                                headers={'Content-Type': 'application/json',
                                         'Authorization': 'Basic {}'.format(self.api_key)})
             if response.status_code != 200:
-                error = response.text
-                raise MMGClientException(json.loads(error))
+                raise MMGClientException(response.json())
             response.raise_for_status()
+            self.current_app.logger.info(
+                "API {} request on {} succeeded with {} '{}'".format(
+                    "POST",
+                    "https://www.mmgrp.co.uk/API/json/api.php",
+                    response.status_code,
+                    response.json()
+                )
+            )
         except RequestException as e:
             api_error = HTTPError.create(e)
-            current_app.logger.error(
+            self.current_app.logger.error(
                 "API {} request on {} failed with {} '{}'".format(
                     "POST",
                     "https://www.mmgrp.co.uk/API/json/api.php",
@@ -102,5 +109,5 @@ class MMGClient(SmsClient):
         finally:
             elapsed_time = monotonic() - start_time
             self.statsd_client.timing("notifications.clients.mmg.request-time", elapsed_time)
-            current_app.logger.info("MMG request finished in {}".format(elapsed_time))
+            self.current_app.logger.info("MMG request finished in {}".format(elapsed_time))
         return response

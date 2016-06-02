@@ -75,7 +75,8 @@ class Config(object):
         Queue('bulk-sms', Exchange('default'), routing_key='bulk-sms'),
         Queue('bulk-email', Exchange('default'), routing_key='bulk-email'),
         Queue('email-invited-user', Exchange('default'), routing_key='email-invited-user'),
-        Queue('email-registration-verification', Exchange('default'), routing_key='email-registration-verification')
+        Queue('email-registration-verification', Exchange('default'), routing_key='email-registration-verification'),
+        Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
     TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
     TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
@@ -95,17 +96,20 @@ class Config(object):
 
 class Development(Config):
     DEBUG = True
+    API_HOST_NAME = os.environ['API_HOST_NAME']
     MMG_API_KEY = os.environ['MMG_API_KEY']
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
 
 
 class Preview(Config):
     MMG_API_KEY = os.environ['MMG_API_KEY']
+    API_HOST_NAME = os.environ['API_HOST_NAME']
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
 
 
 class Test(Development):
     MMG_API_KEY = os.environ['MMG_API_KEY']
+    API_HOST_NAME = os.environ['API_HOST_NAME']
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
 
 

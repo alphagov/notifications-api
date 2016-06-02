@@ -1,5 +1,10 @@
+import requests_mock
 import pytest
+import uuid
 from datetime import (datetime, date)
+
+import pytest
+
 from app import db
 from app.models import (
     User,
@@ -20,7 +25,14 @@ from app.dao.api_key_dao import save_model_api_key
 from app.dao.jobs_dao import dao_create_job
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
-import uuid
+from app.clients.sms.firetext import FiretextClient
+from app.clients.sms.mmg import MMGClient
+
+
+@pytest.yield_fixture
+def rmock():
+    with requests_mock.mock() as rmock:
+        yield rmock
 
 
 @pytest.fixture(scope='function')
@@ -527,3 +539,27 @@ def sample_notification_statistics(notify_db,
     notify_db.session.add(stats)
     notify_db.session.commit()
     return stats
+
+
+@pytest.fixture(scope='function')
+def mock_firetext_client(mocker, statsd_client=None):
+    client = FiretextClient()
+    statsd_client = statsd_client or mocker.Mock()
+    current_app = mocker.Mock(config={
+        'FIRETEXT_API_KEY': 'foo',
+        'FIRETEXT_NUMBER': 'bar'
+    })
+    client.init_app(current_app, statsd_client)
+    return client
+
+
+@pytest.fixture(scope='function')
+def mock_mmg_client(mocker, statsd_client=None):
+    client = MMGClient()
+    statsd_client = statsd_client or mocker.Mock()()
+    current_app = mocker.Mock(config={
+        'MMG_API_KEY': 'foo',
+        'MMG_FROM_NUMBER': 'bar'
+    })
+    client.init_app(current_app, statsd_client)
+    return client

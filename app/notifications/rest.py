@@ -46,7 +46,6 @@ def process_ses_response():
     client_name = 'SES'
     try:
         ses_request = json.loads(request.data)
-
         errors = validate_callback_data(data=ses_request, fields=['Message'], client_name=client_name)
         if errors:
             return jsonify(

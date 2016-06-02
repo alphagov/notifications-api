@@ -1,11 +1,12 @@
 import logging
+
 from monotonic import monotonic
+from requests import request, RequestException, HTTPError
+
 from app.clients.sms import (
     SmsClient,
     SmsClientException
 )
-from flask import current_app
-from requests import request, RequestException, HTTPError
 from app.clients import STATISTICS_DELIVERED, STATISTICS_FAILURE
 
 logger = logging.getLogger(__name__)
@@ -55,10 +56,11 @@ class FiretextClient(SmsClient):
     FireText sms client.
     '''
 
-    def init_app(self, config, statsd_client, *args, **kwargs):
+    def init_app(self, current_app, statsd_client, *args, **kwargs):
         super(SmsClient, self).__init__(*args, **kwargs)
-        self.api_key = config.config.get('FIRETEXT_API_KEY')
-        self.from_number = config.config.get('FIRETEXT_NUMBER')
+        self.current_app = current_app
+        self.api_key = current_app.config.get('FIRETEXT_API_KEY')
+        self.from_number = current_app.config.get('FIRETEXT_NUMBER')
         self.name = 'firetext'
         self.statsd_client = statsd_client
 
@@ -86,6 +88,14 @@ class FiretextClient(SmsClient):
             if firetext_response['code'] != 0:
                 raise FiretextClientException(firetext_response)
             response.raise_for_status()
+            self.current_app.logger.info(
+                "API {} request on {} succeeded with {} '{}'".format(
+                    "POST",
+                    "https://www.firetext.co.uk/api/sendsms",
+                    response.status_code,
+                    firetext_response
+                )
+            )
         except RequestException as e:
             api_error = HTTPError.create(e)
             logger.error(
@@ -100,6 +110,6 @@ class FiretextClient(SmsClient):
             raise api_error
         finally:
             elapsed_time = monotonic() - start_time
-            current_app.logger.info("Firetext request finished in {}".format(elapsed_time))
+            self.current_app.logger.info("Firetext request finished in {}".format(elapsed_time))
             self.statsd_client.timing("notifications.clients.firetext.request-time", elapsed_time)
         return response

@@ -17,6 +17,10 @@ from app.celery.tasks import (
     delete_successful_notifications,
     provider_to_use
 )
+from app.celery.research_mode_tasks import (
+    send_email_response,
+    send_sms_response
+)
 from app import (aws_ses_client, encryption, DATETIME_FORMAT, mmg_client, statsd_client)
 from app.clients.email.aws_ses import AwsSesClientException
 from app.clients.sms.mmg import MMGClientException
@@ -25,6 +29,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 from app.celery.tasks import s3
 from app.celery import tasks
+from app.dao.provider_statistics_dao import get_provider_statistics
 from tests.app import load_example_csv
 from datetime import datetime, timedelta
 from freezegun import freeze_time
@@ -326,8 +331,7 @@ def test_should_process_all_sms_job(sample_job,
     )
     assert encryption.encrypt.call_args[0][0]['to'] == '+441234123120'
     assert encryption.encrypt.call_args[0][0]['template'] == str(sample_job_with_placeholdered_template.template.id)
-    assert encryption.encrypt.call_args[0][0][
-        'template_version'] == sample_job_with_placeholdered_template.template.version
+    assert encryption.encrypt.call_args[0][0]['template_version'] == sample_job_with_placeholdered_template.template.version  # noqa
     assert encryption.encrypt.call_args[0][0]['personalisation'] == {'name': 'chris'}
     tasks.send_sms.apply_async.call_count == 10
     job = jobs_dao.dao_get_job_by_id(sample_job_with_placeholdered_template.id)
@@ -514,7 +518,7 @@ def test_should_send_email_if_restricted_service_and_valid_email(notify_db, noti
 
     notification = _notification_json(template, "test@restricted.com")
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.aws_ses_client.send_email', return_value="1234")
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -663,7 +667,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
 def test_send_email_should_use_template_version_from_job_not_latest(sample_email_template, mocker):
     notification = _notification_json(sample_email_template, 'my_email@my_email.com')
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.aws_ses_client.send_email', return_value="1234")
     mocker.patch('app.aws_ses_client.get_name', return_value='ses')
     version_on_notification = sample_email_template.version
     # Change the template
@@ -706,7 +710,7 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
     notification = _notification_json(sample_email_template_with_placeholders,
                                       "my_email@my_email.com", {"name": "Jo"})
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.aws_ses_client.send_email', return_value="1234")
     mocker.patch('app.aws_ses_client.get_name', return_value='ses')
 
     notification_id = uuid.uuid4()
@@ -994,6 +998,177 @@ def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job
         {'reply_to_addresses': 'somereply@testservice.gov.uk'},
         queue="bulk-email"
     )
+
+
+def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_service, sample_template, mocker):
+    notification = _notification_json(
+        sample_template,
+        to="+447234123123"
+    )
+    mocker.patch('app.encryption.decrypt', return_value=notification)
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="mmg")
+    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
+
+    sample_service.research_mode = True
+    notify_db.session.add(sample_service)
+    notify_db.session.commit()
+
+    notification_id = uuid.uuid4()
+    now = datetime.utcnow()
+    send_sms(
+        sample_service.id,
+        notification_id,
+        "encrypted-in-reality",
+        now.strftime(DATETIME_FORMAT)
+    )
+    assert not mmg_client.send_sms.called
+    send_sms_response.apply_async.assert_called_once_with(
+        ('mmg', str(notification_id), "+447234123123"), queue='research-mode'
+    )
+
+    persisted_notification = notifications_dao.get_notification(sample_service.id, notification_id)
+    assert persisted_notification.id == notification_id
+    assert persisted_notification.to == '+447234123123'
+    assert persisted_notification.template_id == sample_template.id
+    assert persisted_notification.status == 'sending'
+    assert persisted_notification.sent_at > now
+    assert persisted_notification.created_at == now
+    assert persisted_notification.sent_by == 'mmg'
+
+
+def test_should_call_send_email_response_task_if_research_mode(
+        notify_db,
+        sample_service,
+        sample_email_template,
+        mocker):
+    notification = _notification_json(
+        sample_email_template,
+        to="john@smith.com"
+    )
+    reference = uuid.uuid4()
+
+    mocker.patch('app.uuid.uuid4', return_value=reference)
+    mocker.patch('app.encryption.decrypt', return_value=notification)
+    mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
+    mocker.patch('app.celery.research_mode_tasks.send_email_response.apply_async')
+
+    sample_service.research_mode = True
+    notify_db.session.add(sample_service)
+    notify_db.session.commit()
+
+    notification_id = uuid.uuid4()
+
+    now = datetime.utcnow()
+    send_email(
+        sample_service.id,
+        notification_id,
+        "myservice@notify.com",
+        "encrypted-in-reality",
+        now.strftime(DATETIME_FORMAT)
+    )
+    assert not aws_ses_client.send_email.called
+    send_email_response.apply_async.assert_called_once_with(
+        ('ses', str(reference), 'john@smith.com'), queue="research-mode"
+    )
+
+    persisted_notification = notifications_dao.get_notification(sample_service.id, notification_id)
+    assert persisted_notification.id == notification_id
+    assert persisted_notification.to == 'john@smith.com'
+    assert persisted_notification.template_id == sample_email_template.id
+    assert persisted_notification.status == 'sending'
+    assert persisted_notification.sent_at > now
+    assert persisted_notification.created_at == now
+    assert persisted_notification.sent_by == 'ses'
+    assert persisted_notification.reference == str(reference)
+
+
+def test_should_call_send_not_update_provider_email_stats_if_research_mode(
+        notify_db,
+        sample_service,
+        sample_email_template,
+        ses_provider,
+        mocker):
+    notification = _notification_json(
+        sample_email_template,
+        to="john@smith.com"
+    )
+
+    reference = uuid.uuid4()
+
+    mocker.patch('app.uuid.uuid4', return_value=reference)
+    mocker.patch('app.encryption.decrypt', return_value=notification)
+    mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
+    mocker.patch('app.celery.research_mode_tasks.send_email_response.apply_async')
+
+    sample_service.research_mode = True
+    notify_db.session.add(sample_service)
+    notify_db.session.commit()
+
+    assert not get_provider_statistics(
+        sample_email_template.service,
+        providers=[ses_provider.identifier]).first()
+
+    notification_id = uuid.uuid4()
+    now = datetime.utcnow()
+    send_email(
+        sample_service.id,
+        notification_id,
+        "myservice@notify.com",
+        "encrypted-in-reality",
+        now.strftime(DATETIME_FORMAT)
+    )
+    assert not aws_ses_client.send_email.called
+    send_email_response.apply_async.assert_called_once_with(
+        ('ses', str(reference), 'john@smith.com'), queue="research-mode"
+    )
+
+    assert not get_provider_statistics(
+        sample_email_template.service,
+        providers=[ses_provider.identifier]).first()
+
+
+def test_should_call_send_sms_response_task_if_research_mode(
+        notify_db,
+        sample_service,
+        sample_template,
+        mmg_provider,
+        mocker):
+    notification = _notification_json(
+        sample_template,
+        to="+447234123123"
+    )
+    mocker.patch('app.encryption.decrypt', return_value=notification)
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="mmg")
+    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
+
+    sample_service.research_mode = True
+    notify_db.session.add(sample_service)
+    notify_db.session.commit()
+
+    assert not get_provider_statistics(
+        sample_template.service,
+        providers=[mmg_provider.identifier]).first()
+
+    notification_id = uuid.uuid4()
+    now = datetime.utcnow()
+    send_sms(
+        sample_service.id,
+        notification_id,
+        "encrypted-in-reality",
+        now.strftime(DATETIME_FORMAT)
+    )
+    assert not mmg_client.send_sms.called
+    send_sms_response.apply_async.assert_called_once_with(
+        ('mmg', str(notification_id), "+447234123123"), queue='research-mode'
+    )
+
+    assert not get_provider_statistics(
+        sample_template.service,
+        providers=[mmg_provider.identifier]).first()
 
 
 def _notification_json(template, to, personalisation=None, job_id=None, row_number=None):

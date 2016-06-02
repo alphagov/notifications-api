@@ -278,9 +278,13 @@ def dao_update_notification(notification):
 
 
 @transactional
-def update_notification_after_sent_to_provider(id_, notification_type, provider_name, reference=None):
-    provider = ProviderDetails.query.filter_by(identifier=provider_name).one()
+def update_provider_stats(
+        id_,
+        notification_type,
+        provider_name):
+
     notification = Notification.query.filter(Notification.id == id_).one()
+    provider = ProviderDetails.query.filter_by(identifier=provider_name).one()
 
     def unit_count():
         if notification_type == TEMPLATE_TYPE_EMAIL:
@@ -303,10 +307,6 @@ def update_notification_after_sent_to_provider(id_, notification_type, provider_
         )
 
         db.session.add(provider_stats)
-
-    if reference:
-        notification.reference = reference
-        db.session.add(notification)
 
 
 def get_notification_for_job(service_id, job_id, notification_id):
