@@ -219,13 +219,11 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
 
     provider = provider_to_use('sms', notification_id)
 
-    restricted = False
-
     if not service_allowed_to_send_to(notification['to'], service):
         current_app.logger.info(
             "SMS {} failed as restricted service".format(notification_id)
         )
-        restricted = True
+        return
 
     try:
 
@@ -244,7 +242,7 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             service_id=service_id,
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
-            status='failed' if restricted else 'sending',
+            status='sending',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=provider.get_name(),
@@ -256,9 +254,6 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             datetime.strptime(created_at, DATETIME_FORMAT)
         )
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS, provider.get_name())
-
-        if restricted:
-            return
 
         try:
             provider.send_sms(
@@ -292,13 +287,11 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
 
     provider = provider_to_use('email', notification_id)
 
-    restricted = False
-
     if not service_allowed_to_send_to(notification['to'], service):
         current_app.logger.info(
             "Email {} failed as restricted service".format(notification_id)
         )
-        restricted = True
+        return
 
     try:
         sent_at = datetime.utcnow()
@@ -310,7 +303,7 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
             service_id=service_id,
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
-            status='failed' if restricted else 'sending',
+            status='sending',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=provider.get_name()
@@ -322,9 +315,6 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
             sent_at,
             datetime.strptime(created_at, DATETIME_FORMAT)
         )
-
-        if restricted:
-            return
 
         try:
             template = Template(
