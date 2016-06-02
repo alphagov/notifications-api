@@ -326,5 +326,6 @@ def test_send_user_email_verification(notify_api,
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 204
-            app.celery.tasks.email_registration_verification.apply_async.assert_called_once_with(['something_encrypted'], queue='email-registration-verification')  # noqa
-
+            app.celery.tasks.email_registration_verification.apply_async.assert_called_once_with(
+                ['something_encrypted'],
+                queue='email-registration-verification')  # noqa

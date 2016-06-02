@@ -35,6 +35,8 @@ from notifications_utils.template import get_sms_fragment_count
 
 from tests.app.conftest import (sample_notification)
 
+from app.dao.jobs_dao import dao_create_job
+
 
 def test_should_by_able_to_update_status_by_reference(sample_email_template, ses_provider):
     data = _notification_json(sample_email_template)
@@ -591,20 +593,29 @@ def test_get_notification_for_job(sample_notification):
     assert sample_notification == notifcation_from_db
 
 
-def test_get_all_notifications_for_job(notify_db, notify_db_session, sample_job):
-    for i in range(0, 5):
-        try:
-            sample_notification(notify_db,
-                                notify_db_session,
-                                service=sample_job.service,
-                                template=sample_job.template,
-                                job=sample_job)
-        except IntegrityError:
-            pass
+def test_get_all_notifications_for_job(notify_db, notify_db_session, sample_template_history):
+    job = Job(**{
+        'id': uuid.uuid4(),
+        'service': sample_template_history.service,
+        'template': sample_template_history,
+        'template_version': sample_template_history.version,
+        'original_file_name': "sample.csv",
+        'notification_count': 0,
+        'created_at': sample_template_history.created_at,
+        'created_by': sample_template_history.created_by
+    })
+    dao_create_job(job)
+    for i in range(5):
+        sample_notification(notify_db,
+                            notify_db_session,
+                            service=job.service,
+                            template=job.template,
+                            job=job,
+                            dao_create=True)
 
-    notifications_from_db = get_notifications_for_job(sample_job.service.id, sample_job.id).items
+    notifications_from_db = get_notifications_for_job(job.service.id, job.id).items
     assert len(notifications_from_db) == 5
-    _assert_notification_stats(sample_job.service.id, sms_requested=5)
+    _assert_notification_stats(job.service.id, sms_requested=5)
 
 
 def test_update_notification(sample_notification, sample_template):

@@ -169,7 +169,7 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify
                                                                           mocker,
                                                                           mock_celery_remove_job):
     service = sample_service(notify_db, notify_db_session, message_limit=1, with_history=True)
-    job = sample_job(notify_db, notify_db_session, service=service, with_history=True)
+    job = sample_job(notify_db, notify_db_session, service=service, notification_count=2, with_history=True)
 
     sample_notification(notify_db, notify_db_session, service=service, job=job)
 
@@ -344,11 +344,13 @@ def test_should_process_all_sms_job(sample_job_history,
         str(sample_job_history_with_placeholdered_template.service.id),
         str(sample_job_history_with_placeholdered_template.id)
     )
+
     params = encryption.encrypt.call_args[0][0]
     assert params['to'] == '+441234123120'
     assert params['template'] == str(sample_job_history_with_placeholdered_template.template.id)
     assert params['template_version'] == sample_job_history_with_placeholdered_template.template.version
     assert params['personalisation'] == {'name': 'chris'}
+
     tasks.send_sms.apply_async.call_count == 10
     job = jobs_dao.dao_get_job_by_id(sample_job_history_with_placeholdered_template.id)
     assert job.status == 'finished'
@@ -717,7 +719,8 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
         reply_to_addresses=None
     )
 
-    persisted_notification = notifications_dao.get_notification(sample_email_template_history.service_id, notification_id)
+    persisted_notification = notifications_dao.get_notification(
+        sample_email_template_history.service_id, notification_id)
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template_history.id
@@ -765,7 +768,10 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_hi
 
 
 def test_should_use_email_template_and_persist_ses_reference(sample_email_template_history_with_placeholders, mocker):
-    notification = _notification_json(sample_email_template_history_with_placeholders, "my_email@my_email.com", {"name": "Jo"})
+    notification = _notification_json(
+        sample_email_template_history_with_placeholders,
+        "my_email@my_email.com",
+        {"name": "Jo"})
     mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.aws_ses_client.send_email', return_value='reference')
 
@@ -865,7 +871,8 @@ def test_should_persist_notification_as_failed_if_email_client_fails(sample_emai
         html_body=AnyStringWith(sample_email_template_history.content),
         reply_to_addresses=None
     )
-    persisted_notification = notifications_dao.get_notification(sample_email_template_history.service_id, notification_id)
+    persisted_notification = notifications_dao.get_notification(
+        sample_email_template_history.service_id, notification_id)
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template_history.id
