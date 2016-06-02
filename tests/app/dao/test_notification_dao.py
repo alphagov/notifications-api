@@ -36,7 +36,6 @@ from notifications_utils.template import get_sms_fragment_count
 from tests.app.conftest import (sample_notification)
 
 
-
 def test_should_by_able_to_update_status_by_reference(sample_email_template, ses_provider):
     data = _notification_json(sample_email_template)
 
@@ -330,7 +329,6 @@ def test_save_notification_creates_sms_and_template_stats(sample_template, sampl
 
 
 def test_save_notification_and_create_email_and_template_stats(sample_email_template, sample_job, ses_provider):
-
     assert Notification.query.count() == 0
     assert NotificationStatistics.query.count() == 0
     assert TemplateStatistics.query.count() == 0
@@ -619,7 +617,6 @@ def test_update_notification(sample_notification, sample_template):
 
 @freeze_time("2016-01-10 12:00:00.000000")
 def test_should_delete_notifications_after_seven_days(notify_db, notify_db_session):
-
     assert len(Notification.query.all()) == 0
 
     # create one notification a day between 1st and 9th from 11:00 to 19:00
@@ -769,7 +766,6 @@ def test_successful_notification_inserts_followed_by_failure_does_not_increment_
 def test_get_template_stats_for_service_returns_stats_in_reverse_date_order(sample_template,
                                                                             sample_job,
                                                                             mmg_provider):
-
     template_stats = dao_get_template_statistics_for_service(sample_template.service.id)
     assert len(template_stats) == 0
     data = _notification_json(sample_template, job_id=sample_job.id)
@@ -796,7 +792,6 @@ def test_get_template_stats_for_service_returns_stats_in_reverse_date_order(samp
 
 @freeze_time('2016-04-09')
 def test_get_template_stats_for_service_returns_stats_can_limit_number_of_days_returned(sample_template):
-
     template_stats = dao_get_template_statistics_for_service(sample_template.service.id)
     assert len(template_stats) == 0
 
@@ -820,7 +815,6 @@ def test_get_template_stats_for_service_returns_stats_can_limit_number_of_days_r
 
 @freeze_time('2016-04-09')
 def test_get_template_stats_for_service_returns_stats_returns_all_stats_if_no_limit(sample_template):
-
     template_stats = dao_get_template_statistics_for_service(sample_template.service.id)
     assert len(template_stats) == 0
 
@@ -841,7 +835,6 @@ def test_get_template_stats_for_service_returns_stats_returns_all_stats_if_no_li
 
 @freeze_time('2016-04-30')
 def test_get_template_stats_for_service_returns_no_result_if_no_usage_within_limit_days(sample_template):
-
     template_stats = dao_get_template_statistics_for_service(sample_template.service.id)
     assert len(template_stats) == 0
 
@@ -870,7 +863,6 @@ def test_get_template_stats_for_service_with_limit_if_no_records_returns_empty_l
 
 @freeze_time("2016-01-10")
 def test_should_limit_notifications_return_by_day_limit_plus_one(notify_db, notify_db_session, sample_service):
-
     assert len(Notification.query.all()) == 0
 
     # create one notification a day between 1st and 9th
