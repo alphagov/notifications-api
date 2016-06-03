@@ -6,8 +6,7 @@ from datetime import (
     timedelta
 )
 
-from flask import url_for
-
+from flask import url_for, current_app
 from app.models import (
     VerifyCode,
     User
@@ -215,10 +214,13 @@ def test_user_verify_password_missing_password(notify_api,
             assert 'Required field missing data' in json_resp['message']['password']
 
 
+@freeze_time("2016-01-01 11:09:00.061258")
 def test_send_user_sms_code(notify_api,
-                            sample_sms_code,
-                            mock_celery_send_sms_code,
-                            mock_encryption):
+                            notify_db,
+                            notify_db_session,
+                            sample_user,
+                            mock_encryption,
+                            mocker):
     """
     Tests POST endpoint /user/<user_id>/sms-code
     """
@@ -226,34 +228,56 @@ def test_send_user_sms_code(notify_api,
         with notify_api.test_client() as client:
             data = json.dumps({})
             auth_header = create_authorization_header()
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+            mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
             resp = client.post(
-                url_for('user.send_user_sms_code', user_id=sample_sms_code.user.id),
+                url_for('user.send_user_sms_code', user_id=sample_user.id),
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 204
-            app.celery.tasks.send_sms_code.apply_async.assert_called_once_with(['something_encrypted'],
-                                                                               queue='sms-code')
+            app.celery.tasks.send_sms.apply_async.assert_called_once_with(
+                ([current_app.config['NOTIFY_SERVICE_ID'],
+                  "some_uuid",
+                  "something_encrypted",
+                  "2016-01-01T11:09:00.061258"]),
+                queue="sms-code"
+            )
 
 
+@freeze_time("2016-01-01 11:09:00.061258")
 def test_send_user_code_for_sms_with_optional_to_field(notify_api,
-                                                       sample_sms_code,
+                                                       sample_user,
                                                        mock_secret_code,
-                                                       mock_celery_send_sms_code):
+                                                       mocker):
     """
    Tests POST endpoint '/<user_id>/code' successful sms with optional to field
    """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
+            mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
             data = json.dumps({'to': '+441119876757'})
             auth_header = create_authorization_header()
             resp = client.post(
-                url_for('user.send_user_sms_code', user_id=sample_sms_code.user.id),
+                url_for('user.send_user_sms_code', user_id=sample_user.id),
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             assert resp.status_code == 204
-            encrypted = encryption.encrypt({'to': '+441119876757', 'secret_code': '11111'})
-            app.celery.tasks.send_sms_code.apply_async.assert_called_once_with([encrypted], queue='sms-code')
+            encrypted = encryption.encrypt({'template': current_app.config['SMS_CODE_TEMPLATE_ID'],
+                                            'template_version': 1,
+                                            'to': '+441119876757',
+                                            'personalisation': {
+                                                'verify_code': '11111'
+                                                }
+                                            })
+            app.celery.tasks.send_sms.apply_async.assert_called_once_with(
+                ([current_app.config['NOTIFY_SERVICE_ID'],
+                  "some_uuid",
+                  encrypted,
+                  "2016-01-01T11:09:00.061258"]),
+                queue="sms-code"
+            )
 
 
 def test_send_sms_code_returns_404_for_bad_input_data(notify_api, notify_db, notify_db_session):
