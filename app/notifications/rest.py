@@ -1,5 +1,4 @@
 from datetime import datetime
-import statsd
 import itertools
 from flask import (
     Blueprint,
@@ -176,6 +175,8 @@ def process_firetext_response():
     if validation_errors:
         current_app.logger.info(validation_errors)
         return jsonify(result='error', message=validation_errors), 400
+
+    statsd_client.incr('notifications.callback.firetext.code.{}'.format(request.form.get('code')))
 
     success, errors = process_sms_client_response(status=request.form.get('status'),
                                                   reference=request.form.get('reference'),

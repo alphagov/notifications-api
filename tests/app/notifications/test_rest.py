@@ -1071,9 +1071,10 @@ def test_should_allow_api_call_if_under_day_limit_regardless_of_type(notify_db, 
             assert response.status_code == 201
 
 
-def test_firetext_callback_should_not_need_auth(notify_api):
+def test_firetext_callback_should_not_need_auth(notify_api, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
             response = client.post(
                 path='/notifications/sms/firetext',
                 data='mobile=441234123123&status=0&reference=send-sms-code&time=2016-03-10 14:17:00',
@@ -1082,9 +1083,10 @@ def test_firetext_callback_should_not_need_auth(notify_api):
             assert response.status_code == 200
 
 
-def test_firetext_callback_should_return_400_if_empty_reference(notify_api):
+def test_firetext_callback_should_return_400_if_empty_reference(notify_api, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
             response = client.post(
                 path='/notifications/sms/firetext',
                 data='mobile=441234123123&status=0&reference=&time=2016-03-10 14:17:00',
@@ -1096,9 +1098,10 @@ def test_firetext_callback_should_return_400_if_empty_reference(notify_api):
             assert json_resp['message'] == ['Firetext callback failed: reference missing']
 
 
-def test_firetext_callback_should_return_400_if_no_reference(notify_api):
+def test_firetext_callback_should_return_400_if_no_reference(notify_api, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
             response = client.post(
                 path='/notifications/sms/firetext',
                 data='mobile=441234123123&status=0&time=2016-03-10 14:17:00',
@@ -1110,9 +1113,10 @@ def test_firetext_callback_should_return_400_if_no_reference(notify_api):
             assert json_resp['message'] == ['Firetext callback failed: reference missing']
 
 
-def test_firetext_callback_should_return_200_if_send_sms_reference(notify_api):
+def test_firetext_callback_should_return_200_if_send_sms_reference(notify_api, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
             response = client.post(
                 path='/notifications/sms/firetext',
                 data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference=send-sms-code',
@@ -1124,9 +1128,10 @@ def test_firetext_callback_should_return_200_if_send_sms_reference(notify_api):
             assert json_resp['message'] == 'Firetext callback succeeded: send-sms-code'
 
 
-def test_firetext_callback_should_return_400_if_no_status(notify_api):
+def test_firetext_callback_should_return_400_if_no_status(notify_api, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
             response = client.post(
                 path='/notifications/sms/firetext',
                 data='mobile=441234123123&time=2016-03-10 14:17:00&reference=send-sms-code',
@@ -1138,9 +1143,10 @@ def test_firetext_callback_should_return_400_if_no_status(notify_api):
             assert json_resp['message'] == ['Firetext callback failed: status missing']
 
 
-def test_firetext_callback_should_return_400_if_unknown_status(notify_api):
+def test_firetext_callback_should_return_400_if_unknown_status(notify_api, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
             response = client.post(
                 path='/notifications/sms/firetext',
                 data='mobile=441234123123&status=99&time=2016-03-10 14:17:00&reference={}'.format(uuid.uuid4()),
@@ -1152,9 +1158,10 @@ def test_firetext_callback_should_return_400_if_unknown_status(notify_api):
             assert json_resp['message'] == 'Firetext callback failed: status 99 not found.'
 
 
-def test_firetext_callback_should_return_400_if_invalid_guid_notification_id(notify_api):
+def test_firetext_callback_should_return_400_if_invalid_guid_notification_id(notify_api, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
             response = client.post(
                 path='/notifications/sms/firetext',
                 data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference=1234',
@@ -1166,9 +1173,15 @@ def test_firetext_callback_should_return_400_if_invalid_guid_notification_id(not
             assert json_resp['message'] == 'Firetext callback with invalid reference 1234'
 
 
-def test_firetext_callback_should_return_404_if_cannot_find_notification_id(notify_db, notify_db_session, notify_api):
+def test_firetext_callback_should_return_404_if_cannot_find_notification_id(
+    notify_db,
+    notify_db_session,
+    notify_api,
+    mocker
+):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
             missing_notification_id = uuid.uuid4()
             response = client.post(
                 path='/notifications/sms/firetext',
@@ -1187,9 +1200,10 @@ def test_firetext_callback_should_return_404_if_cannot_find_notification_id(noti
             )
 
 
-def test_firetext_callback_should_update_notification_status(notify_api, sample_notification):
+def test_firetext_callback_should_update_notification_status(notify_api, sample_notification, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
             original = get_notification_by_id(sample_notification.id)
             assert original.status == 'sending'
 
@@ -1215,9 +1229,10 @@ def test_firetext_callback_should_update_notification_status(notify_api, sample_
             assert stats.sms_failed == 0
 
 
-def test_firetext_callback_should_update_notification_status_failed(notify_api, sample_notification):
+def test_firetext_callback_should_update_notification_status_failed(notify_api, sample_notification, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
             original = get_notification_by_id(sample_notification.id)
             assert original.status == 'sending'
 
@@ -1241,9 +1256,10 @@ def test_firetext_callback_should_update_notification_status_failed(notify_api, 
             assert stats.sms_failed == 1
 
 
-def test_firetext_callback_should_update_notification_status_pending(notify_api, notify_db, notify_db_session):
+def test_firetext_callback_should_update_notification_status_pending(notify_api, notify_db, notify_db_session, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
             notification = create_sample_notification(notify_db, notify_db_session, status='sending')
             original = get_notification_by_id(notification.id)
             assert original.status == 'sending'
@@ -1268,9 +1284,15 @@ def test_firetext_callback_should_update_notification_status_pending(notify_api,
             assert stats.sms_failed == 0
 
 
-def test_firetext_callback_should_update_multiple_notification_status_sent(notify_api, notify_db, notify_db_session):
+def test_firetext_callback_should_update_multiple_notification_status_sent(
+    notify_api,
+    notify_db,
+    notify_db_session,
+    mocker
+):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            mocker.patch('app.statsd_client.incr')
             notification1 = create_sample_notification(notify_db, notify_db_session, status='sending')
             notification2 = create_sample_notification(notify_db, notify_db_session, status='sending')
             notification3 = create_sample_notification(notify_db, notify_db_session, status='sending')
@@ -1529,7 +1551,8 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
         notify_api,
         notify_db,
         notify_db_session,
-        sample_email_template):
+        sample_email_template,
+        mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             notification1 = create_sample_notification(
@@ -1550,29 +1573,28 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
                 notify_db,
                 notify_db_session,
                 template=sample_email_template,
-                reference='ref2',
+                reference='ref3',
                 status='sending')
 
-            client.post(
-                path='/notifications/sms/firetext',
-                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-                    notification1.id
-                ),
-                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+            resp1 = client.post(
+                path='/notifications/email/ses',
+                data=ses_notification_callback(ref='ref1'),
+                headers=[('Content-Type', 'text/plain; charset=UTF-8')]
+            )
+            resp2 = client.post(
+                path='/notifications/email/ses',
+                data=ses_notification_callback(ref='ref2'),
+                headers=[('Content-Type', 'text/plain; charset=UTF-8')]
+            )
+            resp3 = client.post(
+                path='/notifications/email/ses',
+                data=ses_notification_callback(ref='ref3'),
+                headers=[('Content-Type', 'text/plain; charset=UTF-8')]
+            )
 
-            client.post(
-                path='/notifications/sms/firetext',
-                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-                    notification2.id
-                ),
-                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
-
-            client.post(
-                path='/notifications/sms/firetext',
-                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-                    notification3.id
-                ),
-                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+            assert resp1.status_code == 200
+            assert resp2.status_code == 200
+            assert resp3.status_code == 200
 
             stats = dao_get_notification_statistics_for_service(notification1.service_id)[0]
             assert stats.emails_delivered == 3
@@ -1786,7 +1808,9 @@ def test_process_mmg_response_records_statsd(notify_api, sample_notification, mo
         client.post(path='notifications/sms/mmg',
                     data=data,
                     headers=[('Content-Type', 'application/json')])
-        app.statsd_client.incr.assert_called_once_with("notifications.callback.mmg.delivered")
+        assert app.statsd_client.incr.call_count == 2
+        app.statsd_client.incr.assert_any_call("notifications.callback.mmg.delivered")
+        app.statsd_client.incr.assert_any_call("notifications.callback.mmg.status.3")
 
 
 def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db_session, mocker):
@@ -1797,12 +1821,15 @@ def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db
 
             client.post(
                 path='/notifications/sms/firetext',
-                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
+                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&code=101&reference={}'.format(
                     notification.id
                 ),
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
-            app.statsd_client.incr.assert_called_once_with("notifications.callback.firetext.delivered")
+            assert app.statsd_client.incr.call_count == 3
+            app.statsd_client.incr.assert_any_call("notifications.callback.firetext.code.101")
+            app.statsd_client.incr.assert_any_call("notifications.callback.firetext.status.0")
+            app.statsd_client.incr.assert_any_call("notifications.callback.firetext.delivered")
 
 
 def ses_validation_code_callback():
@@ -1813,8 +1840,10 @@ def ses_invite_callback():
     return b'{\n  "Type" : "Notification",\n  "MessageId" : "ref",\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",\n  "Message" : "{\\"notificationType\\":\\"Delivery\\",\\"mail\\":{\\"timestamp\\":\\"2016-03-14T12:35:25.909Z\\",\\"source\\":\\"test-invite@test-domain.com\\",\\"sourceArn\\":\\"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify\\",\\"sendingAccountId\\":\\"123456789012\\",\\"messageId\\":\\"ref\\",\\"destination\\":[\\"testing@digital.cabinet-office.gov.uk\\"]},\\"delivery\\":{\\"timestamp\\":\\"2016-03-14T12:35:26.567Z\\",\\"processingTimeMillis\\":658,\\"recipients\\":[\\"testing@digital.cabinet-office.gov.u\\"],\\"smtpResponse\\":\\"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp\\",\\"reportingMTA\\":\\"a6-238.smtp-out.eu-west-1.amazonses.com\\"}}",\n  "Timestamp" : "2016-03-14T12:35:26.665Z",\n  "SignatureVersion" : "1",\n  "Signature" : "X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==",\n  "SigningCertURL" : "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem",\n  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"\n}'  # noqa
 
 
-def ses_notification_callback():
-    return b'{\n  "Type" : "Notification",\n  "MessageId" : "ref",\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",\n  "Message" : "{\\"notificationType\\":\\"Delivery\\",\\"mail\\":{\\"timestamp\\":\\"2016-03-14T12:35:25.909Z\\",\\"source\\":\\"test@test-domain.com\\",\\"sourceArn\\":\\"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify\\",\\"sendingAccountId\\":\\"123456789012\\",\\"messageId\\":\\"ref\\",\\"destination\\":[\\"testing@digital.cabinet-office.gov.uk\\"]},\\"delivery\\":{\\"timestamp\\":\\"2016-03-14T12:35:26.567Z\\",\\"processingTimeMillis\\":658,\\"recipients\\":[\\"testing@digital.cabinet-office.gov.uk\\"],\\"smtpResponse\\":\\"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp\\",\\"reportingMTA\\":\\"a6-238.smtp-out.eu-west-1.amazonses.com\\"}}",\n  "Timestamp" : "2016-03-14T12:35:26.665Z",\n  "SignatureVersion" : "1",\n  "Signature" : "X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==",\n  "SigningCertURL" : "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem",\n  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"\n}'  # noqa
+def ses_notification_callback(ref='ref'):
+    return str.encode(
+        '{\n  "Type" : "Notification",\n  "MessageId" : "%(ref)s",\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",\n  "Message" : "{\\"notificationType\\":\\"Delivery\\",\\"mail\\":{\\"timestamp\\":\\"2016-03-14T12:35:25.909Z\\",\\"source\\":\\"test@test-domain.com\\",\\"sourceArn\\":\\"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify\\",\\"sendingAccountId\\":\\"123456789012\\",\\"messageId\\":\\"%(ref)s\\",\\"destination\\":[\\"testing@digital.cabinet-office.gov.uk\\"]},\\"delivery\\":{\\"timestamp\\":\\"2016-03-14T12:35:26.567Z\\",\\"processingTimeMillis\\":658,\\"recipients\\":[\\"testing@digital.cabinet-office.gov.uk\\"],\\"smtpResponse\\":\\"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp\\",\\"reportingMTA\\":\\"a6-238.smtp-out.eu-west-1.amazonses.com\\"}}",\n  "Timestamp" : "2016-03-14T12:35:26.665Z",\n  "SignatureVersion" : "1",\n  "Signature" : "X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==",\n  "SigningCertURL" : "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem",\n  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"\n}' % {'ref': ref}  # noqa
+    )
 
 
 def ses_invalid_notification_id_callback():
