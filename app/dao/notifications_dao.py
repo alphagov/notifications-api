@@ -140,9 +140,7 @@ def dao_get_template_statistics_for_service(service_id, limit_days=None):
 
 
 @transactional
-def dao_create_notification(notification, notification_type, provider_identifier):
-    provider = ProviderDetails.query.filter_by(identifier=provider_identifier).one()
-
+def dao_create_notification(notification, notification_type):
     if notification.job_id:
         db.session.query(Job).filter_by(
             id=notification.job_id
@@ -281,8 +279,8 @@ def dao_update_notification(notification):
 def update_provider_stats(
         id_,
         notification_type,
-        provider_name):
-
+        provider_name,
+        content_char_count=None):
     notification = Notification.query.filter(Notification.id == id_).one()
     provider = ProviderDetails.query.filter_by(identifier=provider_name).one()
 
@@ -290,6 +288,8 @@ def update_provider_stats(
         if notification_type == TEMPLATE_TYPE_EMAIL:
             return 1
         else:
+            if (content_char_count):
+                return get_sms_fragment_count(content_char_count)
             return get_sms_fragment_count(notification.content_char_count)
 
     update_count = db.session.query(ProviderStatistics).filter_by(

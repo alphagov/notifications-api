@@ -11,7 +11,9 @@ from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.provider_details_dao import get_provider_details_by_notification_type
 from app.celery.research_mode_tasks import send_email_response, send_sms_response
-
+from app.celery.provider_tasks import (
+    send_sms_to_provider
+)
 from notifications_utils.template import Template, unlink_govuk_escaped
 
 from notifications_utils.recipients import (
@@ -212,13 +214,11 @@ def remove_job(job_id):
     current_app.logger.info("Job {} has been removed from s3.".format(job_id))
 
 
-@notify_celery.task(name="send-sms")
-def send_sms(service_id, notification_id, encrypted_notification, created_at):
+@notify_celery.task(bind=True, name="send-sms", max_retries=5, default_retry_delay=5)
+def send_sms(self, service_id, notification_id, encrypted_notification, created_at):
     task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
-
-    provider = provider_to_use('sms', notification_id)
 
     if not service_allowed_to_send_to(notification['to'], service):
         current_app.logger.info(
@@ -227,12 +227,6 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
         return
 
     try:
-
-        template = Template(
-            dao_get_template_by_id(notification['template'], notification['template_version']).__dict__,
-            values=notification.get('personalisation', {}),
-            prefix=service.name
-        )
 
         sent_at = datetime.utcnow()
         notification_db_object = Notification(
@@ -244,51 +238,21 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
             status='sending',
-            created_at=datetime.strptime(created_at, DATETIME_FORMAT),
-            sent_at=sent_at,
-            sent_by=provider.get_name(),
-            content_char_count=template.replaced_content_count
+            created_at=datetime.strptime(created_at, DATETIME_FORMAT)
         )
-        statsd_client.timing_with_dates(
-            "notifications.tasks.send-sms.queued-for",
-            sent_at,
-            datetime.strptime(created_at, DATETIME_FORMAT)
-        )
-        dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS, provider.get_name())
+        dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS)
 
-        try:
-            if service.research_mode:
-                send_sms_response.apply_async(
-                    (provider.get_name(), str(notification_id), notification['to']), queue='research-mode'
-                )
-            else:
-                provider.send_sms(
-                    to=validate_and_format_phone_number(notification['to']),
-                    content=template.replaced,
-                    reference=str(notification_id)
-                )
-
-                update_provider_stats(
-                    notification_id,
-                    'sms',
-                    provider.get_name()
-                )
-
-        except SmsClientException as e:
-            current_app.logger.error(
-                "SMS notification {} failed".format(notification_id)
-            )
-            current_app.logger.exception(e)
-            notification_db_object.status = 'technical-failure'
-            dao_update_notification(notification_db_object)
+        send_sms_to_provider.apply_async((service_id, notification_id, encrypted_notification), queue='sms')
 
         current_app.logger.info(
             "SMS {} created at {} sent at {}".format(notification_id, created_at, sent_at)
         )
+
         statsd_client.incr("notifications.tasks.send-sms")
         statsd_client.timing("notifications.tasks.send-sms.task-time", monotonic() - task_start)
     except SQLAlchemyError as e:
         current_app.logger.exception(e)
+        raise self.retry(queue="sms", exc=e)
 
 
 @notify_celery.task(name="send-email")
