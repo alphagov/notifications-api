@@ -25,7 +25,7 @@ def upgrade():
     password = hashpw(str(uuid.uuid4()))
     op.get_bind()
     user_insert = """INSERT INTO users (id, name, email_address, created_at, failed_login_count, _password, mobile_number, state, platform_admin)
-                     VALUES ('{}', 'Notify service user', 'this-does-not-work@this.does.not.work.gov.uk', '{}', 0,'{}', '+441234123412', 'active', False)
+                     VALUES ('{}', 'Notify service user', 'notify-service-user@digital.cabinet-office', '{}', 0,'{}', '+441234123412', 'active', False)
                   """
     op.execute(user_insert.format(user_id, datetime.utcnow(), password))
     service_history_insert = """INSERT INTO services_history (id, name, created_at, active, message_limit, restricted, research_mode, email_from, created_by_id, reply_to_email_address, version)
@@ -41,18 +41,6 @@ def upgrade():
     op.execute(service_insert.format(service_id, datetime.utcnow(), user_id))
     user_to_service_insert = """INSERT INTO user_to_service (user_id, service_id) VALUES ('{}', '{}')"""
     op.execute(user_to_service_insert.format(user_id, service_id))
-
-    permission_insert = """INSERT INTO permissions (id, service_id, user_id, permission, created_at)
-                           VALUES ('{}', '{}', '{}', '{}','{}')
-                           """
-    op.execute(permission_insert.format(uuid.uuid4(), service_id, user_id, 'manage_users', datetime.utcnow()))
-    op.execute(permission_insert.format(uuid.uuid4(), service_id, user_id, 'manage_templates', datetime.utcnow()))
-    op.execute(permission_insert.format(uuid.uuid4(), service_id, user_id, 'manage_settings', datetime.utcnow()))
-    op.execute(permission_insert.format(uuid.uuid4(), service_id, user_id, 'send_texts', datetime.utcnow()))
-    op.execute(permission_insert.format(uuid.uuid4(), service_id, user_id, 'send_emails', datetime.utcnow()))
-    op.execute(permission_insert.format(uuid.uuid4(), service_id, user_id, 'send_letters', datetime.utcnow()))
-    op.execute(permission_insert.format(uuid.uuid4(), service_id, user_id, 'manage_api_keys', datetime.utcnow()))
-    op.execute(permission_insert.format(uuid.uuid4(), service_id, user_id, 'view_activity', datetime.utcnow()))
 
     template_history_insert = """INSERT INTO templates_history (id, name, template_type, created_at,
                                                                 content, archived, service_id,
@@ -111,7 +99,6 @@ def downgrade():
     op.get_bind()
     op.execute("delete from templates where service_id = '{}'".format(service_id))
     op.execute("delete from templates_history where service_id = '{}'".format(service_id))
-    op.execute("delete from permissions where user_id = '{}'".format(user_id))
     op.execute("delete from user_to_service where service_id = '{}'".format(service_id))
     op.execute("delete from services_history where id = '{}'".format(service_id))
     op.execute("delete from services where id = '{}'".format(service_id))
