@@ -16,7 +16,7 @@ class Config(object):
     NOTIFY_APP_NAME = 'api'
     NOTIFY_LOG_PATH = '/var/log/notify/application.log'
     NOTIFY_JOB_QUEUE = os.environ['NOTIFY_JOB_QUEUE']
-    # Notification Queue names are a combination of a prefx plus a name
+    # Notification Queue names are a combination of a prefix plus a name
     NOTIFICATION_QUEUE_PREFIX = os.environ['NOTIFICATION_QUEUE_PREFIX']
     MMG_FROM_NUMBER = os.environ['MMG_FROM_NUMBER']
     SECRET_KEY = os.environ['SECRET_KEY']
@@ -28,6 +28,12 @@ class Config(object):
     NOTIFY_EMAIL_DOMAIN = os.environ['NOTIFY_EMAIL_DOMAIN']
     PAGE_SIZE = 50
     SMS_CHAR_COUNT_LIMIT = 495
+
+    NOTIFY_SERVICE_ID = 'd6aa2c68-a2d9-4437-ab19-3ae8eb202553'
+    INVITATION_EMAIL_TEMPLATE_ID = '4f46df42-f795-4cc4-83bb-65ca312f49cc'
+    SMS_CODE_TEMPLATE_ID = '36fb0730-6259-4da1-8a80-c8de22ad4246'
+    EMAIL_VERIFY_CODE_TEMPLATE_ID = 'ece42649-22a8-4d06-b87f-d52d5d3f0a27'
+    PASSWORD_RESET_TEMPLATE_ID = '474e9242-823b-4f99-813d-ed392e7f1201'
 
     BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {
