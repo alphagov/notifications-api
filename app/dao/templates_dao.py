@@ -45,7 +45,7 @@ def dao_get_all_templates_for_service(service_id):
         service_id=service_id,
         archived=False
     ).order_by(
-        asc(Template.updated_at), asc(Template.created_at)
+        desc(Template.created_at)
     ).all()
 
 
