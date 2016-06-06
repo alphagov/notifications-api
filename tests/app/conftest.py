@@ -4,6 +4,7 @@ import uuid
 from datetime import (datetime, date)
 
 import pytest
+from flask import current_app
 
 from app import db
 from app.models import (
@@ -308,15 +309,6 @@ def sample_email_job(notify_db,
 
 
 @pytest.fixture(scope='function')
-def mock_secret_code(mocker):
-    def _create():
-        return '11111'
-
-    mock_class = mocker.patch('app.dao.users_dao.create_secret_code', side_effect=_create)
-    return mock_class
-
-
-@pytest.fixture(scope='function')
 def sample_notification(notify_db,
                         notify_db_session,
                         service=None,
@@ -563,3 +555,37 @@ def mock_mmg_client(mocker, statsd_client=None):
     })
     client.init_app(current_app, statsd_client)
     return client
+
+
+@pytest.fixture(scope='function')
+def sms_code_template(notify_db,
+                      notify_db_session):
+    user = sample_user(notify_db, notify_db_session)
+    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
+    if not service:
+        data = {
+            'id': current_app.config['NOTIFY_SERVICE_ID'],
+            'name': 'Notify Service',
+            'message_limit': 1000,
+            'active': True,
+            'restricted': False,
+            'email_from': 'notify.service',
+            'created_by': user
+        }
+        service = Service(**data)
+        db.session.add(service)
+
+    template = Template.query.get(current_app.config['SMS_CODE_TEMPLATE_ID'])
+    if not template:
+        data = {
+            'id': current_app.config['SMS_CODE_TEMPLATE_ID'],
+            'name': 'Sms code template',
+            'template_type': 'sms',
+            'content': '((verify_code))',
+            'service': service,
+            'created_by': user,
+            'archived': False
+        }
+        template = Template(**data)
+        db.session.add(template)
+    return template

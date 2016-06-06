@@ -216,18 +216,18 @@ def test_user_verify_password_missing_password(notify_api,
 
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_send_user_sms_code(notify_api,
-                            notify_db,
-                            notify_db_session,
                             sample_user,
-                            mock_encryption,
+                            sms_code_template,
                             mocker):
     """
     Tests POST endpoint /user/<user_id>/sms-code
     """
+
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = json.dumps({})
             auth_header = create_authorization_header()
+            mocked = mocker.patch('app.user.rest.create_secret_code', return_value='11111')
             mocker.patch('app.celery.tasks.send_sms.apply_async')
             mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
             resp = client.post(
@@ -235,10 +235,18 @@ def test_send_user_sms_code(notify_api,
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 204
+            assert mocked.call_count == 1
+            encrypted = encryption.encrypt({'template': current_app.config['SMS_CODE_TEMPLATE_ID'],
+                                            'template_version': 1,
+                                            'to': sample_user.mobile_number,
+                                            'personalisation': {
+                                                'verify_code': '11111'
+                                                }
+                                            })
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 ([current_app.config['NOTIFY_SERVICE_ID'],
                   "some_uuid",
-                  "something_encrypted",
+                  encrypted,
                   "2016-01-01T11:09:00.061258"]),
                 queue="sms-code"
             )
@@ -247,15 +255,17 @@ def test_send_user_sms_code(notify_api,
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_send_user_code_for_sms_with_optional_to_field(notify_api,
                                                        sample_user,
-                                                       mock_secret_code,
+                                                       sms_code_template,
+                                                       mock_encryption,
                                                        mocker):
     """
-   Tests POST endpoint '/<user_id>/code' successful sms with optional to field
-   """
+    Tests POST endpoint '/<user_id>/code' successful sms with optional to field
+    """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocker.patch('app.celery.tasks.send_sms.apply_async')
+            mocked = mocker.patch('app.user.rest.create_secret_code', return_value='11111')
             mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
+            mocker.patch('app.celery.tasks.send_sms.apply_async')
             data = json.dumps({'to': '+441119876757'})
             auth_header = create_authorization_header()
             resp = client.post(
@@ -271,6 +281,7 @@ def test_send_user_code_for_sms_with_optional_to_field(notify_api,
                                                 'verify_code': '11111'
                                                 }
                                             })
+            assert mocked.call_count == 1
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 ([current_app.config['NOTIFY_SERVICE_ID'],
                   "some_uuid",
