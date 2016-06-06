@@ -547,7 +547,7 @@ def mock_firetext_client(mocker, statsd_client=None):
     statsd_client = statsd_client or mocker.Mock()
     current_app = mocker.Mock(config={
         'FIRETEXT_API_KEY': 'foo',
-        'FIRETEXT_NUMBER': 'bar'
+        'FROM_NUMBER': 'bar'
     })
     client.init_app(current_app, statsd_client)
     return client
@@ -559,7 +559,7 @@ def mock_mmg_client(mocker, statsd_client=None):
     statsd_client = statsd_client or mocker.Mock()()
     current_app = mocker.Mock(config={
         'MMG_API_KEY': 'foo',
-        'MMG_FROM_NUMBER': 'bar'
+        'FROM_NUMBER': 'bar'
     })
     client.init_app(current_app, statsd_client)
     return client
