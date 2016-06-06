@@ -68,6 +68,8 @@ class PermissionDAO(DAOClass):
             query = self.get_query(filter_by_dict={'user': user.id, 'service': service.id})
             query.delete()
             for p in permissions:
+                p.user = user
+                p.service = service
                 self.create_instance(p, _commit=False)
         except Exception as e:
             if _commit:
