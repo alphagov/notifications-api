@@ -139,6 +139,12 @@ def dao_get_template_statistics_for_service(service_id, limit_days=None):
         desc(TemplateStatistics.updated_at)).all()
 
 
+def dao_get_template_statistics_for_template(template_id):
+    return TemplateStatistics.query.filter(
+        TemplateStatistics.template_id == template_id
+    ).all()
+
+
 @transactional
 def dao_create_notification(notification, notification_type, provider_identifier):
     provider = ProviderDetails.query.filter_by(identifier=provider_identifier).one()
