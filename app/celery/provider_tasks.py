@@ -35,6 +35,7 @@ retry_iteration_to_delay = {
     4: 60 * 30 # 30 minutes
 }
 
+
 @notify_celery.task(bind=True, name="send-sms-to-provider", max_retries=5, default_retry_delay=5)
 def send_sms_to_provider(self, service_id, notification_id, encrypted_notification):
     task_start = monotonic()
@@ -92,7 +93,7 @@ def send_sms_to_provider(self, service_id, notification_id, encrypted_notificati
     )
     statsd_client.incr("notifications.tasks.send-sms-to-provider")
     statsd_client.timing("notifications.tasks.send-sms-to-provider.task-time", monotonic() - task_start)
-    statsd_client.timing("notifications.sms.total-time", monotonic() - notification.created_at)
+    statsd_client.timing("notifications.sms.total-time", notification.sent_at - notification.created_at)
 
 
 def provider_to_use(notification_type, notification_id):

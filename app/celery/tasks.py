@@ -3,6 +3,7 @@ from datetime import datetime
 
 from flask import current_app
 from monotonic import monotonic
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import clients, statsd_client
 from app.clients.email import EmailClientException
@@ -10,7 +11,7 @@ from app.clients.sms import SmsClientException
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.provider_details_dao import get_provider_details_by_notification_type
-from app.celery.research_mode_tasks import send_email_response, send_sms_response
+from app.celery.research_mode_tasks import send_email_response
 from app.celery.provider_tasks import (
     send_sms_to_provider
 )
@@ -285,7 +286,7 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
             sent_by=provider.get_name()
         )
 
-        dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL, provider.get_name())
+        dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL)
         statsd_client.timing_with_dates(
             "notifications.tasks.send-email.queued-for",
             sent_at,
