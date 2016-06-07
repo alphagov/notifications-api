@@ -26,12 +26,13 @@ from app.dao.services_dao import (
 from app.dao.provider_statistics_dao import get_fragment_count
 
 from app.dao.users_dao import get_model_users
-from app.models import ApiKey
+
 from app.schemas import (
     service_schema,
     api_key_schema,
     user_schema,
-    from_to_date_schema
+    from_to_date_schema,
+    permission_schema
 )
 
 from app.errors import register_errors
@@ -150,10 +151,9 @@ def add_user_to_service(service_id, user_id):
         return jsonify(result='error',
                        message='User id: {} already part of service id: {}'.format(user_id, service_id)), 400
 
-    permissions_json = request.get_json().get('permissions', [])
-    permissions = _process_permissions(user, service, permissions_json)
-    dao_add_user_to_service(service, user, permissions)
+    permissions, errors = permission_schema.load(request.get_json(), many=True)
 
+    dao_add_user_to_service(service, user, permissions)
     data, errors = service_schema.dump(service)
     return jsonify(data=data), 201
 

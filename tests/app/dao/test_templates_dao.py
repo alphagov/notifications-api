@@ -99,7 +99,7 @@ def test_get_all_templates_for_service(notify_db, notify_db_session, service_fac
     assert len(dao_get_all_templates_for_service(service_2.id)) == 2
 
 
-def test_get_all_templates_for_service_in_created_order(notify_db, notify_db_session, sample_service):
+def test_get_all_templates_for_service_shows_newest_created_first(notify_db, notify_db_session, sample_service):
     template_1 = create_sample_template(
         notify_db,
         notify_db_session,
@@ -126,13 +126,14 @@ def test_get_all_templates_for_service_in_created_order(notify_db, notify_db_ses
     )
 
     assert Template.query.count() == 3
-    assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'Sample Template 1'
+    assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'Sample Template 3'
     assert dao_get_all_templates_for_service(sample_service.id)[1].name == 'Sample Template 2'
-    assert dao_get_all_templates_for_service(sample_service.id)[2].name == 'Sample Template 3'
+    assert dao_get_all_templates_for_service(sample_service.id)[2].name == 'Sample Template 1'
 
     template_2.name = 'Sample Template 2 (updated)'
     dao_update_template(template_2)
-    assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'Sample Template 2 (updated)'
+    assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'Sample Template 3'
+    assert dao_get_all_templates_for_service(sample_service.id)[1].name == 'Sample Template 2 (updated)'
 
 
 def test_get_all_returns_empty_list_if_no_templates(sample_service):

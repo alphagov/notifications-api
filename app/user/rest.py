@@ -1,8 +1,8 @@
 import json
+import uuid
 from datetime import datetime
 from flask import (jsonify, request, abort, Blueprint, current_app)
-from app import encryption
-
+from app import encryption, DATETIME_FORMAT
 from app.dao.users_dao import (
     get_model_users,
     save_model_user,
@@ -11,12 +11,12 @@ from app.dao.users_dao import (
     use_user_code,
     increment_failed_login_count,
     reset_failed_login_count,
-    get_user_by_email
+    get_user_by_email,
+    create_secret_code
 )
-
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
-
+from app.dao.templates_dao import dao_get_template_by_id
 from app.schemas import (
     email_data_request_schema,
     user_schema,
@@ -26,7 +26,7 @@ from app.schemas import (
 )
 
 from app.celery.tasks import (
-    send_sms_code,
+    send_sms,
     email_reset_password,
     email_registration_verification
 )
@@ -123,14 +123,26 @@ def send_user_sms_code(user_id):
     if errors:
         return jsonify(result="error", message=errors), 400
 
-    from app.dao.users_dao import create_secret_code
     secret_code = create_secret_code()
     create_user_code(user_to_send_to, secret_code, 'sms')
 
     mobile = user_to_send_to.mobile_number if verify_code.get('to', None) is None else verify_code.get('to')
-    verification_message = {'to': mobile, 'secret_code': secret_code}
+    sms_code_template_id = current_app.config['SMS_CODE_TEMPLATE_ID']
+    sms_code_template = dao_get_template_by_id(sms_code_template_id)
+    verification_message = encryption.encrypt({
+        'template': sms_code_template_id,
+        'template_version': sms_code_template.version,
+        'to': mobile,
+        'personalisation': {
+            'verify_code': secret_code
+        }
 
-    send_sms_code.apply_async([encryption.encrypt(verification_message)], queue='sms-code')
+    })
+    send_sms.apply_async([current_app.config['NOTIFY_SERVICE_ID'],
+                          str(uuid.uuid4()),
+                          verification_message,
+                          datetime.utcnow().strftime(DATETIME_FORMAT)
+                          ], queue='sms-code')
 
     return jsonify({}), 204
 
@@ -142,7 +154,6 @@ def send_user_email_verification(user_id):
     if errors:
         return jsonify(result="error", message=errors), 400
 
-    from app.dao.users_dao import create_secret_code
     secret_code = create_secret_code()
     create_user_code(user_to_send_to, secret_code, 'email')
 
