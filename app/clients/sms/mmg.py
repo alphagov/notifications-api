@@ -91,7 +91,7 @@ class MMGClient(SmsClient):
                     "POST",
                     "https://www.mmgrp.co.uk/API/json/api.php",
                     response.status_code,
-                    response.json()
+                    response.json().items()
                 )
             )
         except RequestException as e:
