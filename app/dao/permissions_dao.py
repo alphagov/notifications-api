@@ -32,6 +32,8 @@ class PermissionDAO(DAOClass):
     class Meta:
         model = Permission
 
+    # TODO rework this as last filter wins, whereas what is needed is
+    # append to filter so that semantics are 'and'
     def get_query(self, filter_by_dict=None):
         if filter_by_dict is None:
             filter_by_dict = MultiDict()
@@ -60,13 +62,14 @@ class PermissionDAO(DAOClass):
             self.create_instance(permission, _commit=False)
 
     def remove_user_service_permissions(self, user, service):
-        query = self.get_query(filter_by_dict={'user': user.id, 'service': service.id})
+        query = self.Meta.model.query.filter_by(user=user, service=service)
         query.delete()
 
-    def set_user_service_permission(self, user, service, permissions, _commit=False):
+    def set_user_service_permission(self, user, service, permissions, _commit=False, replace=False):
         try:
-            query = self.get_query(filter_by_dict={'user': user.id, 'service': service.id})
-            query.delete()
+            if replace:
+                query = self.Meta.model.query.filter_by(user=user, service=service)
+                query.delete()
             for p in permissions:
                 p.user = user
                 p.service = service

@@ -334,3 +334,53 @@ def test_delete_service_and_associated_objects(notify_db,
     assert InvitedUser.query.count() == 0
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
+
+
+def test_add_existing_user_to_another_service_doesnot_change_old_permissions(sample_user):
+
+    service_one = Service(name="service_one",
+                          email_from="service_one",
+                          message_limit=1000,
+                          active=True,
+                          restricted=False,
+                          created_by=sample_user)
+
+    dao_create_service(service_one, sample_user)
+    assert sample_user.id == service_one.users[0].id
+    test_user_permissions = Permission.query.filter_by(service=service_one, user=sample_user).all()
+    assert len(test_user_permissions) == 8
+
+    other_user = User(
+        name='Other Test User',
+        email_address='other_user@digital.cabinet-office.gov.uk',
+        password='password',
+        mobile_number='+447700900987'
+    )
+    save_model_user(other_user)
+    service_two = Service(name="service_two",
+                          email_from="service_two",
+                          message_limit=1000,
+                          active=True,
+                          restricted=False,
+                          created_by=other_user)
+    dao_create_service(service_two, other_user)
+
+    assert other_user.id == service_two.users[0].id
+    other_user_permissions = Permission.query.filter_by(service=service_two, user=other_user).all()
+    assert len(other_user_permissions) == 8
+
+    other_user_service_one_permissions = Permission.query.filter_by(service=service_one, user=other_user).all()
+    assert len(other_user_service_one_permissions) == 0
+
+    # adding the other_user to service_one should leave all other_user permissions on service_two intact
+    permissions = []
+    for p in ['send_emails', 'send_texts', 'send_letters']:
+        permissions.append(Permission(permission=p))
+
+    dao_add_user_to_service(service_one, other_user, permissions=permissions)
+
+    other_user_service_one_permissions = Permission.query.filter_by(service=service_one, user=other_user).all()
+    assert len(other_user_service_one_permissions) == 3
+
+    other_user_service_two_permissions = Permission.query.filter_by(service=service_two, user=other_user).all()
+    assert len(other_user_service_two_permissions) == 8
