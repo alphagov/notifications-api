@@ -1,9 +1,13 @@
-from datetime import (datetime, date)
+from datetime import (
+    datetime,
+    date
+)
 
-from flask import Blueprint
 from flask import (
     jsonify,
-    request
+    request,
+    abort,
+    Blueprint
 )
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -152,6 +156,8 @@ def add_user_to_service(service_id, user_id):
                        message='User id: {} already part of service id: {}'.format(user_id, service_id)), 400
 
     permissions, errors = permission_schema.load(request.get_json(), many=True)
+    if errors:
+        abort(400, errors)
 
     dao_add_user_to_service(service, user, permissions)
     data, errors = service_schema.dump(service)
@@ -172,15 +178,6 @@ def remove_user_from_service(service_id, user_id):
             message='You cannot remove the only user for a service'), 400
     dao_remove_user_from_service(service, user)
     return jsonify({}), 204
-
-
-def _process_permissions(user, service, permission_groups):
-    from app.permissions_utils import get_permissions_by_group
-    permissions = get_permissions_by_group(permission_groups)
-    for permission in permissions:
-        permission.user = user
-        permission.service = service
-    return permissions
 
 
 @service.route('/<uuid:service_id>/fragment/aggregate_statistics')
