@@ -640,7 +640,14 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
             # they must exist in db first
             save_model_user(user_to_add)
 
-            data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
+            data = [{"permission": "send_emails"},
+                    {"permission": "send_letters"},
+                    {"permission": "send_texts"},
+                    {"permission": "manage_users"},
+                    {"permission": "manage_settings"},
+                    {"permission": "manage_api_keys"},
+                    {"permission": "manage_templates"},
+                    {"permission": "view_activity"}]
 
             auth_header = create_authorization_header()
 
@@ -672,7 +679,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
             json_resp = json.loads(resp.get_data(as_text=True))
             permissions = json_resp['data']['permissions'][str(sample_service.id)]
             expected_permissions = ['send_texts', 'send_emails', 'send_letters', 'manage_users',
-                                    'manage_settings', 'manage_templates', 'manage_api_keys']
+                                    'manage_settings', 'manage_templates', 'manage_api_keys', 'view_activity']
             assert sorted(expected_permissions) == sorted(permissions)
 
 
@@ -693,7 +700,10 @@ def test_add_existing_user_to_another_service_with_send_permissions(notify_api,
             )
             save_model_user(user_to_add)
 
-            data = {'permissions': ['send_messages']}
+            data = [{"permission": "send_emails"},
+                    {"permission": "send_letters"},
+                    {"permission": "send_texts"}]
+
             auth_header = create_authorization_header()
 
             resp = client.post(
@@ -734,7 +744,10 @@ def test_add_existing_user_to_another_service_with_manage_permissions(notify_api
             )
             save_model_user(user_to_add)
 
-            data = {'permissions': ['manage_service']}
+            data = [{"permission": "manage_users"},
+                    {"permission": "manage_settings"},
+                    {"permission": "manage_templates"}]
+
             auth_header = create_authorization_header()
 
             resp = client.post(
@@ -775,7 +788,8 @@ def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
             )
             save_model_user(user_to_add)
 
-            data = {'permissions': ['manage_api_keys']}
+            data = [{"permission": "manage_api_keys"}]
+
             auth_header = create_authorization_header()
 
             resp = client.post(
