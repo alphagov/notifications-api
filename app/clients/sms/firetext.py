@@ -93,7 +93,7 @@ class FiretextClient(SmsClient):
                     "POST",
                     "https://www.firetext.co.uk/api/sendsms",
                     response.status_code,
-                    firetext_response
+                    firetext_response.items()
                 )
             )
         except RequestException as e:
