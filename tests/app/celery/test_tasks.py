@@ -51,6 +51,7 @@ class AnyStringWith(str):
 mmg_error = {'Error': '40', 'Description': 'error'}
 
 
+# TODO moved to test_provider_tasks once send-email migrated
 def test_should_return_highest_priority_active_provider(notify_db, notify_db_session):
     providers = provider_details_dao.get_provider_details_by_notification_type('sms')
     first = providers[0]
@@ -338,6 +339,7 @@ def test_should_process_all_sms_job(sample_job,
     assert job.status == 'finished'
 
 
+### START OF SEND-SMS
 def test_should_send_template_to_correct_sms_provider_and_persist(sample_template_with_placeholders, mocker):
     notification = _notification_json(sample_template_with_placeholders,
                                       to="+447234123123", personalisation={"name": "Jo"})

@@ -3,7 +3,7 @@ from datetime import datetime
 
 from flask import current_app
 from monotonic import monotonic
-from sqlalchemy.exc import SQLAlchemyError
+
 from app import clients, statsd_client
 from app.clients.email import EmailClientException
 from app.clients.sms import SmsClientException
@@ -252,7 +252,7 @@ def send_sms(self, service_id, notification_id, encrypted_notification, created_
         statsd_client.timing("notifications.tasks.send-sms.task-time", monotonic() - task_start)
     except SQLAlchemyError as e:
         current_app.logger.exception(e)
-        raise self.retry(queue="sms", exc=e)
+        raise self.retry(queue="retry", exc=e)
 
 
 @notify_celery.task(name="send-email")

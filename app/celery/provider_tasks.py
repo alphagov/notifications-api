@@ -2,6 +2,7 @@ import json
 
 from celery.exceptions import MaxRetriesExceededError
 
+from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 from monotonic import monotonic
 from flask import current_app
@@ -26,7 +27,7 @@ from notifications_utils.template import (
 )
 
 
-retries = {
+retry_iteration_to_delay = {
     0: 5, # 5 seconds
     1: 30, # 30 seconds
     2: 60 * 5, # 5 minutes
@@ -74,9 +75,12 @@ def send_sms_to_provider(self, service_id, notification_id, encrypted_notificati
                 "SMS notification {} failed".format(notification_id)
             )
             current_app.logger.exception(e)
-            raise self.retry(queue="sms", countdown=retries[self.request.retries])
+            raise self.retry(queue="retry", countdown=retry_iteration_to_delay[self.request.retries])
         except self.MaxRetriesExceededError:
             notification.status = 'technical-failure'
+    except SQLAlchemyError as e:
+        current_app.logger.exception(e)
+        raise self.retry(queue="retry", exc=e)
 
     notification.sent_at = datetime.utcnow()
     notification.sent_by = provider.get_name(),
@@ -88,6 +92,7 @@ def send_sms_to_provider(self, service_id, notification_id, encrypted_notificati
     )
     statsd_client.incr("notifications.tasks.send-sms-to-provider")
     statsd_client.timing("notifications.tasks.send-sms-to-provider.task-time", monotonic() - task_start)
+    statsd_client.timing("notifications.sms.total-time", monotonic() - notification.created_at)
 
 
 def provider_to_use(notification_type, notification_id):
