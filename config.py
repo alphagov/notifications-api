@@ -67,6 +67,11 @@ class Config(object):
             'task': 'delete-successful-notifications',
             'schedule': crontab(minute=0, hour='0,1,2'),
             'options': {'queue': 'periodic'}
+        },
+        'timeout-sending-notifications': {
+            'task': 'timeout-sending-notifications',
+            'schedule': crontab(minute=0, hour='0,1,2'),
+            'options': {'queue': 'periodic'}
         }
     }
     CELERY_QUEUES = [
@@ -98,6 +103,8 @@ class Config(object):
     STATSD_HOST = "localhost"
     STATSD_PORT = None
     STATSD_PREFIX = None
+
+    SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200
 
 
 class Development(Config):

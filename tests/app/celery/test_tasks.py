@@ -15,7 +15,8 @@ from app.celery.tasks import (
     delete_invitations,
     delete_failed_notifications,
     delete_successful_notifications,
-    provider_to_use
+    provider_to_use,
+    timeout_notifications
 )
 from app.celery.research_mode_tasks import (
     send_email_response,
@@ -1184,3 +1185,41 @@ def _notification_json(template, to, personalisation=None, job_id=None, row_numb
     if row_number:
         notification['row_number'] = row_number
     return notification
+
+
+def test_update_status_of_notifications_after_timeout(notify_api,
+                                                      notify_db,
+                                                      notify_db_session,
+                                                      sample_service,
+                                                      sample_template,
+                                                      mmg_provider):
+    with notify_api.test_request_context():
+        not1 = sample_notification(
+            notify_db,
+            notify_db_session,
+            service=sample_service,
+            template=sample_template,
+            status='sending',
+            created_at=datetime.utcnow() - timedelta(
+                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
+        timeout_notifications()
+        assert not1.status == 'temporary-failure'
+
+
+def test_not_update_status_of_notification_before_timeout(notify_api,
+                                                          notify_db,
+                                                          notify_db_session,
+                                                          sample_service,
+                                                          sample_template,
+                                                          mmg_provider):
+    with notify_api.test_request_context():
+        not1 = sample_notification(
+            notify_db,
+            notify_db_session,
+            service=sample_service,
+            template=sample_template,
+            status='sending',
+            created_at=datetime.utcnow() - timedelta(
+                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') - 10))
+        timeout_notifications()
+        assert not1.status == 'sending'
