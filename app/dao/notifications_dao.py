@@ -338,6 +338,10 @@ def get_notification_by_id(notification_id):
     return Notification.query.filter_by(id=notification_id).first()
 
 
+def get_notifications(filter_dict=None):
+    return _filter_query(Notification.query, filter_dict=filter_dict)
+
+
 def get_notifications_for_service(service_id,
                                   filter_dict=None,
                                   page=1,
