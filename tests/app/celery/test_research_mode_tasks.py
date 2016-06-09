@@ -20,6 +20,8 @@ def test_make_mmg_callback(notify_api, rmock):
     send_sms_response("mmg", "1234", "07811111111")
 
     assert rmock.called
+    assert rmock.request_history[0].url == endpoint
+    assert json.loads(rmock.request_history[0].text)['MSISDN'] == '07811111111'
 
 
 def test_make_firetext_callback(notify_api, rmock):
@@ -32,6 +34,8 @@ def test_make_firetext_callback(notify_api, rmock):
     send_sms_response("firetext", "1234", "07811111111")
 
     assert rmock.called
+    assert rmock.request_history[0].url == endpoint
+    assert 'mobile=07811111111' in rmock.request_history[0].text
 
 
 def test_make_ses_callback(notify_api, rmock):
@@ -71,11 +75,21 @@ def test_temp_failure_mmg_callback():
 
 
 def test_delivered_firetext_callback():
-    assert firetext_callback("1234", "07811111111") == "mobile=07811111111&status=0&time=2016-03-10 14:17:00&reference=1234"  # noqa
+    assert firetext_callback('1234', '07811111111') == {
+        'mobile': '07811111111',
+        'status': '0',
+        'time': '2016-03-10 14:17:00',
+        'reference': '1234'
+    }
 
 
 def test_failure_firetext_callback():
-    assert firetext_callback("1234", "07822222222") == "mobile=07822222222&status=1&time=2016-03-10 14:17:00&reference=1234"  # noqa
+    assert firetext_callback('1234', '07822222222') == {
+        'mobile': '07822222222',
+        'status': '1',
+        'time': '2016-03-10 14:17:00',
+        'reference': '1234'
+    }
 
 
 def test_delivered_ses_callback():
