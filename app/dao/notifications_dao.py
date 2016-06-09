@@ -142,6 +142,8 @@ def dao_get_template_statistics_for_service(service_id, limit_days=None):
 def dao_get_template_statistics_for_template(template_id):
     return TemplateStatistics.query.filter(
         TemplateStatistics.template_id == template_id
+    ).order_by(
+        desc(TemplateStatistics.updated_at)
     ).all()
 
 
@@ -336,6 +338,10 @@ def get_notification(service_id, notification_id):
 
 def get_notification_by_id(notification_id):
     return Notification.query.filter_by(id=notification_id).first()
+
+
+def get_notifications(filter_dict=None):
+    return _filter_query(Notification.query, filter_dict=filter_dict)
 
 
 def get_notifications_for_service(service_id,

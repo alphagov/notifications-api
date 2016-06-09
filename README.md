@@ -29,7 +29,6 @@ export ADMIN_CLIENT_USER_NAME='dev-notify-admin'
 export AWS_REGION='eu-west-1'
 export DANGEROUS_SALT='dev-notify-salt'
 export FIRETEXT_API_KEY=[contact team member for api key]
-export FIRETEXT_NUMBER="Firetext"
 export INVITATION_EMAIL_FROM='invites@notifications.service.gov.uk'
 export INVITATION_EXPIRATION_DAYS=2
 export NOTIFY_EMAIL_DOMAIN='notify.works'
@@ -41,11 +40,11 @@ export TWILIO_ACCOUNT_SID=[contact team member for account sid]
 export TWILIO_AUTH_TOKEN=[contact team member for auth token]
 export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.works'
 export MMG_API_KEY=mmg=secret-key
-export MMG_FROM_NUMBER="MMG
 export STATSD_ENABLED=True
 export STATSD_HOST="localhost"
 export STATSD_PORT=1000
 export STATSD_PREFIX="stats-prefix"
+export FROM_NUMBER='from_number'
 "> environment.sh
 ```
 
