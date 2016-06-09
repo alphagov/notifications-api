@@ -176,9 +176,12 @@ def process_firetext_response():
         current_app.logger.info(validation_errors)
         return jsonify(result='error', message=validation_errors), 400
 
-    statsd_client.incr('notifications.callback.firetext.code.{}'.format(request.form.get('code')))
+    response_code = request.form.get('code')
+    status = request.form.get('status')
+    statsd_client.incr('notifications.callback.firetext.code.{}'.format(response_code))
+    current_app.logger.info('Firetext status: {}, extended error code: {}'.format(status, response_code))
 
-    success, errors = process_sms_client_response(status=request.form.get('status'),
+    success, errors = process_sms_client_response(status=status,
                                                   reference=request.form.get('reference'),
                                                   client_name=client_name)
     if errors:
