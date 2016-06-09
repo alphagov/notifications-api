@@ -14,7 +14,6 @@ class Live(Config):
     VERIFY_CODE_FROM_EMAIL_ADDRESS = os.environ['LIVE_VERIFY_CODE_FROM_EMAIL_ADDRESS']
     NOTIFY_EMAIL_DOMAIN = os.environ['LIVE_NOTIFY_EMAIL_DOMAIN']
     FIRETEXT_API_KEY = os.getenv("LIVE_FIRETEXT_API_KEY")
-    FIRETEXT_NUMBER = os.getenv("LIVE_FIRETEXT_NUMBER")
     TWILIO_AUTH_TOKEN = os.getenv('LIVE_TWILIO_AUTH_TOKEN')
     MMG_API_KEY = os.environ['LIVE_MMG_API_KEY']
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
@@ -22,6 +21,7 @@ class Live(Config):
     STATSD_HOST = os.getenv('LIVE_STATSD_HOST')
     STATSD_PORT = os.getenv('LIVE_STATSD_PORT')
     STATSD_PREFIX = os.getenv('LIVE_STATSD_PREFIX')
+    FROM_NUMBER = os.getenv('LIVE_FROM_NUMBER')
 
     BROKER_TRANSPORT_OPTIONS = {
         'region': 'eu-west-1',
