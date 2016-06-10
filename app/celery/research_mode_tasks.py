@@ -19,7 +19,7 @@ def send_sms_response(provider, reference, to):
         body = mmg_callback(reference, to)
         headers = {"Content-type": "application/json"}
     else:
-        headers = {"Content-type": "text/plain"}
+        headers = {"Content-type": "application/x-www-form-urlencoded"}
         body = firetext_callback(reference, to)
     make_request('sms', provider, body, headers)
 
@@ -92,7 +92,12 @@ def firetext_callback(notification_id, to):
         status = "1"
     else:
         status = "0"
-    return 'mobile={}&status={}&time=2016-03-10 14:17:00&reference={}'.format(to, status, notification_id)
+    return {
+        'mobile': to,
+        'status': status,
+        'time': '2016-03-10 14:17:00',
+        'reference': notification_id
+    }
 
 
 def ses_notification_callback(reference):

@@ -142,6 +142,8 @@ def dao_get_template_statistics_for_service(service_id, limit_days=None):
 def dao_get_template_statistics_for_template(template_id):
     return TemplateStatistics.query.filter(
         TemplateStatistics.template_id == template_id
+    ).order_by(
+        desc(TemplateStatistics.updated_at)
     ).all()
 
 

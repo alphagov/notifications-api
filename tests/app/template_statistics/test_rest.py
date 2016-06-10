@@ -168,7 +168,12 @@ def test_get_template_statistics_for_template_only_returns_for_provided_template
         service_id=sample_service.id,
         day=datetime(2001, 1, 1)
     )
-    db.session.add_all([template_1_stats_1, template_1_stats_2, template_2_stats])
+
+    # separate commit to ensure stats_1 has earlier updated_at time
+    db.session.add(template_1_stats_1)
+    db.session.commit()
+
+    db.session.add_all([template_1_stats_2, template_2_stats])
     db.session.commit()
 
     with notify_api.test_request_context():
@@ -183,8 +188,8 @@ def test_get_template_statistics_for_template_only_returns_for_provided_template
             assert response.status_code == 200
             json_resp = json.loads(response.get_data(as_text=True))
             assert len(json_resp['data']) == 2
-            assert json_resp['data'][0]['id'] == str(template_1_stats_1.id)
-            assert json_resp['data'][1]['id'] == str(template_1_stats_2.id)
+            assert json_resp['data'][0]['id'] == str(template_1_stats_2.id)
+            assert json_resp['data'][1]['id'] == str(template_1_stats_1.id)
 
 
 def test_get_template_statistics_for_template_returns_empty_if_no_statistics(

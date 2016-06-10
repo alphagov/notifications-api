@@ -18,7 +18,6 @@ class Config(object):
     NOTIFY_JOB_QUEUE = os.environ['NOTIFY_JOB_QUEUE']
     # Notification Queue names are a combination of a prefix plus a name
     NOTIFICATION_QUEUE_PREFIX = os.environ['NOTIFICATION_QUEUE_PREFIX']
-    MMG_FROM_NUMBER = os.environ['MMG_FROM_NUMBER']
     SECRET_KEY = os.environ['SECRET_KEY']
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False
     SQLALCHEMY_DATABASE_URI = os.environ['SQLALCHEMY_DATABASE_URI']
@@ -91,13 +90,12 @@ class Config(object):
     ]
     TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
     TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
-    TWILIO_NUMBER = os.getenv('TWILIO_NUMBER')
-    FIRETEXT_NUMBER = os.getenv('FIRETEXT_NUMBER')
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
     LOADTESTING_NUMBER = os.getenv('LOADTESTING_NUMBER')
     LOADTESTING_API_KEY = os.getenv("LOADTESTING_API_KEY")
     CSV_UPLOAD_BUCKET_NAME = 'local-notifications-csv-upload'
     NOTIFICATIONS_ALERT = 5  # five mins
+    FROM_NUMBER = os.getenv('FROM_NUMBER')
 
     STATSD_ENABLED = False
     STATSD_HOST = "localhost"
