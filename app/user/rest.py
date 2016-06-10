@@ -159,7 +159,7 @@ def send_user_email_verification(user_id):
 
     template = dao_get_template_by_id(current_app.config['EMAIL_VERIFY_CODE_TEMPLATE_ID'])
     message = {
-        'template': template.id,
+        'template': str(template.id),
         'template_version': template.version,
         'to': user_to_send_to.email_address,
         'personalisation': {
