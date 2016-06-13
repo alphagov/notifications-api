@@ -263,11 +263,7 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
         (
             str(job.service_id),
             "uuid",
-            "\"{}\" <{}@{}>".format(
-                service.name,
-                service.email_from,
-                "test.notify.com"
-            ),
+            "",
             "something_encrypted",
             "2016-01-01T11:09:00.061258"
         ),
@@ -313,11 +309,7 @@ def test_should_process_email_job(sample_email_job_history, mocker, mock_celery_
         (
             str(sample_email_job_history.service_id),
             "uuid",
-            "\"{}\" <{}@{}>".format(
-                sample_email_job_history.service.name,
-                sample_email_job_history.service.email_from,
-                "test.notify.com"
-            ),
+            "",
             "something_encrypted",
             "2016-01-01T11:09:00.061258"
         ),
@@ -991,11 +983,7 @@ def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job
         (
             str(sample_email_job_history.service_id),
             "uuid",
-            "\"{}\" <{}@{}>".format(
-                sample_email_job_history.service.name,
-                sample_email_job_history.service.email_from,
-                "test.notify.com"
-            ),
+            "",
             "something_encrypted",
             ANY
         ),
