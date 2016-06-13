@@ -28,8 +28,7 @@ from app.schemas import (
 from app.celery.tasks import (
     send_sms,
     email_reset_password,
-    email_registration_verification,
-    send_email)
+    send_email_v2)
 
 from app.errors import register_errors
 
@@ -167,10 +166,9 @@ def send_user_email_verification(user_id):
             'url': _create_verification_url(user_to_send_to, secret_code)
         }
     }
-    send_email.apply_async((
+    send_email_v2.apply_async((
         current_app.config['NOTIFY_SERVICE_ID'],
         str(uuid.uuid4()),
-        '',
         encryption.encrypt(message),
         datetime.utcnow().strftime(DATETIME_FORMAT)
     ), queue='email-registration-verification')

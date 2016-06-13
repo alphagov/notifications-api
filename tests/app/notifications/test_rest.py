@@ -775,7 +775,7 @@ def test_create_email_should_reject_if_missing_required_fields(notify_api, sampl
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            app.celery.tasks.send_email.apply_async.assert_not_called()
+            app.celery.tasks.send_email_v2.apply_async.assert_not_called()
             assert json_resp['result'] == 'error'
             assert 'Missing data for required field.' in json_resp['message']['to'][0]
             assert 'Missing data for required field.' in json_resp['message']['template'][0]
@@ -799,7 +799,7 @@ def test_should_reject_email_notification_with_bad_email(notify_api, sample_emai
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             data = json.loads(response.get_data(as_text=True))
-            app.celery.tasks.send_email.apply_async.assert_not_called()
+            app.celery.tasks.send_email_v2.apply_async.assert_not_called()
             assert response.status_code == 400
             assert data['result'] == 'error'
             assert data['message']['to'][0] == 'Not a valid email address'
@@ -822,7 +822,7 @@ def test_should_reject_email_notification_with_template_id_that_cant_be_found(
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             data = json.loads(response.get_data(as_text=True))
-            app.celery.tasks.send_email.apply_async.assert_not_called()
+            app.celery.tasks.send_email_v2.apply_async.assert_not_called()
             assert response.status_code == 404
             assert data['result'] == 'error'
             test_string = 'No result found'
@@ -854,7 +854,7 @@ def test_should_not_allow_email_template_from_another_service(notify_api, servic
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            app.celery.tasks.send_email.apply_async.assert_not_called()
+            app.celery.tasks.send_email_v2.apply_async.assert_not_called()
 
             assert response.status_code == 404
             test_string = 'No result found'
@@ -882,7 +882,7 @@ def test_should_not_send_email_if_restricted_and_not_a_service_user(notify_api, 
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            app.celery.tasks.send_email.apply_async.assert_not_called()
+            app.celery.tasks.send_email_v2.apply_async.assert_not_called()
 
             assert response.status_code == 400
             assert 'Invalid email address for restricted service' in json_resp['message']['to']
@@ -914,7 +914,7 @@ def test_should_not_send_email_for_job_if_restricted_and_not_a_service_user(
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            app.celery.tasks.send_email.apply_async.assert_not_called()
+            app.celery.tasks.send_email_v2.apply_async.assert_not_called()
 
             assert response.status_code == 400
             assert 'Invalid email address for restricted service' in json_resp['message']['to']
@@ -943,7 +943,7 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
             assert app.encryption.encrypt.call_args[0][0]['to'] == 'ok@ok.com'
             assert app.encryption.encrypt.call_args[0][0]['template'] == str(sample_email_template.id)
             assert app.encryption.encrypt.call_args[0][0]['template_version'] == sample_email_template.version
-            app.celery.tasks.send_email.apply_async.assert_called_once_with(
+            app.celery.tasks.send_email_v2.apply_async.assert_called_once_with(
                 (str(sample_email_template.service_id),
                  notification_id,
                  "",

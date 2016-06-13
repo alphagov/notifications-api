@@ -328,7 +328,7 @@ def test_send_user_email_verification(notify_api,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 204
             assert mocked.call_count == 1
-            app.celery.tasks.send_email.apply_async.assert_called_once_with(
+            app.celery.tasks.send_email_v2.apply_async.assert_called_once_with(
                 (str(current_app.config['NOTIFY_SERVICE_ID']),
                  'some_uuid',
                  '',
