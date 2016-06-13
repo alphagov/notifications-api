@@ -31,7 +31,7 @@ from app.schemas import (
     day_schema,
     unarchived_template_schema
 )
-from app.celery.tasks import send_sms, send_email_v2
+from app.celery.tasks import send_sms, send_email
 
 notifications = Blueprint('notifications', __name__)
 
@@ -384,7 +384,7 @@ def send_notification(notification_type):
             datetime.utcnow().strftime(DATETIME_FORMAT)
         ), queue='sms')
     else:
-        send_email_v2.apply_async((
+        send_email.apply_async((
             service_id,
             notification_id,
             '',

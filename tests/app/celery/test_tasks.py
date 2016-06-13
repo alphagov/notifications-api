@@ -6,7 +6,6 @@ from notifications_utils.recipients import validate_phone_number, format_phone_n
 
 from app.celery.tasks import (
     send_sms,
-    send_email,
     process_job,
     email_invited_user,
     email_reset_password,
@@ -15,8 +14,8 @@ from app.celery.tasks import (
     delete_failed_notifications,
     delete_successful_notifications,
     provider_to_use,
-    timeout_notifications
-)
+    timeout_notifications,
+    send_email)
 from app.celery.research_mode_tasks import (
     send_email_response,
     send_sms_response
@@ -248,7 +247,6 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
         (
             str(job.service_id),
             "uuid",
-            "",
             "something_encrypted",
             "2016-01-01T11:09:00.061258"
         ),
@@ -294,7 +292,6 @@ def test_should_process_email_job(sample_email_job, mocker, mock_celery_remove_j
         (
             str(sample_email_job.service_id),
             "uuid",
-            "",
             "something_encrypted",
             "2016-01-01T11:09:00.061258"
         ),
@@ -517,13 +514,12 @@ def test_should_send_email_if_restricted_service_and_valid_email(notify_db, noti
     send_email(
         service.id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
 
     aws_ses_client.send_email.assert_called_once_with(
-        "email_from",
+        '"Sample service" <sample.service@test.notify.com>',
         "test@restricted.com",
         template.subject,
         body=template.content,
@@ -548,7 +544,6 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
     send_email(
         service.id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
@@ -619,14 +614,13 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     send_email(
         sample_email_template_with_placeholders.service_id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
     freezer.stop()
 
     aws_ses_client.send_email.assert_called_once_with(
-        "email_from",
+        '"Sample service" <sample.service@test.notify.com>',
         "my_email@my_email.com",
         notification['personalisation']['name'],
         body="Hello Jo",
@@ -674,12 +668,11 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
     send_email(
         sample_email_template.service_id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
     aws_ses_client.send_email.assert_called_once_with(
-        "email_from",
+        '"Sample service" <sample.service@test.notify.com>',
         "my_email@my_email.com",
         sample_email_template.subject,
         body="This is a template",
@@ -710,12 +703,11 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
     send_email(
         sample_email_template_with_placeholders.service_id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
     aws_ses_client.send_email.assert_called_once_with(
-        "email_from",
+        '"Sample service" <sample.service@test.notify.com>',
         "my_email@my_email.com",
         notification['personalisation']['name'],
         body="Hello Jo",
@@ -744,7 +736,6 @@ def test_should_use_email_template_and_persist_ses_reference(sample_email_templa
     send_email(
         sample_email_template_with_placeholders.service_id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
@@ -765,12 +756,11 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
     send_email(
         sample_email_template.service_id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
     aws_ses_client.send_email.assert_called_once_with(
-        "email_from",
+        '"Sample service" <sample.service@test.notify.com>',
         "my_email@my_email.com",
         sample_email_template.subject,
         body="This is a template",
@@ -823,12 +813,11 @@ def test_should_persist_notification_as_failed_if_email_client_fails(sample_emai
     send_email(
         sample_email_template.service_id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
     aws_ses_client.send_email.assert_called_once_with(
-        "email_from",
+        '"Sample service" <sample.service@test.notify.com>',
         "my_email@my_email.com",
         sample_email_template.subject,
         body=sample_email_template.content,
@@ -879,7 +868,6 @@ def test_should_not_send_email_if_db_peristance_failed(sample_email_template, mo
     send_email(
         sample_email_template.service_id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
@@ -952,7 +940,6 @@ def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job
         (
             str(sample_email_job.service_id),
             "uuid",
-            "",
             "something_encrypted",
             ANY
         ),
@@ -1025,7 +1012,6 @@ def test_should_call_send_email_response_task_if_research_mode(
     send_email(
         sample_service.id,
         notification_id,
-        "myservice@notify.com",
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
@@ -1077,7 +1063,6 @@ def test_should_call_send_not_update_provider_email_stats_if_research_mode(
     send_email(
         sample_service.id,
         notification_id,
-        "myservice@notify.com",
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )

@@ -180,10 +180,9 @@ def process_job(job_id):
             )
 
         if template.template_type == 'email':
-            send_email_v2.apply_async((
+            send_email.apply_async((
                 str(job.service_id),
                 create_uuid(),
-                '',
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
                 {'reply_to_addresses': service.reply_to_email_address},
@@ -289,12 +288,13 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
 
 
 @notify_celery.task(name="send-email")
-def send_email(service_id, notification_id, from_address, encrypted_notification, created_at, reply_to_addresses=None):
-    send_email_v2(service_id, notification_id, encrypted_notification, created_at, reply_to_addresses=None)
+def send_email_v1(service_id, notification_id, from_address,
+                  encrypted_notification, created_at, reply_to_addresses=None):
+    send_email(service_id, notification_id, encrypted_notification, created_at, reply_to_addresses=None)
 
 
 @notify_celery.task(name="send-email-v2")
-def send_email_v2(service_id, notification_id, encrypted_notification, created_at, reply_to_addresses=None):
+def send_email(service_id, notification_id, encrypted_notification, created_at, reply_to_addresses=None):
     task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)

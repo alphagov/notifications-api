@@ -28,7 +28,7 @@ from app.schemas import (
 from app.celery.tasks import (
     send_sms,
     email_reset_password,
-    send_email_v2)
+    send_email)
 
 from app.errors import register_errors
 
@@ -166,7 +166,7 @@ def send_user_email_verification(user_id):
             'url': _create_verification_url(user_to_send_to, secret_code)
         }
     }
-    send_email_v2.apply_async((
+    send_email.apply_async((
         current_app.config['NOTIFY_SERVICE_ID'],
         str(uuid.uuid4()),
         encryption.encrypt(message),
