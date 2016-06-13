@@ -163,7 +163,7 @@ def send_user_email_verification(user_id):
         'template_version': template.version,
         'to': user_to_send_to.email_address,
         'personalisation': {
-            'user_name': user_to_send_to.name,
+            'name': user_to_send_to.name,
             'url': _create_verification_url(user_to_send_to, secret_code)
         }
     }
