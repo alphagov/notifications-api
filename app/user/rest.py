@@ -167,13 +167,10 @@ def send_user_email_verification(user_id):
             'url': _create_verification_url(user_to_send_to, secret_code)
         }
     }
-    email_from = '"GOV.UK Notify" <{}>'.format(
-        current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS']
-    )
     send_email.apply_async((
         current_app.config['NOTIFY_SERVICE_ID'],
         str(uuid.uuid4()),
-        email_from,
+        '',
         encryption.encrypt(message),
         datetime.utcnow().strftime(DATETIME_FORMAT)
     ), queue='email-registration-verification')

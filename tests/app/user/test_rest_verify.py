@@ -331,7 +331,7 @@ def test_send_user_email_verification(notify_api,
             app.celery.tasks.send_email.apply_async.assert_called_once_with(
                 (str(current_app.config['NOTIFY_SERVICE_ID']),
                  'some_uuid',
-                 '"GOV.UK Notify" <{}>'.format(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS']),
+                 '',
                  "something_encrypted",
                  "2016-01-01T11:09:00.061258"),
                 queue="email-registration-verification")

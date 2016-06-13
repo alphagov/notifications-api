@@ -180,16 +180,10 @@ def process_job(job_id):
             )
 
         if template.template_type == 'email':
-            from_email = '"{}" <{}@{}>'.format(
-                service.name,
-                service.email_from,
-                current_app.config['NOTIFY_EMAIL_DOMAIN']
-            )
-
             send_email.apply_async((
                 str(job.service_id),
                 create_uuid(),
-                from_email.encode('ascii', 'ignore').decode('ascii'),
+                '',
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
                 {'reply_to_addresses': service.reply_to_email_address},
