@@ -6,7 +6,28 @@ from sqlalchemy.exc import SQLAlchemyError, DataError
 from sqlalchemy.orm.exc import NoResultFound
 
 
+class InvalidData(Exception):
+
+    def __init__(self, message, status_code):
+        super().__init__()
+        self.message = message
+        self.status_code = status_code
+
+    def to_dict(self):
+        return {'result': 'error', 'message': self.message}
+
+    def __str__(self):
+        return str(self.to_dict())
+
+
 def register_errors(blueprint):
+
+    @blueprint.app_errorhandler(InvalidData)
+    def invalid_data(error):
+        response = jsonify(error.to_dict())
+        response.status_code = error.status_code
+        current_app.logger.error(error)
+        return response
 
     @blueprint.app_errorhandler(400)
     def bad_request(e):
@@ -14,6 +35,7 @@ def register_errors(blueprint):
             msg = e
         else:
             msg = e.description or "Invalid request parameters"
+        current_app.logger.exception(msg)
         return jsonify(result='error', message=str(msg)), 400
 
     @blueprint.app_errorhandler(401)
@@ -32,18 +54,17 @@ def register_errors(blueprint):
             msg = e
         else:
             msg = e.description or "Not found"
+        current_app.logger.exception(msg)
         return jsonify(result='error', message=msg), 404
 
     @blueprint.app_errorhandler(429)
     def limit_exceeded(e):
+        current_app.logger.exception(e)
         return jsonify(result='error', message=str(e.description)), 429
 
     @blueprint.app_errorhandler(500)
     def internal_server_error(e):
-        if isinstance(e, str):
-            current_app.logger.exception(e)
-        elif isinstance(e, Exception):
-            current_app.logger.exception(e)
+        current_app.logger.exception(e)
         return jsonify(result='error', message="Internal server error"), 500
 
     @blueprint.app_errorhandler(NoResultFound)
