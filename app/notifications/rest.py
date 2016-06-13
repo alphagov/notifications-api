@@ -387,7 +387,7 @@ def send_notification(notification_type):
         send_email.apply_async((
             service_id,
             notification_id,
-            '"{}" <{}@{}>'.format(service.name, service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
+            '',
             encryption.encrypt(notification),
             datetime.utcnow().strftime(DATETIME_FORMAT)
         ), queue='email')
