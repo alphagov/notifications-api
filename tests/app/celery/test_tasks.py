@@ -7,7 +7,6 @@ from notifications_utils.recipients import validate_phone_number, format_phone_n
 from app.celery import provider_tasks
 from app.celery.tasks import (
     send_sms,
-    send_sms_code,
     send_email,
     process_job,
     email_invited_user,
@@ -16,7 +15,8 @@ from app.celery.tasks import (
     delete_invitations,
     delete_failed_notifications,
     delete_successful_notifications,
-    provider_to_use
+    provider_to_use,
+    timeout_notifications
 )
 from app.celery.research_mode_tasks import (
     send_email_response,
@@ -807,33 +807,6 @@ def test_should_not_send_email_if_db_peristance_failed(sample_email_template, mo
     assert 'No row was found for one' in str(e.value)
 
 
-def test_should_send_sms_code(mocker):
-    notification = {'to': '+447234123123',
-                    'secret_code': '12345'}
-
-    encrypted_notification = encryption.encrypt(notification)
-
-    mocker.patch('app.mmg_client.send_sms')
-    send_sms_code(encrypted_notification)
-    mmg_client.send_sms.assert_called_once_with(
-        format_phone_number(validate_phone_number(notification['to'])),
-        "{} is your Notify authentication code".format(notification['secret_code']),
-        'send-sms-code')
-
-
-def test_should_throw_mmg_client_exception(mocker):
-    notification = {'to': '+447234123123',
-                    'secret_code': '12345'}
-
-    encrypted_notification = encryption.encrypt(notification)
-    mocker.patch('app.mmg_client.send_sms', side_effect=MMGClientException(mmg_error))
-    send_sms_code(encrypted_notification)
-    mmg_client.send_sms.assert_called_once_with(
-        format_phone_number(validate_phone_number(notification['to'])),
-        "{} is your Notify authentication code".format(notification['secret_code']),
-        'send-sms-code')
-
-
 def test_email_invited_user_should_send_email(notify_api, mocker):
     with notify_api.test_request_context():
         invitation = {'to': 'new_person@it.gov.uk',
@@ -1016,3 +989,41 @@ def _notification_json(template, to, personalisation=None, job_id=None, row_numb
     if row_number:
         notification['row_number'] = row_number
     return notification
+
+
+def test_update_status_of_notifications_after_timeout(notify_api,
+                                                      notify_db,
+                                                      notify_db_session,
+                                                      sample_service,
+                                                      sample_template,
+                                                      mmg_provider):
+    with notify_api.test_request_context():
+        not1 = sample_notification(
+            notify_db,
+            notify_db_session,
+            service=sample_service,
+            template=sample_template,
+            status='sending',
+            created_at=datetime.utcnow() - timedelta(
+                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
+        timeout_notifications()
+        assert not1.status == 'temporary-failure'
+
+
+def test_not_update_status_of_notification_before_timeout(notify_api,
+                                                          notify_db,
+                                                          notify_db_session,
+                                                          sample_service,
+                                                          sample_template,
+                                                          mmg_provider):
+    with notify_api.test_request_context():
+        not1 = sample_notification(
+            notify_db,
+            notify_db_session,
+            service=sample_service,
+            template=sample_template,
+            status='sending',
+            created_at=datetime.utcnow() - timedelta(
+                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') - 10))
+        timeout_notifications()
+        assert not1.status == 'sending'

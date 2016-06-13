@@ -160,6 +160,7 @@ class JobSchema(BaseSchema):
 
     class Meta:
         model = models.Job
+        exclude = ('notifications',)
 
 
 class RequestVerifyCodeSchema(ma.Schema):

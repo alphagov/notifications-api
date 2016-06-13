@@ -1,11 +1,12 @@
 import itertools
-from datetime import datetime
+from datetime import (datetime, timedelta)
 
 from flask import current_app
 from monotonic import monotonic
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import clients, statsd_client
+from app.clients import STATISTICS_FAILURE
 from app.clients.email import EmailClientException
 from app.clients.sms import SmsClientException
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -40,7 +41,9 @@ from app.dao.notifications_dao import (
     dao_update_notification,
     delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
-    update_provider_stats
+    update_provider_stats,
+    get_notifications,
+    update_notification_status_by_id
 )
 
 from app.dao.jobs_dao import (
@@ -337,20 +340,6 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
         current_app.logger.exception(e)
 
 
-@notify_celery.task(name='send-sms-code')
-def send_sms_code(encrypted_verification):
-    provider = provider_to_use('sms', 'send-sms-code')
-
-    verification_message = encryption.decrypt(encrypted_verification)
-    try:
-        provider.send_sms(validate_and_format_phone_number(verification_message['to']),
-                          "{} is your Notify authentication code".format(
-                              verification_message['secret_code']),
-                          'send-sms-code')
-    except SmsClientException as e:
-        current_app.logger.exception(e)
-
-
 # TODO: when placeholders in templates work, this will be a real template
 def invitation_template(user_name, service_name, url, expiry_date):
     from string import Template
@@ -489,3 +478,23 @@ def provider_to_use(notification_type, notification_id):
         raise Exception("No active {} providers".format(notification_type))
 
     return clients.get_client_by_name_and_type(active_providers_in_order[0].identifier, notification_type)
+
+
+@notify_celery.task(name='timeout-sending-notifications')
+def timeout_notifications():
+    notifications = get_notifications(filter_dict={'status': 'sending'})
+    now = datetime.utcnow()
+    for noti in notifications:
+        try:
+            if (now - noti.created_at) > timedelta(
+                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD')
+            ):
+                update_notification_status_by_id(noti.id, 'temporary-failure', STATISTICS_FAILURE)
+                current_app.logger.info((
+                    "Timeout period reached for notification ({})"
+                    ", status has been updated.").format(noti.id))
+        except Exception as e:
+            current_app.logger.exception(e)
+            current_app.logger.error((
+                "Exception raised trying to timeout notification ({})"
+                ", skipping notification update.").format(noti.id))

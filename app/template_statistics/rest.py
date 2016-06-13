@@ -5,7 +5,10 @@ from flask import (
     current_app
 )
 
-from app.dao.notifications_dao import dao_get_template_statistics_for_service
+from app.dao.notifications_dao import (
+    dao_get_template_statistics_for_service,
+    dao_get_template_statistics_for_template
+)
 
 from app.schemas import template_statistics_schema
 
@@ -30,6 +33,15 @@ def get_template_statistics_for_service(service_id):
     else:
         limit_days = None
     stats = dao_get_template_statistics_for_service(service_id, limit_days=limit_days)
+    data, errors = template_statistics_schema.dump(stats, many=True)
+    if errors:
+        return jsonify(result="error", message=errors), 400
+    return jsonify(data=data)
+
+
+@template_statistics.route('/<template_id>')
+def get_template_statistics_for_template_id(service_id, template_id):
+    stats = dao_get_template_statistics_for_template(template_id)
     data, errors = template_statistics_schema.dump(stats, many=True)
     if errors:
         return jsonify(result="error", message=errors), 400

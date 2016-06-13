@@ -60,7 +60,7 @@ class FiretextClient(SmsClient):
         super(SmsClient, self).__init__(*args, **kwargs)
         self.current_app = current_app
         self.api_key = current_app.config.get('FIRETEXT_API_KEY')
-        self.from_number = current_app.config.get('FIRETEXT_NUMBER')
+        self.from_number = current_app.config.get('FROM_NUMBER')
         self.name = 'firetext'
         self.statsd_client = statsd_client
 
@@ -93,7 +93,7 @@ class FiretextClient(SmsClient):
                     "POST",
                     "https://www.firetext.co.uk/api/sendsms",
                     response.status_code,
-                    firetext_response
+                    firetext_response.items()
                 )
             )
         except RequestException as e:
