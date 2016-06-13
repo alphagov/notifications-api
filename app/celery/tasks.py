@@ -8,7 +8,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import clients, statsd_client
 from app.clients import STATISTICS_FAILURE
 from app.clients.email import EmailClientException
-from app.clients.sms import SmsClientException
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.provider_details_dao import get_provider_details_by_notification_type

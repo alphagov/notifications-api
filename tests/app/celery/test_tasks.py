@@ -2,7 +2,6 @@ import uuid
 import pytest
 from flask import current_app
 from mock import ANY
-from notifications_utils.recipients import validate_phone_number, format_phone_number
 
 from app.celery import provider_tasks
 from app.celery.tasks import (
@@ -18,13 +17,9 @@ from app.celery.tasks import (
     provider_to_use,
     timeout_notifications
 )
-from app.celery.research_mode_tasks import (
-    send_email_response,
-    send_sms_response
-)
-from app import (aws_ses_client, encryption, DATETIME_FORMAT, mmg_client, statsd_client)
+from app.celery.research_mode_tasks import send_email_response
+from app import (aws_ses_client, encryption, DATETIME_FORMAT, statsd_client)
 from app.clients.email.aws_ses import AwsSesClientException
-from app.clients.sms.mmg import MMGClientException
 from app.dao import notifications_dao, jobs_dao, provider_details_dao
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound

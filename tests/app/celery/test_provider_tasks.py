@@ -1,16 +1,19 @@
-import uuid
+from celery.exceptions import MaxRetriesExceededError
 
 from mock import ANY, call
 
 from app import statsd_client, mmg_client
+from app.celery import provider_tasks
 from app.celery.provider_tasks import send_sms_to_provider
 from app.celery.tasks import provider_to_use
+from app.clients.sms import SmsClientException
 from app.dao import provider_statistics_dao
 from datetime import datetime
 from freezegun import freeze_time
 from app.dao import notifications_dao, provider_details_dao
 from notifications_utils.recipients import validate_phone_number, format_phone_number
 from app.celery.research_mode_tasks import send_sms_response
+from app.models import Notification, NotificationStatistics, Job
 
 from tests.app.conftest import (
     sample_notification
@@ -280,7 +283,6 @@ def test_statsd_updates(notify_db, notify_db_session, sample_service, sample_not
     mocker.patch('app.statsd_client.incr')
     mocker.patch('app.statsd_client.timing')
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.encryption.decrypt', return_value=notification)
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
     mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
@@ -296,6 +298,44 @@ def test_statsd_updates(notify_db, notify_db_session, sample_service, sample_not
         call("notifications.tasks.send-sms-to-provider.task-time", ANY),
         call("notifications.sms.total-time", ANY)
     ])
+
+
+def test_should_go_into_technical_error_if_exceeds_retries(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        sample_notification,
+        mocker):
+
+    notification = _notification_json(
+        sample_notification.template,
+        to=sample_notification.to
+    )
+
+    mocker.patch('app.statsd_client.incr')
+    mocker.patch('app.statsd_client.timing')
+    mocker.patch('app.encryption.decrypt', return_value=notification)
+    mocker.patch('app.mmg_client.send_sms', side_effect=SmsClientException("EXPECTED"))
+    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.retry', side_effect=MaxRetriesExceededError())
+
+    send_sms_to_provider(
+        sample_notification.service_id,
+        sample_notification.id,
+        "encrypted-in-reality"
+    )
+
+    provider_tasks.send_sms_to_provider.retry.assert_called_with(queue='retry', countdown=60)
+    assert statsd_client.incr.assert_not_called
+    assert statsd_client.timing.assert_not_called
+
+    db_notification = Notification.query.get(sample_notification.id)
+    assert db_notification.status == 'technical-failure'
+    notification_stats = NotificationStatistics.query.filter_by(service_id=sample_notification.service.id).first()
+    assert notification_stats.sms_requested == 1
+    assert notification_stats.sms_failed == 1
+    job = Job.query.get(sample_notification.job.id)
+    assert job.notification_count == 1
+    assert job.notifications_failed == 1
 
 
 def _notification_json(template, to, personalisation=None, job_id=None, row_number=None):

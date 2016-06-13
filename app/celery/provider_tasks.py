@@ -1,8 +1,5 @@
 import json
 
-from celery.exceptions import MaxRetriesExceededError
-
-from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 from monotonic import monotonic
 from flask import current_app
@@ -11,10 +8,10 @@ from app.clients.sms import SmsClientException
 from app.dao.notifications_dao import (
     update_provider_stats,
     get_notification_by_id,
-    dao_update_notification)
+    dao_update_notification, update_notification_status_by_id)
 from app.dao.provider_details_dao import get_provider_details_by_notification_type
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.celery.research_mode_tasks import send_email_response, send_sms_response
+from app.celery.research_mode_tasks import send_sms_response
 
 from notifications_utils.recipients import (
     validate_and_format_phone_number
@@ -26,13 +23,20 @@ from notifications_utils.template import (
     unlink_govuk_escaped
 )
 
-retry_iteration_to_delay = {
-    0: 5,  # 5 seconds
-    1: 30,  # 30 seconds
-    2: 60 * 5,  # 5 minutes
-    3: 60 * 15,  # 15 minutes
-    4: 60 * 30  # 30 minutes
-}
+
+def retry_iteration_to_delay(retry):
+    """
+    Given current retry calculate some delay before retrying
+    Delay calculated as (1 + retry number) squared * 60
+    0: 60 seconds (1 minute)
+    1: 240 seconds (4 minutes)
+    2: 540 seconds (9 minutes)
+    3: 960 seconds (16 minutes)
+    4: 1500 seconds (25 minutes)
+    :param retry (zero indexed):
+    :return length to retry in seconds:
+    """
+    return ((retry + 1) ** 2) * 60
 
 
 @notify_celery.task(bind=True, name="send-sms-to-provider", max_retries=5, default_retry_delay=5)
@@ -73,23 +77,22 @@ def send_sms_to_provider(self, service_id, notification_id, encrypted_notificati
         notification.sent_by = provider.get_name(),
         notification.content_char_count = template.replaced_content_count
         dao_update_notification(notification)
-
     except SmsClientException as e:
         try:
             current_app.logger.error(
                 "SMS notification {} failed".format(notification_id)
             )
             current_app.logger.exception(e)
-            raise self.retry(queue="retry", countdown=retry_iteration_to_delay[self.request.retries])
+            self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
         except self.MaxRetriesExceededError:
-            notification.status = 'technical-failure'
+            update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
 
     current_app.logger.info(
         "SMS {} created at {} sent at {}".format(notification_id, notification.created_at, notification.sent_at)
     )
     statsd_client.incr("notifications.tasks.send-sms-to-provider")
     statsd_client.timing("notifications.tasks.send-sms-to-provider.task-time", monotonic() - task_start)
-    statsd_client.timing("notifications.sms.total-time", notification.sent_at - notification.created_at)
+    statsd_client.timing("notifications.sms.total-time", datetime.utcnow() - notification.created_at)
 
 
 def provider_to_use(notification_type, notification_id):
