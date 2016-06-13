@@ -96,7 +96,7 @@ def test_should_update_provider_statistics_email_multi(notify_db,
         template=sample_email_template,
         provider_name=ses_provider.identifier,
         dao_create=True)
-    update_provider_stats(n3.id, 'email', ses_provider.identifier
+    update_provider_stats(n3.id, 'email', ses_provider.identifier)
     provider_stats = get_provider_statistics(
         sample_email_template.service,
         providers=[ses_provider.identifier]).one()

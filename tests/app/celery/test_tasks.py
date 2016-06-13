@@ -1004,50 +1004,13 @@ def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job
     )
 
 
-def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_service, sample_template, mocker):
-    notification = _notification_json(
-        sample_template,
-        to="+447234123123"
-    )
-    mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
-    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
-
-    sample_service.research_mode = True
-    notify_db.session.add(sample_service)
-    notify_db.session.commit()
-
-    notification_id = uuid.uuid4()
-    now = datetime.utcnow()
-    send_sms(
-        sample_service.id,
-        notification_id,
-        "encrypted-in-reality",
-        now.strftime(DATETIME_FORMAT)
-    )
-    assert not mmg_client.send_sms.called
-    send_sms_response.apply_async.assert_called_once_with(
-        ('mmg', str(notification_id), "+447234123123"), queue='research-mode'
-    )
-
-    persisted_notification = notifications_dao.get_notification(sample_service.id, notification_id)
-    assert persisted_notification.id == notification_id
-    assert persisted_notification.to == '+447234123123'
-    assert persisted_notification.template_id == sample_template.id
-    assert persisted_notification.status == 'sending'
-    assert persisted_notification.sent_at > now
-    assert persisted_notification.created_at == now
-    assert persisted_notification.sent_by == 'mmg'
-
-
 def test_should_call_send_email_response_task_if_research_mode(
         notify_db,
         sample_service,
-        sample_email_template,
+        sample_email_template_history,
         mocker):
     notification = _notification_json(
-        sample_email_template,
+        sample_email_template_history,
         to="john@smith.com"
     )
     reference = uuid.uuid4()
@@ -1080,7 +1043,7 @@ def test_should_call_send_email_response_task_if_research_mode(
     persisted_notification = notifications_dao.get_notification(sample_service.id, notification_id)
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'john@smith.com'
-    assert persisted_notification.template_id == sample_email_template.id
+    assert persisted_notification.template_id == sample_email_template_history.id
     assert persisted_notification.status == 'sending'
     assert persisted_notification.sent_at > now
     assert persisted_notification.created_at == now
@@ -1088,14 +1051,14 @@ def test_should_call_send_email_response_task_if_research_mode(
     assert persisted_notification.reference == str(reference)
 
 
-def test_should_call_send_not_update_provider_email_stats_if_research_mode(
+def test_should_not_update_provider_email_stats_if_research_mode(
         notify_db,
         sample_service,
-        sample_email_template,
+        sample_email_template_history,
         ses_provider,
         mocker):
     notification = _notification_json(
-        sample_email_template,
+        sample_email_template_history,
         to="john@smith.com"
     )
 
@@ -1112,7 +1075,7 @@ def test_should_call_send_not_update_provider_email_stats_if_research_mode(
     notify_db.session.commit()
 
     assert not get_provider_statistics(
-        sample_email_template.service,
+        sample_email_template_history.service,
         providers=[ses_provider.identifier]).first()
 
     notification_id = uuid.uuid4()
@@ -1130,18 +1093,18 @@ def test_should_call_send_not_update_provider_email_stats_if_research_mode(
     )
 
     assert not get_provider_statistics(
-        sample_email_template.service,
+        sample_email_template_history.service,
         providers=[ses_provider.identifier]).first()
 
 
 def test_should_call_send_sms_response_task_if_research_mode(
         notify_db,
         sample_service,
-        sample_template,
+        sample_template_history,
         mmg_provider,
         mocker):
     notification = _notification_json(
-        sample_template,
+        sample_template_history,
         to="+447234123123"
     )
     mocker.patch('app.encryption.decrypt', return_value=notification)
@@ -1154,7 +1117,7 @@ def test_should_call_send_sms_response_task_if_research_mode(
     notify_db.session.commit()
 
     assert not get_provider_statistics(
-        sample_template.service,
+        sample_template_history.service,
         providers=[mmg_provider.identifier]).first()
 
     notification_id = uuid.uuid4()
@@ -1165,13 +1128,23 @@ def test_should_call_send_sms_response_task_if_research_mode(
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
+
+    persisted_notification = notifications_dao.get_notification(sample_service.id, notification_id)
+    assert persisted_notification.id == notification_id
+    assert persisted_notification.to == '+447234123123'
+    assert persisted_notification.template_id == sample_template_history.id
+    assert persisted_notification.status == 'sending'
+    assert persisted_notification.sent_at > now
+    assert persisted_notification.created_at == now
+    assert persisted_notification.sent_by == 'mmg'
+
     assert not mmg_client.send_sms.called
     send_sms_response.apply_async.assert_called_once_with(
         ('mmg', str(notification_id), "+447234123123"), queue='research-mode'
     )
 
     assert not get_provider_statistics(
-        sample_template.service,
+        sample_template_history.service,
         providers=[mmg_provider.identifier]).first()
 
 

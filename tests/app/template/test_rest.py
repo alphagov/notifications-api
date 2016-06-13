@@ -3,7 +3,7 @@ import random
 import string
 from app.models import Template
 from tests import create_authorization_header
-from app.dao.templates_dao import dao_get_template_by_id
+from app.dao.templates_dao import dao_get_template_by_id, dao_update_template
 
 
 def test_should_create_a_new_sms_template_for_a_service(notify_api, sample_user, sample_service):
@@ -405,28 +405,33 @@ def test_update_400_for_over_limit_content(notify_api, sample_user, sample_templ
             ).format(limit) in json_resp['message']['content']
 
 
-def test_should_return_all_template_versions_for_service_and_template_id(notify_api, sample_template):
-    original_content = sample_template.content
-    from app.dao.templates_dao import dao_update_template
-    sample_template.content = original_content + '1'
-    dao_update_template(sample_template)
-    sample_template.content = original_content + '2'
-    dao_update_template(sample_template)
+def test_should_return_all_template_versions_for_service_and_template_id(notify_api, sample_template_history):
+    original_content = sample_template_history.content
+    sample_template_history.content = original_content + '1'
+    dao_update_template(sample_template_history)
+    sample_template_history.content = original_content + '2'
+    dao_update_template(sample_template_history)
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header()
-            resp = client.get('/service/{}/template/{}/versions'.format(sample_template.service_id, sample_template.id),
-                              headers=[('Content-Type', 'application/json'), auth_header])
+            resp = client.get(
+                '/service/{}/template/{}/versions'.format(
+                    sample_template_history.service_id,
+                    sample_template_history.id
+                ),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
             assert resp.status_code == 200
             resp_json = json.loads(resp.get_data(as_text=True))['data']
+            sorted_resp = sorted(resp_json, key=lambda x: x['version'])
+
             assert len(resp_json) == 3
-            for x in resp_json:
-                if x['version'] == 1:
-                    assert x['content'] == original_content
-                elif x['version'] == 2:
-                    assert x['content'] == original_content + '1'
-                else:
-                    assert x['content'] == original_content + '2'
+            assert sorted_resp[0]['version'] == 1
+            assert sorted_resp[0]['content'] == original_content
+            assert sorted_resp[1]['version'] == 2
+            assert sorted_resp[1]['content'] == original_content + '1'
+            assert sorted_resp[2]['version'] == 3
+            assert sorted_resp[2]['content'] == original_content + '2'
 
 
 def test_update_does_not_create_new_version_when_there_is_no_change(notify_api, sample_template):

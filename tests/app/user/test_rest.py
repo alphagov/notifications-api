@@ -246,7 +246,6 @@ def test_put_user_not_exists(notify_api, notify_db, notify_db_session, sample_us
 
 
 def test_get_user_by_email(notify_api, notify_db, notify_db_session, sample_service, sample_service_permission):
-
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             sample_user = sample_service.users[0]
@@ -256,7 +255,6 @@ def test_get_user_by_email(notify_api, notify_db, notify_db_session, sample_serv
             assert resp.status_code == 200
 
             json_resp = json.loads(resp.get_data(as_text=True))
-            expected_permissions = default_service_permissions
             fetched = json_resp['data']
 
             assert str(sample_user.id) == fetched['id']
@@ -264,7 +262,7 @@ def test_get_user_by_email(notify_api, notify_db, notify_db_session, sample_serv
             assert sample_user.mobile_number == fetched['mobile_number']
             assert sample_user.email_address == fetched['email_address']
             assert sample_user.state == fetched['state']
-            assert fetched['permissions'][str(sample_service.id)]
+            assert fetched['permissions'][str(sample_service.id)] == ['manage_settings']
 
 
 def test_get_user_by_email_not_found_returns_404(notify_api,
