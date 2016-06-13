@@ -375,20 +375,6 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
         current_app.logger.exception(e)
 
 
-@notify_celery.task(name='send-sms-code')
-def send_sms_code(encrypted_verification):
-    provider = provider_to_use('sms', 'send-sms-code')
-
-    verification_message = encryption.decrypt(encrypted_verification)
-    try:
-        provider.send_sms(validate_and_format_phone_number(verification_message['to']),
-                          "{} is your Notify authentication code".format(
-                              verification_message['secret_code']),
-                          'send-sms-code')
-    except SmsClientException as e:
-        current_app.logger.exception(e)
-
-
 # TODO: when placeholders in templates work, this will be a real template
 def invitation_template(user_name, service_name, url, expiry_date):
     from string import Template

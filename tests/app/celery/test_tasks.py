@@ -6,7 +6,6 @@ from notifications_utils.recipients import validate_phone_number, format_phone_n
 
 from app.celery.tasks import (
     send_sms,
-    send_sms_code,
     send_email,
     process_job,
     email_invited_user,
@@ -896,33 +895,6 @@ def test_should_not_send_email_if_db_peristance_failed(sample_email_template, mo
     with pytest.raises(NoResultFound) as e:
         notifications_dao.get_notification(sample_email_template.service_id, notification_id)
     assert 'No row was found for one' in str(e.value)
-
-
-def test_should_send_sms_code(mocker):
-    notification = {'to': '+447234123123',
-                    'secret_code': '12345'}
-
-    encrypted_notification = encryption.encrypt(notification)
-
-    mocker.patch('app.mmg_client.send_sms')
-    send_sms_code(encrypted_notification)
-    mmg_client.send_sms.assert_called_once_with(
-        format_phone_number(validate_phone_number(notification['to'])),
-        "{} is your Notify authentication code".format(notification['secret_code']),
-        'send-sms-code')
-
-
-def test_should_throw_mmg_client_exception(mocker):
-    notification = {'to': '+447234123123',
-                    'secret_code': '12345'}
-
-    encrypted_notification = encryption.encrypt(notification)
-    mocker.patch('app.mmg_client.send_sms', side_effect=MMGClientException(mmg_error))
-    send_sms_code(encrypted_notification)
-    mmg_client.send_sms.assert_called_once_with(
-        format_phone_number(validate_phone_number(notification['to'])),
-        "{} is your Notify authentication code".format(notification['secret_code']),
-        'send-sms-code')
 
 
 def test_email_invited_user_should_send_email(notify_api, mocker):
