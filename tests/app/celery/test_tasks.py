@@ -333,16 +333,15 @@ def test_should_process_all_sms_job(sample_job,
     )
     assert encryption.encrypt.call_args[0][0]['to'] == '+441234123120'
     assert encryption.encrypt.call_args[0][0]['template'] == str(sample_job_with_placeholdered_template.template.id)
-    assert encryption.encrypt.call_args[0][0]['template_version'] == sample_job_with_placeholdered_template.template.version  # noqa
+    assert encryption.encrypt.call_args[0][0][
+               'template_version'] == sample_job_with_placeholdered_template.template.version  # noqa
     assert encryption.encrypt.call_args[0][0]['personalisation'] == {'name': 'chris'}
     tasks.send_sms.apply_async.call_count == 10
     job = jobs_dao.dao_get_job_by_id(sample_job_with_placeholdered_template.id)
     assert job.status == 'finished'
 
 
-### START OF SEND-SMS
-
-def test_should_send_template_to_correct_sms_provider_and_persist(sample_template_with_placeholders, mocker):
+def test_should_send_template_to_correct_sms_task_and_persist(sample_template_with_placeholders, mocker):
     notification = _notification_json(sample_template_with_placeholders,
                                       to="+447234123123", personalisation={"name": "Jo"})
     mocker.patch('app.encryption.decrypt', return_value=notification)
@@ -393,29 +392,6 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     assert not persisted_notification.job_id
 
 
-def test_should_send_sms_without_personalisation(sample_template, mocker):
-    notification = _notification_json(sample_template, "+447234123123")
-    mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
-
-    notification_id = uuid.uuid4()
-    now = datetime.utcnow()
-    send_sms(
-        sample_template.service_id,
-        notification_id,
-        "encrypted-in-reality",
-        now.strftime(DATETIME_FORMAT)
-    )
-
-
-    provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
-        (sample_template.service_id,
-         notification_id,
-         "encrypted-in-reality"),
-        queue="sms"
-    )
-
-
 def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notify_db_session, mocker):
     user = sample_user(notify_db, notify_db_session, mobile_numnber="07700 900890")
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
@@ -437,8 +413,8 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
 
     provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
         (service.id,
-        notification_id,
-        "encrypted-in-reality"),
+         notification_id,
+         "encrypted-in-reality"),
         queue="sms"
     )
 
@@ -771,6 +747,7 @@ def test_should_persist_notification_as_failed_if_database_fails(sample_template
     with pytest.raises(NoResultFound) as e:
         notifications_dao.get_notification(sample_template.service_id, notification_id)
     assert 'No row was found for one' in str(e.value)
+
 
 def test_should_persist_notification_as_failed_if_email_client_fails(sample_email_template, mocker):
     notification = _notification_json(sample_email_template, "my_email@my_email.com")

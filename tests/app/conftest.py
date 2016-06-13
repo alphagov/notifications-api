@@ -319,7 +319,6 @@ def sample_notification(notify_db,
                         status='sending',
                         reference=None,
                         created_at=datetime.utcnow(),
-                        provider_name=None,
                         content_char_count=160,
                         create=True):
     if service is None:
@@ -331,9 +330,6 @@ def sample_notification(notify_db,
 
     notification_id = uuid.uuid4()
 
-    if provider_name is None:
-        provider_name = mmg_provider().identifier if template.template_type == 'sms' else ses_provider().identifier
-
     if to_field:
         to = to_field
     else:
@@ -342,6 +338,7 @@ def sample_notification(notify_db,
     data = {
         'id': notification_id,
         'to': to,
+        'job_id': job.id,
         'job': job,
         'service_id': service.id,
         'service': service,

@@ -26,13 +26,12 @@ from notifications_utils.template import (
     unlink_govuk_escaped
 )
 
-
 retry_iteration_to_delay = {
-    0: 5, # 5 seconds
-    1: 30, # 30 seconds
-    2: 60 * 5, # 5 minutes
-    3: 60 * 15, # 15 minutes
-    4: 60 * 30 # 30 minutes
+    0: 5,  # 5 seconds
+    1: 30,  # 30 seconds
+    2: 60 * 5,  # 5 minutes
+    3: 60 * 15,  # 15 minutes
+    4: 60 * 30  # 30 minutes
 }
 
 
@@ -70,6 +69,11 @@ def send_sms_to_provider(self, service_id, notification_id, encrypted_notificati
                 content_char_count=template.replaced_content_count
             )
 
+        notification.sent_at = datetime.utcnow()
+        notification.sent_by = provider.get_name(),
+        notification.content_char_count = template.replaced_content_count
+        dao_update_notification(notification)
+
     except SmsClientException as e:
         try:
             current_app.logger.error(
@@ -79,14 +83,6 @@ def send_sms_to_provider(self, service_id, notification_id, encrypted_notificati
             raise self.retry(queue="retry", countdown=retry_iteration_to_delay[self.request.retries])
         except self.MaxRetriesExceededError:
             notification.status = 'technical-failure'
-    except SQLAlchemyError as e:
-        current_app.logger.exception(e)
-        raise self.retry(queue="retry", exc=e)
-
-    notification.sent_at = datetime.utcnow()
-    notification.sent_by = provider.get_name(),
-    notification.content_char_count = template.replaced_content_count
-    dao_update_notification(notification)
 
     current_app.logger.info(
         "SMS {} created at {} sent at {}".format(notification_id, notification.created_at, notification.sent_at)

@@ -197,8 +197,9 @@ def _update_notification_stats_query(notification_type, status):
 
 def _update_statistics(notification, notification_statistics_status):
     if notification.job_id:
-        db.session.query(Job).filter_by(id=notification.job_id
-                                        ).update(_update_job_stats_query(notification_statistics_status))
+        db.session.query(Job).filter_by(
+            id=notification.job_id
+        ).update(_update_job_stats_query(notification_statistics_status))
 
     db.session.query(NotificationStatistics).filter_by(
         day=notification.created_at.date(),
@@ -231,17 +232,16 @@ def _update_notification_status(notification, status, notification_statistics_st
     if notification_statistics_status:
         _update_statistics(notification, notification_statistics_status)
 
-    db.session.query(Notification).filter(Notification.id == notification.id
-                                          ).update({Notification.status: status})
+    db.session.query(Notification).filter(Notification.id == notification.id).update({Notification.status: status})
     return True
 
 
 @transactional
 def update_notification_status_by_id(notification_id, status, notification_statistics_status=None):
-    notification = Notification.query.filter(Notification.id == notification_id,
-                                             or_(Notification.status == 'sending',
-                                                 Notification.status == 'pending')
-                                             ).first()
+    notification = Notification.query.filter(
+        Notification.id == notification_id,
+        or_(Notification.status == 'sending',
+            Notification.status == 'pending')).first()
 
     if not notification:
         return False
