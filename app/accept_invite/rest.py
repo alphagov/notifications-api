@@ -10,7 +10,11 @@ from notifications_utils.url_safe_token import check_token
 
 from app.dao.invited_user_dao import get_invited_user_by_id
 
-from app.errors import register_errors
+from app.errors import (
+    register_errors,
+    InvalidData
+)
+
 from app.schemas import invited_user_schema
 
 
@@ -30,7 +34,8 @@ def get_invited_user_by_token(token):
                                       max_age_seconds)
     except SignatureExpired:
         message = 'Invitation with id {} expired'.format(invited_user_id)
-        return jsonify(result='error', message=message), 400
+        errors = {'invitation': [message]}
+        raise InvalidData(errors, status_code=400)
 
     invited_user = get_invited_user_by_id(invited_user_id)
 

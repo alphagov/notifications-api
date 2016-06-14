@@ -22,7 +22,10 @@ from app.celery.tasks import process_job
 
 job = Blueprint('job', __name__, url_prefix='/service/<uuid:service_id>/job')
 
-from app.errors import register_errors
+from app.errors import (
+    register_errors,
+    InvalidData
+)
 
 register_errors(job)
 
@@ -31,6 +34,8 @@ register_errors(job)
 def get_job_by_service_and_job_id(service_id, job_id):
     job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
     data, errors = job_schema.dump(job)
+    if errors:
+        raise InvalidData(errors, status_code=400)
     return jsonify(data=data)
 
 
@@ -40,16 +45,15 @@ def get_jobs_by_service(service_id):
         try:
             limit_days = int(request.args['limit_days'])
         except ValueError as e:
-            error = '{} is not an integer'.format(request.args['limit_days'])
-            current_app.logger.error(error)
-            return jsonify(result="error", message={'limit_days': [error]}), 400
+            errors = {'error': ['{} is not an integer'.format(request.args['limit_days'])]}
+            raise InvalidData(errors, status_code=400)
     else:
         limit_days = None
 
     jobs = dao_get_jobs_by_service_id(service_id, limit_days)
     data, errors = job_schema.dump(jobs, many=True)
     if errors:
-        return jsonify(result="error", message=errors), 400
+        raise InvalidData(errors, status_code=400)
     return jsonify(data=data)
 
 
@@ -66,13 +70,12 @@ def create_job(service_id):
     errors = unarchived_template_schema.validate({'archived': template.archived})
 
     if errors:
-        return jsonify(result='error', message=errors), 400
+        raise InvalidData(errors, status_code=400)
 
     data.update({"template_version": template.version})
     job, errors = job_schema.load(data)
     if errors:
-        return jsonify(result="error", message=errors), 400
-
+        raise InvalidData(errors, status_code=400)
     dao_create_job(job)
     process_job.apply_async([str(job.id)], queue="process-job")
     return jsonify(data=job_schema.dump(job).data), 201

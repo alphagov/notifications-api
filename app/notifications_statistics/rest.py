@@ -19,7 +19,10 @@ notifications_statistics = Blueprint(
     __name__, url_prefix='/service/<service_id>/notifications-statistics'
 )
 
-from app.errors import register_errors
+from app.errors import (
+    register_errors,
+    InvalidData
+)
 
 register_errors(notifications_statistics)
 
@@ -34,9 +37,9 @@ def get_all_notification_statistics_for_service(service_id):
                 limit_days=int(request.args['limit_days'])
             )
         except ValueError as e:
-            error = '{} is not an integer'.format(request.args['limit_days'])
-            current_app.logger.error(error)
-            return jsonify(result="error", message={'limit_days': [error]}), 400
+            message = '{} is not an integer'.format(request.args['limit_days'])
+            errors = {'limit_days': [message]}
+            raise InvalidData(errors, status_code=400)
     else:
         statistics = dao_get_notification_statistics_for_service(service_id=service_id)
 
@@ -48,7 +51,7 @@ def get_all_notification_statistics_for_service(service_id):
 def get_notification_statistics_for_service_seven_day_aggregate(service_id):
     data, errors = week_aggregate_notification_statistics_schema.load(request.args)
     if errors:
-        return jsonify(result='error', message=errors), 400
+        raise InvalidData(errors, status_code=400)
     date_from = data['date_from'] if 'date_from' in data else date(date.today().year, 4, 1)
     week_count = data['week_count'] if 'week_count' in data else 52
     stats = dao_get_7_day_agg_notification_statistics_for_service(

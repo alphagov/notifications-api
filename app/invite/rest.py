@@ -18,7 +18,11 @@ from app.celery.tasks import (email_invited_user)
 
 invite = Blueprint('invite', __name__, url_prefix='/service/<service_id>/invite')
 
-from app.errors import register_errors
+from app.errors import (
+    register_errors,
+    InvalidData
+)
+
 register_errors(invite)
 
 
@@ -26,7 +30,7 @@ register_errors(invite)
 def create_invited_user(service_id):
     invited_user, errors = invited_user_schema.load(request.get_json())
     if errors:
-        return jsonify(result="error", message=errors), 400
+        raise InvalidData(errors, status_code=400)
     save_invited_user(invited_user)
     invitation = _create_invitation(invited_user)
     encrypted_invitation = encryption.encrypt(invitation)
@@ -55,7 +59,7 @@ def update_invited_user(service_id, invited_user_id):
     current_data.update(request.get_json())
     update_dict, errors = invited_user_schema.load(current_data)
     if errors:
-        return jsonify(result='error', message=errors), 400
+        raise InvalidData(errors, status_code=400)
     save_invited_user(update_dict)
     return jsonify(data=invited_user_schema.dump(fetched).data), 200
 
