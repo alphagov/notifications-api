@@ -387,7 +387,6 @@ def send_notification(notification_type):
         send_email.apply_async((
             service_id,
             notification_id,
-            '',
             encryption.encrypt(notification),
             datetime.utcnow().strftime(DATETIME_FORMAT)
         ), queue='email')
