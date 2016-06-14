@@ -2,6 +2,7 @@ from datetime import datetime
 import uuid
 import random
 import string
+import pytest
 import app.celery.tasks
 from mock import ANY
 from app import encryption
@@ -12,7 +13,7 @@ from tests.app.conftest import sample_service as create_sample_service
 from tests.app.conftest import sample_email_template as create_sample_email_template
 from tests.app.conftest import sample_template as create_sample_template
 from flask import (json, current_app, url_for)
-from app.models import Service
+from app.models import Service, NOTIFICATION_STATUS_TYPES
 from app.dao.templates_dao import dao_get_all_templates_for_service, dao_update_template
 from app.dao.services_dao import dao_update_service
 from app.dao.notifications_dao import get_notification_by_id, dao_get_notification_statistics_for_service
@@ -179,6 +180,62 @@ def test_get_all_notifications_for_job_in_order_of_job_number(notify_api,
             assert resp['notifications'][1]['job_row_number'] == notification_2.job_row_number
             assert resp['notifications'][2]['to'] == notification_3.to
             assert resp['notifications'][2]['job_row_number'] == notification_3.job_row_number
+            assert response.status_code == 200
+
+
+@pytest.mark.parametrize(
+    "expected_notification_count, status_args",
+    [
+        (
+            1,
+            '?status={}'.format(NOTIFICATION_STATUS_TYPES[0])
+        ),
+        (
+            0,
+            '?status={}'.format(NOTIFICATION_STATUS_TYPES[1])
+        ),
+        (
+            1,
+            '?status={}&status={}&status={}'.format(
+                *NOTIFICATION_STATUS_TYPES[0:3]
+            )
+        ),
+        (
+            0,
+            '?status={}&status={}&status={}'.format(
+                *NOTIFICATION_STATUS_TYPES[3:6]
+            )
+        ),
+    ]
+)
+def test_get_all_notifications_for_job_filtered_by_status(
+    notify_api,
+    notify_db,
+    notify_db_session,
+    sample_service,
+    expected_notification_count,
+    status_args
+):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            job = create_sample_job(notify_db, notify_db_session, service=sample_service)
+
+            create_sample_notification(
+                notify_db,
+                notify_db_session,
+                job=job,
+                to_field="1",
+                created_at=datetime.utcnow(),
+                status=NOTIFICATION_STATUS_TYPES[0],
+                job_row_number=1
+            )
+
+            response = client.get(
+                path='/service/{}/job/{}/notifications{}'.format(sample_service.id, job.id, status_args),
+                headers=[create_authorization_header()]
+            )
+            resp = json.loads(response.get_data(as_text=True))
+            assert len(resp['notifications']) == expected_notification_count
             assert response.status_code == 200
 
 
@@ -946,7 +1003,6 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
             app.celery.tasks.send_email.apply_async.assert_called_once_with(
                 (str(sample_email_template.service_id),
                  notification_id,
-                 "",
                  "something_encrypted",
                  "2016-01-01T11:09:00.061258"),
                 queue="email"

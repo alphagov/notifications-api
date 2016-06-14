@@ -183,7 +183,6 @@ def process_job(job_id):
             send_email.apply_async((
                 str(job.service_id),
                 create_uuid(),
-                '',
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
                 {'reply_to_addresses': service.reply_to_email_address},
@@ -289,7 +288,13 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
 
 
 @notify_celery.task(name="send-email")
-def send_email(service_id, notification_id, from_address, encrypted_notification, created_at, reply_to_addresses=None):
+def send_email_v1(service_id, notification_id, from_address,
+                  encrypted_notification, created_at, reply_to_addresses=None):
+    send_email(service_id, notification_id, encrypted_notification, created_at, reply_to_addresses=None)
+
+
+@notify_celery.task(name="send-email-v2")
+def send_email(service_id, notification_id, encrypted_notification, created_at, reply_to_addresses=None):
     task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
@@ -337,9 +342,8 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
                     (provider.get_name(), str(reference), notification['to']), queue='research-mode'
                 )
             else:
-                # First step setting the from_address here rather than the method creating the task
-                from_address = '"{}" <{}@{}>'.format(service.name, service.email_from, current_app.config[
-                    'NOTIFY_EMAIL_DOMAIN']) if from_address == "" else from_address
+                from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
+                                                     current_app.config['NOTIFY_EMAIL_DOMAIN'])
                 reference = provider.send_email(
                     from_address,
                     notification['to'],
@@ -463,27 +467,6 @@ def registration_verification_template(name, url):
     return unlink_govuk_escaped(
         t.substitute(name=name, url=url)
     )
-
-
-@notify_celery.task(name='email-registration-verification')
-def email_registration_verification(encrypted_verification_message):
-    provider = provider_to_use('email', 'email-reset-password')
-
-    verification_message = encryption.decrypt(encrypted_verification_message)
-    try:
-        email_from = '"GOV.UK Notify" <{}>'.format(
-            current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS']
-        )
-        provider.send_email(
-            email_from,
-            verification_message['to'],
-            "Confirm GOV.UK Notify registration",
-            registration_verification_template(
-                name=verification_message['name'],
-                url=verification_message['url'])
-        )
-    except EmailClientException as e:
-        current_app.logger.exception(e)
 
 
 def service_allowed_to_send_to(recipient, service):

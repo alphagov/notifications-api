@@ -14,7 +14,6 @@ class Live(Config):
     VERIFY_CODE_FROM_EMAIL_ADDRESS = os.environ['LIVE_VERIFY_CODE_FROM_EMAIL_ADDRESS']
     NOTIFY_EMAIL_DOMAIN = os.environ['LIVE_NOTIFY_EMAIL_DOMAIN']
     FIRETEXT_API_KEY = os.getenv("LIVE_FIRETEXT_API_KEY")
-    TWILIO_AUTH_TOKEN = os.getenv('LIVE_TWILIO_AUTH_TOKEN')
     MMG_API_KEY = os.environ['LIVE_MMG_API_KEY']
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
     STATSD_ENABLED = True
