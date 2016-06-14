@@ -12,6 +12,15 @@ from sqlalchemy.schema import MetaData
 from app import create_app, db
 
 
+def remove_all_data():
+    meta = MetaData(bind=db.engine, reflect=True)
+    db.session.remove()
+    for tbl in reversed(meta.sorted_tables):
+        if tbl.name not in ["provider_details"]:
+            db.engine.execute(tbl.delete())
+    db.session.commit()
+
+
 @pytest.fixture(scope='session')
 def notify_api(request):
     app = create_app()
@@ -37,6 +46,9 @@ def notify_db(notify_api, request):
     with notify_api.app_context():
         upgrade(config, 'head')
 
+    # remove seeded data (notify service, user, etc) before running tests to ensure consistency
+    remove_all_data()
+
     def teardown():
         db.session.remove()
         db.drop_all()
@@ -49,13 +61,7 @@ def notify_db(notify_api, request):
 @pytest.fixture(scope='function')
 def notify_db_session(request):
     def teardown():
-        db.session.remove()
-        for tbl in reversed(meta.sorted_tables):
-            if tbl.name not in ["provider_details"]:
-                db.engine.execute(tbl.delete())
-        db.session.commit()
-
-    meta = MetaData(bind=db.engine, reflect=True)
+        remove_all_data()
     request.addfinalizer(teardown)
 
 

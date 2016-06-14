@@ -12,7 +12,7 @@ from tests.app.conftest import sample_service as create_sample_service
 from tests.app.conftest import sample_email_template as create_sample_email_template
 from tests.app.conftest import sample_template as create_sample_template
 from flask import (json, current_app, url_for)
-from app.models import Service
+from app.models import (Service, Notification)
 from app.dao.templates_dao import dao_get_all_templates_for_service, dao_update_template
 from app.dao.services_dao import dao_update_service
 from app.dao.notifications_dao import get_notification_by_id, dao_get_notification_statistics_for_service
@@ -963,10 +963,19 @@ def test_should_block_api_call_if_over_day_limit(notify_db, notify_db_session, n
             mocker.patch('app.celery.tasks.send_email.apply_async')
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
-            service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=True)
-            email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
+            service = create_sample_service(notify_db, notify_db_session, message_limit=1, restricted=True)
+            email_template = create_sample_template(
+                notify_db,
+                notify_db_session,
+                service=service,
+                template_type='email')
             create_sample_notification(
-                notify_db, notify_db_session, template=email_template, service=service, created_at=datetime.utcnow()
+                notify_db,
+                notify_db_session,
+                template=email_template,
+                service=service,
+                created_at=datetime.utcnow(),
+                dao_create=True
             )
 
             data = {
@@ -1021,11 +1030,20 @@ def test_should_block_api_call_if_over_day_limit_regardless_of_type(notify_db, n
             mocker.patch('app.celery.tasks.send_sms.apply_async')
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
-            service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=True)
-            email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
+            service = create_sample_service(notify_db, notify_db_session, message_limit=1, restricted=True)
+            email_template = create_sample_template(
+                notify_db,
+                notify_db_session,
+                service=service,
+                template_type='email')
             sms_template = create_sample_template(notify_db, notify_db_session, service=service)
             create_sample_notification(
-                notify_db, notify_db_session, template=email_template, service=service, created_at=datetime.utcnow()
+                notify_db,
+                notify_db_session,
+                template=email_template,
+                service=service,
+                created_at=datetime.utcnow(),
+                dao_create=True
             )
 
             data = {
@@ -1051,10 +1069,18 @@ def test_should_allow_api_call_if_under_day_limit_regardless_of_type(notify_db, 
             mocker.patch('app.celery.tasks.send_sms.apply_async')
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
-            service = create_sample_service(notify_db, notify_db_session, limit=2)
-            email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
+            service = create_sample_service(notify_db, notify_db_session, message_limit=2)
+            email_template = create_sample_template(
+                notify_db,
+                notify_db_session,
+                service=service,
+                template_type='email')
             sms_template = create_sample_template(notify_db, notify_db_session, service=service)
-            create_sample_notification(notify_db, notify_db_session, template=email_template, service=service)
+            create_sample_notification(
+                notify_db,
+                notify_db_session,
+                template=email_template,
+                service=service)
 
             data = {
                 'to': '+447634123123',
@@ -1223,10 +1249,6 @@ def test_firetext_callback_should_update_notification_status(notify_api, sample_
             updated = get_notification_by_id(sample_notification.id)
             assert updated.status == 'delivered'
             assert get_notification_by_id(sample_notification.id).status == 'delivered'
-            stats = dao_get_notification_statistics_for_service(sample_notification.service_id)[0]
-            assert stats.sms_delivered == 1
-            assert stats.sms_requested == 1
-            assert stats.sms_failed == 0
 
 
 def test_firetext_callback_should_update_notification_status_failed(notify_api, sample_notification, mocker):
@@ -1250,10 +1272,6 @@ def test_firetext_callback_should_update_notification_status_failed(notify_api, 
                 sample_notification.id
             )
             assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
-            stats = dao_get_notification_statistics_for_service(sample_notification.service_id)[0]
-            assert stats.sms_delivered == 0
-            assert stats.sms_requested == 1
-            assert stats.sms_failed == 1
 
 
 def test_firetext_callback_should_update_notification_status_pending(notify_api, notify_db, notify_db_session, mocker):
@@ -1278,10 +1296,6 @@ def test_firetext_callback_should_update_notification_status_pending(notify_api,
                 notification.id
             )
             assert get_notification_by_id(notification.id).status == 'pending'
-            stats = dao_get_notification_statistics_for_service(notification.service_id)[0]
-            assert stats.sms_delivered == 0
-            assert stats.sms_requested == 1
-            assert stats.sms_failed == 0
 
 
 def test_firetext_callback_should_update_multiple_notification_status_sent(
@@ -1293,9 +1307,9 @@ def test_firetext_callback_should_update_multiple_notification_status_sent(
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.statsd_client.incr')
-            notification1 = create_sample_notification(notify_db, notify_db_session, status='sending')
-            notification2 = create_sample_notification(notify_db, notify_db_session, status='sending')
-            notification3 = create_sample_notification(notify_db, notify_db_session, status='sending')
+            notification1 = create_sample_notification(notify_db, notify_db_session, status='sending', dao_create=True)
+            notification2 = create_sample_notification(notify_db, notify_db_session, status='sending', dao_create=True)
+            notification3 = create_sample_notification(notify_db, notify_db_session, status='sending', dao_create=True)
 
             client.post(
                 path='/notifications/sms/firetext',
@@ -1318,10 +1332,9 @@ def test_firetext_callback_should_update_multiple_notification_status_sent(
                 ),
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
-            stats = dao_get_notification_statistics_for_service(notification1.service_id)[0]
-            assert stats.sms_delivered == 3
-            assert stats.sms_requested == 3
-            assert stats.sms_failed == 0
+            assert Notification.query.filter_by(id=notification1.id).one().status == 'delivered'
+            assert Notification.query.filter_by(id=notification2.id).one().status == 'delivered'
+            assert Notification.query.filter_by(id=notification3.id).one().status == 'delivered'
 
 
 def test_process_mmg_response_return_200_when_cid_is_send_sms_code(notify_api):
@@ -1541,10 +1554,6 @@ def test_ses_callback_should_update_notification_status(
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'SES callback succeeded'
             assert get_notification_by_id(notification.id).status == 'delivered'
-            stats = dao_get_notification_statistics_for_service(notification.service_id)[0]
-            assert stats.emails_delivered == 1
-            assert stats.emails_requested == 1
-            assert stats.emails_failed == 0
 
 
 def test_ses_callback_should_update_multiple_notification_status_sent(
@@ -1560,21 +1569,24 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
                 notify_db_session,
                 template=sample_email_template,
                 reference='ref1',
-                status='sending')
+                status='sending',
+                dao_create=True)
 
             notification2 = create_sample_notification(
                 notify_db,
                 notify_db_session,
                 template=sample_email_template,
                 reference='ref2',
-                status='sending')
+                status='sending',
+                dao_create=True)
 
             notification3 = create_sample_notification(
                 notify_db,
                 notify_db_session,
                 template=sample_email_template,
                 reference='ref3',
-                status='sending')
+                status='sending',
+                dao_create=True)
 
             resp1 = client.post(
                 path='/notifications/email/ses',
@@ -1596,10 +1608,9 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
             assert resp2.status_code == 200
             assert resp3.status_code == 200
 
-            stats = dao_get_notification_statistics_for_service(notification1.service_id)[0]
-            assert stats.emails_delivered == 3
-            assert stats.emails_requested == 3
-            assert stats.emails_failed == 0
+            assert Notification.query.filter_by(id=notification1.id).one().status == 'delivered'
+            assert Notification.query.filter_by(id=notification2.id).one().status == 'delivered'
+            assert Notification.query.filter_by(id=notification3.id).one().status == 'delivered'
 
 
 def test_ses_callback_should_update_record_statsd(
@@ -1654,10 +1665,6 @@ def test_ses_callback_should_set_status_to_temporary_failure(notify_api,
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'SES callback succeeded'
             assert get_notification_by_id(notification.id).status == 'temporary-failure'
-            stats = dao_get_notification_statistics_for_service(notification.service_id)[0]
-            assert stats.emails_delivered == 0
-            assert stats.emails_requested == 1
-            assert stats.emails_failed == 1
 
 
 def test_ses_callback_should_not_set_status_once_status_is_delivered(notify_api,
@@ -1713,10 +1720,6 @@ def test_ses_callback_should_set_status_to_permanent_failure(notify_api,
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'SES callback succeeded'
             assert get_notification_by_id(notification.id).status == 'permanent-failure'
-            stats = dao_get_notification_statistics_for_service(notification.service_id)[0]
-            assert stats.emails_delivered == 0
-            assert stats.emails_requested == 1
-            assert stats.emails_failed == 1
 
 
 def test_should_handle_invite_email_callbacks(notify_api, notify_db, notify_db_session):

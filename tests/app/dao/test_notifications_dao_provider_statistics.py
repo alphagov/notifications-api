@@ -13,7 +13,8 @@ def test_should_update_provider_statistics_sms(notify_db,
     n1 = create_sample_notification(
         notify_db,
         notify_db_session,
-        template=sample_template)
+        template=sample_template,
+        dao_create=True)
     update_provider_stats(n1.id, 'sms', mmg_provider.identifier)
     provider_stats = get_provider_statistics(
         sample_template.service,
@@ -28,7 +29,8 @@ def test_should_update_provider_statistics_email(notify_db,
     n1 = create_sample_notification(
         notify_db,
         notify_db_session,
-        template=sample_email_template)
+        template=sample_email_template,
+        dao_create=True)
     update_provider_stats(n1.id, 'email', ses_provider.identifier)
     provider_stats = get_provider_statistics(
         sample_email_template.service,
@@ -45,21 +47,24 @@ def test_should_update_provider_statistics_sms_multi(notify_db,
         notify_db_session,
         template=sample_template,
         provider_name=mmg_provider.identifier,
-        content_char_count=160)
+        content_char_count=160,
+        dao_create=True)
     update_provider_stats(n1.id, 'sms', mmg_provider.identifier)
     n2 = create_sample_notification(
         notify_db,
         notify_db_session,
         template=sample_template,
         provider_name=mmg_provider.identifier,
-        content_char_count=161)
+        content_char_count=161,
+        dao_create=True)
     update_provider_stats(n2.id, 'sms', mmg_provider.identifier)
     n3 = create_sample_notification(
         notify_db,
         notify_db_session,
         template=sample_template,
         provider_name=mmg_provider.identifier,
-        content_char_count=307)
+        content_char_count=307,
+        dao_create=True)
     update_provider_stats(n3.id, 'sms', mmg_provider.identifier)
     provider_stats = get_provider_statistics(
         sample_template.service,
@@ -75,19 +80,22 @@ def test_should_update_provider_statistics_email_multi(notify_db,
         notify_db,
         notify_db_session,
         template=sample_email_template,
-        provider_name=ses_provider.identifier)
+        provider_name=ses_provider.identifier,
+        dao_create=True)
     update_provider_stats(n1.id, 'email', ses_provider.identifier)
     n2 = create_sample_notification(
         notify_db,
         notify_db_session,
         template=sample_email_template,
-        provider_name=ses_provider.identifier)
+        provider_name=ses_provider.identifier,
+        dao_create=True)
     update_provider_stats(n2.id, 'email', ses_provider.identifier)
     n3 = create_sample_notification(
         notify_db,
         notify_db_session,
         template=sample_email_template,
-        provider_name=ses_provider.identifier)
+        provider_name=ses_provider.identifier,
+        dao_create=True)
     update_provider_stats(n3.id, 'email', ses_provider.identifier)
     provider_stats = get_provider_statistics(
         sample_email_template.service,

@@ -1,7 +1,7 @@
 import requests_mock
 import pytest
 import uuid
-from datetime import (datetime, date)
+from datetime import (datetime, date, timedelta)
 
 import pytest
 from flask import current_app
@@ -19,15 +19,19 @@ from app.models import (
     ProviderStatistics,
     ProviderDetails,
     NotificationStatistics)
-from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
-from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
-from app.dao.templates_dao import dao_create_template
-from app.dao.api_key_dao import save_model_api_key
-from app.dao.jobs_dao import dao_create_job
+
+from app.dao.users_dao import create_secret_code
+from app.dao.api_key_dao import _generate_secret
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
+
+from tests.app import (
+    create_model,
+    add_user_to_service,
+    create_history_from_model
+)
 
 
 @pytest.yield_fixture
@@ -65,59 +69,71 @@ def service_factory(notify_db, notify_db_session):
 @pytest.fixture(scope='function')
 def sample_user(notify_db,
                 notify_db_session,
+                name="Test User",
+                email_address="notify@digital.cabinet-office.gov.uk",
+                password='password',
                 mobile_numnber="+447700900986",
-                email="notify@digital.cabinet-office.gov.uk"):
-    data = {
-        'name': 'Test User',
-        'email_address': email,
-        'password': 'password',
-        'mobile_number': mobile_numnber,
-        'state': 'active'
-    }
-    usr = User.query.filter_by(email_address=email).first()
+                state='active'):
+    usr = User.query.filter_by(email_address=email_address).first()
     if not usr:
-        usr = User(**data)
-        save_model_user(usr)
-
+        usr = create_model('User', **{
+            'name': name,
+            'email_address': email_address,
+            'password': password,
+            'mobile_number': mobile_numnber,
+            'state': state
+        })
     return usr
 
 
 def create_code(notify_db, notify_db_session, code_type, usr=None, code=None):
     if code is None:
-        code = create_secret_code()
+        code = "12345"
     if usr is None:
         usr = sample_user(notify_db, notify_db_session)
-    return create_user_code(usr, code, code_type), code
+    vcode = create_model('VerifyCode', **{
+        'code_type': code_type,
+        'expiry_datetime': datetime.utcnow() + timedelta(hours=1),
+        'user': usr,
+        'code': code
+    })
+    return vcode, code
 
 
 @pytest.fixture(scope='function')
-def sample_email_code(notify_db,
-                      notify_db_session,
-                      code=None,
-                      code_type="email",
-                      usr=None):
-    code, txt_code = create_code(notify_db,
-                                 notify_db_session,
-                                 code_type,
-                                 usr=usr,
-                                 code=code)
-    code.txt_code = txt_code
-    return code
+def sample_email_code(notify_db, notify_db_session):
+    return create_code(
+        notify_db,
+        notify_db_session,
+        'email'
+    )[0]
 
 
 @pytest.fixture(scope='function')
-def sample_sms_code(notify_db,
-                    notify_db_session,
-                    code=None,
-                    code_type="sms",
-                    usr=None):
-    code, txt_code = create_code(notify_db,
-                                 notify_db_session,
-                                 code_type,
-                                 usr=usr,
-                                 code=code)
-    code.txt_code = txt_code
-    return code
+def sample_email_code_plus_code(notify_db, notify_db_session):
+    return create_code(
+        notify_db,
+        notify_db_session,
+        'email'
+    )
+
+
+@pytest.fixture(scope='function')
+def sample_sms_code(notify_db, notify_db_session):
+    return create_code(
+        notify_db,
+        notify_db_session,
+        'sms'
+    )[0]
+
+
+@pytest.fixture(scope='function')
+def sample_sms_code_plus_code(notify_db, notify_db_session):
+    return create_code(
+        notify_db,
+        notify_db_session,
+        'sms'
+    )
 
 
 @pytest.fixture(scope='function')
@@ -125,27 +141,54 @@ def sample_service(notify_db,
                    notify_db_session,
                    service_name="Sample service",
                    user=None,
+                   active=False,
                    restricted=False,
-                   limit=1000,
-                   email_from="sample.service"):
+                   message_limit=1000,
+                   email_from="sample.service",
+                   with_history=False,
+                   version=1):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
-    data = {
-        'name': service_name,
-        'message_limit': limit,
-        'active': False,
-        'restricted': restricted,
-        'email_from': email_from,
-        'created_by': user
-    }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
-        service = Service(**data)
-        dao_create_service(service, user)
+        service = create_model('Service', **{
+            'name': service_name,
+            'message_limit': message_limit,
+            'active': active,
+            'restricted': restricted,
+            'email_from': email_from,
+            'created_by': user,
+            'users': [user]
+        })
     else:
         if user not in service.users:
-            dao_add_user_to_service(service, user)
+            add_user_to_service(service, user)
+    if with_history:
+        history = service_history(
+            notify_db,
+            notify_db_session,
+            service=service,
+            version=1
+        )
     return service
+
+
+@pytest.fixture(scope='function')
+def service_history(notify_db,
+                    notify_db_session,
+                    service=None,
+                    version=1):
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
+    history = Service.get_history_model().query.filter_by(id=service.id, version=version).first()
+    if not history:
+        history = create_history_from_model(service, version=version)
+    return history
+
+
+@pytest.fixture(scope='function')
+def sample_service_history(notify_db, notify_db_session):
+    return sample_service(notify_db, notify_db_session, with_history=True)
 
 
 @pytest.fixture(scope='function')
@@ -156,9 +199,11 @@ def sample_template(notify_db,
                     content="This is a template",
                     archived=False,
                     subject_line='Subject',
+                    template_version=1,
                     user=None,
                     service=None,
-                    created_by=None):
+                    created_by=None,
+                    with_history=False):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
     if service is None:
@@ -171,15 +216,41 @@ def sample_template(notify_db,
         'content': content,
         'service': service,
         'created_by': created_by,
-        'archived': archived
+        'archived': archived,
+        'version': template_version
     }
     if template_type == 'email':
         data.update({
             'subject': subject_line
         })
-    template = Template(**data)
-    dao_create_template(template)
+    template = create_model('Template', **data)
+    if with_history:
+        history = template_history(
+            notify_db,
+            notify_db_session,
+            template=template,
+            version=template_version
+        )
     return template
+
+
+@pytest.fixture(scope='function')
+def template_history(notify_db, notify_db_session, template=None, version=1):
+    if template is None:
+        template = sample_template(notify_db, notify_db_session)
+    history = Template.get_history_model().query.filter_by(id=template.id, version=version).first()
+    if not history:
+        history = create_history_from_model(template, version=version)
+    return history
+
+
+@pytest.fixture(scope='function')
+def sample_template_history(notify_db, notify_db_session):
+    return sample_template(
+        notify_db,
+        notify_db_session,
+        with_history=True
+    )
 
 
 @pytest.fixture(scope='function')
@@ -188,33 +259,22 @@ def sample_template_with_placeholders(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def sample_email_template(
+def sample_template_history_with_placeholders(notify_db, notify_db_session):
+    return sample_template(notify_db, notify_db_session, content="Hello ((name))", with_history=True)
+
+
+@pytest.fixture(scope='function')
+def sample_email_template(notify_db, notify_db_session):
+    return sample_template(notify_db, notify_db_session, template_type='email')
+
+
+@pytest.fixture(scope='function')
+def sample_email_template_history(notify_db, notify_db_session):
+    return sample_template(
         notify_db,
         notify_db_session,
-        template_name="Email Template Name",
-        template_type="email",
-        user=None,
-        content="This is a template",
-        subject_line='Email Subject',
-        service=None):
-    if user is None:
-        user = sample_user(notify_db, notify_db_session)
-    if service is None:
-        service = sample_service(notify_db, notify_db_session)
-    data = {
-        'name': template_name,
-        'template_type': template_type,
-        'content': content,
-        'service': service,
-        'created_by': user
-    }
-    if subject_line:
-        data.update({
-            'subject': subject_line
-        })
-    template = Template(**data)
-    dao_create_template(template)
-    return template
+        template_type='email',
+        with_history=True)
 
 
 @pytest.fixture(scope='function')
@@ -227,15 +287,38 @@ def sample_email_template_with_placeholders(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
+def sample_email_template_history_with_placeholders(notify_db, notify_db_session):
+    return sample_template(
+        notify_db,
+        notify_db_session,
+        template_type="email",
+        content="Hello ((name))",
+        subject_line="((name))",
+        with_history=True)
+
+
+@pytest.fixture(scope='function')
 def sample_api_key(notify_db,
                    notify_db_session,
-                   service=None):
+                   service=None,
+                   version=1,
+                   with_history=True):
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
-    data = {'service': service, 'name': uuid.uuid4(), 'created_by': service.created_by}
-    api_key = ApiKey(**data)
-    save_model_api_key(api_key)
+        service = sample_service(notify_db, notify_db_session, with_history=with_history)
+    data = {
+        'service': service,
+        'name': uuid.uuid4(),
+        'created_by': service.created_by,
+        'secret': _generate_secret()}
+    api_key = create_model('ApiKey', **data)
+    if with_history:
+        history = create_history_from_model(api_key, version=version)
     return api_key
+
+
+@pytest.fixture(scope='function')
+def sample_api_key_history(notify_db, notify_db_session):
+    return sample_api_key(notify_db, notify_db_session, with_history=True)
 
 
 @pytest.fixture(scope='function')
@@ -243,27 +326,43 @@ def sample_job(notify_db,
                notify_db_session,
                service=None,
                template=None,
+               original_file_name="some.csv",
                notification_count=1,
-               created_at=datetime.utcnow()):
+               created_at=datetime.utcnow(),
+               with_history=False):
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = sample_service(notify_db, notify_db_session, with_history=with_history)
     if template is None:
-        template = sample_template(notify_db, notify_db_session,
-                                   service=service)
+        template = sample_template(
+            notify_db,
+            notify_db_session,
+            service=service,
+            with_history=with_history)
     data = {
         'id': uuid.uuid4(),
         'service_id': service.id,
         'service': service,
         'template_id': template.id,
         'template_version': template.version,
-        'original_file_name': 'some.csv',
+        'original_file_name': original_file_name,
         'notification_count': notification_count,
         'created_at': created_at,
         'created_by': service.created_by
     }
-    job = Job(**data)
-    dao_create_job(job)
+    job = create_model('Job', **data)
     return job
+
+
+@pytest.fixture(scope='function')
+def sample_job_history(notify_db,
+                       notify_db_session,
+                       service=None,
+                       template=None):
+    if service is None:
+        service = sample_service(notify_db, notify_db_session, with_history=True)
+    if template is None:
+        template = sample_template(notify_db, notify_db_session, service=service, with_history=True)
+    return sample_job(notify_db, notify_db_session, service=service, template=template)
 
 
 @pytest.fixture(scope='function')
@@ -281,6 +380,15 @@ def sample_job_with_placeholdered_template(
 
 
 @pytest.fixture(scope='function')
+def sample_job_history_with_placeholdered_template(notify_db, notify_db_session):
+    return sample_job(
+        notify_db,
+        notify_db_session,
+        template=sample_template_history_with_placeholders(notify_db, notify_db_session)
+    )
+
+
+@pytest.fixture(scope='function')
 def sample_email_job(notify_db,
                      notify_db_session,
                      service=None,
@@ -291,21 +399,29 @@ def sample_email_job(notify_db,
         template = sample_email_template(
             notify_db,
             notify_db_session,
+            template_type='email',
             service=service)
-    job_id = uuid.uuid4()
-    data = {
-        'id': job_id,
-        'service_id': service.id,
-        'service': service,
-        'template_id': template.id,
-        'template_version': template.version,
-        'original_file_name': 'some.csv',
-        'notification_count': 1,
-        'created_by': service.created_by
-    }
-    job = Job(**data)
-    dao_create_job(job)
-    return job
+    return sample_job(
+        notify_db,
+        notify_db_session,
+        service=service,
+        template=template)
+
+
+@pytest.fixture(scope='function')
+def sample_email_job_history(notify_db,
+                             notify_db_session,
+                             service=None,
+                             template=None):
+    if service is None:
+        service = sample_service(notify_db, notify_db_session, with_history=True)
+    if template is None:
+        template = sample_template(notify_db, notify_db_session, template_type='email', with_history=True)
+    return sample_job(
+        notify_db,
+        notify_db_session,
+        service=service,
+        template=template)
 
 
 @pytest.fixture(scope='function')
@@ -321,7 +437,7 @@ def sample_notification(notify_db,
                         created_at=datetime.utcnow(),
                         provider_name=None,
                         content_char_count=160,
-                        create=True):
+                        dao_create=False):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:
@@ -354,10 +470,18 @@ def sample_notification(notify_db,
     }
     if job_row_number:
         data['job_row_number'] = job_row_number
-    notification = Notification(**data)
-    if create:
+
+    if dao_create:
+        notification = Notification(**data)
         dao_create_notification(notification, template.template_type, provider_name)
+    else:
+        notification = create_model('Notification', **data)
     return notification
+
+
+@pytest.fixture(scope='function')
+def sample_dao_notification(notify_db, notify_db_session):
+    return sample_notification(notify_db, notify_db_session, dao_create=True)
 
 
 @pytest.fixture(scope='function')
@@ -404,8 +528,7 @@ def sample_invited_user(notify_db,
         'from_user': from_user,
         'permissions': 'send_messages,manage_service,manage_api_keys'
     }
-    invited_user = InvitedUser(**data)
-    save_invited_user(invited_user)
+    invited_user = create_model('InvitedUser', **data)
     return invited_user
 
 

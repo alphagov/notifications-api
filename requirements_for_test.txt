@@ -7,3 +7,4 @@ mock==1.0.1
 moto==0.4.19
 freezegun==0.3.6
 requests-mock==0.7.0
+pytest-profiling==1.1.1

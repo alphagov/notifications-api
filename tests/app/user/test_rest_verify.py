@@ -21,16 +21,17 @@ import app.celery.tasks
 
 
 def test_user_verify_code_sms(notify_api,
-                              sample_sms_code):
+                              sample_sms_code_plus_code):
     """
     Tests POST endpoint '/<user_id>/verify/code'
     """
+    sample_sms_code, txt_code = sample_sms_code_plus_code
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             assert not VerifyCode.query.first().code_used
             data = json.dumps({
                 'code_type': sample_sms_code.code_type,
-                'code': sample_sms_code.txt_code})
+                'code': txt_code})
             auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.verify_user_code', user_id=sample_sms_code.user.id),
@@ -61,16 +62,17 @@ def test_user_verify_code_sms_missing_code(notify_api,
 @moto.mock_sqs
 def test_user_verify_code_email(notify_api,
                                 sqs_client_conn,
-                                sample_email_code):
+                                sample_email_code_plus_code):
     """
     Tests POST endpoint '/<user_id>/verify/code'
     """
+    sample_email_code, txt_code = sample_email_code_plus_code
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             assert not VerifyCode.query.first().code_used
             data = json.dumps({
                 'code_type': sample_email_code.code_type,
-                'code': sample_email_code.txt_code})
+                'code': txt_code})
             auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.verify_user_code', user_id=sample_email_code.user.id),
@@ -101,10 +103,11 @@ def test_user_verify_code_email_bad_code(notify_api,
 
 
 def test_user_verify_code_email_expired_code(notify_api,
-                                             sample_email_code):
+                                             sample_email_code_plus_code):
     """
     Tests POST endpoint '/<user_id>/verify/code'
     """
+    sample_email_code, txt_code = sample_email_code_plus_code
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             assert not VerifyCode.query.first().code_used
@@ -114,7 +117,7 @@ def test_user_verify_code_email_expired_code(notify_api,
             db.session.commit()
             data = json.dumps({
                 'code_type': sample_email_code.code_type,
-                'code': sample_email_code.txt_code})
+                'code': txt_code})
             auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.verify_user_code', user_id=sample_email_code.user.id),

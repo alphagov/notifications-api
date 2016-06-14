@@ -563,51 +563,6 @@ def test_get_users_for_service_returns_404_when_service_does_not_exist(notify_ap
             assert result['message'] == 'No result found'
 
 
-def test_default_permissions_are_added_for_user_service(notify_api,
-                                                        notify_db,
-                                                        notify_db_session,
-                                                        sample_service,
-                                                        sample_user):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = {
-                'name': 'created service',
-                'user_id': str(sample_user.id),
-                'message_limit': 1000,
-                'restricted': False,
-                'active': False,
-                'email_from': 'created.service',
-                'created_by': str(sample_user.id)}
-            auth_header = create_authorization_header()
-            headers = [('Content-Type', 'application/json'), auth_header]
-            resp = client.post(
-                '/service',
-                data=json.dumps(data),
-                headers=headers)
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 201
-            assert json_resp['data']['id']
-            assert json_resp['data']['name'] == 'created service'
-            assert json_resp['data']['email_from'] == 'created.service'
-
-            auth_header_fetch = create_authorization_header()
-
-            resp = client.get(
-                '/service/{}?user_id={}'.format(json_resp['data']['id'], sample_user.id),
-                headers=[auth_header_fetch]
-            )
-            assert resp.status_code == 200
-            header = create_authorization_header()
-            response = client.get(
-                url_for('user.get_user', user_id=sample_user.id),
-                headers=[header])
-            assert response.status_code == 200
-            json_resp = json.loads(response.get_data(as_text=True))
-            service_permissions = json_resp['data']['permissions'][str(sample_service.id)]
-            from app.dao.permissions_dao import default_service_permissions
-            assert sorted(default_service_permissions) == sorted(service_permissions)
-
-
 def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
                                                                    notify_db,
                                                                    notify_db_session,
@@ -899,7 +854,7 @@ def test_remove_user_from_service(notify_api, notify_db, notify_db_session, samp
             second_user = create_sample_user(
                 notify_db,
                 notify_db_session,
-                email="new@digital.cabinet-office.gov.uk")
+                email_address="new@digital.cabinet-office.gov.uk")
             # Simulates successfully adding a user to the service
             second_permission = create_sample_service_permission(
                 notify_db,
@@ -922,7 +877,7 @@ def test_remove_user_from_service(notify_api, notify_db, notify_db_session, samp
             second_user = create_sample_user(
                 notify_db,
                 notify_db_session,
-                email="new@digital.cabinet-office.gov.uk")
+                email_address="new@digital.cabinet-office.gov.uk")
             endpoint = url_for(
                 'service.remove_user_from_service',
                 service_id=str(sample_service_permission.service.id),
@@ -955,23 +910,26 @@ def test_cannot_remove_only_user_from_service(notify_api,
 
 # This test is just here verify get_service_and_api_key_history that is a temp solution
 # until proper ui is sorted out on admin app
-def test_get_service_and_api_key_history(notify_api, notify_db, notify_db_session, sample_service):
+def test_get_service_and_api_key_history(notify_api,
+                                         notify_db,
+                                         notify_db_session,
+                                         sample_service_history):
 
     from tests.app.conftest import sample_api_key as create_sample_api_key
-    api_key = create_sample_api_key(notify_db, notify_db_session, service=sample_service)
+    api_key = create_sample_api_key(notify_db, notify_db_session, service=sample_service_history)
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
             auth_header = create_authorization_header()
             response = client.get(
-                path='/service/{}/history'.format(sample_service.id),
+                path='/service/{}/history'.format(sample_service_history.id),
                 headers=[auth_header]
             )
             assert response.status_code == 200
 
             json_resp = json.loads(response.get_data(as_text=True))
-            assert json_resp['data']['service_history'][0]['id'] == str(sample_service.id)
+            assert json_resp['data']['service_history'][0]['id'] == str(sample_service_history.id)
             assert json_resp['data']['api_key_history'][0]['id'] == str(api_key.id)
 
 

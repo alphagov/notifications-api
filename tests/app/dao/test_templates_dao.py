@@ -244,23 +244,25 @@ def test_update_template_creates_a_history_record_with_current_data(sample_servi
     assert Template.get_history_model().query.filter_by(name='new name').one().version == 2
 
 
-def test_get_template_history_version(sample_user, sample_service, sample_template):
-    old_content = sample_template.content
-    sample_template.content = "New content"
-    dao_update_template(sample_template)
+def test_get_template_history_version(sample_user, sample_service, sample_template_history):
+    old_content = sample_template_history.content
+    sample_template_history.content = "New content"
+    dao_update_template(sample_template_history)
     old_template = dao_get_template_by_id_and_service_id(
-        sample_template.id,
+        sample_template_history.id,
         sample_service.id,
         '1'
     )
     assert old_template.content == old_content
 
 
-def test_get_template_versions(sample_template):
-    original_content = sample_template.content
-    sample_template.content = 'new version'
-    dao_update_template(sample_template)
-    versions = dao_get_template_versions(service_id=sample_template.service_id, template_id=sample_template.id)
+def test_get_template_versions(sample_template_history):
+    original_content = sample_template_history.content
+    sample_template_history.content = 'new version'
+    dao_update_template(sample_template_history)
+    versions = dao_get_template_versions(
+        service_id=sample_template_history.service_id,
+        template_id=sample_template_history.id)
     assert versions.__len__() == 2
     for x in versions:
         if x.version == 2:
