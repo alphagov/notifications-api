@@ -1040,7 +1040,7 @@ def test_should_block_api_call_if_over_day_limit(notify_db, notify_db_session, n
             json_resp = json.loads(response.get_data(as_text=True))
 
             assert response.status_code == 429
-            assert 'Exceeded send limits (1) for today' in json_resp['message']
+            assert 'Exceeded send limits (1) for today' in json_resp['message']['send_limit']
 
 
 def test_no_limit_for_live_service(notify_api,
@@ -1098,7 +1098,7 @@ def test_should_block_api_call_if_over_day_limit_regardless_of_type(notify_db, n
                 headers=[('Content-Type', 'application/json'), auth_header])
             json_resp = json.loads(response.get_data(as_text=True))
             assert response.status_code == 429
-            assert 'Exceeded send limits (1) for today' in json_resp['message']
+            assert 'Exceeded send limits (1) for today' in json_resp['message']['send_limit']
 
 
 @freeze_time("2016-01-01 12:00:00.061258")

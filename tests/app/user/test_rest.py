@@ -296,7 +296,7 @@ def test_get_user_by_email_bad_url_returns_404(notify_api,
             assert resp.status_code == 400
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'invalid request'
+            assert json_resp['message'] == 'Invalid request. Email query string param required'
 
 
 def test_get_user_with_permissions(notify_api,

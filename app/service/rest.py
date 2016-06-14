@@ -6,9 +6,9 @@ from datetime import (
 from flask import (
     jsonify,
     request,
-    abort,
     Blueprint
 )
+
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.api_key_dao import (
@@ -39,11 +39,12 @@ from app.schemas import (
     permission_schema
 )
 
-from app.errors import register_errors
+from app.errors import (
+    register_errors,
+    InvalidData
+)
 
 service = Blueprint('service', __name__)
-
-
 register_errors(service)
 
 
@@ -55,6 +56,8 @@ def get_services():
     else:
         services = dao_fetch_all_services()
     data, errors = service_schema.dump(services, many=True)
+    if errors:
+        raise InvalidData(errors, status_code=400)
     return jsonify(data=data)
 
 
@@ -67,6 +70,8 @@ def get_service_by_id(service_id):
         fetched = dao_fetch_service_by_id(service_id)
 
     data, errors = service_schema.dump(fetched)
+    if errors:
+        raise InvalidData(errors, status_code=400)
     return jsonify(data=data)
 
 
@@ -74,7 +79,8 @@ def get_service_by_id(service_id):
 def create_service():
     data = request.get_json()
     if not data.get('user_id', None):
-        return jsonify(result="error", message={'user_id': ['Missing data for required field.']}), 400
+        errors = {'user_id': ['Missing data for required field.']}
+        raise InvalidData(errors, status_code=400)
 
     user = get_model_users(data['user_id'])
 
@@ -82,7 +88,7 @@ def create_service():
     valid_service, errors = service_schema.load(request.get_json())
 
     if errors:
-        return jsonify(result="error", message=errors), 400
+        raise InvalidData(errors, status_code=400)
 
     dao_create_service(valid_service, user)
     return jsonify(data=service_schema.dump(valid_service).data), 201
@@ -95,7 +101,7 @@ def update_service(service_id):
     current_data.update(request.get_json())
     update_dict, errors = service_schema.load(current_data)
     if errors:
-        return jsonify(result="error", message=errors), 400
+        raise InvalidData(errors, status_code=400)
     dao_update_service(update_dict)
     return jsonify(data=service_schema.dump(fetched_service).data), 200
 
@@ -106,7 +112,7 @@ def renew_api_key(service_id=None):
 
     valid_api_key, errors = api_key_schema.load(request.get_json())
     if errors:
-        return jsonify(result="error", message=errors), 400
+        raise InvalidData(errors, status_code=400)
     valid_api_key.service = fetched_service
 
     save_model_api_key(valid_api_key)
@@ -133,7 +139,8 @@ def get_api_keys(service_id, key_id=None):
         else:
             api_keys = get_model_api_keys(service_id=service_id)
     except NoResultFound:
-        return jsonify(result="error", message="API key not found for id: {}".format(service_id)), 404
+        error = "API key not found for id: {}".format(service_id)
+        raise InvalidData(error, status_code=404)
 
     return jsonify(apiKeys=api_key_schema.dump(api_keys, many=True).data), 200
 
@@ -152,12 +159,12 @@ def add_user_to_service(service_id, user_id):
     user = get_model_users(user_id=user_id)
 
     if user in service.users:
-        return jsonify(result='error',
-                       message='User id: {} already part of service id: {}'.format(user_id, service_id)), 400
+        error = 'User id: {} already part of service id: {}'.format(user_id, service_id)
+        raise InvalidData(error, status_code=400)
 
     permissions, errors = permission_schema.load(request.get_json(), many=True)
     if errors:
-        abort(400, errors)
+        raise InvalidData(errors, status_code=400)
 
     dao_add_user_to_service(service, user, permissions)
     data, errors = service_schema.dump(service)
@@ -169,13 +176,13 @@ def remove_user_from_service(service_id, user_id):
     service = dao_fetch_service_by_id(service_id)
     user = get_model_users(user_id=user_id)
     if user not in service.users:
-        return jsonify(
-            result='error',
-            message='User not found'), 404
+        error = 'User not found'
+        raise InvalidData(error, status_code=404)
+
     elif len(service.users) == 1:
-        return jsonify(
-            result='error',
-            message='You cannot remove the only user for a service'), 400
+        error = 'You cannot remove the only user for a service'
+        raise InvalidData(error, status_code=400)
+
     dao_remove_user_from_service(service, user)
     return jsonify({}), 204
 
@@ -185,7 +192,7 @@ def get_service_provider_aggregate_statistics(service_id):
     service = dao_fetch_service_by_id(service_id)
     data, errors = from_to_date_schema.load(request.args)
     if errors:
-        return jsonify(result='error', message=errors), 400
+        raise InvalidData(errors, status_code=400)
 
     return jsonify(data=get_fragment_count(
         service,
@@ -210,13 +217,13 @@ def get_service_history(service_id):
     service_history = Service.get_history_model().query.filter_by(id=service_id).all()
     service_data, errors = service_history_schema.dump(service_history, many=True)
     if errors:
-        return jsonify(result="error", message=errors), 400
+        raise InvalidData(errors, status_code=400)
 
     api_key_history = ApiKey.get_history_model().query.filter_by(service_id=service_id).all()
 
     api_keys_data, errors = api_key_history_schema.dump(api_key_history, many=True)
     if errors:
-        return jsonify(result="error", message=errors), 400
+        raise InvalidData(errors, status_code=400)
 
     template_history = Template.get_history_model().query.filter_by(service_id=service_id).all()
     template_data, errors = template_history_schema.dump(template_history, many=True)
