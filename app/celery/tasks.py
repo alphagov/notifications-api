@@ -182,16 +182,10 @@ def process_job(job_id):
             )
 
         if template.template_type == 'email':
-            from_email = '"{}" <{}@{}>'.format(
-                service.name,
-                service.email_from,
-                current_app.config['NOTIFY_EMAIL_DOMAIN']
-            )
-
             send_email.apply_async((
                 str(job.service_id),
                 create_uuid(),
-                from_email.encode('ascii', 'ignore').decode('ascii'),
+                '',
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
                 {'reply_to_addresses': service.reply_to_email_address},
@@ -307,6 +301,9 @@ def send_email(service_id, notification_id, from_address, encrypted_notification
                     (provider.get_name(), str(reference), notification['to']), queue='research-mode'
                 )
             else:
+                # First step setting the from_address here rather than the method creating the task
+                from_address = '"{}" <{}@{}>'.format(service.name, service.email_from, current_app.config[
+                    'NOTIFY_EMAIL_DOMAIN']) if from_address == "" else from_address
                 reference = provider.send_email(
                     from_address,
                     notification['to'],
