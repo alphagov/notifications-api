@@ -1003,7 +1003,6 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
             app.celery.tasks.send_email.apply_async.assert_called_once_with(
                 (str(sample_email_template.service_id),
                  notification_id,
-                 "",
                  "something_encrypted",
                  "2016-01-01T11:09:00.061258"),
                 queue="email"

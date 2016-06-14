@@ -469,27 +469,6 @@ def registration_verification_template(name, url):
     )
 
 
-@notify_celery.task(name='email-registration-verification')
-def email_registration_verification(encrypted_verification_message):
-    provider = provider_to_use('email', 'email-reset-password')
-
-    verification_message = encryption.decrypt(encrypted_verification_message)
-    try:
-        email_from = '"GOV.UK Notify" <{}>'.format(
-            current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS']
-        )
-        provider.send_email(
-            email_from,
-            verification_message['to'],
-            "Confirm GOV.UK Notify registration",
-            registration_verification_template(
-                name=verification_message['name'],
-                url=verification_message['url'])
-        )
-    except EmailClientException as e:
-        current_app.logger.exception(e)
-
-
 def service_allowed_to_send_to(recipient, service):
     if not service.restricted:
         return True
