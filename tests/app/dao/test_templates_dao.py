@@ -267,6 +267,6 @@ def test_get_template_versions(sample_template):
             assert x.content == 'new version'
         else:
             assert x.content == original_content
-    from app.schemas import (template_history_schema)
+    from app.schemas import template_history_schema
     v = template_history_schema.load(versions, many=True)
     assert v.__len__() == 2

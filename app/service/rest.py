@@ -6,9 +6,9 @@ from datetime import (
 from flask import (
     jsonify,
     request,
-    abort,
     Blueprint
 )
+
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.api_key_dao import (
@@ -39,11 +39,12 @@ from app.schemas import (
     permission_schema
 )
 
-from app.errors import register_errors
+from app.errors import (
+    register_errors,
+    InvalidRequest
+)
 
 service = Blueprint('service', __name__)
-
-
 register_errors(service)
 
 
@@ -54,7 +55,7 @@ def get_services():
         services = dao_fetch_all_services_by_user(user_id)
     else:
         services = dao_fetch_all_services()
-    data, errors = service_schema.dump(services, many=True)
+    data = service_schema.dump(services, many=True).data
     return jsonify(data=data)
 
 
@@ -66,7 +67,7 @@ def get_service_by_id(service_id):
     else:
         fetched = dao_fetch_service_by_id(service_id)
 
-    data, errors = service_schema.dump(fetched)
+    data = service_schema.dump(fetched).data
     return jsonify(data=data)
 
 
@@ -74,16 +75,12 @@ def get_service_by_id(service_id):
 def create_service():
     data = request.get_json()
     if not data.get('user_id', None):
-        return jsonify(result="error", message={'user_id': ['Missing data for required field.']}), 400
+        errors = {'user_id': ['Missing data for required field.']}
+        raise InvalidRequest(errors, status_code=400)
 
     user = get_model_users(data['user_id'])
-
     data.pop('user_id', None)
-    valid_service, errors = service_schema.load(request.get_json())
-
-    if errors:
-        return jsonify(result="error", message=errors), 400
-
+    valid_service = service_schema.load(request.get_json()).data
     dao_create_service(valid_service, user)
     return jsonify(data=service_schema.dump(valid_service).data), 201
 
@@ -93,9 +90,7 @@ def update_service(service_id):
     fetched_service = dao_fetch_service_by_id(service_id)
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())
-    update_dict, errors = service_schema.load(current_data)
-    if errors:
-        return jsonify(result="error", message=errors), 400
+    update_dict = service_schema.load(current_data).data
     dao_update_service(update_dict)
     return jsonify(data=service_schema.dump(fetched_service).data), 200
 
@@ -103,14 +98,9 @@ def update_service(service_id):
 @service.route('/<uuid:service_id>/api-key', methods=['POST'])
 def renew_api_key(service_id=None):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
-
-    valid_api_key, errors = api_key_schema.load(request.get_json())
-    if errors:
-        return jsonify(result="error", message=errors), 400
+    valid_api_key = api_key_schema.load(request.get_json()).data
     valid_api_key.service = fetched_service
-
     save_model_api_key(valid_api_key)
-
     unsigned_api_key = get_unsigned_secret(valid_api_key.id)
     return jsonify(data=unsigned_api_key), 201
 
@@ -133,7 +123,8 @@ def get_api_keys(service_id, key_id=None):
         else:
             api_keys = get_model_api_keys(service_id=service_id)
     except NoResultFound:
-        return jsonify(result="error", message="API key not found for id: {}".format(service_id)), 404
+        error = "API key not found for id: {}".format(service_id)
+        raise InvalidRequest(error, status_code=404)
 
     return jsonify(apiKeys=api_key_schema.dump(api_keys, many=True).data), 200
 
@@ -141,7 +132,6 @@ def get_api_keys(service_id, key_id=None):
 @service.route('/<uuid:service_id>/users', methods=['GET'])
 def get_users_for_service(service_id):
     fetched = dao_fetch_service_by_id(service_id)
-
     result = user_schema.dump(fetched.users, many=True)
     return jsonify(data=result.data)
 
@@ -152,15 +142,12 @@ def add_user_to_service(service_id, user_id):
     user = get_model_users(user_id=user_id)
 
     if user in service.users:
-        return jsonify(result='error',
-                       message='User id: {} already part of service id: {}'.format(user_id, service_id)), 400
+        error = 'User id: {} already part of service id: {}'.format(user_id, service_id)
+        raise InvalidRequest(error, status_code=400)
 
-    permissions, errors = permission_schema.load(request.get_json(), many=True)
-    if errors:
-        abort(400, errors)
-
+    permissions = permission_schema.load(request.get_json(), many=True).data
     dao_add_user_to_service(service, user, permissions)
-    data, errors = service_schema.dump(service)
+    data = service_schema.dump(service).data
     return jsonify(data=data), 201
 
 
@@ -169,13 +156,13 @@ def remove_user_from_service(service_id, user_id):
     service = dao_fetch_service_by_id(service_id)
     user = get_model_users(user_id=user_id)
     if user not in service.users:
-        return jsonify(
-            result='error',
-            message='User not found'), 404
+        error = 'User not found'
+        raise InvalidRequest(error, status_code=404)
+
     elif len(service.users) == 1:
-        return jsonify(
-            result='error',
-            message='You cannot remove the only user for a service'), 400
+        error = 'You cannot remove the only user for a service'
+        raise InvalidRequest(error, status_code=400)
+
     dao_remove_user_from_service(service, user)
     return jsonify({}), 204
 
@@ -183,10 +170,7 @@ def remove_user_from_service(service_id, user_id):
 @service.route('/<uuid:service_id>/fragment/aggregate_statistics')
 def get_service_provider_aggregate_statistics(service_id):
     service = dao_fetch_service_by_id(service_id)
-    data, errors = from_to_date_schema.load(request.args)
-    if errors:
-        return jsonify(result='error', message=errors), 400
-
+    data = from_to_date_schema.load(request.args).data
     return jsonify(data=get_fragment_count(
         service,
         date_from=(data.pop('date_from') if 'date_from' in data else date.today()),
@@ -208,21 +192,15 @@ def get_service_history(service_id):
     )
 
     service_history = Service.get_history_model().query.filter_by(id=service_id).all()
-    service_data, errors = service_history_schema.dump(service_history, many=True)
-    if errors:
-        return jsonify(result="error", message=errors), 400
-
+    service_data = service_history_schema.dump(service_history, many=True).data
     api_key_history = ApiKey.get_history_model().query.filter_by(service_id=service_id).all()
-
-    api_keys_data, errors = api_key_history_schema.dump(api_key_history, many=True)
-    if errors:
-        return jsonify(result="error", message=errors), 400
+    api_keys_data = api_key_history_schema.dump(api_key_history, many=True).data
 
     template_history = Template.get_history_model().query.filter_by(service_id=service_id).all()
     template_data, errors = template_history_schema.dump(template_history, many=True)
 
     events = Event.query.all()
-    events_data, errors = event_schema.dump(events, many=True)
+    events_data = event_schema.dump(events, many=True).data
 
     data = {
         'service_history': service_data,
