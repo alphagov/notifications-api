@@ -29,10 +29,7 @@ register_errors(template)
 
 def _content_count_greater_than_limit(content, template_type):
     template = Template({'content': content, 'template_type': template_type})
-    if template_type == 'sms' and \
-       template.content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT'):
-        return True
-    return False
+    return template_type == 'sms' and template.content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
 
 
 @template.route('', methods=['POST'])

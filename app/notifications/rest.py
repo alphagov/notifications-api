@@ -292,6 +292,9 @@ def send_notification(notification_type):
         sms_template_notification_schema if notification_type == 'sms' else email_notification_schema
     ).load(request.get_json())
 
+    if errors:
+        raise InvalidRequest(errors, status_code=400)
+
     template = templates_dao.dao_get_template_by_id_and_service_id(
         template_id=notification['template'],
         service_id=service_id

@@ -1,8 +1,8 @@
 from flask import (
     Blueprint,
     jsonify,
-    request,
-    current_app)
+    request
+)
 
 from app.dao.jobs_dao import (
     dao_create_job,
@@ -43,7 +43,7 @@ def get_jobs_by_service(service_id):
         try:
             limit_days = int(request.args['limit_days'])
         except ValueError as e:
-            errors = {'error': ['{} is not an integer'.format(request.args['limit_days'])]}
+            errors = {'limit_days': ['{} is not an integer'.format(request.args['limit_days'])]}
             raise InvalidRequest(errors, status_code=400)
     else:
         limit_days = None
