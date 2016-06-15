@@ -392,7 +392,25 @@ def send_notification(notification_type):
         ), queue='email')
 
     statsd_client.incr('notifications.api.{}'.format(notification_type))
-    return jsonify(data={"notification": {"id": notification_id}}), 201
+    return jsonify(
+        data=get_notification_return_data(
+            notification_id,
+            notification,
+            template_object)
+    ), 201
+
+
+def get_notification_return_data(notification_id, notification, template):
+    output = {
+        'body': template.replaced,
+        'template_version': notification['template_version'],
+        'notification': {'id': notification_id}
+    }
+
+    if template.template_type == 'email':
+        output.update({'subject': template.subject})
+
+    return output
 
 
 @notifications.route('/notifications/statistics')
