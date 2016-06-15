@@ -70,7 +70,7 @@ class UserSchema(BaseSchema):
 
     def user_permissions(self, usr):
         retval = {}
-        for x in permission_dao.get_query({'user': usr.id}):
+        for x in permission_dao.get_permissions_by_user_id(usr.id):
             service_id = str(x.service_id)
             if service_id not in retval:
                 retval[service_id] = []
