@@ -15,7 +15,7 @@ template_statistics = Blueprint('template-statistics',
                                 __name__,
                                 url_prefix='/service/<service_id>/template-statistics')
 
-from app.errors import register_errors, InvalidData
+from app.errors import register_errors, InvalidRequest
 
 register_errors(template_statistics)
 
@@ -28,20 +28,16 @@ def get_template_statistics_for_service(service_id):
         except ValueError as e:
             error = '{} is not an integer'.format(request.args['limit_days'])
             message = {'limit_days': [error]}
-            raise InvalidData(message, status_code=400)
+            raise InvalidRequest(message, status_code=400)
     else:
         limit_days = None
     stats = dao_get_template_statistics_for_service(service_id, limit_days=limit_days)
-    data, errors = template_statistics_schema.dump(stats, many=True)
-    if errors:
-        raise InvalidData(errors, status_code=400)
+    data = template_statistics_schema.dump(stats, many=True).data
     return jsonify(data=data)
 
 
 @template_statistics.route('/<template_id>')
 def get_template_statistics_for_template_id(service_id, template_id):
     stats = dao_get_template_statistics_for_template(template_id)
-    data, errors = template_statistics_schema.dump(stats, many=True)
-    if errors:
-        raise InvalidData(errors, status_code=400)
+    data = template_statistics_schema.dump(stats, many=True).data
     return jsonify(data=data)

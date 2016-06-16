@@ -3,7 +3,7 @@ import random
 import string
 
 from unittest.mock import ANY
-from flask import (json, current_app, url_for)
+from flask import (json, current_app)
 from freezegun import freeze_time
 
 import app
@@ -109,9 +109,9 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_templat
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
 
-            notification_id = json.loads(response.data)['data']['notification']['id']
+            response_data = json.loads(response.data)['data']
+            notification_id = response_data['notification']['id']
             data.update({"template_version": sample_template_with_placeholders.version})
-            encrypted_notification = encryption.encrypt(data)
 
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 (str(sample_template_with_placeholders.service.id),
@@ -122,23 +122,22 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_templat
             )
             assert response.status_code == 201
             assert encryption.decrypt(app.celery.tasks.send_sms.apply_async.call_args[0][0][2]) == data
+            assert response_data['body'] == 'Hello Jo'
 
 
-def test_should_not_send_notification_for_archived_template(notify_api, sample_template, mocker):
+def test_should_not_send_notification_for_archived_template(notify_api, sample_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             sample_template.archived = True
             dao_update_template(sample_template)
-            limit = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
             json_data = json.dumps({
                 'to': '+447700900855',
                 'template': sample_template.id
             })
-            endpoint = url_for('notifications.send_notification', notification_type='sms')
             auth_header = create_authorization_header(service_id=sample_template.service.id)
 
             resp = client.post(
-                path=endpoint,
+                path='/notifications/sms',
                 data=json_data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 400
@@ -272,11 +271,10 @@ def test_should_not_allow_template_content_too_large(notify_api, notify_db, noti
                         random.choice(string.ascii_uppercase + string.digits) for _ in range(limit + 1))
                 }
             })
-            endpoint = url_for('notifications.send_notification', notification_type='sms')
             auth_header = create_authorization_header(service_id=template.service.id)
 
             resp = client.post(
-                path=endpoint,
+                path='/notifications/sms',
                 data=json_data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 400
@@ -305,7 +303,8 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
 
-            notification_id = json.loads(response.data)['data']['notification']['id']
+            response_data = json.loads(response.data)['data']
+            notification_id = response_data['notification']['id']
             assert app.encryption.encrypt.call_args[0][0]['to'] == '+447700900855'
             assert app.encryption.encrypt.call_args[0][0]['template'] == str(sample_template.id)
             assert app.encryption.encrypt.call_args[0][0]['template_version'] == sample_template.version
@@ -319,6 +318,9 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
             )
             assert response.status_code == 201
             assert notification_id
+            assert 'subject' not in response_data
+            assert response_data['body'] == sample_template.content
+            assert response_data['template_version'] == sample_template.version
 
 
 def test_create_email_should_reject_if_missing_required_fields(notify_api, sample_api_key, mocker):
@@ -499,7 +501,8 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 201
-            notification_id = json.loads(response.get_data(as_text=True))['data']['notification']['id']
+            response_data = json.loads(response.get_data(as_text=True))['data']
+            notification_id = response_data['notification']['id']
             assert app.encryption.encrypt.call_args[0][0]['to'] == 'ok@ok.com'
             assert app.encryption.encrypt.call_args[0][0]['template'] == str(sample_email_template.id)
             assert app.encryption.encrypt.call_args[0][0]['template_version'] == sample_email_template.version
@@ -513,6 +516,9 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
 
             assert response.status_code == 201
             assert notification_id
+            assert response_data['subject'] == 'Email Subject'
+            assert response_data['body'] == sample_email_template.content
+            assert response_data['template_version'] == sample_email_template.version
 
 
 @freeze_time("2016-01-01 12:00:00.061258")
@@ -547,11 +553,9 @@ def test_should_block_api_call_if_over_day_limit(notify_db, notify_db_session, n
 
 def test_no_limit_for_live_service(notify_api,
                                    notify_db,
-                                   notify_db_session,
                                    mock_celery_send_email,
                                    sample_service,
-                                   sample_email_template,
-                                   sample_notification):
+                                   sample_email_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             sample_service.message_limit = 1
@@ -630,7 +634,7 @@ def test_should_allow_api_call_if_under_day_limit_regardless_of_type(notify_db, 
             assert response.status_code == 201
 
 
-def test_should_record_email_request_in_statsd(notify_api, notify_db, notify_db_session, sample_email_template, mocker):
+def test_should_record_email_request_in_statsd(notify_api, sample_email_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.statsd_client.incr')
@@ -652,7 +656,7 @@ def test_should_record_email_request_in_statsd(notify_api, notify_db, notify_db_
             app.statsd_client.incr.assert_called_once_with("notifications.api.email")
 
 
-def test_should_record_sms_request_in_statsd(notify_api, notify_db, notify_db_session, sample_template, mocker):
+def test_should_record_sms_request_in_statsd(notify_api, sample_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.statsd_client.incr')
@@ -672,3 +676,24 @@ def test_should_record_sms_request_in_statsd(notify_api, notify_db, notify_db_se
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 201
             app.statsd_client.incr.assert_called_once_with("notifications.api.sms")
+
+
+def test_should_not_return_html_in_body(notify_api, notify_db, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.tasks.send_email.apply_async')
+            email_template = create_sample_email_template(notify_db, notify_db.session, content='hello\nthere')
+
+            data = {
+                'to': 'ok@ok.com',
+                'template': str(email_template.id)
+            }
+
+            auth_header = create_authorization_header(service_id=email_template.service_id)
+            response = client.post(
+                path='/notifications/email',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            assert response.status_code == 201
+            assert json.loads(response.get_data(as_text=True))['data']['body'] == 'hello\nthere'
