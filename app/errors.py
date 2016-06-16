@@ -4,9 +4,10 @@ from flask import (
 )
 from sqlalchemy.exc import SQLAlchemyError, DataError
 from sqlalchemy.orm.exc import NoResultFound
+from marshmallow import ValidationError
 
 
-class InvalidData(Exception):
+class InvalidRequest(Exception):
 
     def __init__(self, message, status_code):
         super().__init__()
@@ -22,7 +23,12 @@ class InvalidData(Exception):
 
 def register_errors(blueprint):
 
-    @blueprint.app_errorhandler(InvalidData)
+    @blueprint.app_errorhandler(ValidationError)
+    def validation_error(error):
+        current_app.logger.error(error)
+        return jsonify(result='error', message=error.messages), 400
+
+    @blueprint.app_errorhandler(InvalidRequest)
     def invalid_data(error):
         response = jsonify(error.to_dict())
         response.status_code = error.status_code

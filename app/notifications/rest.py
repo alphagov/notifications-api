@@ -35,7 +35,10 @@ from app.celery.tasks import send_sms, send_email
 
 notifications = Blueprint('notifications', __name__)
 
-from app.errors import register_errors
+from app.errors import (
+    register_errors,
+    InvalidRequest
+)
 
 register_errors(notifications)
 
@@ -47,16 +50,12 @@ def process_ses_response():
         ses_request = json.loads(request.data)
         errors = validate_callback_data(data=ses_request, fields=['Message'], client_name=client_name)
         if errors:
-            return jsonify(
-                result="error", message=errors
-            ), 400
+            raise InvalidRequest(errors, status_code=400)
 
         ses_message = json.loads(ses_request['Message'])
         errors = validate_callback_data(data=ses_message, fields=['notificationType'], client_name=client_name)
         if errors:
-            return jsonify(
-                result="error", message=errors
-            ), 400
+            raise InvalidRequest(errors, status_code=400)
 
         notification_type = ses_message['notificationType']
         if notification_type == 'Bounce':
@@ -67,12 +66,8 @@ def process_ses_response():
         try:
             aws_response_dict = get_aws_responses(notification_type)
         except KeyError:
-            message = "{} callback failed: status {} not found".format(client_name, notification_type)
-            current_app.logger.info(message)
-            return jsonify(
-                result="error",
-                message=message
-            ), 400
+            error = "{} callback failed: status {} not found".format(client_name, notification_type)
+            raise InvalidRequest(error, status_code=400)
 
         notification_status = aws_response_dict['notification_status']
         notification_statistics_status = aws_response_dict['notification_statistics_status']
@@ -93,15 +88,9 @@ def process_ses_response():
                     notification_status,
                     notification_statistics_status
             ):
-                message = "SES callback failed: notification either not found or already updated " \
-                          "from sending. Status {}".format(notification_status)
-                current_app.logger.info(
-                    message
-                )
-                return jsonify(
-                    result="error",
-                    message=message
-                ), 404
+                error = "SES callback failed: notification either not found or already updated " \
+                        "from sending. Status {}".format(notification_status)
+                raise InvalidRequest(error, status_code=404)
 
             if not aws_response_dict['success']:
                 current_app.logger.info(
@@ -117,20 +106,12 @@ def process_ses_response():
             ), 200
 
         except KeyError:
-            current_app.logger.error(
-                "SES callback failed: messageId missing"
-            )
-            return jsonify(
-                result="error", message="SES callback failed: messageId missing"
-            ), 400
+            message = "SES callback failed: messageId missing"
+            raise InvalidRequest(message, status_code=400)
 
     except ValueError as ex:
-        current_app.logger.exception(
-            "{} callback failed: invalid json {}".format(client_name, ex)
-        )
-        return jsonify(
-            result="error", message="{} callback failed: invalid json".format(client_name)
-        ), 400
+        error = "{} callback failed: invalid json".format(client_name)
+        raise InvalidRequest(error, status_code=400)
 
 
 def is_not_a_notification(source):
@@ -149,19 +130,17 @@ def is_not_a_notification(source):
 def process_mmg_response():
     client_name = 'MMG'
     data = json.loads(request.data)
-    validation_errors = validate_callback_data(data=data,
-                                               fields=['status', 'CID'],
-                                               client_name=client_name)
-    if validation_errors:
-        [current_app.logger.info(e) for e in validation_errors]
-        return jsonify(result='error', message=validation_errors), 400
+    errors = validate_callback_data(data=data,
+                                    fields=['status', 'CID'],
+                                    client_name=client_name)
+    if errors:
+        raise InvalidRequest(errors, status_code=400)
 
     success, errors = process_sms_client_response(status=str(data.get('status')),
                                                   reference=data.get('CID'),
                                                   client_name=client_name)
     if errors:
-        [current_app.logger.info(e) for e in errors]
-        return jsonify(result='error', message=errors), 400
+        raise InvalidRequest(errors, status_code=400)
     else:
         return jsonify(result='success', message=success), 200
 
@@ -169,12 +148,11 @@ def process_mmg_response():
 @notifications.route('/notifications/sms/firetext', methods=['POST'])
 def process_firetext_response():
     client_name = 'Firetext'
-    validation_errors = validate_callback_data(data=request.form,
-                                               fields=['status', 'reference'],
-                                               client_name=client_name)
-    if validation_errors:
-        current_app.logger.info(validation_errors)
-        return jsonify(result='error', message=validation_errors), 400
+    errors = validate_callback_data(data=request.form,
+                                    fields=['status', 'reference'],
+                                    client_name=client_name)
+    if errors:
+        raise InvalidRequest(errors, status_code=400)
 
     response_code = request.form.get('code')
     status = request.form.get('status')
@@ -185,8 +163,7 @@ def process_firetext_response():
                                                   reference=request.form.get('reference'),
                                                   client_name=client_name)
     if errors:
-        [current_app.logger.info(e) for e in errors]
-        return jsonify(result='error', message=errors), 400
+        raise InvalidRequest(errors, status_code=400)
     else:
         return jsonify(result='success', message=success), 200
 
@@ -199,10 +176,7 @@ def get_notifications(notification_id):
 
 @notifications.route('/notifications', methods=['GET'])
 def get_all_notifications():
-    data, errors = notifications_filter_schema.load(request.args)
-    if errors:
-        return jsonify(result="error", message=errors), 400
-
+    data = notifications_filter_schema.load(request.args).data
     page = data['page'] if 'page' in data else 1
     page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
     limit_days = data.get('limit_days')
@@ -228,10 +202,7 @@ def get_all_notifications():
 @notifications.route('/service/<service_id>/notifications', methods=['GET'])
 @require_admin()
 def get_all_notifications_for_service(service_id):
-    data, errors = notifications_filter_schema.load(request.args)
-    if errors:
-        return jsonify(result="error", message=errors), 400
-
+    data = notifications_filter_schema.load(request.args).data
     page = data['page'] if 'page' in data else 1
     page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
     limit_days = data.get('limit_days')
@@ -259,10 +230,7 @@ def get_all_notifications_for_service(service_id):
 @notifications.route('/service/<service_id>/job/<job_id>/notifications', methods=['GET'])
 @require_admin()
 def get_all_notifications_for_service_job(service_id, job_id):
-    data, errors = notifications_filter_schema.load(request.args)
-    if errors:
-        return jsonify(result="error", message=errors), 400
-
+    data = notifications_filter_schema.load(request.args).data
     page = data['page'] if 'page' in data else 1
     page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
 
@@ -317,15 +285,15 @@ def send_notification(notification_type):
         total_email_count = service_stats.emails_requested
 
         if (total_email_count + total_sms_count >= service.message_limit) and service.restricted:
-            return jsonify(result="error", message='Exceeded send limits ({}) for today'.format(
-                service.message_limit)), 429
+            error = 'Exceeded send limits ({}) for today'.format(service.message_limit)
+            raise InvalidRequest(error, status_code=429)
 
     notification, errors = (
         sms_template_notification_schema if notification_type == 'sms' else email_notification_schema
     ).load(request.get_json())
 
     if errors:
-        return jsonify(result="error", message=errors), 400
+        raise InvalidRequest(errors, status_code=400)
 
     template = templates_dao.dao_get_template_by_id_and_service_id(
         template_id=notification['template'],
@@ -334,33 +302,24 @@ def send_notification(notification_type):
 
     errors = unarchived_template_schema.validate({'archived': template.archived})
     if errors:
-        return jsonify(result='error', message=errors), 400
+        raise InvalidRequest(errors, status_code=400)
 
     template_object = Template(template.__dict__, notification.get('personalisation', {}))
     if template_object.missing_data:
-        return jsonify(
-            result="error",
-            message={
-                'template': ['Missing personalisation: {}'.format(
-                    ", ".join(template_object.missing_data)
-                )]
-            }
-        ), 400
+        message = 'Missing personalisation: {}'.format(", ".join(template_object.missing_data))
+        errors = {'template': [message]}
+        raise InvalidRequest(errors, status_code=400)
+
     if template_object.additional_data:
-        return jsonify(
-            result="error",
-            message={
-                'template': ['Personalisation not needed for template: {}'.format(
-                    ", ".join(template_object.additional_data)
-                )]
-            }
-        ), 400
+        message = 'Personalisation not needed for template: {}'.format(", ".join(template_object.additional_data))
+        errors = {'template': [message]}
+        raise InvalidRequest(errors, status_code=400)
 
     if template_object.replaced_content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT'):
-        return jsonify(
-            result="error",
-            message={'content': ['Content has a character count greater than the limit of {}'.format(
-                current_app.config.get('SMS_CHAR_COUNT_LIMIT'))]}), 400
+        char_count = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+        message = 'Content has a character count greater than the limit of {}'.format(char_count)
+        errors = {'content': [message]}
+        raise InvalidRequest(errors, status_code=400)
 
     if service.restricted and not allowed_to_send_to(
         notification['to'],
@@ -368,11 +327,9 @@ def send_notification(notification_type):
             [user.mobile_number, user.email_address] for user in service.users
         )
     ):
-        return jsonify(
-            result="error", message={
-                'to': ['Invalid {} for restricted service'.format(first_column_heading[notification_type])]
-            }
-        ), 400
+        message = 'Invalid {} for restricted service'.format(first_column_heading[notification_type])
+        errors = {'to': [message]}
+        raise InvalidRequest(errors, status_code=400)
 
     notification_id = create_uuid()
     notification.update({"template_version": template.version})
@@ -397,13 +354,9 @@ def send_notification(notification_type):
 
 @notifications.route('/notifications/statistics')
 def get_notification_statistics_for_day():
-    data, errors = day_schema.load(request.args)
-    if errors:
-        return jsonify(result='error', message=errors), 400
-
+    data = day_schema.load(request.args).data
     statistics = notifications_dao.dao_get_potential_notification_statistics_for_day(
         day=data['day']
     )
-
     data, errors = notifications_statistics_schema.dump(statistics, many=True)
     return jsonify(data=data), 200
