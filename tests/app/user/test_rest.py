@@ -1,6 +1,7 @@
 import json
 
-from flask import url_for
+from flask import url_for, current_app
+from freezegun import freeze_time
 
 import app
 from app.models import (User, Permission, MANAGE_SETTINGS, MANAGE_TEMPLATES)
@@ -391,13 +392,15 @@ def test_set_user_permissions_remove_old(notify_api,
             assert query.first().permission == MANAGE_SETTINGS
 
 
+@freeze_time("2016-01-01 11:09:00.061258")
 def test_send_user_reset_password_should_send_reset_password_link(notify_api,
                                                                   sample_user,
                                                                   mocker,
                                                                   mock_encryption):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocker.patch('app.celery.tasks.email_reset_password.apply_async')
+            mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
+            mocker.patch('app.celery.tasks.send_email.apply_async')
             data = json.dumps({'email': sample_user.email_address})
             auth_header = create_authorization_header()
             resp = client.post(
@@ -406,8 +409,12 @@ def test_send_user_reset_password_should_send_reset_password_link(notify_api,
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             assert resp.status_code == 204
-            app.celery.tasks.email_reset_password.apply_async.assert_called_once_with(['something_encrypted'],
-                                                                                      queue='email-reset-password')
+            app.celery.tasks.send_email.apply_async.assert_called_once_with(
+                [str(current_app.config['NOTIFY_SERVICE_ID']),
+                 'some_uuid',
+                 "something_encrypted",
+                 "2016-01-01T11:09:00.061258"],
+                queue="email-reset-password")
 
 
 def test_send_user_reset_password_should_return_400_when_user_doesnot_exist(notify_api,
