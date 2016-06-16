@@ -1,20 +1,20 @@
-from datetime import timedelta
-
+import uuid
+from datetime import datetime
 from flask import (
     Blueprint,
     request,
     jsonify,
     current_app)
 
-from app import encryption
+from app import encryption, DATETIME_FORMAT
 from app.dao.invited_user_dao import (
     save_invited_user,
     get_invited_user,
     get_invited_users_for_service
 )
-
+from app.dao.templates_dao import dao_get_template_by_id
 from app.schemas import invited_user_schema
-from app.celery.tasks import (email_invited_user)
+from app.celery.tasks import (send_email)
 
 invite = Blueprint('invite', __name__, url_prefix='/service/<service_id>/invite')
 
@@ -27,9 +27,25 @@ register_errors(invite)
 def create_invited_user(service_id):
     invited_user, errors = invited_user_schema.load(request.get_json())
     save_invited_user(invited_user)
-    invitation = _create_invitation(invited_user)
-    encrypted_invitation = encryption.encrypt(invitation)
-    email_invited_user.apply_async([encrypted_invitation], queue='email-invited-user')
+
+    template = dao_get_template_by_id(current_app.config['INVITATION_EMAIL_TEMPLATE_ID'])
+    message = {
+        'template': str(template.id),
+        'template_version': template.version,
+        'to': invited_user.email_address,
+        'personalisation': {
+            'user_name': invited_user.from_user.name,
+            'service_name': invited_user.service.name,
+            'url': invited_user_url(invited_user.id)
+        }
+    }
+    send_email.apply_async((
+        current_app.config['NOTIFY_SERVICE_ID'],
+        str(uuid.uuid4()),
+        encryption.encrypt(message),
+        datetime.utcnow().strftime(DATETIME_FORMAT)
+    ), queue="email-invited-user")
+
     return jsonify(data=invited_user_schema.dump(invited_user).data), 201
 
 
@@ -57,19 +73,8 @@ def update_invited_user(service_id, invited_user_id):
     return jsonify(data=invited_user_schema.dump(fetched).data), 200
 
 
-def _create_invitation(invited_user):
+def invited_user_url(invited_user_id):
     from notifications_utils.url_safe_token import generate_token
-    token = generate_token(str(invited_user.id), current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
-    # TODO: confirm what we want to do for this - the idea is that we say expires tomorrow at midnight
-    # and give 48 hours as the max_age
-    expiration_date = (invited_user.created_at + timedelta(days=current_app.config['INVITATION_EXPIRATION_DAYS'])) \
-        .replace(hour=0, minute=0, second=0, microsecond=0)
+    token = generate_token(str(invited_user_id), current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
 
-    invitation = {'to': invited_user.email_address,
-                  'user_name': invited_user.from_user.name,
-                  'service_id': str(invited_user.service_id),
-                  'service_name': invited_user.service.name,
-                  'token': token,
-                  'expiry_date': str(expiration_date)
-                  }
-    return invitation
+    return '{0}/invitation/{1}'.format(current_app.config['ADMIN_BASE_URL'], token)

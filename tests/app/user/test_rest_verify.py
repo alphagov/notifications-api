@@ -319,8 +319,8 @@ def test_send_user_email_verification(notify_api,
         with notify_api.test_client() as client:
             data = json.dumps({})
             mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
-            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
             mocked = mocker.patch('app.celery.tasks.send_email.apply_async')
+            mocker.patch('notifications_utils.url_safe_token.generate_token', return_value='the-token')
             auth_header = create_authorization_header()
             resp = client.post(
                 url_for('user.send_user_email_verification', user_id=str(sample_user.id)),
@@ -328,10 +328,20 @@ def test_send_user_email_verification(notify_api,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 204
             assert mocked.call_count == 1
+            message = {
+                'template': str(email_verification_template.id),
+                'template_version': email_verification_template.version,
+                'to': sample_user.email_address,
+                'personalisation': {
+                    'name': sample_user.name,
+                    'url': current_app.config['ADMIN_BASE_URL'] + '/verify-email/' + 'the-token'
+                }
+            }
+            print('test message: {}'.format(message))
             app.celery.tasks.send_email.apply_async.assert_called_once_with(
                 (str(current_app.config['NOTIFY_SERVICE_ID']),
                  'some_uuid',
-                 "something_encrypted",
+                 encryption.encrypt(message),
                  "2016-01-01T11:09:00.061258"),
                 queue="email-registration-verification")
 

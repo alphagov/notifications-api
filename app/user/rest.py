@@ -27,7 +27,6 @@ from app.schemas import (
 
 from app.celery.tasks import (
     send_sms,
-    email_reset_password,
     send_email
 )
 
@@ -151,8 +150,6 @@ def send_user_sms_code(user_id):
 @user.route('/<uuid:user_id>/email-verification', methods=['POST'])
 def send_user_email_verification(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
-    verify_code, errors = request_verify_code_schema.load(request.get_json())
-
     secret_code = create_secret_code()
     create_user_code(user_to_send_to, secret_code, 'email')
 
@@ -166,6 +163,7 @@ def send_user_email_verification(user_id):
             'url': _create_verification_url(user_to_send_to, secret_code)
         }
     }
+    print(message)
     send_email.apply_async((
         current_app.config['NOTIFY_SERVICE_ID'],
         str(uuid.uuid4()),
@@ -224,7 +222,7 @@ def send_user_reset_password():
         'to': user_to_send_to.email_address,
         'personalisation': {
             'user_name': user_to_send_to.name,
-            'url': _create_verification_url(user_to_send_to, _create_reset_password_url(user_to_send_to.email_address))
+            'url': _create_reset_password_url(user_to_send_to.email_address)
         }
     }
     send_email.apply_async([current_app.config['NOTIFY_SERVICE_ID'],
