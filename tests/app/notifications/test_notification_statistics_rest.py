@@ -1,8 +1,14 @@
 import json
-from datetime import (date, timedelta)
+from datetime import (
+    date,
+    timedelta
+)
+
 from flask import url_for
 from tests import create_authorization_header
 from tests.app.conftest import sample_notification_statistics as create_sample_notification_statistics
+
+from freezegun import freeze_time
 
 
 def test_get_notification_statistics(
@@ -120,3 +126,79 @@ def test_get_week_aggregate_statistics_invalid_week_count(notify_api,
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == 'error'
             assert json_resp['message']['week_count'][0] == 'Not a positive integer'
+
+
+@freeze_time('2016-01-01')
+def test_get_notification_statistics_for_specific_day(notify_api,
+                                                      notify_db,
+                                                      notify_db_session,
+                                                      sample_template):
+    the_day = date.today()
+
+    sample_notification_statistics = create_sample_notification_statistics(
+        notify_db,
+        notify_db_session,
+        day=the_day)
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = '/service/{}/notifications-statistics/day/{}'.format(sample_template.service_id, the_day)
+            auth_header = create_authorization_header(service_id=sample_template.service_id)
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 200
+            stats = json.loads(response.get_data(as_text=True))
+
+            assert stats['data']['id'] == str(sample_notification_statistics.id)
+            assert stats['data']['day'] == the_day.strftime('%Y-%m-%d')
+
+            another_day = the_day - timedelta(days=1)
+            path = '/service/{}/notifications-statistics/day/{}'.format(sample_template.service_id, another_day)
+
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 404
+
+
+@freeze_time('2016-01-01')
+def test_get_notification_statistics_for_specific_day_returns_404_if_no_stats(notify_api,
+                                                                              notify_db,
+                                                                              notify_db_session,
+                                                                              sample_template):
+    the_day = date.today()
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = '/service/{}/notifications-statistics/day/{}'.format(sample_template.service_id, the_day)
+            auth_header = create_authorization_header(service_id=sample_template.service_id)
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 404
+
+
+@freeze_time('2016-01-01')
+def test_get_notification_statistics_for_specific_day_returns_400_for_incorrect_date(notify_api,
+                                                                                     notify_db,
+                                                                                     notify_db_session,
+                                                                                     sample_template):
+    the_day = date.today()
+    incorrect_date_format = the_day.strftime('%d-%m-%Y')
+
+    create_sample_notification_statistics(
+        notify_db,
+        notify_db_session,
+        day=the_day)
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = '/service/{}/notifications-statistics/day/{}'.format(
+                sample_template.service_id,
+                incorrect_date_format)
+            auth_header = create_authorization_header(service_id=sample_template.service_id)
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 400
+
+            another_dodgy_date = 'fish'
+            path = '/service/{}/notifications-statistics/day/{}'.format(
+                sample_template.service_id,
+                another_dodgy_date)
+
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 400
