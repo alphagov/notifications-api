@@ -1,13 +1,22 @@
-from datetime import (date, timedelta)
+from datetime import (
+    date,
+    timedelta,
+    datetime
+)
+
 from flask import (
     Blueprint,
     jsonify,
-    request
+    request,
+    current_app
 )
+
+from app import DATE_FORMAT
 
 from app.dao.notifications_dao import (
     dao_get_notification_statistics_for_service,
-    dao_get_7_day_agg_notification_statistics_for_service
+    dao_get_7_day_agg_notification_statistics_for_service,
+    dao_get_notification_statistics_for_service_and_day
 )
 from app.schemas import (
     notifications_statistics_schema,
@@ -44,6 +53,28 @@ def get_all_notification_statistics_for_service(service_id):
         statistics = dao_get_notification_statistics_for_service(service_id=service_id)
 
     data, errors = notifications_statistics_schema.dump(statistics, many=True)
+    return jsonify(data=data)
+
+
+@notifications_statistics.route('/day/<day>', methods=['GET'])
+def get_notification_statistics_for_service_for_day(service_id, day):
+
+    try:
+        datetime.strptime(day, DATE_FORMAT)
+    except ValueError:
+        raise InvalidRequest('Invalid date {}'.format(day), status_code=400)
+
+    service_stats = dao_get_notification_statistics_for_service_and_day(
+        service_id,
+        day
+    )
+
+    if not service_stats:
+        message = 'No statistics found for service id: {} on day: {} '.format(service_id, day)
+        errors = {'not found': [message]}
+        raise InvalidRequest(errors, status_code=404)
+
+    data = notifications_statistics_schema.dump(service_stats).data
     return jsonify(data=data)
 
 
