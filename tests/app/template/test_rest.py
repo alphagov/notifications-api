@@ -327,15 +327,48 @@ def test_should_get_only_templates_for_that_service(notify_api, sample_user, ser
 
 
 @pytest.mark.parametrize(
-    "subject, content, path, expected_subject, expected_content, expected_error", [
+    "subject, content, template_type", [
         (
             'about your ((thing))',
             'hello ((name)) we’ve received your ((thing))',
-            '/service/{}/template/{}',
-            'about your ((thing))',
-            'hello ((name)) we’ve received your ((thing))',
-            None
+            'email'
         ),
+        (
+            None,
+            'hello ((name)) we’ve received your ((thing))',
+            'sms'
+        )
+    ]
+)
+def test_should_get_a_single_template(
+    notify_db,
+    notify_api,
+    sample_user,
+    service_factory,
+    subject,
+    content,
+    template_type
+):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+
+        template = create_sample_template(
+            notify_db, notify_db.session, subject_line=subject, content=content, template_type=template_type
+        )
+
+        response = client.get(
+            '/service/{}/template/{}'.format(template.service.id, template.id),
+            headers=[create_authorization_header()]
+        )
+
+        data = json.loads(response.get_data(as_text=True))['data']
+
+        assert response.status_code == 200
+        assert data['content'] == content
+        assert data['subject'] == subject
+
+
+@pytest.mark.parametrize(
+    "subject, content, path, expected_subject, expected_content, expected_error", [
         (
             'about your thing',
             'hello user we’ve received your thing',
@@ -368,7 +401,7 @@ def test_should_get_only_templates_for_that_service(notify_api, sample_user, ser
         )
     ]
 )
-def test_should_get_a_single_template(
+def test_should_preview_a_single_template(
     notify_db,
     notify_api,
     sample_user,
@@ -398,8 +431,8 @@ def test_should_get_a_single_template(
             assert content['message']['template'] == [expected_error]
         else:
             assert response.status_code == 200
-            assert content['data']['content'] == expected_content
-            assert content['data']['subject'] == expected_subject
+            assert content['content'] == expected_content
+            assert content['subject'] == expected_subject
 
 
 def test_should_return_empty_array_if_no_templates_for_service(notify_api, sample_service):

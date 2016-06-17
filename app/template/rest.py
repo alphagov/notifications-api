@@ -108,7 +108,7 @@ def preview_template_by_id_and_service_id(service_id, template_id):
 
     data['subject'], data['content'] = template_object.replaced_subject, template_object.replaced
 
-    return jsonify(data=data)
+    return jsonify(data)
 
 
 @template.route('/<uuid:template_id>/version/<int:version>')
