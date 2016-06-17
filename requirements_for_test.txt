@@ -3,6 +3,7 @@ pep8==1.5.7
 pytest==2.8.3
 pytest-mock==0.8.1
 pytest-cov==2.2.0
+coveralls==1.1
 mock==1.0.1
 moto==0.4.19
 freezegun==0.3.6
