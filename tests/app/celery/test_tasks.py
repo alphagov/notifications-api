@@ -7,8 +7,6 @@ from notifications_utils.recipients import validate_phone_number, format_phone_n
 from app.celery.tasks import (
     send_sms,
     process_job,
-    email_invited_user,
-    email_reset_password,
     delete_verify_codes,
     delete_invitations,
     delete_failed_notifications,
@@ -875,55 +873,6 @@ def test_should_not_send_email_if_db_peristance_failed(sample_email_template, mo
     with pytest.raises(NoResultFound) as e:
         notifications_dao.get_notification(sample_email_template.service_id, notification_id)
     assert 'No row was found for one' in str(e.value)
-
-
-def test_email_invited_user_should_send_email(notify_api, mocker):
-    with notify_api.test_request_context():
-        invitation = {'to': 'new_person@it.gov.uk',
-                      'user_name': 'John Smith',
-                      'service_id': '123123',
-                      'service_name': 'Blacksmith Service',
-                      'token': 'the-token',
-                      'expiry_date': str(datetime.utcnow() + timedelta(days=1))
-                      }
-
-        mocker.patch('app.aws_ses_client.send_email')
-        mocker.patch('app.encryption.decrypt', return_value=invitation)
-        url = tasks.invited_user_url(current_app.config['ADMIN_BASE_URL'], invitation['token'])
-        expected_content = tasks.invitation_template(invitation['user_name'],
-                                                     invitation['service_name'],
-                                                     url,
-                                                     invitation['expiry_date'])
-
-        email_invited_user(encryption.encrypt(invitation))
-        email_from = '"GOV.UK Notify" <{}@{}>'.format(
-            current_app.config['INVITATION_EMAIL_FROM'],
-            current_app.config['NOTIFY_EMAIL_DOMAIN']
-        )
-        expected_subject = tasks.invitation_subject_line(invitation['user_name'], invitation['service_name'])
-        aws_ses_client.send_email.assert_called_once_with(email_from,
-                                                          invitation['to'],
-                                                          expected_subject,
-                                                          expected_content)
-
-
-def test_email_reset_password_should_send_email(notify_db, notify_db_session, notify_api, mocker):
-    with notify_api.test_request_context():
-        reset_password_message = {'to': 'someone@it.gov.uk',
-                                  'name': 'Some One',
-                                  'reset_password_url': 'bah'}
-
-        mocker.patch('app.aws_ses_client.send_email')
-        mocker.patch('app.encryption.decrypt', return_value=reset_password_message)
-
-        encrypted_message = encryption.encrypt(reset_password_message)
-        email_reset_password(encrypted_message)
-        message = tasks.password_reset_message(reset_password_message['name'],
-                                               reset_password_message['reset_password_url'])
-        aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
-                                  reset_password_message['to'],
-                                  "Reset password for GOV.UK Notify",
-                                  message)
 
 
 def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job, mocker, mock_celery_remove_job):

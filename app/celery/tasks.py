@@ -13,7 +13,7 @@ from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.provider_details_dao import get_provider_details_by_notification_type
 from app.celery.research_mode_tasks import send_email_response, send_sms_response
 
-from notifications_utils.template import Template, unlink_govuk_escaped
+from notifications_utils.template import Template
 
 from notifications_utils.recipients import (
     RecipientCSV,
@@ -368,99 +368,6 @@ def send_email(service_id, notification_id, encrypted_notification, created_at, 
         statsd_client.timing("notifications.tasks.send-email.task-time", monotonic() - task_start)
     except SQLAlchemyError as e:
         current_app.logger.exception(e)
-
-
-# TODO: when placeholders in templates work, this will be a real template
-def invitation_template(user_name, service_name, url, expiry_date):
-    from string import Template
-    t = Template(
-        '$user_name has invited you to collaborate on $service_name on GOV.UK Notify.\n\n'
-        'GOV.UK Notify makes it easy to keep people updated by helping you send text messages, emails and letters.\n\n'
-        'Click this link to create an account on GOV.UK Notify:\n$url\n\n'
-        'This invitation will stop working at midnight tomorrow. This is to keep $service_name secure.')
-    return unlink_govuk_escaped(
-        t.substitute(user_name=user_name, service_name=service_name, url=url, expiry_date=expiry_date)
-    )
-
-
-def invitation_subject_line(user_name, service_name):
-    from string import Template
-    t = Template('$user_name has invited you to collaborate on $service_name on GOV.UK Notify')
-    return unlink_govuk_escaped(
-        t.substitute(user_name=user_name, service_name=service_name)
-    )
-
-
-def invited_user_url(base_url, token):
-    return '{0}/invitation/{1}'.format(base_url, token)
-
-
-@notify_celery.task(name='email-invited-user')
-def email_invited_user(encrypted_invitation):
-    provider = provider_to_use('email', 'email-invited-user')
-
-    invitation = encryption.decrypt(encrypted_invitation)
-    url = invited_user_url(current_app.config['ADMIN_BASE_URL'],
-                           invitation['token'])
-    invitation_content = invitation_template(invitation['user_name'],
-                                             invitation['service_name'],
-                                             url,
-                                             invitation['expiry_date'])
-    try:
-        email_from = '"GOV.UK Notify" <{}@{}>'.format(
-            current_app.config['INVITATION_EMAIL_FROM'],
-            current_app.config['NOTIFY_EMAIL_DOMAIN']
-        )
-        subject_line = invitation_subject_line(invitation['user_name'], invitation['service_name'])
-        provider.send_email(email_from,
-                            invitation['to'],
-                            subject_line,
-                            invitation_content)
-    except EmailClientException as e:
-        current_app.logger.exception(e)
-
-
-def password_reset_message(name, url):
-    from string import Template
-    t = Template("Hi $user_name,\n\n"
-                 "We received a request to reset your password on GOV.UK Notify.\n\n"
-                 "If you didn't request this email, you can ignore it – your password has not been changed.\n\n"
-                 "To reset your password, click this link:\n\n"
-                 "$url")
-    return unlink_govuk_escaped(
-        t.substitute(user_name=name, url=url)
-    )
-
-
-@notify_celery.task(name='email-reset-password')
-def email_reset_password(encrypted_reset_password_message):
-    provider = provider_to_use('email', 'email-reset-password')
-
-    reset_password_message = encryption.decrypt(encrypted_reset_password_message)
-    try:
-        email_from = '"GOV.UK Notify" <{}>'.format(
-            current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS']
-        )
-        provider.send_email(
-            email_from,
-            reset_password_message['to'],
-            "Reset your GOV.UK Notify password",
-            password_reset_message(
-                name=reset_password_message['name'],
-                url=reset_password_message['reset_password_url']
-            )
-        )
-    except EmailClientException as e:
-        current_app.logger.exception(e)
-
-
-def registration_verification_template(name, url):
-    from string import Template
-    t = Template("Hi $name,\n\n"
-                 "To complete your registration for GOV.UK Notify please click the link below\n\n $url")
-    return unlink_govuk_escaped(
-        t.substitute(name=name, url=url)
-    )
 
 
 def service_allowed_to_send_to(recipient, service):
