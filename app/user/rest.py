@@ -163,7 +163,6 @@ def send_user_email_verification(user_id):
             'url': _create_verification_url(user_to_send_to, secret_code)
         }
     }
-    print(message)
     send_email.apply_async((
         current_app.config['NOTIFY_SERVICE_ID'],
         str(uuid.uuid4()),
