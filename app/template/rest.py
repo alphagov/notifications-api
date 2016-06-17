@@ -86,6 +86,31 @@ def get_template_by_id_and_service_id(service_id, template_id):
     return jsonify(data=data)
 
 
+@template.route('/<uuid:template_id>/preview', methods=['GET'])
+def preview_template_by_id_and_service_id(service_id, template_id):
+    fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
+    data = template_schema.dump(fetched_template).data
+    template_object = Template(data, values=request.args.to_dict())
+
+    if template_object.missing_data:
+        raise InvalidRequest(
+            {'template': [
+                'Missing personalisation: {}'.format(", ".join(template_object.missing_data))
+            ]}, status_code=400
+        )
+
+    if template_object.additional_data:
+        raise InvalidRequest(
+            {'template': [
+                'Personalisation not needed for template: {}'.format(", ".join(template_object.additional_data))
+            ]}, status_code=400
+        )
+
+    data['subject'], data['content'] = template_object.replaced_subject, template_object.replaced
+
+    return jsonify(data)
+
+
 @template.route('/<uuid:template_id>/version/<int:version>')
 def get_template_version(service_id, template_id, version):
     data = template_history_schema.dump(
