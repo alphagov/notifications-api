@@ -24,19 +24,27 @@ from notifications_utils.template import (
 )
 
 
-def retry_iteration_to_delay(retry):
+def retry_iteration_to_delay(retry=0):
     """
     Given current retry calculate some delay before retrying
-    Delay calculated as (1 + retry number) squared * 60
-    0: 60 seconds (1 minute)
-    1: 240 seconds (4 minutes)
-    2: 540 seconds (9 minutes)
-    3: 960 seconds (16 minutes)
-    4: 1500 seconds (25 minutes)
+    0: 10 seconds
+    1: 60 seconds (1 minutes)
+    2: 300 seconds (5 minutes)
+    3: 3600 seconds (60 minutes)
+    4: 14400 seconds (4 hours)
     :param retry (zero indexed):
-    :return length to retry in seconds:
+    :return length to retry in seconds, default 10 seconds
     """
-    return ((retry + 1) ** 2) * 60
+
+    delays = {
+        0: 10,
+        1: 60,
+        2: 300,
+        3: 3600,
+        4: 14400
+    }
+
+    return delays.get(retry, 10)
 
 
 @notify_celery.task(bind=True, name="send-sms-to-provider", max_retries=5, default_retry_delay=5)

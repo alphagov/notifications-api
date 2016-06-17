@@ -20,6 +20,34 @@ from tests.app.conftest import (
 )
 
 
+def test_should_by_10_second_delay_as_default():
+    assert provider_tasks.retry_iteration_to_delay() == 10
+
+
+def test_should_by_10_second_delay_on_unmapped_retry_iteration():
+    assert provider_tasks.retry_iteration_to_delay(99) == 10
+
+
+def test_should_by_10_second_delay_on_retry_one():
+    assert provider_tasks.retry_iteration_to_delay(0) == 10
+
+
+def test_should_by_1_minute_delay_on_retry_two():
+    assert provider_tasks.retry_iteration_to_delay(1) == 60
+
+
+def test_should_by_5_minute_delay_on_retry_two():
+    assert provider_tasks.retry_iteration_to_delay(2) == 300
+
+
+def test_should_by_60_minute_delay_on_retry_two():
+    assert provider_tasks.retry_iteration_to_delay(3) == 3600
+
+
+def test_should_by_240_minute_delay_on_retry_two():
+    assert provider_tasks.retry_iteration_to_delay(4) == 14400
+
+
 def test_should_return_highest_priority_active_provider(notify_db, notify_db_session):
     providers = provider_details_dao.get_provider_details_by_notification_type('sms')
     first = providers[0]
@@ -324,7 +352,7 @@ def test_should_go_into_technical_error_if_exceeds_retries(
         "encrypted-in-reality"
     )
 
-    provider_tasks.send_sms_to_provider.retry.assert_called_with(queue='retry', countdown=60)
+    provider_tasks.send_sms_to_provider.retry.assert_called_with(queue='retry', countdown=10)
     assert statsd_client.incr.assert_not_called
     assert statsd_client.timing.assert_not_called
 
