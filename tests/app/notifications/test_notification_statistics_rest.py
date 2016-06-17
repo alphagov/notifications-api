@@ -191,6 +191,9 @@ def test_get_notification_statistics_for_specific_day_returns_400_for_incorrect_
             auth_header = create_authorization_header(service_id=sample_template.service_id)
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 400
+            resp_json = json.loads(response.get_data(as_text=True))
+            assert resp_json['result'] == 'error'
+            assert resp_json['message'] == 'Invalid date 01-01-2016'
 
             another_dodgy_date = 'fish'
             path = '/service/{}/notifications-statistics/day/{}'.format(
@@ -199,3 +202,6 @@ def test_get_notification_statistics_for_specific_day_returns_400_for_incorrect_
 
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 400
+            resp_json = json.loads(response.get_data(as_text=True))
+            assert resp_json['result'] == 'error'
+            assert resp_json['message'] == 'Invalid date fish'
