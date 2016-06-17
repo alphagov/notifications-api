@@ -65,7 +65,6 @@ def create_app(app_name=None):
     from app.job.rest import job as job_blueprint
     from app.notifications.rest import notifications as notifications_blueprint
     from app.invite.rest import invite as invite_blueprint
-    from app.permission.rest import permission as permission_blueprint
     from app.accept_invite.rest import accept_invite
     from app.notifications_statistics.rest import notifications_statistics as notifications_statistics_blueprint
     from app.template_statistics.rest import template_statistics as template_statistics_blueprint
@@ -79,7 +78,6 @@ def create_app(app_name=None):
     application.register_blueprint(notifications_blueprint)
     application.register_blueprint(job_blueprint)
     application.register_blueprint(invite_blueprint)
-    application.register_blueprint(permission_blueprint, url_prefix='/permission')
     application.register_blueprint(accept_invite, url_prefix='/invite')
     application.register_blueprint(notifications_statistics_blueprint)
     application.register_blueprint(template_statistics_blueprint)

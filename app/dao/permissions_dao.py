@@ -32,30 +32,6 @@ class PermissionDAO(DAOClass):
     class Meta:
         model = Permission
 
-    # TODO rework this as last filter wins, whereas what is needed is
-    # append to filter so that semantics are 'and'
-    def get_query(self, filter_by_dict=None):
-        if filter_by_dict is None:
-            filter_by_dict = MultiDict()
-        else:
-            filter_by_dict = MultiDict(filter_by_dict)
-        query = self.Meta.model.query
-        if 'id' in filter_by_dict:
-            query = query.filter(Permission.id.in_(filter_by_dict.getlist('id')))
-        if 'service' in filter_by_dict:
-            service_ids = filter_by_dict.getlist('service')
-            if len(service_ids) == 1:
-                query.filter_by(service=Service.query.get(service_ids[0]))
-            # TODO the join method for multiple services
-        if 'user' in filter_by_dict:
-            user_ids = filter_by_dict.getlist('user')
-            if len(user_ids) == 1:
-                query = query.filter_by(user=User.query.get(user_ids[0]))
-            # TODO the join method for multiple users
-        if 'permission' in filter_by_dict:
-            query = query.filter(Permission.permission.in_(filter_by_dict.getlist('permission')))
-        return query
-
     def add_default_service_permissions_for_user(self, user, service):
         for name in default_service_permissions:
             permission = Permission(permission=name, user=user, service=service)
@@ -81,6 +57,9 @@ class PermissionDAO(DAOClass):
         else:
             if _commit:
                 db.session.commit()
+
+    def get_permissions_by_user_id(self, user_id):
+        return self.Meta.model.query.filter_by(user_id=user_id).all()
 
 
 permission_dao = PermissionDAO()
