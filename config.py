@@ -89,8 +89,6 @@ class Config(object):
         Queue('research-mode', Exchange('default'), routing_key='research-mode'),
         Queue('retry', Exchange('default'), routing_key='retry')
     ]
-    TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
-    TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
     LOADTESTING_NUMBER = os.getenv('LOADTESTING_NUMBER')
     LOADTESTING_API_KEY = os.getenv("LOADTESTING_API_KEY")

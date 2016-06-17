@@ -1,7 +1,7 @@
 import json
 import uuid
 from datetime import datetime
-from flask import (jsonify, request, abort, Blueprint, current_app)
+from flask import (jsonify, request, Blueprint, current_app)
 from app import encryption, DATETIME_FORMAT
 from app.dao.users_dao import (
     get_model_users,
@@ -27,11 +27,13 @@ from app.schemas import (
 
 from app.celery.tasks import (
     send_sms,
-    email_reset_password,
-    email_registration_verification,
-    send_email)
+    send_email
+)
 
-from app.errors import register_errors
+from app.errors import (
+    register_errors,
+    InvalidRequest
+)
 
 user = Blueprint('user', __name__)
 register_errors(user)
@@ -44,9 +46,7 @@ def create_user():
     # TODO password policy, what is valid password
     if not req_json.get('password', None):
         errors.update({'password': ['Missing data for required field.']})
-        return jsonify(result="error", message=errors), 400
-    if errors:
-        return jsonify(result="error", message=errors), 400
+        raise InvalidRequest(errors, status_code=400)
     save_model_user(user_to_create, pwd=req_json.get('password'))
     return jsonify(data=user_schema.dump(user_to_create).data), 201
 
@@ -61,11 +61,9 @@ def update_user(user_id):
     # but would be good to have the same validation here.
     if pwd is not None and not pwd:
         errors.update({'password': ['Invalid data for field']})
-    if errors:
-        return jsonify(result="error", message=errors), 400
-    status_code = 200
+        raise InvalidRequest(errors, status_code=400)
     save_model_user(user_to_update, update_dict=update_dct, pwd=pwd)
-    return jsonify(data=user_schema.dump(user_to_update).data), status_code
+    return jsonify(data=user_schema.dump(user_to_update).data), 200
 
 
 @user.route('/<uuid:user_id>/verify/password', methods=['POST'])
@@ -76,9 +74,10 @@ def verify_user_password(user_id):
     try:
         txt_pwd = request.get_json()['password']
     except KeyError:
-        return jsonify(
-            result="error",
-            message={'password': ['Required field missing data']}), 400
+        message = 'Required field missing data'
+        errors = {'password': [message]}
+        raise InvalidRequest(errors, status_code=400)
+
     if user_to_verify.check_password(txt_pwd):
         user_to_verify.logged_in_at = datetime.utcnow()
         save_model_user(user_to_verify)
@@ -86,7 +85,9 @@ def verify_user_password(user_id):
         return jsonify({}), 204
     else:
         increment_failed_login_count(user_to_verify)
-        return jsonify(result='error', message={'password': ['Incorrect password']}), 400
+        message = 'Incorrect password'
+        errors = {'password': [message]}
+        raise InvalidRequest(errors, status_code=400)
 
 
 @user.route('/<uuid:user_id>/verify/code', methods=['POST'])
@@ -106,12 +107,13 @@ def verify_user_code(user_id):
     except KeyError:
         errors.update({'code_type': ['Required field missing data']})
     if errors:
-        return jsonify(result="error", message=errors), 400
+        raise InvalidRequest(errors, status_code=400)
+
     code = get_user_code(user_to_verify, txt_code, txt_type)
     if not code:
-        return jsonify(result="error", message="Code not found"), 404
+        raise InvalidRequest("Code not found", status_code=404)
     if datetime.utcnow() > code.expiry_datetime or code.code_used:
-        return jsonify(result="error", message="Code has expired"), 400
+        raise InvalidRequest("Code has expired", status_code=400)
     use_user_code(code.id)
     return jsonify({}), 204
 
@@ -120,8 +122,6 @@ def verify_user_code(user_id):
 def send_user_sms_code(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
     verify_code, errors = request_verify_code_schema.load(request.get_json())
-    if errors:
-        return jsonify(result="error", message=errors), 400
 
     secret_code = create_secret_code()
     create_user_code(user_to_send_to, secret_code, 'sms')
@@ -150,10 +150,6 @@ def send_user_sms_code(user_id):
 @user.route('/<uuid:user_id>/email-verification', methods=['POST'])
 def send_user_email_verification(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
-    verify_code, errors = request_verify_code_schema.load(request.get_json())
-    if errors:
-        return jsonify(result="error", message=errors), 400
-
     secret_code = create_secret_code()
     create_user_code(user_to_send_to, secret_code, 'email')
 
@@ -170,7 +166,6 @@ def send_user_email_verification(user_id):
     send_email.apply_async((
         current_app.config['NOTIFY_SERVICE_ID'],
         str(uuid.uuid4()),
-        '',
         encryption.encrypt(message),
         datetime.utcnow().strftime(DATETIME_FORMAT)
     ), queue='email-registration-verification')
@@ -193,8 +188,7 @@ def set_permissions(user_id, service_id):
     user = get_model_users(user_id=user_id)
     service = dao_fetch_service_by_id(service_id=service_id)
     permissions, errors = permission_schema.load(request.get_json(), many=True)
-    if errors:
-        abort(400, errors)
+
     for p in permissions:
         p.user = user
         p.service = service
@@ -206,7 +200,8 @@ def set_permissions(user_id, service_id):
 def get_by_email():
     email = request.args.get('email')
     if not email:
-        return jsonify(result="error", message="invalid request"), 400
+        error = 'Invalid request. Email query string param required'
+        raise InvalidRequest(error, status_code=400)
     fetched_user = get_user_by_email(email)
     result = user_schema.dump(fetched_user)
 
@@ -216,16 +211,23 @@ def get_by_email():
 @user.route('/reset-password', methods=['POST'])
 def send_user_reset_password():
     email, errors = email_data_request_schema.load(request.get_json())
-    if errors:
-        return jsonify(result="error", message=errors), 400
 
     user_to_send_to = get_user_by_email(email['email'])
 
-    reset_password_message = {'to': user_to_send_to.email_address,
-                              'name': user_to_send_to.name,
-                              'reset_password_url': _create_reset_password_url(user_to_send_to.email_address)}
-
-    email_reset_password.apply_async([encryption.encrypt(reset_password_message)], queue='email-reset-password')
+    template = dao_get_template_by_id(current_app.config['PASSWORD_RESET_TEMPLATE_ID'])
+    message = {
+        'template': str(template.id),
+        'template_version': template.version,
+        'to': user_to_send_to.email_address,
+        'personalisation': {
+            'user_name': user_to_send_to.name,
+            'url': _create_reset_password_url(user_to_send_to.email_address)
+        }
+    }
+    send_email.apply_async([current_app.config['NOTIFY_SERVICE_ID'],
+                            str(uuid.uuid4()),
+                            encryption.encrypt(message),
+                            datetime.utcnow().strftime(DATETIME_FORMAT)], queue='email-reset-password')
 
     return jsonify({}), 204
 

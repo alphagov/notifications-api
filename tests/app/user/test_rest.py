@@ -1,6 +1,7 @@
 import json
 
-from flask import url_for
+from flask import url_for, current_app
+from freezegun import freeze_time
 
 import app
 from app.models import (User, Permission, MANAGE_SETTINGS, MANAGE_TEMPLATES)
@@ -296,7 +297,7 @@ def test_get_user_by_email_bad_url_returns_404(notify_api,
             assert resp.status_code == 400
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'invalid request'
+            assert json_resp['message'] == 'Invalid request. Email query string param required'
 
 
 def test_get_user_with_permissions(notify_api,
@@ -391,13 +392,16 @@ def test_set_user_permissions_remove_old(notify_api,
             assert query.first().permission == MANAGE_SETTINGS
 
 
+@freeze_time("2016-01-01 11:09:00.061258")
 def test_send_user_reset_password_should_send_reset_password_link(notify_api,
                                                                   sample_user,
                                                                   mocker,
-                                                                  mock_encryption):
+                                                                  password_reset_email_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocker.patch('app.celery.tasks.email_reset_password.apply_async')
+            mocker.patch('notifications_utils.url_safe_token.generate_token', return_value='the-token')
+            mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
+            mocker.patch('app.celery.tasks.send_email.apply_async')
             data = json.dumps({'email': sample_user.email_address})
             auth_header = create_authorization_header()
             resp = client.post(
@@ -405,9 +409,22 @@ def test_send_user_reset_password_should_send_reset_password_link(notify_api,
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
 
+            message = {
+                'template': str(password_reset_email_template.id),
+                'template_version': password_reset_email_template.version,
+                'to': sample_user.email_address,
+                'personalisation': {
+                    'user_name': sample_user.name,
+                    'url': current_app.config['ADMIN_BASE_URL'] + '/new-password/' + 'the-token'
+                }
+            }
             assert resp.status_code == 204
-            app.celery.tasks.email_reset_password.apply_async.assert_called_once_with(['something_encrypted'],
-                                                                                      queue='email-reset-password')
+            app.celery.tasks.send_email.apply_async.assert_called_once_with(
+                [str(current_app.config['NOTIFY_SERVICE_ID']),
+                 'some_uuid',
+                 app.encryption.encrypt(message),
+                 "2016-01-01T11:09:00.061258"],
+                queue="email-reset-password")
 
 
 def test_send_user_reset_password_should_return_400_when_user_doesnot_exist(notify_api,

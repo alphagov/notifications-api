@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, date
 import uuid
+from functools import partial
 
 import pytest
 
@@ -12,7 +13,8 @@ from app.models import (
     Notification,
     Job,
     NotificationStatistics,
-    TemplateStatistics
+    TemplateStatistics,
+    NOTIFICATION_STATUS_TYPES
 )
 
 from app.dao.notifications_dao import (
@@ -603,6 +605,28 @@ def test_get_all_notifications_for_job(notify_db, notify_db_session, sample_job)
     notifications_from_db = get_notifications_for_job(sample_job.service.id, sample_job.id).items
     assert len(notifications_from_db) == 5
     _assert_notification_stats(sample_job.service.id, sms_requested=5)
+
+
+def test_get_all_notifications_for_job_by_status(notify_db, notify_db_session, sample_job):
+
+    notifications = partial(get_notifications_for_job, sample_job.service.id, sample_job.id)
+
+    for status in NOTIFICATION_STATUS_TYPES:
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            service=sample_job.service,
+            template=sample_job.template,
+            job=sample_job,
+            status=status
+        )
+
+    assert len(notifications().items) == len(NOTIFICATION_STATUS_TYPES)
+
+    for status in NOTIFICATION_STATUS_TYPES:
+        assert len(notifications(filter_dict={'status': status}).items) == 1
+
+    assert len(notifications(filter_dict={'status': NOTIFICATION_STATUS_TYPES[:3]}).items) == 3
 
 
 def test_update_notification(sample_notification, sample_template):

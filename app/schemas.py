@@ -1,13 +1,16 @@
-from datetime import date
+from datetime import (
+    datetime,
+    date
+)
 from flask_marshmallow.fields import fields
-from sqlalchemy.orm import load_only
 
 from marshmallow import (
     post_load,
     ValidationError,
     validates,
     validates_schema,
-    pre_load
+    pre_load,
+    pre_dump
 )
 from marshmallow_sqlalchemy import field_for
 
@@ -46,6 +49,7 @@ def _validate_not_in_future(dte, msg="Date cannot be in the future"):
 
 
 class BaseSchema(ma.ModelSchema):
+
     def __init__(self, load_json=False, *args, **kwargs):
         self.load_json = load_json
         super(BaseSchema, self).__init__(*args, **kwargs)
@@ -70,7 +74,7 @@ class UserSchema(BaseSchema):
 
     def user_permissions(self, usr):
         retval = {}
-        for x in permission_dao.get_query({'user': usr.id}):
+        for x in permission_dao.get_permissions_by_user_id(usr.id):
             service_id = str(x.service_id)
             if service_id not in retval:
                 retval[service_id] = []
@@ -82,12 +86,14 @@ class UserSchema(BaseSchema):
         exclude = (
             "updated_at", "created_at", "user_to_service",
             "_password", "verify_codes")
+        strict = True
 
 
 class ProviderDetailsSchema(BaseSchema):
     class Meta:
         model = models.ProviderDetails
         exclude = ("provider_rates", "provider_stats")
+        strict = True
 
 
 class ServiceSchema(BaseSchema):
@@ -97,11 +103,13 @@ class ServiceSchema(BaseSchema):
     class Meta:
         model = models.Service
         exclude = ("updated_at", "created_at", "api_keys", "templates", "jobs", 'old_id')
+        strict = True
 
 
 class NotificationModelSchema(BaseSchema):
     class Meta:
         model = models.Notification
+        strict = True
 
 
 class BaseTemplateSchema(BaseSchema):
@@ -109,6 +117,7 @@ class BaseTemplateSchema(BaseSchema):
     class Meta:
         model = models.Template
         exclude = ("service_id", "jobs")
+        strict = True
 
 
 class TemplateSchema(BaseTemplateSchema):
@@ -142,6 +151,13 @@ class TemplateHistorySchema(BaseSchema):
 class NotificationsStatisticsSchema(BaseSchema):
     class Meta:
         model = models.NotificationStatistics
+        strict = True
+
+    @pre_dump
+    def handle_date_str(self, in_data):
+        if isinstance(in_data, dict) and 'day' in in_data:
+            in_data['day'] = datetime.strptime(in_data['day'], '%Y-%m-%d').date()
+        return in_data
 
 
 class ApiKeySchema(BaseSchema):
@@ -151,6 +167,7 @@ class ApiKeySchema(BaseSchema):
     class Meta:
         model = models.ApiKey
         exclude = ("service", "secret")
+        strict = True
 
 
 class JobSchema(BaseSchema):
@@ -161,13 +178,22 @@ class JobSchema(BaseSchema):
     class Meta:
         model = models.Job
         exclude = ('notifications',)
+        strict = True
 
 
 class RequestVerifyCodeSchema(ma.Schema):
+
+    class Meta:
+        strict = True
+
     to = fields.Str(required=False)
 
 
 class NotificationSchema(ma.Schema):
+
+    class Meta:
+        strict = True
+
     personalisation = fields.Dict(required=False)
 
 
@@ -225,12 +251,14 @@ class NotificationStatusSchema(BaseSchema):
 
     class Meta:
         model = models.Notification
+        strict = True
 
 
 class InvitedUserSchema(BaseSchema):
 
     class Meta:
         model = models.InvitedUser
+        strict = True
 
     @validates('email_address')
     def validate_to(self, value):
@@ -255,9 +283,14 @@ class PermissionSchema(BaseSchema):
     class Meta:
         model = models.Permission
         exclude = ("created_at",)
+        strict = True
 
 
 class EmailDataSchema(ma.Schema):
+
+    class Meta:
+        strict = True
+
     email = fields.Str(required=False)
 
     @validates('email')
@@ -269,6 +302,10 @@ class EmailDataSchema(ma.Schema):
 
 
 class NotificationsFilterSchema(ma.Schema):
+
+    class Meta:
+        strict = True
+
     template_type = fields.Nested(BaseTemplateSchema, only=['template_type'], many=True)
     status = fields.Nested(NotificationModelSchema, only=['status'], many=True)
     page = fields.Int(required=False)
@@ -309,6 +346,7 @@ class TemplateStatisticsSchema(BaseSchema):
 
     class Meta:
         model = models.TemplateStatistics
+        strict = True
 
 
 class ServiceHistorySchema(ma.Schema):
@@ -337,9 +375,13 @@ class ApiKeyHistorySchema(ma.Schema):
 class EventSchema(BaseSchema):
     class Meta:
         model = models.Event
+        strict = True
 
 
 class FromToDateSchema(ma.Schema):
+
+    class Meta:
+        strict = True
 
     date_from = fields.Date()
     date_to = fields.Date()
@@ -361,6 +403,10 @@ class FromToDateSchema(ma.Schema):
 
 
 class DaySchema(ma.Schema):
+
+    class Meta:
+        strict = True
+
     day = fields.Date(required=True)
 
     @validates('day')
@@ -369,6 +415,9 @@ class DaySchema(ma.Schema):
 
 
 class WeekAggregateNotificationStatisticsSchema(ma.Schema):
+
+    class Meta:
+        strict = True
 
     date_from = fields.Date()
     week_count = fields.Int()

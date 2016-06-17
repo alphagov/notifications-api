@@ -1,8 +1,10 @@
 import json
 import random
 import string
+import pytest
 from app.models import Template
 from tests import create_authorization_header
+from tests.app.conftest import sample_template as create_sample_template
 from app.dao.templates_dao import dao_get_template_by_id
 
 
@@ -322,6 +324,115 @@ def test_should_get_only_templates_for_that_service(notify_api, sample_user, ser
 
             assert len(json_resp_3['data']) == 2
             assert len(json_resp_4['data']) == 1
+
+
+@pytest.mark.parametrize(
+    "subject, content, template_type", [
+        (
+            'about your ((thing))',
+            'hello ((name)) we’ve received your ((thing))',
+            'email'
+        ),
+        (
+            None,
+            'hello ((name)) we’ve received your ((thing))',
+            'sms'
+        )
+    ]
+)
+def test_should_get_a_single_template(
+    notify_db,
+    notify_api,
+    sample_user,
+    service_factory,
+    subject,
+    content,
+    template_type
+):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+
+        template = create_sample_template(
+            notify_db, notify_db.session, subject_line=subject, content=content, template_type=template_type
+        )
+
+        response = client.get(
+            '/service/{}/template/{}'.format(template.service.id, template.id),
+            headers=[create_authorization_header()]
+        )
+
+        data = json.loads(response.get_data(as_text=True))['data']
+
+        assert response.status_code == 200
+        assert data['content'] == content
+        assert data['subject'] == subject
+
+
+@pytest.mark.parametrize(
+    "subject, content, path, expected_subject, expected_content, expected_error", [
+        (
+            'about your thing',
+            'hello user we’ve received your thing',
+            '/service/{}/template/{}/preview',
+            'about your thing',
+            'hello user we’ve received your thing',
+            None
+        ),
+        (
+            'about your ((thing))',
+            'hello ((name)) we’ve received your ((thing))',
+            '/service/{}/template/{}/preview?name=Amala&thing=document',
+            'about your document',
+            'hello Amala we’ve received your document',
+            None
+        ),
+        (
+            'about your ((thing))',
+            'hello ((name)) we’ve received your ((thing))',
+            '/service/{}/template/{}/preview?eman=Amala&gniht=document',
+            None, None,
+            'Missing personalisation: thing, name'
+        ),
+        (
+            'about your ((thing))',
+            'hello ((name)) we’ve received your ((thing))',
+            '/service/{}/template/{}/preview?name=Amala&thing=document&foo=bar',
+            None, None,
+            'Personalisation not needed for template: foo'
+        )
+    ]
+)
+def test_should_preview_a_single_template(
+    notify_db,
+    notify_api,
+    sample_user,
+    service_factory,
+    subject,
+    content,
+    path,
+    expected_subject,
+    expected_content,
+    expected_error
+):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+
+        template = create_sample_template(
+            notify_db, notify_db.session, subject_line=subject, content=content, template_type='email'
+        )
+
+        response = client.get(
+            path.format(template.service.id, template.id),
+            headers=[create_authorization_header()]
+        )
+
+        content = json.loads(response.get_data(as_text=True))
+
+        if expected_error:
+            assert response.status_code == 400
+            assert content['message']['template'] == [expected_error]
+        else:
+            assert response.status_code == 200
+            assert content['content'] == expected_content
+            assert content['subject'] == expected_subject
 
 
 def test_should_return_empty_array_if_no_templates_for_service(notify_api, sample_service):

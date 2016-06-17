@@ -1,8 +1,8 @@
 from flask import (
     Blueprint,
     jsonify,
-    request,
-    current_app)
+    request
+)
 
 from app.dao.jobs_dao import (
     dao_create_job,
@@ -22,7 +22,10 @@ from app.celery.tasks import process_job
 
 job = Blueprint('job', __name__, url_prefix='/service/<uuid:service_id>/job')
 
-from app.errors import register_errors
+from app.errors import (
+    register_errors,
+    InvalidRequest
+)
 
 register_errors(job)
 
@@ -30,7 +33,7 @@ register_errors(job)
 @job.route('/<job_id>', methods=['GET'])
 def get_job_by_service_and_job_id(service_id, job_id):
     job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
-    data, errors = job_schema.dump(job)
+    data = job_schema.dump(job).data
     return jsonify(data=data)
 
 
@@ -40,16 +43,13 @@ def get_jobs_by_service(service_id):
         try:
             limit_days = int(request.args['limit_days'])
         except ValueError as e:
-            error = '{} is not an integer'.format(request.args['limit_days'])
-            current_app.logger.error(error)
-            return jsonify(result="error", message={'limit_days': [error]}), 400
+            errors = {'limit_days': ['{} is not an integer'.format(request.args['limit_days'])]}
+            raise InvalidRequest(errors, status_code=400)
     else:
         limit_days = None
 
     jobs = dao_get_jobs_by_service_id(service_id, limit_days)
-    data, errors = job_schema.dump(jobs, many=True)
-    if errors:
-        return jsonify(result="error", message=errors), 400
+    data = job_schema.dump(jobs, many=True).data
     return jsonify(data=data)
 
 
@@ -66,13 +66,10 @@ def create_job(service_id):
     errors = unarchived_template_schema.validate({'archived': template.archived})
 
     if errors:
-        return jsonify(result='error', message=errors), 400
+        raise InvalidRequest(errors, status_code=400)
 
     data.update({"template_version": template.version})
-    job, errors = job_schema.load(data)
-    if errors:
-        return jsonify(result="error", message=errors), 400
-
+    job = job_schema.load(data).data
     dao_create_job(job)
     process_job.apply_async([str(job.id)], queue="process-job")
     return jsonify(data=job_schema.dump(job).data), 201

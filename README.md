@@ -36,8 +36,6 @@ export NOTIFY_JOB_QUEUE='[unique-to-environment]-notify-jobs-queue' # NOTE uniqu
 export NOTIFICATION_QUEUE_PREFIX='[unique-to-environment]-notification_development' # NOTE unique prefix
 export SECRET_KEY='dev-notify-secret-key'
 export SQLALCHEMY_DATABASE_URI='postgresql://localhost/notification_api'
-export TWILIO_ACCOUNT_SID=[contact team member for account sid]
-export TWILIO_AUTH_TOKEN=[contact team member for auth token]
 export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.works'
 export MMG_API_KEY=mmg=secret-key
 export STATSD_ENABLED=True

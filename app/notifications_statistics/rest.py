@@ -1,13 +1,22 @@
-from datetime import (date, timedelta)
+from datetime import (
+    date,
+    timedelta,
+    datetime
+)
+
 from flask import (
     Blueprint,
     jsonify,
-    request
+    request,
+    current_app
 )
+
+from app import DATE_FORMAT
 
 from app.dao.notifications_dao import (
     dao_get_notification_statistics_for_service,
-    dao_get_7_day_agg_notification_statistics_for_service
+    dao_get_7_day_agg_notification_statistics_for_service,
+    dao_get_notification_statistics_for_service_and_day
 )
 from app.schemas import (
     notifications_statistics_schema,
@@ -19,7 +28,10 @@ notifications_statistics = Blueprint(
     __name__, url_prefix='/service/<service_id>/notifications-statistics'
 )
 
-from app.errors import register_errors
+from app.errors import (
+    register_errors,
+    InvalidRequest
+)
 
 register_errors(notifications_statistics)
 
@@ -34,9 +46,9 @@ def get_all_notification_statistics_for_service(service_id):
                 limit_days=int(request.args['limit_days'])
             )
         except ValueError as e:
-            error = '{} is not an integer'.format(request.args['limit_days'])
-            current_app.logger.error(error)
-            return jsonify(result="error", message={'limit_days': [error]}), 400
+            message = '{} is not an integer'.format(request.args['limit_days'])
+            errors = {'limit_days': [message]}
+            raise InvalidRequest(errors, status_code=400)
     else:
         statistics = dao_get_notification_statistics_for_service(service_id=service_id)
 
@@ -44,11 +56,31 @@ def get_all_notification_statistics_for_service(service_id):
     return jsonify(data=data)
 
 
+@notifications_statistics.route('/day/<day>', methods=['GET'])
+def get_notification_statistics_for_service_for_day(service_id, day):
+
+    try:
+        datetime.strptime(day, DATE_FORMAT)
+    except ValueError:
+        raise InvalidRequest('Invalid date {}'.format(day), status_code=400)
+
+    service_stats = dao_get_notification_statistics_for_service_and_day(
+        service_id,
+        day
+    )
+
+    if not service_stats:
+        message = 'No statistics found for service id: {} on day: {} '.format(service_id, day)
+        errors = {'not found': [message]}
+        raise InvalidRequest(errors, status_code=404)
+
+    data = notifications_statistics_schema.dump(service_stats).data
+    return jsonify(data=data)
+
+
 @notifications_statistics.route('/seven_day_aggregate')
 def get_notification_statistics_for_service_seven_day_aggregate(service_id):
-    data, errors = week_aggregate_notification_statistics_schema.load(request.args)
-    if errors:
-        return jsonify(result='error', message=errors), 400
+    data = week_aggregate_notification_statistics_schema.load(request.args).data
     date_from = data['date_from'] if 'date_from' in data else date(date.today().year, 4, 1)
     week_count = data['week_count'] if 'week_count' in data else 52
     stats = dao_get_7_day_agg_notification_statistics_for_service(

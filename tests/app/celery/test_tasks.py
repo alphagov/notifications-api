@@ -6,19 +6,17 @@ from mock import ANY
 from app.celery import provider_tasks
 from app.celery.tasks import (
     send_sms,
-    send_email,
     process_job,
-    email_invited_user,
-    email_reset_password,
     delete_verify_codes,
     delete_invitations,
     delete_failed_notifications,
     delete_successful_notifications,
     provider_to_use,
-    timeout_notifications
+    timeout_notifications,
+    send_email
 )
-from app.celery.research_mode_tasks import send_email_response
 from app import (aws_ses_client, encryption, DATETIME_FORMAT, statsd_client)
+from app.celery.research_mode_tasks import send_email_response
 from app.clients.email.aws_ses import AwsSesClientException
 from app.dao import notifications_dao, jobs_dao, provider_details_dao
 from sqlalchemy.exc import SQLAlchemyError
@@ -245,7 +243,6 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
         (
             str(job.service_id),
             "uuid",
-            "",
             "something_encrypted",
             "2016-01-01T11:09:00.061258"
         ),
@@ -291,7 +288,6 @@ def test_should_process_email_job(sample_email_job, mocker, mock_celery_remove_j
         (
             str(sample_email_job.service_id),
             "uuid",
-            "",
             "something_encrypted",
             "2016-01-01T11:09:00.061258"
         ),
@@ -446,13 +442,12 @@ def test_should_send_email_if_restricted_service_and_valid_email(notify_db, noti
     send_email(
         service.id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
 
     aws_ses_client.send_email.assert_called_once_with(
-        "email_from",
+        '"Sample service" <sample.service@test.notify.com>',
         "test@restricted.com",
         template.subject,
         body=template.content,
@@ -477,7 +472,6 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
     send_email(
         service.id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
@@ -548,14 +542,13 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     send_email(
         sample_email_template_with_placeholders.service_id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
     freezer.stop()
 
     aws_ses_client.send_email.assert_called_once_with(
-        "email_from",
+        '"Sample service" <sample.service@test.notify.com>',
         "my_email@my_email.com",
         notification['personalisation']['name'],
         body="Hello Jo",
@@ -603,12 +596,11 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
     send_email(
         sample_email_template.service_id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
     aws_ses_client.send_email.assert_called_once_with(
-        "email_from",
+        '"Sample service" <sample.service@test.notify.com>',
         "my_email@my_email.com",
         sample_email_template.subject,
         body="This is a template",
@@ -639,12 +631,11 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
     send_email(
         sample_email_template_with_placeholders.service_id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
     aws_ses_client.send_email.assert_called_once_with(
-        "email_from",
+        '"Sample service" <sample.service@test.notify.com>',
         "my_email@my_email.com",
         notification['personalisation']['name'],
         body="Hello Jo",
@@ -673,7 +664,6 @@ def test_should_use_email_template_and_persist_ses_reference(sample_email_templa
     send_email(
         sample_email_template_with_placeholders.service_id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
@@ -694,12 +684,11 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
     send_email(
         sample_email_template.service_id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
     aws_ses_client.send_email.assert_called_once_with(
-        "email_from",
+        '"Sample service" <sample.service@test.notify.com>',
         "my_email@my_email.com",
         sample_email_template.subject,
         body="This is a template",
@@ -749,12 +738,11 @@ def test_should_persist_notification_as_failed_if_email_client_fails(sample_emai
     send_email(
         sample_email_template.service_id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
     aws_ses_client.send_email.assert_called_once_with(
-        "email_from",
+        '"Sample service" <sample.service@test.notify.com>',
         "my_email@my_email.com",
         sample_email_template.subject,
         body=sample_email_template.content,
@@ -784,7 +772,6 @@ def test_should_not_send_email_if_db_peristance_failed(sample_email_template, mo
     send_email(
         sample_email_template.service_id,
         notification_id,
-        'email_from',
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
@@ -792,55 +779,6 @@ def test_should_not_send_email_if_db_peristance_failed(sample_email_template, mo
     with pytest.raises(NoResultFound) as e:
         notifications_dao.get_notification(sample_email_template.service_id, notification_id)
     assert 'No row was found for one' in str(e.value)
-
-
-def test_email_invited_user_should_send_email(notify_api, mocker):
-    with notify_api.test_request_context():
-        invitation = {'to': 'new_person@it.gov.uk',
-                      'user_name': 'John Smith',
-                      'service_id': '123123',
-                      'service_name': 'Blacksmith Service',
-                      'token': 'the-token',
-                      'expiry_date': str(datetime.utcnow() + timedelta(days=1))
-                      }
-
-        mocker.patch('app.aws_ses_client.send_email')
-        mocker.patch('app.encryption.decrypt', return_value=invitation)
-        url = tasks.invited_user_url(current_app.config['ADMIN_BASE_URL'], invitation['token'])
-        expected_content = tasks.invitation_template(invitation['user_name'],
-                                                     invitation['service_name'],
-                                                     url,
-                                                     invitation['expiry_date'])
-
-        email_invited_user(encryption.encrypt(invitation))
-        email_from = '"GOV.UK Notify" <{}@{}>'.format(
-            current_app.config['INVITATION_EMAIL_FROM'],
-            current_app.config['NOTIFY_EMAIL_DOMAIN']
-        )
-        expected_subject = tasks.invitation_subject_line(invitation['user_name'], invitation['service_name'])
-        aws_ses_client.send_email.assert_called_once_with(email_from,
-                                                          invitation['to'],
-                                                          expected_subject,
-                                                          expected_content)
-
-
-def test_email_reset_password_should_send_email(notify_db, notify_db_session, notify_api, mocker):
-    with notify_api.test_request_context():
-        reset_password_message = {'to': 'someone@it.gov.uk',
-                                  'name': 'Some One',
-                                  'reset_password_url': 'bah'}
-
-        mocker.patch('app.aws_ses_client.send_email')
-        mocker.patch('app.encryption.decrypt', return_value=reset_password_message)
-
-        encrypted_message = encryption.encrypt(reset_password_message)
-        email_reset_password(encrypted_message)
-        message = tasks.password_reset_message(reset_password_message['name'],
-                                               reset_password_message['reset_password_url'])
-        aws_ses_client.send_email(current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'],
-                                  reset_password_message['to'],
-                                  "Reset password for GOV.UK Notify",
-                                  message)
 
 
 def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job, mocker, mock_celery_remove_job):
@@ -857,7 +795,6 @@ def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job
         (
             str(sample_email_job.service_id),
             "uuid",
-            "",
             "something_encrypted",
             ANY
         ),
@@ -893,7 +830,6 @@ def test_should_call_send_email_response_task_if_research_mode(
     send_email(
         sample_service.id,
         notification_id,
-        "myservice@notify.com",
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
@@ -945,7 +881,6 @@ def test_should_call_send_not_update_provider_email_stats_if_research_mode(
     send_email(
         sample_service.id,
         notification_id,
-        "myservice@notify.com",
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
