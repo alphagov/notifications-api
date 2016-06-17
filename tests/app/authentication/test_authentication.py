@@ -1,10 +1,9 @@
+import uuid
 from datetime import datetime, timedelta
-
-import pytest
 from notifications_python_client.authentication import create_jwt_token
 from flask import json, current_app
 from app.dao.api_key_dao import get_unsigned_secrets, save_model_api_key, get_unsigned_secret
-from app.models import ApiKey, Service
+from app.models import ApiKey
 
 
 def test_should_not_allow_request_with_no_token(notify_api):
@@ -13,7 +12,7 @@ def test_should_not_allow_request_with_no_token(notify_api):
             response = client.get('/service')
             assert response.status_code == 401
             data = json.loads(response.get_data())
-            assert data['message'] == 'Unauthorized, authentication token must be provided'
+            assert data['message'] == {"token": ['Unauthorized, authentication token must be provided']}
 
 
 def test_should_not_allow_request_with_incorrect_header(notify_api):
@@ -24,7 +23,7 @@ def test_should_not_allow_request_with_incorrect_header(notify_api):
                 headers={'Authorization': 'Basic 1234'})
             assert response.status_code == 401
             data = json.loads(response.get_data())
-            assert data['message'] == 'Unauthorized, authentication bearer scheme must be used'
+            assert data['message'] == {"token": ['Unauthorized, authentication bearer scheme must be used']}
 
 
 def test_should_not_allow_request_with_incorrect_token(notify_api, sample_user):
@@ -35,7 +34,7 @@ def test_should_not_allow_request_with_incorrect_token(notify_api, sample_user):
                 headers={'Authorization': 'Bearer 1234'})
             assert response.status_code == 403
             data = json.loads(response.get_data())
-            assert data['message'] == 'Invalid token: signature'
+            assert data['message'] == {"token": ['Invalid token: signature']}
 
 
 def test_should_not_allow_invalid_secret(notify_api, sample_api_key):
@@ -50,7 +49,7 @@ def test_should_not_allow_invalid_secret(notify_api, sample_api_key):
             )
             assert response.status_code == 403
             data = json.loads(response.get_data())
-            assert data['message'] == 'Invalid token: signature'
+            assert data['message'] == {"token": ['Invalid token: signature']}
 
 
 def test_should_allow_valid_token(notify_api, sample_api_key):
@@ -174,7 +173,7 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
                 headers={'Authorization': 'Bearer {}'.format(token)})
             assert response.status_code == 403
             data = json.loads(response.get_data())
-            assert data['message'] == 'Invalid token: signature'
+            assert data['message'] == {"token": ['Invalid token: signature']}
 
 
 def test_authentication_returns_error_when_api_client_has_no_secrets(notify_api,
@@ -193,7 +192,7 @@ def test_authentication_returns_error_when_api_client_has_no_secrets(notify_api,
                 headers={'Authorization': 'Bearer {}'.format(token)})
             assert response.status_code == 403
             error_message = json.loads(response.get_data())
-            assert error_message['message'] == 'Invalid token: signature'
+            assert error_message['message'] == {"token": ['Invalid token: signature']}
             notify_api.config['ADMIN_CLIENT_SECRET'] = api_secret
 
 
@@ -213,7 +212,7 @@ def test_authentication_returns_error_when_service_has_no_secrets(notify_api,
                 headers={'Authorization': 'Bearer {}'.format(token)})
             assert response.status_code == 403
             error_message = json.loads(response.get_data())
-            assert error_message['message'] == 'Invalid token: signature'
+            assert error_message['message'] == {'token': ['Invalid token: no api keys for service']}
 
 
 def __create_get_token(service_id):
