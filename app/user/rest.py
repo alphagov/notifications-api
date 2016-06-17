@@ -27,7 +27,6 @@ from app.schemas import (
 
 from app.celery.tasks import (
     send_sms,
-    email_reset_password,
     send_email
 )
 
@@ -151,8 +150,6 @@ def send_user_sms_code(user_id):
 @user.route('/<uuid:user_id>/email-verification', methods=['POST'])
 def send_user_email_verification(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
-    verify_code, errors = request_verify_code_schema.load(request.get_json())
-
     secret_code = create_secret_code()
     create_user_code(user_to_send_to, secret_code, 'email')
 
@@ -217,11 +214,20 @@ def send_user_reset_password():
 
     user_to_send_to = get_user_by_email(email['email'])
 
-    reset_password_message = {'to': user_to_send_to.email_address,
-                              'name': user_to_send_to.name,
-                              'reset_password_url': _create_reset_password_url(user_to_send_to.email_address)}
-
-    email_reset_password.apply_async([encryption.encrypt(reset_password_message)], queue='email-reset-password')
+    template = dao_get_template_by_id(current_app.config['PASSWORD_RESET_TEMPLATE_ID'])
+    message = {
+        'template': str(template.id),
+        'template_version': template.version,
+        'to': user_to_send_to.email_address,
+        'personalisation': {
+            'user_name': user_to_send_to.name,
+            'url': _create_reset_password_url(user_to_send_to.email_address)
+        }
+    }
+    send_email.apply_async([current_app.config['NOTIFY_SERVICE_ID'],
+                            str(uuid.uuid4()),
+                            encryption.encrypt(message),
+                            datetime.utcnow().strftime(DATETIME_FORMAT)], queue='email-reset-password')
 
     return jsonify({}), 204
 

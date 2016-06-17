@@ -287,12 +287,6 @@ def send_sms(service_id, notification_id, encrypted_notification, created_at):
         current_app.logger.exception(e)
 
 
-@notify_celery.task(name="send-email-v2")
-def send_email_v2(service_id, notification_id,
-                  encrypted_notification, created_at, reply_to_addresses=None):
-    send_email(service_id, notification_id, encrypted_notification, created_at, reply_to_addresses=None)
-
-
 @notify_celery.task(name="send-email")
 def send_email(service_id, notification_id, encrypted_notification, created_at, reply_to_addresses=None):
     task_start = monotonic()
