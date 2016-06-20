@@ -25,6 +25,6 @@ class Live(Config):
     BROKER_TRANSPORT_OPTIONS = {
         'region': 'eu-west-1',
         'polling_interval': 1,  # 1 second
-        'visibility_timeout': 60,  # 60 seconds
+        'visibility_timeout': 14410,  # 60 seconds
         'queue_name_prefix': os.environ['LIVE_NOTIFICATION_QUEUE_PREFIX'] + '-'
     }

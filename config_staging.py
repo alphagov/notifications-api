@@ -21,6 +21,6 @@ class Staging(Config):
     BROKER_TRANSPORT_OPTIONS = {
         'region': 'eu-west-1',
         'polling_interval': 1,  # 1 second
-        'visibility_timeout': 60,  # 60 seconds
+        'visibility_timeout': 14410,  # 60 seconds
         'queue_name_prefix': os.environ['STAGING_NOTIFICATION_QUEUE_PREFIX'] + '-'
     }
