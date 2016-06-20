@@ -9,7 +9,7 @@ from functools import wraps
 
 def authentication_response(message, code):
     return jsonify(result='error',
-                   message=message
+                   message={"token": [message]}
                    ), code
 
 
@@ -28,8 +28,6 @@ def requires_auth():
         api_client = fetch_client(get_token_issuer(auth_token))
     except TokenDecodeError:
         return authentication_response("Invalid token: signature", 403)
-    if api_client is None:
-        authentication_response("Invalid credentials", 403)
 
     for secret in api_client['secret']:
         try:
@@ -45,7 +43,7 @@ def requires_auth():
             errors_resp = authentication_response("Invalid token: signature", 403)
 
     if not api_client['secret']:
-        errors_resp = authentication_response("Invalid token: signature", 403)
+        errors_resp = authentication_response("Invalid token: no api keys for service", 403)
     current_app.logger.info(errors_resp)
     return errors_resp
 
