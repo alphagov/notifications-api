@@ -18,7 +18,6 @@ from notifications_utils.template import Template
 
 from notifications_utils.recipients import (
     RecipientCSV,
-    validate_and_format_phone_number,
     allowed_to_send_to
 )
 
@@ -233,7 +232,8 @@ def send_sms(self, service_id, notification_id, encrypted_notification, created_
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
             status='sending',
-            created_at=datetime.strptime(created_at, DATETIME_FORMAT)
+            created_at=datetime.strptime(created_at, DATETIME_FORMAT),
+            personalisation=notification.get('personalisation')
         )
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS)
 
@@ -277,7 +277,8 @@ def send_email(service_id, notification_id, encrypted_notification, created_at, 
             status='sending',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
-            sent_by=provider.get_name()
+            sent_by=provider.get_name(),
+            personalisation=notification.get('personalisation')
         )
 
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL)

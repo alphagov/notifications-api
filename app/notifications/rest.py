@@ -277,7 +277,7 @@ def send_notification(notification_type):
 
     service_stats = notifications_dao.dao_get_notification_statistics_for_service_and_day(
         service_id,
-        datetime.utcnow().strftime(DATE_FORMAT)
+        datetime.today().strftime(DATE_FORMAT)
     )
 
     if service_stats:
