@@ -45,7 +45,7 @@ class Config(object):
     CELERY_TIMEZONE = 'Europe/London'
     CELERY_ACCEPT_CONTENT = ['json']
     CELERY_TASK_SERIALIZER = 'json'
-    CELERY_IMPORTS = ('app.celery.tasks',)
+    CELERY_IMPORTS = ('app.celery.tasks', 'app.celery.scheduled_tasks')
     CELERYBEAT_SCHEDULE = {
         'delete-verify-codes': {
             'task': 'delete-verify-codes',
