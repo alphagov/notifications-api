@@ -2,8 +2,8 @@ import uuid
 import pytest
 from flask import current_app
 from mock import ANY
-from notifications_utils.recipients import validate_phone_number, format_phone_number
 
+from app.celery import provider_tasks
 from app.celery.tasks import (
     send_sms,
     process_job,
@@ -13,14 +13,11 @@ from app.celery.tasks import (
     delete_successful_notifications,
     provider_to_use,
     timeout_notifications,
-    send_email)
-from app.celery.research_mode_tasks import (
-    send_email_response,
-    send_sms_response
+    send_email
 )
-from app import (aws_ses_client, encryption, DATETIME_FORMAT, mmg_client, statsd_client)
+from app import (aws_ses_client, encryption, DATETIME_FORMAT, statsd_client)
+from app.celery.research_mode_tasks import send_email_response
 from app.clients.email.aws_ses import AwsSesClientException
-from app.clients.sms.mmg import MMGClientException
 from app.dao import notifications_dao, jobs_dao, provider_details_dao
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
@@ -48,6 +45,7 @@ class AnyStringWith(str):
 mmg_error = {'Error': '40', 'Description': 'error'}
 
 
+# TODO moved to test_provider_tasks once send-email migrated
 def test_should_return_highest_priority_active_provider(notify_db, notify_db_session):
     providers = provider_details_dao.get_provider_details_by_notification_type('sms')
     first = providers[0]
@@ -318,22 +316,22 @@ def test_should_process_all_sms_job(sample_job,
     )
     assert encryption.encrypt.call_args[0][0]['to'] == '+441234123120'
     assert encryption.encrypt.call_args[0][0]['template'] == str(sample_job_with_placeholdered_template.template.id)
-    assert encryption.encrypt.call_args[0][0]['template_version'] == sample_job_with_placeholdered_template.template.version  # noqa
+    assert encryption.encrypt.call_args[0][0][
+               'template_version'] == sample_job_with_placeholdered_template.template.version  # noqa
     assert encryption.encrypt.call_args[0][0]['personalisation'] == {'name': 'chris'}
     tasks.send_sms.apply_async.call_count == 10
     job = jobs_dao.dao_get_job_by_id(sample_job_with_placeholdered_template.id)
     assert job.status == 'finished'
 
 
-def test_should_send_template_to_correct_sms_provider_and_persist(sample_template_with_placeholders, mocker):
+def test_should_send_template_to_correct_sms_task_and_persist(sample_template_with_placeholders, mocker):
     notification = _notification_json(sample_template_with_placeholders,
                                       to="+447234123123", personalisation={"name": "Jo"})
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
     mocker.patch('app.statsd_client.incr')
     mocker.patch('app.statsd_client.timing_with_dates')
     mocker.patch('app.statsd_client.timing')
+    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
 
     notification_id = uuid.uuid4()
 
@@ -353,18 +351,15 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     )
     freezer.stop()
 
-    statsd_client.timing_with_dates.assert_called_once_with(
-        "notifications.tasks.send-sms.queued-for",
-        datetime(2016, 1, 1, 11, 10, 0, 00000),
-        datetime(2016, 1, 1, 11, 9, 0, 00000)
-    )
     statsd_client.timing.assert_called_once_with("notifications.tasks.send-sms.task-time", ANY)
 
-    mmg_client.send_sms.assert_called_once_with(
-        to=format_phone_number(validate_phone_number("+447234123123")),
-        content="Sample service: Hello Jo",
-        reference=str(notification_id)
+    provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
+        (sample_template_with_placeholders.service_id,
+         notification_id,
+         "encrypted-in-reality"),
+        queue="sms"
     )
+
     statsd_client.incr.assert_called_once_with("notifications.tasks.send-sms")
     persisted_notification = notifications_dao.get_notification(
         sample_template_with_placeholders.service_id, notification_id
@@ -375,31 +370,9 @@ def test_should_send_template_to_correct_sms_provider_and_persist(sample_templat
     assert persisted_notification.template_version == sample_template_with_placeholders.version
     assert persisted_notification.status == 'sending'
     assert persisted_notification.created_at == now
-    assert persisted_notification.sent_at > now
-    assert persisted_notification.sent_by == 'mmg'
+    assert not persisted_notification.sent_at
+    assert not persisted_notification.sent_by
     assert not persisted_notification.job_id
-
-
-def test_should_send_sms_without_personalisation(sample_template, mocker):
-    notification = _notification_json(sample_template, "+447234123123")
-    mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
-
-    notification_id = uuid.uuid4()
-    now = datetime.utcnow()
-    send_sms(
-        sample_template.service_id,
-        notification_id,
-        "encrypted-in-reality",
-        now.strftime(DATETIME_FORMAT)
-    )
-
-    mmg_client.send_sms.assert_called_once_with(
-        to=format_phone_number(validate_phone_number("+447234123123")),
-        content="Sample service: This is a template",
-        reference=str(notification_id)
-    )
 
 
 def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notify_db_session, mocker):
@@ -410,8 +383,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
     notification = _notification_json(template, "+447700900890")  # The user’s own number, but in a different format
 
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
+    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -422,10 +394,11 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
         now.strftime(DATETIME_FORMAT)
     )
 
-    mmg_client.send_sms.assert_called_once_with(
-        to=format_phone_number(validate_phone_number("+447700900890")),
-        content="Sample service: This is a template",
-        reference=str(notification_id)
+    provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
+        (service.id,
+         notification_id,
+         "encrypted-in-reality"),
+        queue="sms"
     )
 
 
@@ -436,8 +409,7 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
 
     notification = _notification_json(template, "07700 900849")
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
+    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -447,51 +419,9 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
-    mmg_client.send_sms.assert_not_called()
+    provider_tasks.send_sms_to_provider.apply_async.assert_not_called()
     with pytest.raises(NoResultFound):
         notifications_dao.get_notification(service.id, notification_id)
-
-
-def test_send_sms_should_use_template_version_from_job_not_latest(sample_template, mocker):
-    notification = _notification_json(sample_template, '+447234123123')
-    mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
-    version_on_notification = sample_template.version
-
-    # Change the template
-    from app.dao.templates_dao import dao_update_template, dao_get_template_by_id
-    sample_template.content = sample_template.content + " another version of the template"
-    dao_update_template(sample_template)
-    t = dao_get_template_by_id(sample_template.id)
-    assert t.version > version_on_notification
-
-    notification_id = uuid.uuid4()
-    now = datetime.utcnow()
-    send_sms(
-        sample_template.service_id,
-        notification_id,
-        "encrypted-in-reality",
-        now.strftime(DATETIME_FORMAT)
-    )
-
-    mmg_client.send_sms.assert_called_once_with(
-        to=format_phone_number(validate_phone_number("+447234123123")),
-        content="Sample service: This is a template",
-        reference=str(notification_id)
-    )
-
-    persisted_notification = notifications_dao.get_notification(sample_template.service_id, notification_id)
-    assert persisted_notification.id == notification_id
-    assert persisted_notification.to == '+447234123123'
-    assert persisted_notification.template_id == sample_template.id
-    assert persisted_notification.template_version == version_on_notification
-    assert persisted_notification.template_version != sample_template.version
-    assert persisted_notification.created_at == now
-    assert persisted_notification.sent_at > now
-    assert persisted_notification.status == 'sending'
-    assert persisted_notification.sent_by == 'mmg'
-    assert persisted_notification.content_char_count == len("Sample service: This is a template")
 
 
 def test_should_send_email_if_restricted_service_and_valid_email(notify_db, notify_db_session, mocker):
@@ -551,15 +481,14 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
         notifications_dao.get_notification(service.id, notification_id)
 
 
-def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sample_job, mocker):
+def test_should_send_template_to_and_persist_with_job_id(sample_job, mocker):
     notification = _notification_json(
         sample_job.template,
         to="+447234123123",
         job_id=sample_job.id,
         row_number=2)
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
+    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -569,10 +498,11 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
         "encrypted-in-reality",
         now.strftime(DATETIME_FORMAT)
     )
-    mmg_client.send_sms.assert_called_once_with(
-        to=format_phone_number(validate_phone_number("+447234123123")),
-        content="Sample service: This is a template",
-        reference=str(notification_id)
+    provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
+        (sample_job.service.id,
+         notification_id,
+         "encrypted-in-reality"),
+        queue="sms"
     )
     persisted_notification = notifications_dao.get_notification(sample_job.template.service_id, notification_id)
     assert persisted_notification.id == notification_id
@@ -580,9 +510,9 @@ def test_should_send_template_to_correct_sms_provider_and_persist_with_job_id(sa
     assert persisted_notification.job_id == sample_job.id
     assert persisted_notification.template_id == sample_job.template.id
     assert persisted_notification.status == 'sending'
-    assert persisted_notification.sent_at > now
+    assert not persisted_notification.sent_at
     assert persisted_notification.created_at == now
-    assert persisted_notification.sent_by == 'mmg'
+    assert not persisted_notification.sent_by
     assert persisted_notification.job_row_number == 2
 
 
@@ -767,35 +697,32 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
     )
 
 
-def test_should_persist_notification_as_failed_if_sms_client_fails(sample_template, mocker):
+def test_should_persist_notification_as_failed_if_database_fails(sample_template, mocker):
     notification = _notification_json(sample_template, "+447234123123")
+
+    expected_exception = SQLAlchemyError()
+
     mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.mmg_client.send_sms', side_effect=MMGClientException(mmg_error))
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
+    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+    mocker.patch('app.celery.tasks.send_sms.retry', side_effect=Exception())
+    mocker.patch('app.celery.tasks.dao_create_notification', side_effect=expected_exception)
     now = datetime.utcnow()
 
     notification_id = uuid.uuid4()
 
-    send_sms(
-        sample_template.service_id,
-        notification_id,
-        "encrypted-in-reality",
-        now.strftime(DATETIME_FORMAT)
-    )
-    mmg_client.send_sms.assert_called_once_with(
-        to=format_phone_number(validate_phone_number("+447234123123")),
-        content="Sample service: This is a template",
-        reference=str(notification_id)
-    )
-    persisted_notification = notifications_dao.get_notification(sample_template.service_id, notification_id)
-    assert persisted_notification.id == notification_id
-    assert persisted_notification.to == '+447234123123'
-    assert persisted_notification.template_id == sample_template.id
-    assert persisted_notification.template_version == sample_template.version
-    assert persisted_notification.status == 'technical-failure'
-    assert persisted_notification.created_at == now
-    assert persisted_notification.sent_at > now
-    assert persisted_notification.sent_by == 'mmg'
+    with pytest.raises(Exception):
+        send_sms(
+            sample_template.service_id,
+            notification_id,
+            "encrypted-in-reality",
+            now.strftime(DATETIME_FORMAT)
+        )
+    provider_tasks.send_sms_to_provider.apply_async.assert_not_called()
+    tasks.send_sms.retry.assert_called_with(exc=expected_exception, queue='retry')
+
+    with pytest.raises(NoResultFound) as e:
+        notifications_dao.get_notification(sample_template.service_id, notification_id)
+    assert 'No row was found for one' in str(e.value)
 
 
 def test_should_persist_notification_as_failed_if_email_client_fails(sample_email_template, mocker):
@@ -831,27 +758,6 @@ def test_should_persist_notification_as_failed_if_email_client_fails(sample_emai
     assert persisted_notification.created_at == now
     assert persisted_notification.sent_by == 'ses'
     assert persisted_notification.sent_at > now
-
-
-def test_should_not_send_sms_if_db_peristance_failed(sample_template, mocker):
-    notification = _notification_json(sample_template, "+447234123123")
-    mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.db.session.add', side_effect=SQLAlchemyError())
-    now = datetime.utcnow()
-
-    notification_id = uuid.uuid4()
-
-    send_sms(
-        sample_template.service_id,
-        notification_id,
-        "encrypted-in-reality",
-        now.strftime(DATETIME_FORMAT)
-    )
-    mmg_client.send_sms.assert_not_called()
-    with pytest.raises(NoResultFound) as e:
-        notifications_dao.get_notification(sample_template.service_id, notification_id)
-    assert 'No row was found for one' in str(e.value)
 
 
 def test_should_not_send_email_if_db_peristance_failed(sample_email_template, mocker):
@@ -895,43 +801,6 @@ def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job
         {'reply_to_addresses': 'somereply@testservice.gov.uk'},
         queue="bulk-email"
     )
-
-
-def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_service, sample_template, mocker):
-    notification = _notification_json(
-        sample_template,
-        to="+447234123123"
-    )
-    mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
-    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
-
-    sample_service.research_mode = True
-    notify_db.session.add(sample_service)
-    notify_db.session.commit()
-
-    notification_id = uuid.uuid4()
-    now = datetime.utcnow()
-    send_sms(
-        sample_service.id,
-        notification_id,
-        "encrypted-in-reality",
-        now.strftime(DATETIME_FORMAT)
-    )
-    assert not mmg_client.send_sms.called
-    send_sms_response.apply_async.assert_called_once_with(
-        ('mmg', str(notification_id), "+447234123123"), queue='research-mode'
-    )
-
-    persisted_notification = notifications_dao.get_notification(sample_service.id, notification_id)
-    assert persisted_notification.id == notification_id
-    assert persisted_notification.to == '+447234123123'
-    assert persisted_notification.template_id == sample_template.id
-    assert persisted_notification.status == 'sending'
-    assert persisted_notification.sent_at > now
-    assert persisted_notification.created_at == now
-    assert persisted_notification.sent_by == 'mmg'
 
 
 def test_should_call_send_email_response_task_if_research_mode(
@@ -1023,47 +892,6 @@ def test_should_call_send_not_update_provider_email_stats_if_research_mode(
     assert not get_provider_statistics(
         sample_email_template.service,
         providers=[ses_provider.identifier]).first()
-
-
-def test_should_call_send_sms_response_task_if_research_mode(
-        notify_db,
-        sample_service,
-        sample_template,
-        mmg_provider,
-        mocker):
-    notification = _notification_json(
-        sample_template,
-        to="+447234123123"
-    )
-    mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
-    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
-
-    sample_service.research_mode = True
-    notify_db.session.add(sample_service)
-    notify_db.session.commit()
-
-    assert not get_provider_statistics(
-        sample_template.service,
-        providers=[mmg_provider.identifier]).first()
-
-    notification_id = uuid.uuid4()
-    now = datetime.utcnow()
-    send_sms(
-        sample_service.id,
-        notification_id,
-        "encrypted-in-reality",
-        now.strftime(DATETIME_FORMAT)
-    )
-    assert not mmg_client.send_sms.called
-    send_sms_response.apply_async.assert_called_once_with(
-        ('mmg', str(notification_id), "+447234123123"), queue='research-mode'
-    )
-
-    assert not get_provider_statistics(
-        sample_template.service,
-        providers=[mmg_provider.identifier]).first()
 
 
 def _notification_json(template, to, personalisation=None, job_id=None, row_number=None):

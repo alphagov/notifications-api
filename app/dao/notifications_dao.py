@@ -148,9 +148,7 @@ def dao_get_template_statistics_for_template(template_id):
 
 
 @transactional
-def dao_create_notification(notification, notification_type, provider_identifier):
-    provider = ProviderDetails.query.filter_by(identifier=provider_identifier).one()
-
+def dao_create_notification(notification, notification_type):
     if notification.job_id:
         db.session.query(Job).filter_by(
             id=notification.job_id
@@ -207,8 +205,9 @@ def _update_notification_stats_query(notification_type, status):
 
 def _update_statistics(notification, notification_statistics_status):
     if notification.job_id:
-        db.session.query(Job).filter_by(id=notification.job_id
-                                        ).update(_update_job_stats_query(notification_statistics_status))
+        db.session.query(Job).filter_by(
+            id=notification.job_id
+        ).update(_update_job_stats_query(notification_statistics_status))
 
     db.session.query(NotificationStatistics).filter_by(
         day=notification.created_at.date(),
@@ -241,17 +240,16 @@ def _update_notification_status(notification, status, notification_statistics_st
     if notification_statistics_status:
         _update_statistics(notification, notification_statistics_status)
 
-    db.session.query(Notification).filter(Notification.id == notification.id
-                                          ).update({Notification.status: status})
+    db.session.query(Notification).filter(Notification.id == notification.id).update({Notification.status: status})
     return True
 
 
 @transactional
 def update_notification_status_by_id(notification_id, status, notification_statistics_status=None):
-    notification = Notification.query.filter(Notification.id == notification_id,
-                                             or_(Notification.status == 'sending',
-                                                 Notification.status == 'pending')
-                                             ).first()
+    notification = Notification.query.filter(
+        Notification.id == notification_id,
+        or_(Notification.status == 'sending',
+            Notification.status == 'pending')).first()
 
     if not notification:
         return False
@@ -289,8 +287,8 @@ def dao_update_notification(notification):
 def update_provider_stats(
         id_,
         notification_type,
-        provider_name):
-
+        provider_name,
+        content_char_count=None):
     notification = Notification.query.filter(Notification.id == id_).one()
     provider = ProviderDetails.query.filter_by(identifier=provider_name).one()
 
@@ -298,6 +296,8 @@ def update_provider_stats(
         if notification_type == TEMPLATE_TYPE_EMAIL:
             return 1
         else:
+            if (content_char_count):
+                return get_sms_fragment_count(content_char_count)
             return get_sms_fragment_count(notification.content_char_count)
 
     update_count = db.session.query(ProviderStatistics).filter_by(

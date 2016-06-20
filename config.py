@@ -38,7 +38,7 @@ class Config(object):
     BROKER_TRANSPORT_OPTIONS = {
         'region': 'eu-west-1',
         'polling_interval': 1,  # 1 second
-        'visibility_timeout': 60,  # 60 seconds
+        'visibility_timeout': 14410,  # 4 hours 10 seconds. 10 seconds longer than max retry
         'queue_name_prefix': os.environ['NOTIFICATION_QUEUE_PREFIX'] + '-'
     }
     CELERY_ENABLE_UTC = True,
@@ -86,7 +86,8 @@ class Config(object):
         Queue('bulk-email', Exchange('default'), routing_key='bulk-email'),
         Queue('email-invited-user', Exchange('default'), routing_key='email-invited-user'),
         Queue('email-registration-verification', Exchange('default'), routing_key='email-registration-verification'),
-        Queue('research-mode', Exchange('default'), routing_key='research-mode')
+        Queue('research-mode', Exchange('default'), routing_key='research-mode'),
+        Queue('retry', Exchange('default'), routing_key='retry')
     ]
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
     LOADTESTING_NUMBER = os.getenv('LOADTESTING_NUMBER')

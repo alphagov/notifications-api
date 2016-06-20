@@ -44,21 +44,18 @@ def test_should_update_provider_statistics_sms_multi(notify_db,
         notify_db,
         notify_db_session,
         template=sample_template,
-        provider_name=mmg_provider.identifier,
         content_char_count=160)
     update_provider_stats(n1.id, 'sms', mmg_provider.identifier)
     n2 = create_sample_notification(
         notify_db,
         notify_db_session,
         template=sample_template,
-        provider_name=mmg_provider.identifier,
         content_char_count=161)
     update_provider_stats(n2.id, 'sms', mmg_provider.identifier)
     n3 = create_sample_notification(
         notify_db,
         notify_db_session,
         template=sample_template,
-        provider_name=mmg_provider.identifier,
         content_char_count=307)
     update_provider_stats(n3.id, 'sms', mmg_provider.identifier)
     provider_stats = get_provider_statistics(
@@ -74,20 +71,17 @@ def test_should_update_provider_statistics_email_multi(notify_db,
     n1 = create_sample_notification(
         notify_db,
         notify_db_session,
-        template=sample_email_template,
-        provider_name=ses_provider.identifier)
+        template=sample_email_template)
     update_provider_stats(n1.id, 'email', ses_provider.identifier)
     n2 = create_sample_notification(
         notify_db,
         notify_db_session,
-        template=sample_email_template,
-        provider_name=ses_provider.identifier)
+        template=sample_email_template)
     update_provider_stats(n2.id, 'email', ses_provider.identifier)
     n3 = create_sample_notification(
         notify_db,
         notify_db_session,
-        template=sample_email_template,
-        provider_name=ses_provider.identifier)
+        template=sample_email_template)
     update_provider_stats(n3.id, 'email', ses_provider.identifier)
     provider_stats = get_provider_statistics(
         sample_email_template.service,
