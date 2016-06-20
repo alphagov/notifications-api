@@ -44,8 +44,7 @@ def test_should_by_able_to_update_status_by_reference(sample_email_template, ses
     notification = Notification(**data)
     dao_create_notification(
         notification,
-        sample_email_template.template_type,
-        ses_provider.identifier)
+        sample_email_template.template_type)
 
     assert Notification.query.get(notification.id).status == "sending"
     notification.reference = 'reference'
@@ -59,7 +58,7 @@ def test_should_by_able_to_update_status_by_reference(sample_email_template, ses
 def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_provider):
     data = _notification_json(sample_template, job_id=sample_job.id)
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, 'mmg')
+    dao_create_notification(notification, sample_template.template_type)
     assert Notification.query.get(notification.id).status == 'sending'
     assert update_notification_status_by_id(notification.id, 'delivered', 'delivered')
     assert Notification.query.get(notification.id).status == 'delivered'
@@ -79,7 +78,7 @@ def test_should_not_update_status_by_id_if_not_sending_and_does_not_update_job(n
 def test_should_by_able_to_update_status_by_id_from_pending_to_delivered(sample_template, sample_job):
     data = _notification_json(sample_template, job_id=sample_job.id)
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, 'mmg')
+    dao_create_notification(notification, sample_template.template_type)
     assert Notification.query.get(notification.id).status == 'sending'
     assert update_notification_status_by_id(notification_id=notification.id, status='pending')
     assert Notification.query.get(notification.id).status == 'pending'
@@ -95,7 +94,7 @@ def test_should_by_able_to_update_status_by_id_from_pending_to_delivered(sample_
 def test_should_by_able_to_update_status_by_id_from_pending_to_temporary_failure(sample_template, sample_job):
     data = _notification_json(sample_template, job_id=sample_job.id)
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, 'mmg')
+    dao_create_notification(notification, sample_template.template_type)
     assert Notification.query.get(notification.id).status == 'sending'
     assert update_notification_status_by_id(notification_id=notification.id, status='pending')
     assert Notification.query.get(notification.id).status == 'pending'
@@ -114,7 +113,7 @@ def test_should_by_able_to_update_status_by_id_from_pending_to_temporary_failure
 def test_should_by_able_to_update_status_by_id_from_sending_to_permanent_failure(sample_template, sample_job):
     data = _notification_json(sample_template, job_id=sample_job.id)
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, 'firetext')
+    dao_create_notification(notification, sample_template.template_type)
     assert Notification.query.get(notification.id).status == 'sending'
 
     assert update_notification_status_by_id(
@@ -133,8 +132,7 @@ def test_should_not_update_status_one_notification_status_is_delivered(sample_em
     notification = Notification(**data)
     dao_create_notification(
         notification,
-        sample_email_template.template_type,
-        ses_provider.identifier)
+        sample_email_template.template_type)
 
     assert Notification.query.get(notification.id).status == "sending"
     update_provider_stats(
@@ -163,7 +161,7 @@ def test_should_be_able_to_record_statistics_failure_for_sms(sample_notification
 def test_should_be_able_to_record_statistics_failure_for_email(sample_email_template, sample_job, ses_provider):
     data = _notification_json(sample_email_template, job_id=sample_job.id)
     notification = Notification(**data)
-    dao_create_notification(notification, sample_email_template.template_type, ses_provider.identifier)
+    dao_create_notification(notification, sample_email_template.template_type)
 
     update_provider_stats(
         notification.id,
@@ -190,7 +188,7 @@ def test_should_be_able_to_get_statistics_for_a_service(sample_template, mmg_pro
     data = _notification_json(sample_template)
 
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification, sample_template.template_type)
 
     _assert_notification_stats(notification.service_id, sms_requested=1,
                                notification_created_at=notification.created_at.date())
@@ -200,7 +198,7 @@ def test_should_be_able_to_get_statistics_for_a_service_for_a_day(sample_templat
     now = datetime.utcnow()
     data = _notification_json(sample_template)
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification, sample_template.template_type)
     stat = dao_get_notification_statistics_for_service_and_day(
         sample_template.service.id, now.date()
     )
@@ -218,7 +216,7 @@ def test_should_return_none_if_no_statistics_for_a_service_for_a_day(sample_temp
     data = _notification_json(sample_template)
 
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification, sample_template.template_type)
     assert not dao_get_notification_statistics_for_service_and_day(
         sample_template.service.id, (datetime.utcnow() - timedelta(days=1)).date())
 
@@ -229,9 +227,9 @@ def test_should_be_able_to_get_all_statistics_for_a_service(sample_template, mmg
     notification_1 = Notification(**data)
     notification_2 = Notification(**data)
     notification_3 = Notification(**data)
-    dao_create_notification(notification_1, sample_template.template_type, mmg_provider.identifier)
-    dao_create_notification(notification_2, sample_template.template_type, mmg_provider.identifier)
-    dao_create_notification(notification_3, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification_1, sample_template.template_type)
+    dao_create_notification(notification_2, sample_template.template_type)
+    dao_create_notification(notification_3, sample_template.template_type)
 
     _assert_notification_stats(sample_template.service.id, sms_requested=3)
 
@@ -249,9 +247,9 @@ def test_should_be_able_to_get_all_statistics_for_a_service_for_several_days(sam
     data.update({'created_at': two_days_ago})
     notification_3 = Notification(**data)
 
-    dao_create_notification(notification_1, sample_template.template_type, mmg_provider.identifier)
-    dao_create_notification(notification_2, sample_template.template_type, mmg_provider.identifier)
-    dao_create_notification(notification_3, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification_1, sample_template.template_type)
+    dao_create_notification(notification_2, sample_template.template_type)
+    dao_create_notification(notification_3, sample_template.template_type)
 
     stats = dao_get_notification_statistics_for_service(sample_template.service.id)
     assert len(stats) == 3
@@ -283,9 +281,9 @@ def test_should_be_able_to_get_all_statistics_for_a_service_for_several_days_pre
     notification_2 = Notification(**data)
     data.update({'created_at': eight_days_ago})
     notification_3 = Notification(**data)
-    dao_create_notification(notification_1, sample_template.template_type, mmg_provider.identifier)
-    dao_create_notification(notification_2, sample_template.template_type, mmg_provider.identifier)
-    dao_create_notification(notification_3, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification_1, sample_template.template_type)
+    dao_create_notification(notification_2, sample_template.template_type)
+    dao_create_notification(notification_3, sample_template.template_type)
 
     stats = dao_get_notification_statistics_for_service(sample_template.service.id, 7)
     assert len(stats) == 2
@@ -305,7 +303,7 @@ def test_save_notification_creates_sms_and_template_stats(sample_template, sampl
     data = _notification_json(sample_template, job_id=sample_job.id)
 
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification, sample_template.template_type)
 
     assert Notification.query.count() == 1
     notification_from_db = Notification.query.all()[0]
@@ -338,7 +336,7 @@ def test_save_notification_and_create_email_and_template_stats(sample_email_temp
     data = _notification_json(sample_email_template, job_id=sample_job.id)
 
     notification = Notification(**data)
-    dao_create_notification(notification, sample_email_template.template_type, ses_provider.identifier)
+    dao_create_notification(notification, sample_email_template.template_type)
 
     assert Notification.query.count() == 1
     notification_from_db = Notification.query.all()[0]
@@ -372,7 +370,7 @@ def test_save_notification_handles_midnight_properly(sample_template, sample_job
     data = _notification_json(sample_template, sample_job.id)
 
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification, sample_template.template_type)
 
     assert Notification.query.count() == 1
 
@@ -388,7 +386,7 @@ def test_save_notification_handles_just_before_midnight_properly(sample_template
     data = _notification_json(sample_template, job_id=sample_job.id)
 
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification, sample_template.template_type)
 
     assert Notification.query.count() == 1
 
@@ -404,7 +402,7 @@ def test_save_notification_and_increment_email_stats(sample_email_template, samp
 
     notification_1 = Notification(**data)
     notification_2 = Notification(**data)
-    dao_create_notification(notification_1, sample_email_template.template_type, ses_provider.identifier)
+    dao_create_notification(notification_1, sample_email_template.template_type)
 
     assert Notification.query.count() == 1
 
@@ -414,7 +412,7 @@ def test_save_notification_and_increment_email_stats(sample_email_template, samp
     assert stats1.emails_requested == 1
     assert stats1.sms_requested == 0
 
-    dao_create_notification(notification_2, sample_email_template.template_type, ses_provider.identifier)
+    dao_create_notification(notification_2, sample_email_template.template_type)
 
     assert Notification.query.count() == 2
 
@@ -431,7 +429,7 @@ def test_save_notification_and_increment_sms_stats(sample_template, sample_job, 
 
     notification_1 = Notification(**data)
     notification_2 = Notification(**data)
-    dao_create_notification(notification_1, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification_1, sample_template.template_type)
 
     assert Notification.query.count() == 1
 
@@ -442,7 +440,7 @@ def test_save_notification_and_increment_sms_stats(sample_template, sample_job, 
     assert stats1.emails_requested == 0
     assert stats1.sms_requested == 1
 
-    dao_create_notification(notification_2, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification_2, sample_template.template_type)
 
     assert Notification.query.count() == 2
 
@@ -462,7 +460,7 @@ def test_not_save_notification_and_not_create_stats_on_commit_error(sample_templ
 
     notification = Notification(**data)
     with pytest.raises(SQLAlchemyError):
-        dao_create_notification(notification, sample_template.template_type, mmg_provider.identifier)
+        dao_create_notification(notification, sample_template.template_type)
 
     assert Notification.query.count() == 0
     assert Job.query.get(sample_job.id).notifications_sent == 0
@@ -475,7 +473,7 @@ def test_save_notification_and_increment_job(sample_template, sample_job, mmg_pr
     data = _notification_json(sample_template, job_id=sample_job.id)
 
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification, sample_template.template_type)
 
     assert Notification.query.count() == 1
     notification_from_db = Notification.query.all()[0]
@@ -490,7 +488,7 @@ def test_save_notification_and_increment_job(sample_template, sample_job, mmg_pr
     assert Job.query.get(sample_job.id).notifications_sent == 1
 
     notification_2 = Notification(**data)
-    dao_create_notification(notification_2, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification_2, sample_template.template_type)
     assert Notification.query.count() == 2
     # count is off because the count is defaulted to 1 in the sample_job
     _assert_job_stats(sample_job.id, sent=2, count=1)
@@ -502,7 +500,7 @@ def test_should_not_increment_job_if_notification_fails_to_persist(sample_templa
     data = _notification_json(sample_template, job_id=sample_job.id, id=random_id)
 
     notification_1 = Notification(**data)
-    dao_create_notification(notification_1, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification_1, sample_template.template_type)
 
     assert Notification.query.count() == 1
     assert Job.query.get(sample_job.id).notifications_sent == 1
@@ -510,7 +508,7 @@ def test_should_not_increment_job_if_notification_fails_to_persist(sample_templa
 
     notification_2 = Notification(**data)
     with pytest.raises(SQLAlchemyError):
-        dao_create_notification(notification_2, sample_template.template_type, mmg_provider.identifier)
+        dao_create_notification(notification_2, sample_template.template_type)
 
     assert Notification.query.count() == 1
     assert Job.query.get(sample_job.id).notifications_sent == 1
@@ -526,7 +524,7 @@ def test_save_notification_and_increment_correct_job(notify_db, notify_db_sessio
     data = _notification_json(sample_template, job_id=job_1.id)
 
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification, sample_template.template_type)
 
     assert Notification.query.count() == 1
     notification_from_db = Notification.query.all()[0]
@@ -548,7 +546,7 @@ def test_save_notification_with_no_job(sample_template, mmg_provider):
     data = _notification_json(sample_template)
 
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification, sample_template.template_type)
 
     assert Notification.query.count() == 1
     notification_from_db = Notification.query.all()[0]
@@ -573,7 +571,7 @@ def test_save_notification_no_job_id(sample_template, mmg_provider):
     data = _notification_json(sample_template)
 
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification, sample_template.template_type)
 
     assert Notification.query.count() == 1
     notification_from_db = Notification.query.all()[0]
@@ -679,7 +677,7 @@ def test_save_new_notification_creates_template_stats(sample_template, sample_jo
     data = _notification_json(sample_template, job_id=sample_job.id)
 
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification, sample_template.template_type)
 
     assert TemplateStatistics.query.count() == 1
     template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
@@ -697,7 +695,7 @@ def test_save_new_notification_creates_template_stats_per_day(sample_template, s
     data = _notification_json(sample_template, job_id=sample_job.id)
 
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification, sample_template.template_type)
 
     assert TemplateStatistics.query.count() == 1
     template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
@@ -711,7 +709,7 @@ def test_save_new_notification_creates_template_stats_per_day(sample_template, s
     with freeze_time('2016-03-31'):
         assert TemplateStatistics.query.count() == 1
         new_notification = Notification(**data)
-        dao_create_notification(new_notification, sample_template.template_type, mmg_provider.identifier)
+        dao_create_notification(new_notification, sample_template.template_type)
 
     assert TemplateStatistics.query.count() == 2
     first_stats = TemplateStatistics.query.filter(TemplateStatistics.day == datetime(2016, 3, 30)).first()
@@ -734,7 +732,7 @@ def test_save_another_notification_increments_template_stats(sample_template, sa
 
     notification_1 = Notification(**data)
     notification_2 = Notification(**data)
-    dao_create_notification(notification_1, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification_1, sample_template.template_type)
 
     assert TemplateStatistics.query.count() == 1
     template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
@@ -743,7 +741,7 @@ def test_save_another_notification_increments_template_stats(sample_template, sa
     assert template_stats.template_id == sample_template.id
     assert template_stats.usage_count == 1
 
-    dao_create_notification(notification_2, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification_2, sample_template.template_type)
 
     assert TemplateStatistics.query.count() == 1
     template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
@@ -763,9 +761,9 @@ def test_successful_notification_inserts_followed_by_failure_does_not_increment_
     notification_1 = Notification(**data)
     notification_2 = Notification(**data)
     notification_3 = Notification(**data)
-    dao_create_notification(notification_1, sample_template.template_type, mmg_provider.identifier)
-    dao_create_notification(notification_2, sample_template.template_type, mmg_provider.identifier)
-    dao_create_notification(notification_3, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification_1, sample_template.template_type)
+    dao_create_notification(notification_2, sample_template.template_type)
+    dao_create_notification(notification_3, sample_template.template_type)
 
     _assert_notification_stats(sample_template.service.id, sms_requested=3)
 
@@ -780,32 +778,30 @@ def test_successful_notification_inserts_followed_by_failure_does_not_increment_
     try:
         # Mess up db in really bad way
         db.session.execute('DROP TABLE TEMPLATE_STATISTICS')
-        dao_create_notification(failing_notification, sample_template.template_type, mmg_provider.identifier)
+        dao_create_notification(failing_notification, sample_template.template_type)
     except Exception as e:
         # There should be no additional notification stats or counts
         _assert_notification_stats(sample_template.service.id, sms_requested=3)
 
 
 @freeze_time("2016-03-30")
-def test_get_template_stats_for_service_returns_stats_in_reverse_date_order(sample_template,
-                                                                            sample_job,
-                                                                            mmg_provider):
+def test_get_template_stats_for_service_returns_stats_in_reverse_date_order(sample_template, sample_job):
     template_stats = dao_get_template_statistics_for_service(sample_template.service.id)
     assert len(template_stats) == 0
     data = _notification_json(sample_template, job_id=sample_job.id)
 
     notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type, mmg_provider.identifier)
+    dao_create_notification(notification, sample_template.template_type)
 
     # move on one day
     with freeze_time('2016-03-31'):
         new_notification = Notification(**data)
-        dao_create_notification(new_notification, sample_template.template_type, mmg_provider.identifier)
+        dao_create_notification(new_notification, sample_template.template_type)
 
     # move on one more day
     with freeze_time('2016-04-01'):
         new_notification = Notification(**data)
-        dao_create_notification(new_notification, sample_template.template_type, mmg_provider.identifier)
+        dao_create_notification(new_notification, sample_template.template_type)
 
     template_stats = dao_get_template_statistics_for_service(sample_template.service_id)
     assert len(template_stats) == 3
