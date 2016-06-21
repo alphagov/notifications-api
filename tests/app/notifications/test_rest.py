@@ -1248,6 +1248,30 @@ def test_get_notification_by_id_returns_merged_template_content(notify_db,
             notification = json.loads(response.get_data(as_text=True))['data']['notification']
             assert response.status_code == 200
             assert notification['body'] == 'Hello world'
+            assert 'subject' not in notification
+
+
+def test_get_notification_by_id_returns_merged_template_content_for_email(
+    notify_db,
+    notify_db_session,
+    notify_api,
+    sample_email_template_with_placeholders
+):
+    sample_notification = create_sample_notification(notify_db,
+                                                     notify_db_session,
+                                                     template=sample_email_template_with_placeholders,
+                                                     personalisation={"name": "world"})
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        auth_header = create_authorization_header(service_id=sample_notification.service_id)
+
+        response = client.get(
+            '/notifications/{}'.format(sample_notification.id),
+            headers=[auth_header])
+
+        notification = json.loads(response.get_data(as_text=True))['data']['notification']
+        assert response.status_code == 200
+        assert notification['body'] == 'Hello world'
+        assert notification['subject'] == 'world'
 
 
 def test_get_notifications_for_service_returns_merged_template_content(notify_api,
