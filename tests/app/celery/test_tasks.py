@@ -45,6 +45,21 @@ class AnyStringWith(str):
 mmg_error = {'Error': '40', 'Description': 'error'}
 
 
+def _notification_json(template, to, personalisation=None, job_id=None, row_number=None):
+    notification = {
+        "template": str(template.id),
+        "template_version": template.version,
+        "to": to,
+    }
+    if personalisation:
+        notification.update({"personalisation": personalisation})
+    if job_id:
+        notification.update({"job": str(job_id)})
+    if row_number:
+        notification['row_number'] = row_number
+    return notification
+
+
 # TODO moved to test_provider_tasks once send-email migrated
 def test_should_return_highest_priority_active_provider(notify_db, notify_db_session):
     providers = provider_details_dao.get_provider_details_by_notification_type('sms')
@@ -894,21 +909,6 @@ def test_should_call_send_not_update_provider_email_stats_if_research_mode(
         providers=[ses_provider.identifier]).first()
 
 
-def _notification_json(template, to, personalisation=None, job_id=None, row_number=None):
-    notification = {
-        "template": template.id,
-        "template_version": template.version,
-        "to": to,
-    }
-    if personalisation:
-        notification.update({"personalisation": personalisation})
-    if job_id:
-        notification.update({"job": job_id})
-    if row_number:
-        notification['row_number'] = row_number
-    return notification
-
-
 def test_update_status_of_notifications_after_timeout(notify_api,
                                                       notify_db,
                                                       notify_db_session,
@@ -945,3 +945,69 @@ def test_not_update_status_of_notification_before_timeout(notify_api,
                 seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') - 10))
         timeout_notifications()
         assert not1.status == 'sending'
+
+
+def test_email_template_personalisation_persisted(sample_email_template_with_placeholders, mocker):
+    encrypted_notification = encryption.encrypt(_notification_json(
+        sample_email_template_with_placeholders,
+        "my_email@my_email.com",
+        {"name": "Jo"},
+        row_number=1))
+    mocker.patch('app.statsd_client.incr')
+    mocker.patch('app.statsd_client.timing_with_dates')
+    mocker.patch('app.statsd_client.timing')
+    mocker.patch('app.aws_ses_client.get_name', return_value='ses')
+    mocker.patch('app.aws_ses_client.send_email', return_value='ses')
+
+    notification_id = uuid.uuid4()
+
+    send_email(
+        sample_email_template_with_placeholders.service_id,
+        notification_id,
+        encrypted_notification,
+        datetime.utcnow().strftime(DATETIME_FORMAT)
+    )
+
+    persisted_notification = notifications_dao.get_notification(
+        sample_email_template_with_placeholders.service_id, notification_id
+    )
+
+    assert persisted_notification.id == notification_id
+    assert persisted_notification.personalisation == {"name": "Jo"}
+    # personalisation data is encrypted in db
+    assert persisted_notification._personalisation == encryption.encrypt({"name": "Jo"})
+
+
+def test_sms_template_personalisation_persisted(sample_template_with_placeholders, mocker):
+
+    encrypted_notification = encryption.encrypt(_notification_json(sample_template_with_placeholders,
+                                                to="+447234123123", personalisation={"name": "Jo"}))
+    mocker.patch('app.statsd_client.incr')
+    mocker.patch('app.statsd_client.timing_with_dates')
+    mocker.patch('app.statsd_client.timing')
+    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+
+    notification_id = uuid.uuid4()
+
+    send_sms(
+        sample_template_with_placeholders.service_id,
+        notification_id,
+        encrypted_notification,
+        datetime.utcnow().strftime(DATETIME_FORMAT)
+    )
+
+    provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
+        (sample_template_with_placeholders.service.id,
+         notification_id,
+         encrypted_notification),
+        queue="sms"
+    )
+    persisted_notification = notifications_dao.get_notification(
+        sample_template_with_placeholders.service_id, notification_id
+    )
+
+    assert persisted_notification.id == notification_id
+    assert persisted_notification.to == '+447234123123'
+    assert persisted_notification.personalisation == {"name": "Jo"}
+    # personalisation data is encrypted in db
+    assert persisted_notification._personalisation == encryption.encrypt({"name": "Jo"})
