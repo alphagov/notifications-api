@@ -72,6 +72,7 @@ def test_get_all_notifications(notify_api, sample_notification):
                 'id': str(sample_notification.job.id),
                 'original_file_name': sample_notification.job.original_file_name
             }
+
             assert notifications['notifications'][0]['to'] == '+447700900855'
             assert notifications['notifications'][0]['service'] == str(sample_notification.service_id)
             assert response.status_code == 200
@@ -1225,6 +1226,61 @@ def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db
             app.statsd_client.incr.assert_any_call("notifications.callback.firetext.code.101")
             app.statsd_client.incr.assert_any_call("notifications.callback.firetext.status.0")
             app.statsd_client.incr.assert_any_call("notifications.callback.firetext.delivered")
+
+
+def test_get_notification_by_id_returns_merged_template_content(notify_db,
+                                                                notify_db_session,
+                                                                notify_api,
+                                                                sample_template_with_placeholders):
+
+    sample_notification = create_sample_notification(notify_db,
+                                                     notify_db_session,
+                                                     template=sample_template_with_placeholders,
+                                                     personalisation={"name": "world"})
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(service_id=sample_notification.service_id)
+
+            response = client.get(
+                '/notifications/{}'.format(sample_notification.id),
+                headers=[auth_header])
+
+            notification = json.loads(response.get_data(as_text=True))['data']['notification']
+            assert response.status_code == 200
+            assert notification['body'] == 'Hello world'
+
+
+def test_get_notifications_for_service_returns_merged_template_content(notify_api,
+                                                                       notify_db,
+                                                                       notify_db_session,
+                                                                       sample_template_with_placeholders):
+
+    create_sample_notification(notify_db,
+                               notify_db_session,
+                               service=sample_template_with_placeholders.service,
+                               template=sample_template_with_placeholders,
+                               personalisation={"name": "merged with first"})
+
+    create_sample_notification(notify_db,
+                               notify_db_session,
+                               service=sample_template_with_placeholders.service,
+                               template=sample_template_with_placeholders,
+                               personalisation={"name": "merged with second"})
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            auth_header = create_authorization_header()
+
+            response = client.get(
+                path='/service/{}/notifications'.format(sample_template_with_placeholders.service.id),
+                headers=[auth_header])
+            assert response.status_code == 200
+
+            resp = json.loads(response.get_data(as_text=True))
+            assert len(resp['notifications']) == 2
+            assert resp['notifications'][0]['body'] == 'Hello merged with first'
+            assert resp['notifications'][1]['body'] == 'Hello merged with second'
 
 
 def ses_validation_code_callback():

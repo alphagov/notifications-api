@@ -10,7 +10,8 @@ from marshmallow import (
     validates,
     validates_schema,
     pre_load,
-    pre_dump
+    pre_dump,
+    post_dump
 )
 from marshmallow_sqlalchemy import field_for
 
@@ -110,6 +111,7 @@ class NotificationModelSchema(BaseSchema):
     class Meta:
         model = models.Notification
         strict = True
+        exclude = ("_personalisation",)
 
 
 class BaseTemplateSchema(BaseSchema):
@@ -246,12 +248,30 @@ class SmsAdminNotificationSchema(SmsNotificationSchema):
 
 class NotificationStatusSchema(BaseSchema):
 
-    template = fields.Nested(TemplateSchema, only=["id", "name", "template_type"], dump_only=True)
+    template = fields.Nested(TemplateSchema, only=["id", "name", "template_type", "content"], dump_only=True)
     job = fields.Nested(JobSchema, only=["id", "original_file_name"], dump_only=True)
+    personalisation = fields.Dict(required=False)
 
     class Meta:
         model = models.Notification
         strict = True
+        exclude = ('_personalisation',)
+
+    @pre_dump
+    def handle_personalisation_property(self, in_data):
+        if in_data.personalisation:
+            self.personalisation = in_data.personalisation
+        return in_data
+
+    @post_dump
+    def handle_template_merge(self, in_data):
+        if in_data.get('personalisation'):
+            from notifications_utils.template import Template
+            merged = Template(in_data['template'], in_data['personalisation']).replaced
+            in_data['body'] = merged
+            in_data.pop('personalisation', None)
+        in_data['template'].pop('content', None)
+        return in_data
 
 
 class InvitedUserSchema(BaseSchema):

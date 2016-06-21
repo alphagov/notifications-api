@@ -320,7 +320,8 @@ def sample_notification(notify_db,
                         reference=None,
                         created_at=datetime.utcnow(),
                         content_char_count=160,
-                        create=True):
+                        create=True,
+                        personalisation=None):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:
@@ -347,7 +348,8 @@ def sample_notification(notify_db,
         'status': status,
         'reference': reference,
         'created_at': created_at,
-        'content_char_count': content_char_count
+        'content_char_count': content_char_count,
+        'personalisation': personalisation
     }
     if job_row_number:
         data['job_row_number'] = job_row_number
