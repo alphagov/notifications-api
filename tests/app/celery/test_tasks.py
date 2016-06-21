@@ -1,32 +1,27 @@
 import uuid
-import pytest
-from flask import current_app
-from mock import ANY
+from datetime import datetime
 
+import pytest
+from freezegun import freeze_time
+from mock import ANY
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm.exc import NoResultFound
+
+from app import (aws_ses_client, encryption, DATETIME_FORMAT, statsd_client)
 from app.celery import provider_tasks
+from app.celery import tasks
+from app.celery.research_mode_tasks import send_email_response
+from app.celery.tasks import s3
 from app.celery.tasks import (
     send_sms,
     process_job,
-    delete_verify_codes,
-    delete_invitations,
-    delete_failed_notifications,
-    delete_successful_notifications,
     provider_to_use,
-    timeout_notifications,
     send_email
 )
-from app import (aws_ses_client, encryption, DATETIME_FORMAT, statsd_client)
-from app.celery.research_mode_tasks import send_email_response
 from app.clients.email.aws_ses import AwsSesClientException
 from app.dao import notifications_dao, jobs_dao, provider_details_dao
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm.exc import NoResultFound
-from app.celery.tasks import s3
-from app.celery import tasks
 from app.dao.provider_statistics_dao import get_provider_statistics
 from tests.app import load_example_csv
-from datetime import datetime, timedelta
-from freezegun import freeze_time
 from tests.app.conftest import (
     sample_service,
     sample_user,
@@ -89,31 +84,6 @@ def test_should_return_highest_priority_active_provider(notify_db, notify_db_ses
     provider_details_dao.dao_update_provider_details(first)
 
     assert provider_to_use('sms', '1234').name == first.identifier
-
-
-def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
-    mocked = mocker.patch('app.celery.tasks.delete_notifications_created_more_than_a_week_ago')
-    delete_successful_notifications()
-    assert mocked.assert_called_with('delivered')
-    assert tasks.delete_notifications_created_more_than_a_week_ago.call_count == 1
-
-
-def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
-    mocker.patch('app.celery.tasks.delete_notifications_created_more_than_a_week_ago')
-    delete_failed_notifications()
-    assert tasks.delete_notifications_created_more_than_a_week_ago.call_count == 4
-
-
-def test_should_call_delete_codes_on_delete_verify_codes_task(notify_api, mocker):
-    mocker.patch('app.celery.tasks.delete_codes_older_created_more_than_a_day_ago')
-    delete_verify_codes()
-    assert tasks.delete_codes_older_created_more_than_a_day_ago.call_count == 1
-
-
-def test_should_call_delete_invotations_on_delete_invitations_task(notify_api, mocker):
-    mocker.patch('app.celery.tasks.delete_invitations_created_more_than_two_days_ago')
-    delete_invitations()
-    assert tasks.delete_invitations_created_more_than_two_days_ago.call_count == 1
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -907,44 +877,6 @@ def test_should_call_send_not_update_provider_email_stats_if_research_mode(
     assert not get_provider_statistics(
         sample_email_template.service,
         providers=[ses_provider.identifier]).first()
-
-
-def test_update_status_of_notifications_after_timeout(notify_api,
-                                                      notify_db,
-                                                      notify_db_session,
-                                                      sample_service,
-                                                      sample_template,
-                                                      mmg_provider):
-    with notify_api.test_request_context():
-        not1 = sample_notification(
-            notify_db,
-            notify_db_session,
-            service=sample_service,
-            template=sample_template,
-            status='sending',
-            created_at=datetime.utcnow() - timedelta(
-                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-        timeout_notifications()
-        assert not1.status == 'temporary-failure'
-
-
-def test_not_update_status_of_notification_before_timeout(notify_api,
-                                                          notify_db,
-                                                          notify_db_session,
-                                                          sample_service,
-                                                          sample_template,
-                                                          mmg_provider):
-    with notify_api.test_request_context():
-        not1 = sample_notification(
-            notify_db,
-            notify_db_session,
-            service=sample_service,
-            template=sample_template,
-            status='sending',
-            created_at=datetime.utcnow() - timedelta(
-                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') - 10))
-        timeout_notifications()
-        assert not1.status == 'sending'
 
 
 def test_email_template_personalisation_persisted(sample_email_template_with_placeholders, mocker):
