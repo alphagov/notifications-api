@@ -13,7 +13,10 @@ from app.encryption import (
     check_hash
 )
 
-from app import db
+from app import (
+    db,
+    encryption
+)
 
 from app.history_meta import Versioned
 
@@ -347,6 +350,18 @@ class Notification(db.Model):
     status = db.Column(
         db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_types'), nullable=False, default='sending')
     reference = db.Column(db.String, nullable=True, index=True)
+    _personalisation = db.Column(db.String, nullable=True)
+
+    @property
+    def personalisation(self):
+        if self._personalisation:
+            return encryption.decrypt(self._personalisation)
+        return None
+
+    @personalisation.setter
+    def personalisation(self, personalisation):
+        if personalisation:
+            self._personalisation = encryption.encrypt(personalisation)
 
 
 INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
