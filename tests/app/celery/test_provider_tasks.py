@@ -83,7 +83,8 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
         notify_db_session,
         sample_template_with_placeholders,
         mocker):
-    db_notification = sample_notification(notify_db, notify_db_session, template=sample_template_with_placeholders)
+    db_notification = sample_notification(notify_db, notify_db_session, template=sample_template_with_placeholders,
+                                          to_field="+447234123123", personalisation={"name": "Jo"})
 
     notification = _notification_json(
         sample_template_with_placeholders,
@@ -124,13 +125,12 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
         call("notifications.sms.total-time", ANY)
     ])
 
-    notification = notifications_dao.get_notification(
-        db_notification.service_id, db_notification.id
-    )
+    notification = Notification.query.filter_by(id=db_notification.id).one()
 
     assert notification.status == 'sending'
     assert notification.sent_at > now
     assert notification.sent_by == 'mmg'
+    assert notification.content_char_count == 24
 
 
 def test_should_send_template_to_correct_sms_provider_and_persist(
