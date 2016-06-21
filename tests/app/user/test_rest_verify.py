@@ -337,7 +337,6 @@ def test_send_user_email_verification(notify_api,
                     'url': current_app.config['ADMIN_BASE_URL'] + '/verify-email/' + 'the-token'
                 }
             }
-            print('test message: {}'.format(message))
             app.celery.tasks.send_email.apply_async.assert_called_once_with(
                 (str(current_app.config['NOTIFY_SERVICE_ID']),
                  'some_uuid',
