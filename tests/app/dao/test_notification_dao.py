@@ -75,6 +75,12 @@ def test_should_not_update_status_by_id_if_not_sending_and_does_not_update_job(n
     assert job == Job.query.get(notification.job_id)
 
 
+def test_should_update_status_if_created(notify_db, notify_db_session):
+    notification = sample_notification(notify_db, notify_db_session, status='created')
+    assert Notification.query.get(notification.id).status == 'created'
+    assert update_notification_status_by_id(notification.id, 'failed', 'failure')
+
+
 def test_should_by_able_to_update_status_by_id_from_pending_to_delivered(sample_template, sample_job):
     data = _notification_json(sample_template, job_id=sample_job.id)
     notification = Notification(**data)
