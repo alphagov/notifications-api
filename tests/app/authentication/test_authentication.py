@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 from notifications_python_client.authentication import create_jwt_token
 from flask import json, current_app
-from app.dao.api_key_dao import get_unsigned_secrets, save_model_api_key, get_unsigned_secret
+from app.dao.api_key_dao import get_unsigned_secrets, save_model_api_key, get_unsigned_secret, expire_api_key
 from app.models import ApiKey
 
 
@@ -161,13 +161,7 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
             token = create_jwt_token(
                 secret=get_unsigned_secret(expired_api_key.id),
                 client_id=str(sample_api_key.service_id))
-            # expire the key
-            expire_the_key = {'id': expired_api_key.id,
-                              'service': sample_api_key.service,
-                              'name': 'expired_key',
-                              'expiry_date': datetime.utcnow() + timedelta(hours=-2),
-                              'created_by': sample_api_key.created_by}
-            save_model_api_key(expired_api_key, expire_the_key)
+            expire_api_key(service_id=sample_api_key.service_id, api_key_id=expired_api_key.id)
             response = client.get(
                 '/service',
                 headers={'Authorization': 'Bearer {}'.format(token)})

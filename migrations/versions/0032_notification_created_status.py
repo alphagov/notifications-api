@@ -39,6 +39,7 @@ def downgrade():
                           name='notify_status_types')
     status_type.create(op.get_bind())
     op.add_column('notifications', sa.Column('old_status', status_type, nullable=True))
+    op.execute("update notifications set status = 'sending' where status = 'created'")
     op.execute('update notifications set old_status = CAST(CAST(status as text) as notify_status_types)')
     op.alter_column('notifications', 'status', new_column_name='new_status')
     op.alter_column('notifications', 'old_status', new_column_name='status')
