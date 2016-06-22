@@ -55,12 +55,9 @@ def send_sms_to_provider(self, service_id, notification_id, encrypted_notificati
     provider = provider_to_use('sms', notification_id)
     notification = get_notification_by_id(notification_id)
 
-    # notification_json = encryption.decrypt(encrypted_notification)
-
     template = Template(
         dao_get_template_by_id(notification.template_id, notification.template_version).__dict__,
-        values=notification.personalisation['personalisation'] if notification.personalisation[
-            'personalisation'] else {},
+        values={} if not notification.personalisation else notification.personalisation,
         prefix=service.name
     )
     try:
