@@ -14,8 +14,8 @@ from sqlalchemy.orm.exc import NoResultFound
 from app.dao.api_key_dao import (
     save_model_api_key,
     get_model_api_keys,
-    get_unsigned_secret
-)
+    get_unsigned_secret,
+    expire_api_key)
 from app.dao.services_dao import (
     dao_fetch_service_by_id_and_user,
     dao_fetch_service_by_id,
@@ -95,6 +95,7 @@ def update_service(service_id):
     return jsonify(data=service_schema.dump(fetched_service).data), 200
 
 
+# is this used.
 @service.route('/<uuid:service_id>/api-key', methods=['POST'])
 def renew_api_key(service_id=None):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
@@ -107,8 +108,7 @@ def renew_api_key(service_id=None):
 
 @service.route('/<uuid:service_id>/api-key/revoke/<uuid:api_key_id>', methods=['POST'])
 def revoke_api_key(service_id, api_key_id):
-    service_api_key = get_model_api_keys(service_id=service_id, id=api_key_id)
-    save_model_api_key(service_api_key, update_dict={'expiry_date': datetime.utcnow()})
+    expire_api_key(service_id=service_id, api_key_id=api_key_id)
     return jsonify(), 202
 
 
