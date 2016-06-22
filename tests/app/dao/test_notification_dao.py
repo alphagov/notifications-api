@@ -647,7 +647,7 @@ def test_update_notification(sample_notification, sample_template):
 def test_should_delete_notifications_after_seven_days(notify_db, notify_db_session):
     assert len(Notification.query.all()) == 0
 
-    # create one notification a day between 1st and 9th from 11:00 to 19:00
+    # create one notification a day between 1st and 10th from 11:00 to 19:00
     for i in range(1, 11):
         past_date = '2016-01-{0:02d}  {0:02d}:00:00.000000'.format(i, i)
         with freeze_time(past_date):
@@ -660,7 +660,8 @@ def test_should_delete_notifications_after_seven_days(notify_db, notify_db_sessi
     delete_notifications_created_more_than_a_week_ago('failed')
     remaining_notifications = Notification.query.all()
     assert len(remaining_notifications) == 8
-    assert remaining_notifications[0].created_at.date() == date(2016, 1, 3)
+    for notification in remaining_notifications:
+        assert notification.created_at.date() >= date(2016, 1, 3)
 
 
 def test_should_not_delete_failed_notifications_before_seven_days(notify_db, notify_db_session):
