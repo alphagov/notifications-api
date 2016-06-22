@@ -39,7 +39,6 @@ def notify_db(notify_api, request):
 
     def teardown():
         db.session.remove()
-        db.drop_all()
         db.get_engine(notify_api).dispose()
 
     request.addfinalizer(teardown)
@@ -47,15 +46,14 @@ def notify_db(notify_api, request):
 
 
 @pytest.fixture(scope='function')
-def notify_db_session(request):
+def notify_db_session(request, notify_db):
     def teardown():
-        db.session.remove()
-        for tbl in reversed(meta.sorted_tables):
+        notify_db.session.remove()
+        for tbl in reversed(notify_db.metadata.sorted_tables):
             if tbl.name not in ["provider_details"]:
-                db.engine.execute(tbl.delete())
-        db.session.commit()
+                notify_db.engine.execute(tbl.delete())
+        notify_db.session.commit()
 
-    meta = MetaData(bind=db.engine, reflect=True)
     request.addfinalizer(teardown)
 
 
