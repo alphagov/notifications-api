@@ -90,39 +90,40 @@ def test_send_notification_invalid_template_id(notify_api, sample_template, mock
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_send_notification_with_placeholders_replaced(notify_api, sample_template_with_placeholders, mocker):
+def test_send_notification_with_placeholders_replaced(notify_api, sample_email_template_with_placeholders, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocker.patch('app.celery.tasks.send_sms.apply_async')
+            mocker.patch('app.celery.tasks.send_email.apply_async')
 
             data = {
-                'to': '+447700900855',
-                'template': str(sample_template_with_placeholders.id),
+                'to': 'ok@ok.com',
+                'template': str(sample_email_template_with_placeholders.id),
                 'personalisation': {
                     'name': 'Jo'
                 }
             }
-            auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service.id)
+            auth_header = create_authorization_header(service_id=sample_email_template_with_placeholders.service.id)
 
             response = client.post(
-                path='/notifications/sms',
+                path='/notifications/email',
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             response_data = json.loads(response.data)['data']
             notification_id = response_data['notification']['id']
-            data.update({"template_version": sample_template_with_placeholders.version})
+            data.update({"template_version": sample_email_template_with_placeholders.version})
 
-            app.celery.tasks.send_sms.apply_async.assert_called_once_with(
-                (str(sample_template_with_placeholders.service.id),
+            app.celery.tasks.send_email.apply_async.assert_called_once_with(
+                (str(sample_email_template_with_placeholders.service.id),
                  notification_id,
                  ANY,
                  "2016-01-01T11:09:00.061258"),
-                queue="sms"
+                queue="email"
             )
             assert response.status_code == 201
-            assert encryption.decrypt(app.celery.tasks.send_sms.apply_async.call_args[0][0][2]) == data
+            assert encryption.decrypt(app.celery.tasks.send_email.apply_async.call_args[0][0][2]) == data
             assert response_data['body'] == 'Hello Jo'
+            assert response_data['subject'] == 'Jo'
 
 
 def test_should_not_send_notification_for_archived_template(notify_api, sample_template):
