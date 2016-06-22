@@ -3,7 +3,7 @@ from datetime import timedelta, datetime
 
 from flask import url_for
 from app.models import ApiKey
-from app.dao.api_key_dao import save_model_api_key
+from app.dao.api_key_dao import save_model_api_key, expire_api_key
 from tests import create_authorization_header
 from tests.app.conftest import sample_api_key as create_sample_api_key
 from tests.app.conftest import sample_service as create_sample_service
@@ -97,7 +97,7 @@ def test_get_api_keys_should_return_all_keys_for_service(notify_api, notify_db,
             # this service already has one key, add two more, one expired
             create_sample_api_key(notify_db, notify_db_session, service=sample_api_key.service)
             one_to_expire = create_sample_api_key(notify_db, notify_db_session, service=sample_api_key.service)
-            save_model_api_key(one_to_expire, update_dict={'expiry_date': datetime.utcnow()})
+            expire_api_key(service_id=one_to_expire.service_id, api_key_id=one_to_expire.id)
 
             assert ApiKey.query.count() == 4
 

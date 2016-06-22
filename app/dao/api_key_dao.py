@@ -1,4 +1,6 @@
 import uuid
+from datetime import datetime
+
 from flask import current_app
 from itsdangerous import URLSafeSerializer
 
@@ -13,17 +15,19 @@ from app.dao.dao_utils import (
 
 @transactional
 @version_class(ApiKey)
-def save_model_api_key(api_key, update_dict={}):
-    if update_dict:
-        update_dict.pop('id', None)
-        for key, value in update_dict.items():
-            setattr(api_key, key, value)
-        db.session.add(api_key)
-    else:
-        if not api_key.id:
-            api_key.id = uuid.uuid4()  # must be set now so version history model can use same id
-        api_key.secret = _generate_secret()
-        db.session.add(api_key)
+def save_model_api_key(api_key):
+    if not api_key.id:
+        api_key.id = uuid.uuid4()  # must be set now so version history model can use same id
+    api_key.secret = _generate_secret()
+    db.session.add(api_key)
+
+
+@transactional
+@version_class(ApiKey)
+def expire_api_key(service_id, api_key_id):
+    api_key = ApiKey.query.filter_by(id=api_key_id, service_id=service_id).one()
+    api_key.expiry_date = datetime.utcnow()
+    db.session.add(api_key)
 
 
 def get_model_api_keys(service_id, id=None):
@@ -49,9 +53,8 @@ def get_unsigned_secret(key_id):
     return _get_secret(api_key.secret)
 
 
-def _generate_secret(token=None):
-    if not token:
-        token = uuid.uuid4()
+def _generate_secret():
+    token = uuid.uuid4()
     serializer = URLSafeSerializer(current_app.config.get('SECRET_KEY'))
     return serializer.dumps(str(token), current_app.config.get('DANGEROUS_SALT'))
 
