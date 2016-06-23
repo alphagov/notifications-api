@@ -17,7 +17,7 @@ def test_api_key_should_create_new_api_key_for_service(notify_api, notify_db,
         with notify_api.test_client() as client:
             data = {'name': 'some secret name', 'created_by': str(sample_service.created_by.id)}
             auth_header = create_authorization_header()
-            response = client.post(url_for('service.renew_api_key', service_id=sample_service.id),
+            response = client.post(url_for('service.create_api_key', service_id=sample_service.id),
                                    data=json.dumps(data),
                                    headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 201
@@ -34,7 +34,7 @@ def test_api_key_should_return_error_when_service_does_not_exist(notify_api, not
             import uuid
             missing_service_id = uuid.uuid4()
             auth_header = create_authorization_header()
-            response = client.post(url_for('service.renew_api_key', service_id=missing_service_id),
+            response = client.post(url_for('service.create_api_key', service_id=missing_service_id),
                                    headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 404
 
@@ -62,14 +62,14 @@ def test_api_key_should_create_multiple_new_api_key_for_service(notify_api, noti
             assert ApiKey.query.count() == 0
             data = {'name': 'some secret name', 'created_by': str(sample_service.created_by.id)}
             auth_header = create_authorization_header()
-            response = client.post(url_for('service.renew_api_key', service_id=sample_service.id),
+            response = client.post(url_for('service.create_api_key', service_id=sample_service.id),
                                    data=json.dumps(data),
                                    headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 201
             assert ApiKey.query.count() == 1
             data = {'name': 'another secret name', 'created_by': str(sample_service.created_by.id)}
             auth_header = create_authorization_header()
-            response2 = client.post(url_for('service.renew_api_key', service_id=sample_service.id),
+            response2 = client.post(url_for('service.create_api_key', service_id=sample_service.id),
                                     data=json.dumps(data),
                                     headers=[('Content-Type', 'application/json'), auth_header])
             assert response2.status_code == 201
