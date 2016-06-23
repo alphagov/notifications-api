@@ -155,7 +155,7 @@ def send_sms(self, service_id, notification_id, encrypted_notification, created_
             service_id=service_id,
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
-            status='sending',
+            status='created',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             personalisation=notification.get('personalisation')
         )

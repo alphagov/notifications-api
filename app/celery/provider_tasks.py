@@ -48,28 +48,26 @@ def retry_iteration_to_delay(retry=0):
 
 
 @notify_celery.task(bind=True, name="send-sms-to-provider", max_retries=5, default_retry_delay=5)
-def send_sms_to_provider(self, service_id, notification_id, encrypted_notification):
+def send_sms_to_provider(self, service_id, notification_id, encrypted_notification=None):
     task_start = monotonic()
 
     service = dao_fetch_service_by_id(service_id)
     provider = provider_to_use('sms', notification_id)
     notification = get_notification_by_id(notification_id)
 
-    notification_json = encryption.decrypt(encrypted_notification)
-
     template = Template(
         dao_get_template_by_id(notification.template_id, notification.template_version).__dict__,
-        values=notification_json.get('personalisation', {}),
+        values={} if not notification.personalisation else notification.personalisation,
         prefix=service.name
     )
     try:
         if service.research_mode:
             send_sms_response.apply_async(
-                (provider.get_name(), str(notification_id), notification_json['to']), queue='research-mode'
+                (provider.get_name(), str(notification_id), notification.to), queue='research-mode'
             )
         else:
             provider.send_sms(
-                to=validate_and_format_phone_number(notification_json['to']),
+                to=validate_and_format_phone_number(notification.to),
                 content=template.replaced,
                 reference=str(notification_id)
             )
@@ -84,6 +82,7 @@ def send_sms_to_provider(self, service_id, notification_id, encrypted_notificati
         notification.sent_at = datetime.utcnow()
         notification.sent_by = provider.get_name(),
         notification.content_char_count = template.replaced_content_count
+        notification.status = 'sending'
         dao_update_notification(notification)
     except SmsClientException as e:
         try:

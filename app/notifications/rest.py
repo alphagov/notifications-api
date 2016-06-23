@@ -365,7 +365,7 @@ def get_notification_return_data(notification_id, notification, template):
     }
 
     if template.template_type == 'email':
-        output.update({'subject': template.subject})
+        output.update({'subject': template.replaced_subject})
 
     return output
 
