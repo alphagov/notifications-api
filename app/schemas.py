@@ -272,6 +272,8 @@ class NotificationStatusSchema(BaseSchema):
             if in_data['template']['template_type'] == 'email':
                 in_data['subject'] = template.replaced_subject
             in_data.pop('personalisation', None)
+        else:
+            in_data['body'] = in_data['template']['content']
         in_data['template'].pop('content', None)
         in_data['template'].pop('subject', None)
         return in_data

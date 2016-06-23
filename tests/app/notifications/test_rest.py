@@ -35,6 +35,7 @@ def test_get_notification_by_id(notify_api, sample_notification):
             assert notification['to'] == '+447700900855'
             assert notification['service'] == str(sample_notification.service_id)
             assert response.status_code == 200
+            assert notification['body'] == "This is a template"  # sample_template.content
 
 
 def test_get_notifications_empty_result(notify_api, sample_api_key):
@@ -75,6 +76,7 @@ def test_get_all_notifications(notify_api, sample_notification):
 
             assert notifications['notifications'][0]['to'] == '+447700900855'
             assert notifications['notifications'][0]['service'] == str(sample_notification.service_id)
+            assert notifications['notifications'][0]['body'] == "This is a template"  # sample_template.content
             assert response.status_code == 200
 
 
