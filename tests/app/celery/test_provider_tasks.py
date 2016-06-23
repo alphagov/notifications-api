@@ -1,20 +1,18 @@
+from datetime import datetime
+
 from celery.exceptions import MaxRetriesExceededError
-
 from mock import ANY, call
+from notifications_utils.recipients import validate_phone_number, format_phone_number
 
-from app import statsd_client, mmg_client, encryption
+from app import statsd_client, mmg_client
 from app.celery import provider_tasks
 from app.celery.provider_tasks import send_sms_to_provider
+from app.celery.research_mode_tasks import send_sms_response
 from app.celery.tasks import provider_to_use
 from app.clients.sms import SmsClientException
-from app.dao import provider_statistics_dao
-from datetime import datetime
-from freezegun import freeze_time
 from app.dao import notifications_dao, provider_details_dao
-from notifications_utils.recipients import validate_phone_number, format_phone_number
-from app.celery.research_mode_tasks import send_sms_response
+from app.dao import provider_statistics_dao
 from app.models import Notification, NotificationStatistics, Job
-
 from tests.app.conftest import (
     sample_notification
 )
