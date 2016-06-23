@@ -259,19 +259,17 @@ class NotificationStatusSchema(BaseSchema):
 
     @pre_dump
     def handle_personalisation_property(self, in_data):
-        if in_data.personalisation:
-            self.personalisation = in_data.personalisation
+        self.personalisation = in_data.personalisation
         return in_data
 
     @post_dump
     def handle_template_merge(self, in_data):
-        if in_data.get('personalisation'):
-            from notifications_utils.template import Template
-            template = Template(in_data['template'], in_data['personalisation'])
-            in_data['body'] = template.replaced
-            if in_data['template']['template_type'] == 'email':
-                in_data['subject'] = template.replaced_subject
-            in_data.pop('personalisation', None)
+        from notifications_utils.template import Template
+        template = Template(in_data['template'], in_data['personalisation'])
+        in_data['body'] = template.replaced
+        if in_data['template']['template_type'] == 'email':
+            in_data['subject'] = template.replaced_subject
+        in_data.pop('personalisation', None)
         in_data['template'].pop('content', None)
         in_data['template'].pop('subject', None)
         return in_data
