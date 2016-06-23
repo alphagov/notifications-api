@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from notifications_python_client.authentication import create_jwt_token
 from flask import json, current_app
 from app.dao.api_key_dao import get_unsigned_secrets, save_model_api_key, get_unsigned_secret, expire_api_key
-from app.models import ApiKey
+from app.models import ApiKey, KEY_TYPE_NORMAL
 
 
 def test_should_not_allow_request_with_no_token(notify_api):
@@ -78,7 +78,8 @@ def test_should_allow_valid_token_when_service_has_multiple_keys(notify_api, sam
         with notify_api.test_client() as client:
             data = {'service': sample_api_key.service,
                     'name': 'some key name',
-                    'created_by': sample_api_key.created_by
+                    'created_by': sample_api_key.created_by,
+                    'key_type': KEY_TYPE_NORMAL
                     }
             api_key = ApiKey(**data)
             save_model_api_key(api_key)
@@ -121,13 +122,15 @@ def test_authentication_passes_when_service_has_multiple_keys_some_expired(
             expired_key_data = {'service': sample_api_key.service,
                                 'name': 'expired_key',
                                 'expiry_date': datetime.utcnow(),
-                                'created_by': sample_api_key.created_by
+                                'created_by': sample_api_key.created_by,
+                                'key_type': KEY_TYPE_NORMAL
                                 }
             expired_key = ApiKey(**expired_key_data)
             save_model_api_key(expired_key)
             another_key = {'service': sample_api_key.service,
                            'name': 'another_key',
-                           'created_by': sample_api_key.created_by
+                           'created_by': sample_api_key.created_by,
+                           'key_type': KEY_TYPE_NORMAL
                            }
             api_key = ApiKey(**another_key)
             save_model_api_key(api_key)
@@ -148,13 +151,15 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
         with notify_api.test_client() as client:
             expired_key = {'service': sample_api_key.service,
                            'name': 'expired_key',
-                           'created_by': sample_api_key.created_by
+                           'created_by': sample_api_key.created_by,
+                           'key_type': KEY_TYPE_NORMAL
                            }
             expired_api_key = ApiKey(**expired_key)
             save_model_api_key(expired_api_key)
             another_key = {'service': sample_api_key.service,
                            'name': 'another_key',
-                           'created_by': sample_api_key.created_by
+                           'created_by': sample_api_key.created_by,
+                           'key_type': KEY_TYPE_NORMAL
                            }
             api_key = ApiKey(**another_key)
             save_model_api_key(api_key)

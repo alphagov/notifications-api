@@ -50,7 +50,7 @@ def notify_db_session(request, notify_db):
     def teardown():
         notify_db.session.remove()
         for tbl in reversed(notify_db.metadata.sorted_tables):
-            if tbl.name not in ["provider_details"]:
+            if tbl.name not in ["provider_details", "key_types"]:
                 notify_db.engine.execute(tbl.delete())
         notify_db.session.commit()
 

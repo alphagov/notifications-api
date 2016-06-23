@@ -1,9 +1,9 @@
 import json
-from datetime import timedelta, datetime
+from datetime import datetime
 
 from flask import url_for
-from app.models import ApiKey
-from app.dao.api_key_dao import save_model_api_key, expire_api_key
+from app.models import ApiKey, KEY_TYPE_NORMAL
+from app.dao.api_key_dao import expire_api_key
 from tests import create_authorization_header
 from tests.app.conftest import sample_api_key as create_sample_api_key
 from tests.app.conftest import sample_service as create_sample_service
@@ -15,13 +15,17 @@ def test_api_key_should_create_new_api_key_for_service(notify_api, notify_db,
                                                        sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            data = {'name': 'some secret name', 'created_by': str(sample_service.created_by.id)}
+            data = {
+                'name': 'some secret name',
+                'created_by': str(sample_service.created_by.id),
+                'key_type': KEY_TYPE_NORMAL
+            }
             auth_header = create_authorization_header()
             response = client.post(url_for('service.create_api_key', service_id=sample_service.id),
                                    data=json.dumps(data),
                                    headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 201
-            assert response.get_data is not None
+            assert 'data' in json.loads(response.get_data(as_text=True))
             saved_api_key = ApiKey.query.filter_by(service_id=sample_service.id).first()
             assert saved_api_key.service_id == sample_service.id
             assert saved_api_key.name == 'some secret name'
@@ -60,20 +64,25 @@ def test_api_key_should_create_multiple_new_api_key_for_service(notify_api, noti
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             assert ApiKey.query.count() == 0
-            data = {'name': 'some secret name', 'created_by': str(sample_service.created_by.id)}
+            data = {
+                'name': 'some secret name',
+                'created_by': str(sample_service.created_by.id),
+                'key_type': KEY_TYPE_NORMAL
+            }
             auth_header = create_authorization_header()
             response = client.post(url_for('service.create_api_key', service_id=sample_service.id),
                                    data=json.dumps(data),
                                    headers=[('Content-Type', 'application/json'), auth_header])
             assert response.status_code == 201
             assert ApiKey.query.count() == 1
-            data = {'name': 'another secret name', 'created_by': str(sample_service.created_by.id)}
+
+            data['name'] = 'another secret name'
             auth_header = create_authorization_header()
             response2 = client.post(url_for('service.create_api_key', service_id=sample_service.id),
                                     data=json.dumps(data),
                                     headers=[('Content-Type', 'application/json'), auth_header])
             assert response2.status_code == 201
-            assert response2.get_data != response.get_data
+            assert json.loads(response.get_data(as_text=True)) != json.loads(response2.get_data(as_text=True))
             assert ApiKey.query.count() == 2
 
 

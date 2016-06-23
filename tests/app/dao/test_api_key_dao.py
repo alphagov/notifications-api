@@ -9,7 +9,7 @@ from app.dao.api_key_dao import (save_model_api_key,
                                  get_unsigned_secret,
                                  _generate_secret,
                                  _get_secret, expire_api_key)
-from app.models import ApiKey
+from app.models import ApiKey, KEY_TYPE_NORMAL
 
 
 def test_secret_is_signed_and_can_be_read_again(notify_api, mocker):
@@ -26,7 +26,8 @@ def test_save_api_key_should_create_new_api_key_and_history(notify_api,
                                                             sample_service):
     api_key = ApiKey(**{'service': sample_service,
                         'name': sample_service.name,
-                        'created_by': sample_service.created_by})
+                        'created_by': sample_service.created_by,
+                        'key_type': KEY_TYPE_NORMAL})
     save_model_api_key(api_key)
 
     all_api_keys = get_model_api_keys(service_id=sample_service.id)
@@ -105,7 +106,8 @@ def test_should_not_allow_duplicate_key_names_per_service(notify_api,
     api_key = ApiKey(**{'id': fake_uuid,
                         'service': sample_api_key.service,
                         'name': sample_api_key.name,
-                        'created_by': sample_api_key.created_by})
+                        'created_by': sample_api_key.created_by,
+                        'key_type': KEY_TYPE_NORMAL})
     try:
         save_model_api_key(api_key)
         fail("should throw IntegrityError")
@@ -122,7 +124,8 @@ def test_save_api_key_should_not_create_new_service_history(notify_api, notify_d
 
     api_key = ApiKey(**{'service': sample_service,
                         'name': sample_service.name,
-                        'created_by': sample_service.created_by})
+                        'created_by': sample_service.created_by,
+                        'key_type': KEY_TYPE_NORMAL})
     save_model_api_key(api_key)
 
     assert Service.get_history_model().query.count() == 1
