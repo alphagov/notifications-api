@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 
 import pytest
@@ -1283,7 +1283,8 @@ def test_get_notifications_for_service_returns_merged_template_content(notify_ap
                                notify_db_session,
                                service=sample_template_with_placeholders.service,
                                template=sample_template_with_placeholders,
-                               personalisation={"name": "merged with first"})
+                               personalisation={"name": "merged with first"},
+                               created_at=datetime.utcnow() - timedelta(seconds=1))
 
     create_sample_notification(notify_db,
                                notify_db_session,

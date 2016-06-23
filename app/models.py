@@ -348,7 +348,7 @@ class Notification(db.Model):
         nullable=True,
         onupdate=datetime.datetime.utcnow)
     status = db.Column(
-        db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type'), nullable=False, default='sending')
+        db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type'), nullable=False, default='created')
     reference = db.Column(db.String, nullable=True, index=True)
     _personalisation = db.Column(db.String, nullable=True)
 
