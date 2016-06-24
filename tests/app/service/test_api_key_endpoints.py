@@ -1,7 +1,7 @@
 import json
-from datetime import datetime
 
 from flask import url_for
+
 from app.models import ApiKey, KEY_TYPE_NORMAL
 from app.dao.api_key_dao import expire_api_key
 from tests import create_authorization_header
@@ -10,9 +10,7 @@ from tests.app.conftest import sample_service as create_sample_service
 from tests.app.conftest import sample_user as create_user
 
 
-def test_api_key_should_create_new_api_key_for_service(notify_api, notify_db,
-                                                       notify_db_session,
-                                                       sample_service):
+def test_api_key_should_create_new_api_key_for_service(notify_api, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
@@ -31,8 +29,7 @@ def test_api_key_should_create_new_api_key_for_service(notify_api, notify_db,
             assert saved_api_key.name == 'some secret name'
 
 
-def test_api_key_should_return_error_when_service_does_not_exist(notify_api, notify_db, notify_db_session,
-                                                                 sample_service):
+def test_api_key_should_return_error_when_service_does_not_exist(notify_api, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             import uuid
@@ -43,8 +40,21 @@ def test_api_key_should_return_error_when_service_does_not_exist(notify_api, not
             assert response.status_code == 404
 
 
-def test_revoke_should_expire_api_key_for_service(notify_api, notify_db, notify_db_session,
-                                                  sample_api_key):
+def test_create_api_key_should_set_default_key_type_of_normal(notify_api, sample_service):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        data = {
+            'name': 'some secret name',
+            'created_by': str(sample_service.created_by.id)
+        }
+        auth_header = create_authorization_header()
+        response = client.post(url_for('service.create_api_key', service_id=sample_service.id),
+                               data=json.dumps(data),
+                               headers=[('Content-Type', 'application/json'), auth_header])
+        assert response.status_code == 201
+        assert ApiKey.query.one().key_type == KEY_TYPE_NORMAL
+
+
+def test_revoke_should_expire_api_key_for_service(notify_api, sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             assert ApiKey.query.count() == 1
@@ -58,9 +68,7 @@ def test_revoke_should_expire_api_key_for_service(notify_api, notify_db, notify_
             assert api_keys_for_service.expiry_date is not None
 
 
-def test_api_key_should_create_multiple_new_api_key_for_service(notify_api, notify_db,
-                                                                notify_db_session,
-                                                                sample_service):
+def test_api_key_should_create_multiple_new_api_key_for_service(notify_api, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             assert ApiKey.query.count() == 0
@@ -119,9 +127,7 @@ def test_get_api_keys_should_return_all_keys_for_service(notify_api, notify_db,
             assert len(json_resp['apiKeys']) == 3
 
 
-def test_get_api_keys_should_return_one_key_for_service(notify_api, notify_db,
-                                                        notify_db_session,
-                                                        sample_api_key):
+def test_get_api_keys_should_return_one_key_for_service(notify_api, sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header()
