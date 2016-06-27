@@ -224,8 +224,8 @@ def test_should_not_send_to_provider_when_status_is_not_created(notify_db, notif
                                                                 sample_service,
                                                                 mocker):
     notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                        service=sample_service,
-                        status='sending')
+                                       service=sample_service,
+                                       status='sending')
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
     mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
