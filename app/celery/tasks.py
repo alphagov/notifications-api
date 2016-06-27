@@ -161,7 +161,7 @@ def send_sms(self, service_id, notification_id, encrypted_notification, created_
         )
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS)
 
-        send_sms_to_provider.apply_async((service_id, notification_id, encrypted_notification), queue='sms')
+        send_sms_to_provider.apply_async((service_id, notification_id), queue='sms')
 
         current_app.logger.info(
             "SMS {} created at {} sent at {}".format(notification_id, created_at, sent_at)

@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from pytest import fail
+import pytest
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.api_key_dao import (save_model_api_key,
@@ -9,7 +10,7 @@ from app.dao.api_key_dao import (save_model_api_key,
                                  get_unsigned_secret,
                                  _generate_secret,
                                  _get_secret, expire_api_key)
-from app.models import ApiKey
+from app.models import ApiKey, KEY_TYPE_NORMAL
 
 
 def test_secret_is_signed_and_can_be_read_again(notify_api, mocker):
@@ -20,13 +21,11 @@ def test_secret_is_signed_and_can_be_read_again(notify_api, mocker):
         assert signed_secret != 'some_uuid'
 
 
-def test_save_api_key_should_create_new_api_key_and_history(notify_api,
-                                                            notify_db,
-                                                            notify_db_session,
-                                                            sample_service):
+def test_save_api_key_should_create_new_api_key_and_history(sample_service):
     api_key = ApiKey(**{'service': sample_service,
                         'name': sample_service.name,
-                        'created_by': sample_service.created_by})
+                        'created_by': sample_service.created_by,
+                        'key_type': KEY_TYPE_NORMAL})
     save_model_api_key(api_key)
 
     all_api_keys = get_model_api_keys(service_id=sample_service.id)
@@ -41,8 +40,6 @@ def test_save_api_key_should_create_new_api_key_and_history(notify_api,
 
 
 def test_expire_api_key_should_update_the_api_key_and_create_history_record(notify_api,
-                                                                            notify_db,
-                                                                            notify_db_session,
                                                                             sample_api_key):
     expire_api_key(service_id=sample_api_key.service_id, api_key_id=sample_api_key.id)
     all_api_keys = get_model_api_keys(service_id=sample_api_key.service_id)
@@ -61,16 +58,9 @@ def test_expire_api_key_should_update_the_api_key_and_create_history_record(noti
     sorted_all_history[1].version = 2
 
 
-def test_get_api_key_should_raise_exception_when_api_key_does_not_exist(notify_api,
-                                                                        notify_db,
-                                                                        notify_db_session,
-                                                                        sample_service,
-                                                                        fake_uuid):
-    try:
+def test_get_api_key_should_raise_exception_when_api_key_does_not_exist(sample_service, fake_uuid):
+    with pytest.raises(NoResultFound):
         get_model_api_keys(sample_service.id, id=fake_uuid)
-        fail("Should have thrown a NoResultFound exception")
-    except NoResultFound:
-        pass
 
 
 def test_should_return_api_key_for_service(notify_api, notify_db, notify_db_session, sample_api_key):
@@ -78,43 +68,30 @@ def test_should_return_api_key_for_service(notify_api, notify_db, notify_db_sess
     assert api_key == sample_api_key
 
 
-def test_should_return_unsigned_api_keys_for_service_id(notify_api,
-                                                        notify_db,
-                                                        notify_db_session,
-                                                        sample_api_key):
+def test_should_return_unsigned_api_keys_for_service_id(sample_api_key):
     unsigned_api_key = get_unsigned_secrets(sample_api_key.service_id)
     assert len(unsigned_api_key) == 1
     assert sample_api_key.secret != unsigned_api_key[0]
     assert unsigned_api_key[0] == _get_secret(sample_api_key.secret)
 
 
-def test_get_unsigned_secret_returns_key(notify_api,
-                                         notify_db,
-                                         notify_db_session,
-                                         sample_api_key):
+def test_get_unsigned_secret_returns_key(sample_api_key):
     unsigned_api_key = get_unsigned_secret(sample_api_key.id)
     assert sample_api_key.secret != unsigned_api_key
     assert unsigned_api_key == _get_secret(sample_api_key.secret)
 
 
-def test_should_not_allow_duplicate_key_names_per_service(notify_api,
-                                                          notify_db,
-                                                          notify_db_session,
-                                                          sample_api_key,
-                                                          fake_uuid):
+def test_should_not_allow_duplicate_key_names_per_service(sample_api_key, fake_uuid):
     api_key = ApiKey(**{'id': fake_uuid,
                         'service': sample_api_key.service,
                         'name': sample_api_key.name,
-                        'created_by': sample_api_key.created_by})
-    try:
+                        'created_by': sample_api_key.created_by,
+                        'key_type': KEY_TYPE_NORMAL})
+    with pytest.raises(IntegrityError):
         save_model_api_key(api_key)
-        fail("should throw IntegrityError")
-    except:
-        pass
 
 
-def test_save_api_key_should_not_create_new_service_history(notify_api, notify_db, notify_db_session, sample_service):
-
+def test_save_api_key_should_not_create_new_service_history(sample_service):
     from app.models import Service
 
     assert Service.query.count() == 1
@@ -122,7 +99,8 @@ def test_save_api_key_should_not_create_new_service_history(notify_api, notify_d
 
     api_key = ApiKey(**{'service': sample_service,
                         'name': sample_service.name,
-                        'created_by': sample_service.created_by})
+                        'created_by': sample_service.created_by,
+                        'key_type': KEY_TYPE_NORMAL})
     save_model_api_key(api_key)
 
     assert Service.get_history_model().query.count() == 1

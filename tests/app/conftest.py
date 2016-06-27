@@ -18,7 +18,8 @@ from app.models import (
     Permission,
     ProviderStatistics,
     ProviderDetails,
-    NotificationStatistics)
+    NotificationStatistics,
+    KEY_TYPE_NORMAL)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
@@ -229,10 +230,11 @@ def sample_email_template_with_placeholders(notify_db, notify_db_session):
 @pytest.fixture(scope='function')
 def sample_api_key(notify_db,
                    notify_db_session,
-                   service=None):
+                   service=None,
+                   key_type=KEY_TYPE_NORMAL):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
-    data = {'service': service, 'name': uuid.uuid4(), 'created_by': service.created_by}
+    data = {'service': service, 'name': uuid.uuid4(), 'created_by': service.created_by, 'key_type': key_type}
     api_key = ApiKey(**data)
     save_model_api_key(api_key)
     return api_key
@@ -316,7 +318,7 @@ def sample_notification(notify_db,
                         job=None,
                         job_row_number=None,
                         to_field=None,
-                        status='sending',
+                        status='created',
                         reference=None,
                         created_at=datetime.utcnow(),
                         content_char_count=160,

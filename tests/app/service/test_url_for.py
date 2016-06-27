@@ -34,7 +34,7 @@ def test_url_for_update_service(notify_api):
         assert str(url) == '/service/{}'.format(service_id)
 
 
-def test_url_for_renew_api_key(notify_api):
+def test_url_for_create_api_key(notify_api):
     with notify_api.test_request_context():
-        url = url_for('service.renew_api_key', service_id=service_id)
+        url = url_for('service.create_api_key', service_id=service_id)
         assert str(url) == '/service/{}/api-key'.format(service_id)

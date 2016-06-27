@@ -332,8 +332,7 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
 
     provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
         (sample_template_with_placeholders.service_id,
-         notification_id,
-         encryption.encrypt(notification)),
+         notification_id),
         queue="sms"
     )
 
@@ -371,8 +370,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
 
     provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
         (service.id,
-         notification_id,
-         encrypt_notification),
+         notification_id),
         queue="sms"
     )
 
@@ -480,8 +478,7 @@ def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, mocker)
     )
     provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
         (sample_job.service.id,
-         notification_id,
-         encryption.encrypt(notification)),
+         notification_id),
         queue="sms"
     )
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
