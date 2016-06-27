@@ -113,6 +113,7 @@ class ApiKey(db.Model, Versioned):
     secret = db.Column(db.String(255), unique=True, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service', backref=db.backref('api_keys', lazy='dynamic'))
+    key_type = db.Column(db.String(255), db.ForeignKey('key_types.name'), index=True, nullable=False)
     expiry_date = db.Column(db.DateTime)
     created_at = db.Column(
         db.DateTime,
@@ -132,6 +133,16 @@ class ApiKey(db.Model, Versioned):
     __table_args__ = (
         UniqueConstraint('service_id', 'name', name='uix_service_to_key_name'),
     )
+
+
+KEY_TYPE_NORMAL = 'normal'
+KEY_TYPE_TEAM = 'team'
+
+
+class KeyTypes(db.Model):
+    __tablename__ = 'key_types'
+
+    name = db.Column(db.String(255), primary_key=True)
 
 
 class NotificationStatistics(db.Model):
@@ -329,6 +340,9 @@ class Notification(db.Model):
     template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), index=True, unique=False)
     template = db.relationship('Template')
     template_version = db.Column(db.Integer, nullable=False)
+    api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), index=True, unique=False)
+    api_key = db.relationship('ApiKey')
+    key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False)
     content_char_count = db.Column(db.Integer, nullable=True)
     created_at = db.Column(
         db.DateTime,
