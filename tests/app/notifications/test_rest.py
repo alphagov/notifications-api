@@ -44,7 +44,8 @@ def test_get_email_notification_by_id(notify_api, notify_db, notify_db_session, 
     email_notification = create_sample_notification(notify_db,
                                                     notify_db_session,
                                                     service=sample_email_template.service,
-                                                    template=sample_email_template)
+                                                    template=sample_email_template,
+                                                    status='sending')
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
