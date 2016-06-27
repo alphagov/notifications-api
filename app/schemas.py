@@ -165,6 +165,7 @@ class NotificationsStatisticsSchema(BaseSchema):
 class ApiKeySchema(BaseSchema):
 
     created_by = field_for(models.ApiKey, 'created_by', required=True)
+    key_type = field_for(models.ApiKey, 'key_type', required=True, missing=models.KEY_TYPE_NORMAL)
 
     class Meta:
         model = models.ApiKey

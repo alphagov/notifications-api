@@ -95,9 +95,8 @@ def update_service(service_id):
     return jsonify(data=service_schema.dump(fetched_service).data), 200
 
 
-# is this used.
 @service.route('/<uuid:service_id>/api-key', methods=['POST'])
-def renew_api_key(service_id=None):
+def create_api_key(service_id=None):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
     valid_api_key = api_key_schema.load(request.get_json()).data
     valid_api_key.service = fetched_service
