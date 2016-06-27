@@ -13,7 +13,7 @@ from tests.app.conftest import sample_job as create_sample_job
 from tests.app.conftest import sample_service as create_sample_service
 
 
-def test_get_notification_by_id(notify_api, sample_notification):
+def test_get_sms_notification_by_id(notify_api, sample_notification):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header(service_id=sample_notification.service_id)
@@ -35,6 +35,42 @@ def test_get_notification_by_id(notify_api, sample_notification):
             assert notification['to'] == '+447700900855'
             assert notification['service'] == str(sample_notification.service_id)
             assert response.status_code == 200
+            assert notification['body'] == "This is a template"  # sample_template.content
+            assert not notification.get('subject')
+
+
+def test_get_email_notification_by_id(notify_api, notify_db, notify_db_session, sample_email_template):
+
+    email_notification = create_sample_notification(notify_db,
+                                                    notify_db_session,
+                                                    service=sample_email_template.service,
+                                                    template=sample_email_template)
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(service_id=email_notification.service_id)
+
+            response = client.get(
+                '/notifications/{}'.format(email_notification.id),
+                headers=[auth_header])
+
+            notification = json.loads(response.get_data(as_text=True))['data']['notification']
+
+            assert notification['status'] == 'sending'
+            assert notification['template'] == {
+                'id': str(email_notification.template.id),
+                'name': email_notification.template.name,
+                'template_type': email_notification.template.template_type}
+            assert notification['job'] == {
+                'id': str(email_notification.job.id),
+                'original_file_name': email_notification.job.original_file_name
+            }
+
+            assert notification['to'] == '+447700900855'
+            assert notification['service'] == str(email_notification.service_id)
+            assert response.status_code == 200
+            assert notification['body'] == sample_email_template.content
+            assert notification['subject'] == sample_email_template.subject
 
 
 def test_get_notifications_empty_result(notify_api, sample_api_key):
@@ -75,6 +111,7 @@ def test_get_all_notifications(notify_api, sample_notification):
 
             assert notifications['notifications'][0]['to'] == '+447700900855'
             assert notifications['notifications'][0]['service'] == str(sample_notification.service_id)
+            assert notifications['notifications'][0]['body'] == "This is a template"  # sample_template.content
             assert response.status_code == 200
 
 
@@ -1253,6 +1290,30 @@ def test_get_notification_by_id_returns_merged_template_content(notify_db,
             notification = json.loads(response.get_data(as_text=True))['data']['notification']
             assert response.status_code == 200
             assert notification['body'] == 'Hello world'
+            assert 'subject' not in notification
+
+
+def test_get_notification_by_id_returns_merged_template_content_for_email(
+    notify_db,
+    notify_db_session,
+    notify_api,
+    sample_email_template_with_placeholders
+):
+    sample_notification = create_sample_notification(notify_db,
+                                                     notify_db_session,
+                                                     template=sample_email_template_with_placeholders,
+                                                     personalisation={"name": "world"})
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        auth_header = create_authorization_header(service_id=sample_notification.service_id)
+
+        response = client.get(
+            '/notifications/{}'.format(sample_notification.id),
+            headers=[auth_header])
+
+        notification = json.loads(response.get_data(as_text=True))['data']['notification']
+        assert response.status_code == 200
+        assert notification['body'] == 'Hello world'
+        assert notification['subject'] == 'world'
 
 
 def test_get_notifications_for_service_returns_merged_template_content(notify_api,

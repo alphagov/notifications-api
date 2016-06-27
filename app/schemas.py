@@ -248,7 +248,7 @@ class SmsAdminNotificationSchema(SmsNotificationSchema):
 
 class NotificationStatusSchema(BaseSchema):
 
-    template = fields.Nested(TemplateSchema, only=["id", "name", "template_type", "content"], dump_only=True)
+    template = fields.Nested(TemplateSchema, only=["id", "name", "template_type", "content", "subject"], dump_only=True)
     job = fields.Nested(JobSchema, only=["id", "original_file_name"], dump_only=True)
     personalisation = fields.Dict(required=False)
 
@@ -259,18 +259,19 @@ class NotificationStatusSchema(BaseSchema):
 
     @pre_dump
     def handle_personalisation_property(self, in_data):
-        if in_data.personalisation:
-            self.personalisation = in_data.personalisation
+        self.personalisation = in_data.personalisation
         return in_data
 
     @post_dump
     def handle_template_merge(self, in_data):
-        if in_data.get('personalisation'):
-            from notifications_utils.template import Template
-            merged = Template(in_data['template'], in_data['personalisation']).replaced
-            in_data['body'] = merged
-            in_data.pop('personalisation', None)
+        from notifications_utils.template import Template
+        template = Template(in_data['template'], in_data['personalisation'])
+        in_data['body'] = template.replaced
+        if in_data['template']['template_type'] == 'email':
+            in_data['subject'] = template.replaced_subject
+        in_data.pop('personalisation', None)
         in_data['template'].pop('content', None)
+        in_data['template'].pop('subject', None)
         return in_data
 
 
