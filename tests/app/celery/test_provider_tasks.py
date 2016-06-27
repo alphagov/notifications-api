@@ -116,7 +116,8 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
         sample_template,
         mocker):
     db_notification = sample_notification(notify_db, notify_db_session,
-                                          template=sample_template, to_field='+447234123123')
+                                          template=sample_template, to_field='+447234123123',
+                                          status='created')
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
@@ -146,6 +147,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     assert persisted_notification.template_version == version_on_notification
     assert persisted_notification.template_version != sample_template.version
     assert persisted_notification.content_char_count == len("Sample service: This is a template")
+    assert persisted_notification.status == 'sending'
     assert not persisted_notification.personalisation
 
 

@@ -54,52 +54,53 @@ def send_sms_to_provider(self, service_id, notification_id, encrypted_notificati
     service = dao_fetch_service_by_id(service_id)
     provider = provider_to_use('sms', notification_id)
     notification = get_notification_by_id(notification_id)
+    if notification.status == 'created':
+        template = Template(
+            dao_get_template_by_id(notification.template_id, notification.template_version).__dict__,
+            values={} if not notification.personalisation else notification.personalisation,
+            prefix=service.name
+        )
 
-    template = Template(
-        dao_get_template_by_id(notification.template_id, notification.template_version).__dict__,
-        values={} if not notification.personalisation else notification.personalisation,
-        prefix=service.name
-    )
-    try:
-        if service.research_mode:
-            send_sms_response.apply_async(
-                (provider.get_name(), str(notification_id), notification.to), queue='research-mode'
-            )
-        else:
-            provider.send_sms(
-                to=validate_and_format_phone_number(notification.to),
-                content=template.replaced,
-                reference=str(notification_id)
-            )
-
-            update_provider_stats(
-                notification_id,
-                'sms',
-                provider.get_name(),
-                content_char_count=template.replaced_content_count
-            )
-
-        notification.sent_at = datetime.utcnow()
-        notification.sent_by = provider.get_name(),
-        notification.content_char_count = template.replaced_content_count
-        notification.status = 'sending'
-        dao_update_notification(notification)
-    except SmsClientException as e:
         try:
-            current_app.logger.error(
-                "SMS notification {} failed".format(notification_id)
-            )
-            current_app.logger.exception(e)
-            self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
-        except self.MaxRetriesExceededError:
-            update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
+            if service.research_mode:
+                send_sms_response.apply_async(
+                    (provider.get_name(), str(notification_id), notification.to), queue='research-mode'
+                )
+            else:
+                provider.send_sms(
+                    to=validate_and_format_phone_number(notification.to),
+                    content=template.replaced,
+                    reference=str(notification_id)
+                )
 
-    current_app.logger.info(
-        "SMS {} created at {} sent at {}".format(notification_id, notification.created_at, notification.sent_at)
-    )
-    statsd_client.incr("notifications.tasks.send-sms-to-provider")
-    statsd_client.timing("notifications.tasks.send-sms-to-provider.task-time", monotonic() - task_start)
-    statsd_client.timing("notifications.sms.total-time", datetime.utcnow() - notification.created_at)
+                update_provider_stats(
+                    notification_id,
+                    'sms',
+                    provider.get_name(),
+                    content_char_count=template.replaced_content_count
+                )
+
+            notification.sent_at = datetime.utcnow()
+            notification.sent_by = provider.get_name(),
+            notification.content_char_count = template.replaced_content_count
+            notification.status = 'sending'
+            dao_update_notification(notification)
+        except SmsClientException as e:
+            try:
+                current_app.logger.error(
+                    "SMS notification {} failed".format(notification_id)
+                )
+                current_app.logger.exception(e)
+                self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
+            except self.MaxRetriesExceededError:
+                update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
+
+        current_app.logger.info(
+            "SMS {} created at {} sent at {}".format(notification_id, notification.created_at, notification.sent_at)
+        )
+        statsd_client.incr("notifications.tasks.send-sms-to-provider")
+        statsd_client.timing("notifications.tasks.send-sms-to-provider.task-time", monotonic() - task_start)
+        statsd_client.timing("notifications.sms.total-time", datetime.utcnow() - notification.created_at)
 
 
 def provider_to_use(notification_type, notification_id):
