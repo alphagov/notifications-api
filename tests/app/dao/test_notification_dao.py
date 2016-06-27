@@ -678,7 +678,7 @@ def test_get_all_notifications_for_job_by_status(notify_db, notify_db_session, s
 
 
 def test_update_notification(sample_notification, sample_template):
-    assert sample_notification.status == 'sending'
+    assert sample_notification.status == 'created'
     sample_notification.status = 'failed'
     dao_update_notification(sample_notification)
     notification_from_db = Notification.query.get(sample_notification.id)

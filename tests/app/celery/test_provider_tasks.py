@@ -1,20 +1,19 @@
+from datetime import datetime
+
 from celery.exceptions import MaxRetriesExceededError
-
 from mock import ANY, call
+from notifications_utils.recipients import validate_phone_number, format_phone_number
 
-from app import statsd_client, mmg_client, encryption
+import app
+from app import statsd_client, mmg_client
 from app.celery import provider_tasks
 from app.celery.provider_tasks import send_sms_to_provider
+from app.celery.research_mode_tasks import send_sms_response
 from app.celery.tasks import provider_to_use
 from app.clients.sms import SmsClientException
-from app.dao import provider_statistics_dao
-from datetime import datetime
-from freezegun import freeze_time
 from app.dao import notifications_dao, provider_details_dao
-from notifications_utils.recipients import validate_phone_number, format_phone_number
-from app.celery.research_mode_tasks import send_sms_response
+from app.dao import provider_statistics_dao
 from app.models import Notification, NotificationStatistics, Job
-
 from tests.app.conftest import (
     sample_notification
 )
@@ -118,7 +117,8 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
         sample_template,
         mocker):
     db_notification = sample_notification(notify_db, notify_db_session,
-                                          template=sample_template, to_field='+447234123123')
+                                          template=sample_template, to_field='+447234123123',
+                                          status='created')
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
@@ -148,6 +148,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     assert persisted_notification.template_version == version_on_notification
     assert persisted_notification.template_version != sample_template.version
     assert persisted_notification.content_char_count == len("Sample service: This is a template")
+    assert persisted_notification.status == 'sending'
     assert not persisted_notification.personalisation
 
 
@@ -217,6 +218,25 @@ def test_not_should_update_provider_stats_on_success_in_research_mode(notify_db,
 
     updated_provider_stats = provider_statistics_dao.get_provider_statistics(sample_service).all()
     assert len(updated_provider_stats) == 0
+
+
+def test_should_not_send_to_provider_when_status_is_not_created(notify_db, notify_db_session,
+                                                                sample_service,
+                                                                mocker):
+    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                       service=sample_service,
+                                       status='sending')
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="mmg")
+    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
+
+    send_sms_to_provider(
+        notification.service_id,
+        notification.id
+    )
+
+    app.mmg_client.send_sms.assert_not_called()
+    app.celery.research_mode_tasks.send_sms_response.apply_async.assert_not_called()
 
 
 def test_statsd_updates(notify_db, notify_db_session, sample_service, sample_notification, mocker):

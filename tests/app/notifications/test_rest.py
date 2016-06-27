@@ -23,7 +23,7 @@ def test_get_sms_notification_by_id(notify_api, sample_notification):
                 headers=[auth_header])
 
             notification = json.loads(response.get_data(as_text=True))['data']['notification']
-            assert notification['status'] == 'sending'
+            assert notification['status'] == 'created'
             assert notification['template'] == {
                 'id': str(sample_notification.template.id),
                 'name': sample_notification.template.name,
@@ -44,7 +44,8 @@ def test_get_email_notification_by_id(notify_api, notify_db, notify_db_session, 
     email_notification = create_sample_notification(notify_db,
                                                     notify_db_session,
                                                     service=sample_email_template.service,
-                                                    template=sample_email_template)
+                                                    template=sample_email_template,
+                                                    status='sending')
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -99,7 +100,7 @@ def test_get_all_notifications(notify_api, sample_notification):
                 headers=[auth_header])
 
             notifications = json.loads(response.get_data(as_text=True))
-            assert notifications['notifications'][0]['status'] == 'sending'
+            assert notifications['notifications'][0]['status'] == 'created'
             assert notifications['notifications'][0]['template'] == {
                 'id': str(sample_notification.template.id),
                 'name': sample_notification.template.name,
@@ -496,7 +497,8 @@ def test_filter_by_multiple_statuss(notify_api,
                 notify_db,
                 notify_db_session,
                 service=sample_email_template.service,
-                template=sample_email_template)
+                template=sample_email_template,
+                status='sending')
 
             auth_header = create_authorization_header(service_id=sample_email_template.service_id)
 
@@ -682,7 +684,7 @@ def test_firetext_callback_should_update_notification_status(notify_api, sample_
         with notify_api.test_client() as client:
             mocker.patch('app.statsd_client.incr')
             original = get_notification_by_id(sample_notification.id)
-            assert original.status == 'sending'
+            assert original.status == 'created'
 
             response = client.post(
                 path='/notifications/sms/firetext',
@@ -711,7 +713,7 @@ def test_firetext_callback_should_update_notification_status_failed(notify_api, 
         with notify_api.test_client() as client:
             mocker.patch('app.statsd_client.incr')
             original = get_notification_by_id(sample_notification.id)
-            assert original.status == 'sending'
+            assert original.status == 'created'
 
             response = client.post(
                 path='/notifications/sms/firetext',
@@ -1003,7 +1005,8 @@ def test_ses_callback_should_update_notification_status(
                 notify_db,
                 notify_db_session,
                 template=sample_email_template,
-                reference='ref'
+                reference='ref',
+                status='sending'
             )
 
             assert get_notification_by_id(notification.id).status == 'sending'
@@ -1093,7 +1096,8 @@ def test_ses_callback_should_update_record_statsd(
                 notify_db,
                 notify_db_session,
                 template=sample_email_template,
-                reference='ref'
+                reference='ref',
+                status='sending'
             )
 
             assert get_notification_by_id(notification.id).status == 'sending'
@@ -1116,7 +1120,8 @@ def test_ses_callback_should_set_status_to_temporary_failure(notify_api,
                 notify_db,
                 notify_db_session,
                 template=sample_email_template,
-                reference='ref'
+                reference='ref',
+                status='sending'
             )
 
             assert get_notification_by_id(notification.id).status == 'sending'
@@ -1175,7 +1180,8 @@ def test_ses_callback_should_set_status_to_permanent_failure(notify_api,
                 notify_db,
                 notify_db_session,
                 template=sample_email_template,
-                reference='ref'
+                reference='ref',
+                status='sending'
             )
 
             assert get_notification_by_id(notification.id).status == 'sending'
