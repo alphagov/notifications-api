@@ -47,7 +47,8 @@ class User(db.Model):
         onupdate=datetime.datetime.utcnow)
     _password = db.Column(db.String, index=False, unique=False, nullable=False)
     mobile_number = db.Column(db.String, index=False, unique=False, nullable=False)
-    password_changed_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
+    password_changed_at = db.Column(db.DateTime, index=False, unique=False, nullable=False,
+                                    default=datetime.datetime.utcnow)
     logged_in_at = db.Column(db.DateTime, nullable=True)
     failed_login_count = db.Column(db.Integer, nullable=False, default=0)
     state = db.Column(db.String, nullable=False, default='pending')
