@@ -47,7 +47,6 @@ def create_app(app_name=None):
     init_app(application)
     db.init_app(application)
     ma.init_app(application)
-    init_app(application)
     logging.init_app(application)
     statsd_client.init_app(application)
     firetext_client.init_app(application, statsd_client=statsd_client)
