@@ -59,14 +59,3 @@ def fetch_client(client):
             "client": client,
             "secret": get_unsigned_secrets(client)
         }
-
-
-def require_admin():
-    def wrap(func):
-        @wraps(func)
-        def wrap_func(*args, **kwargs):
-            if not api_user['client'] == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
-                abort(403)
-            return func(*args, **kwargs)
-        return wrap_func
-    return wrap
