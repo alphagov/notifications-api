@@ -2,7 +2,7 @@ from flask import request, jsonify, _request_ctx_stack, current_app
 from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
 from notifications_python_client.errors import TokenDecodeError, TokenExpiredError
 
-from app.dao.api_key_dao import get_unsigned_secrets
+from app.dao.api_key_dao import get_model_api_keys
 
 
 def authentication_response(message, code):
@@ -23,37 +23,36 @@ def requires_auth():
 
     auth_token = auth_header[7:]
     try:
-        api_client = fetch_client(get_token_issuer(auth_token))
+        client = get_token_issuer(auth_token)
     except TokenDecodeError:
         return authentication_response("Invalid token: signature", 403)
 
-    for secret in api_client['secret']:
-        try:
-            decode_jwt_token(
-                auth_token,
-                secret
-            )
-            _request_ctx_stack.top.api_user = api_client
-            return
-        except TokenExpiredError:
-            errors_resp = authentication_response("Invalid token: expired", 403)
-        except TokenDecodeError:
-            errors_resp = authentication_response("Invalid token: signature", 403)
+    if client == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
+        errors_resp = get_decode_errors(auth_token, current_app.config.get('ADMIN_CLIENT_SECRET'), expiry_date=None)
+        return errors_resp
 
-    if not api_client['secret']:
+    secret_keys = get_model_api_keys(client)
+    for api_key in secret_keys:
+        errors_resp = get_decode_errors(auth_token, api_key.unsigned_secret, api_key.expiry_date)
+        if not errors_resp:
+            if api_key.expiry_date:
+                return authentication_response("Invalid token: revoked", 403)
+            else:
+                _request_ctx_stack.top.api_user = api_key
+                return
+
+    if not secret_keys:
         errors_resp = authentication_response("Invalid token: no api keys for service", 403)
     current_app.logger.info(errors_resp)
     return errors_resp
 
 
-def fetch_client(client):
-    if client == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
-        return {
-            "client": client,
-            "secret": [current_app.config.get('ADMIN_CLIENT_SECRET')]
-        }
+def get_decode_errors(auth_token, unsigned_secret, expiry_date=None):
+    try:
+        decode_jwt_token(auth_token, unsigned_secret)
+    except TokenExpiredError:
+        return authentication_response("Invalid token: expired", 403)
+    except TokenDecodeError:
+        return authentication_response("Invalid token: signature", 403)
     else:
-        return {
-            "client": client,
-            "secret": get_unsigned_secrets(client)
-        }
+        return None

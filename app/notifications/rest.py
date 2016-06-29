@@ -169,7 +169,7 @@ def process_firetext_response():
 
 @notifications.route('/notifications/<uuid:notification_id>', methods=['GET'])
 def get_notifications(notification_id):
-    notification = notifications_dao.get_notification(api_user['client'], notification_id)
+    notification = notifications_dao.get_notification(str(api_user.service_id), notification_id)
     return jsonify(data={"notification": notification_status_schema.dump(notification).data}), 200
 
 
@@ -181,7 +181,7 @@ def get_all_notifications():
     limit_days = data.get('limit_days')
 
     pagination = notifications_dao.get_notifications_for_service(
-        api_user['client'],
+        str(api_user.service_id),
         filter_dict=data,
         page=page,
         page_size=page_size,
@@ -203,8 +203,8 @@ def send_notification(notification_type):
     if notification_type not in ['sms', 'email']:
         assert False
 
-    service_id = api_user['client']
-    service = services_dao.dao_fetch_service_by_id(api_user['client'])
+    service_id = str(api_user.service_id)
+    service = services_dao.dao_fetch_service_by_id(service_id)
 
     service_stats = notifications_dao.dao_get_notification_statistics_for_service_and_day(
         service_id,
