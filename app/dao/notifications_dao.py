@@ -18,8 +18,8 @@ from app.models import (
     Job,
     NotificationStatistics,
     TemplateStatistics,
-    TEMPLATE_TYPE_SMS,
-    TEMPLATE_TYPE_EMAIL,
+    SMS_TYPE,
+    EMAIL_TYPE,
     Template,
     ProviderStatistics,
     ProviderDetails)
@@ -166,8 +166,8 @@ def dao_create_notification(notification, notification_type):
         stats = NotificationStatistics(
             day=notification.created_at.date(),
             service_id=notification.service_id,
-            sms_requested=1 if notification_type == TEMPLATE_TYPE_SMS else 0,
-            emails_requested=1 if notification_type == TEMPLATE_TYPE_EMAIL else 0
+            sms_requested=1 if notification_type == SMS_TYPE else 0,
+            emails_requested=1 if notification_type == EMAIL_TYPE else 0
         )
         db.session.add(stats)
 
@@ -187,12 +187,12 @@ def dao_create_notification(notification, notification_type):
 
 def _update_notification_stats_query(notification_type, status):
     mapping = {
-        TEMPLATE_TYPE_SMS: {
+        SMS_TYPE: {
             STATISTICS_REQUESTED: NotificationStatistics.sms_requested,
             STATISTICS_DELIVERED: NotificationStatistics.sms_delivered,
             STATISTICS_FAILURE: NotificationStatistics.sms_failed
         },
-        TEMPLATE_TYPE_EMAIL: {
+        EMAIL_TYPE: {
             STATISTICS_REQUESTED: NotificationStatistics.emails_requested,
             STATISTICS_DELIVERED: NotificationStatistics.emails_delivered,
             STATISTICS_FAILURE: NotificationStatistics.emails_failed
@@ -213,7 +213,7 @@ def _update_statistics(notification, notification_statistics_status):
         day=notification.created_at.date(),
         service_id=notification.service_id
     ).update(
-        _update_notification_stats_query(notification.template.template_type, notification_statistics_status)
+        _update_notification_stats_query(notification.notification_type, notification_statistics_status)
     )
 
 
@@ -294,7 +294,7 @@ def update_provider_stats(
     provider = ProviderDetails.query.filter_by(identifier=provider_name).one()
 
     def unit_count():
-        if notification_type == TEMPLATE_TYPE_EMAIL:
+        if notification_type == EMAIL_TYPE:
             return 1
         else:
             if (content_char_count):

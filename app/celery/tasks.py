@@ -37,8 +37,8 @@ from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
     Notification,
-    TEMPLATE_TYPE_EMAIL,
-    TEMPLATE_TYPE_SMS
+    EMAIL_TYPE,
+    SMS_TYPE
 )
 
 
@@ -94,7 +94,7 @@ def process_job(job_id):
                 }
         })
 
-        if template.template_type == 'sms':
+        if template.template_type == SMS_TYPE:
             send_sms.apply_async((
                 str(job.service_id),
                 create_uuid(),
@@ -103,7 +103,7 @@ def process_job(job_id):
                 queue='bulk-sms'
             )
 
-        if template.template_type == 'email':
+        if template.template_type == EMAIL_TYPE:
             send_email.apply_async((
                 str(job.service_id),
                 create_uuid(),
@@ -157,9 +157,10 @@ def send_sms(self, service_id, notification_id, encrypted_notification, created_
             job_row_number=notification.get('row_number', None),
             status='created',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
-            personalisation=notification.get('personalisation')
+            personalisation=notification.get('personalisation'),
+            notification_type=SMS_TYPE
         )
-        dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS)
+        dao_create_notification(notification_db_object, SMS_TYPE)
 
         send_sms_to_provider.apply_async((service_id, notification_id), queue='sms')
 
@@ -202,10 +203,11 @@ def send_email(service_id, notification_id, encrypted_notification, created_at, 
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=provider.get_name(),
-            personalisation=notification.get('personalisation')
+            personalisation=notification.get('personalisation'),
+            notification_type='email'
         )
 
-        dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL)
+        dao_create_notification(notification_db_object, EMAIL_TYPE)
         statsd_client.timing_with_dates(
             "notifications.tasks.send-email.queued-for",
             sent_at,
