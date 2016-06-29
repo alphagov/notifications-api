@@ -171,9 +171,9 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
             assert data['message'] == {"token": ['Invalid token: revoked']}
 
 
-def test_authentication_returns_error_when_api_client_has_no_secrets(notify_api,
-                                                                     notify_db,
-                                                                     notify_db_session):
+def test_authentication_returns_error_when_admin_client_has_no_secrets(notify_api,
+                                                                       notify_db,
+                                                                       notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             api_secret = notify_api.config.get('ADMIN_CLIENT_SECRET')
