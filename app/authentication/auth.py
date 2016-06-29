@@ -1,10 +1,8 @@
 from flask import request, jsonify, _request_ctx_stack, current_app
 from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
 from notifications_python_client.errors import TokenDecodeError, TokenExpiredError
-from werkzeug.exceptions import abort
+
 from app.dao.api_key_dao import get_unsigned_secrets
-from app import api_user
-from functools import wraps
 
 
 def authentication_response(message, code):

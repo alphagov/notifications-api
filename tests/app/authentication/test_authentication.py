@@ -1,9 +1,8 @@
-import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from notifications_python_client.authentication import create_jwt_token
 from flask import json, current_app
 from app.dao.api_key_dao import get_unsigned_secrets, save_model_api_key, get_unsigned_secret, expire_api_key
-from app.models import ApiKey, KEY_TYPE_NORMAL
+from app.models import ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM
 
 
 def test_should_not_allow_request_with_no_token(notify_api):
@@ -88,13 +87,6 @@ def test_should_allow_valid_token_when_service_has_multiple_keys(notify_api, sam
                 '/service/{}'.format(str(sample_api_key.service_id)),
                 headers={'Authorization': 'Bearer {}'.format(token)})
             assert response.status_code == 200
-
-
-JSON_BODY = json.dumps({
-    "key1": "value1",
-    "key2": "value2",
-    "key3": "value3"
-})
 
 
 def test_authentication_passes_admin_client_token(notify_api,
