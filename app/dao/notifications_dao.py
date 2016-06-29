@@ -213,7 +213,7 @@ def _update_statistics(notification, notification_statistics_status):
         day=notification.created_at.date(),
         service_id=notification.service_id
     ).update(
-        _update_notification_stats_query(notification.template.template_type, notification_statistics_status)
+        _update_notification_stats_query(notification.notification_type, notification_statistics_status)
     )
 
 
