@@ -157,7 +157,8 @@ def send_sms(self, service_id, notification_id, encrypted_notification, created_
             job_row_number=notification.get('row_number', None),
             status='created',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
-            personalisation=notification.get('personalisation')
+            personalisation=notification.get('personalisation'),
+            notification_type='sms'
         )
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_SMS)
 
@@ -202,7 +203,8 @@ def send_email(service_id, notification_id, encrypted_notification, created_at, 
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             sent_at=sent_at,
             sent_by=provider.get_name(),
-            personalisation=notification.get('personalisation')
+            personalisation=notification.get('personalisation'),
+            notification_type='email'
         )
 
         dao_create_notification(notification_db_object, TEMPLATE_TYPE_EMAIL)

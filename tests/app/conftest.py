@@ -351,7 +351,8 @@ def sample_notification(notify_db,
         'reference': reference,
         'created_at': created_at,
         'content_char_count': content_char_count,
-        'personalisation': personalisation
+        'personalisation': personalisation,
+        'notification_type': template.template_type
     }
     if job_row_number:
         data['job_row_number'] = job_row_number

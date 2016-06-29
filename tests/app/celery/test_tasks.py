@@ -46,6 +46,7 @@ def _notification_json(template, to, personalisation=None, job_id=None, row_numb
         "template": str(template.id),
         "template_version": template.version,
         "to": to,
+        "notification_type": template.template_type
     }
     if personalisation:
         notification.update({"personalisation": personalisation})

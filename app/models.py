@@ -345,6 +345,7 @@ class Notification(db.Model):
     api_key = db.relationship('ApiKey')
     key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False)
     content_char_count = db.Column(db.Integer, nullable=True)
+    notification_type = db.Column(db.String(), nullable=False)
     created_at = db.Column(
         db.DateTime,
         index=False,
