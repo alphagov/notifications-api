@@ -976,6 +976,7 @@ def _notification_json(sample_template, job_id=None, id=None, status=None):
         'template_version': sample_template.version,
         'created_at': datetime.utcnow(),
         'content_char_count': 160,
+        'notification_type': sample_template.template_type
     }
     if job_id:
         data.update({'job_id': job_id})

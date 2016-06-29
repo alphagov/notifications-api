@@ -4,6 +4,8 @@ from flask import current_app
 from app import notify_celery
 from requests import request, RequestException, HTTPError
 
+from app.models import SMS_TYPE
+
 temp_fail = "07833333333"
 perm_fail = "07822222222"
 delivered = "07811111111"
@@ -21,7 +23,7 @@ def send_sms_response(provider, reference, to):
     else:
         headers = {"Content-type": "application/x-www-form-urlencoded"}
         body = firetext_callback(reference, to)
-    make_request('sms', provider, body, headers)
+    make_request(SMS_TYPE, provider, body, headers)
 
 
 @notify_celery.task(name="send-ses-response")

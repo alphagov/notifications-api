@@ -47,7 +47,8 @@ class User(db.Model):
         onupdate=datetime.datetime.utcnow)
     _password = db.Column(db.String, index=False, unique=False, nullable=False)
     mobile_number = db.Column(db.String, index=False, unique=False, nullable=False)
-    password_changed_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
+    password_changed_at = db.Column(db.DateTime, index=False, unique=False, nullable=False,
+                                    default=datetime.datetime.utcnow)
     logged_in_at = db.Column(db.DateTime, nullable=True)
     failed_login_count = db.Column(db.Integer, nullable=False, default=0)
     state = db.Column(db.String, nullable=False, default='pending')
@@ -164,11 +165,13 @@ class NotificationStatistics(db.Model):
     )
 
 
-TEMPLATE_TYPE_SMS = 'sms'
-TEMPLATE_TYPE_EMAIL = 'email'
-TEMPLATE_TYPE_LETTER = 'letter'
+SMS_TYPE = 'sms'
+EMAIL_TYPE = 'email'
+LETTER_TYPE = 'letter'
 
-TEMPLATE_TYPES = [TEMPLATE_TYPE_SMS, TEMPLATE_TYPE_EMAIL, TEMPLATE_TYPE_LETTER]
+TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
+
+template_types = db.Enum(*TEMPLATE_TYPES, name='template_type')
 
 
 class Template(db.Model, Versioned):
@@ -176,7 +179,7 @@ class Template(db.Model, Versioned):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), nullable=False)
-    template_type = db.Column(db.Enum(*TEMPLATE_TYPES, name='template_type'), nullable=False)
+    template_type = db.Column(template_types, nullable=False)
     created_at = db.Column(
         db.DateTime,
         index=False,
@@ -206,7 +209,8 @@ SMS_PROVIDERS = [MMG_PROVIDER, FIRETEXT_PROVIDER]
 EMAIL_PROVIDERS = [SES_PROVIDER]
 PROVIDERS = SMS_PROVIDERS + EMAIL_PROVIDERS
 
-NOTIFICATION_TYPE = ['email', 'sms', 'letter']
+NOTIFICATION_TYPE = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]
+notification_types = db.Enum(*NOTIFICATION_TYPE, name='notification_type')
 
 
 class ProviderStatistics(db.Model):
@@ -240,7 +244,7 @@ class ProviderDetails(db.Model):
     display_name = db.Column(db.String, nullable=False)
     identifier = db.Column(db.String, nullable=False)
     priority = db.Column(db.Integer, nullable=False)
-    notification_type = db.Column(db.Enum(*NOTIFICATION_TYPE, name='notification_type'), nullable=False)
+    notification_type = db.Column(notification_types, nullable=False)
     active = db.Column(db.Boolean, default=False)
 
 
@@ -344,6 +348,7 @@ class Notification(db.Model):
     api_key = db.relationship('ApiKey')
     key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False)
     content_char_count = db.Column(db.Integer, nullable=True)
+    notification_type = db.Column(notification_types, nullable=False)
     created_at = db.Column(
         db.DateTime,
         index=False,

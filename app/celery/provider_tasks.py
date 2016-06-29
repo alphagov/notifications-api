@@ -23,6 +23,8 @@ from notifications_utils.template import (
     unlink_govuk_escaped
 )
 
+from app.models import SMS_TYPE
+
 
 def retry_iteration_to_delay(retry=0):
     """
@@ -75,7 +77,7 @@ def send_sms_to_provider(self, service_id, notification_id, encrypted_notificati
 
                 update_provider_stats(
                     notification_id,
-                    'sms',
+                    SMS_TYPE,
                     provider.get_name(),
                     content_char_count=template.replaced_content_count
                 )
