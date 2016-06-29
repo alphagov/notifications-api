@@ -13,10 +13,11 @@ down_revision = '0034_pwd_changed_at_not_null'
 from alembic import op
 import sqlalchemy as sa
 
-
 def upgrade():
-    op.add_column('notifications', sa.Column('notification_type', sa.String(), nullable=True))
-    op.execute('update notifications set notification_type = (select distinct(template_type) '
+    notification_types = sa.Enum('email', 'sms', 'letter', name='notification_type')
+
+    op.add_column('notifications', sa.Column('notification_type', notification_types, nullable=True))
+    op.execute('update notifications set notification_type = (select CAST(CAST(template_type as text) as notification_type) '
                'from templates where templates.id = notifications.template_id)')
     op.alter_column('notifications', 'notification_type', nullable=False)
 
