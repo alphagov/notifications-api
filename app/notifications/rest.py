@@ -267,19 +267,33 @@ def send_notification(notification_type):
     notification_id = create_uuid()
     notification.update({"template_version": template.version})
     if notification_type == SMS_TYPE:
-        send_sms.apply_async((
-            service_id,
-            notification_id,
-            encryption.encrypt(notification),
-            datetime.utcnow().strftime(DATETIME_FORMAT)
-        ), queue='sms')
+        send_sms.apply_async(
+            (
+                service_id,
+                notification_id,
+                encryption.encrypt(notification),
+                datetime.utcnow().strftime(DATETIME_FORMAT)
+            ),
+            kwargs={
+                'api_key_id': str(api_user.id),
+                'key_type': api_user.key_type
+            },
+            queue='sms'
+        )
     else:
-        send_email.apply_async((
-            service_id,
-            notification_id,
-            encryption.encrypt(notification),
-            datetime.utcnow().strftime(DATETIME_FORMAT)
-        ), queue='email')
+        send_email.apply_async(
+            (
+                service_id,
+                notification_id,
+                encryption.encrypt(notification),
+                datetime.utcnow().strftime(DATETIME_FORMAT)
+            ),
+            kwargs={
+                'api_key_id': str(api_user.id),
+                'key_type': api_user.key_type
+            },
+            queue='email'
+        )
 
     statsd_client.incr('notifications.api.{}'.format(notification_type))
     return jsonify(

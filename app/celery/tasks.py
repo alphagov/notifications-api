@@ -38,7 +38,8 @@ from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
     Notification,
     EMAIL_TYPE,
-    SMS_TYPE
+    SMS_TYPE,
+    KEY_TYPE_NORMAL
 )
 
 
@@ -133,7 +134,13 @@ def remove_job(job_id):
 
 
 @notify_celery.task(bind=True, name="send-sms", max_retries=5, default_retry_delay=5)
-def send_sms(self, service_id, notification_id, encrypted_notification, created_at):
+def send_sms(self,
+             service_id,
+             notification_id,
+             encrypted_notification,
+             created_at,
+             api_key_id=None,
+             key_type=KEY_TYPE_NORMAL):
     task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
@@ -158,7 +165,9 @@ def send_sms(self, service_id, notification_id, encrypted_notification, created_
             status='created',
             created_at=datetime.strptime(created_at, DATETIME_FORMAT),
             personalisation=notification.get('personalisation'),
-            notification_type=SMS_TYPE
+            notification_type=SMS_TYPE,
+            api_key_id=api_key_id,
+            key_type=key_type
         )
         dao_create_notification(notification_db_object, SMS_TYPE)
 
@@ -176,7 +185,13 @@ def send_sms(self, service_id, notification_id, encrypted_notification, created_
 
 
 @notify_celery.task(name="send-email")
-def send_email(service_id, notification_id, encrypted_notification, created_at, reply_to_addresses=None):
+def send_email(service_id,
+               notification_id,
+               encrypted_notification,
+               created_at,
+               reply_to_addresses=None,
+               api_key_id=None,
+               key_type=KEY_TYPE_NORMAL):
     task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
@@ -204,7 +219,9 @@ def send_email(service_id, notification_id, encrypted_notification, created_at, 
             sent_at=sent_at,
             sent_by=provider.get_name(),
             personalisation=notification.get('personalisation'),
-            notification_type=EMAIL_TYPE
+            notification_type=EMAIL_TYPE,
+            api_key_id=api_key_id,
+            key_type=key_type
         )
 
         dao_create_notification(notification_db_object, EMAIL_TYPE)

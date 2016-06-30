@@ -5,12 +5,14 @@ import string
 from unittest.mock import ANY
 from flask import (json, current_app)
 from freezegun import freeze_time
+from notifications_python_client.authentication import create_jwt_token
 
 import app
 from app import encryption
-from app.models import KEY_TYPE_TEAM
+from app.models import ApiKey, KEY_TYPE_TEAM
 from app.dao.templates_dao import dao_get_all_templates_for_service, dao_update_template
 from app.dao.services_dao import dao_update_service
+from app.dao.api_key_dao import save_model_api_key
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_notification as create_sample_notification,
@@ -118,6 +120,7 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_email_t
                  notification_id,
                  ANY,
                  "2016-01-01T11:09:00.061258"),
+                kwargs=ANY,
                 queue="email"
             )
             assert response.status_code == 201
@@ -358,6 +361,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
                  notification_id,
                  "something_encrypted",
                  "2016-01-01T11:09:00.061258"),
+                kwargs=ANY,
                 queue="sms"
             )
             assert response.status_code == 201
@@ -523,6 +527,7 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
                  notification_id,
                  "something_encrypted",
                  "2016-01-01T11:09:00.061258"),
+                kwargs=ANY,
                 queue="email"
             )
 
@@ -769,15 +774,25 @@ def test_should_send_email_if_team_api_key_and_a_service_user(notify_api, sample
             'to': sample_email_template.service.created_by.email_address,
             'template': sample_email_template.id
         }
-
-        auth_header = create_authorization_header(service_id=sample_email_template.service_id, key_type=KEY_TYPE_TEAM)
+        api_key = ApiKey(service=sample_email_template.service,
+                         name='team_key',
+                         created_by=sample_email_template.created_by,
+                         key_type=KEY_TYPE_TEAM)
+        save_model_api_key(api_key)
+        auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
 
         response = client.post(
             path='/notifications/email',
             data=json.dumps(data),
-            headers=[('Content-Type', 'application/json'), auth_header])
+            headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
-        assert app.celery.tasks.send_email.apply_async.called
+        app.celery.tasks.send_email.apply_async.assert_called_once_with(
+            ANY,
+            kwargs={
+                'api_key_id': str(api_key.id),
+                'key_type': api_key.key_type
+            },
+            queue='email')
         assert response.status_code == 201
 
 
@@ -789,13 +804,23 @@ def test_should_send_sms_if_team_api_key_and_a_service_user(notify_api, sample_t
             'to': sample_template.service.created_by.mobile_number,
             'template': sample_template.id
         }
-
-        auth_header = create_authorization_header(service_id=sample_template.service_id, key_type=KEY_TYPE_TEAM)
+        api_key = ApiKey(service=sample_template.service,
+                         name='team_key',
+                         created_by=sample_template.created_by,
+                         key_type=KEY_TYPE_TEAM)
+        save_model_api_key(api_key)
+        auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
 
         response = client.post(
             path='/notifications/sms',
             data=json.dumps(data),
-            headers=[('Content-Type', 'application/json'), auth_header])
+            headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
-        assert app.celery.tasks.send_sms.apply_async.called
+        app.celery.tasks.send_sms.apply_async.assert_called_once_with(
+            ANY,
+            kwargs={
+                'api_key_id': str(api_key.id),
+                'key_type': api_key.key_type
+            },
+            queue='sms')
         assert response.status_code == 201
