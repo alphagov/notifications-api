@@ -2,12 +2,18 @@ from datetime import datetime, timedelta
 import uuid
 
 from flask import json
+from notifications_python_client.authentication import create_jwt_token
 
 import app.celery.tasks
-from app.dao.notifications_dao import get_notification_by_id, dao_get_notification_statistics_for_service
+from app.dao.notifications_dao import (
+    get_notification_by_id,
+    dao_get_notification_statistics_for_service,
+    dao_update_notification
+)
+from app.dao.api_key_dao import save_model_api_key
+from app.models import ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM
 from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
-from tests.app.conftest import sample_service as create_sample_service
 
 
 def test_get_sms_notification_by_id(notify_api, sample_notification):
@@ -19,6 +25,7 @@ def test_get_sms_notification_by_id(notify_api, sample_notification):
                 '/notifications/{}'.format(sample_notification.id),
                 headers=[auth_header])
 
+            assert response.status_code == 200
             notification = json.loads(response.get_data(as_text=True))['data']['notification']
             assert notification['status'] == 'created'
             assert notification['template'] == {
@@ -31,7 +38,6 @@ def test_get_sms_notification_by_id(notify_api, sample_notification):
             }
             assert notification['to'] == '+447700900855'
             assert notification['service'] == str(sample_notification.service_id)
-            assert response.status_code == 200
             assert notification['body'] == "This is a template"  # sample_template.content
             assert not notification.get('subject')
 
@@ -87,6 +93,51 @@ def test_get_notifications_empty_result(notify_api, sample_api_key):
             assert response.status_code == 404
 
 
+def test_get_real_notification_from_team_api_key_fails(notify_api, sample_notification):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        api_key = ApiKey(service=sample_notification.service,
+                         name='api_key',
+                         created_by=sample_notification.service.created_by,
+                         key_type=KEY_TYPE_TEAM)
+        save_model_api_key(api_key)
+
+        response = client.get(
+            path='/notifications/{}'.format(sample_notification.id),
+            headers=_create_auth_header_from_key(api_key))
+        notification = json.loads(response.get_data(as_text=True))
+        assert response.status_code == 404
+        assert notification['result'] == "error"
+        assert notification['message'] == "No result found"
+
+
+def test_get_team_notification_from_different_team_api_key_succeeds(notify_api, sample_notification):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        creation_api_key = ApiKey(service=sample_notification.service,
+                                  name='creation_api_key',
+                                  created_by=sample_notification.service.created_by,
+                                  key_type=KEY_TYPE_TEAM)
+        save_model_api_key(creation_api_key)
+
+        querying_api_key = ApiKey(service=sample_notification.service,
+                                  name='querying_api_key',
+                                  created_by=sample_notification.service.created_by,
+                                  key_type=KEY_TYPE_TEAM)
+        save_model_api_key(querying_api_key)
+
+        sample_notification.api_key = creation_api_key
+        sample_notification.key_type = KEY_TYPE_TEAM
+        dao_update_notification(sample_notification)
+
+        response = client.get(
+            path='/notifications/{}'.format(sample_notification.id),
+            headers=_create_auth_header_from_key(querying_api_key))
+
+        assert response.status_code == 200
+        notification = json.loads(response.get_data(as_text=True))['data']['notification']
+        assert sample_notification.api_key_id != querying_api_key.id
+        assert notification['id'] == str(sample_notification.id)
+
+
 def test_get_all_notifications(notify_api, sample_notification):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -97,6 +148,7 @@ def test_get_all_notifications(notify_api, sample_notification):
                 headers=[auth_header])
 
             notifications = json.loads(response.get_data(as_text=True))
+            assert response.status_code == 200
             assert notifications['notifications'][0]['status'] == 'created'
             assert notifications['notifications'][0]['template'] == {
                 'id': str(sample_notification.template.id),
@@ -110,7 +162,58 @@ def test_get_all_notifications(notify_api, sample_notification):
             assert notifications['notifications'][0]['to'] == '+447700900855'
             assert notifications['notifications'][0]['service'] == str(sample_notification.service_id)
             assert notifications['notifications'][0]['body'] == "This is a template"  # sample_template.content
-            assert response.status_code == 200
+
+
+def test_get_all_notifications_only_returns_notifications_of_matching_type(
+    notify_api,
+    notify_db,
+    notify_db_session,
+    sample_service
+):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        team_api_key = ApiKey(service=sample_service,
+                              name='team_api_key',
+                              created_by=sample_service.created_by,
+                              key_type=KEY_TYPE_TEAM)
+        save_model_api_key(team_api_key)
+
+        normal_api_key = ApiKey(service=sample_service,
+                                name='normal_api_key',
+                                created_by=sample_service.created_by,
+                                key_type=KEY_TYPE_NORMAL)
+        save_model_api_key(normal_api_key)
+
+        normal_notification = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            api_key_id=normal_api_key.id,
+            key_type=KEY_TYPE_NORMAL
+        )
+        team_notification = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            api_key_id=team_api_key.id,
+            key_type=KEY_TYPE_TEAM
+        )
+
+        normal_response = client.get(
+            path='/notifications',
+            headers=_create_auth_header_from_key(normal_api_key))
+
+        team_response = client.get(
+            path='/notifications',
+            headers=_create_auth_header_from_key(team_api_key))
+
+        assert normal_response.status_code == 200
+        assert team_response.status_code == 200
+
+        normal_notifications = json.loads(normal_response.get_data(as_text=True))['notifications']
+        assert len(normal_notifications) == 1
+        assert normal_notifications[0]['id'] == str(normal_notification.id)
+
+        team_notifications = json.loads(team_response.get_data(as_text=True))['notifications']
+        assert len(team_notifications) == 1
+        assert team_notifications[0]['id'] == str(team_notification.id)
 
 
 def test_get_all_notifications_newest_first(notify_api, notify_db, notify_db_session, sample_email_template):
@@ -381,6 +484,86 @@ def test_filter_by_status_and_template_type(notify_api,
             assert len(notifications['notifications']) == 1
             assert notifications['notifications'][0]['template']['template_type'] == 'email'
             assert notifications['notifications'][0]['status'] == 'delivered'
+
+
+def test_get_notification_by_id_returns_merged_template_content(notify_db,
+                                                                notify_db_session,
+                                                                notify_api,
+                                                                sample_template_with_placeholders):
+
+    sample_notification = create_sample_notification(notify_db,
+                                                     notify_db_session,
+                                                     template=sample_template_with_placeholders,
+                                                     personalisation={"name": "world"})
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header(service_id=sample_notification.service_id)
+
+            response = client.get(
+                '/notifications/{}'.format(sample_notification.id),
+                headers=[auth_header])
+
+            notification = json.loads(response.get_data(as_text=True))['data']['notification']
+            assert response.status_code == 200
+            assert notification['body'] == 'Hello world'
+            assert 'subject' not in notification
+
+
+def test_get_notification_by_id_returns_merged_template_content_for_email(
+    notify_db,
+    notify_db_session,
+    notify_api,
+    sample_email_template_with_placeholders
+):
+    sample_notification = create_sample_notification(notify_db,
+                                                     notify_db_session,
+                                                     template=sample_email_template_with_placeholders,
+                                                     personalisation={"name": "world"})
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        auth_header = create_authorization_header(service_id=sample_notification.service_id)
+
+        response = client.get(
+            '/notifications/{}'.format(sample_notification.id),
+            headers=[auth_header])
+
+        notification = json.loads(response.get_data(as_text=True))['data']['notification']
+        assert response.status_code == 200
+        assert notification['body'] == 'Hello world'
+        assert notification['subject'] == 'world'
+
+
+def test_get_notifications_for_service_returns_merged_template_content(notify_api,
+                                                                       notify_db,
+                                                                       notify_db_session,
+                                                                       sample_template_with_placeholders):
+
+    create_sample_notification(notify_db,
+                               notify_db_session,
+                               service=sample_template_with_placeholders.service,
+                               template=sample_template_with_placeholders,
+                               personalisation={"name": "merged with first"},
+                               created_at=datetime.utcnow() - timedelta(seconds=1))
+
+    create_sample_notification(notify_db,
+                               notify_db_session,
+                               service=sample_template_with_placeholders.service,
+                               template=sample_template_with_placeholders,
+                               personalisation={"name": "merged with second"})
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+
+            auth_header = create_authorization_header()
+
+            response = client.get(
+                path='/service/{}/notifications'.format(sample_template_with_placeholders.service.id),
+                headers=[auth_header])
+            assert response.status_code == 200
+
+            resp = json.loads(response.get_data(as_text=True))
+            assert len(resp['notifications']) == 2
+            assert resp['notifications'][0]['body'] == 'Hello merged with first'
+            assert resp['notifications'][1]['body'] == 'Hello merged with second'
 
 
 def test_firetext_callback_should_not_need_auth(notify_api, mocker):
@@ -1104,86 +1287,6 @@ def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db
             app.statsd_client.incr.assert_any_call("notifications.callback.firetext.delivered")
 
 
-def test_get_notification_by_id_returns_merged_template_content(notify_db,
-                                                                notify_db_session,
-                                                                notify_api,
-                                                                sample_template_with_placeholders):
-
-    sample_notification = create_sample_notification(notify_db,
-                                                     notify_db_session,
-                                                     template=sample_template_with_placeholders,
-                                                     personalisation={"name": "world"})
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            auth_header = create_authorization_header(service_id=sample_notification.service_id)
-
-            response = client.get(
-                '/notifications/{}'.format(sample_notification.id),
-                headers=[auth_header])
-
-            notification = json.loads(response.get_data(as_text=True))['data']['notification']
-            assert response.status_code == 200
-            assert notification['body'] == 'Hello world'
-            assert 'subject' not in notification
-
-
-def test_get_notification_by_id_returns_merged_template_content_for_email(
-    notify_db,
-    notify_db_session,
-    notify_api,
-    sample_email_template_with_placeholders
-):
-    sample_notification = create_sample_notification(notify_db,
-                                                     notify_db_session,
-                                                     template=sample_email_template_with_placeholders,
-                                                     personalisation={"name": "world"})
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        auth_header = create_authorization_header(service_id=sample_notification.service_id)
-
-        response = client.get(
-            '/notifications/{}'.format(sample_notification.id),
-            headers=[auth_header])
-
-        notification = json.loads(response.get_data(as_text=True))['data']['notification']
-        assert response.status_code == 200
-        assert notification['body'] == 'Hello world'
-        assert notification['subject'] == 'world'
-
-
-def test_get_notifications_for_service_returns_merged_template_content(notify_api,
-                                                                       notify_db,
-                                                                       notify_db_session,
-                                                                       sample_template_with_placeholders):
-
-    create_sample_notification(notify_db,
-                               notify_db_session,
-                               service=sample_template_with_placeholders.service,
-                               template=sample_template_with_placeholders,
-                               personalisation={"name": "merged with first"},
-                               created_at=datetime.utcnow() - timedelta(seconds=1))
-
-    create_sample_notification(notify_db,
-                               notify_db_session,
-                               service=sample_template_with_placeholders.service,
-                               template=sample_template_with_placeholders,
-                               personalisation={"name": "merged with second"})
-
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-
-            auth_header = create_authorization_header()
-
-            response = client.get(
-                path='/service/{}/notifications'.format(sample_template_with_placeholders.service.id),
-                headers=[auth_header])
-            assert response.status_code == 200
-
-            resp = json.loads(response.get_data(as_text=True))
-            assert len(resp['notifications']) == 2
-            assert resp['notifications'][0]['body'] == 'Hello merged with first'
-            assert resp['notifications'][1]['body'] == 'Hello merged with second'
-
-
 def ses_validation_code_callback():
     return b'{\n  "Type" : "Notification",\n  "MessageId" : "ref",\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",\n  "Message" : "{\\"notificationType\\":\\"Delivery\\",\\"mail\\":{\\"timestamp\\":\\"2016-03-14T12:35:25.909Z\\",\\"source\\":\\"valid-code@test.com\\",\\"sourceArn\\":\\"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify\\",\\"sendingAccountId\\":\\"123456789012\\",\\"messageId\\":\\"ref\\",\\"destination\\":[\\"testing@digital.cabinet-office.gov.uk\\"]},\\"delivery\\":{\\"timestamp\\":\\"2016-03-14T12:35:26.567Z\\",\\"processingTimeMillis\\":658,\\"recipients\\":[\\"testing@digital.cabinet-office.gov.u\\"],\\"smtpResponse\\":\\"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp\\",\\"reportingMTA\\":\\"a6-238.smtp-out.eu-west-1.amazonses.com\\"}}",\n  "Timestamp" : "2016-03-14T12:35:26.665Z",\n  "SignatureVersion" : "1",\n  "Signature" : "X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==",\n  "SigningCertURL" : "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem",\n  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"\n}'  # noqa
 
@@ -1216,3 +1319,8 @@ def ses_hard_bounce_callback():
 
 def ses_soft_bounce_callback():
     return b'{\n  "Type" : "Notification",\n  "MessageId" : "ref",\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",\n  "Message" : "{\\"notificationType\\":\\"Bounce\\",\\"bounce\\":{\\"bounceType\\":\\"Undetermined\\",\\"bounceSubType\\":\\"General\\"}, \\"mail\\":{\\"messageId\\":\\"ref\\",\\"timestamp\\":\\"2016-03-14T12:35:25.909Z\\",\\"source\\":\\"test@test-domain.com\\",\\"sourceArn\\":\\"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify\\",\\"sendingAccountId\\":\\"123456789012\\",\\"destination\\":[\\"testing@digital.cabinet-office.gov.uk\\"]},\\"delivery\\":{\\"timestamp\\":\\"2016-03-14T12:35:26.567Z\\",\\"processingTimeMillis\\":658,\\"recipients\\":[\\"testing@digital.cabinet-office.gov.uk\\"],\\"smtpResponse\\":\\"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp\\",\\"reportingMTA\\":\\"a6-238.smtp-out.eu-west-1.amazonses.com\\"}}",\n  "Timestamp" : "2016-03-14T12:35:26.665Z",\n  "SignatureVersion" : "1",\n  "Signature" : "X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==",\n  "SigningCertURL" : "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem",\n  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"\n}'  # noqa
+
+
+def _create_auth_header_from_key(api_key):
+    token = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
+    return [('Authorization', 'Bearer {}'.format(token))]

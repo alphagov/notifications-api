@@ -333,8 +333,12 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
     )
 
 
-def get_notification(service_id, notification_id):
-    return Notification.query.filter_by(service_id=service_id, id=notification_id).one()
+def get_notification(service_id, notification_id, key_type=None):
+    filter_dict = {'service_id': service_id, 'id': notification_id}
+    if key_type:
+        filter_dict['key_type'] = key_type
+
+    return Notification.query.filter_by(**filter_dict).one()
 
 
 def get_notification_by_id(notification_id):
@@ -349,7 +353,8 @@ def get_notifications_for_service(service_id,
                                   filter_dict=None,
                                   page=1,
                                   page_size=None,
-                                  limit_days=None):
+                                  limit_days=None,
+                                  key_type=None):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
     filters = [Notification.service_id == service_id]
@@ -357,6 +362,9 @@ def get_notifications_for_service(service_id,
     if limit_days is not None:
         days_ago = date.today() - timedelta(days=limit_days)
         filters.append(func.date(Notification.created_at) >= days_ago)
+
+    if key_type is not None:
+        filters.append(Notification.key_type == key_type)
 
     query = Notification.query.filter(*filters)
     query = _filter_query(query, filter_dict)
