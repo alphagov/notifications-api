@@ -293,7 +293,7 @@ class Job(db.Model):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
 
 
-VERIFY_CODE_TYPES = ['email', 'sms']
+VERIFY_CODE_TYPES = [EMAIL_TYPE, SMS_TYPE]
 
 
 class VerifyCode(db.Model):

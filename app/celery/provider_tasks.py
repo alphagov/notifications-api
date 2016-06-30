@@ -54,7 +54,7 @@ def send_sms_to_provider(self, service_id, notification_id, encrypted_notificati
     task_start = monotonic()
 
     service = dao_fetch_service_by_id(service_id)
-    provider = provider_to_use('sms', notification_id)
+    provider = provider_to_use(SMS_TYPE, notification_id)
     notification = get_notification_by_id(notification_id)
     if notification.status == 'created':
         template = Template(
