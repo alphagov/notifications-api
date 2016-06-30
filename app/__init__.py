@@ -70,6 +70,7 @@ def create_app(app_name=None):
     from app.template_statistics.rest import template_statistics as template_statistics_blueprint
     from app.events.rest import events as events_blueprint
     from app.provider_details.rest import provider_details as provider_details_blueprint
+    from app.spec.rest import spec as spec_blueprint
 
     application.register_blueprint(service_blueprint, url_prefix='/service')
     application.register_blueprint(user_blueprint, url_prefix='/user')
@@ -83,6 +84,7 @@ def create_app(app_name=None):
     application.register_blueprint(template_statistics_blueprint)
     application.register_blueprint(events_blueprint)
     application.register_blueprint(provider_details_blueprint, url_prefix='/provider-details')
+    application.register_blueprint(spec_blueprint, url_prefix='/spec')
 
     return application
 
@@ -95,7 +97,8 @@ def init_app(app):
             url_for('notifications.process_ses_response'),
             url_for('notifications.process_firetext_response'),
             url_for('notifications.process_mmg_response'),
-            url_for('status.show_delivery_status')
+            url_for('status.show_delivery_status'),
+            url_for('spec.get_spec')
         ]
         if request.path not in no_auth_req:
             from app.authentication import auth
