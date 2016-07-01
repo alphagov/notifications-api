@@ -77,3 +77,18 @@ def test_send_sms_raises_if_mmg_rejects(mocker, mock_mmg_client):
 
     assert exc.value.code == 206
     assert exc.value.description == 'Some kind of error'
+
+
+def test_send_sms_override_configured_shortcode_with_sender(mocker, mock_mmg_client):
+    to = '+447234567890'
+    content = 'my message'
+    reference = 'my reference'
+    response_dict = {'Reference': 12345678}
+    sender = 'fromservice'
+
+    with requests_mock.Mocker() as request_mock:
+        request_mock.post('https://www.mmgrp.co.uk/API/json/api.php', json=response_dict, status_code=200)
+        mock_mmg_client.send_sms(to, content, reference, sender=sender)
+
+    request_args = request_mock.request_history[0].json()
+    assert request_args['sender'] == 'fromservice'
