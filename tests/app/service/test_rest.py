@@ -6,9 +6,12 @@ from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
 from app.models import User
 from tests import create_authorization_header
-from tests.app.conftest import sample_service as create_sample_service
-from tests.app.conftest import sample_service_permission as create_sample_service_permission
-from tests.app.conftest import sample_user as create_sample_user
+from tests.app.conftest import (
+    sample_service as create_sample_service,
+    sample_service_permission as create_sample_service_permission,
+    sample_user as create_sample_user,
+    sample_notification as create_sample_notification
+)
 
 
 def test_get_service_list(notify_api, service_factory):
@@ -1001,3 +1004,28 @@ def test_set_reply_to_email_for_service(notify_api, sample_service):
             result = json.loads(resp.get_data(as_text=True))
             assert resp.status_code == 200
             assert result['data']['reply_to_email_address'] == 'reply_test@service.gov.uk'
+
+
+def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notify_db_session):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        service_1 = create_sample_service(notify_db, notify_db_session, service_name="1", email_from='1')
+        service_2 = create_sample_service(notify_db, notify_db_session, service_name="2", email_from='2')
+
+        create_sample_notification(notify_db, notify_db_session, service=service_2)
+
+        notification_1 = create_sample_notification(notify_db, notify_db_session, service=service_1)
+        notification_2 = create_sample_notification(notify_db, notify_db_session, service=service_1)
+        notification_3 = create_sample_notification(notify_db, notify_db_session, service=service_1)
+
+        auth_header = create_authorization_header()
+
+        response = client.get(
+            path='/service/{}/notifications'.format(service_1.id),
+            headers=[auth_header])
+
+        resp = json.loads(response.get_data(as_text=True))
+        assert len(resp['notifications']) == 3
+        assert resp['notifications'][0]['to'] == notification_3.to
+        assert resp['notifications'][1]['to'] == notification_2.to
+        assert resp['notifications'][2]['to'] == notification_1.to
+        assert response.status_code == 200

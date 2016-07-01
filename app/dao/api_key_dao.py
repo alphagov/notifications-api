@@ -1,9 +1,6 @@
 import uuid
 from datetime import datetime
 
-from flask import current_app
-from itsdangerous import URLSafeSerializer
-
 from app import db
 from app.models import ApiKey
 
@@ -11,6 +8,7 @@ from app.dao.dao_utils import (
     transactional,
     version_class
 )
+from app.authentication.utils import generate_secret
 
 
 @transactional
@@ -18,7 +16,7 @@ from app.dao.dao_utils import (
 def save_model_api_key(api_key):
     if not api_key.id:
         api_key.id = uuid.uuid4()  # must be set now so version history model can use same id
-    api_key.secret = _generate_secret()
+    api_key.secret = generate_secret(uuid.uuid4())
     db.session.add(api_key)
 
 
@@ -41,7 +39,7 @@ def get_unsigned_secrets(service_id):
     This method can only be exposed to the Authentication of the api calls.
     """
     api_keys = ApiKey.query.filter_by(service_id=service_id, expiry_date=None).all()
-    keys = [_get_secret(x.secret) for x in api_keys]
+    keys = [x.unsigned_secret for x in api_keys]
     return keys
 
 
@@ -50,15 +48,4 @@ def get_unsigned_secret(key_id):
     This method can only be exposed to the Authentication of the api calls.
     """
     api_key = ApiKey.query.filter_by(id=key_id, expiry_date=None).one()
-    return _get_secret(api_key.secret)
-
-
-def _generate_secret():
-    token = uuid.uuid4()
-    serializer = URLSafeSerializer(current_app.config.get('SECRET_KEY'))
-    return serializer.dumps(str(token), current_app.config.get('DANGEROUS_SALT'))
-
-
-def _get_secret(signed_secret):
-    serializer = URLSafeSerializer(current_app.config.get('SECRET_KEY'))
-    return serializer.loads(signed_secret, salt=current_app.config.get('DANGEROUS_SALT'))
+    return api_key.unsigned_secret

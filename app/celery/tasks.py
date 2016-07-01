@@ -181,7 +181,7 @@ def send_email(service_id, notification_id, encrypted_notification, created_at, 
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
-    provider = provider_to_use('email', notification_id)
+    provider = provider_to_use(EMAIL_TYPE, notification_id)
 
     if not service_allowed_to_send_to(notification['to'], service):
         current_app.logger.info(
@@ -204,7 +204,7 @@ def send_email(service_id, notification_id, encrypted_notification, created_at, 
             sent_at=sent_at,
             sent_by=provider.get_name(),
             personalisation=notification.get('personalisation'),
-            notification_type='email'
+            notification_type=EMAIL_TYPE
         )
 
         dao_create_notification(notification_db_object, EMAIL_TYPE)

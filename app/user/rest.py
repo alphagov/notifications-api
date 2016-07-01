@@ -17,6 +17,7 @@ from app.dao.users_dao import (
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
+from app.models import SMS_TYPE
 from app.schemas import (
     email_data_request_schema,
     user_schema,
@@ -124,7 +125,7 @@ def send_user_sms_code(user_id):
     verify_code, errors = request_verify_code_schema.load(request.get_json())
 
     secret_code = create_secret_code()
-    create_user_code(user_to_send_to, secret_code, 'sms')
+    create_user_code(user_to_send_to, secret_code, SMS_TYPE)
 
     mobile = user_to_send_to.mobile_number if verify_code.get('to', None) is None else verify_code.get('to')
     sms_code_template_id = current_app.config['SMS_CODE_TEMPLATE_ID']

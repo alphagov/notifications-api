@@ -5,6 +5,7 @@ from flask import (
 from sqlalchemy.exc import SQLAlchemyError, DataError
 from sqlalchemy.orm.exc import NoResultFound
 from marshmallow import ValidationError
+from app.authentication.auth import AuthError
 
 
 class InvalidRequest(Exception):
@@ -22,6 +23,10 @@ class InvalidRequest(Exception):
 
 
 def register_errors(blueprint):
+
+    @blueprint.app_errorhandler(AuthError)
+    def authentication_error(error):
+        return jsonify(result='error', message=error.message), error.code
 
     @blueprint.app_errorhandler(ValidationError)
     def validation_error(error):

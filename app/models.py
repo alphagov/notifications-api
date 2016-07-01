@@ -5,14 +5,13 @@ from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
 )
-
 from sqlalchemy import UniqueConstraint
 
 from app.encryption import (
     hashpw,
     check_hash
 )
-
+from app.authentication.utils import get_secret
 from app import (
     db,
     encryption
@@ -134,6 +133,10 @@ class ApiKey(db.Model, Versioned):
     __table_args__ = (
         UniqueConstraint('service_id', 'name', name='uix_service_to_key_name'),
     )
+
+    @property
+    def unsigned_secret(self):
+        return get_secret(self.secret)
 
 
 KEY_TYPE_NORMAL = 'normal'
@@ -293,7 +296,7 @@ class Job(db.Model):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
 
 
-VERIFY_CODE_TYPES = ['email', 'sms']
+VERIFY_CODE_TYPES = [EMAIL_TYPE, SMS_TYPE]
 
 
 class VerifyCode(db.Model):

@@ -1,72 +1,69 @@
 from flask import request, jsonify, _request_ctx_stack, current_app
 from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
 from notifications_python_client.errors import TokenDecodeError, TokenExpiredError
-from werkzeug.exceptions import abort
-from app.dao.api_key_dao import get_unsigned_secrets
-from app import api_user
-from functools import wraps
+
+from app.dao.api_key_dao import get_model_api_keys
 
 
-def authentication_response(message, code):
-    return jsonify(result='error',
-                   message={"token": [message]}
-                   ), code
+class AuthError(Exception):
+    def __init__(self, message, code):
+        self.message = {"token": [message]}
+        self.code = code
 
 
-def requires_auth():
-    auth_header = request.headers.get('Authorization', None)
+def get_auth_token(req):
+    auth_header = req.headers.get('Authorization', None)
     if not auth_header:
-        return authentication_response('Unauthorized, authentication token must be provided', 401)
+        raise AuthError('Unauthorized, authentication token must be provided', 401)
 
     auth_scheme = auth_header[:7]
 
     if auth_scheme != 'Bearer ':
-        return authentication_response('Unauthorized, authentication bearer scheme must be used', 401)
+        raise AuthError('Unauthorized, authentication bearer scheme must be used', 401)
 
-    auth_token = auth_header[7:]
+    return auth_header[7:]
+
+
+def requires_auth():
+    auth_token = get_auth_token(request)
     try:
-        api_client = fetch_client(get_token_issuer(auth_token))
+        client = get_token_issuer(auth_token)
     except TokenDecodeError:
-        return authentication_response("Invalid token: signature", 403)
+        raise AuthError("Invalid token: signature", 403)
 
-    for secret in api_client['secret']:
-        try:
-            decode_jwt_token(
-                auth_token,
-                secret
-            )
-            _request_ctx_stack.top.api_user = api_client
-            return
-        except TokenExpiredError:
-            errors_resp = authentication_response("Invalid token: expired", 403)
-        except TokenDecodeError:
-            errors_resp = authentication_response("Invalid token: signature", 403)
-
-    if not api_client['secret']:
-        errors_resp = authentication_response("Invalid token: no api keys for service", 403)
-    current_app.logger.info(errors_resp)
-    return errors_resp
-
-
-def fetch_client(client):
     if client == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
-        return {
-            "client": client,
-            "secret": [current_app.config.get('ADMIN_CLIENT_SECRET')]
-        }
+        return handle_admin_key(auth_token, current_app.config.get('ADMIN_CLIENT_SECRET'))
+
+    api_keys = get_model_api_keys(client)
+
+    for api_key in api_keys:
+        try:
+            get_decode_errors(auth_token, api_key.unsigned_secret)
+        except TokenDecodeError:
+            continue
+
+        if api_key.expiry_date:
+            raise AuthError("Invalid token: revoked", 403)
+
+        _request_ctx_stack.top.api_user = api_key
+        return
+
+    if not api_keys:
+        raise AuthError("Invalid token: no api keys for service", 403)
     else:
-        return {
-            "client": client,
-            "secret": get_unsigned_secrets(client)
-        }
+        raise AuthError("Invalid token: signature", 403)
 
 
-def require_admin():
-    def wrap(func):
-        @wraps(func)
-        def wrap_func(*args, **kwargs):
-            if not api_user['client'] == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
-                abort(403)
-            return func(*args, **kwargs)
-        return wrap_func
-    return wrap
+def handle_admin_key(auth_token, secret):
+    try:
+        get_decode_errors(auth_token, secret)
+        return
+    except TokenDecodeError as e:
+        raise AuthError("Invalid token: signature", 403)
+
+
+def get_decode_errors(auth_token, unsigned_secret):
+    try:
+        decode_jwt_token(auth_token, unsigned_secret)
+    except TokenExpiredError as e:
+        raise AuthError("Invalid token: expired")
