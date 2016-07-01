@@ -162,12 +162,8 @@ def send_email(self, service_id, notification_id, encrypted_notification, create
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
-    provider = provider_to_use(EMAIL_TYPE, notification_id)
-
     if not service_allowed_to_send_to(notification['to'], service):
-        current_app.logger.info(
-            "Email {} failed as restricted service".format(notification_id)
-        )
+        current_app.logger.info("Email {} failed as restricted service".format(notification_id))
         return
 
     try:

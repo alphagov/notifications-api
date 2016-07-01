@@ -95,7 +95,7 @@ def send_sms_to_provider(self, service_id, notification_id):
                 update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
 
         current_app.logger.info(
-            "SMS {} sent at {}".format(notification_id, notification.sent_at)
+            "SMS {} sent to provider at {}".format(notification_id, notification.sent_at)
         )
         statsd_client.incr("notifications.tasks.send-sms-to-provider")
         statsd_client.timing("notifications.tasks.send-sms-to-provider.task-time", monotonic() - task_start)
@@ -167,7 +167,7 @@ def send_email_to_provider(self, service_id, notification_id, reply_to_addresses
                 update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
 
         current_app.logger.info(
-            "Email {} created at {} sent at {}".format(notification_id, notification.created_at, notification.sent_at)
+            "Email {} sent to provider at {}".format(notification_id, notification.sent_at)
         )
         statsd_client.incr("notifications.tasks.send-email-to-provider")
         statsd_client.timing("notifications.tasks.send-email-to-provider.task-time", monotonic() - task_start)
