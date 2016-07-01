@@ -5,14 +5,12 @@ from flask import (
     jsonify,
     request,
     current_app,
-    url_for,
     json
 )
 from notifications_utils.recipients import allowed_to_send_to, first_column_heading
 from notifications_utils.template import Template
 from app.clients.email.aws_ses import get_aws_responses
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT, statsd_client
-from app.authentication.auth import require_admin
 from app.dao import (
     templates_dao,
     services_dao,
@@ -33,6 +31,7 @@ from app.schemas import (
     unarchived_template_schema
 )
 from app.celery.tasks import send_sms, send_email
+from app.utils import pagination_links
 
 notifications = Blueprint('notifications', __name__)
 
@@ -171,7 +170,7 @@ def process_firetext_response():
 
 @notifications.route('/notifications/<uuid:notification_id>', methods=['GET'])
 def get_notifications(notification_id):
-    notification = notifications_dao.get_notification(api_user['client'], notification_id)
+    notification = notifications_dao.get_notification(str(api_user.service_id), notification_id)
     return jsonify(data={"notification": notification_status_schema.dump(notification).data}), 200
 
 
@@ -183,7 +182,7 @@ def get_all_notifications():
     limit_days = data.get('limit_days')
 
     pagination = notifications_dao.get_notifications_for_service(
-        api_user['client'],
+        str(api_user.service_id),
         filter_dict=data,
         page=page,
         page_size=page_size,
@@ -200,81 +199,13 @@ def get_all_notifications():
     ), 200
 
 
-@notifications.route('/service/<service_id>/notifications', methods=['GET'])
-@require_admin()
-def get_all_notifications_for_service(service_id):
-    data = notifications_filter_schema.load(request.args).data
-    page = data['page'] if 'page' in data else 1
-    page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
-    limit_days = data.get('limit_days')
-
-    pagination = notifications_dao.get_notifications_for_service(
-        service_id,
-        filter_dict=data,
-        page=page,
-        page_size=page_size,
-        limit_days=limit_days)
-    kwargs = request.args.to_dict()
-    kwargs['service_id'] = service_id
-    return jsonify(
-        notifications=notification_status_schema.dump(pagination.items, many=True).data,
-        page_size=page_size,
-        total=pagination.total,
-        links=pagination_links(
-            pagination,
-            '.get_all_notifications_for_service',
-            **kwargs
-        )
-    ), 200
-
-
-@notifications.route('/service/<service_id>/job/<job_id>/notifications', methods=['GET'])
-@require_admin()
-def get_all_notifications_for_service_job(service_id, job_id):
-    data = notifications_filter_schema.load(request.args).data
-    page = data['page'] if 'page' in data else 1
-    page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
-
-    pagination = notifications_dao.get_notifications_for_job(
-        service_id,
-        job_id,
-        filter_dict=data,
-        page=page,
-        page_size=page_size)
-    kwargs = request.args.to_dict()
-    kwargs['service_id'] = service_id
-    kwargs['job_id'] = job_id
-    return jsonify(
-        notifications=notification_status_schema.dump(pagination.items, many=True).data,
-        page_size=page_size,
-        total=pagination.total,
-        links=pagination_links(
-            pagination,
-            '.get_all_notifications_for_service_job',
-            **kwargs
-        )
-    ), 200
-
-
-def pagination_links(pagination, endpoint, **kwargs):
-    if 'page' in kwargs:
-        kwargs.pop('page', None)
-    links = dict()
-    if pagination.has_prev:
-        links['prev'] = url_for(endpoint, page=pagination.prev_num, **kwargs)
-    if pagination.has_next:
-        links['next'] = url_for(endpoint, page=pagination.next_num, **kwargs)
-        links['last'] = url_for(endpoint, page=pagination.pages, **kwargs)
-    return links
-
-
 @notifications.route('/notifications/<string:notification_type>', methods=['POST'])
 def send_notification(notification_type):
     if notification_type not in ['sms', 'email']:
         assert False
 
-    service_id = api_user['client']
-    service = services_dao.dao_fetch_service_by_id(api_user['client'])
+    service_id = str(api_user.service_id)
+    service = services_dao.dao_fetch_service_by_id(service_id)
 
     service_stats = notifications_dao.dao_get_notification_statistics_for_service_and_day(
         service_id,

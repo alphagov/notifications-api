@@ -4,21 +4,13 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
+from app.authentication.utils import get_secret
 from app.dao.api_key_dao import (save_model_api_key,
                                  get_model_api_keys,
                                  get_unsigned_secrets,
                                  get_unsigned_secret,
-                                 _generate_secret,
-                                 _get_secret, expire_api_key)
+                                 expire_api_key)
 from app.models import ApiKey, KEY_TYPE_NORMAL
-
-
-def test_secret_is_signed_and_can_be_read_again(notify_api, mocker):
-    with notify_api.test_request_context():
-        mocker.patch("uuid.uuid4", return_value='some_uuid')
-        signed_secret = _generate_secret()
-        assert 'some_uuid' == _get_secret(signed_secret)
-        assert signed_secret != 'some_uuid'
 
 
 def test_save_api_key_should_create_new_api_key_and_history(sample_service):
@@ -72,13 +64,13 @@ def test_should_return_unsigned_api_keys_for_service_id(sample_api_key):
     unsigned_api_key = get_unsigned_secrets(sample_api_key.service_id)
     assert len(unsigned_api_key) == 1
     assert sample_api_key.secret != unsigned_api_key[0]
-    assert unsigned_api_key[0] == _get_secret(sample_api_key.secret)
+    assert unsigned_api_key[0] == get_secret(sample_api_key.secret)
 
 
 def test_get_unsigned_secret_returns_key(sample_api_key):
     unsigned_api_key = get_unsigned_secret(sample_api_key.id)
     assert sample_api_key.secret != unsigned_api_key
-    assert unsigned_api_key == _get_secret(sample_api_key.secret)
+    assert unsigned_api_key == get_secret(sample_api_key.secret)
 
 
 def test_should_not_allow_duplicate_key_names_per_service(sample_api_key, fake_uuid):

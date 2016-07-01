@@ -2,11 +2,16 @@ import json
 import uuid
 from datetime import datetime, timedelta
 
+import pytest
+
 import app.celery.tasks
 
 from tests import create_authorization_header
-from tests.app.conftest import sample_job as create_job
+from tests.app.conftest import (
+    sample_job as create_job,
+    sample_notification as create_sample_notification)
 from app.dao.templates_dao import dao_update_template
+from app.models import NOTIFICATION_STATUS_TYPES
 
 
 def test_get_jobs(notify_api, notify_db, notify_db_session, sample_template):
@@ -239,3 +244,109 @@ def _setup_jobs(notify_db, notify_db_session, template, number_of_jobs=5):
             notify_db_session,
             service=template.service,
             template=template)
+
+
+def test_get_all_notifications_for_job_in_order_of_job_number(notify_api,
+                                                              notify_db,
+                                                              notify_db_session,
+                                                              sample_service):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        main_job = create_job(notify_db, notify_db_session, service=sample_service)
+        another_job = create_job(notify_db, notify_db_session, service=sample_service)
+
+        notification_1 = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            job=main_job,
+            to_field="1",
+            created_at=datetime.utcnow(),
+            job_row_number=1
+        )
+        notification_2 = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            job=main_job,
+            to_field="2",
+            created_at=datetime.utcnow(),
+            job_row_number=2
+        )
+        notification_3 = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            job=main_job,
+            to_field="3",
+            created_at=datetime.utcnow(),
+            job_row_number=3
+        )
+        create_sample_notification(notify_db, notify_db_session, job=another_job)
+
+        auth_header = create_authorization_header()
+
+        response = client.get(
+            path='/service/{}/job/{}/notifications'.format(sample_service.id, main_job.id),
+            headers=[auth_header])
+
+        resp = json.loads(response.get_data(as_text=True))
+        assert len(resp['notifications']) == 3
+        assert resp['notifications'][0]['to'] == notification_1.to
+        assert resp['notifications'][0]['job_row_number'] == notification_1.job_row_number
+        assert resp['notifications'][1]['to'] == notification_2.to
+        assert resp['notifications'][1]['job_row_number'] == notification_2.job_row_number
+        assert resp['notifications'][2]['to'] == notification_3.to
+        assert resp['notifications'][2]['job_row_number'] == notification_3.job_row_number
+        assert response.status_code == 200
+
+
+@pytest.mark.parametrize(
+    "expected_notification_count, status_args",
+    [
+        (
+            1,
+            '?status={}'.format(NOTIFICATION_STATUS_TYPES[0])
+        ),
+        (
+            0,
+            '?status={}'.format(NOTIFICATION_STATUS_TYPES[1])
+        ),
+        (
+            1,
+            '?status={}&status={}&status={}'.format(
+                *NOTIFICATION_STATUS_TYPES[0:3]
+            )
+        ),
+        (
+            0,
+            '?status={}&status={}&status={}'.format(
+                *NOTIFICATION_STATUS_TYPES[3:6]
+            )
+        ),
+    ]
+)
+def test_get_all_notifications_for_job_filtered_by_status(
+    notify_api,
+    notify_db,
+    notify_db_session,
+    sample_service,
+    expected_notification_count,
+    status_args
+):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        job = create_job(notify_db, notify_db_session, service=sample_service)
+
+        create_sample_notification(
+            notify_db,
+            notify_db_session,
+            job=job,
+            to_field="1",
+            created_at=datetime.utcnow(),
+            status=NOTIFICATION_STATUS_TYPES[0],
+            job_row_number=1
+        )
+
+        response = client.get(
+            path='/service/{}/job/{}/notifications{}'.format(sample_service.id, job.id, status_args),
+            headers=[create_authorization_header()]
+        )
+        resp = json.loads(response.get_data(as_text=True))
+        assert len(resp['notifications']) == expected_notification_count
+        assert response.status_code == 200

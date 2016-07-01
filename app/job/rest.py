@@ -1,7 +1,8 @@
 from flask import (
     Blueprint,
     jsonify,
-    request
+    request,
+    current_app
 )
 
 from app.dao.jobs_dao import (
@@ -15,10 +16,13 @@ from app.dao.services_dao import (
 )
 
 from app.dao.templates_dao import (dao_get_template_by_id)
+from app.dao.notifications_dao import get_notifications_for_job
 
-from app.schemas import job_schema, unarchived_template_schema
+from app.schemas import job_schema, unarchived_template_schema, notifications_filter_schema, notification_status_schema
 
 from app.celery.tasks import process_job
+
+from app.utils import pagination_links
 
 job = Blueprint('job', __name__, url_prefix='/service/<uuid:service_id>/job')
 
@@ -35,6 +39,33 @@ def get_job_by_service_and_job_id(service_id, job_id):
     job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
     data = job_schema.dump(job).data
     return jsonify(data=data)
+
+
+@job.route('/<job_id>/notifications', methods=['GET'])
+def get_all_notifications_for_service_job(service_id, job_id):
+    data = notifications_filter_schema.load(request.args).data
+    page = data['page'] if 'page' in data else 1
+    page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
+
+    pagination = get_notifications_for_job(
+        service_id,
+        job_id,
+        filter_dict=data,
+        page=page,
+        page_size=page_size)
+    kwargs = request.args.to_dict()
+    kwargs['service_id'] = service_id
+    kwargs['job_id'] = job_id
+    return jsonify(
+        notifications=notification_status_schema.dump(pagination.items, many=True).data,
+        page_size=page_size,
+        total=pagination.total,
+        links=pagination_links(
+            pagination,
+            '.get_all_notifications_for_service_job',
+            **kwargs
+        )
+    ), 200
 
 
 @job.route('', methods=['GET'])

@@ -1,15 +1,12 @@
 from datetime import datetime, timedelta
 import uuid
 
-import pytest
 from flask import json
 
 import app.celery.tasks
-from app.models import NOTIFICATION_STATUS_TYPES
 from app.dao.notifications_dao import get_notification_by_id, dao_get_notification_statistics_for_service
 from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
-from tests.app.conftest import sample_job as create_sample_job
 from tests.app.conftest import sample_service as create_sample_service
 
 
@@ -135,170 +132,6 @@ def test_get_all_notifications_newest_first(notify_api, notify_db, notify_db_ses
             assert notifications['notifications'][1]['to'] == notification_2.to
             assert notifications['notifications'][2]['to'] == notification_1.to
             assert response.status_code == 200
-
-
-def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notify_db_session):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            service_1 = create_sample_service(notify_db, notify_db_session, service_name="1", email_from='1')
-            service_2 = create_sample_service(notify_db, notify_db_session, service_name="2", email_from='2')
-
-            create_sample_notification(notify_db, notify_db_session, service=service_2)
-
-            notification_1 = create_sample_notification(notify_db, notify_db_session, service=service_1)
-            notification_2 = create_sample_notification(notify_db, notify_db_session, service=service_1)
-            notification_3 = create_sample_notification(notify_db, notify_db_session, service=service_1)
-
-            auth_header = create_authorization_header()
-
-            response = client.get(
-                path='/service/{}/notifications'.format(service_1.id),
-                headers=[auth_header])
-
-            resp = json.loads(response.get_data(as_text=True))
-            assert len(resp['notifications']) == 3
-            assert resp['notifications'][0]['to'] == notification_3.to
-            assert resp['notifications'][1]['to'] == notification_2.to
-            assert resp['notifications'][2]['to'] == notification_1.to
-            assert response.status_code == 200
-
-
-def test_get_all_notifications_for_job_in_order_of_job_number(notify_api,
-                                                              notify_db,
-                                                              notify_db_session,
-                                                              sample_service):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            main_job = create_sample_job(notify_db, notify_db_session, service=sample_service)
-            another_job = create_sample_job(notify_db, notify_db_session, service=sample_service)
-
-            notification_1 = create_sample_notification(
-                notify_db,
-                notify_db_session,
-                job=main_job,
-                to_field="1",
-                created_at=datetime.utcnow(),
-                job_row_number=1
-            )
-            notification_2 = create_sample_notification(
-                notify_db,
-                notify_db_session,
-                job=main_job,
-                to_field="2",
-                created_at=datetime.utcnow(),
-                job_row_number=2
-            )
-            notification_3 = create_sample_notification(
-                notify_db,
-                notify_db_session,
-                job=main_job,
-                to_field="3",
-                created_at=datetime.utcnow(),
-                job_row_number=3
-            )
-            create_sample_notification(notify_db, notify_db_session, job=another_job)
-
-            auth_header = create_authorization_header()
-
-            response = client.get(
-                path='/service/{}/job/{}/notifications'.format(sample_service.id, main_job.id),
-                headers=[auth_header])
-
-            resp = json.loads(response.get_data(as_text=True))
-            assert len(resp['notifications']) == 3
-            assert resp['notifications'][0]['to'] == notification_1.to
-            assert resp['notifications'][0]['job_row_number'] == notification_1.job_row_number
-            assert resp['notifications'][1]['to'] == notification_2.to
-            assert resp['notifications'][1]['job_row_number'] == notification_2.job_row_number
-            assert resp['notifications'][2]['to'] == notification_3.to
-            assert resp['notifications'][2]['job_row_number'] == notification_3.job_row_number
-            assert response.status_code == 200
-
-
-@pytest.mark.parametrize(
-    "expected_notification_count, status_args",
-    [
-        (
-            1,
-            '?status={}'.format(NOTIFICATION_STATUS_TYPES[0])
-        ),
-        (
-            0,
-            '?status={}'.format(NOTIFICATION_STATUS_TYPES[1])
-        ),
-        (
-            1,
-            '?status={}&status={}&status={}'.format(
-                *NOTIFICATION_STATUS_TYPES[0:3]
-            )
-        ),
-        (
-            0,
-            '?status={}&status={}&status={}'.format(
-                *NOTIFICATION_STATUS_TYPES[3:6]
-            )
-        ),
-    ]
-)
-def test_get_all_notifications_for_job_filtered_by_status(
-    notify_api,
-    notify_db,
-    notify_db_session,
-    sample_service,
-    expected_notification_count,
-    status_args
-):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            job = create_sample_job(notify_db, notify_db_session, service=sample_service)
-
-            create_sample_notification(
-                notify_db,
-                notify_db_session,
-                job=job,
-                to_field="1",
-                created_at=datetime.utcnow(),
-                status=NOTIFICATION_STATUS_TYPES[0],
-                job_row_number=1
-            )
-
-            response = client.get(
-                path='/service/{}/job/{}/notifications{}'.format(sample_service.id, job.id, status_args),
-                headers=[create_authorization_header()]
-            )
-            resp = json.loads(response.get_data(as_text=True))
-            assert len(resp['notifications']) == expected_notification_count
-            assert response.status_code == 200
-
-
-def test_should_not_get_notifications_by_service_with_client_credentials(notify_api, sample_api_key):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            auth_header = create_authorization_header(service_id=sample_api_key.service.id)
-
-            response = client.get(
-                '/service/{}/notifications'.format(sample_api_key.service.id),
-                headers=[auth_header])
-
-            resp = json.loads(response.get_data(as_text=True))
-            assert response.status_code == 403
-            assert resp['result'] == 'error'
-            assert resp['message'] == 'Forbidden, invalid authentication token provided'
-
-
-def test_should_not_get_notifications_by_job_and_service_with_client_credentials(notify_api, sample_job):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            auth_header = create_authorization_header(service_id=sample_job.service.id)
-
-            response = client.get(
-                '/service/{}/job/{}/notifications'.format(sample_job.service.id, sample_job.id),
-                headers=[auth_header])
-
-            resp = json.loads(response.get_data(as_text=True))
-            assert response.status_code == 403
-            assert resp['result'] == 'error'
-            assert resp['message'] == 'Forbidden, invalid authentication token provided'
 
 
 def test_should_reject_invalid_page_param(notify_api, sample_email_template):

@@ -1,14 +1,11 @@
-from datetime import (
-    datetime,
-    date
-)
+from datetime import date
 
 from flask import (
     jsonify,
     request,
-    Blueprint
+    Blueprint,
+    current_app
 )
-
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.api_key_dao import (
@@ -26,19 +23,19 @@ from app.dao.services_dao import (
     dao_add_user_to_service,
     dao_remove_user_from_service
 )
-
+from app.dao import notifications_dao
 from app.dao.provider_statistics_dao import get_fragment_count
-
 from app.dao.users_dao import get_model_users
-
 from app.schemas import (
     service_schema,
     api_key_schema,
     user_schema,
     from_to_date_schema,
-    permission_schema
+    permission_schema,
+    notification_status_schema,
+    notifications_filter_schema,
 )
-
+from app.utils import pagination_links
 from app.errors import (
     register_errors,
     InvalidRequest
@@ -208,3 +205,30 @@ def get_service_history(service_id):
         'events': events_data}
 
     return jsonify(data=data)
+
+
+@service.route('/<uuid:service_id>/notifications', methods=['GET'])
+def get_all_notifications_for_service(service_id):
+    data = notifications_filter_schema.load(request.args).data
+    page = data['page'] if 'page' in data else 1
+    page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
+    limit_days = data.get('limit_days')
+
+    pagination = notifications_dao.get_notifications_for_service(
+        service_id,
+        filter_dict=data,
+        page=page,
+        page_size=page_size,
+        limit_days=limit_days)
+    kwargs = request.args.to_dict()
+    kwargs['service_id'] = service_id
+    return jsonify(
+        notifications=notification_status_schema.dump(pagination.items, many=True).data,
+        page_size=page_size,
+        total=pagination.total,
+        links=pagination_links(
+            pagination,
+            '.get_all_notifications_for_service',
+            **kwargs
+        )
+    ), 200
