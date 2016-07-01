@@ -11,6 +11,7 @@ from notifications_utils.recipients import allowed_to_send_to, first_column_head
 from notifications_utils.template import Template
 from app.clients.email.aws_ses import get_aws_responses
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT, statsd_client
+from app.models import KEY_TYPE_TEAM
 from app.dao import (
     templates_dao,
     services_dao,
@@ -253,7 +254,7 @@ def send_notification(notification_type):
         errors = {'content': [message]}
         raise InvalidRequest(errors, status_code=400)
 
-    if service.restricted and not allowed_to_send_to(
+    if (service.restricted or api_user.key_type == KEY_TYPE_TEAM) and not allowed_to_send_to(
         notification['to'],
         itertools.chain.from_iterable(
             [user.mobile_number, user.email_address] for user in service.users
