@@ -18,6 +18,7 @@ from app.dao import (
     services_dao,
     notifications_dao
 )
+from app.models import NOTIFICATION_TYPE, SMS_TYPE
 from app.notifications.process_client_response import (
     validate_callback_data,
     process_sms_client_response
@@ -333,7 +334,7 @@ def send_notification(notification_type):
 
     notification_id = create_uuid()
     notification.update({"template_version": template.version})
-    if notification_type == 'sms':
+    if notification_type == SMS_TYPE:
         send_sms.apply_async((
             service_id,
             notification_id,

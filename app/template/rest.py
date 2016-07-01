@@ -15,6 +15,7 @@ from app.dao.templates_dao import (
 )
 from notifications_utils.template import Template
 from app.dao.services_dao import dao_fetch_service_by_id
+from app.models import SMS_TYPE
 from app.schemas import (template_schema, template_history_schema)
 
 template = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
@@ -29,7 +30,7 @@ register_errors(template)
 
 def _content_count_greater_than_limit(content, template_type):
     template = Template({'content': content, 'template_type': template_type})
-    return template_type == 'sms' and template.content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+    return template_type == SMS_TYPE and template.content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
 
 
 @template.route('', methods=['POST'])
