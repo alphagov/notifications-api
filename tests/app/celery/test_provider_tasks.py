@@ -307,7 +307,6 @@ def test_send_email_to_provider_should_call_research_mode_task_response_task_if_
                                        )
 
     reference = uuid.uuid4()
-    print(reference)
     mocker.patch('app.uuid.uuid4', return_value=reference)
     mocker.patch('app.aws_ses_client.send_email')
     mocker.patch('app.aws_ses_client.get_name', return_value="ses")
