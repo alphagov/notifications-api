@@ -109,7 +109,6 @@ def process_job(job_id):
                 create_uuid(),
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
-                {'reply_to_addresses': service.reply_to_email_address},
                 queue='bulk-email')
 
     finished = datetime.utcnow()
@@ -176,7 +175,7 @@ def send_sms(self, service_id, notification_id, encrypted_notification, created_
 
 
 @notify_celery.task(name="send-email")
-def send_email(service_id, notification_id, encrypted_notification, created_at, reply_to_addresses=None):
+def send_email(service_id, notification_id, encrypted_notification, created_at):
     task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
@@ -234,7 +233,7 @@ def send_email(service_id, notification_id, encrypted_notification, created_at, 
                     template.replaced_subject,
                     body=template.replaced_govuk_escaped,
                     html_body=template.as_HTML_email,
-                    reply_to_addresses=reply_to_addresses,
+                    reply_to_address=service.reply_to_email_address,
                 )
 
                 update_provider_stats(

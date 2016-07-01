@@ -233,7 +233,6 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
             "something_encrypted",
             "2016-01-01T11:09:00.061258"
         ),
-        {'reply_to_addresses': None},
         queue="bulk-email"
     )
     mock_celery_remove_job.assert_called_once_with((str(job.id),), queue="remove-job")
@@ -278,7 +277,6 @@ def test_should_process_email_job(sample_email_job, mocker, mock_celery_remove_j
             "something_encrypted",
             "2016-01-01T11:09:00.061258"
         ),
-        {'reply_to_addresses': None},
         queue="bulk-email"
     )
     job = jobs_dao.dao_get_job_by_id(sample_email_job.id)
@@ -435,7 +433,7 @@ def test_should_send_email_if_restricted_service_and_valid_email(notify_db, noti
         template.subject,
         body=template.content,
         html_body=AnyStringWith(template.content),
-        reply_to_addresses=None
+        reply_to_address=None
     )
 
 
@@ -529,7 +527,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
         "Jo",
         body="Hello Jo",
         html_body=AnyStringWith("Hello Jo"),
-        reply_to_addresses=None
+        reply_to_address=None
     )
 
     statsd_client.incr.assert_called_once_with("notifications.tasks.send-email")
@@ -581,7 +579,7 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
         sample_email_template.subject,
         body="This is a template",
         html_body=AnyStringWith("This is a template"),
-        reply_to_addresses=None
+        reply_to_address=None
     )
 
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
@@ -615,7 +613,7 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
         notification['personalisation']['name'],
         body="Hello Jo",
         html_body=AnyStringWith("Hello Jo"),
-        reply_to_addresses=None
+        reply_to_address=None
     )
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
@@ -648,7 +646,7 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
         sample_email_template.subject,
         body="This is a template",
         html_body=AnyStringWith("This is a template"),
-        reply_to_addresses=None
+        reply_to_address=None
     )
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
@@ -710,7 +708,7 @@ def test_should_persist_notification_as_failed_if_email_client_fails(sample_emai
         sample_email_template.subject,
         body=sample_email_template.content,
         html_body=AnyStringWith(sample_email_template.content),
-        reply_to_addresses=None
+        reply_to_address=None
     )
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
@@ -757,7 +755,6 @@ def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job
             "something_encrypted",
             ANY
         ),
-        {'reply_to_addresses': 'somereply@testservice.gov.uk'},
         queue="bulk-email"
     )
 
