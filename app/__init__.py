@@ -1,7 +1,6 @@
 import uuid
 import os
 
-import statsd
 from flask import request, url_for, g
 from flask import Flask, _request_ctx_stack
 from flask.ext.sqlalchemy import SQLAlchemy

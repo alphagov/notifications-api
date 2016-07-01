@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 
 from celery.exceptions import MaxRetriesExceededError
@@ -7,12 +8,14 @@ from notifications_utils.recipients import validate_phone_number, format_phone_n
 import app
 from app import statsd_client, mmg_client
 from app.celery import provider_tasks
-from app.celery.provider_tasks import send_sms_to_provider
-from app.celery.research_mode_tasks import send_sms_response
+from app.celery.provider_tasks import send_sms_to_provider, send_email_to_provider
+from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.celery.tasks import provider_to_use
+from app.clients.email import EmailClientException
 from app.clients.sms import SmsClientException
 from app.dao import notifications_dao, provider_details_dao
 from app.dao import provider_statistics_dao
+from app.dao.provider_statistics_dao import get_provider_statistics
 from app.models import Notification, NotificationStatistics, Job
 from tests.app.conftest import (
     sample_notification
@@ -289,3 +292,126 @@ def test_should_go_into_technical_error_if_exceeds_retries(
     job = Job.query.get(notification.job.id)
     assert job.notification_count == 1
     assert job.notifications_failed == 1
+
+
+def test_send_email_to_provider_should_call_research_mode_task_response_task_if_research_mode(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        sample_email_template,
+        ses_provider,
+        mocker):
+    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                       template=sample_email_template,
+                                       to_field="john@smith.com"
+                                       )
+
+    reference = uuid.uuid4()
+    print(reference)
+    mocker.patch('app.uuid.uuid4', return_value=reference)
+    mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
+    mocker.patch('app.celery.research_mode_tasks.send_email_response.apply_async')
+
+    sample_service.research_mode = True
+    notify_db.session.add(sample_service)
+    notify_db.session.commit()
+    assert not get_provider_statistics(
+        sample_email_template.service,
+        providers=[ses_provider.identifier]).first()
+    send_email_to_provider(
+        sample_service.id,
+        notification.id
+    )
+    assert not app.aws_ses_client.send_email.called
+    send_email_response.apply_async.assert_called_once_with(
+        ('ses', str(reference), 'john@smith.com'), queue="research-mode"
+    )
+    assert not get_provider_statistics(
+        sample_email_template.service,
+        providers=[ses_provider.identifier]).first()
+    persisted_notification = Notification.query.filter_by(id=notification.id).one()
+
+    assert persisted_notification.to == 'john@smith.com'
+    assert persisted_notification.template_id == sample_email_template.id
+    assert persisted_notification.status == 'sending'
+    assert persisted_notification.sent_at <= datetime.utcnow()
+    assert persisted_notification.created_at <= datetime.utcnow()
+    assert persisted_notification.sent_by == 'ses'
+    assert persisted_notification.reference == str(reference)
+
+
+def test_send_email_to_provider_should_go_into_technical_error_if_exceeds_retries(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        sample_email_template,
+        mocker):
+
+    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                       service=sample_service, status='created', template=sample_email_template)
+
+    mocker.patch('app.statsd_client.incr')
+    mocker.patch('app.statsd_client.timing')
+    mocker.patch('app.aws_ses_client.send_email', side_effect=EmailClientException("EXPECTED"))
+    mocker.patch('app.celery.provider_tasks.send_email_to_provider.retry', side_effect=MaxRetriesExceededError())
+
+    send_email_to_provider(
+        notification.service_id,
+        notification.id
+    )
+
+    provider_tasks.send_email_to_provider.retry.assert_called_with(queue='retry', countdown=10)
+    assert statsd_client.incr.assert_not_called
+    assert statsd_client.timing.assert_not_called
+
+    db_notification = Notification.query.filter_by(id=notification.id).one()
+    assert db_notification.status == 'technical-failure'
+    notification_stats = NotificationStatistics.query.filter_by(service_id=notification.service.id).first()
+    assert notification_stats.emails_requested == 1
+    assert notification_stats.emails_failed == 1
+    job = Job.query.get(notification.job.id)
+    assert job.notification_count == 1
+    assert job.notifications_failed == 1
+
+
+def test_send_email_to_provider_statsd_updates(notify_db, notify_db_session, sample_service,
+                                               sample_email_template, mocker):
+    mocker.patch('app.statsd_client.incr')
+    mocker.patch('app.statsd_client.timing')
+    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
+    mocker.patch('app.celery.research_mode_tasks.send_email_response.apply_async')
+    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                       template=sample_email_template)
+    send_email_to_provider(
+        notification.service_id,
+        notification.id
+    )
+
+    statsd_client.incr.assert_called_once_with("notifications.tasks.send-email-to-provider")
+    statsd_client.timing.assert_has_calls([
+        call("notifications.tasks.send-email-to-provider.task-time", ANY),
+        call("notifications.email.total-time", ANY)
+    ])
+
+
+def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_created(notify_db, notify_db_session,
+                                                                                       sample_service,
+                                                                                       sample_email_template,
+                                                                                       mocker):
+    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                       template=sample_email_template,
+                                       service=sample_service,
+                                       status='sending')
+    mocker.patch('app.aws_ses_client.send_email')
+    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
+    mocker.patch('app.celery.research_mode_tasks.send_email_response.apply_async')
+
+    send_sms_to_provider(
+        notification.service_id,
+        notification.id
+    )
+
+    app.aws_ses_client.send_email.assert_not_called()
+    app.celery.research_mode_tasks.send_email_response.apply_async.assert_not_called()

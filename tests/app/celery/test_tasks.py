@@ -7,10 +7,9 @@ from mock import ANY
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import (aws_ses_client, encryption, DATETIME_FORMAT, statsd_client)
+from app import (encryption, DATETIME_FORMAT, statsd_client)
 from app.celery import provider_tasks
 from app.celery import tasks
-from app.celery.research_mode_tasks import send_email_response
 from app.celery.tasks import s3
 from app.celery.tasks import (
     send_sms,
@@ -18,9 +17,7 @@ from app.celery.tasks import (
     provider_to_use,
     send_email
 )
-from app.clients.email.aws_ses import AwsSesClientException
 from app.dao import jobs_dao, provider_details_dao
-from app.dao.provider_statistics_dao import get_provider_statistics
 from app.models import Notification
 from tests.app import load_example_csv
 from tests.app.conftest import (
@@ -408,46 +405,13 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
         Notification.query.filter_by(id=notification_id).one()
 
 
-def test_should_send_email_if_restricted_service_and_valid_email(notify_db, notify_db_session, mocker):
-    user = sample_user(notify_db, notify_db_session, email="test@restricted.com")
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(
-        notify_db,
-        notify_db_session,
-        service=service,
-        template_type='email')
-
-    notification = _notification_json(template, "test@restricted.com")
-    mocker.patch('app.aws_ses_client.send_email', return_value="1234")
-
-    notification_id = uuid.uuid4()
-    now = datetime.utcnow()
-    send_email(
-        service.id,
-        notification_id,
-        encryption.encrypt(notification),
-        now.strftime(DATETIME_FORMAT)
-    )
-
-    aws_ses_client.send_email.assert_called_once_with(
-        '"Sample service" <sample.service@test.notify.com>',
-        "test@restricted.com",
-        template.subject,
-        body=template.content,
-        html_body=AnyStringWith(template.content),
-        reply_to_addresses=None
-    )
-
-
 def test_should_not_send_email_if_restricted_service_and_invalid_email_address(notify_db, notify_db_session, mocker):
     user = sample_user(notify_db, notify_db_session)
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
     template = sample_template(
         notify_db, notify_db_session, service=service, template_type='email', subject_line='Hello'
     )
-
     notification = _notification_json(template, to="test@example.com")
-    mocker.patch('app.aws_ses_client.send_email')
 
     notification_id = uuid.uuid4()
     send_email(
@@ -457,7 +421,6 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
         datetime.utcnow().strftime(DATETIME_FORMAT)
     )
 
-    aws_ses_client.send_email.assert_not_called()
     with pytest.raises(NoResultFound):
         Notification.query.filter_by(id=notification_id).one()
 
@@ -503,8 +466,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     mocker.patch('app.statsd_client.incr')
     mocker.patch('app.statsd_client.timing_with_dates')
     mocker.patch('app.statsd_client.timing')
-    mocker.patch('app.aws_ses_client.get_name', return_value='ses')
-    mocker.patch('app.aws_ses_client.send_email', return_value='ses')
+    mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
 
     notification_id = uuid.uuid4()
 
@@ -522,33 +484,21 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
         now.strftime(DATETIME_FORMAT)
     )
     freezer.stop()
-
-    aws_ses_client.send_email.assert_called_once_with(
-        '"Sample service" <sample.service@test.notify.com>',
-        "my_email@my_email.com",
-        "Jo",
-        body="Hello Jo",
-        html_body=AnyStringWith("Hello Jo"),
-        reply_to_addresses=None
-    )
-
     statsd_client.incr.assert_called_once_with("notifications.tasks.send-email")
-    statsd_client.timing_with_dates.assert_called_once_with(
-        "notifications.tasks.send-email.queued-for",
-        datetime(2016, 1, 1, 11, 10, 0, 00000),
-        datetime(2016, 1, 1, 11, 9, 0, 00000)
-    )
     statsd_client.timing.assert_called_once_with("notifications.tasks.send-email.task-time", ANY)
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
+    provider_tasks.send_email_to_provider.apply_async.assert_called_once_with(
+        (sample_email_template_with_placeholders.service_id,
+         notification_id, None), queue='email')
 
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template_with_placeholders.id
     assert persisted_notification.template_version == sample_email_template_with_placeholders.version
     assert persisted_notification.created_at == now
-    assert persisted_notification.sent_at > now
-    assert persisted_notification.status == 'sending'
-    assert persisted_notification.sent_by == 'ses'
+    assert not persisted_notification.sent_at
+    assert persisted_notification.status == 'created'
+    assert not persisted_notification.sent_by
     assert persisted_notification.job_row_number == 1
     assert persisted_notification.personalisation == {'name': 'Jo'}
     assert persisted_notification._personalisation == encryption.encrypt({"name": "Jo"})
@@ -556,14 +506,11 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
 
 def test_send_email_should_use_template_version_from_job_not_latest(sample_email_template, mocker):
     notification = _notification_json(sample_email_template, 'my_email@my_email.com')
-    mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.aws_ses_client.send_email', return_value="1234")
-    mocker.patch('app.aws_ses_client.get_name', return_value='ses')
     version_on_notification = sample_email_template.version
     # Change the template
     from app.dao.templates_dao import dao_update_template, dao_get_template_by_id
     sample_email_template.content = sample_email_template.content + " another version of the template"
-
+    mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
     dao_update_template(sample_email_template)
     t = dao_get_template_by_id(sample_email_template.id)
     assert t.version > version_on_notification
@@ -572,17 +519,13 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
     send_email(
         sample_email_template.service_id,
         notification_id,
-        "encrypted-in-reality",
+        encryption.encrypt(notification),
         now.strftime(DATETIME_FORMAT)
     )
-    aws_ses_client.send_email.assert_called_once_with(
-        '"Sample service" <sample.service@test.notify.com>',
-        "my_email@my_email.com",
-        sample_email_template.subject,
-        body="This is a template",
-        html_body=AnyStringWith("This is a template"),
-        reply_to_addresses=None
-    )
+
+    provider_tasks.send_email_to_provider.apply_async.assert_called_with((sample_email_template.service_id,
+                                                                          notification_id,
+                                                                          None), queue='email')
 
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
@@ -590,16 +533,15 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
     assert persisted_notification.template_id == sample_email_template.id
     assert persisted_notification.template_version == version_on_notification
     assert persisted_notification.created_at == now
-    assert persisted_notification.sent_at > now
-    assert persisted_notification.status == 'sending'
-    assert persisted_notification.sent_by == 'ses'
+    assert not persisted_notification.sent_at
+    assert persisted_notification.status == 'created'
+    assert not persisted_notification.sent_by
 
 
 def test_should_use_email_template_subject_placeholders(sample_email_template_with_placeholders, mocker):
     notification = _notification_json(sample_email_template_with_placeholders,
                                       "my_email@my_email.com", {"name": "Jo"})
-    mocker.patch('app.aws_ses_client.send_email', return_value="1234")
-    mocker.patch('app.aws_ses_client.get_name', return_value='ses')
+    mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -609,30 +551,25 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
         encryption.encrypt(notification),
         now.strftime(DATETIME_FORMAT)
     )
-    aws_ses_client.send_email.assert_called_once_with(
-        '"Sample service" <sample.service@test.notify.com>',
-        "my_email@my_email.com",
-        notification['personalisation']['name'],
-        body="Hello Jo",
-        html_body=AnyStringWith("Hello Jo"),
-        reply_to_addresses=None
+    provider_tasks.send_email_to_provider.apply_async.assert_called_once_with(
+        (sample_email_template_with_placeholders.service_id,
+         notification_id, None), queue='email'
     )
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template_with_placeholders.id
     assert persisted_notification.created_at == now
-    assert persisted_notification.sent_at > now
-    assert persisted_notification.status == 'sending'
-    assert persisted_notification.sent_by == 'ses'
+    assert not persisted_notification.sent_at
+    assert persisted_notification.status == 'created'
+    assert not persisted_notification.sent_by
     assert persisted_notification.personalisation == {"name": "Jo"}
-    assert persisted_notification.reference == '1234'
+    assert not persisted_notification.reference
 
 
 def test_should_use_email_template_and_persist_without_personalisation(sample_email_template, mocker):
     notification = _notification_json(sample_email_template, "my_email@my_email.com")
-    mocker.patch('app.aws_ses_client.send_email', return_value="ref")
-    mocker.patch('app.aws_ses_client.get_name', return_value='ses')
+    mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -642,27 +579,22 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
         encryption.encrypt(notification),
         now.strftime(DATETIME_FORMAT)
     )
-    aws_ses_client.send_email.assert_called_once_with(
-        '"Sample service" <sample.service@test.notify.com>',
-        "my_email@my_email.com",
-        sample_email_template.subject,
-        body="This is a template",
-        html_body=AnyStringWith("This is a template"),
-        reply_to_addresses=None
-    )
+    provider_tasks.send_email_to_provider.apply_async.assert_called_once_with((sample_email_template.service_id,
+                                                                               notification_id, None), queue='email')
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template.id
     assert persisted_notification.created_at == now
-    assert persisted_notification.sent_at > now
-    assert persisted_notification.status == 'sending'
-    assert persisted_notification.sent_by == 'ses'
+    assert not persisted_notification.sent_at
+    assert persisted_notification.status == 'created'
+    assert not persisted_notification.sent_by
     assert not persisted_notification.personalisation
-    assert persisted_notification.reference == 'ref'
+    assert not persisted_notification.reference
+    assert persisted_notification.notification_type == 'email'
 
 
-def test_should_go_to_retry_queue_if_database_errors(sample_template, mocker):
+def test_send_sms_should_go_to_retry_queue_if_database_errors(sample_template, mocker):
     notification = _notification_json(sample_template, "+447234123123")
 
     expected_exception = SQLAlchemyError()
@@ -689,55 +621,31 @@ def test_should_go_to_retry_queue_if_database_errors(sample_template, mocker):
     assert 'No row was found for one' in str(e.value)
 
 
-def test_should_persist_notification_as_failed_if_email_client_fails(sample_email_template, mocker):
-    notification = _notification_json(sample_email_template, "my_email@my_email.com")
-    mocker.patch('app.aws_ses_client.send_email', side_effect=AwsSesClientException())
-    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
+def test_send_email_should_go_to_retry_queue_if_database_errors(sample_email_template, mocker):
+    notification = _notification_json(sample_email_template, "test@example.gov.uk")
 
+    expected_exception = SQLAlchemyError()
+
+    mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
+    mocker.patch('app.celery.tasks.send_email.retry', side_effect=Exception())
+    mocker.patch('app.celery.tasks.dao_create_notification', side_effect=expected_exception)
     now = datetime.utcnow()
 
     notification_id = uuid.uuid4()
 
-    send_email(
-        sample_email_template.service_id,
-        notification_id,
-        encryption.encrypt(notification),
-        now.strftime(DATETIME_FORMAT)
-    )
-    aws_ses_client.send_email.assert_called_once_with(
-        '"Sample service" <sample.service@test.notify.com>',
-        "my_email@my_email.com",
-        sample_email_template.subject,
-        body=sample_email_template.content,
-        html_body=AnyStringWith(sample_email_template.content),
-        reply_to_addresses=None
-    )
-    persisted_notification = Notification.query.filter_by(id=notification_id).one()
-    assert persisted_notification.id == notification_id
-    assert persisted_notification.to == 'my_email@my_email.com'
-    assert persisted_notification.template_id == sample_email_template.id
-    assert persisted_notification.template_version == sample_email_template.version
-    assert persisted_notification.status == 'technical-failure'
-    assert persisted_notification.created_at == now
-    assert persisted_notification.sent_by == 'ses'
-    assert persisted_notification.sent_at >= now
+    with pytest.raises(Exception):
+        send_email(
+            sample_email_template.service_id,
+            notification_id,
+            encryption.encrypt(notification),
+            now.strftime(DATETIME_FORMAT)
+        )
+    provider_tasks.send_email_to_provider.apply_async.assert_not_called()
+    tasks.send_email.retry.assert_called_with(exc=expected_exception, queue='retry')
 
-
-def test_should_not_send_email_if_db_persistance_failed(sample_email_template, mocker):
-    notification = _notification_json(sample_email_template, "my_email@my_email.com")
-    mocker.patch('app.aws_ses_client.send_email')
-    mocker.patch('app.db.session.add', side_effect=SQLAlchemyError())
-    now = datetime.utcnow()
-
-    notification_id = uuid.uuid4()
-
-    send_email(
-        sample_email_template.service_id,
-        notification_id,
-        encryption.encrypt(notification),
-        now.strftime(DATETIME_FORMAT)
-    )
-    aws_ses_client.send_email.assert_not_called()
+    with pytest.raises(NoResultFound) as e:
+        Notification.query.filter_by(id=notification_id).one()
+    assert 'No row was found for one' in str(e.value)
 
 
 def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job, mocker, mock_celery_remove_job):
@@ -760,93 +668,3 @@ def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job
         {'reply_to_addresses': 'somereply@testservice.gov.uk'},
         queue="bulk-email"
     )
-
-
-def test_should_call_send_email_response_task_if_research_mode(
-        notify_db,
-        sample_service,
-        sample_email_template,
-        mocker):
-    notification = _notification_json(
-        sample_email_template,
-        to="john@smith.com"
-    )
-    reference = uuid.uuid4()
-
-    mocker.patch('app.uuid.uuid4', return_value=reference)
-    mocker.patch('app.encryption.decrypt', return_value=notification)
-    mocker.patch('app.aws_ses_client.send_email')
-    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
-    mocker.patch('app.celery.research_mode_tasks.send_email_response.apply_async')
-
-    sample_service.research_mode = True
-    notify_db.session.add(sample_service)
-    notify_db.session.commit()
-
-    notification_id = uuid.uuid4()
-
-    now = datetime.utcnow()
-    send_email(
-        sample_service.id,
-        notification_id,
-        "encrypted-in-reality",
-        now.strftime(DATETIME_FORMAT)
-    )
-    assert not aws_ses_client.send_email.called
-    send_email_response.apply_async.assert_called_once_with(
-        ('ses', str(reference), 'john@smith.com'), queue="research-mode"
-    )
-
-    persisted_notification = Notification.query.filter_by(id=notification_id).one()
-    assert persisted_notification.id == notification_id
-    assert persisted_notification.to == 'john@smith.com'
-    assert persisted_notification.template_id == sample_email_template.id
-    assert persisted_notification.status == 'sending'
-    assert persisted_notification.sent_at > now
-    assert persisted_notification.created_at == now
-    assert persisted_notification.sent_by == 'ses'
-    assert persisted_notification.reference == str(reference)
-
-
-def test_should_use_research_mode_task_and_not_update_provider_stats(
-        notify_db,
-        sample_service,
-        sample_email_template,
-        ses_provider,
-        mocker):
-    notification = _notification_json(
-        sample_email_template,
-        to="john@smith.com"
-    )
-
-    reference = uuid.uuid4()
-
-    mocker.patch('app.uuid.uuid4', return_value=reference)
-    mocker.patch('app.aws_ses_client.send_email')
-    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
-    mocker.patch('app.celery.research_mode_tasks.send_email_response.apply_async')
-
-    sample_service.research_mode = True
-    notify_db.session.add(sample_service)
-    notify_db.session.commit()
-
-    assert not get_provider_statistics(
-        sample_email_template.service,
-        providers=[ses_provider.identifier]).first()
-
-    notification_id = uuid.uuid4()
-    now = datetime.utcnow()
-    send_email(
-        sample_service.id,
-        notification_id,
-        encryption.encrypt(notification),
-        now.strftime(DATETIME_FORMAT)
-    )
-    assert not aws_ses_client.send_email.called
-    send_email_response.apply_async.assert_called_once_with(
-        ('ses', str(reference), 'john@smith.com'), queue="research-mode"
-    )
-
-    assert not get_provider_statistics(
-        sample_email_template.service,
-        providers=[ses_provider.identifier]).first()
