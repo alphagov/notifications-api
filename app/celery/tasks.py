@@ -19,18 +19,14 @@ from app import (
     encryption
 )
 from app.aws import s3
-from app.celery.provider_tasks import send_sms_to_provider
-from app.celery.research_mode_tasks import send_email_response
-from app.clients.email import EmailClientException
+from app.celery.provider_tasks import send_sms_to_provider, send_email_to_provider
 from app.dao.jobs_dao import (
     dao_update_job,
     dao_get_job_by_id
 )
 from app.dao.notifications_dao import (
     dao_create_notification,
-    dao_update_notification,
-    dao_get_notification_statistics_for_service_and_day,
-    update_provider_stats
+    dao_get_notification_statistics_for_service_and_day
 )
 from app.dao.provider_details_dao import get_provider_details_by_notification_type
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -145,27 +141,12 @@ def send_sms(self, service_id, notification_id, encrypted_notification, created_
         return
 
     try:
-
-        sent_at = datetime.utcnow()
-        notification_db_object = Notification(
-            id=notification_id,
-            template_id=notification['template'],
-            template_version=notification['template_version'],
-            to=notification['to'],
-            service_id=service_id,
-            job_id=notification.get('job', None),
-            job_row_number=notification.get('row_number', None),
-            status='created',
-            created_at=datetime.strptime(created_at, DATETIME_FORMAT),
-            personalisation=notification.get('personalisation'),
-            notification_type=SMS_TYPE
-        )
-        dao_create_notification(notification_db_object, SMS_TYPE)
+        _save_notification(created_at, notification, notification_id, service_id, SMS_TYPE)
 
         send_sms_to_provider.apply_async((service_id, notification_id), queue='sms')
 
         current_app.logger.info(
-            "SMS {} created at {} sent at {}".format(notification_id, created_at, sent_at)
+            "SMS {} created at {}".format(notification_id, created_at)
         )
 
         statsd_client.incr("notifications.tasks.send-sms")
@@ -175,89 +156,45 @@ def send_sms(self, service_id, notification_id, encrypted_notification, created_
         raise self.retry(queue="retry", exc=e)
 
 
-@notify_celery.task(name="send-email")
-def send_email(service_id, notification_id, encrypted_notification, created_at, reply_to_addresses=None):
+@notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=5)
+def send_email(self, service_id, notification_id, encrypted_notification, created_at, reply_to_addresses=None):
     task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
-    provider = provider_to_use(EMAIL_TYPE, notification_id)
-
     if not service_allowed_to_send_to(notification['to'], service):
-        current_app.logger.info(
-            "Email {} failed as restricted service".format(notification_id)
-        )
+        current_app.logger.info("Email {} failed as restricted service".format(notification_id))
         return
 
     try:
-        sent_at = datetime.utcnow()
-        notification_db_object = Notification(
-            id=notification_id,
-            template_id=notification['template'],
-            template_version=notification['template_version'],
-            to=notification['to'],
-            service_id=service_id,
-            job_id=notification.get('job', None),
-            job_row_number=notification.get('row_number', None),
-            status='sending',
-            created_at=datetime.strptime(created_at, DATETIME_FORMAT),
-            sent_at=sent_at,
-            sent_by=provider.get_name(),
-            personalisation=notification.get('personalisation'),
-            notification_type=EMAIL_TYPE
-        )
+        _save_notification(created_at, notification, notification_id, service_id, EMAIL_TYPE)
 
-        dao_create_notification(notification_db_object, EMAIL_TYPE)
-        statsd_client.timing_with_dates(
-            "notifications.tasks.send-email.queued-for",
-            sent_at,
-            datetime.strptime(created_at, DATETIME_FORMAT)
-        )
+        send_email_to_provider.apply_async((service_id, notification_id, reply_to_addresses),
+                                           queue='email')
 
-        try:
-            template = Template(
-                dao_get_template_by_id(notification['template'], notification['template_version']).__dict__,
-                values=notification.get('personalisation', {})
-            )
-
-            if service.research_mode:
-                reference = create_uuid()
-                send_email_response.apply_async(
-                    (provider.get_name(), str(reference), notification['to']), queue='research-mode'
-                )
-            else:
-                from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
-                                                     current_app.config['NOTIFY_EMAIL_DOMAIN'])
-                reference = provider.send_email(
-                    from_address,
-                    notification['to'],
-                    template.replaced_subject,
-                    body=template.replaced_govuk_escaped,
-                    html_body=template.as_HTML_email,
-                    reply_to_addresses=reply_to_addresses,
-                )
-
-                update_provider_stats(
-                    notification_id,
-                    'email',
-                    provider.get_name()
-                )
-
-            notification_db_object.reference = reference
-            dao_update_notification(notification_db_object)
-
-        except EmailClientException as e:
-            current_app.logger.exception(e)
-            notification_db_object.status = 'technical-failure'
-            dao_update_notification(notification_db_object)
-
-        current_app.logger.info(
-            "Email {} created at {} sent at {}".format(notification_id, created_at, sent_at)
-        )
+        current_app.logger.info("Email {} created at {}".format(notification_id, created_at))
         statsd_client.incr("notifications.tasks.send-email")
         statsd_client.timing("notifications.tasks.send-email.task-time", monotonic() - task_start)
     except SQLAlchemyError as e:
         current_app.logger.exception(e)
+        raise self.retry(queue="retry", exc=e)
+
+
+def _save_notification(created_at, notification, notification_id, service_id, notification_type):
+    notification_db_object = Notification(
+        id=notification_id,
+        template_id=notification['template'],
+        template_version=notification['template_version'],
+        to=notification['to'],
+        service_id=service_id,
+        job_id=notification.get('job', None),
+        job_row_number=notification.get('row_number', None),
+        status='created',
+        created_at=datetime.strptime(created_at, DATETIME_FORMAT),
+        personalisation=notification.get('personalisation'),
+        notification_type=EMAIL_TYPE
+    )
+    dao_create_notification(notification_db_object, notification_type)
 
 
 def service_allowed_to_send_to(recipient, service):

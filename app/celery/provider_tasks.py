@@ -1,9 +1,8 @@
-import json
-
 from datetime import datetime
 from monotonic import monotonic
 from flask import current_app
-from app import notify_celery, statsd_client, encryption, clients
+from app import notify_celery, statsd_client, clients, create_uuid
+from app.clients.email import EmailClientException
 from app.clients.sms import SmsClientException
 from app.dao.notifications_dao import (
     update_provider_stats,
@@ -11,19 +10,17 @@ from app.dao.notifications_dao import (
     dao_update_notification, update_notification_status_by_id)
 from app.dao.provider_details_dao import get_provider_details_by_notification_type
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.celery.research_mode_tasks import send_sms_response
-
+from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from notifications_utils.recipients import (
     validate_and_format_phone_number
 )
 
 from app.dao.templates_dao import dao_get_template_by_id
 from notifications_utils.template import (
-    Template,
-    unlink_govuk_escaped
+    Template
 )
 
-from app.models import SMS_TYPE
+from app.models import SMS_TYPE, EMAIL_TYPE
 
 
 def retry_iteration_to_delay(retry=0):
@@ -50,7 +47,7 @@ def retry_iteration_to_delay(retry=0):
 
 
 @notify_celery.task(bind=True, name="send-sms-to-provider", max_retries=5, default_retry_delay=5)
-def send_sms_to_provider(self, service_id, notification_id, encrypted_notification=None):
+def send_sms_to_provider(self, service_id, notification_id):
     task_start = monotonic()
 
     service = dao_fetch_service_by_id(service_id)
@@ -98,7 +95,7 @@ def send_sms_to_provider(self, service_id, notification_id, encrypted_notificati
                 update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
 
         current_app.logger.info(
-            "SMS {} created at {} sent at {}".format(notification_id, notification.created_at, notification.sent_at)
+            "SMS {} sent to provider at {}".format(notification_id, notification.sent_at)
         )
         statsd_client.incr("notifications.tasks.send-sms-to-provider")
         statsd_client.timing("notifications.tasks.send-sms-to-provider.task-time", monotonic() - task_start)
@@ -117,3 +114,61 @@ def provider_to_use(notification_type, notification_id):
         raise Exception("No active {} providers".format(notification_type))
 
     return clients.get_client_by_name_and_type(active_providers_in_order[0].identifier, notification_type)
+
+
+@notify_celery.task(bind=True, name="send-email-to-provider", max_retries=5, default_retry_delay=5)
+def send_email_to_provider(self, service_id, notification_id, reply_to_addresses=None):
+    task_start = monotonic()
+    service = dao_fetch_service_by_id(service_id)
+    provider = provider_to_use(EMAIL_TYPE, notification_id)
+    notification = get_notification_by_id(notification_id)
+    if notification.status == 'created':
+        try:
+            template = Template(
+                dao_get_template_by_id(notification.template_id, notification.template_version).__dict__,
+                values=notification.personalisation
+            )
+
+            if service.research_mode:
+                reference = str(create_uuid())
+                send_email_response.apply_async(
+                    (provider.get_name(), reference, notification.to), queue='research-mode'
+                )
+            else:
+                from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
+                                                     current_app.config['NOTIFY_EMAIL_DOMAIN'])
+                reference = provider.send_email(
+                    from_address,
+                    notification.to,
+                    template.replaced_subject,
+                    body=template.replaced_govuk_escaped,
+                    html_body=template.as_HTML_email,
+                    reply_to_addresses=reply_to_addresses,
+                )
+
+                update_provider_stats(
+                    notification_id,
+                    EMAIL_TYPE,
+                    provider.get_name()
+                )
+            notification.reference = reference
+            notification.sent_at = datetime.utcnow()
+            notification.sent_by = provider.get_name(),
+            notification.status = 'sending'
+            dao_update_notification(notification)
+        except EmailClientException as e:
+            try:
+                current_app.logger.error(
+                    "Email notification {} failed".format(notification_id)
+                )
+                current_app.logger.exception(e)
+                self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
+            except self.MaxRetriesExceededError:
+                update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
+
+        current_app.logger.info(
+            "Email {} sent to provider at {}".format(notification_id, notification.sent_at)
+        )
+        statsd_client.incr("notifications.tasks.send-email-to-provider")
+        statsd_client.timing("notifications.tasks.send-email-to-provider.task-time", monotonic() - task_start)
+        statsd_client.timing("notifications.email.total-time", datetime.utcnow() - notification.created_at)
