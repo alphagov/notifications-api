@@ -349,7 +349,7 @@ class Notification(db.Model):
     template_version = db.Column(db.Integer, nullable=False)
     api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), index=True, unique=False)
     api_key = db.relationship('ApiKey')
-    key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False)
+    key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False, nullable=False)
     content_char_count = db.Column(db.Integer, nullable=True)
     notification_type = db.Column(notification_types, nullable=False)
     created_at = db.Column(
