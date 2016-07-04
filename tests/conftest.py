@@ -7,7 +7,6 @@ from alembic.command import upgrade
 from alembic.config import Config
 from flask.ext.migrate import Migrate, MigrateCommand
 from flask.ext.script import Manager
-from sqlalchemy.schema import MetaData
 
 from app import create_app, db
 

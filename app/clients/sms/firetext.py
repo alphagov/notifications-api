@@ -67,11 +67,11 @@ class FiretextClient(SmsClient):
     def get_name(self):
         return self.name
 
-    def send_sms(self, to, content, reference):
+    def send_sms(self, to, content, reference, sender=None):
 
         data = {
             "apiKey": self.api_key,
-            "from": self.from_number,
+            "from": self.from_number if sender is None else sender,
             "to": to.replace('+', ''),
             "message": content,
             "reference": reference

@@ -17,9 +17,7 @@ from app.dao import notifications_dao, provider_details_dao
 from app.dao import provider_statistics_dao
 from app.dao.provider_statistics_dao import get_provider_statistics
 from app.models import Notification, NotificationStatistics, Job
-from tests.app.conftest import (
-    sample_notification
-)
+from tests.app.conftest import sample_notification
 
 
 def test_should_by_10_second_delay_as_default():
@@ -52,6 +50,7 @@ def test_should_by_240_minute_delay_on_retry_two():
 
 def test_should_return_highest_priority_active_provider(notify_db, notify_db_session):
     providers = provider_details_dao.get_provider_details_by_notification_type('sms')
+
     first = providers[0]
     second = providers[1]
 
@@ -103,7 +102,8 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
         content="Sample service: Hello Jo",
-        reference=str(db_notification.id)
+        reference=str(db_notification.id),
+        sender=None
     )
     notification = Notification.query.filter_by(id=db_notification.id).one()
 
@@ -142,7 +142,8 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
         content="Sample service: This is a template",
-        reference=str(db_notification.id)
+        reference=str(db_notification.id),
+        sender=None
     )
 
     persisted_notification = notifications_dao.get_notification(sample_template.service_id, db_notification.id)
@@ -292,6 +293,39 @@ def test_should_go_into_technical_error_if_exceeds_retries(
     job = Job.query.get(notification.job.id)
     assert job.notification_count == 1
     assert job.notifications_failed == 1
+
+
+def test_should_send_sms_sender_from_service_if_present(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        sample_template,
+        mocker):
+    db_notification = sample_notification(notify_db, notify_db_session, template=sample_template,
+                                          to_field="+447234123123",
+                                          status='created')
+
+    sample_service.sms_sender = 'elevenchars'
+    notify_db.session.add(sample_service)
+    notify_db.session.commit()
+
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="mmg")
+    mocker.patch('app.statsd_client.incr')
+    mocker.patch('app.statsd_client.timing_with_dates')
+    mocker.patch('app.statsd_client.timing')
+
+    send_sms_to_provider(
+        db_notification.service_id,
+        db_notification.id
+    )
+
+    mmg_client.send_sms.assert_called_once_with(
+        to=format_phone_number(validate_phone_number("+447234123123")),
+        content="Sample service: This is a template",
+        reference=str(db_notification.id),
+        sender=sample_service.sms_sender
+    )
 
 
 def test_send_email_to_provider_should_call_research_mode_task_response_task_if_research_mode(
