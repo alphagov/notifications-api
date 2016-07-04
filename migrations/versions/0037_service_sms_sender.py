@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0036_service_sms_sender
-Revises: 0035_notification_type
+Revision ID: 0037_service_sms_sender
+Revises: 0036_notif_key_type_not_null
 Create Date: 2016-06-30 14:55:33.811696
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0036_service_sms_sender'
-down_revision = '0035_notification_type'
+revision = '0037_service_sms_sender'
+down_revision = '0036_notif_key_type_not_null'
 
 from alembic import op
 import sqlalchemy as sa
