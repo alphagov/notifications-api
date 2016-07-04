@@ -647,24 +647,3 @@ def test_send_email_should_go_to_retry_queue_if_database_errors(sample_email_tem
     with pytest.raises(NoResultFound) as e:
         Notification.query.filter_by(id=notification_id).one()
     assert 'No row was found for one' in str(e.value)
-
-
-def test_process_email_should_not_use_reply_to_email(sample_email_job, mocker, mock_celery_remove_job):
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
-    mocker.patch('app.celery.tasks.send_email.apply_async')
-    mocker.patch('app.encryption.encrypt', return_value='something_encrypted')
-    mocker.patch('app.celery.tasks.create_uuid', return_value='uuid')
-
-    sample_email_job.service.reply_to_email_address = 'somereply@testservice.gov.uk'
-
-    process_job(sample_email_job.id)
-
-    tasks.send_email.apply_async.assert_called_once_with(
-        (
-            str(sample_email_job.service_id),
-            "uuid",
-            "something_encrypted",
-            ANY
-        ),
-        queue="bulk-email"
-    )
