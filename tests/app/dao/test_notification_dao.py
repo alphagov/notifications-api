@@ -14,7 +14,8 @@ from app.models import (
     Job,
     NotificationStatistics,
     TemplateStatistics,
-    NOTIFICATION_STATUS_TYPES
+    NOTIFICATION_STATUS_TYPES,
+    KEY_TYPE_NORMAL
 )
 
 from app.dao.notifications_dao import (
@@ -976,7 +977,8 @@ def _notification_json(sample_template, job_id=None, id=None, status=None):
         'template_version': sample_template.version,
         'created_at': datetime.utcnow(),
         'content_char_count': 160,
-        'notification_type': sample_template.template_type
+        'notification_type': sample_template.template_type,
+        'key_type': KEY_TYPE_NORMAL
     }
     if job_id:
         data.update({'job_id': job_id})

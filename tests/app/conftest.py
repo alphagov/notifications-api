@@ -323,7 +323,9 @@ def sample_notification(notify_db,
                         created_at=datetime.utcnow(),
                         content_char_count=160,
                         create=True,
-                        personalisation=None):
+                        personalisation=None,
+                        api_key_id=None,
+                        key_type=KEY_TYPE_NORMAL):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:
@@ -352,7 +354,9 @@ def sample_notification(notify_db,
         'created_at': created_at,
         'content_char_count': content_char_count,
         'personalisation': personalisation,
-        'notification_type': template.template_type
+        'notification_type': template.template_type,
+        'api_key_id': api_key_id,
+        'key_type': key_type
     }
     if job_row_number:
         data['job_row_number'] = job_row_number

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from freezegun import freeze_time
@@ -18,7 +18,8 @@ from app.celery.tasks import (
     send_email
 )
 from app.dao import jobs_dao, provider_details_dao
-from app.models import Notification
+from app.dao.provider_statistics_dao import get_provider_statistics
+from app.models import Notification, KEY_TYPE_TEAM
 from tests.app import load_example_csv
 from tests.app.conftest import (
     sample_service,
@@ -425,7 +426,7 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
         Notification.query.filter_by(id=notification_id).one()
 
 
-def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, mocker):
+def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_api_key, mocker):
     notification = _notification_json(
         sample_job.template,
         to="+447234123123",
@@ -438,7 +439,9 @@ def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, mocker)
         sample_job.service.id,
         notification_id,
         encryption.encrypt(notification),
-        datetime.utcnow().strftime(DATETIME_FORMAT)
+        datetime.utcnow().strftime(DATETIME_FORMAT),
+        api_key_id=str(sample_api_key.id),
+        key_type=KEY_TYPE_TEAM
     )
     provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
         (sample_job.service.id,
@@ -455,9 +458,11 @@ def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, mocker)
     assert persisted_notification.created_at <= datetime.utcnow()
     assert not persisted_notification.sent_by
     assert persisted_notification.job_row_number == 2
+    assert persisted_notification.api_key_id == sample_api_key.id
+    assert persisted_notification.key_type == KEY_TYPE_TEAM
 
 
-def test_should_use_email_template_and_persist(sample_email_template_with_placeholders, mocker):
+def test_should_use_email_template_and_persist(sample_email_template_with_placeholders, sample_api_key, mocker):
     notification = _notification_json(
         sample_email_template_with_placeholders,
         "my_email@my_email.com",
@@ -470,20 +475,19 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
 
     notification_id = uuid.uuid4()
 
-    freezer = freeze_time("2016-01-01 11:09:00.00000")
-    freezer.start()
-    now = datetime.utcnow()
-    freezer.stop()
+    with freeze_time("2016-01-01 11:09:00.00000"):
+        now = datetime.utcnow()
 
-    freezer = freeze_time("2016-01-01 11:10:00.00000")
-    freezer.start()
-    send_email(
-        sample_email_template_with_placeholders.service_id,
-        notification_id,
-        encryption.encrypt(notification),
-        now.strftime(DATETIME_FORMAT)
-    )
-    freezer.stop()
+    with freeze_time("2016-01-01 11:10:00.00000"):
+        send_email(
+            sample_email_template_with_placeholders.service_id,
+            notification_id,
+            encryption.encrypt(notification),
+            now.strftime(DATETIME_FORMAT),
+            api_key_id=str(sample_api_key.id),
+            key_type=KEY_TYPE_TEAM
+        )
+
     statsd_client.incr.assert_called_once_with("notifications.tasks.send-email")
     statsd_client.timing.assert_called_once_with("notifications.tasks.send-email.task-time", ANY)
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
@@ -502,6 +506,8 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     assert persisted_notification.job_row_number == 1
     assert persisted_notification.personalisation == {'name': 'Jo'}
     assert persisted_notification._personalisation == encryption.encrypt({"name": "Jo"})
+    assert persisted_notification.api_key_id == sample_api_key.id
+    assert persisted_notification.key_type == KEY_TYPE_TEAM
 
 
 def test_send_email_should_use_template_version_from_job_not_latest(sample_email_template, mocker):
@@ -559,8 +565,6 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template_with_placeholders.id
-    assert persisted_notification.created_at == now
-    assert not persisted_notification.sent_at
     assert persisted_notification.status == 'created'
     assert not persisted_notification.sent_by
     assert persisted_notification.personalisation == {"name": "Jo"}
@@ -572,6 +576,7 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
     mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
 
     notification_id = uuid.uuid4()
+
     now = datetime.utcnow()
     send_email(
         sample_email_template.service_id,
@@ -581,6 +586,7 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
     )
     provider_tasks.send_email_to_provider.apply_async.assert_called_once_with((sample_email_template.service_id,
                                                                                notification_id, None), queue='email')
+
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'my_email@my_email.com'

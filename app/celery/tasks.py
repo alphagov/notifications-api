@@ -34,7 +34,8 @@ from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
     Notification,
     EMAIL_TYPE,
-    SMS_TYPE
+    SMS_TYPE,
+    KEY_TYPE_NORMAL
 )
 
 
@@ -129,7 +130,13 @@ def remove_job(job_id):
 
 
 @notify_celery.task(bind=True, name="send-sms", max_retries=5, default_retry_delay=5)
-def send_sms(self, service_id, notification_id, encrypted_notification, created_at):
+def send_sms(self,
+             service_id,
+             notification_id,
+             encrypted_notification,
+             created_at,
+             api_key_id=None,
+             key_type=KEY_TYPE_NORMAL):
     task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
@@ -141,7 +148,7 @@ def send_sms(self, service_id, notification_id, encrypted_notification, created_
         return
 
     try:
-        _save_notification(created_at, notification, notification_id, service_id, SMS_TYPE)
+        _save_notification(created_at, notification, notification_id, service_id, SMS_TYPE, api_key_id, key_type)
 
         send_sms_to_provider.apply_async((service_id, notification_id), queue='sms')
 
@@ -157,7 +164,13 @@ def send_sms(self, service_id, notification_id, encrypted_notification, created_
 
 
 @notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=5)
-def send_email(self, service_id, notification_id, encrypted_notification, created_at, reply_to_addresses=None):
+def send_email(self, service_id,
+               notification_id,
+               encrypted_notification,
+               created_at,
+               reply_to_addresses=None,
+               api_key_id=None,
+               key_type=KEY_TYPE_NORMAL):
     task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
@@ -167,7 +180,7 @@ def send_email(self, service_id, notification_id, encrypted_notification, create
         return
 
     try:
-        _save_notification(created_at, notification, notification_id, service_id, EMAIL_TYPE)
+        _save_notification(created_at, notification, notification_id, service_id, EMAIL_TYPE, api_key_id, key_type)
 
         send_email_to_provider.apply_async((service_id, notification_id, reply_to_addresses),
                                            queue='email')
@@ -180,7 +193,7 @@ def send_email(self, service_id, notification_id, encrypted_notification, create
         raise self.retry(queue="retry", exc=e)
 
 
-def _save_notification(created_at, notification, notification_id, service_id, notification_type):
+def _save_notification(created_at, notification, notification_id, service_id, notification_type, api_key_id, key_type):
     notification_db_object = Notification(
         id=notification_id,
         template_id=notification['template'],
@@ -192,7 +205,9 @@ def _save_notification(created_at, notification, notification_id, service_id, no
         status='created',
         created_at=datetime.strptime(created_at, DATETIME_FORMAT),
         personalisation=notification.get('personalisation'),
-        notification_type=EMAIL_TYPE
+        notification_type=EMAIL_TYPE,
+        api_key_id=api_key_id,
+        key_type=key_type
     )
     dao_create_notification(notification_db_object, notification_type)
 

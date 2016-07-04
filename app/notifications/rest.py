@@ -11,6 +11,7 @@ from notifications_utils.recipients import allowed_to_send_to, first_column_head
 from notifications_utils.template import Template
 from app.clients.email.aws_ses import get_aws_responses
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT, statsd_client
+from app.models import KEY_TYPE_TEAM
 from app.dao import (
     templates_dao,
     services_dao,
@@ -170,7 +171,9 @@ def process_firetext_response():
 
 @notifications.route('/notifications/<uuid:notification_id>', methods=['GET'])
 def get_notifications(notification_id):
-    notification = notifications_dao.get_notification(str(api_user.service_id), notification_id)
+    notification = notifications_dao.get_notification(str(api_user.service_id),
+                                                      notification_id,
+                                                      key_type=api_user.key_type)
     return jsonify(data={"notification": notification_status_schema.dump(notification).data}), 200
 
 
@@ -186,7 +189,8 @@ def get_all_notifications():
         filter_dict=data,
         page=page,
         page_size=page_size,
-        limit_days=limit_days)
+        limit_days=limit_days,
+        key_type=api_user.key_type)
     return jsonify(
         notifications=notification_status_schema.dump(pagination.items, many=True).data,
         page_size=page_size,
@@ -253,7 +257,7 @@ def send_notification(notification_type):
         errors = {'content': [message]}
         raise InvalidRequest(errors, status_code=400)
 
-    if service.restricted and not allowed_to_send_to(
+    if (service.restricted or api_user.key_type == KEY_TYPE_TEAM) and not allowed_to_send_to(
         notification['to'],
         itertools.chain.from_iterable(
             [user.mobile_number, user.email_address] for user in service.users
@@ -266,19 +270,33 @@ def send_notification(notification_type):
     notification_id = create_uuid()
     notification.update({"template_version": template.version})
     if notification_type == SMS_TYPE:
-        send_sms.apply_async((
-            service_id,
-            notification_id,
-            encryption.encrypt(notification),
-            datetime.utcnow().strftime(DATETIME_FORMAT)
-        ), queue='sms')
+        send_sms.apply_async(
+            (
+                service_id,
+                notification_id,
+                encryption.encrypt(notification),
+                datetime.utcnow().strftime(DATETIME_FORMAT)
+            ),
+            kwargs={
+                'api_key_id': str(api_user.id),
+                'key_type': api_user.key_type
+            },
+            queue='sms'
+        )
     else:
-        send_email.apply_async((
-            service_id,
-            notification_id,
-            encryption.encrypt(notification),
-            datetime.utcnow().strftime(DATETIME_FORMAT)
-        ), queue='email')
+        send_email.apply_async(
+            (
+                service_id,
+                notification_id,
+                encryption.encrypt(notification),
+                datetime.utcnow().strftime(DATETIME_FORMAT)
+            ),
+            kwargs={
+                'api_key_id': str(api_user.id),
+                'key_type': api_user.key_type
+            },
+            queue='email'
+        )
 
     statsd_client.incr('notifications.api.{}'.format(notification_type))
     return jsonify(
