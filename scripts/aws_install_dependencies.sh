@@ -4,7 +4,7 @@ echo "Install dependencies"
 if [ -e "/home/notify-app" ]
 then
  	echo "Depenencies for notify-app"
-	cd /home/ubuntu/notifications-api;
+	cd /home/notify-app/notifications-api;
 	pip3 install -r /home/notify-app/notifications-api/requirements.txt
 	python3 db.py db upgrade
 else
