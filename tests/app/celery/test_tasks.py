@@ -231,7 +231,6 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
             "something_encrypted",
             "2016-01-01T11:09:00.061258"
         ),
-        {'reply_to_addresses': None},
         queue="bulk-email"
     )
     mock_celery_remove_job.assert_called_once_with((str(job.id),), queue="remove-job")
@@ -276,7 +275,6 @@ def test_should_process_email_job(sample_email_job, mocker, mock_celery_remove_j
             "something_encrypted",
             "2016-01-01T11:09:00.061258"
         ),
-        {'reply_to_addresses': None},
         queue="bulk-email"
     )
     job = jobs_dao.dao_get_job_by_id(sample_email_job.id)
@@ -492,8 +490,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     statsd_client.timing.assert_called_once_with("notifications.tasks.send-email.task-time", ANY)
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     provider_tasks.send_email_to_provider.apply_async.assert_called_once_with(
-        (sample_email_template_with_placeholders.service_id,
-         notification_id, None), queue='email')
+        (sample_email_template_with_placeholders.service_id, notification_id), queue='email')
 
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'my_email@my_email.com'
@@ -529,9 +526,8 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
         now.strftime(DATETIME_FORMAT)
     )
 
-    provider_tasks.send_email_to_provider.apply_async.assert_called_with((sample_email_template.service_id,
-                                                                          notification_id,
-                                                                          None), queue='email')
+    provider_tasks.send_email_to_provider.apply_async.assert_called_once_with((sample_email_template.service_id,
+                                                                               notification_id), queue='email')
 
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
@@ -558,8 +554,7 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
         now.strftime(DATETIME_FORMAT)
     )
     provider_tasks.send_email_to_provider.apply_async.assert_called_once_with(
-        (sample_email_template_with_placeholders.service_id,
-         notification_id, None), queue='email'
+        (sample_email_template_with_placeholders.service_id, notification_id, ), queue='email'
     )
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
@@ -585,7 +580,7 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
         now.strftime(DATETIME_FORMAT)
     )
     provider_tasks.send_email_to_provider.apply_async.assert_called_once_with((sample_email_template.service_id,
-                                                                               notification_id, None), queue='email')
+                                                                               notification_id), queue='email')
 
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
@@ -654,7 +649,7 @@ def test_send_email_should_go_to_retry_queue_if_database_errors(sample_email_tem
     assert 'No row was found for one' in str(e.value)
 
 
-def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job, mocker, mock_celery_remove_job):
+def test_process_email_should_not_use_reply_to_email(sample_email_job, mocker, mock_celery_remove_job):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value='something_encrypted')
@@ -671,6 +666,5 @@ def test_process_email_job_should_use_reply_to_email_if_present(sample_email_job
             "something_encrypted",
             ANY
         ),
-        {'reply_to_addresses': 'somereply@testservice.gov.uk'},
         queue="bulk-email"
     )

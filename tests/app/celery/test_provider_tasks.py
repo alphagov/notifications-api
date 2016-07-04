@@ -2,11 +2,11 @@ import uuid
 from datetime import datetime
 
 from celery.exceptions import MaxRetriesExceededError
-from mock import ANY, call
+from unittest.mock import ANY, call
 from notifications_utils.recipients import validate_phone_number, format_phone_number
 
 import app
-from app import statsd_client, mmg_client
+from app import statsd_client, mmg_client, aws_ses_client
 from app.celery import provider_tasks
 from app.celery.provider_tasks import send_sms_to_provider, send_email_to_provider
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
@@ -414,7 +414,6 @@ def test_send_email_to_provider_statsd_updates(notify_db, notify_db_session, sam
     mocker.patch('app.statsd_client.timing')
     mocker.patch('app.aws_ses_client.send_email', return_value='reference')
     mocker.patch('app.aws_ses_client.get_name', return_value="ses")
-    mocker.patch('app.celery.research_mode_tasks.send_email_response.apply_async')
     notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                                        template=sample_email_template)
     send_email_to_provider(
@@ -448,3 +447,33 @@ def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_c
 
     app.aws_ses_client.send_email.assert_not_called()
     app.celery.research_mode_tasks.send_email_response.apply_async.assert_not_called()
+
+
+def test_send_email_should_use_service_reply_to_email(
+        notify_db, notify_db_session,
+        sample_service,
+        sample_email_template,
+        mocker):
+    mocker.patch('app.statsd_client.incr')
+    mocker.patch('app.statsd_client.timing')
+    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
+    mocker.patch('app.celery.research_mode_tasks.send_email_response.apply_async')
+
+    db_notification = sample_notification(notify_db, notify_db_session, template=sample_email_template)
+    sample_service.reply_to_email_address = 'foo@bar.com'
+
+    send_email_to_provider(
+        db_notification.service_id,
+        db_notification.id,
+        reply_to_addresses="waz@baz.com"
+    )
+
+    aws_ses_client.send_email.assert_called_once_with(
+        ANY,
+        ANY,
+        ANY,
+        body=ANY,
+        html_body=ANY,
+        reply_to_address=sample_service.reply_to_email_address
+    )
