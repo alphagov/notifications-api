@@ -1,3 +1,4 @@
+import re
 from datetime import (
     datetime,
     date
@@ -105,6 +106,11 @@ class ServiceSchema(BaseSchema):
         model = models.Service
         exclude = ("updated_at", "created_at", "api_keys", "templates", "jobs", 'old_id')
         strict = True
+
+    @validates('sms_sender')
+    def validate_sms_sender(self, value):
+        if value and not re.match('^[a-zA-Z0-9\s]+$', value):
+            raise ValidationError('Only alphanumeric characters allowed')
 
 
 class NotificationModelSchema(BaseSchema):

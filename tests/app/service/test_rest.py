@@ -1029,3 +1029,60 @@ def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notif
         assert resp['notifications'][1]['to'] == notification_2.to
         assert resp['notifications'][2]['to'] == notification_1.to
         assert response.status_code == 200
+
+
+def test_set_sms_sender_for_service(notify_api, sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header()
+            resp = client.get(
+                '/service/{}'.format(sample_service.id),
+                headers=[auth_header]
+            )
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 200
+            assert json_resp['data']['name'] == sample_service.name
+
+            data = {
+                'sms_sender': 'elevenchars',
+            }
+
+            auth_header = create_authorization_header()
+
+            resp = client.post(
+                '/service/{}'.format(sample_service.id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+            result = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 200
+            assert result['data']['sms_sender'] == 'elevenchars'
+
+
+def test_set_sms_sender_for_service_rejects_invalid_characters(notify_api, sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header()
+            resp = client.get(
+                '/service/{}'.format(sample_service.id),
+                headers=[auth_header]
+            )
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 200
+            assert json_resp['data']['name'] == sample_service.name
+
+            data = {
+                'sms_sender': 'invalid####',
+            }
+
+            auth_header = create_authorization_header()
+
+            resp = client.post(
+                '/service/{}'.format(sample_service.id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+            result = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 400
+            assert result['result'] == 'error'
+            assert result['message'] == {'sms_sender': ['Only alphanumeric characters allowed']}

@@ -94,3 +94,20 @@ def test_send_sms_raises_if_firetext_rejects(mocker, mock_firetext_client):
 
     assert exc.value.code == 1
     assert exc.value.description == 'Some kind of error'
+
+
+def test_send_sms_override_configured_shortcode_with_sender(mocker, mock_firetext_client):
+    to = '+447234567890'
+    content = 'my message'
+    reference = 'my reference'
+    response_dict = {
+        'code': 0,
+    }
+    sender = 'fromservice'
+
+    with requests_mock.Mocker() as request_mock:
+        request_mock.post('https://www.firetext.co.uk/api/sendsms/json', json=response_dict, status_code=200)
+        mock_firetext_client.send_sms(to, content, reference, sender=sender)
+
+    request_args = parse_qs(request_mock.request_history[0].text)
+    assert request_args['from'][0] == 'fromservice'

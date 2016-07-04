@@ -4,10 +4,14 @@ from flask import current_app
 from app import notify_celery, statsd_client, clients, create_uuid
 from app.clients.email import EmailClientException
 from app.clients.sms import SmsClientException
+
 from app.dao.notifications_dao import (
     update_provider_stats,
     get_notification_by_id,
-    dao_update_notification, update_notification_status_by_id)
+    dao_update_notification,
+    update_notification_status_by_id
+)
+
 from app.dao.provider_details_dao import get_provider_details_by_notification_type
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
@@ -54,12 +58,12 @@ def send_sms_to_provider(self, service_id, notification_id):
     provider = provider_to_use(SMS_TYPE, notification_id)
     notification = get_notification_by_id(notification_id)
     if notification.status == 'created':
+        template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
         template = Template(
-            dao_get_template_by_id(notification.template_id, notification.template_version).__dict__,
+            template_model.__dict__,
             values={} if not notification.personalisation else notification.personalisation,
             prefix=service.name
         )
-
         try:
             if service.research_mode:
                 send_sms_response.apply_async(
@@ -69,7 +73,8 @@ def send_sms_to_provider(self, service_id, notification_id):
                 provider.send_sms(
                     to=validate_and_format_phone_number(notification.to),
                     content=template.replaced,
-                    reference=str(notification_id)
+                    reference=str(notification_id),
+                    sender=service.sms_sender
                 )
 
                 update_provider_stats(
