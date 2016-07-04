@@ -126,10 +126,19 @@ class Test(Development):
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
 
 
+class Staging(Config):
+   CSV_UPLOAD_BUCKET_NAME = 'staging-notifications-csv-upload'
+
+
+class Live(Config):
+    CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
+    STATSD_ENABLED = True
+   
+
 configs = {
     'development': 'config.Development',
     'test': 'config.Test',
-    'live': 'config_live.Live',
-    'staging': 'config_staging.Staging',
+    'live': 'config.Live',
+    'staging': 'config.Staging',
     'preview': 'config.Preview'
 }
