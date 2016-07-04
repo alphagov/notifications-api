@@ -106,7 +106,6 @@ def process_job(job_id):
                 create_uuid(),
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
-                {'reply_to_addresses': service.reply_to_email_address},
                 queue='bulk-email')
 
     finished = datetime.utcnow()
@@ -182,8 +181,7 @@ def send_email(self, service_id,
     try:
         _save_notification(created_at, notification, notification_id, service_id, EMAIL_TYPE, api_key_id, key_type)
 
-        send_email_to_provider.apply_async((service_id, notification_id, reply_to_addresses),
-                                           queue='email')
+        send_email_to_provider.apply_async((service_id, notification_id), queue='email')
 
         current_app.logger.info("Email {} created at {}".format(notification_id, created_at))
         statsd_client.incr("notifications.tasks.send-email")

@@ -60,14 +60,12 @@ class AwsSesClient(EmailClient):
                    subject,
                    body,
                    html_body='',
-                   reply_to_addresses=None):
+                   reply_to_address=None):
         try:
             if isinstance(to_addresses, str):
                 to_addresses = [to_addresses]
-            if reply_to_addresses and isinstance(reply_to_addresses, str):
-                reply_to_addresses = [reply_to_addresses]
-            elif reply_to_addresses is None:
-                reply_to_addresses = []
+
+            reply_to_addresses = [reply_to_address] if reply_to_address else []
 
             body = {
                 'Text': {'Data': body}

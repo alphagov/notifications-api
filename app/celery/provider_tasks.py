@@ -148,7 +148,7 @@ def send_email_to_provider(self, service_id, notification_id, reply_to_addresses
                     template.replaced_subject,
                     body=template.replaced_govuk_escaped,
                     html_body=template.as_HTML_email,
-                    reply_to_addresses=reply_to_addresses,
+                    reply_to_address=service.reply_to_email_address,
                 )
 
                 update_provider_stats(
