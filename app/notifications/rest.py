@@ -240,7 +240,11 @@ def send_notification(notification_type):
     if errors:
         raise InvalidRequest(errors, status_code=400)
 
-    template_object = Template(template.__dict__, notification.get('personalisation', {}))
+    template_object = Template(
+        template.__dict__,
+        notification.get('personalisation', {}),
+        renderer=lambda content: content
+    )
     if template_object.missing_data:
         message = 'Missing personalisation: {}'.format(", ".join(template_object.missing_data))
         errors = {'template': [message]}
