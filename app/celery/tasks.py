@@ -167,7 +167,6 @@ def send_email(self, service_id,
                notification_id,
                encrypted_notification,
                created_at,
-               reply_to_addresses=None,
                api_key_id=None,
                key_type=KEY_TYPE_NORMAL):
     task_start = monotonic()
