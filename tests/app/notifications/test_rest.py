@@ -89,12 +89,26 @@ def test_get_notifications_empty_result(notify_api, sample_api_key):
             assert response.status_code == 404
 
 
-def test_get_real_notification_from_team_api_key_fails(notify_api, sample_notification):
+@pytest.mark.parametrize('api_key_type,notification_key_type', [
+    (KEY_TYPE_NORMAL, KEY_TYPE_TEAM),
+    (KEY_TYPE_NORMAL, KEY_TYPE_TEST),
+    (KEY_TYPE_TEST, KEY_TYPE_NORMAL),
+    (KEY_TYPE_TEST, KEY_TYPE_TEAM),
+    (KEY_TYPE_TEAM, KEY_TYPE_NORMAL),
+    (KEY_TYPE_TEAM, KEY_TYPE_TEST),
+])
+def test_get_notification_from_different_api_key_fails(
+    notify_api,
+    sample_notification,
+    api_key_type,
+    notification_key_type
+):
     with notify_api.test_request_context(), notify_api.test_client() as client:
+        sample_notification.key_type = notification_key_type
         api_key = ApiKey(service=sample_notification.service,
                          name='api_key',
                          created_by=sample_notification.service.created_by,
-                         key_type=KEY_TYPE_TEAM)
+                         key_type=api_key_type)
         save_model_api_key(api_key)
 
         response = client.get(
@@ -159,6 +173,32 @@ def test_get_all_notifications(notify_api, sample_notification):
             assert notifications['notifications'][0]['to'] == '+447700900855'
             assert notifications['notifications'][0]['service'] == str(sample_notification.service_id)
             assert notifications['notifications'][0]['body'] == "This is a template"  # sample_template.content
+
+
+def test_normal_api_key_returns_notifications_created_from_jobs_and_from_api(
+    notify_api,
+    notify_db,
+    notify_db_session,
+    sample_api_key,
+    sample_notification
+):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        api_notification = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            api_key_id=sample_api_key.id
+        )
+        api_notification.job = None
+
+        response = client.get(
+            path='/notifications',
+            headers=_create_auth_header_from_key(sample_api_key))
+
+        assert response.status_code == 200
+
+        notifications = json.loads(response.get_data(as_text=True))['notifications']
+        assert len(notifications) == 2
+        assert set(x['id'] for x in notifications) == set([str(sample_notification.id), str(api_notification.id)])
 
 
 @pytest.mark.parametrize('key_type', [KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST])
