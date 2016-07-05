@@ -16,6 +16,8 @@ from app.clients.sms.loadtesting import LoadtestingClient
 from app.clients.email.aws_ses import AwsSesClient
 from app.clients.statsd.statsd_client import StatsdClient
 from app.encryption import Encryption
+from config import configs
+
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 DATE_FORMAT = "%Y-%m-%d"
@@ -38,7 +40,7 @@ api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 def create_app(app_name=None):
     application = Flask(__name__)
 
-    application.config.from_object(os.environ['NOTIFY_API_ENVIRONMENT'])
+    application.config.from_object(configs[os.environ['NOTIFY_ENVIRONMENT']])
 
     if app_name:
         application.config['NOTIFY_APP_NAME'] = app_name

@@ -136,9 +136,9 @@ class Live(Config):
    
 
 configs = {
-    'development': 'config.Development',
-    'test': 'config.Test',
-    'live': 'config.Live',
-    'staging': 'config.Staging',
-    'preview': 'config.Preview'
+    'development': Development,
+    'test': Test,
+    'live': Live,
+    'staging': Staging,
+    'preview': Preview
 }
