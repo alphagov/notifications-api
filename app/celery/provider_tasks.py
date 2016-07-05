@@ -122,7 +122,7 @@ def provider_to_use(notification_type, notification_id):
 
 
 @notify_celery.task(bind=True, name="send-email-to-provider", max_retries=5, default_retry_delay=5)
-def send_email_to_provider(self, service_id, notification_id, reply_to_addresses=None):
+def send_email_to_provider(self, service_id, notification_id):
     task_start = monotonic()
     service = dao_fetch_service_by_id(service_id)
     provider = provider_to_use(EMAIL_TYPE, notification_id)
