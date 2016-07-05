@@ -123,7 +123,7 @@ class Test(Development):
 
 
 class Staging(Config):
-   CSV_UPLOAD_BUCKET_NAME = 'staging-notifications-csv-upload'
+   CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
 
 
 class Live(Config):
