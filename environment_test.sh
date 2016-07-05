@@ -1,5 +1,5 @@
 #!/bin/bash
-export NOTIFY_API_ENVIRONMENT='config.Test'
+export NOTIFY_ENVIRONMENT='test'
 export ADMIN_BASE_URL='http://localhost:6012'
 export ADMIN_CLIENT_USER_NAME='dev-notify-admin'
 export ADMIN_CLIENT_SECRET='dev-notify-secret-key'

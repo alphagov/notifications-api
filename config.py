@@ -97,7 +97,7 @@ class Config(object):
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
     LOADTESTING_NUMBER = os.getenv('LOADTESTING_NUMBER')
     LOADTESTING_API_KEY = os.getenv("LOADTESTING_API_KEY")
-    CSV_UPLOAD_BUCKET_NAME = 'local-notifications-csv-upload'
+    CSV_UPLOAD_BUCKET_NAME = os.getenv("CSV_UPLOAD_BUCKET_NAME")
     NOTIFICATIONS_ALERT = 5  # five mins
     FROM_NUMBER = os.getenv('FROM_NUMBER')
 
@@ -111,11 +111,10 @@ class Config(object):
 
 class Development(Config):
     DEBUG = True
-    CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
 
 
 class Preview(Config):
-    CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
+    CSV_UPLOAD_BUCKET_NAME = os.getenv("CSV_UPLOAD_BUCKET_NAME")
 
 
 class Test(Development):
@@ -123,13 +122,13 @@ class Test(Development):
 
 
 class Staging(Config):
-   CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
+    CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
 
 
 class Live(Config):
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
     STATSD_ENABLED = True
-   
+
 
 configs = {
     'development': Development,
