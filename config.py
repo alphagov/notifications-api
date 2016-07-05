@@ -92,6 +92,8 @@ class Config(object):
         Queue('retry', Exchange('default'), routing_key='retry'),
         Queue('email-already-registered', Exchange('default'), routing_key='email-already-registered')
     ]
+    API_HOST_NAME = os.environ['API_HOST_NAME']
+    MMG_API_KEY = os.environ['MMG_API_KEY']
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
     LOADTESTING_NUMBER = os.getenv('LOADTESTING_NUMBER')
     LOADTESTING_API_KEY = os.getenv("LOADTESTING_API_KEY")
@@ -109,20 +111,14 @@ class Config(object):
 
 class Development(Config):
     DEBUG = True
-    API_HOST_NAME = os.environ['API_HOST_NAME']
-    MMG_API_KEY = os.environ['MMG_API_KEY']
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
 
 
 class Preview(Config):
-    MMG_API_KEY = os.environ['MMG_API_KEY']
-    API_HOST_NAME = os.environ['API_HOST_NAME']
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
 
 
 class Test(Development):
-    MMG_API_KEY = os.environ['MMG_API_KEY']
-    API_HOST_NAME = os.environ['API_HOST_NAME']
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
 
 
