@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import uuid
 
+import pytest
 from flask import json
 from notifications_python_client.authentication import create_jwt_token
 
@@ -11,7 +12,7 @@ from app.dao.notifications_dao import (
     dao_update_notification
 )
 from app.dao.api_key_dao import save_model_api_key
-from app.models import ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM
+from app.models import ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
 
@@ -110,22 +111,23 @@ def test_get_real_notification_from_team_api_key_fails(notify_api, sample_notifi
         assert notification['message'] == "No result found"
 
 
-def test_get_team_notification_from_different_team_api_key_succeeds(notify_api, sample_notification):
+@pytest.mark.parametrize('key_type', [KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST])
+def test_get_notification_from_different_api_key_of_same_type_succeeds(notify_api, sample_notification, key_type):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         creation_api_key = ApiKey(service=sample_notification.service,
                                   name='creation_api_key',
                                   created_by=sample_notification.service.created_by,
-                                  key_type=KEY_TYPE_TEAM)
+                                  key_type=key_type)
         save_model_api_key(creation_api_key)
 
         querying_api_key = ApiKey(service=sample_notification.service,
                                   name='querying_api_key',
                                   created_by=sample_notification.service.created_by,
-                                  key_type=KEY_TYPE_TEAM)
+                                  key_type=key_type)
         save_model_api_key(querying_api_key)
 
         sample_notification.api_key = creation_api_key
-        sample_notification.key_type = KEY_TYPE_TEAM
+        sample_notification.key_type = key_type
         dao_update_notification(sample_notification)
 
         response = client.get(
@@ -164,6 +166,7 @@ def test_get_all_notifications(notify_api, sample_notification):
             assert notifications['notifications'][0]['body'] == "This is a template"  # sample_template.content
 
 
+@pytest.mark.parametrize('key_type', [KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST])
 def test_get_all_notifications_only_returns_notifications_of_matching_type(
     notify_api,
     notify_db,
@@ -183,6 +186,12 @@ def test_get_all_notifications_only_returns_notifications_of_matching_type(
                                 key_type=KEY_TYPE_NORMAL)
         save_model_api_key(normal_api_key)
 
+        test_api_key = ApiKey(service=sample_service,
+                                name='test_api_key',
+                                created_by=sample_service.created_by,
+                                key_type=KEY_TYPE_TEST)
+        save_model_api_key(test_api_key)
+
         normal_notification = create_sample_notification(
             notify_db,
             notify_db_session,
@@ -195,25 +204,29 @@ def test_get_all_notifications_only_returns_notifications_of_matching_type(
             api_key_id=team_api_key.id,
             key_type=KEY_TYPE_TEAM
         )
+        test_notification = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            api_key_id=test_api_key.id,
+            key_type=KEY_TYPE_TEST
+        )
+
+        notifications = {
+            KEY_TYPE_NORMAL: normal_notification,
+            KEY_TYPE_TEAM: team_notification,
+            KEY_TYPE_TEST: test_notification
+        }
 
         normal_response = client.get(
             path='/notifications',
             headers=_create_auth_header_from_key(normal_api_key))
 
-        team_response = client.get(
-            path='/notifications',
-            headers=_create_auth_header_from_key(team_api_key))
-
         assert normal_response.status_code == 200
         assert team_response.status_code == 200
 
-        normal_notifications = json.loads(normal_response.get_data(as_text=True))['notifications']
-        assert len(normal_notifications) == 1
-        assert normal_notifications[0]['id'] == str(normal_notification.id)
-
-        team_notifications = json.loads(team_response.get_data(as_text=True))['notifications']
-        assert len(team_notifications) == 1
-        assert team_notifications[0]['id'] == str(team_notification.id)
+        notifications = json.loads(normal_response.get_data(as_text=True))['notifications']
+        assert len(notifications) == 1
+        assert notifications[0]['id'] == str(notifications[key_type].id)
 
 
 def test_get_all_notifications_newest_first(notify_api, notify_db, notify_db_session, sample_email_template):
