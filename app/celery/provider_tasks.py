@@ -24,7 +24,7 @@ from notifications_utils.template import (
     Template
 )
 
-from app.models import SMS_TYPE, EMAIL_TYPE
+from app.models import SMS_TYPE, EMAIL_TYPE, KEY_TYPE_TEST
 
 
 def retry_iteration_to_delay(retry=0):
@@ -65,7 +65,7 @@ def send_sms_to_provider(self, service_id, notification_id):
             prefix=service.name
         )
         try:
-            if service.research_mode:
+            if service.research_mode or notification.key_type == KEY_TYPE_TEST:
                 send_sms_response.apply_async(
                     (provider.get_name(), str(notification_id), notification.to), queue='research-mode'
                 )
@@ -134,7 +134,7 @@ def send_email_to_provider(self, service_id, notification_id):
                 values=notification.personalisation
             )
 
-            if service.research_mode:
+            if service.research_mode or notification.key_type == KEY_TYPE_TEST:
                 reference = str(create_uuid())
                 send_email_response.apply_async(
                     (provider.get_name(), reference, notification.to), queue='research-mode'
