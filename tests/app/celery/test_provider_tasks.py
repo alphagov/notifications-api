@@ -485,7 +485,7 @@ def test_send_email_should_use_service_reply_to_email(
         db_notification.id,
     )
 
-    aws_ses_client.send_email.assert_called_once_with(
+    app.aws_ses_client.send_email.assert_called_once_with(
         ANY,
         ANY,
         ANY,
