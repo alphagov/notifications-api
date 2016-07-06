@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 
+import pytest
 from celery.exceptions import MaxRetriesExceededError
 from unittest.mock import ANY, call
 from notifications_utils.recipients import validate_phone_number, format_phone_number
@@ -16,7 +17,7 @@ from app.clients.sms import SmsClientException
 from app.dao import notifications_dao, provider_details_dao
 from app.dao import provider_statistics_dao
 from app.dao.provider_statistics_dao import get_provider_statistics
-from app.models import Notification, NotificationStatistics, Job
+from app.models import Notification, NotificationStatistics, Job, KEY_TYPE_NORMAL, KEY_TYPE_TEST
 from tests.app.conftest import sample_notification
 
 
@@ -156,15 +157,22 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     assert not persisted_notification.personalisation
 
 
-def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_service, sample_notification, mocker):
-
+@pytest.mark.parametrize('research_mode,key_type', [
+    (True, KEY_TYPE_NORMAL),
+    (False, KEY_TYPE_TEST)
+])
+def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_service, sample_notification, mocker,
+                                                             research_mode, key_type):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
     mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
 
-    sample_service.research_mode = True
-    notify_db.session.add(sample_service)
-    notify_db.session.commit()
+    if research_mode:
+        sample_service.research_mode = True
+        notify_db.session.add(sample_service)
+        notify_db.session.commit()
+
+    sample_notification.key_type = key_type
 
     send_sms_to_provider(
         sample_notification.service_id,
@@ -190,7 +198,6 @@ def test_should_update_provider_stats_on_success(notify_db, sample_service, samp
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
-    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
 
     send_sms_to_provider(
         sample_notification.service_id,
@@ -202,18 +209,23 @@ def test_should_update_provider_stats_on_success(notify_db, sample_service, samp
     assert updated_provider_stats[0].unit_count == 1
 
 
+@pytest.mark.parametrize('research_mode,key_type', [
+    (True, KEY_TYPE_NORMAL),
+    (False, KEY_TYPE_TEST)
+])
 def test_not_should_update_provider_stats_on_success_in_research_mode(notify_db, sample_service, sample_notification,
-                                                                      mocker):
+                                                                      mocker, research_mode, key_type):
     provider_stats = provider_statistics_dao.get_provider_statistics(sample_service).all()
     assert len(provider_stats) == 0
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
     mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
-
-    sample_service.research_mode = True
-    notify_db.session.add(sample_service)
-    notify_db.session.commit()
+    if research_mode:
+        sample_service.research_mode = True
+        notify_db.session.add(sample_service)
+        notify_db.session.commit()
+    sample_notification.key_type = key_type
 
     send_sms_to_provider(
         sample_notification.service_id,
@@ -248,7 +260,6 @@ def test_statsd_updates(notify_db, notify_db_session, sample_service, sample_not
     mocker.patch('app.statsd_client.timing')
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
-    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
 
     send_sms_to_provider(
         sample_notification.service_id,
@@ -328,16 +339,23 @@ def test_should_send_sms_sender_from_service_if_present(
     )
 
 
+@pytest.mark.parametrize('research_mode,key_type', [
+    (True, KEY_TYPE_NORMAL),
+    (False, KEY_TYPE_TEST)
+])
 def test_send_email_to_provider_should_call_research_mode_task_response_task_if_research_mode(
         notify_db,
         notify_db_session,
         sample_service,
         sample_email_template,
         ses_provider,
-        mocker):
+        mocker,
+        research_mode,
+        key_type):
     notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                                        template=sample_email_template,
-                                       to_field="john@smith.com"
+                                       to_field="john@smith.com",
+                                       key_type=key_type
                                        )
 
     reference = uuid.uuid4()
@@ -346,9 +364,10 @@ def test_send_email_to_provider_should_call_research_mode_task_response_task_if_
     mocker.patch('app.aws_ses_client.get_name', return_value="ses")
     mocker.patch('app.celery.research_mode_tasks.send_email_response.apply_async')
 
-    sample_service.research_mode = True
-    notify_db.session.add(sample_service)
-    notify_db.session.commit()
+    if research_mode:
+        sample_service.research_mode = True
+        notify_db.session.add(sample_service)
+        notify_db.session.commit()
     assert not get_provider_statistics(
         sample_email_template.service,
         providers=[ses_provider.identifier]).first()
@@ -447,3 +466,31 @@ def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_c
 
     app.aws_ses_client.send_email.assert_not_called()
     app.celery.research_mode_tasks.send_email_response.apply_async.assert_not_called()
+
+
+def test_send_email_should_use_service_reply_to_email(
+        notify_db, notify_db_session,
+        sample_service,
+        sample_email_template,
+        mocker):
+    mocker.patch('app.statsd_client.incr')
+    mocker.patch('app.statsd_client.timing')
+    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
+
+    db_notification = sample_notification(notify_db, notify_db_session, template=sample_email_template)
+    sample_service.reply_to_email_address = 'foo@bar.com'
+
+    send_email_to_provider(
+        db_notification.service_id,
+        db_notification.id,
+    )
+
+    aws_ses_client.send_email.assert_called_once_with(
+        ANY,
+        ANY,
+        ANY,
+        body=ANY,
+        html_body=ANY,
+        reply_to_address=sample_service.reply_to_email_address
+    )

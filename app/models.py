@@ -142,6 +142,7 @@ class ApiKey(db.Model, Versioned):
 
 KEY_TYPE_NORMAL = 'normal'
 KEY_TYPE_TEAM = 'team'
+KEY_TYPE_TEST = 'test'
 
 
 class KeyTypes(db.Model):
