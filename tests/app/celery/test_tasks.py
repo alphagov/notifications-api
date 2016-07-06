@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytest
 from freezegun import freeze_time
@@ -14,11 +14,9 @@ from app.celery.tasks import s3
 from app.celery.tasks import (
     send_sms,
     process_job,
-    provider_to_use,
     send_email
 )
-from app.dao import jobs_dao, provider_details_dao
-from app.dao.provider_statistics_dao import get_provider_statistics
+from app.dao import jobs_dao
 from app.models import Notification, KEY_TYPE_TEAM
 from tests.app import load_example_csv
 from tests.app.conftest import (
@@ -53,37 +51,6 @@ def _notification_json(template, to, personalisation=None, job_id=None, row_numb
     if row_number:
         notification['row_number'] = row_number
     return notification
-
-
-# TODO moved to test_provider_tasks once send-email migrated
-def test_should_return_highest_priority_active_provider(notify_db, notify_db_session):
-    providers = provider_details_dao.get_provider_details_by_notification_type('sms')
-    first = providers[0]
-    second = providers[1]
-
-    assert provider_to_use('sms', '1234').name == first.identifier
-
-    first.priority = 20
-    second.priority = 10
-
-    provider_details_dao.dao_update_provider_details(first)
-    provider_details_dao.dao_update_provider_details(second)
-
-    assert provider_to_use('sms', '1234').name == second.identifier
-
-    first.priority = 10
-    first.active = False
-    second.priority = 20
-
-    provider_details_dao.dao_update_provider_details(first)
-    provider_details_dao.dao_update_provider_details(second)
-
-    assert provider_to_use('sms', '1234').name == second.identifier
-
-    first.active = True
-    provider_details_dao.dao_update_provider_details(first)
-
-    assert provider_to_use('sms', '1234').name == first.identifier
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -346,6 +313,7 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
     assert not persisted_notification.job_id
     assert persisted_notification.personalisation == {'name': 'Jo'}
     assert persisted_notification._personalisation == encryption.encrypt({"name": "Jo"})
+    assert persisted_notification.notification_type == 'sms'
 
 
 def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notify_db_session, mocker):
@@ -382,6 +350,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
     assert not persisted_notification.sent_by
     assert not persisted_notification.job_id
     assert not persisted_notification.personalisation
+    assert persisted_notification.notification_type == 'sms'
 
 
 def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db, notify_db_session, mocker):
@@ -458,6 +427,7 @@ def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_
     assert persisted_notification.job_row_number == 2
     assert persisted_notification.api_key_id == sample_api_key.id
     assert persisted_notification.key_type == KEY_TYPE_TEAM
+    assert persisted_notification.notification_type == 'sms'
 
 
 def test_should_use_email_template_and_persist(sample_email_template_with_placeholders, sample_api_key, mocker):
@@ -505,6 +475,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     assert persisted_notification._personalisation == encryption.encrypt({"name": "Jo"})
     assert persisted_notification.api_key_id == sample_api_key.id
     assert persisted_notification.key_type == KEY_TYPE_TEAM
+    assert persisted_notification.notification_type == 'email'
 
 
 def test_send_email_should_use_template_version_from_job_not_latest(sample_email_template, mocker):
@@ -538,6 +509,7 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
     assert not persisted_notification.sent_at
     assert persisted_notification.status == 'created'
     assert not persisted_notification.sent_by
+    assert persisted_notification.notification_type == 'email'
 
 
 def test_should_use_email_template_subject_placeholders(sample_email_template_with_placeholders, mocker):
@@ -564,6 +536,7 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
     assert not persisted_notification.sent_by
     assert persisted_notification.personalisation == {"name": "Jo"}
     assert not persisted_notification.reference
+    assert persisted_notification.notification_type == 'email'
 
 
 def test_should_use_email_template_and_persist_without_personalisation(sample_email_template, mocker):
