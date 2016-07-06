@@ -6,11 +6,10 @@ from unittest.mock import ANY, call
 from notifications_utils.recipients import validate_phone_number, format_phone_number
 
 import app
-from app import statsd_client, mmg_client, aws_ses_client
+from app import statsd_client, mmg_client
 from app.celery import provider_tasks
 from app.celery.provider_tasks import send_sms_to_provider, send_email_to_provider
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
-from app.celery.tasks import provider_to_use
 from app.clients.email import EmailClientException
 from app.clients.sms import SmsClientException
 from app.dao import notifications_dao, provider_details_dao
@@ -54,7 +53,7 @@ def test_should_return_highest_priority_active_provider(notify_db, notify_db_ses
     first = providers[0]
     second = providers[1]
 
-    assert provider_to_use('sms', '1234').name == first.identifier
+    assert provider_tasks.provider_to_use('sms', '1234').name == first.identifier
 
     first.priority = 20
     second.priority = 10
@@ -62,7 +61,7 @@ def test_should_return_highest_priority_active_provider(notify_db, notify_db_ses
     provider_details_dao.dao_update_provider_details(first)
     provider_details_dao.dao_update_provider_details(second)
 
-    assert provider_to_use('sms', '1234').name == second.identifier
+    assert provider_tasks.provider_to_use('sms', '1234').name == second.identifier
 
     first.priority = 10
     first.active = False
@@ -71,12 +70,12 @@ def test_should_return_highest_priority_active_provider(notify_db, notify_db_ses
     provider_details_dao.dao_update_provider_details(first)
     provider_details_dao.dao_update_provider_details(second)
 
-    assert provider_to_use('sms', '1234').name == second.identifier
+    assert provider_tasks.provider_to_use('sms', '1234').name == second.identifier
 
     first.active = True
     provider_details_dao.dao_update_provider_details(first)
 
-    assert provider_to_use('sms', '1234').name == first.identifier
+    assert provider_tasks.provider_to_use('sms', '1234').name == first.identifier
 
 
 def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
