@@ -23,7 +23,7 @@ def upgrade():
         sa.sql.text(("INSERT INTO provider_rates (id, valid_from, rate, provider_id) "
                      "VALUES (:id, :valid_from, :rate, (SELECT id FROM provider_details WHERE identifier = 'mmg'))")),
         id=uuid.uuid4(),
-        valid_from=datetime.utcnow(),
+        valid_from=datetime(2016, 7, 1),
         rate=1.65
     )
     ### end Alembic commands ###
