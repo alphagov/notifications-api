@@ -34,7 +34,7 @@ def test_get_sms_notification_by_id(notify_api, sample_notification):
             }
             assert notification['to'] == '+447700900855'
             assert notification['service'] == str(sample_notification.service_id)
-            assert notification['body'] == "This is a template"  # sample_template.content
+            assert notification['body'] == "This is a template:\nwith a newline"
             assert not notification.get('subject')
 
 
@@ -172,7 +172,7 @@ def test_get_all_notifications(notify_api, sample_notification):
 
             assert notifications['notifications'][0]['to'] == '+447700900855'
             assert notifications['notifications'][0]['service'] == str(sample_notification.service_id)
-            assert notifications['notifications'][0]['body'] == "This is a template"  # sample_template.content
+            assert notifications['notifications'][0]['body'] == "This is a template:\nwith a newline"
 
 
 def test_normal_api_key_returns_notifications_created_from_jobs_and_from_api(

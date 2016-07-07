@@ -141,7 +141,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
 
     mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
-        content="Sample service: This is a template",
+        content="Sample service: This is a template:\nwith a newline",
         reference=str(db_notification.id),
         sender=None
     )
@@ -151,7 +151,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     assert persisted_notification.template_id == sample_template.id
     assert persisted_notification.template_version == version_on_notification
     assert persisted_notification.template_version != sample_template.version
-    assert persisted_notification.content_char_count == len("Sample service: This is a template")
+    assert persisted_notification.content_char_count == len("Sample service: This is a template:\nwith a newline")
     assert persisted_notification.status == 'sending'
     assert not persisted_notification.personalisation
 
@@ -332,7 +332,7 @@ def test_should_send_sms_sender_from_service_if_present(
 
     mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
-        content="Sample service: This is a template",
+        content="Sample service: This is a template:\nwith a newline",
         reference=str(db_notification.id),
         sender=sample_service.sms_sender
     )
