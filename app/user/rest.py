@@ -174,6 +174,31 @@ def send_user_email_verification(user_id):
     return jsonify({}), 204
 
 
+@user.route('/<uuid:user_id>/email-already-registered', methods=['POST'])
+def send_already_registered_email(user_id):
+    template = dao_get_template_by_id(current_app.config['ALREADY_REGISTERED_EMAIL_TEMPLATE_ID'])
+    to, errors = request_verify_code_schema.load(request.get_json())
+
+    message = {
+        'template': str(template.id),
+        'template_version': template.version,
+        'to': to['to'],
+        'personalisation': {
+            'signin_url': current_app.config['ADMIN_BASE_URL'] + '/sign-in',
+            'forgot_password_url': current_app.config['ADMIN_BASE_URL'] + '/forgot-password',
+            'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/feedback'
+        }
+    }
+    send_email.apply_async((
+        current_app.config['NOTIFY_SERVICE_ID'],
+        str(uuid.uuid4()),
+        encryption.encrypt(message),
+        datetime.utcnow().strftime(DATETIME_FORMAT)
+    ), queue='email-already-registered')
+
+    return jsonify({}), 204
+
+
 @user.route('/<uuid:user_id>', methods=['GET'])
 @user.route('', methods=['GET'])
 def get_user(user_id=None):
