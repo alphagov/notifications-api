@@ -10,7 +10,7 @@ from notifications_utils.recipients import (
 from notifications_utils.template import Template
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import clients, statsd_client
+from app import statsd_client
 from app import (
     create_uuid,
     DATETIME_FORMAT,
@@ -28,7 +28,6 @@ from app.dao.notifications_dao import (
     dao_create_notification,
     dao_get_notification_statistics_for_service_and_day
 )
-from app.dao.provider_details_dao import get_provider_details_by_notification_type
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
@@ -202,7 +201,7 @@ def _save_notification(created_at, notification, notification_id, service_id, no
         status='created',
         created_at=datetime.strptime(created_at, DATETIME_FORMAT),
         personalisation=notification.get('personalisation'),
-        notification_type=EMAIL_TYPE,
+        notification_type=notification_type,
         api_key_id=api_key_id,
         key_type=key_type
     )
@@ -219,17 +218,3 @@ def service_allowed_to_send_to(recipient, service):
             [user.mobile_number, user.email_address] for user in service.users
         )
     )
-
-
-def provider_to_use(notification_type, notification_id):
-    active_providers_in_order = [
-        provider for provider in get_provider_details_by_notification_type(notification_type) if provider.active
-        ]
-
-    if not active_providers_in_order:
-        current_app.logger.error(
-            "{} {} failed as no active providers".format(notification_type, notification_id)
-        )
-        raise Exception("No active {} providers".format(notification_type))
-
-    return clients.get_client_by_name_and_type(active_providers_in_order[0].identifier, notification_type)
