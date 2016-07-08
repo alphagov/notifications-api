@@ -424,6 +424,21 @@ def test_send_user_reset_password_should_send_reset_password_link(notify_api,
                 queue="email-reset-password")
 
 
+def test_send_user_reset_password_should_return_400_when_email_is_missing(notify_api):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = json.dumps({})
+            auth_header = create_authorization_header()
+
+        resp = client.post(
+            url_for('user.send_user_reset_password'),
+            data=data,
+            headers=[('Content-Type', 'application/json'), auth_header])
+
+        assert resp.status_code == 400
+        assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Missing data for required field.']}
+
+
 def test_send_user_reset_password_should_return_400_when_user_doesnot_exist(notify_api,
                                                                             mocker):
     with notify_api.test_request_context():
@@ -461,7 +476,7 @@ def test_send_user_reset_password_should_return_400_when_data_is_not_email_addre
 def test_send_already_registered_email(notify_api, sample_user, already_registered_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            data = json.dumps({'to': sample_user.email_address})
+            data = json.dumps({'email': sample_user.email_address})
             auth_header = create_authorization_header()
             mocker.patch('app.celery.tasks.send_email.apply_async')
             mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
@@ -487,3 +502,17 @@ def test_send_already_registered_email(notify_api, sample_user, already_register
                  app.encryption.encrypt(message),
                  "2016-01-01T11:09:00.061258"),
                 queue="email-already-registered")
+
+
+def test_send_already_registered_email_returns_400_when_data_is_missing(notify_api, sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            data = json.dumps({})
+            auth_header = create_authorization_header()
+
+            resp = client.post(
+                url_for('user.send_already_registered_email', user_id=str(sample_user.id)),
+                data=data,
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert resp.status_code == 400
+            assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Missing data for required field.']}

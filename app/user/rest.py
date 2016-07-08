@@ -23,8 +23,7 @@ from app.schemas import (
     user_schema,
     request_verify_code_schema,
     user_schema_load_json,
-    permission_schema
-)
+    permission_schema)
 
 from app.celery.tasks import (
     send_sms,
@@ -176,13 +175,13 @@ def send_user_email_verification(user_id):
 
 @user.route('/<uuid:user_id>/email-already-registered', methods=['POST'])
 def send_already_registered_email(user_id):
+    to, errors = email_data_request_schema.load(request.get_json())
     template = dao_get_template_by_id(current_app.config['ALREADY_REGISTERED_EMAIL_TEMPLATE_ID'])
-    to, errors = request_verify_code_schema.load(request.get_json())
 
     message = {
         'template': str(template.id),
         'template_version': template.version,
-        'to': to['to'],
+        'to': to['email'],
         'personalisation': {
             'signin_url': current_app.config['ADMIN_BASE_URL'] + '/sign-in',
             'forgot_password_url': current_app.config['ADMIN_BASE_URL'] + '/forgot-password',
