@@ -1,13 +1,13 @@
 """empty message
 
 Revision ID: 807f0b497157
-Revises: 0039_fix_notifications
+Revises: 0041_notification_history
 Create Date: 2016-07-07 13:15:35.503107
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '807f0b497157'
+revision = '0040_adjust_mmg_provider_rate'
 down_revision = '0039_fix_notifications'
 
 from alembic import op

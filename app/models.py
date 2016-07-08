@@ -409,6 +409,16 @@ class NotificationHistory(db.Model):
     status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, nullable=False, default='created')
     reference = db.Column(db.String, nullable=True, index=True)
 
+    @classmethod
+    def from_notification(cls, notification):
+        from app.schemas import notification_status_schema
+        return cls(notification_status_schema.dump(notification))
+
+    def update_from_notification(self, notification):
+        from app.schemas import notification_status_schema
+        new_notification_schema = cls(notification_status_schema.dump(notification))
+
+
 
 INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
 

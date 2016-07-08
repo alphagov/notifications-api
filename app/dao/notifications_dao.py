@@ -15,6 +15,7 @@ from app.dao import days_ago
 from app.models import (
     Service,
     Notification,
+    NotificationHistory,
     Job,
     NotificationStatistics,
     TemplateStatistics,
@@ -182,7 +183,10 @@ def dao_create_notification(notification, notification_type):
                                             service_id=notification.service_id)
         db.session.add(template_stats)
 
+    notification_history = NotificationHistory.from_notification(notification)
+
     db.session.add(notification)
+    db.session.add(notification_history)
 
 
 def _update_notification_stats_query(notification_type, status):
@@ -280,6 +284,8 @@ def update_notification_status_by_reference(reference, status, notification_stat
 
 def dao_update_notification(notification):
     notification.updated_at = datetime.utcnow()
+    notification_history = NotificationHistory.query.get(notification.id)
+    notification_history.update_from_notification(notification)
     db.session.add(notification)
     db.session.commit()
 

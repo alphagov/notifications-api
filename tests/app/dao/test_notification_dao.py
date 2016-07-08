@@ -11,6 +11,7 @@ from app import db
 
 from app.models import (
     Notification,
+    NotificationHistory,
     Job,
     NotificationStatistics,
     TemplateStatistics,
@@ -1010,3 +1011,31 @@ def _assert_job_stats(job_id, sent=0, count=0, delivered=0, failed=0):
     assert job.notification_count == count
     assert job.notifications_delivered == delivered
     assert job.notifications_failed == failed
+
+
+def test_creating_notification_adds_to_notification_history(sample_template):
+    data = _notification_json(sample_template)
+    notification = Notification(**data)
+
+    dao_create_notification(notification, sample_template.template_type)
+
+    assert Notification.query.count() == 1
+
+    hist = NotificationHistory.query.one()
+    assert hist.id == notifcation.id
+    assert not hasattr(hist.to)
+    assert not hasattr(hist._personalisation)
+    assert not hasattr(hist.content_char_count)
+
+
+def test_updating_notification_updates_notification_history(sample_notification):
+    hist = NotificationHistory.query.one()
+    assert hist.id == notifcation.id
+    assert hist.status == 'sending'
+
+    sample_notification.status = 'delivered'
+    dao_update_notification(sample_notification)
+
+    hist = NotificationHistory.query.one()
+    assert hist.id == notification.id
+    assert hist.status == 'delivered'
