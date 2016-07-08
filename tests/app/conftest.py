@@ -154,7 +154,7 @@ def sample_template(notify_db,
                     notify_db_session,
                     template_name="Template Name",
                     template_type="sms",
-                    content="This is a template",
+                    content="This is a template:\nwith a newline",
                     archived=False,
                     subject_line='Subject',
                     user=None,
@@ -185,7 +185,7 @@ def sample_template(notify_db,
 
 @pytest.fixture(scope='function')
 def sample_template_with_placeholders(notify_db, notify_db_session):
-    return sample_template(notify_db, notify_db_session, content="Hello ((name))")
+    return sample_template(notify_db, notify_db_session, content="Hello ((name))\nYour thing is due soon")
 
 
 @pytest.fixture(scope='function')
@@ -223,7 +223,7 @@ def sample_email_template_with_placeholders(notify_db, notify_db_session):
     return sample_email_template(
         notify_db,
         notify_db_session,
-        content="Hello ((name))",
+        content="Hello ((name))\nThis is an email from GOV.UK",
         subject_line="((name))")
 
 

@@ -125,7 +125,7 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_email_t
             )
             assert response.status_code == 201
             assert encryption.decrypt(app.celery.tasks.send_email.apply_async.call_args[0][0][2]) == data
-            assert response_data['body'] == 'Hello Jo'
+            assert response_data['body'] == 'Hello Jo\nThis is an email from GOV.UK'
             assert response_data['subject'] == 'Jo'
 
 
