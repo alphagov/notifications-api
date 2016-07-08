@@ -20,9 +20,8 @@ from notifications_utils.recipients import (
 )
 
 from app.dao.templates_dao import dao_get_template_by_id
-from notifications_utils.template import (
-    Template
-)
+from notifications_utils.template import Template
+from notifications_utils.renderers import HTMLEmail, PlainTextEmail, SMSMessage
 
 from app.models import SMS_TYPE, EMAIL_TYPE, KEY_TYPE_TEST
 
@@ -62,7 +61,7 @@ def send_sms_to_provider(self, service_id, notification_id):
         template = Template(
             template_model.__dict__,
             values={} if not notification.personalisation else notification.personalisation,
-            prefix=service.name
+            renderer=SMSMessage(prefix=service.name)
         )
         try:
             if service.research_mode or notification.key_type == KEY_TYPE_TEST:
@@ -129,9 +128,18 @@ def send_email_to_provider(self, service_id, notification_id):
     notification = get_notification_by_id(notification_id)
     if notification.status == 'created':
         try:
-            template = Template(
-                dao_get_template_by_id(notification.template_id, notification.template_version).__dict__,
-                values=notification.personalisation
+            template_dict = dao_get_template_by_id(notification.template_id, notification.template_version).__dict__
+
+            html_email = Template(
+                template_dict,
+                values=notification.personalisation,
+                renderer=HTMLEmail()
+            )
+
+            plain_text_email = Template(
+                template_dict,
+                values=notification.personalisation,
+                renderer=PlainTextEmail()
             )
 
             if service.research_mode or notification.key_type == KEY_TYPE_TEST:
@@ -145,9 +153,9 @@ def send_email_to_provider(self, service_id, notification_id):
                 reference = provider.send_email(
                     from_address,
                     notification.to,
-                    template.replaced_subject,
-                    body=template.replaced_govuk_escaped,
-                    html_body=template.as_HTML_email,
+                    plain_text_email.replaced_subject,
+                    body=plain_text_email.replaced,
+                    html_body=html_email.replaced,
                     reply_to_address=service.reply_to_email_address,
                 )
 

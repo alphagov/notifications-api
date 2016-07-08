@@ -9,6 +9,7 @@ from flask import (
 )
 from notifications_utils.recipients import allowed_to_send_to, first_column_heading
 from notifications_utils.template import Template
+from notifications_utils.renderers import PassThrough
 from app.clients.email.aws_ses import get_aws_responses
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT, statsd_client
 from app.models import KEY_TYPE_TEAM
@@ -240,7 +241,11 @@ def send_notification(notification_type):
     if errors:
         raise InvalidRequest(errors, status_code=400)
 
-    template_object = Template(template.__dict__, notification.get('personalisation', {}))
+    template_object = Template(
+        template.__dict__,
+        notification.get('personalisation', {}),
+        renderer=PassThrough()
+    )
     if template_object.missing_data:
         message = 'Missing personalisation: {}'.format(", ".join(template_object.missing_data))
         errors = {'template': [message]}
