@@ -80,10 +80,11 @@ def test_should_return_highest_priority_active_provider(notify_db, notify_db_ses
 
 
 def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
-        notify_db,
-        notify_db_session,
-        sample_template_with_placeholders,
-        mocker):
+    notify_db,
+    notify_db_session,
+    sample_template_with_placeholders,
+    mocker
+):
     db_notification = sample_notification(notify_db, notify_db_session, template=sample_template_with_placeholders,
                                           to_field="+447234123123", personalisation={"name": "Jo"},
                                           status='created')
@@ -111,6 +112,48 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     assert notification.sent_at <= datetime.utcnow()
     assert notification.sent_by == 'mmg'
     assert notification.content_char_count == len("Sample service: Hello Jo\nYour thing is due soon")
+    assert notification.personalisation == {"name": "Jo"}
+
+
+def test_should_send_personalised_template_to_correct_email_provider_and_persist(
+    notify_db,
+    notify_db_session,
+    sample_email_template_with_placeholders,
+    mocker
+):
+    db_notification = sample_notification(
+        notify_db=notify_db, notify_db_session=notify_db_session,
+        template=sample_email_template_with_placeholders,
+        to_field="jo.smith@example.com",
+        personalisation={'name': 'Jo'}
+    )
+
+    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
+    mocker.patch('app.statsd_client.incr')
+    mocker.patch('app.statsd_client.timing_with_dates')
+    mocker.patch('app.statsd_client.timing')
+
+    send_email_to_provider(
+        db_notification.service_id,
+        db_notification.id
+    )
+
+    app.aws_ses_client.send_email.assert_called_once_with(
+        '"Sample service" <sample.service@test.notify.com>',
+        'jo.smith@example.com',
+        'Jo',
+        body='Hello Jo\nThis is an email from GOV.\u200bUK',
+        html_body=ANY,
+        reply_to_address=None
+    )
+    assert '<!DOCTYPE html' in app.aws_ses_client.send_email.call_args[1]['html_body']
+
+    notification = Notification.query.filter_by(id=db_notification.id).one()
+
+    assert notification.status == 'sending'
+    assert notification.sent_at <= datetime.utcnow()
+    assert notification.sent_by == 'ses'
     assert notification.personalisation == {"name": "Jo"}
 
 

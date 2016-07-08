@@ -576,7 +576,7 @@ def test_get_notification_by_id_returns_merged_template_content_for_email(
 
         notification = json.loads(response.get_data(as_text=True))['data']['notification']
         assert response.status_code == 200
-        assert notification['body'] == 'Hello world'
+        assert notification['body'] == 'Hello world\nThis is an email from GOV.UK'
         assert notification['subject'] == 'world'
 
 

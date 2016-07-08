@@ -223,7 +223,7 @@ def sample_email_template_with_placeholders(notify_db, notify_db_session):
     return sample_email_template(
         notify_db,
         notify_db_session,
-        content="Hello ((name))",
+        content="Hello ((name))\nThis is an email from GOV.UK",
         subject_line="((name))")
 
 
