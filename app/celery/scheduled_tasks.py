@@ -76,6 +76,7 @@ def delete_invitations():
 
 @notify_celery.task(name='timeout-sending-notifications')
 def timeout_notifications():
+    # TODO: optimize the query by adding the date where clause to this query.
     notifications = get_notifications(filter_dict={'status': 'sending'})
     now = datetime.utcnow()
     for noti in notifications:
@@ -83,10 +84,11 @@ def timeout_notifications():
             if (now - noti.created_at) > timedelta(
                 seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD')
             ):
-                update_notification_status_by_id(noti.id, 'temporary-failure', STATISTICS_FAILURE)
-                current_app.logger.info((
-                    "Timeout period reached for notification ({})"
-                    ", status has been updated.").format(noti.id))
+                # TODO: think about making this a bulk update rather than one at a time.
+                updated = update_notification_status_by_id(noti.id, 'temporary-failure', STATISTICS_FAILURE)
+                if updated:
+                    current_app.logger.info(("Timeout period reached for notification ({})"
+                                             ", status has been updated.").format(noti.id))
         except Exception as e:
             current_app.logger.exception(e)
             current_app.logger.error((
