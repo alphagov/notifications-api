@@ -553,7 +553,7 @@ def test_get_notification_by_id_returns_merged_template_content(notify_db,
 
             notification = json.loads(response.get_data(as_text=True))['data']['notification']
             assert response.status_code == 200
-            assert notification['body'] == 'Hello world'
+            assert notification['body'] == 'Hello world\nYour thing is due soon'
             assert 'subject' not in notification
 
 
@@ -610,8 +610,8 @@ def test_get_notifications_for_service_returns_merged_template_content(notify_ap
 
             resp = json.loads(response.get_data(as_text=True))
             assert len(resp['notifications']) == 2
-            assert resp['notifications'][0]['body'] == 'Hello merged with first'
-            assert resp['notifications'][1]['body'] == 'Hello merged with second'
+            assert resp['notifications'][0]['body'] == 'Hello merged with first\nYour thing is due soon'
+            assert resp['notifications'][1]['body'] == 'Hello merged with second\nYour thing is due soon'
 
 
 def _create_auth_header_from_key(api_key):

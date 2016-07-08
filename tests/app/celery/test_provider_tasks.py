@@ -101,7 +101,7 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
 
     mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
-        content="Sample service: Hello Jo",
+        content="Sample service: Hello Jo\nYour thing is due soon",
         reference=str(db_notification.id),
         sender=None
     )
@@ -110,7 +110,7 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     assert notification.status == 'sending'
     assert notification.sent_at <= datetime.utcnow()
     assert notification.sent_by == 'mmg'
-    assert notification.content_char_count == 24
+    assert notification.content_char_count == len("Sample service: Hello Jo\nYour thing is due soon")
     assert notification.personalisation == {"name": "Jo"}
 
 
