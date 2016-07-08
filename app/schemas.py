@@ -24,6 +24,8 @@ from notifications_utils.recipients import (
     validate_and_format_phone_number
 )
 
+from notifications_utils.renderers import PassThrough
+
 from app import ma
 from app import models
 from app.dao.permissions_dao import permission_dao
@@ -272,7 +274,11 @@ class NotificationStatusSchema(BaseSchema):
     @post_dump
     def handle_template_merge(self, in_data):
         from notifications_utils.template import Template
-        template = Template(in_data['template'], in_data['personalisation'])
+        template = Template(
+            in_data['template'],
+            in_data['personalisation'],
+            renderer=PassThrough()
+        )
         in_data['body'] = template.replaced
         if in_data['template']['template_type'] == 'email':
             in_data['subject'] = template.replaced_subject
