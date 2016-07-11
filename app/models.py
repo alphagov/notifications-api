@@ -334,6 +334,7 @@ NOTIFICATION_STATUS_TYPES = ['created', 'sending', 'delivered', 'pending', 'fail
                              'technical-failure', 'temporary-failure', 'permanent-failure']
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
+
 class Notification(db.Model):
 
     __tablename__ = 'notifications'
@@ -401,6 +402,7 @@ class NotificationHistory(db.Model):
     api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), index=True, unique=False)
     api_key = db.relationship('ApiKey')
     key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False, nullable=False)
+    content_char_count = db.Column(db.Integer, nullable=True)
     notification_type = db.Column(notification_types, nullable=False)
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False)
     sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
@@ -411,13 +413,11 @@ class NotificationHistory(db.Model):
 
     @classmethod
     def from_notification(cls, notification):
-        from app.schemas import notification_status_schema
-        return cls(notification_status_schema.dump(notification))
+        return cls(**{c.name: getattr(notification, c.name) for c in cls.__table__.columns})
 
     def update_from_notification(self, notification):
-        from app.schemas import notification_status_schema
-        new_notification_schema = cls(notification_status_schema.dump(notification))
-
+        for c in self.__table__.columns:
+            setattr(self, c.name, getattr(notification, c.name))
 
 
 INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']

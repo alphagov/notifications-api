@@ -288,12 +288,6 @@ class NotificationStatusSchema(BaseSchema):
         return in_data
 
 
-class NotificationHistorySchema(BaseSchema):
-    class Meta:
-        model = models.NotificationHistory
-        strict = True
-
-
 class InvitedUserSchema(BaseSchema):
 
     class Meta:
@@ -498,7 +492,6 @@ email_notification_schema = EmailNotificationSchema()
 job_email_template_notification_schema = JobEmailTemplateNotificationSchema()
 notification_status_schema = NotificationStatusSchema()
 notification_status_schema_load_json = NotificationStatusSchema(load_json=True)
-notification_history_schema = NotificationHistorySchema()
 invited_user_schema = InvitedUserSchema()
 permission_schema = PermissionSchema()
 email_data_request_schema = EmailDataSchema()
