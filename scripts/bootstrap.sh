@@ -22,7 +22,7 @@ function display_result {
 
 if [ ! $VIRTUAL_ENV ]; then
   virtualenv ./venv
-  . ./venv/bin/activate
+  virtualenv -p python3 ./venv
 fi
 
 
