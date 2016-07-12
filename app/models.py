@@ -332,6 +332,7 @@ class VerifyCode(db.Model):
 
 NOTIFICATION_STATUS_TYPES = ['created', 'sending', 'delivered', 'pending', 'failed',
                              'technical-failure', 'temporary-failure', 'permanent-failure']
+NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
 
 class Notification(db.Model):
@@ -370,8 +371,7 @@ class Notification(db.Model):
         unique=False,
         nullable=True,
         onupdate=datetime.datetime.utcnow)
-    status = db.Column(
-        db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type'), nullable=False, default='created')
+    status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, nullable=False, default='created')
     reference = db.Column(db.String, nullable=True, index=True)
     _personalisation = db.Column(db.String, nullable=True)
 
@@ -385,6 +385,39 @@ class Notification(db.Model):
     def personalisation(self, personalisation):
         if personalisation:
             self._personalisation = encryption.encrypt(personalisation)
+
+
+class NotificationHistory(db.Model):
+    __tablename__ = 'notification_history'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    job_id = db.Column(UUID(as_uuid=True), db.ForeignKey('jobs.id'), index=True, unique=False)
+    job = db.relationship('Job')
+    job_row_number = db.Column(db.Integer, nullable=True)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False)
+    service = db.relationship('Service')
+    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), index=True, unique=False)
+    template = db.relationship('Template')
+    template_version = db.Column(db.Integer, nullable=False)
+    api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), index=True, unique=False)
+    api_key = db.relationship('ApiKey')
+    key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False, nullable=False)
+    content_char_count = db.Column(db.Integer, nullable=True)
+    notification_type = db.Column(notification_types, nullable=False)
+    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False)
+    sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
+    sent_by = db.Column(db.String, nullable=True)
+    updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
+    status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, nullable=False, default='created')
+    reference = db.Column(db.String, nullable=True, index=True)
+
+    @classmethod
+    def from_notification(cls, notification):
+        return cls(**{c.name: getattr(notification, c.name) for c in cls.__table__.columns})
+
+    def update_from_notification(self, notification):
+        for c in self.__table__.columns:
+            setattr(self, c.name, getattr(notification, c.name))
 
 
 INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']

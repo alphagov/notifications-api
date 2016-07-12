@@ -1,6 +1,4 @@
-from sqlalchemy import (desc, func, Integer, or_, and_, asc)
-from sqlalchemy.sql.expression import cast
-
+import uuid
 from datetime import (
     datetime,
     timedelta,
@@ -9,12 +7,16 @@ from datetime import (
 
 from flask import current_app
 from werkzeug.datastructures import MultiDict
+from sqlalchemy import (desc, func, Integer, or_, and_, asc)
+from sqlalchemy.sql.expression import cast
+from notifications_utils.template import get_sms_fragment_count
 
 from app import db
 from app.dao import days_ago
 from app.models import (
     Service,
     Notification,
+    NotificationHistory,
     Job,
     NotificationStatistics,
     TemplateStatistics,
@@ -23,15 +25,11 @@ from app.models import (
     Template,
     ProviderStatistics,
     ProviderDetails)
-
-from notifications_utils.template import get_sms_fragment_count
-
 from app.clients import (
     STATISTICS_FAILURE,
     STATISTICS_DELIVERED,
     STATISTICS_REQUESTED
 )
-
 from app.dao.dao_utils import transactional
 
 
@@ -182,7 +180,16 @@ def dao_create_notification(notification, notification_type):
                                             service_id=notification.service_id)
         db.session.add(template_stats)
 
+    if not notification.id:
+        # need to populate defaulted fields before we create the notification history object
+        notification.id = uuid.uuid4()
+    if not notification.status:
+        notification.status = 'created'
+
+    notification_history = NotificationHistory.from_notification(notification)
+
     db.session.add(notification)
+    db.session.add(notification_history)
 
 
 def _update_notification_stats_query(notification_type, status):
@@ -240,7 +247,8 @@ def _update_notification_status(notification, status, notification_statistics_st
     if notification_statistics_status:
         _update_statistics(notification, notification_statistics_status)
 
-    db.session.query(Notification).filter(Notification.id == notification.id).update({Notification.status: status})
+    notification.status = status
+    dao_update_notification(notification)
     return True
 
 
@@ -280,6 +288,8 @@ def update_notification_status_by_reference(reference, status, notification_stat
 
 def dao_update_notification(notification):
     notification.updated_at = datetime.utcnow()
+    notification_history = NotificationHistory.query.get(notification.id)
+    notification_history.update_from_notification(notification)
     db.session.add(notification)
     db.session.commit()
 

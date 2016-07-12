@@ -88,7 +88,8 @@ class Config(object):
         Queue('email-invited-user', Exchange('default'), routing_key='email-invited-user'),
         Queue('email-registration-verification', Exchange('default'), routing_key='email-registration-verification'),
         Queue('research-mode', Exchange('default'), routing_key='research-mode'),
-        Queue('retry', Exchange('default'), routing_key='retry')
+        Queue('retry', Exchange('default'), routing_key='retry'),
+        Queue('email-already-registered', Exchange('default'), routing_key='email-already-registered')
     ]
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
     LOADTESTING_NUMBER = os.getenv('LOADTESTING_NUMBER')
