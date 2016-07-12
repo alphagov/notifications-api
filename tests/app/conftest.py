@@ -699,3 +699,38 @@ def password_reset_email_template(notify_db,
         template = Template(**data)
         db.session.add(template)
     return template
+
+
+@pytest.fixture(scope='function')
+def already_registered_template(notify_db,
+                                notify_db_session):
+    user = sample_user(notify_db, notify_db_session)
+    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
+    if not service:
+        data = {
+            'id': current_app.config['NOTIFY_SERVICE_ID'],
+            'name': 'Notify Service',
+            'message_limit': 1000,
+            'active': True,
+            'restricted': False,
+            'email_from': 'notify.service',
+            'created_by': user
+        }
+        service = Service(**data)
+        db.session.add(service)
+
+    template = Template.query.get(current_app.config['ALREADY_REGISTERED_EMAIL_TEMPLATE_ID'])
+    if not template:
+        data = {
+            'id': current_app.config['ALREADY_REGISTERED_EMAIL_TEMPLATE_ID'],
+            'name': 'ALREADY_REGISTERED_EMAIL_TEMPLATE_ID',
+            'template_type': 'email',
+            'content': """Sign in here: ((signin_url)) If you’ve forgotten your password,
+                          you can reset it here: ((forgot_password_url)) feedback:((feedback_url))""",
+            'service': service,
+            'created_by': user,
+            'archived': False
+        }
+        template = Template(**data)
+        db.session.add(template)
+    return template

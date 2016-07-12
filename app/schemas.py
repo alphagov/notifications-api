@@ -325,7 +325,7 @@ class EmailDataSchema(ma.Schema):
     class Meta:
         strict = True
 
-    email = fields.Str(required=False)
+    email = fields.Str(required=True)
 
     @validates('email')
     def validate_email(self, value):
