@@ -20,6 +20,10 @@ function display_result {
   fi
 }
 
+ if [ ! $VIRTUAL_ENV ]; then
+  virtualenv -p python3 ./venv
+  . ./venv/bin/activate
+
 if [ ! $VIRTUAL_ENV ]; then
   virtualenv ./venv
   virtualenv -p python3 ./venv
