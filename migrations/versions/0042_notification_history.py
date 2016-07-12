@@ -46,6 +46,46 @@ def upgrade():
     op.create_index(op.f('ix_notification_history_reference'), 'notification_history', ['reference'], unique=False)
     op.create_index(op.f('ix_notification_history_service_id'), 'notification_history', ['service_id'], unique=False)
     op.create_index(op.f('ix_notification_history_template_id'), 'notification_history', ['template_id'], unique=False)
+
+    op.execute('''
+    INSERT INTO notification_history
+    (
+      id,
+      job_id,
+      job_row_number,
+      service_id,
+      template_id,
+      template_version,
+      api_key_id,
+      key_type,
+      content_char_count,
+      notification_type,
+      created_at,
+      sent_at,
+      sent_by,
+      updated_at,
+      status,
+      reference
+    )
+    SELECT
+      id,
+      job_id,
+      job_row_number,
+      service_id,
+      template_id,
+      template_version,
+      api_key_id,
+      key_type,
+      content_char_count,
+      notification_type,
+      created_at,
+      sent_at,
+      sent_by,
+      updated_at,
+      status,
+      reference
+    FROM notifications
+    ''')
     ### end Alembic commands ###
 
 
