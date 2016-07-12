@@ -246,7 +246,7 @@ def _update_notification_status(notification, status, notification_statistics_st
 
 @transactional
 def update_notification_status_by_id(notification_id, status, notification_statistics_status=None):
-    notification = Notification.query.filter(
+    notification = Notification.query.with_lockmode("update").filter(
         Notification.id == notification_id,
         or_(Notification.status == 'created',
             Notification.status == 'sending',
