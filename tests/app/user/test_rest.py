@@ -430,10 +430,10 @@ def test_send_user_reset_password_should_return_400_when_email_is_missing(notify
             data = json.dumps({})
             auth_header = create_authorization_header()
 
-        resp = client.post(
-            url_for('user.send_user_reset_password'),
-            data=data,
-            headers=[('Content-Type', 'application/json'), auth_header])
+            resp = client.post(
+                url_for('user.send_user_reset_password'),
+                data=data,
+                headers=[('Content-Type', 'application/json'), auth_header])
 
         assert resp.status_code == 400
         assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Missing data for required field.']}
