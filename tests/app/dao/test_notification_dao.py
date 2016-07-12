@@ -11,6 +11,7 @@ from app import db
 
 from app.models import (
     Notification,
+    NotificationHistory,
     Job,
     NotificationStatistics,
     TemplateStatistics,
@@ -57,14 +58,20 @@ def test_should_by_able_to_update_status_by_reference(sample_email_template, ses
 
 
 def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_provider):
-    data = _notification_json(sample_template, job_id=sample_job.id, status='sending')
-    notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type)
+    with freeze_time('2000-01-01 12:00:00'):
+        data = _notification_json(sample_template, job_id=sample_job.id, status='sending')
+        notification = Notification(**data)
+        dao_create_notification(notification, sample_template.template_type)
+
     assert Notification.query.get(notification.id).status == 'sending'
-    assert update_notification_status_by_id(notification.id, 'delivered', 'delivered')
+
+    with freeze_time('2000-01-02 12:00:00'):
+        assert update_notification_status_by_id(notification.id, 'delivered', 'delivered')
+
     assert Notification.query.get(notification.id).status == 'delivered'
     _assert_notification_stats(notification.service_id, sms_delivered=1, sms_requested=1, sms_failed=0)
     _assert_job_stats(notification.job_id, sent=1, count=1, delivered=1, failed=0)
+    assert notification.updated_at == datetime(2000, 1, 2, 12, 0, 0)
 
 
 def test_should_not_update_status_by_id_if_not_sending_and_does_not_update_job(notify_db, notify_db_session):
@@ -608,10 +615,10 @@ def test_save_notification_with_no_job(sample_template, mmg_provider):
 
 
 def test_get_notification(sample_notification):
-    notifcation_from_db = get_notification(
+    notification_from_db = get_notification(
         sample_notification.service.id,
         sample_notification.id)
-    assert sample_notification == notifcation_from_db
+    assert sample_notification == notification_from_db
 
 
 def test_save_notification_no_job_id(sample_template, mmg_provider):
@@ -633,11 +640,11 @@ def test_save_notification_no_job_id(sample_template, mmg_provider):
 
 
 def test_get_notification_for_job(sample_notification):
-    notifcation_from_db = get_notification_for_job(
+    notification_from_db = get_notification_for_job(
         sample_notification.service.id,
         sample_notification.job_id,
         sample_notification.id)
-    assert sample_notification == notifcation_from_db
+    assert sample_notification == notification_from_db
 
 
 def test_get_all_notifications_for_job(notify_db, notify_db_session, sample_job):
@@ -692,7 +699,7 @@ def test_should_delete_notifications_after_seven_days(notify_db, notify_db_sessi
 
     # create one notification a day between 1st and 10th from 11:00 to 19:00
     for i in range(1, 11):
-        past_date = '2016-01-{0:02d}  {0:02d}:00:00.000000'.format(i, i)
+        past_date = '2016-01-{0:02d}  {0:02d}:00:00.000000'.format(i)
         with freeze_time(past_date):
             sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow(), status="failed")
 
@@ -705,6 +712,22 @@ def test_should_delete_notifications_after_seven_days(notify_db, notify_db_sessi
     assert len(remaining_notifications) == 8
     for notification in remaining_notifications:
         assert notification.created_at.date() >= date(2016, 1, 3)
+
+
+@freeze_time("2016-01-10 12:00:00.000000")
+def test_should_not_delete_notification_history(notify_db, notify_db_session):
+    with freeze_time('2016-01-01 12:00'):
+        notification = sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow(), status="failed")
+        notification_id = notification.id
+
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 1
+
+    delete_notifications_created_more_than_a_week_ago('failed')
+
+    assert Notification.query.count() == 0
+    assert NotificationHistory.query.count() == 1
+    assert NotificationHistory.query.one().id == notification_id
 
 
 def test_should_not_delete_failed_notifications_before_seven_days(notify_db, notify_db_session):
@@ -965,6 +988,35 @@ def test_should_limit_notifications_return_by_day_limit_plus_one(notify_db, noti
     ])
 def test_sms_fragment_count(char_count, expected_sms_fragment_count):
     assert get_sms_fragment_count(char_count) == expected_sms_fragment_count
+
+
+def test_creating_notification_adds_to_notification_history(sample_template):
+    data = _notification_json(sample_template)
+    notification = Notification(**data)
+
+    dao_create_notification(notification, sample_template.template_type)
+
+    assert Notification.query.count() == 1
+
+    hist = NotificationHistory.query.one()
+    assert hist.id == notification.id
+    assert hist.created_at == notification.created_at
+    assert hist.status == notification.status
+    assert not hasattr(hist, 'to')
+    assert not hasattr(hist, '_personalisation')
+
+
+def test_updating_notification_updates_notification_history(sample_notification):
+    hist = NotificationHistory.query.one()
+    assert hist.id == sample_notification.id
+    assert hist.status == 'created'
+
+    sample_notification.status = 'sending'
+    dao_update_notification(sample_notification)
+
+    hist = NotificationHistory.query.one()
+    assert hist.id == sample_notification.id
+    assert hist.status == 'sending'
 
 
 def _notification_json(sample_template, job_id=None, id=None, status=None):
