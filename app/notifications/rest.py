@@ -221,7 +221,7 @@ def send_notification(notification_type):
         total_sms_count = service_stats.sms_requested
         total_email_count = service_stats.emails_requested
 
-        if (total_email_count + total_sms_count >= service.message_limit) and service.restricted:
+        if (total_email_count + total_sms_count >= service.message_limit):
             error = 'Exceeded send limits ({}) for today'.format(service.message_limit)
             raise InvalidRequest(error, status_code=429)
 

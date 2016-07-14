@@ -1,6 +1,7 @@
 from datetime import datetime
 import random
 import string
+import pytest
 
 from unittest.mock import ANY
 from flask import (json, current_app)
@@ -538,14 +539,19 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
             assert response_data['template_version'] == sample_email_template.version
 
 
+@pytest.mark.parametrize('restricted', [True, False])
 @freeze_time("2016-01-01 12:00:00.061258")
-def test_should_block_api_call_if_over_day_limit(notify_db, notify_db_session, notify_api, mocker):
+def test_should_block_api_call_if_over_day_limit_for_restricted_and_live_service(notify_db,
+                                                                                 notify_db_session,
+                                                                                 notify_api,
+                                                                                 mocker,
+                                                                                 restricted):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.send_email.apply_async')
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
-            service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=True)
+            service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=restricted)
             email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
             create_sample_notification(
                 notify_db, notify_db_session, template=email_template, service=service, created_at=datetime.utcnow()
@@ -566,33 +572,6 @@ def test_should_block_api_call_if_over_day_limit(notify_db, notify_db_session, n
 
             assert response.status_code == 429
             assert 'Exceeded send limits (1) for today' in json_resp['message']
-
-
-def test_no_limit_for_live_service(notify_api,
-                                   notify_db,
-                                   notify_db_session,
-                                   mock_celery_send_email,
-                                   sample_service,
-                                   sample_email_template):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            sample_service.message_limit = 1
-            notify_db.session.add(sample_service)
-            notify_db.session.commit()
-
-            data = {
-                'to': 'ok@ok.com',
-                'template': str(sample_email_template.id)
-            }
-
-            auth_header = create_authorization_header(service_id=sample_service.id)
-
-            response = client.post(
-                path='/notifications/email',
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
-
-            assert response.status_code == 201
 
 
 @freeze_time("2016-01-01 12:00:00.061258")
