@@ -21,7 +21,7 @@ function display_result {
 }
 
 if [ ! $VIRTUAL_ENV ]; then
-  virtualenv ./venv
+  virtualenv -p python3 ./venv
   . ./venv/bin/activate
 fi
 
