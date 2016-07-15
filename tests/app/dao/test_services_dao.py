@@ -7,7 +7,6 @@ from app.dao.services_dao import (
     dao_fetch_all_services,
     dao_fetch_service_by_id,
     dao_fetch_all_services_by_user,
-    dao_fetch_service_by_id_and_user,
     dao_update_service,
     delete_service_and_all_associated_db_objects
 )
@@ -210,27 +209,6 @@ def test_get_service_by_id_returns_none_if_no_service(notify_db):
 def test_get_service_by_id_returns_service(service_factory):
     service = service_factory.get('testing', email_from='testing')
     assert dao_fetch_service_by_id(service.id).name == 'testing'
-
-
-def test_can_get_service_by_id_and_user(service_factory, sample_user):
-    service = service_factory.get('service 1', sample_user, email_from='service.1')
-    assert dao_fetch_service_by_id_and_user(service.id, sample_user.id).name == 'service 1'
-
-
-def test_cannot_get_service_by_id_and_owned_by_different_user(service_factory, sample_user):
-    service1 = service_factory.get('service 1', sample_user, email_from='service.1')
-    new_user = User(
-        name='Test User',
-        email_address='new_user@digital.cabinet-office.gov.uk',
-        password='password',
-        mobile_number='+447700900986'
-    )
-    save_model_user(new_user)
-    service2 = service_factory.get('service 2', new_user, email_from='service.2')
-    assert dao_fetch_service_by_id_and_user(service1.id, sample_user.id).name == 'service 1'
-    with pytest.raises(NoResultFound) as e:
-        dao_fetch_service_by_id_and_user(service2.id, sample_user.id)
-    assert 'No row was found for one()' in str(e)
 
 
 def test_create_service_creates_a_history_record_with_current_data(sample_user):

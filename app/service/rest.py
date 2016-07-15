@@ -14,7 +14,6 @@ from app.dao.api_key_dao import (
     get_unsigned_secret,
     expire_api_key)
 from app.dao.services_dao import (
-    dao_fetch_service_by_id_and_user,
     dao_fetch_service_by_id,
     dao_fetch_all_services,
     dao_create_service,
@@ -58,11 +57,7 @@ def get_services():
 
 @service.route('/<uuid:service_id>', methods=['GET'])
 def get_service_by_id(service_id):
-    user_id = request.args.get('user_id', None)
-    if user_id:
-        fetched = dao_fetch_service_by_id_and_user(service_id, user_id)
-    else:
-        fetched = dao_fetch_service_by_id(service_id)
+    fetched = dao_fetch_service_by_id(service_id)
 
     data = service_schema.dump(fetched).data
     return jsonify(data=data)
