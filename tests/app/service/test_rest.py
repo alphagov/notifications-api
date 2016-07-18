@@ -15,7 +15,9 @@ from tests.app.conftest import (
     sample_user as create_sample_user,
     sample_notification as create_sample_notification
 )
-from app.service.rest import format_statistics
+
+
+Row = collections.namedtuple('row', ('notification_type', 'status', 'count'))
 
 
 def test_get_service_list(notify_api, service_factory):
@@ -1092,7 +1094,7 @@ def test_set_sms_sender_for_service_rejects_invalid_characters(notify_api, sampl
             assert result['message'] == {'sms_sender': ['Only alphanumeric characters allowed']}
 
 
-def test_get_detailed_service(notify_api, sample_service):
+def test_get_detailed_service(notify_api, sample_service, sample_notification):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         resp = client.get(
             '/service/{}?detailed=False'.format(sample_service.id),
@@ -1105,13 +1107,10 @@ def test_get_detailed_service(notify_api, sample_service):
     assert 'statistics' in service.keys()
     assert set(service['statistics'].keys()) == set(['sms', 'email'])
     assert service['statistics']['sms'] == {
-        'requested': 0,
+        'requested': 1,
         'delivered': 0,
         'failed': 0
     }
-
-
-Row = collections.namedtuple('row', ('notification_type', 'status', 'count'))
 
 
 # email_counts and sms_counts are 3-tuple of requested, delivered, failed
@@ -1133,6 +1132,8 @@ Row = collections.namedtuple('row', ('notification_type', 'status', 'count'))
     ], [4, 0, 4], [0, 0, 0]),
 })
 def test_format_statistics(stats, email_counts, sms_counts):
+    from app.service.rest import format_statistics
+
     ret = format_statistics(stats)
 
     assert ret['email'] == {
