@@ -1,15 +1,13 @@
 import uuid
 
-from app import db
-from app.models import Service
-from sqlalchemy import asc
+from sqlalchemy import asc, func
 from sqlalchemy.orm import joinedload
 
+from app import db
 from app.dao.dao_utils import (
     transactional,
     version_class
 )
-
 from app.models import (
     NotificationStatistics,
     TemplateStatistics,
@@ -135,3 +133,16 @@ def delete_service_and_all_associated_db_objects(service):
     db.session.commit()
     list(map(db.session.delete, users))
     db.session.commit()
+
+
+def dao_fetch_stats_for_service(service_id):
+    return db.session.query(
+        Notification.notification_type,
+        Notification.status,
+        func.count(Notification.id).label('count')
+    ).filter(
+        Notification.service_id == service_id
+    ).group_by(
+        Notification.notification_type,
+        Notification.status,
+    ).all()

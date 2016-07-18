@@ -1,5 +1,8 @@
 import json
+import collections
 import uuid
+
+import pytest
 from flask import url_for
 
 from app.dao.users_dao import save_model_user
@@ -12,6 +15,7 @@ from tests.app.conftest import (
     sample_user as create_sample_user,
     sample_notification as create_sample_notification
 )
+from app.service.rest import format_statistics
 
 
 def test_get_service_list(notify_api, service_factory):
@@ -1086,3 +1090,59 @@ def test_set_sms_sender_for_service_rejects_invalid_characters(notify_api, sampl
             assert resp.status_code == 400
             assert result['result'] == 'error'
             assert result['message'] == {'sms_sender': ['Only alphanumeric characters allowed']}
+
+
+def test_get_detailed_service(notify_api, sample_service):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        resp = client.get(
+            '/service/{}?detailed=False'.format(sample_service.id),
+            headers=[create_authorization_header()]
+        )
+
+    assert resp.status_code == 200
+    service = json.loads(resp.get_data(as_text=True))['data']
+    assert service['id'] == str(sample_service.id)
+    assert 'statistics' in service.keys()
+    assert set(service['statistics'].keys()) == set(['sms', 'email'])
+    assert service['statistics']['sms'] == {
+        'requested': 0,
+        'delivered': 0,
+        'failed': 0
+    }
+
+
+Row = collections.namedtuple('row', ('notification_type', 'status', 'count'))
+
+
+# email_counts and sms_counts are 3-tuple of requested, delivered, failed
+@pytest.mark.idparametrize('stats, email_counts, sms_counts', {
+    'empty': ([], [0, 0, 0], [0, 0, 0]),
+    'always_increment_requested': ([
+        Row('email', 'delivered', 1),
+        Row('email', 'failed', 1)
+    ], [2, 1, 1], [0, 0, 0]),
+    'dont_mix_email_and_sms': ([
+        Row('email', 'delivered', 1),
+        Row('sms', 'delivered', 1)
+    ], [1, 1, 0], [1, 1, 0]),
+    'convert_fail_statuses_to_failed': ([
+        Row('email', 'failed', 1),
+        Row('email', 'technical-failure', 1),
+        Row('email', 'temporary-failure', 1),
+        Row('email', 'permanent-failure', 1),
+    ], [4, 0, 4], [0, 0, 0]),
+})
+def test_format_statistics(stats, email_counts, sms_counts):
+    ret = format_statistics(stats)
+
+    assert ret['email'] == {
+        status: count
+        for status, count
+        in zip(['requested', 'delivered', 'failed'], email_counts)
+    }
+
+    assert ret['sms'] == {
+        status: count
+        for status, count
+        in zip(['requested', 'delivered', 'failed'], sms_counts)
+    }
