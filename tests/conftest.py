@@ -68,3 +68,11 @@ def os_environ(request):
 def sqs_client_conn(request):
     boto3.setup_default_session(region_name='eu-west-1')
     return boto3.resource('sqs')
+
+def pytest_generate_tests(metafunc):
+    # Copied from https://gist.github.com/pfctdayelise/5719730
+    idparametrize = getattr(metafunc.function, 'idparametrize', None)
+    if idparametrize:
+        argnames, testdata = idparametrize.args
+        ids, argvalues = zip(*sorted(testdata.items()))
+        metafunc.parametrize(argnames, argvalues, ids=ids)
