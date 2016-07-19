@@ -33,7 +33,7 @@ def test_send_sms_successful_returns_mmg_response(mocker, mock_mmg_client):
     response_dict = {'Reference': 12345678}
 
     with requests_mock.Mocker() as request_mock:
-        request_mock.post('https://www.mmgrp.co.uk/API/json/api.php', json=response_dict, status_code=200)
+        request_mock.post('https://api.mmg.co.uk/json/api.php', json=response_dict, status_code=200)
         response = mock_mmg_client.send_sms(to, content, reference)
 
     response_json = response.json()
@@ -48,11 +48,11 @@ def test_send_sms_calls_mmg_correctly(mocker, mock_mmg_client):
     response_dict = {'Reference': 12345678}
 
     with requests_mock.Mocker() as request_mock:
-        request_mock.post('https://www.mmgrp.co.uk/API/json/api.php', json=response_dict, status_code=200)
+        request_mock.post('https://api.mmg.co.uk/json/api.php', json=response_dict, status_code=200)
         mock_mmg_client.send_sms(to, content, reference)
 
     assert request_mock.call_count == 1
-    assert request_mock.request_history[0].url == 'https://www.mmgrp.co.uk/API/json/api.php'
+    assert request_mock.request_history[0].url == 'https://api.mmg.co.uk/json/api.php'
     assert request_mock.request_history[0].method == 'POST'
 
     request_args = request_mock.request_history[0].json()
@@ -72,7 +72,7 @@ def test_send_sms_raises_if_mmg_rejects(mocker, mock_mmg_client):
     }
 
     with pytest.raises(MMGClientException) as exc, requests_mock.Mocker() as request_mock:
-        request_mock.post('https://www.mmgrp.co.uk/API/json/api.php', json=response_dict, status_code=400)
+        request_mock.post('https://api.mmg.co.uk/json/api.php', json=response_dict, status_code=400)
         mock_mmg_client.send_sms(to, content, reference)
 
     assert exc.value.code == 206
@@ -87,7 +87,7 @@ def test_send_sms_override_configured_shortcode_with_sender(mocker, mock_mmg_cli
     sender = 'fromservice'
 
     with requests_mock.Mocker() as request_mock:
-        request_mock.post('https://www.mmgrp.co.uk/API/json/api.php', json=response_dict, status_code=200)
+        request_mock.post('https://api.mmg.co.uk/json/api.php', json=response_dict, status_code=200)
         mock_mmg_client.send_sms(to, content, reference, sender=sender)
 
     request_args = request_mock.request_history[0].json()
