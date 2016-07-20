@@ -23,3 +23,4 @@ export STATSD_PORT=1000
 export STATSD_PREFIX="stats-prefix"
 export API_HOST_NAME="http://localhost:6011"
 export FROM_NUMBER='from_number'
+export MMG_URL="https://api.mmg.co.uk/json/api.php"
