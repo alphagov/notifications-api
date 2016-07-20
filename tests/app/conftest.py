@@ -552,18 +552,6 @@ def mock_firetext_client(mocker, statsd_client=None):
 
 
 @pytest.fixture(scope='function')
-def mock_mmg_client(mocker, statsd_client=None):
-    client = MMGClient()
-    statsd_client = statsd_client or mocker.Mock()()
-    current_app = mocker.Mock(config={
-        'MMG_API_KEY': 'foo',
-        'FROM_NUMBER': 'bar'
-    })
-    client.init_app(current_app, statsd_client)
-    return client
-
-
-@pytest.fixture(scope='function')
 def sms_code_template(notify_db,
                       notify_db_session):
     user = sample_user(notify_db, notify_db_session)

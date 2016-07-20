@@ -63,6 +63,7 @@ class MMGClient(SmsClient):
         self.from_number = current_app.config.get('FROM_NUMBER')
         self.name = 'mmg'
         self.statsd_client = statsd_client
+        self.mmg_url = current_app.config.get('MMG_URL')
 
     def get_name(self):
         return self.name
@@ -78,9 +79,9 @@ class MMGClient(SmsClient):
         }
 
         start_time = monotonic()
-        mmg_url = "https://api.mmg.co.uk/json/api.php"
+
         try:
-            response = request("POST", mmg_url,
+            response = request("POST", self.mmg_url,
                                data=json.dumps(data),
                                headers={'Content-Type': 'application/json',
                                         'Authorization': 'Basic {}'.format(self.api_key)})
@@ -90,7 +91,7 @@ class MMGClient(SmsClient):
             self.current_app.logger.info(
                 "API {} request on {} succeeded with {} '{}'".format(
                     "POST",
-                    mmg_url,
+                    self.mmg_url,
                     response.status_code,
                     response.json().items()
                 )
@@ -100,7 +101,7 @@ class MMGClient(SmsClient):
             self.current_app.logger.error(
                 "API {} request on {} failed with {} '{}'".format(
                     "POST",
-                    mmg_url,
+                    self.mmg_url,
                     api_error.status_code,
                     api_error.message
                 )
