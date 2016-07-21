@@ -226,7 +226,7 @@ def send_notification(notification_type):
             raise InvalidRequest(error, status_code=429)
 
     notification, errors = (
-        sms_template_notification_schema if notification_type == 'sms' else email_notification_schema
+        sms_template_notification_schema if notification_type == SMS_TYPE else email_notification_schema
     ).load(request.get_json())
 
     if errors:
@@ -256,7 +256,10 @@ def send_notification(notification_type):
         errors = {'template': [message]}
         raise InvalidRequest(errors, status_code=400)
 
-    if template_object.replaced_content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT'):
+    if (
+        template_object.template_type == SMS_TYPE and
+        template_object.replaced_content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+    ):
         char_count = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
         message = 'Content has a character count greater than the limit of {}'.format(char_count)
         errors = {'content': [message]}
