@@ -106,7 +106,15 @@ class ServiceSchema(BaseSchema):
 
     class Meta:
         model = models.Service
-        exclude = ("updated_at", "created_at", "api_keys", "templates", "jobs", 'old_id')
+        exclude = ('updated_at',
+                   'created_at',
+                   'api_keys',
+                   'templates',
+                   'jobs',
+                   'old_id',
+                   'template_statistics',
+                   'service_provider_stats',
+                   'service_notification_stats')
         strict = True
 
     @validates('sms_sender')

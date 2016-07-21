@@ -3,6 +3,7 @@ import uuid
 from app import db
 from app.models import Service
 from sqlalchemy import asc
+from sqlalchemy.orm import joinedload
 
 from app.dao.dao_utils import (
     transactional,
@@ -27,19 +28,38 @@ from app.models import (
 
 
 def dao_fetch_all_services():
-    return Service.query.order_by(asc(Service.created_at)).all()
+    return Service.query.order_by(
+        asc(Service.created_at)
+    ).options(
+        joinedload('users')
+    ).all()
 
 
 def dao_fetch_service_by_id(service_id):
-    return Service.query.filter_by(id=service_id).one()
+    return Service.query.filter_by(
+        id=service_id
+    ).options(
+        joinedload('users')
+    ).one()
 
 
 def dao_fetch_all_services_by_user(user_id):
-    return Service.query.filter(Service.users.any(id=user_id)).order_by(asc(Service.created_at)).all()
+    return Service.query.filter(
+        Service.users.any(id=user_id)
+    ).order_by(
+        asc(Service.created_at)
+    ).options(
+        joinedload('users')
+    ).all()
 
 
 def dao_fetch_service_by_id_and_user(service_id, user_id):
-    return Service.query.filter(Service.users.any(id=user_id)).filter_by(id=service_id).one()
+    return Service.query.filter(
+        Service.users.any(id=user_id),
+        Service.id == service_id
+    ).options(
+        joinedload('users')
+    ).one()
 
 
 @transactional
