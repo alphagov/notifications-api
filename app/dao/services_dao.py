@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 
 from sqlalchemy import asc, func
 from sqlalchemy.orm import joinedload
@@ -136,6 +137,16 @@ def delete_service_and_all_associated_db_objects(service):
 
 
 def dao_fetch_stats_for_service(service_id):
+    return _stats_for_service_query(service_id).all()
+
+
+def dao_fetch_todays_stats_for_service(service_id):
+    return _stats_for_service_query(service_id).filter(
+        func.date(Notification.created_at) == date.today()
+    ).all()
+
+
+def _stats_for_service_query(service_id):
     return db.session.query(
         Notification.notification_type,
         Notification.status,
@@ -145,4 +156,4 @@ def dao_fetch_stats_for_service(service_id):
     ).group_by(
         Notification.notification_type,
         Notification.status,
-    ).all()
+    )
