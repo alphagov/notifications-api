@@ -306,13 +306,33 @@ def test_should_not_allow_template_from_another_service(notify_api, service_fact
             assert test_string in json_resp['message']
 
 
-def test_should_not_allow_template_content_too_large(notify_api, notify_db, notify_db_session, sample_user):
+@pytest.mark.parametrize(
+    'template_type, should_error', [
+        ('sms', True),
+        ('email', False)
+    ]
+)
+def test_should_not_allow_template_content_too_large(
+    notify_api,
+    notify_db,
+    notify_db_session,
+    sample_user,
+    template_type,
+    mocker,
+    should_error
+):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            template = create_sample_template(notify_db, notify_db_session, content="((long_text))")
+            mocker.patch('app.celery.tasks.send_email.apply_async')
+            template = create_sample_template(
+                notify_db,
+                notify_db_session,
+                content="((long_text))",
+                template_type=template_type
+            )
             limit = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
             json_data = json.dumps({
-                'to': sample_user.mobile_number,
+                'to': sample_user.mobile_number if template_type == 'sms' else sample_user.email_address,
                 'template': template.id,
                 'personalisation': {
                     'long_text': ''.join(
@@ -322,14 +342,18 @@ def test_should_not_allow_template_content_too_large(notify_api, notify_db, noti
             auth_header = create_authorization_header(service_id=template.service_id)
 
             resp = client.post(
-                path='/notifications/sms',
+                path='/notifications/{}'.format(template_type),
                 data=json_data,
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 400
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp['message']['content'][0] == (
-                'Content has a character count greater'
-                ' than the limit of {}').format(limit)
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+            if should_error:
+                assert resp.status_code == 400
+                json_resp = json.loads(resp.get_data(as_text=True))
+                assert json_resp['message']['content'][0] == (
+                    'Content has a character count greater'
+                    ' than the limit of {}').format(limit)
+            else:
+                assert resp.status_code == 201
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
