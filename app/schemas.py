@@ -123,6 +123,23 @@ class ServiceSchema(BaseSchema):
             raise ValidationError('Only alphanumeric characters allowed')
 
 
+class DetailedServiceSchema(BaseSchema):
+    statistics = fields.Dict()
+
+    class Meta:
+        model = models.Service
+        exclude = (
+            'api_keys',
+            'templates',
+            'users',
+            'created_by',
+            'jobs',
+            'template_statistics',
+            'service_provider_stats',
+            'service_notification_stats'
+        )
+
+
 class NotificationModelSchema(BaseSchema):
     class Meta:
         model = models.Notification
@@ -486,6 +503,7 @@ user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
 service_schema = ServiceSchema()
 service_schema_load_json = ServiceSchema(load_json=True)
+detailed_service_schema = DetailedServiceSchema()
 template_schema = TemplateSchema()
 template_schema_load_json = TemplateSchema(load_json=True)
 api_key_schema = ApiKeySchema()

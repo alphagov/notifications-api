@@ -3,7 +3,6 @@ import pytest
 import uuid
 from datetime import (datetime, date)
 
-import pytest
 from flask import current_app
 
 from app import db

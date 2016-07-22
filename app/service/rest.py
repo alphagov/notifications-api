@@ -8,20 +8,21 @@ from flask import (
 )
 from sqlalchemy.orm.exc import NoResultFound
 
+from app.models import EMAIL_TYPE, SMS_TYPE
 from app.dao.api_key_dao import (
     save_model_api_key,
     get_model_api_keys,
     get_unsigned_secret,
     expire_api_key)
 from app.dao.services_dao import (
-    dao_fetch_service_by_id_and_user,
     dao_fetch_service_by_id,
     dao_fetch_all_services,
     dao_create_service,
     dao_update_service,
     dao_fetch_all_services_by_user,
     dao_add_user_to_service,
-    dao_remove_user_from_service
+    dao_remove_user_from_service,
+    dao_fetch_stats_for_service
 )
 from app.dao import notifications_dao
 from app.dao.provider_statistics_dao import get_fragment_count
@@ -34,6 +35,7 @@ from app.schemas import (
     permission_schema,
     notification_status_schema,
     notifications_filter_schema,
+    detailed_service_schema
 )
 from app.utils import pagination_links
 from app.errors import (
@@ -58,14 +60,13 @@ def get_services():
 
 @service.route('/<uuid:service_id>', methods=['GET'])
 def get_service_by_id(service_id):
-    user_id = request.args.get('user_id', None)
-    if user_id:
-        fetched = dao_fetch_service_by_id_and_user(service_id, user_id)
+    if 'detailed' in request.args:
+        return get_detailed_service(service_id)
     else:
         fetched = dao_fetch_service_by_id(service_id)
 
-    data = service_schema.dump(fetched).data
-    return jsonify(data=data)
+        data = service_schema.dump(fetched).data
+        return jsonify(data=data)
 
 
 @service.route('', methods=['POST'])
@@ -232,3 +233,30 @@ def get_all_notifications_for_service(service_id):
             **kwargs
         )
     ), 200
+
+
+def get_detailed_service(service_id):
+    service = dao_fetch_service_by_id(service_id)
+    statistics = dao_fetch_stats_for_service(service_id)
+    service.statistics = format_statistics(statistics)
+    data = detailed_service_schema.dump(service).data
+    return jsonify(data=data)
+
+
+def format_statistics(statistics):
+    # statistics come in a named tuple with uniqueness from 'notification_type', 'status' - however missing
+    # statuses/notification types won't be represented and the status types need to be simplified/summed up
+    # so we can return emails/sms * created, sent, and failed
+    counts = {
+        template_type: {
+            status: 0 for status in ('requested', 'delivered', 'failed')
+        } for template_type in (EMAIL_TYPE, SMS_TYPE)
+    }
+    for row in statistics:
+        counts[row.notification_type]['requested'] += row.count
+        if row.status == 'delivered':
+            counts[row.notification_type]['delivered'] += row.count
+        elif row.status in ('failed', 'technical-failure', 'temporary-failure', 'permanent-failure'):
+            counts[row.notification_type]['failed'] += row.count
+
+    return counts
