@@ -2,11 +2,12 @@ from datetime import datetime
 
 import pytest
 from flask import json, current_app
+from freezegun import freeze_time
 from notifications_python_client.authentication import create_jwt_token
 
 from app import api_user
 from app.dao.api_key_dao import get_unsigned_secrets, save_model_api_key, get_unsigned_secret, expire_api_key
-from app.models import ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM
+from app.models import ApiKey, KEY_TYPE_NORMAL
 
 
 def test_should_not_allow_request_with_no_token(notify_api):
@@ -210,6 +211,37 @@ def test_authentication_returns_error_when_service_has_no_secrets(notify_api,
             assert error_message['message'] == {'token': ['Invalid token: no api keys for service']}
 
 
+def test_should_attach_the_current_api_key_to_current_app(notify_api, sample_service, sample_api_key):
+    with notify_api.test_request_context() as context, notify_api.test_client() as client:
+        with pytest.raises(AttributeError):
+            print(api_user)
+
+        token = __create_get_token(sample_api_key.service_id)
+        response = client.get(
+            '/service/{}'.format(str(sample_api_key.service_id)),
+            headers={'Authorization': 'Bearer {}'.format(token)}
+        )
+        assert response.status_code == 200
+        assert api_user == sample_api_key
+
+
+def test_should_return_403_when_token_is_expired(notify_api,
+                                                 notify_db,
+                                                 notify_db_session,
+                                                 sample_api_key):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            with freeze_time('2001-01-01T12:00:00'):
+                token = __create_get_token(sample_api_key.service_id)
+            with freeze_time('2001-01-01T12:00:40'):
+                response = client.get(
+                    '/service',
+                    headers={'Authorization': 'Bearer {}'.format(token)})
+            assert response.status_code == 403
+            error_message = json.loads(response.get_data())
+            assert error_message['message'] == {'token': ['Invalid token: expired']}
+
+
 def __create_get_token(service_id):
     if service_id:
         return create_jwt_token(secret=get_unsigned_secrets(service_id)[0],
@@ -224,17 +256,3 @@ def __create_post_token(service_id, request_body):
         secret=get_unsigned_secrets(service_id)[0],
         client_id=str(service_id)
     )
-
-
-def test_should_attach_the_current_api_key_to_current_app(notify_api, sample_service, sample_api_key):
-    with notify_api.test_request_context() as context, notify_api.test_client() as client:
-        with pytest.raises(AttributeError):
-            print(api_user)
-
-        token = __create_get_token(sample_api_key.service_id)
-        response = client.get(
-            '/service/{}'.format(str(sample_api_key.service_id)),
-            headers={'Authorization': 'Bearer {}'.format(token)}
-        )
-        assert response.status_code == 200
-        assert api_user == sample_api_key
