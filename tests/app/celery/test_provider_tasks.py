@@ -297,7 +297,7 @@ def test_should_not_send_to_provider_when_status_is_not_created(notify_db, notif
     app.celery.research_mode_tasks.send_sms_response.apply_async.assert_not_called()
 
 
-def test_statsd_updates(notify_db, notify_db_session, sample_service, sample_notification, mocker):
+def test_send_sms_statsd_updates(notify_db, notify_db_session, sample_service, sample_notification, mocker):
     mocker.patch('app.statsd_client.incr')
     mocker.patch('app.statsd_client.timing')
     mocker.patch('app.mmg_client.send_sms')
@@ -309,10 +309,15 @@ def test_statsd_updates(notify_db, notify_db_session, sample_service, sample_not
     )
 
     statsd_client.incr.assert_called_once_with("notifications.tasks.send-sms-to-provider")
+
     statsd_client.timing.assert_has_calls([
         call("notifications.tasks.send-sms-to-provider.task-time", ANY),
         call("notifications.sms.total-time", ANY)
     ])
+
+    # assert that the ANYs above are at least floats
+    for call_arg in statsd_client.timing.call_args_list:
+        assert isinstance(call_arg[0][1], float)
 
 
 def test_should_go_into_technical_error_if_exceeds_retries(
@@ -483,10 +488,15 @@ def test_send_email_to_provider_statsd_updates(notify_db, notify_db_session, sam
     )
 
     statsd_client.incr.assert_called_once_with("notifications.tasks.send-email-to-provider")
+
     statsd_client.timing.assert_has_calls([
         call("notifications.tasks.send-email-to-provider.task-time", ANY),
         call("notifications.email.total-time", ANY)
     ])
+
+    # assert that the ANYs above are at least floats
+    for call_arg in statsd_client.timing.call_args_list:
+        assert isinstance(call_arg[0][1], float)
 
 
 def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_created(notify_db, notify_db_session,

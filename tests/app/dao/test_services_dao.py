@@ -1,5 +1,10 @@
 import uuid
 import pytest
+
+from sqlalchemy.orm.exc import FlushError, NoResultFound
+from sqlalchemy.exc import IntegrityError
+
+from app import db
 from app.dao.services_dao import (
     dao_create_service,
     dao_add_user_to_service,
@@ -7,9 +12,9 @@ from app.dao.services_dao import (
     dao_fetch_all_services,
     dao_fetch_service_by_id,
     dao_fetch_all_services_by_user,
-    dao_fetch_service_by_id_and_user,
     dao_update_service,
-    delete_service_and_all_associated_db_objects
+    delete_service_and_all_associated_db_objects,
+    dao_fetch_stats_for_service
 )
 from app.dao.users_dao import save_model_user
 from app.models import (
@@ -21,13 +26,16 @@ from app.models import (
     Template,
     Job,
     Notification,
+    NotificationHistory,
     Permission,
     User,
     InvitedUser,
     Service
 )
-from sqlalchemy.orm.exc import FlushError, NoResultFound
-from sqlalchemy.exc import IntegrityError
+
+from tests.app.conftest import (
+    sample_notification as create_notification
+)
 
 
 def test_create_service(sample_user):
@@ -212,27 +220,6 @@ def test_get_service_by_id_returns_service(service_factory):
     assert dao_fetch_service_by_id(service.id).name == 'testing'
 
 
-def test_can_get_service_by_id_and_user(service_factory, sample_user):
-    service = service_factory.get('service 1', sample_user, email_from='service.1')
-    assert dao_fetch_service_by_id_and_user(service.id, sample_user.id).name == 'service 1'
-
-
-def test_cannot_get_service_by_id_and_owned_by_different_user(service_factory, sample_user):
-    service1 = service_factory.get('service 1', sample_user, email_from='service.1')
-    new_user = User(
-        name='Test User',
-        email_address='new_user@digital.cabinet-office.gov.uk',
-        password='password',
-        mobile_number='+447700900986'
-    )
-    save_model_user(new_user)
-    service2 = service_factory.get('service 2', new_user, email_from='service.2')
-    assert dao_fetch_service_by_id_and_user(service1.id, sample_user.id).name == 'service 1'
-    with pytest.raises(NoResultFound) as e:
-        dao_fetch_service_by_id_and_user(service2.id, sample_user.id)
-    assert 'No row was found for one()' in str(e)
-
-
 def test_create_service_creates_a_history_record_with_current_data(sample_user):
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
@@ -384,3 +371,52 @@ def test_add_existing_user_to_another_service_doesnot_change_old_permissions(sam
 
     other_user_service_two_permissions = Permission.query.filter_by(service=service_two, user=other_user).all()
     assert len(other_user_service_two_permissions) == 8
+
+
+def test_fetch_stats_filters_on_service(sample_notification):
+    service_two = Service(name="service_two",
+                          created_by=sample_notification.service.created_by,
+                          email_from="hello",
+                          active=False,
+                          restricted=False,
+                          message_limit=1000)
+    dao_create_service(service_two, sample_notification.service.created_by)
+
+    stats = dao_fetch_stats_for_service(service_two.id)
+    assert len(stats) == 0
+
+
+def test_fetch_stats_ignores_historical_notification_data(sample_notification):
+    service_id = sample_notification.service.id
+
+    db.session.delete(sample_notification)
+
+    assert Notification.query.count() == 0
+    assert NotificationHistory.query.count() == 1
+
+    stats = dao_fetch_stats_for_service(service_id)
+    assert len(stats) == 0
+
+
+def test_fetch_stats_counts_correctly(notify_db, notify_db_session, sample_template, sample_email_template):
+    # two created email, one failed email, and one created sms
+    create_notification(notify_db, notify_db_session, template=sample_email_template, status='created')
+    create_notification(notify_db, notify_db_session, template=sample_email_template, status='created')
+    create_notification(notify_db, notify_db_session, template=sample_email_template, status='technical-failure')
+    create_notification(notify_db, notify_db_session, template=sample_template, status='created')
+
+    stats = dao_fetch_stats_for_service(sample_template.service.id)
+    stats = sorted(stats, key=lambda x: (x.notification_type, x.status))
+    assert len(stats) == 3
+
+    assert stats[0].notification_type == 'email'
+    assert stats[0].status == 'created'
+    assert stats[0].count == 2
+
+    assert stats[1].notification_type == 'email'
+    assert stats[1].status == 'technical-failure'
+    assert stats[1].count == 1
+
+    assert stats[2].notification_type == 'sms'
+    assert stats[2].status == 'created'
+    assert stats[2].count == 1

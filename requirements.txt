@@ -23,4 +23,4 @@ statsd==3.2.1
 git+https://github.com/alphagov/notifications-python-client.git@1.0.0#egg=notifications-python-client==1.0.0
 
 
-git+https://github.com/alphagov/notifications-utils.git@8.4.1#egg=notifications-utils==8.4.1
+git+https://github.com/alphagov/notifications-utils.git@8.6.0#egg=notifications-utils==8.6.0

@@ -103,7 +103,8 @@ def send_sms_to_provider(self, service_id, notification_id):
         )
         statsd_client.incr("notifications.tasks.send-sms-to-provider")
         statsd_client.timing("notifications.tasks.send-sms-to-provider.task-time", monotonic() - task_start)
-        statsd_client.timing("notifications.sms.total-time", datetime.utcnow() - notification.created_at)
+        delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
+        statsd_client.timing("notifications.sms.total-time", delta_milliseconds)
 
 
 def provider_to_use(notification_type, notification_id):
@@ -184,4 +185,5 @@ def send_email_to_provider(self, service_id, notification_id):
         )
         statsd_client.incr("notifications.tasks.send-email-to-provider")
         statsd_client.timing("notifications.tasks.send-email-to-provider.task-time", monotonic() - task_start)
-        statsd_client.timing("notifications.email.total-time", datetime.utcnow() - notification.created_at)
+        delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
+        statsd_client.timing("notifications.email.total-time", delta_milliseconds)
