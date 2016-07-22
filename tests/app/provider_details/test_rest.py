@@ -70,13 +70,22 @@ def test_should_be_able_to_update_priority(notify_db, notify_db_session, notify_
                 '/provider-details/{}'.format(provider_id),
                 headers=[('Content-Type', 'application/json'), auth_header],
                 data=json.dumps({
-                    'priority': 10
+                    'priority': 5
                 })
             )
             assert update_resp.status_code == 200
             update_json = json.loads(update_resp.get_data(as_text=True))['provider_details']
             assert update_json['identifier'] == 'firetext'
-            assert update_json['priority'] == 10
+            assert update_json['priority'] == 5
+
+            update_resp = client.post(
+                '/provider-details/{}'.format(provider_id),
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=json.dumps({
+                    'priority': 20
+                })
+            )
+            assert update_resp.status_code == 200
 
 
 def test_should_be_able_to_update_status(notify_db, notify_db_session, notify_api):
@@ -89,10 +98,10 @@ def test_should_be_able_to_update_status(notify_db, notify_db_session, notify_ap
             )
             fetch_resp = json.loads(response.get_data(as_text=True))['provider_details']
 
-            provider_id = fetch_resp[2]['id']
+            firetext = next(x for x in fetch_resp if x['identifier'] == 'firetext')
 
             update_resp_1 = client.post(
-                '/provider-details/{}'.format(provider_id),
+                '/provider-details/{}'.format(firetext['id']),
                 headers=[('Content-Type', 'application/json'), auth_header],
                 data=json.dumps({
                     'active': False
@@ -104,7 +113,7 @@ def test_should_be_able_to_update_status(notify_db, notify_db_session, notify_ap
             assert not update_resp_1['active']
 
             update_resp_2 = client.post(
-                '/provider-details/{}'.format(provider_id),
+                '/provider-details/{}'.format(firetext['id']),
                 headers=[('Content-Type', 'application/json'), auth_header],
                 data=json.dumps({
                     'active': True

@@ -4,6 +4,7 @@ import uuid
 import pytest
 from flask import json
 from notifications_python_client.authentication import create_jwt_token
+from freezegun import freeze_time
 
 from app.dao.notifications_dao import dao_update_notification
 from app.dao.api_key_dao import save_model_api_key
@@ -584,19 +585,19 @@ def test_get_notifications_for_service_returns_merged_template_content(notify_ap
                                                                        notify_db,
                                                                        notify_db_session,
                                                                        sample_template_with_placeholders):
+    with freeze_time('2001-01-01T12:00:00'):
+        create_sample_notification(notify_db,
+                                   notify_db_session,
+                                   service=sample_template_with_placeholders.service,
+                                   template=sample_template_with_placeholders,
+                                   personalisation={"name": "merged with first"})
 
-    create_sample_notification(notify_db,
-                               notify_db_session,
-                               service=sample_template_with_placeholders.service,
-                               template=sample_template_with_placeholders,
-                               personalisation={"name": "merged with first"},
-                               created_at=datetime.utcnow() - timedelta(seconds=1))
-
-    create_sample_notification(notify_db,
-                               notify_db_session,
-                               service=sample_template_with_placeholders.service,
-                               template=sample_template_with_placeholders,
-                               personalisation={"name": "merged with second"})
+    with freeze_time('2001-01-01T12:00:01'):
+        create_sample_notification(notify_db,
+                                   notify_db_session,
+                                   service=sample_template_with_placeholders.service,
+                                   template=sample_template_with_placeholders,
+                                   personalisation={"name": "merged with second"})
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -608,10 +609,10 @@ def test_get_notifications_for_service_returns_merged_template_content(notify_ap
                 headers=[auth_header])
             assert response.status_code == 200
 
-            resp = json.loads(response.get_data(as_text=True))
-            assert len(resp['notifications']) == 2
-            assert resp['notifications'][0]['body'] == 'Hello merged with first\nYour thing is due soon'
-            assert resp['notifications'][1]['body'] == 'Hello merged with second\nYour thing is due soon'
+            assert {noti['body'] for noti in json.loads(response.get_data(as_text=True))['notifications']} == {
+                'Hello merged with first\nYour thing is due soon',
+                'Hello merged with second\nYour thing is due soon'
+            }
 
 
 def _create_auth_header_from_key(api_key):
