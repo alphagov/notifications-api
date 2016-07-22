@@ -14,6 +14,7 @@ from app.dao.templates_dao import (
     dao_get_template_versions
 )
 from notifications_utils.template import Template
+from notifications_utils.renderers import PassThrough
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.models import SMS_TYPE
 from app.schemas import (template_schema, template_history_schema)
@@ -91,7 +92,7 @@ def get_template_by_id_and_service_id(service_id, template_id):
 def preview_template_by_id_and_service_id(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
     data = template_schema.dump(fetched_template).data
-    template_object = Template(data, values=request.args.to_dict())
+    template_object = Template(data, values=request.args.to_dict(), renderer=PassThrough())
 
     if template_object.missing_data:
         raise InvalidRequest(
