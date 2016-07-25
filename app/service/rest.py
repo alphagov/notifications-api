@@ -22,7 +22,8 @@ from app.dao.services_dao import (
     dao_fetch_all_services_by_user,
     dao_add_user_to_service,
     dao_remove_user_from_service,
-    dao_fetch_stats_for_service
+    dao_fetch_stats_for_service,
+    dao_fetch_todays_stats_for_service
 )
 from app.dao import notifications_dao
 from app.dao.provider_statistics_dao import get_fragment_count
@@ -60,8 +61,8 @@ def get_services():
 
 @service.route('/<uuid:service_id>', methods=['GET'])
 def get_service_by_id(service_id):
-    if 'detailed' in request.args:
-        return get_detailed_service(service_id)
+    if request.args.get('detailed') == 'True':
+        return get_detailed_service(service_id, today_only=request.args.get('today_only') == 'True')
     else:
         fetched = dao_fetch_service_by_id(service_id)
 
@@ -235,9 +236,10 @@ def get_all_notifications_for_service(service_id):
     ), 200
 
 
-def get_detailed_service(service_id):
+def get_detailed_service(service_id, today_only=False):
     service = dao_fetch_service_by_id(service_id)
-    statistics = dao_fetch_stats_for_service(service_id)
+    stats_fn = dao_fetch_todays_stats_for_service if today_only else dao_fetch_stats_for_service
+    statistics = stats_fn(service_id)
     service.statistics = format_statistics(statistics)
     data = detailed_service_schema.dump(service).data
     return jsonify(data=data)
