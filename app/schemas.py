@@ -281,16 +281,17 @@ class SmsAdminNotificationSchema(SmsNotificationSchema):
 
 
 class NotificationWithTemplateSchema(BaseSchema):
-
-    template = fields.Nested(TemplateSchema, only=["id", "name", "template_type", "content", "subject"], dump_only=True)
-    job = fields.Nested(JobSchema, only=["id", "original_file_name"], dump_only=True)
-    personalisation = fields.Dict(required=False)
-
     class Meta:
         model = models.Notification
         strict = True
         exclude = ('_personalisation',)
 
+    template = fields.Nested(TemplateSchema, only=["id", "name", "template_type", "content", "subject"], dump_only=True)
+    job = fields.Nested(JobSchema, only=["id", "original_file_name"], dump_only=True)
+    personalisation = fields.Dict(required=False)
+
+
+class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
     @pre_dump
     def handle_personalisation_property(self, in_data):
         self.personalisation = in_data.personalisation
@@ -518,7 +519,8 @@ email_notification_schema = EmailNotificationSchema()
 job_email_template_notification_schema = JobEmailTemplateNotificationSchema()
 notification_schema = NotificationModelSchema()
 notification_with_template_schema = NotificationWithTemplateSchema()
-notification_with_template_schema_load_json = NotificationWithTemplateSchema(load_json=True)
+notification_with_personalisation_schema = NotificationWithPersonalisationSchema()
+notification_with_personalisation_schema_load_json = NotificationWithPersonalisationSchema(load_json=True)
 invited_user_schema = InvitedUserSchema()
 permission_schema = PermissionSchema()
 email_data_request_schema = EmailDataSchema()

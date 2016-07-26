@@ -22,7 +22,7 @@ from app.schemas import (
     job_schema,
     unarchived_template_schema,
     notifications_filter_schema,
-    notification_schema
+    notification_with_template_schema
 )
 
 from app.celery.tasks import process_job
@@ -62,7 +62,7 @@ def get_all_notifications_for_service_job(service_id, job_id):
     kwargs['service_id'] = service_id
     kwargs['job_id'] = job_id
     return jsonify(
-        notifications=notification_schema.dump(pagination.items, many=True).data,
+        notifications=notification_with_template_schema.dump(pagination.items, many=True).data,
         page_size=page_size,
         total=pagination.total,
         links=pagination_links(
