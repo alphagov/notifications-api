@@ -25,7 +25,8 @@ def upgrade():
 
     go_live = datetime.datetime.strptime('2016-05-18', '%Y-%m-%d')
     notifications_history_start_date = datetime.datetime.strptime('2016-06-26 23:21:55', '%Y-%m-%d %H:%M:%S')
-    jobs = session.query(Job).join(Template).filter(Job.created_at >= go_live,
+    jobs = session.query(Job).join(Template).filter(Job.service_id == '95316ff0-e555-462d-a6e7-95d26fbfd091',
+                                                    Job.created_at >= go_live,
                                                     Job.created_at < notifications_history_start_date).all()
 
     for job in jobs:
@@ -44,7 +45,6 @@ def upgrade():
                                                status='delivered')
 
             session.add(notification)
-            session.commit()
 
         for i in range(0, job.notifications_failed):
             notification = NotificationHistory(id=uuid.uuid4(),
@@ -59,9 +59,8 @@ def upgrade():
                                                sent_at=job.processing_finished,
                                                sent_by='ses' if job.template.template_type == 'email' else 'mmg',
                                                status='permanent-failure')
-
             session.add(notification)
-            session.commit()
+        session.commit()
 
 
 def downgrade():
