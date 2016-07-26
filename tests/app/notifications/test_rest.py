@@ -13,6 +13,7 @@ from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
 from notifications_utils.template import NeededByTemplateError
 
+
 def test_get_sms_notification_by_id(notify_api, sample_notification):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -602,10 +603,10 @@ def test_get_notifications_for_service_returns_merged_template_content(notify_ap
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
-            auth_header = create_authorization_header()
+            auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
 
             response = client.get(
-                path='/service/{}/notifications'.format(sample_template_with_placeholders.service.id),
+                path='/notifications',
                 headers=[auth_header])
             assert response.status_code == 200
 
