@@ -144,7 +144,7 @@ class NotificationModelSchema(BaseSchema):
     class Meta:
         model = models.Notification
         strict = True
-        exclude = ("_personalisation",)
+        exclude = ('_personalisation', 'job', 'service', 'template', 'api_key', '')
 
 
 class BaseTemplateSchema(BaseSchema):
@@ -280,7 +280,7 @@ class SmsAdminNotificationSchema(SmsNotificationSchema):
     content = fields.Str(required=True)
 
 
-class NotificationStatusSchema(BaseSchema):
+class NotificationWithTemplateSchema(BaseSchema):
 
     template = fields.Nested(TemplateSchema, only=["id", "name", "template_type", "content", "subject"], dump_only=True)
     job = fields.Nested(JobSchema, only=["id", "original_file_name"], dump_only=True)
@@ -516,8 +516,9 @@ sms_template_notification_schema = SmsTemplateNotificationSchema()
 job_sms_template_notification_schema = JobSmsTemplateNotificationSchema()
 email_notification_schema = EmailNotificationSchema()
 job_email_template_notification_schema = JobEmailTemplateNotificationSchema()
-notification_status_schema = NotificationStatusSchema()
-notification_status_schema_load_json = NotificationStatusSchema(load_json=True)
+notification_schema = NotificationModelSchema()
+notification_with_template_schema = NotificationWithTemplateSchema()
+notification_with_template_schema_load_json = NotificationWithTemplateSchema(load_json=True)
 invited_user_schema = InvitedUserSchema()
 permission_schema = PermissionSchema()
 email_data_request_schema = EmailDataSchema()

@@ -26,7 +26,7 @@ from app.notifications.process_client_response import (
 from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
-    notification_status_schema,
+    notification_with_template_schema,
     notifications_filter_schema,
     notifications_statistics_schema,
     day_schema,
@@ -175,7 +175,7 @@ def get_notifications(notification_id):
     notification = notifications_dao.get_notification(str(api_user.service_id),
                                                       notification_id,
                                                       key_type=api_user.key_type)
-    return jsonify(data={"notification": notification_status_schema.dump(notification).data}), 200
+    return jsonify(data={"notification": notification_with_template_schema.dump(notification).data}), 200
 
 
 @notifications.route('/notifications', methods=['GET'])
@@ -193,7 +193,7 @@ def get_all_notifications():
         limit_days=limit_days,
         key_type=api_user.key_type)
     return jsonify(
-        notifications=notification_status_schema.dump(pagination.items, many=True).data,
+        notifications=notification_with_template_schema.dump(pagination.items, many=True).data,
         page_size=page_size,
         total=pagination.total,
         links=pagination_links(

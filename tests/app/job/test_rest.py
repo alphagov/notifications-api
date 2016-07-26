@@ -296,6 +296,9 @@ def test_get_all_notifications_for_job_in_order_of_job_number(notify_api,
         assert resp['notifications'][2]['job_row_number'] == notification_3.job_row_number
         assert response.status_code == 200
 
+        # make sure we're not loading templates
+        assert 'template' not in resp['notifications'][0]
+
 
 @pytest.mark.parametrize(
     "expected_notification_count, status_args",

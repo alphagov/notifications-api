@@ -10,7 +10,7 @@ api_spec = APISpec(
     version='0.0.0'
 )
 
-api_spec.definition('NotificationStatusSchema', properties={
+api_spec.definition('NotificationWithTemplateSchema', properties={
     "content_char_count": {
         "format": "int32",
         "type": "integer"
@@ -106,14 +106,14 @@ api_spec.definition('NotificationStatusSchema', properties={
 })
 api_spec.definition('NotificationSchema', properties={
     "notification": {
-        "$ref": "#/definitions/NotificationStatusSchema"
+        "$ref": "#/definitions/NotificationWithTemplateSchema"
     }
 })
 api_spec.definition('NotificationsSchema', properties={
     "notifications": {
         "type": "array",
         "items": {
-            "$ref": "#/definitions/NotificationStatusSchema"
+            "$ref": "#/definitions/NotificationWithTemplateSchema"
         }
     }
 })

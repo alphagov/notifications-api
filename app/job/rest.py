@@ -18,7 +18,12 @@ from app.dao.services_dao import (
 from app.dao.templates_dao import (dao_get_template_by_id)
 from app.dao.notifications_dao import get_notifications_for_job
 
-from app.schemas import job_schema, unarchived_template_schema, notifications_filter_schema, notification_status_schema
+from app.schemas import (
+    job_schema,
+    unarchived_template_schema,
+    notifications_filter_schema,
+    notification_schema
+)
 
 from app.celery.tasks import process_job
 
@@ -57,7 +62,7 @@ def get_all_notifications_for_service_job(service_id, job_id):
     kwargs['service_id'] = service_id
     kwargs['job_id'] = job_id
     return jsonify(
-        notifications=notification_status_schema.dump(pagination.items, many=True).data,
+        notifications=notification_schema.dump(pagination.items, many=True).data,
         page_size=page_size,
         total=pagination.total,
         links=pagination_links(
