@@ -16,10 +16,12 @@ def format_statistics(statistics):
 
 
 def format_weekly_notification_stats(statistics, service_created_at):
-    preceeding_monday = service_created_at - timedelta(days=service_created_at.weekday())
+    preceeding_monday = (service_created_at - timedelta(days=service_created_at.weekday()))
+    # turn a datetime into midnight that day http://stackoverflow.com/a/1937636
+    preceeding_monday_midnight = datetime.combine(preceeding_monday.date(), datetime.min.time())
     week_dict = {
         week: _create_zeroed_stats_dicts()
-        for week in _weeks_for_range(preceeding_monday, datetime.utcnow())
+        for week in _weeks_for_range(preceeding_monday_midnight, datetime.utcnow())
     }
     for row in statistics:
         _update_statuses_from_row(week_dict[row.week_start][row.notification_type], row)

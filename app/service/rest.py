@@ -43,6 +43,7 @@ from app.errors import (
     register_errors,
     InvalidRequest
 )
+from app.service import statistics
 
 service = Blueprint('service', __name__)
 register_errors(service)
@@ -239,8 +240,9 @@ def get_all_notifications_for_service(service_id):
 @service.route('/<uuid:service_id>/notifications/weekly', methods=['GET'])
 def get_weekly_notification_stats(service_id):
     service = dao_fetch_service_by_id(service_id)
-    statistics = dao_fetch_weekly_historical_stats_for_service(service_id, created_at, preceeding_monday)
-    return jsonify(data=statistics.format_weekly_notification_stats(statistics))
+    stats = dao_fetch_weekly_historical_stats_for_service(service_id)
+    stats = statistics.format_weekly_notification_stats(stats, service.created_at)
+    return jsonify(data={week.date().isoformat(): statistics for week, statistics in stats.items()})
 
 
 def get_detailed_service(service_id, today_only=False):

@@ -1121,3 +1121,29 @@ def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_s
     assert 'statistics' in service.keys()
     assert set(service['statistics'].keys()) == set(['sms', 'email'])
     assert service['statistics']['sms'] == stats
+
+
+@freeze_time('2016-07-28')
+def test_get_weekly_notification_stats(notify_api, sample_notification):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        resp = client.get(
+            '/service/{}/notifications/weekly'.format(sample_notification.service_id),
+            headers=[create_authorization_header()]
+        )
+
+    assert resp.status_code == 200
+    data = json.loads(resp.get_data(as_text=True))['data']
+    assert data == {
+        '2016-07-25': {
+            'sms': {
+                'requested': 1,
+                'delivered': 0,
+                'failed': 0
+            },
+            'email': {
+                'requested': 0,
+                'delivered': 0,
+                'failed': 0
+            }
+        }
+    }
