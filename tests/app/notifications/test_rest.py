@@ -4,12 +4,14 @@ import uuid
 import pytest
 from flask import json
 from notifications_python_client.authentication import create_jwt_token
+from freezegun import freeze_time
 
 from app.dao.notifications_dao import dao_update_notification
 from app.dao.api_key_dao import save_model_api_key
 from app.models import ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
+from notifications_utils.template import NeededByTemplateError
 
 
 def test_get_sms_notification_by_id(notify_api, sample_notification):
@@ -584,34 +586,68 @@ def test_get_notifications_for_service_returns_merged_template_content(notify_ap
                                                                        notify_db,
                                                                        notify_db_session,
                                                                        sample_template_with_placeholders):
+    with freeze_time('2001-01-01T12:00:00'):
+        create_sample_notification(notify_db,
+                                   notify_db_session,
+                                   service=sample_template_with_placeholders.service,
+                                   template=sample_template_with_placeholders,
+                                   personalisation={"name": "merged with first"})
 
-    create_sample_notification(notify_db,
-                               notify_db_session,
-                               service=sample_template_with_placeholders.service,
-                               template=sample_template_with_placeholders,
-                               personalisation={"name": "merged with first"},
-                               created_at=datetime.utcnow() - timedelta(seconds=1))
-
-    create_sample_notification(notify_db,
-                               notify_db_session,
-                               service=sample_template_with_placeholders.service,
-                               template=sample_template_with_placeholders,
-                               personalisation={"name": "merged with second"})
+    with freeze_time('2001-01-01T12:00:01'):
+        create_sample_notification(notify_db,
+                                   notify_db_session,
+                                   service=sample_template_with_placeholders.service,
+                                   template=sample_template_with_placeholders,
+                                   personalisation={"name": "merged with second"})
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
 
-            auth_header = create_authorization_header()
+            auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
 
             response = client.get(
-                path='/service/{}/notifications'.format(sample_template_with_placeholders.service.id),
+                path='/notifications',
                 headers=[auth_header])
             assert response.status_code == 200
 
-            resp = json.loads(response.get_data(as_text=True))
-            assert len(resp['notifications']) == 2
-            assert resp['notifications'][0]['body'] == 'Hello merged with first\nYour thing is due soon'
-            assert resp['notifications'][1]['body'] == 'Hello merged with second\nYour thing is due soon'
+            assert {noti['body'] for noti in json.loads(response.get_data(as_text=True))['notifications']} == {
+                'Hello merged with first\nYour thing is due soon',
+                'Hello merged with second\nYour thing is due soon'
+            }
+
+
+@pytest.mark.xfail(strict=True, raises=NeededByTemplateError)
+def test_get_notification_selects_correct_template_for_personalisation(notify_api,
+                                                                       notify_db,
+                                                                       notify_db_session,
+                                                                       sample_template):
+
+    create_sample_notification(notify_db,
+                               notify_db_session,
+                               service=sample_template.service,
+                               template=sample_template)
+
+    sample_template.content = '((name))'
+    notify_db.session.commit()
+
+    create_sample_notification(notify_db,
+                               notify_db_session,
+                               service=sample_template.service,
+                               template=sample_template,
+                               personalisation={"name": "foo"})
+
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        auth_header = create_authorization_header(service_id=sample_template.service_id)
+
+        response = client.get(path='/notifications', headers=[auth_header])
+        assert response.status_code == 200
+
+        resp = json.loads(response.get_data(as_text=True))
+        assert len(resp['notifications']) == 2
+        assert resp['notifications'][0]['template_version'] == 1
+        assert resp['notifications'][0]['body'] == 'This is a template'
+        assert resp['notifications'][1]['template_version'] == 2
+        assert resp['notifications'][1]['body'] == 'foo'
 
 
 def _create_auth_header_from_key(api_key):
