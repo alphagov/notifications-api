@@ -8,7 +8,7 @@ hooks:
     -
       location: scripts/aws_install_dependencies.sh
       runas: root
-      timeout: 300
+      timeout: 1000
     -
       location: scripts/aws_change_ownership.sh
       runas: root
