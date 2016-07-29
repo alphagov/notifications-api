@@ -1,5 +1,7 @@
-from datetime import (date, timedelta)
-from app.models import ProviderStatistics
+from datetime import datetime
+import uuid
+
+from app.models import NotificationHistory, KEY_TYPE_NORMAL, NOTIFICATION_STATUS_TYPES
 from app.dao.notifications_dao import update_provider_stats
 from app.dao.provider_statistics_dao import (
     get_provider_statistics, get_fragment_count)
@@ -89,63 +91,51 @@ def test_should_update_provider_statistics_email_multi(notify_db,
     assert provider_stats.unit_count == 3
 
 
-def test_should_aggregate_fragment_count(notify_db,
-                                         notify_db_session,
-                                         sample_service,
-                                         mmg_provider,
-                                         firetext_provider,
-                                         ses_provider):
-    day = date.today()
-    stats_mmg = ProviderStatistics(
-        service=sample_service,
-        day=day,
-        provider_id=mmg_provider.id,
-        unit_count=2
-    )
+def test_get_fragment_count_with_no_data(sample_template):
+    assert get_fragment_count(sample_template.service_id)['sms_count'] == 0
+    assert get_fragment_count(sample_template.service_id)['email_count'] == 0
 
-    stats_firetext = ProviderStatistics(
-        service=sample_service,
-        day=day,
-        provider_id=firetext_provider.id,
-        unit_count=3
-    )
 
-    stats_ses = ProviderStatistics(
-        service=sample_service,
-        day=day,
-        provider_id=ses_provider.id,
-        unit_count=1
+def test_get_fragment_count_separates_sms_and_email(notify_db, sample_template, sample_email_template):
+    noti_hist(notify_db, sample_template)
+    noti_hist(notify_db, sample_template)
+    noti_hist(notify_db, sample_email_template)
+    assert get_fragment_count(sample_template.service_id) == {
+        'sms_count': 2,
+        'email_count': 1
+    }
+
+
+def test_get_fragment_count_filters_on_status(notify_db, sample_template):
+    for status in NOTIFICATION_STATUS_TYPES:
+        noti_hist(notify_db, sample_template, status=status)
+    # sending, delivered, failed, technical-failure, temporary-failure, permanent-failure
+    assert get_fragment_count(sample_template.service_id)['sms_count'] == 6
+
+
+def test_get_fragment_count_sums_char_count_for_sms(notify_db, sample_template):
+    noti_hist(notify_db, sample_template, content_char_count=1)  # 1
+    noti_hist(notify_db, sample_template, content_char_count=159)  # 1
+    noti_hist(notify_db, sample_template, content_char_count=310)  # 2
+    assert get_fragment_count(sample_template.service_id)['sms_count'] == 4
+
+
+def noti_hist(notify_db, template, status='delivered', content_char_count=None):
+    if not content_char_count and template.template_type == 'sms':
+        content_char_count = 1
+
+    notification_history = NotificationHistory(
+        id=uuid.uuid4(),
+        service=template.service,
+        template=template,
+        template_version=template.version,
+        status=status,
+        created_at=datetime.utcnow(),
+        content_char_count=content_char_count,
+        notification_type=template.template_type,
+        key_type=KEY_TYPE_NORMAL
     )
-    notify_db.session.add(stats_mmg)
-    notify_db.session.add(stats_firetext)
-    notify_db.session.add(stats_ses)
+    notify_db.session.add(notification_history)
     notify_db.session.commit()
-    results = get_fragment_count(sample_service, day, day)
-    assert results['sms_count'] == 5
-    assert results['email_count'] == 1
 
-
-def test_should_aggregate_fragment_count_over_days(notify_db,
-                                                   notify_db_session,
-                                                   sample_service,
-                                                   mmg_provider):
-    today = date.today()
-    yesterday = today - timedelta(days=1)
-    stats_today = ProviderStatistics(
-        service=sample_service,
-        day=today,
-        provider_id=mmg_provider.id,
-        unit_count=2
-    )
-    stats_yesterday = ProviderStatistics(
-        service=sample_service,
-        day=yesterday,
-        provider_id=mmg_provider.id,
-        unit_count=3
-    )
-    notify_db.session.add(stats_today)
-    notify_db.session.add(stats_yesterday)
-    notify_db.session.commit()
-    results = get_fragment_count(sample_service, yesterday, today)
-    assert results['sms_count'] == 5
-    assert results['email_count'] == 0
+    return notification_history
