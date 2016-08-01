@@ -34,7 +34,7 @@ from app.schemas import (
     user_schema,
     from_to_date_schema,
     permission_schema,
-    notification_status_schema,
+    notification_with_template_schema,
     notifications_filter_schema,
     detailed_service_schema
 )
@@ -225,7 +225,7 @@ def get_all_notifications_for_service(service_id):
     kwargs = request.args.to_dict()
     kwargs['service_id'] = service_id
     return jsonify(
-        notifications=notification_status_schema.dump(pagination.items, many=True).data,
+        notifications=notification_with_template_schema.dump(pagination.items, many=True).data,
         page_size=page_size,
         total=pagination.total,
         links=pagination_links(
