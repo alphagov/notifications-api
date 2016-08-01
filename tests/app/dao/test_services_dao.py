@@ -3,6 +3,7 @@ import pytest
 
 from sqlalchemy.orm.exc import FlushError, NoResultFound
 from sqlalchemy.exc import IntegrityError
+from freezegun import freeze_time
 
 from app import db
 from app.dao.services_dao import (
@@ -14,7 +15,8 @@ from app.dao.services_dao import (
     dao_fetch_all_services_by_user,
     dao_update_service,
     delete_service_and_all_associated_db_objects,
-    dao_fetch_stats_for_service
+    dao_fetch_stats_for_service,
+    dao_fetch_todays_stats_for_service
 )
 from app.dao.users_dao import save_model_user
 from app.models import (
@@ -420,3 +422,22 @@ def test_fetch_stats_counts_correctly(notify_db, notify_db_session, sample_templ
     assert stats[2].notification_type == 'sms'
     assert stats[2].status == 'created'
     assert stats[2].count == 1
+
+
+def test_fetch_stats_for_today_only_includes_today(notify_db, notify_db_session, sample_template):
+    # two created email, one failed email, and one created sms
+    with freeze_time('2001-01-01T23:59:00'):
+        just_before_midnight_yesterday = create_notification(notify_db, None, to_field='1', status='delivered')
+
+    with freeze_time('2001-01-02T00:01:00'):
+        just_after_midnight_today = create_notification(notify_db, None, to_field='2', status='failed')
+
+    with freeze_time('2001-01-02T12:00:00'):
+        right_now = create_notification(notify_db, None, to_field='3', status='created')
+
+        stats = dao_fetch_todays_stats_for_service(sample_template.service.id)
+
+    stats = {row.status: row.count for row in stats}
+    assert 'delivered' not in stats
+    assert stats['failed'] == 1
+    assert stats['created'] == 1
