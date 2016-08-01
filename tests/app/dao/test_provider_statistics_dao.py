@@ -113,6 +113,12 @@ def test_get_fragment_count_filters_on_status(notify_db, sample_template):
     assert get_fragment_count(sample_template.service_id)['sms_count'] == 6
 
 
+def test_get_fragment_count_filters_on_service_id(notify_db, sample_template, service_factory):
+    service_2 = service_factory.get('service 2', email_from='service.2')
+    noti_hist(notify_db, sample_template)
+    assert get_fragment_count(service_2.id)['sms_count'] == 0
+
+
 def test_get_fragment_count_sums_char_count_for_sms(notify_db, sample_template):
     noti_hist(notify_db, sample_template, content_char_count=1)  # 1
     noti_hist(notify_db, sample_template, content_char_count=159)  # 1
@@ -120,7 +126,17 @@ def test_get_fragment_count_sums_char_count_for_sms(notify_db, sample_template):
     assert get_fragment_count(sample_template.service_id)['sms_count'] == 4
 
 
-def noti_hist(notify_db, template, status='delivered', content_char_count=None):
+@pytest.mark.parametrize('key_type,sms_count', [
+    (KEY_TYPE_NORMAL, 1),
+    (KEY_TYPE_TEAM, 1),
+    (KEY_TYPE_TEST, 0),
+])
+def test_get_fragment_count_ignores_test_api_keys(notify_db, sample_template, key_type, sms_count):
+    noti_hist(notify_db, sample_template, key_type=key_type)
+    assert get_fragment_count(sample_template.service_id)['sms_count'] == sms_count
+
+
+def noti_hist(notify_db, template, status='delivered', content_char_count=None, key_type=KEY_TYPE_NORMAL):
     if not content_char_count and template.template_type == 'sms':
         content_char_count = 1
 

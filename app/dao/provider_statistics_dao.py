@@ -7,7 +7,8 @@ from app.models import (
     NotificationHistory,
     SMS_TYPE,
     EMAIL_TYPE,
-    NOTIFICATION_STATUS_TYPES_BILLABLE
+    NOTIFICATION_STATUS_TYPES_BILLABLE,
+    KEY_TYPE_TEST
     )
 
 
@@ -21,6 +22,13 @@ def get_provider_statistics(service, **kwargs):
 
 
 def get_fragment_count(service_id):
+    live_dates = get_service_live_dates(service_id)
+    shared_filters = [
+        NotificationHistory.service_id == service_id,
+        NotificationHistory.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE),
+        NotificationHistory.key_type != KEY_TYPE_TEST
+    ]
+
     sms_count = db.session.query(
         func.sum(
             case(
@@ -34,16 +42,15 @@ def get_fragment_count(service_id):
             )
         )
     ).filter(
-        NotificationHistory.service_id == service_id,
         NotificationHistory.notification_type == SMS_TYPE,
-        NotificationHistory.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE)
+        *shared_filters
     )
+
     email_count = db.session.query(
         func.count(NotificationHistory.id)
     ).filter(
-        NotificationHistory.service_id == service_id,
         NotificationHistory.notification_type == EMAIL_TYPE,
-        NotificationHistory.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE)
+        *shared_filters
     )
     return {
         'sms_count': int(sms_count.scalar() or 0),
