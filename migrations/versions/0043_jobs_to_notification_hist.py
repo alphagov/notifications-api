@@ -20,7 +20,6 @@ from app.models import Job, Template, NotificationHistory
 
 
 def upgrade():
-
     session = Session(bind=op.get_bind())
 
     go_live = datetime.datetime.strptime('2016-05-18', '%Y-%m-%d')
@@ -70,9 +69,10 @@ def downgrade():
     go_live = datetime.datetime.strptime('2016-05-18', '%Y-%m-%d')
     notifications_history_start_date = datetime.datetime.strptime('2016-06-26 23:21:55', '%Y-%m-%d %H:%M:%S')
 
-    session.query(NotificationHistory).filter(NotificationHistory.created_at >= go_live,
-                                              NotificationHistory.created_at <
-                                              notifications_history_start_date).delete()
+    session.query(NotificationHistory).filter(
+        NotificationHistory.created_at >= go_live,
+        NotificationHistory.service_id == '95316ff0-e555-462d-a6e7-95d26fbfd091',
+        NotificationHistory.created_at < notifications_history_start_date).delete()
 
     session.commit()
     ### end Alembic commands ###
