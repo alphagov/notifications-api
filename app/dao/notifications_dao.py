@@ -31,8 +31,9 @@ from app.clients import (
     STATISTICS_REQUESTED
 )
 from app.dao.dao_utils import transactional
+from app.statsd_decorators import statsd_timer
 
-
+@statsd_timer(namespace="dao")
 def dao_get_notification_statistics_for_service(service_id, limit_days=None):
     query_filter = [NotificationStatistics.service_id == service_id]
     if limit_days is not None:
@@ -44,6 +45,7 @@ def dao_get_notification_statistics_for_service(service_id, limit_days=None):
     ).all()
 
 
+@statsd_timer(namespace="dao")
 def dao_get_notification_statistics_for_service_and_day(service_id, day):
     return NotificationStatistics.query.filter_by(
         service_id=service_id,
@@ -51,10 +53,12 @@ def dao_get_notification_statistics_for_service_and_day(service_id, day):
     ).order_by(desc(NotificationStatistics.day)).first()
 
 
+@statsd_timer(namespace="dao")
 def dao_get_notification_statistics_for_day(day):
     return NotificationStatistics.query.filter_by(day=day).all()
 
 
+@statsd_timer(namespace="dao")
 def dao_get_potential_notification_statistics_for_day(day):
     all_services = db.session.query(
         Service.id,
@@ -102,6 +106,7 @@ def create_notification_statistics_dict(service_id, day):
     }
 
 
+@statsd_timer(namespace="dao")
 def dao_get_7_day_agg_notification_statistics_for_service(service_id,
                                                           date_from,
                                                           week_count=52):
@@ -129,6 +134,7 @@ def dao_get_7_day_agg_notification_statistics_for_service(service_id,
     )
 
 
+@statsd_timer(namespace="dao")
 def dao_get_template_statistics_for_service(service_id, limit_days=None):
     query_filter = [TemplateStatistics.service_id == service_id]
     if limit_days is not None:
@@ -137,6 +143,7 @@ def dao_get_template_statistics_for_service(service_id, limit_days=None):
         desc(TemplateStatistics.updated_at)).all()
 
 
+@statsd_timer(namespace="dao")
 def dao_get_template_statistics_for_template(template_id):
     return TemplateStatistics.query.filter(
         TemplateStatistics.template_id == template_id
@@ -145,6 +152,7 @@ def dao_get_template_statistics_for_template(template_id):
     ).all()
 
 
+@statsd_timer(namespace="dao")
 @transactional
 def dao_create_notification(notification, notification_type):
     if notification.job_id:
@@ -252,6 +260,7 @@ def _update_notification_status(notification, status, notification_statistics_st
     return True
 
 
+@statsd_timer(namespace="dao")
 @transactional
 def update_notification_status_by_id(notification_id, status, notification_statistics_status=None):
     notification = Notification.query.with_lockmode("update").filter(
@@ -270,6 +279,7 @@ def update_notification_status_by_id(notification_id, status, notification_stati
     )
 
 
+@statsd_timer(namespace="dao")
 @transactional
 def update_notification_status_by_reference(reference, status, notification_statistics_status):
     notification = Notification.query.filter(Notification.reference == reference,
@@ -286,6 +296,7 @@ def update_notification_status_by_reference(reference, status, notification_stat
     )
 
 
+@statsd_timer(namespace="dao")
 def dao_update_notification(notification):
     notification.updated_at = datetime.utcnow()
     notification_history = NotificationHistory.query.get(notification.id)
@@ -294,6 +305,7 @@ def dao_update_notification(notification):
     db.session.commit()
 
 
+@statsd_timer(namespace="dao")
 @transactional
 def update_provider_stats(
         id_,
@@ -328,10 +340,12 @@ def update_provider_stats(
         db.session.add(provider_stats)
 
 
+@statsd_timer(namespace="dao")
 def get_notification_for_job(service_id, job_id, notification_id):
     return Notification.query.filter_by(service_id=service_id, job_id=job_id, id=notification_id).one()
 
 
+@statsd_timer(namespace="dao")
 def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page_size=None):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
@@ -343,6 +357,7 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
     )
 
 
+@statsd_timer(namespace="dao")
 def get_notification(service_id, notification_id, key_type=None):
     filter_dict = {'service_id': service_id, 'id': notification_id}
     if key_type:
@@ -351,6 +366,7 @@ def get_notification(service_id, notification_id, key_type=None):
     return Notification.query.filter_by(**filter_dict).one()
 
 
+@statsd_timer(namespace="dao")
 def get_notification_by_id(notification_id):
     return Notification.query.filter_by(id=notification_id).first()
 
@@ -359,6 +375,7 @@ def get_notifications(filter_dict=None):
     return _filter_query(Notification.query, filter_dict=filter_dict)
 
 
+@statsd_timer(namespace="dao")
 def get_notifications_for_service(service_id,
                                   filter_dict=None,
                                   page=1,
@@ -398,6 +415,7 @@ def _filter_query(query, filter_dict=None):
     return query
 
 
+@statsd_timer(namespace="dao")
 def delete_notifications_created_more_than_a_week_ago(status):
     seven_days_ago = date.today() - timedelta(days=7)
     deleted = db.session.query(Notification).filter(

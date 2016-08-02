@@ -368,6 +368,16 @@ def sample_notification(notify_db,
 
 
 @pytest.fixture(scope='function')
+def mock_statsd_inc(mocker):
+    return mocker.patch('app.statsd_client.incr')
+
+
+@pytest.fixture(scope='function')
+def mock_statsd_timing(mocker):
+    return mocker.patch('app.statsd_client.timing')
+
+
+@pytest.fixture(scope='function')
 def mock_celery_send_sms_code(mocker):
     return mocker.patch('app.celery.tasks.send_sms_code.apply_async')
 
