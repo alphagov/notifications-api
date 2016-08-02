@@ -4,6 +4,7 @@ import uuid
 
 import pytest
 from flask import url_for
+from freezegun import freeze_time
 
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
@@ -1094,23 +1095,36 @@ def test_set_sms_sender_for_service_rejects_invalid_characters(notify_api, sampl
             assert result['message'] == {'sms_sender': ['Only alphanumeric characters allowed']}
 
 
-def test_get_detailed_service(notify_api, sample_service, sample_notification):
+@pytest.mark.parametrize('today_only,stats', [
+    ('False', {
+        'requested': 2,
+        'delivered': 1,
+        'failed': 0
+    }),
+    ('True', {
+        'requested': 1,
+        'delivered': 0,
+        'failed': 0
+    })
+    ], ids=['seven_days', 'today']
+)
+def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_service, today_only, stats):
     with notify_api.test_request_context(), notify_api.test_client() as client:
-        resp = client.get(
-            '/service/{}?detailed=False'.format(sample_service.id),
-            headers=[create_authorization_header()]
-        )
+        with freeze_time('2000-01-01T12:00:00'):
+            create_sample_notification(notify_db, notify_db_session, status='delivered')
+        with freeze_time('2000-01-02T12:00:00'):
+            create_sample_notification(notify_db, notify_db_session, status='created')
+            resp = client.get(
+                '/service/{}?detailed=True&today_only={}'.format(sample_service.id, today_only),
+                headers=[create_authorization_header()]
+            )
 
     assert resp.status_code == 200
     service = json.loads(resp.get_data(as_text=True))['data']
     assert service['id'] == str(sample_service.id)
     assert 'statistics' in service.keys()
     assert set(service['statistics'].keys()) == set(['sms', 'email'])
-    assert service['statistics']['sms'] == {
-        'requested': 1,
-        'delivered': 0,
-        'failed': 0
-    }
+    assert service['statistics']['sms'] == stats
 
 
 # email_counts and sms_counts are 3-tuple of requested, delivered, failed

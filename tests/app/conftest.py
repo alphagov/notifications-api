@@ -319,12 +319,14 @@ def sample_notification(notify_db,
                         to_field=None,
                         status='created',
                         reference=None,
-                        created_at=datetime.utcnow(),
+                        created_at=None,
                         content_char_count=160,
                         create=True,
                         personalisation=None,
                         api_key_id=None,
                         key_type=KEY_TYPE_NORMAL):
+    if created_at is None:
+        created_at = datetime.utcnow()
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:
