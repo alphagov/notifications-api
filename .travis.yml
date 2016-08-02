@@ -41,10 +41,32 @@ deploy:
   access_key_id: AKIAJBHLXFS5UHJ6PXLA
   secret_access_key: *1
   bucket: staging-notify.works-notifications-api-codedeploy
-  key: public-notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
   bundle_type: zip
   application: api
   deployment_group: notifications_api_deployment_group
+  region: eu-west-1
+  wait-until-deployed: true
+  on: *2
+- provider: codedeploy
+  access_key_id: AKIAJBHLXFS5UHJ6PXLA
+  secret_access_key: *1
+  bucket: staging-notify.works-notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: api
+  deployment_group: notifications_admin_api_deployment_group
+  region: eu-west-1
+  wait-until-deployed: true
+  on: *2
+- provider: codedeploy
+  access_key_id: AKIAJBHLXFS5UHJ6PXLA
+  secret_access_key: *1
+  bucket: staging-notify.works-notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: api
+  deployment_group: notifications_delivery_api_deployment_group
   region: eu-west-1
   wait-until-deployed: true
   on: *2
@@ -52,4 +74,4 @@ before_deploy:
   - ./scripts/update_version_file.sh
   - zip -r  --exclude=*__pycache__* notifications-api *
   - mkdir -p dpl_cd_upload
-  - mv notifications-api.zip dpl_cd_upload/public-notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  - mv notifications-api.zip dpl_cd_upload/notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
