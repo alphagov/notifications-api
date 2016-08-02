@@ -1,5 +1,4 @@
 import json
-import collections
 import uuid
 
 import pytest
@@ -16,9 +15,6 @@ from tests.app.conftest import (
     sample_user as create_sample_user,
     sample_notification as create_sample_notification
 )
-
-
-Row = collections.namedtuple('row', ('notification_type', 'status', 'count'))
 
 
 def test_get_service_list(notify_api, service_factory):
@@ -1127,37 +1123,27 @@ def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_s
     assert service['statistics']['sms'] == stats
 
 
-# email_counts and sms_counts are 3-tuple of requested, delivered, failed
-@pytest.mark.idparametrize('stats, email_counts, sms_counts', {
-    'empty': ([], [0, 0, 0], [0, 0, 0]),
-    'always_increment_requested': ([
-        Row('email', 'delivered', 1),
-        Row('email', 'failed', 1)
-    ], [2, 1, 1], [0, 0, 0]),
-    'dont_mix_email_and_sms': ([
-        Row('email', 'delivered', 1),
-        Row('sms', 'delivered', 1)
-    ], [1, 1, 0], [1, 1, 0]),
-    'convert_fail_statuses_to_failed': ([
-        Row('email', 'failed', 1),
-        Row('email', 'technical-failure', 1),
-        Row('email', 'temporary-failure', 1),
-        Row('email', 'permanent-failure', 1),
-    ], [4, 0, 4], [0, 0, 0]),
-})
-def test_format_statistics(stats, email_counts, sms_counts):
-    from app.service.rest import format_statistics
+@freeze_time('2016-07-28')
+def test_get_weekly_notification_stats(notify_api, sample_notification):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        resp = client.get(
+            '/service/{}/notifications/weekly'.format(sample_notification.service_id),
+            headers=[create_authorization_header()]
+        )
 
-    ret = format_statistics(stats)
-
-    assert ret['email'] == {
-        status: count
-        for status, count
-        in zip(['requested', 'delivered', 'failed'], email_counts)
-    }
-
-    assert ret['sms'] == {
-        status: count
-        for status, count
-        in zip(['requested', 'delivered', 'failed'], sms_counts)
+    assert resp.status_code == 200
+    data = json.loads(resp.get_data(as_text=True))['data']
+    assert data == {
+        '2016-07-25': {
+            'sms': {
+                'requested': 1,
+                'delivered': 0,
+                'failed': 0
+            },
+            'email': {
+                'requested': 0,
+                'delivered': 0,
+                'failed': 0
+            }
+        }
     }
