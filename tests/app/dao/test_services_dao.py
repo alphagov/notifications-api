@@ -459,9 +459,9 @@ def test_fetch_weekly_historical_stats_separates_weeks(notify_db, notify_db_sess
     last_sunday = notification_history(created_at=datetime(2016, 7, 24, 23, 59))
     last_monday_morning = notification_history(created_at=datetime(2016, 7, 25, 0, 0))
     last_monday_evening = notification_history(created_at=datetime(2016, 7, 25, 23, 59))
-    today = notification_history(created_at=datetime.now(), status='delivered')
 
     with freeze_time('Wed 27th July 2016'):
+        today = notification_history(created_at=datetime.now(), status='delivered')
         ret = dao_fetch_weekly_historical_stats_for_service(sample_template.service_id)
 
     assert [(row.week_start, row.status) for row in ret] == [
