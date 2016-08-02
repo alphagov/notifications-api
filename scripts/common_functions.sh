@@ -101,7 +101,7 @@ reset_waiter_timeout() {
     fi
 
     # Base register/deregister action may take up to about 30 seconds
-    timeout=$((timeout + 30))
+    timeout=$((timeout + 60))
 
     WAITER_ATTEMPTS=$((timeout / WAITER_INTERVAL))
 }
@@ -371,7 +371,9 @@ get_elb_name_for_instance_name() {
     local instance_name=$1
 
     declare -A elb_to_instance_mapping
-
+    
+    elb_to_instance_mapping['notify_api']='notify-api-elb'
+    elb_to_instance_mapping['notify_admin_api']='notify-admin-api-elb'
     elb_to_instance_mapping['live_notify_api']='live-notify-api-elb'
     elb_to_instance_mapping['staging_notify_api']='staging-notify-api-elb'
     elb_to_instance_mapping['NotifyApi']='notify-api-elb'
