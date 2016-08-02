@@ -185,7 +185,7 @@ def test_get_template_by_id_and_service_returns_none_if_no_template(sample_servi
 
 def test_create_template_creates_a_history_record_with_current_data(sample_service, sample_user):
     assert Template.query.count() == 0
-    assert Template.get_history_model().query.count() == 0
+    assert TemplateHistory.query.count() == 0
     data = {
         'name': 'Sample Template',
         'template_type': "email",
@@ -200,7 +200,7 @@ def test_create_template_creates_a_history_record_with_current_data(sample_servi
     assert Template.query.count() == 1
 
     template_from_db = Template.query.first()
-    template_history = Template.get_history_model().query.first()
+    template_history = TemplateHistory.query.first()
 
     assert template_from_db.id == template_history.id
     assert template_from_db.name == template_history.name
@@ -212,7 +212,7 @@ def test_create_template_creates_a_history_record_with_current_data(sample_servi
 
 def test_update_template_creates_a_history_record_with_current_data(sample_service, sample_user):
     assert Template.query.count() == 0
-    assert Template.get_history_model().query.count() == 0
+    assert TemplateHistory.query.count() == 0
     data = {
         'name': 'Sample Template',
         'template_type': "email",
@@ -228,20 +228,20 @@ def test_update_template_creates_a_history_record_with_current_data(sample_servi
     assert created.name == 'Sample Template'
     assert Template.query.count() == 1
     assert Template.query.first().version == 1
-    assert Template.get_history_model().query.count() == 1
+    assert TemplateHistory.query.count() == 1
 
     created.name = 'new name'
     dao_update_template(created)
 
     assert Template.query.count() == 1
-    assert Template.get_history_model().query.count() == 2
+    assert TemplateHistory.query.count() == 2
 
     template_from_db = Template.query.first()
 
     assert template_from_db.version == 2
 
-    assert Template.get_history_model().query.filter_by(name='Sample Template').one().version == 1
-    assert Template.get_history_model().query.filter_by(name='new name').one().version == 2
+    assert TemplateHistory.query.filter_by(name='Sample Template').one().version == 1
+    assert TemplateHistory.query.filter_by(name='new name').one().version == 2
 
 
 def test_get_template_history_version(sample_user, sample_service, sample_template):
