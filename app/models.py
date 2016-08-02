@@ -378,10 +378,10 @@ class Notification(db.Model):
     api_key = db.relationship('ApiKey')
     key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False, nullable=False)
     content_char_count = db.Column(db.Integer, nullable=True)
-    notification_type = db.Column(notification_types, nullable=False)
+    notification_type = db.Column(notification_types, index=True, nullable=False)
     created_at = db.Column(
         db.DateTime,
-        index=False,
+        index=True,
         unique=False,
         nullable=False)
     sent_at = db.Column(
@@ -396,7 +396,7 @@ class Notification(db.Model):
         unique=False,
         nullable=True,
         onupdate=datetime.datetime.utcnow)
-    status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, nullable=False, default='created')
+    status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
     reference = db.Column(db.String, nullable=True, index=True)
     _personalisation = db.Column(db.String, nullable=True)
 
@@ -428,12 +428,12 @@ class NotificationHistory(db.Model):
     api_key = db.relationship('ApiKey')
     key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False, nullable=False)
     content_char_count = db.Column(db.Integer, nullable=True)
-    notification_type = db.Column(notification_types, nullable=False)
-    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False)
+    notification_type = db.Column(notification_types, index=True, nullable=False)
+    created_at = db.Column(db.DateTime, index=True, unique=False, nullable=False)
     sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
     sent_by = db.Column(db.String, nullable=True)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
-    status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, nullable=False, default='created')
+    status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
     reference = db.Column(db.String, nullable=True, index=True)
 
     @classmethod
