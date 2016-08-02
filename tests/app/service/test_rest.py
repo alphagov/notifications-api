@@ -1123,18 +1123,19 @@ def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_s
     assert service['statistics']['sms'] == stats
 
 
-@freeze_time('2016-07-28')
-def test_get_weekly_notification_stats(notify_api, sample_notification):
-    with notify_api.test_request_context(), notify_api.test_client() as client:
+def test_get_weekly_notification_stats(notify_api, notify_db, notify_db_session):
+    with freeze_time('2000-01-01T12:00:00'):
+        noti = create_sample_notification(notify_db, notify_db_session)
+    with notify_api.test_request_context(), notify_api.test_client() as client, freeze_time('2000-01-02T12:00:00'):
         resp = client.get(
-            '/service/{}/notifications/weekly'.format(sample_notification.service_id),
+            '/service/{}/notifications/weekly'.format(noti.service_id),
             headers=[create_authorization_header()]
         )
 
     assert resp.status_code == 200
     data = json.loads(resp.get_data(as_text=True))['data']
     assert data == {
-        '2016-07-25': {
+        '1999-12-27': {
             'sms': {
                 'requested': 1,
                 'delivered': 0,
