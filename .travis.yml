@@ -43,7 +43,7 @@ deploy:
   bucket: staging-notify.works-notifications-api-codedeploy
   key: public-notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
   bundle_type: zip
-  application: notifications-api
+  application: api
   deployment_group: notifications_api_deployment_group
   region: eu-west-1
   wait-until-deployed: true
