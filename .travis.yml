@@ -7,7 +7,7 @@ cache:
 python:
 - '3.4'
 addons:
-  postgresql: '9.5'
+  postgresql: '9.4.1'
 install:
 - pip install pip-accel
 - pip-accel install -r requirements_for_test.txt
