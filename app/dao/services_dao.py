@@ -157,3 +157,21 @@ def _stats_for_service_query(service_id):
         Notification.notification_type,
         Notification.status,
     )
+
+
+def dao_fetch_weekly_historical_stats_for_service(service_id):
+    monday_of_notification_week = func.date_trunc('week', NotificationHistory.created_at).label('week_start')
+    return db.session.query(
+        NotificationHistory.notification_type,
+        NotificationHistory.status,
+        monday_of_notification_week,
+        func.count(NotificationHistory.id).label('count')
+    ).filter(
+        NotificationHistory.service_id == service_id
+    ).group_by(
+        NotificationHistory.notification_type,
+        NotificationHistory.status,
+        monday_of_notification_week
+    ).order_by(
+        asc(monday_of_notification_week), NotificationHistory.status
+    ).all()
