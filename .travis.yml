@@ -3,7 +3,7 @@ language: python
 cache:
   pip: true
   directories:
-    - ~/.pip-accel
+  - ~/.pip-accel
 python:
 - '3.4'
 addons:
@@ -26,53 +26,53 @@ notifications:
       secure: vCmpAjdXkprqGzSnQzcco1lNiFuj/nRQdlVTGSnvg2HEqZUM5vzmWtQYw3WNS/bcgbVxV/nLgza17cdsmFqOuaZll4kDM0swnmk17eynImAHPFF/flGsNcw4oRV7WzWrq7j1TvGzJzxJkHYOjJFk0iMLM7+P76sWHI6Oa5NHQYH2l7a4hqzqmuUKaloHeZX/Ro2RmFE+/t/SfNr0pmtTRO4CfLfPUdUs9D8Mx0cyc1Z9Ke4Cq+R2Lsp8BwH0nye6pb9cI4h1YmUY/Xt8O1Z0QbncHZviWojSB2vV0V5WQPzqjjseAznJ1depK/LPOlRHlqddkEbGK28rDwsxbzY1q3DCZZiZZTXBD80HyNr/J4rfRAXhoCafwR57cqqIQ7G/fb5A/ckUM8TFKqUPh7wvu67OAiSWJmO78C8fumF3HxcoGp7DQOQPFLtWGuCfh2zjI9WbUhiHQwWl9/9qpgMEuXH7LOJAzgQbEp1A7XRmT2GupYEkGdFMwT8ojp8OXds08diEy1FNonWAtFZs8pO92urK862pCRB8WRQZWMjpcnif1Ht4QtwYFO9iVp5ygReTEoFuiQPMAypCVCzKgHe/W8LX55xzSnlUQqDU2NzN37LfC4ctS1h3BfIIU5KP9PmdgkKRUWcrFE3eMXPG36OdU4hRj4FMURzmAOZYhaSXuP8=
 deploy:
 - provider: s3
-  access_key_id: AKIAJQPPNM6P6V53SWKA
+  access_key_id: AKIAJLWYN4T4D5WU4APA
   secret_access_key: &1
-    secure: irusc9JdTbXhKPMYUEHIOPXk7cCCleRsXXW/ZOAEWcHtdtuF6YNACsN3pywwyZ9UU+MqZb8lD3UH77o3u7BtuyPPv5JDy7cB7AoIX6EAaZIdxAS4v2tTpLPh6oS2QtfI1U5giI2g2C5IkRZIIrqiWtT63y0eReL5z5r5x7kEY5U7UOMrIL0w2m/frate0a4Q380ZbjRA1X0PcQ3IeavxQbTEYug+XEaKcpjqIFFwxeNYu814Ox7fMm+bqpG7TuwDF2i1+jAlX3NZSiuUBBYpHqgK6EARnCNwi8Yr2+CBO6ykXY1lcVn13+cSsFXDP7lgkK/BJUewWIrkQ6EL28ntTaG3cpZhSMB2fc21VRNnVzNDfzf9R+bI/Xy45fyraTVZ2Xun8j262SAM+F8D6Ivt1Y+n8aRHN0U8P//Yhfx2TMTFoHLhGUp076FDPKmcWRWpYikMzmTR/oVu6yE5OacntYBp8dE1QGrVSR//rRHK6QkQeDbnp/cSbOiZY92PeYeDjCLbZMrqASONWtzR6V0CPu/++iLw0mODd2xRlpsnFcpF8ygxFtAgOUrKXbAdu9JNdNE1pPE2FMDb6DKAuIxrRQT8ceUwhEChR7UGERTtbr2deyc+4f+MpmUK59uaqdG6y5q0KsiXhUTyzmKVLGxr/dyA5cATtsFDCx8caM0Qx6I=
+    secure: j89/yB4NUSUwgG4UKVBMuzkGW8UwFS3Fp9W/7sxFh0zXndMwEN8yl9OtaJ/K9gKds8FAKYCwdSJ90wztdEuDO7c1k60WtD08vbXx1TIEvk9N+VRCOAo5dKy3ZpoF8vQJYNP/luQyU5Ev8zm69nzW+40KaHosyS0b6/dvxy4luZnBiiX9bmR+12Mg3qT/NN7qf4SsImxc0OKl37NdUc03ygCPRPLhDD1bOgfLhDaZNby7DNbP3rKSB81T5cww8Ib2PkwjR9UTurD5JpIBJmZXhqVDtZ9cYUjrrmRPtHtzWBVt3QR7pQeqGupdLTlljV7o6FkAbwjYcEo72cMlwYcoDvBwGc0nyZCgQsQDkHRo8ez5WbXuDq3QvNNOCUh+HPCYSze3uWRIwY/Sb48dwLI1Y5ieQ5b+u2dusxRQbOHajPAO6I9Zl2IRuV6/lHhtfKfTF2BIKT2hfRdkMCIlTBGSPF6wZVhBd3dSTXJxwsarphDvfVilHI0tzz3gfnbmwAz/Z5KAASlCE73oX+0dvZDke1tNIURCM8MzfmK3BmRzh0V0zdET1wzRvhSzyvHSfOL6qRjxDfbvRRPQXD2EkFuW3RJlguOrX5k2eJ5eG0Da9hcI2XZ7VI7cK/UdLgRYjad8l6pKtYIQcxRw4EPb4OtsnMlzpzV9uFpObIZSgUgOoC4=
   local_dir: dpl_cd_upload
   skip_cleanup: true
   region: eu-west-1
-  bucket: notifications-api-codedeploy
   wait-until-deployed: true
-  on:
+  on: &2
     repo: alphagov/notifications-api
+  bucket: notify.works-notifications-api-codedeploy
 - provider: codedeploy
-  access_key_id: AKIAJQPPNM6P6V53SWKA
+  access_key_id: AKIAJLWYN4T4D5WU4APA
   secret_access_key: *1
-  bucket: notifications-api-codedeploy
+  bucket: notify.works-notifications-api-codedeploy
   key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
   bundle_type: zip
-  application: notifications-api
-  deployment_group: notifications_api_deployment_group
-  region: eu-west-1
-  wait-until-deployed: true
-  on: *2
-- provider: codedeploy
-  access_key_id: AKIAJQPPNM6P6V53SWKA
-  secret_access_key: *1
-  bucket: notifications-api-codedeploy
-  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
-  bundle_type: zip
-  application: notifications-api
+  application: api
   deployment_group: notifications_admin_api_deployment_group
   region: eu-west-1
   wait-until-deployed: true
   on: *2
 - provider: codedeploy
-  access_key_id: AKIAJQPPNM6P6V53SWKA
+  access_key_id: AKIAJLWYN4T4D5WU4APA
   secret_access_key: *1
-  bucket: notifications-api-codedeploy
+  bucket: notify.works-notifications-api-codedeploy
   key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
   bundle_type: zip
-  application: notifications-api
+  application: api
+  deployment_group: notifications_api_deployment_group
+  region: eu-west-1
+  wait-until-deployed: true
+  on: *2
+- provider: codedeploy
+  access_key_id: AKIAJLWYN4T4D5WU4APA
+  secret_access_key: *1
+  bucket: notify.works-notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: api
   deployment_group: notifications_delivery_api_deployment_group
   region: eu-west-1
   wait-until-deployed: true
   on: *2
 - provider: s3
-  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
+  access_key_id: AKIAJBHLXFS5UHJ6PXLA
   secret_access_key: &1
-    secure: daC1bCHXqLRK+iIZ8P699KCnTh77lwV4KxrZxL1yd6cstgfptyd/rg1WgRwE6QdxOCT9gQvKWUZFCzFy7M6E/Ih8EUHqEXTzC5M4oAye8rhePIBMQwqkgfYyIoZ3LdDMMP5JfBhiz0zS3Vj7HerL2qIu12adJBjkRJx3XAGimCrFOMQ0xUXQAKDjL6Xmv+gVz2f/ISLy6icKY4KNGt3cQV+8pa5aMF34C9R2udA9N67EWlXlh7hJbFtmY+0Zqpo8Rr6wKRb5MA0xEcTVLORSz1aa6GkxUCbzaIH99p7z3Ghz0qW2bUi9ZcDrvg0GLbVe1T+1HXhfktJfW8wnzw6A/2U/CIIFDQZ/qk0w/DkEwpQinXow99Zl49CcEU+v8llKhg5nM3LmAZCQg1c/iZyP/d90AwAMoMA/VTDD72M93IqTJQH18eC8g02DwE0hNDD6aos5wzeuDeiH/6BG+Tq0pDl0y0aWCcHf3vGRlo/5GlWfpE0vMQEC+qnEOWOUqSprCdSypgD2Aip9mCC98w4BkqKKvGNHPZolA7rxf7E9hTK+BNPRATpYsHR1X/1Xl0TMc/pHhjU1yNXzWnI/kOlNV2CRq3slEtcWihaEo8oDHJ+BhGT49Ps3Je7UB2xO/jXXFPhwJotPMOacTcnUkGqVJSlK1g6TIn4t9nTVSY8KFUs=
+    secure: wYEw/AMHxcfddKP7Hc3r08onLtkZyYBnm+xhxMum3rQjR6Otj4rQ9pROw9V3xOzPBq/nKPTkO6G+4UVrHlPwBmplfpeyK/PXLll8gcNPV0qWxyKs7uVBW6KAgsXm5utuAyLNSWINWpbinjtHCTg3g+JwVFj32/RTUYTKfqzKl/M91Cd1Ezs0olrUIqkONTWRbM3fwCce//77XpRRYIK6baZK4I/qXXJ4P52cj9iqFVF1x684082cxcROtREC0Aeucldvft4WuNtUGZlczcG00PhTP9+pkKhgsNB9q/ICc3aBtbhjdKtJjweNfaNzbL1f/UgG+xJdf7zl4LEpTdSjklJeelHh93UlPObOUsm+BUU9ZRLa8xDpuWxvOxDpSIwBAORkYTl1kxfwb2GJVACZHrmF3zl9Z+btPYGyu6gCSf+3ez0HWFR76DfpsZfMyFUF9mxrBfpQR6d7hYAOdOggOpTB3jCkzMtkDeeYedYErUnfP6CA0rrN5voTqq5RuOWjJPMnuL7BMyM2ZQ2z5QJaUP7FV8z20YV89QiHN83GpZBBqm4t0ai+OLE5tqxGGztfoYpashqPsU6131lkA6X1eSCi9k4TlB40Ll2vcLoW+NhQTYtRr2TcdUiu23CPzzzsi6DOabJFu6PyvZ9IC5nISud/eegbJyDczZfiHETJuBQ=
   local_dir: dpl_cd_upload
   skip_cleanup: true
   region: eu-west-1
@@ -80,87 +80,42 @@ deploy:
   on: &2
     repo: alphagov/notifications-api
     branch: staging
-  bucket: staging-notifications-api-codedeploy
+  bucket: staging-notify.works-notifications-api-codedeploy
 - provider: codedeploy
-  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
+  access_key_id: AKIAJBHLXFS5UHJ6PXLA
   secret_access_key: *1
-  bucket: staging-notifications-api-codedeploy
+  bucket: staging-notify.works-notifications-api-codedeploy
   key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
   bundle_type: zip
-  application: notifications-api
-  deployment_group: staging_delivery_api_deployment_group
+  application: api
+  deployment_group: notifications_api_deployment_group
   region: eu-west-1
   wait-until-deployed: true
   on: *2
 - provider: codedeploy
-  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
+  access_key_id: AKIAJBHLXFS5UHJ6PXLA
   secret_access_key: *1
-  bucket: staging-notifications-api-codedeploy
+  bucket: staging-notify.works-notifications-api-codedeploy
   key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
   bundle_type: zip
-  application: notifications-api
-  deployment_group: staging_public_api_deployment_group
+  application: api
+  deployment_group: notifications_admin_api_deployment_group
   region: eu-west-1
   wait-until-deployed: true
   on: *2
 - provider: codedeploy
-  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
+  access_key_id: AKIAJBHLXFS5UHJ6PXLA
   secret_access_key: *1
-  bucket: staging-notifications-api-codedeploy
+  bucket: staging-notify.works-notifications-api-codedeploy
   key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
   bundle_type: zip
-  application: notifications-api
-  deployment_group: staging_admin_api_deployment_group
-  region: eu-west-1
-  wait-until-deployed: true
-  on: *2
-- provider: s3
-  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
-  secret_access_key: &1
-    secure: daC1bCHXqLRK+iIZ8P699KCnTh77lwV4KxrZxL1yd6cstgfptyd/rg1WgRwE6QdxOCT9gQvKWUZFCzFy7M6E/Ih8EUHqEXTzC5M4oAye8rhePIBMQwqkgfYyIoZ3LdDMMP5JfBhiz0zS3Vj7HerL2qIu12adJBjkRJx3XAGimCrFOMQ0xUXQAKDjL6Xmv+gVz2f/ISLy6icKY4KNGt3cQV+8pa5aMF34C9R2udA9N67EWlXlh7hJbFtmY+0Zqpo8Rr6wKRb5MA0xEcTVLORSz1aa6GkxUCbzaIH99p7z3Ghz0qW2bUi9ZcDrvg0GLbVe1T+1HXhfktJfW8wnzw6A/2U/CIIFDQZ/qk0w/DkEwpQinXow99Zl49CcEU+v8llKhg5nM3LmAZCQg1c/iZyP/d90AwAMoMA/VTDD72M93IqTJQH18eC8g02DwE0hNDD6aos5wzeuDeiH/6BG+Tq0pDl0y0aWCcHf3vGRlo/5GlWfpE0vMQEC+qnEOWOUqSprCdSypgD2Aip9mCC98w4BkqKKvGNHPZolA7rxf7E9hTK+BNPRATpYsHR1X/1Xl0TMc/pHhjU1yNXzWnI/kOlNV2CRq3slEtcWihaEo8oDHJ+BhGT49Ps3Je7UB2xO/jXXFPhwJotPMOacTcnUkGqVJSlK1g6TIn4t9nTVSY8KFUs=
-  local_dir: dpl_cd_upload
-  skip_cleanup: true
-  region: eu-west-1
-  wait-until-deployed: true
-  on: &2
-    repo: alphagov/notifications-api
-    branch: live
-  bucket: live-notifications-api-codedeploy
-- provider: codedeploy
-  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
-  secret_access_key: *1
-  bucket: live-notifications-api-codedeploy
-  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
-  bundle_type: zip
-  application: notifications-api
-  deployment_group: live_delivery_api_deployment_group
-  region: eu-west-1
-  wait-until-deployed: true
-  on: *2
-- provider: codedeploy
-  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
-  secret_access_key: *1
-  bucket: live-notifications-api-codedeploy
-  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
-  bundle_type: zip
-  application: notifications-api
-  deployment_group: live_public_api_deployment_group
-  region: eu-west-1
-  wait-until-deployed: true
-  on: *2
-- provider: codedeploy
-  access_key_id: AKIAJ5MKF6G3P2JQP4QQ
-  secret_access_key: *1
-  bucket: live-notifications-api-codedeploy
-  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
-  bundle_type: zip
-  application: notifications-api
-  deployment_group: live_admin_api_deployment_group
+  application: api
+  deployment_group: notifications_delivery_api_deployment_group
   region: eu-west-1
   wait-until-deployed: true
   on: *2
 before_deploy:
-- ./scripts/update_version_file.sh
-- zip -r  --exclude=*__pycache__* notifications-api *
-- mkdir -p dpl_cd_upload
-- mv notifications-api.zip dpl_cd_upload/notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  - ./scripts/update_version_file.sh
+  - zip -r  --exclude=*__pycache__* notifications-api *
+  - mkdir -p dpl_cd_upload
+  - mv notifications-api.zip dpl_cd_upload/notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip

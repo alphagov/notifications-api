@@ -4,19 +4,18 @@ from app import create_app, db
 from credstash import getAllSecrets
 import os
 
-default_env_file = '/home/ubuntu/environment'
-environment = 'live'
-
-if os.path.isfile(default_env_file):
-    with open(default_env_file, 'r') as environment_file:
-        environment = environment_file.readline().strip()
-
 # on aws get secrets and export to env
 os.environ.update(getAllSecrets(region="eu-west-1"))
 
-from config import configs
-
-os.environ['NOTIFY_API_ENVIRONMENT'] = configs[environment]
+print("DOING SETUP")
+print("\n" * 10)
+print("SECRETS")
+print("\n" * 10)
+print(getAllSecrets(region="eu-west-1"))
+print("\n" * 10)
+print("ENV")
+print("\n" * 10)
+print(os.environ)
 
 application = create_app()
 

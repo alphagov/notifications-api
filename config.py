@@ -92,10 +92,12 @@ class Config(object):
         Queue('retry', Exchange('default'), routing_key='retry'),
         Queue('email-already-registered', Exchange('default'), routing_key='email-already-registered')
     ]
+    API_HOST_NAME = os.environ['API_HOST_NAME']
+    MMG_API_KEY = os.environ['MMG_API_KEY']
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
     LOADTESTING_NUMBER = os.getenv('LOADTESTING_NUMBER')
     LOADTESTING_API_KEY = os.getenv("LOADTESTING_API_KEY")
-    CSV_UPLOAD_BUCKET_NAME = 'local-notifications-csv-upload'
+    CSV_UPLOAD_BUCKET_NAME = os.getenv("CSV_UPLOAD_BUCKET_NAME")
     NOTIFICATIONS_ALERT = 5  # five mins
     FROM_NUMBER = os.getenv('FROM_NUMBER')
 
@@ -109,27 +111,29 @@ class Config(object):
 
 class Development(Config):
     DEBUG = True
-    API_HOST_NAME = os.environ['API_HOST_NAME']
-    MMG_API_KEY = os.environ['MMG_API_KEY']
-    CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
 
 
 class Preview(Config):
-    MMG_API_KEY = os.environ['MMG_API_KEY']
-    API_HOST_NAME = os.environ['API_HOST_NAME']
-    CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
+    CSV_UPLOAD_BUCKET_NAME = os.getenv("CSV_UPLOAD_BUCKET_NAME")
 
 
 class Test(Development):
-    MMG_API_KEY = os.environ['MMG_API_KEY']
-    API_HOST_NAME = os.environ['API_HOST_NAME']
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
 
 
+class Staging(Config):
+    CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
+
+
+class Live(Config):
+    CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
+    STATSD_ENABLED = True
+
+
 configs = {
-    'development': 'config.Development',
-    'test': 'config.Test',
-    'live': 'config_live.Live',
-    'staging': 'config_staging.Staging',
-    'preview': 'config.Preview'
+    'development': Development,
+    'test': Test,
+    'live': Live,
+    'staging': Staging,
+    'preview': Preview
 }

@@ -1,3 +1,3 @@
-__travis_commit__ = "dev"
-__time__ = "dev"
-__travis_job_number__ = "dev"
+__travis_commit__ = ""
+__time__ = "2016-07-05:15:38:37"
+__travis_job_number__ = ""

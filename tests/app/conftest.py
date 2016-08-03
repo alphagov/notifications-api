@@ -13,6 +13,7 @@ from app.models import (
     ApiKey,
     Job,
     Notification,
+    NotificationHistory,
     InvitedUser,
     Permission,
     ProviderStatistics,
@@ -42,6 +43,8 @@ def service_factory(notify_db, notify_db_session):
         def get(self, service_name, user=None, template_type=None, email_from=None):
             if not user:
                 user = sample_user(notify_db, notify_db_session)
+            if not email_from:
+                email_from = service_name
             service = sample_service(notify_db, notify_db_session, service_name, user, email_from=email_from)
             if template_type == 'email':
                 sample_template(
@@ -375,6 +378,31 @@ def mock_statsd_inc(mocker):
 @pytest.fixture(scope='function')
 def mock_statsd_timing(mocker):
     return mocker.patch('app.statsd_client.timing')
+
+
+@pytest.fixture(scope='function')
+def sample_notification_history(notify_db,
+                                notify_db_session,
+                                sample_template,
+                                status='created',
+                                created_at=None):
+    if created_at is None:
+        created_at = datetime.utcnow()
+
+    notification_history = NotificationHistory(
+        id=uuid.uuid4(),
+        service=sample_template.service,
+        template=sample_template,
+        template_version=sample_template.version,
+        status=status,
+        created_at=created_at,
+        notification_type=sample_template.template_type,
+        key_type=KEY_TYPE_NORMAL
+    )
+    notify_db.session.add(notification_history)
+    notify_db.session.commit()
+
+    return notification_history
 
 
 @pytest.fixture(scope='function')

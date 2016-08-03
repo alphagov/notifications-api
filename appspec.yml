@@ -1,14 +1,14 @@
 ---
 files:
   -
-    destination: /home/ubuntu/notifications-api
+    destination: /home/notify-app/notifications-api
     source: /
 hooks:
   AfterInstall:
     -
       location: scripts/aws_install_dependencies.sh
       runas: root
-      timeout: 300
+      timeout: 1000
     -
       location: scripts/aws_change_ownership.sh
       runas: root
