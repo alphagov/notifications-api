@@ -114,7 +114,7 @@ class Development(Config):
 
 
 class Preview(Config):
-    CSV_UPLOAD_BUCKET_NAME = os.getenv("CSV_UPLOAD_BUCKET_NAME")
+    CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
 
 
 class Test(Development):
