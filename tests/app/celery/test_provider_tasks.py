@@ -557,8 +557,8 @@ def test_should_not_set_billable_units_if_research_mode(notify_db, sample_servic
     notify_db.session.commit()
 
     send_sms_to_provider(
-    sample_notification.service_id,
-    sample_notification.id
+        sample_notification.service_id,
+        sample_notification.id
     )
 
     persisted_notification = notifications_dao.get_notification(sample_service.id, sample_notification.id)

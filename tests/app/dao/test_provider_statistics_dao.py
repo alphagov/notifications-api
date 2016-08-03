@@ -1,10 +1,11 @@
 from datetime import datetime
 import uuid
 
-from app.models import NotificationHistory, KEY_TYPE_NORMAL, NOTIFICATION_STATUS_TYPES
+import pytest
+
+from app.models import NotificationHistory, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, NOTIFICATION_STATUS_TYPES
 from app.dao.notifications_dao import update_provider_stats
-from app.dao.provider_statistics_dao import (
-    get_provider_statistics, get_fragment_count)
+from app.dao.provider_statistics_dao import get_provider_statistics, get_fragment_count
 from tests.app.conftest import sample_notification as create_sample_notification
 
 
@@ -46,24 +47,24 @@ def test_should_update_provider_statistics_sms_multi(notify_db,
         notify_db,
         notify_db_session,
         template=sample_template,
-        content_char_count=160)
-    update_provider_stats(n1.id, 'sms', mmg_provider.identifier)
+        billable_units=1)
+    update_provider_stats(n1.id, 'sms', mmg_provider.identifier, n1.billable_units)
     n2 = create_sample_notification(
         notify_db,
         notify_db_session,
         template=sample_template,
-        content_char_count=161)
-    update_provider_stats(n2.id, 'sms', mmg_provider.identifier)
+        billable_units=2)
+    update_provider_stats(n2.id, 'sms', mmg_provider.identifier, n2.billable_units)
     n3 = create_sample_notification(
         notify_db,
         notify_db_session,
         template=sample_template,
-        content_char_count=307)
-    update_provider_stats(n3.id, 'sms', mmg_provider.identifier)
+        billable_units=4)
+    update_provider_stats(n3.id, 'sms', mmg_provider.identifier, n3.billable_units)
     provider_stats = get_provider_statistics(
         sample_template.service,
         providers=[mmg_provider.identifier]).one()
-    assert provider_stats.unit_count == 6
+    assert provider_stats.unit_count == 7
 
 
 def test_should_update_provider_statistics_email_multi(notify_db,

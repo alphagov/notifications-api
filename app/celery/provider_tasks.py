@@ -82,7 +82,7 @@ def send_sms_to_provider(self, service_id, notification_id):
                     notification_id,
                     SMS_TYPE,
                     provider.get_name(),
-                    content_char_count=template.replaced_content_count
+                    billable_units=notification.billable_units
                 )
 
             notification.sent_at = datetime.utcnow()
@@ -164,7 +164,8 @@ def send_email_to_provider(self, service_id, notification_id):
                 update_provider_stats(
                     notification_id,
                     EMAIL_TYPE,
-                    provider.get_name()
+                    provider.get_name(),
+                    billable_units=1
                 )
             notification.reference = reference
             notification.sent_at = datetime.utcnow()
