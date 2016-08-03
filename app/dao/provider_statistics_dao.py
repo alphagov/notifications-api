@@ -22,7 +22,6 @@ def get_provider_statistics(service, **kwargs):
 
 
 def get_fragment_count(service_id):
-    live_dates = get_service_live_dates(service_id)
     shared_filters = [
         NotificationHistory.service_id == service_id,
         NotificationHistory.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE),
