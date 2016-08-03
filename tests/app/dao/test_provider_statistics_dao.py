@@ -119,11 +119,10 @@ def test_get_fragment_count_filters_on_service_id(notify_db, sample_template, se
     assert get_fragment_count(service_2.id)['sms_count'] == 0
 
 
-def test_get_fragment_count_sums_char_count_for_sms(notify_db, sample_template):
-    noti_hist(notify_db, sample_template, content_char_count=1)  # 1
-    noti_hist(notify_db, sample_template, content_char_count=159)  # 1
-    noti_hist(notify_db, sample_template, content_char_count=310)  # 2
-    assert get_fragment_count(sample_template.service_id)['sms_count'] == 4
+def test_get_fragment_count_sums_billable_units_for_sms(notify_db, sample_template):
+    noti_hist(notify_db, sample_template, billable_units=1)
+    noti_hist(notify_db, sample_template, billable_units=2)
+    assert get_fragment_count(sample_template.service_id)['sms_count'] == 3
 
 
 @pytest.mark.parametrize('key_type,sms_count', [
@@ -136,9 +135,9 @@ def test_get_fragment_count_ignores_test_api_keys(notify_db, sample_template, ke
     assert get_fragment_count(sample_template.service_id)['sms_count'] == sms_count
 
 
-def noti_hist(notify_db, template, status='delivered', content_char_count=None, key_type=KEY_TYPE_NORMAL):
-    if not content_char_count and template.template_type == 'sms':
-        content_char_count = 1
+def noti_hist(notify_db, template, status='delivered', billable_units=None, key_type=KEY_TYPE_NORMAL):
+    if not billable_units and template.template_type == 'sms':
+        billable_units = 1
 
     notification_history = NotificationHistory(
         id=uuid.uuid4(),
@@ -147,9 +146,9 @@ def noti_hist(notify_db, template, status='delivered', content_char_count=None, 
         template_version=template.version,
         status=status,
         created_at=datetime.utcnow(),
-        content_char_count=content_char_count,
+        billable_units=billable_units,
         notification_type=template.template_type,
-        key_type=KEY_TYPE_NORMAL
+        key_type=key_type
     )
     notify_db.session.add(notification_history)
     notify_db.session.commit()

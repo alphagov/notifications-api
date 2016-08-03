@@ -377,7 +377,6 @@ class Notification(db.Model):
     api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), index=True, unique=False)
     api_key = db.relationship('ApiKey')
     key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False, nullable=False)
-    content_char_count = db.Column(db.Integer, nullable=True)
     billable_units = db.Column(db.Integer, nullable=False, default=0)
     notification_type = db.Column(notification_types, index=True, nullable=False)
     created_at = db.Column(
@@ -428,7 +427,6 @@ class NotificationHistory(db.Model):
     api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), index=True, unique=False)
     api_key = db.relationship('ApiKey')
     key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False, nullable=False)
-    content_char_count = db.Column(db.Integer, nullable=True)
     billable_units = db.Column(db.Integer, nullable=False, default=0)
     notification_type = db.Column(notification_types, index=True, nullable=False)
     created_at = db.Column(db.DateTime, index=True, unique=False, nullable=False)

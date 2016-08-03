@@ -29,17 +29,7 @@ def get_fragment_count(service_id):
     ]
 
     sms_count = db.session.query(
-        func.sum(
-            case(
-                [
-                    (
-                        NotificationHistory.content_char_count <= 160,
-                        func.ceil(cast(NotificationHistory.content_char_count, Float) / 153)
-                    )
-                ],
-                else_=1
-            )
-        )
+        func.sum(NotificationHistory.billable_units)
     ).filter(
         NotificationHistory.notification_type == SMS_TYPE,
         *shared_filters

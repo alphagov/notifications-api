@@ -111,7 +111,7 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     assert notification.status == 'sending'
     assert notification.sent_at <= datetime.utcnow()
     assert notification.sent_by == 'mmg'
-    assert notification.content_char_count == len("Sample service: Hello Jo\nYour thing is due soon")
+    assert notification.billable_units == 1
     assert notification.personalisation == {"name": "Jo"}
 
 
@@ -194,7 +194,6 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     assert persisted_notification.template_id == sample_template.id
     assert persisted_notification.template_version == version_on_notification
     assert persisted_notification.template_version != sample_template.version
-    assert persisted_notification.content_char_count == len("Sample service: This is a template:\nwith a newline")
     assert persisted_notification.status == 'sending'
     assert not persisted_notification.personalisation
 
@@ -546,3 +545,30 @@ def test_send_email_should_use_service_reply_to_email(
         html_body=ANY,
         reply_to_address=sample_service.reply_to_email_address
     )
+
+
+def test_should_not_set_billable_units_if_research_mode(notify_db, sample_service, sample_notification, mocker):
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="mmg")
+    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
+
+    sample_service.research_mode = True
+    notify_db.session.add(sample_service)
+    notify_db.session.commit()
+
+    send_sms_to_provider(
+    sample_notification.service_id,
+    sample_notification.id
+    )
+
+    persisted_notification = notifications_dao.get_notification(sample_service.id, sample_notification.id)
+    assert persisted_notification.billable_units == 0
+
+
+def _get_provider_statistics(service, **kwargs):
+    query = ProviderStatistics.query.filter_by(service=service)
+    if 'providers' in kwargs:
+        providers = ProviderDetails.query.filter(ProviderDetails.identifier.in_(kwargs['providers'])).all()
+        provider_ids = [provider.id for provider in providers]
+        query = query.filter(ProviderStatistics.provider_id.in_(provider_ids))
+    return query

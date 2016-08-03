@@ -20,7 +20,7 @@ from notifications_utils.recipients import (
 )
 
 from app.dao.templates_dao import dao_get_template_by_id
-from notifications_utils.template import Template
+from notifications_utils.template import Template, get_sms_fragment_count
 from notifications_utils.renderers import HTMLEmail, PlainTextEmail, SMSMessage
 
 from app.models import SMS_TYPE, EMAIL_TYPE, KEY_TYPE_TEST
@@ -68,6 +68,7 @@ def send_sms_to_provider(self, service_id, notification_id):
                 send_sms_response.apply_async(
                     (provider.get_name(), str(notification_id), notification.to), queue='research-mode'
                 )
+                notification.billable_units = 0
             else:
                 provider.send_sms(
                     to=validate_and_format_phone_number(notification.to),
@@ -75,6 +76,7 @@ def send_sms_to_provider(self, service_id, notification_id):
                     reference=str(notification_id),
                     sender=service.sms_sender
                 )
+                notification.billable_units = get_sms_fragment_count(template.replaced_content_count)
 
                 update_provider_stats(
                     notification_id,
@@ -84,8 +86,7 @@ def send_sms_to_provider(self, service_id, notification_id):
                 )
 
             notification.sent_at = datetime.utcnow()
-            notification.sent_by = provider.get_name(),
-            notification.content_char_count = template.replaced_content_count
+            notification.sent_by = provider.get_name()
             notification.status = 'sending'
             dao_update_notification(notification)
         except SmsClientException as e:

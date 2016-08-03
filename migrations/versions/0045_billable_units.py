@@ -15,10 +15,6 @@ import sqlalchemy as sa
 from sqlalchemy.orm.session import Session
 
 from app.models import Service
-import logging
-
-logging.basicConfig()
-logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 
 def upgrade():
     op.add_column('notifications', sa.Column('billable_units', sa.Integer()))
