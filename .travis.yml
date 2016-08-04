@@ -114,6 +114,51 @@ deploy:
   region: eu-west-1
   wait-until-deployed: true
   on: *2
+- provider: s3
+  access_key_id: AKIAIFLN7IJIIQT6S37Q
+  secret_access_key: &1
+    secure: ASg6jCj/On6IUN7Qdz9TpaY1E+sHqYlSX7A/h8qqwZ7ZuYR/zuW9fp7u/q+FxU2XLhyppNMG9fgOiS/uv+mTDLaxq+TIuGjI0tfxX8a/skSa/Uk5X+eqr1S0S4bN460EJvpcW/lv44f8z7Iz/whxU+Evi6k760Z9jIhu13lCtClBekymkK1wY0ul7QegtxA5W2psF/6aDo4MW7PYeq3DbFDfavZS5Xj6h57HImZ3O/BM0UFhBCulsbIC6QZUsXKbXFIVIwaUQbBwjRi2LxJsl0LxGQea4j5zXKWLR3bIvWQzWRTb6lUl29j45NRP5zcEBRld9yfd/Lb7LQtF/8yS33MvOQrCZ1vrbT/VIAjZS9sEzXIm7Pz7hLe/jhINnxvY1Iyqhpe2uI4bUQx3LfhN9PQKf7NoksqK1eoTLt4VD48sDTcNV6lA6d9ZUBkEA5FtSPfiCs0PTKiuRVJJZbY91DWrSdc5pLLi+4y4Ijgb/SaOAq1RnEWs/KPY91zdGOG2BEkpBQeOhQxrAiLEh8a9oC0UUnkqAfofTBqQjx9KV7ADsiKpb20Anhnqt7diuhgLKNCJesqd+66DSPOreBJLaFnACvN4ZJX9nhdz5eIoKe98jT4GWBjZoF5zTIipVPui47gfzbhfGZV4jyADEcJMtmRGpWCT3MXZVRAXLIlr4TQ=
+  local_dir: dpl_cd_upload
+  skip_cleanup: true
+  region: eu-west-1
+  wait-until-deployed: true
+  on: &2
+    repo: alphagov/notifications-api
+    branch: live
+  bucket: notifications.service.gov.uk-notifications-api-codedeploy
+- provider: codedeploy
+  access_key_id: AKIAIFLN7IJIIQT6S37Q
+  secret_access_key: *1
+  bucket: notifications.service.gov.uk-notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: api
+  deployment_group: notifications_admin_api_deployment_group
+  region: eu-west-1
+  wait-until-deployed: true
+  on: *2
+- provider: codedeploy
+  access_key_id: AKIAIFLN7IJIIQT6S37Q
+  secret_access_key: *1
+  bucket: notifications.service.gov.uk-notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: api
+  deployment_group: notifications_api_deployment_group
+  region: eu-west-1
+  wait-until-deployed: true
+  on: *2
+- provider: codedeploy
+  access_key_id: AKIAIFLN7IJIIQT6S37Q
+  secret_access_key: *1
+  bucket: notifications.service.gov.uk-notifications-api-codedeploy
+  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
+  bundle_type: zip
+  application: api
+  deployment_group: notifications_delivery_api_deployment_group
+  region: eu-west-1
+  wait-until-deployed: true
+  on: *2
 before_deploy:
   - ./scripts/update_version_file.sh
   - zip -r  --exclude=*__pycache__* notifications-api *

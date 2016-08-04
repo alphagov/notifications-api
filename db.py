@@ -7,16 +7,6 @@ import os
 # on aws get secrets and export to env
 os.environ.update(getAllSecrets(region="eu-west-1"))
 
-print("DOING SETUP")
-print("\n" * 10)
-print("SECRETS")
-print("\n" * 10)
-print(getAllSecrets(region="eu-west-1"))
-print("\n" * 10)
-print("ENV")
-print("\n" * 10)
-print(os.environ)
-
 application = create_app()
 
 manager = Manager(application)
