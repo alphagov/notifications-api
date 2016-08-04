@@ -114,12 +114,13 @@ class ServiceSchema(BaseSchema):
                    'old_id',
                    'template_statistics',
                    'service_provider_stats',
-                   'service_notification_stats')
+                   'service_notification_stats',
+                   'organisation')
         strict = True
 
     @validates('sms_sender')
     def validate_sms_sender(self, value):
-        if value and not re.match('^[a-zA-Z0-9\s]+$', value):
+        if value and not re.match(r'^[a-zA-Z0-9\s]+$', value):
             raise ValidationError('Only alphanumeric characters allowed')
 
 
@@ -136,7 +137,8 @@ class DetailedServiceSchema(BaseSchema):
             'jobs',
             'template_statistics',
             'service_provider_stats',
-            'service_notification_stats'
+            'service_notification_stats',
+            'organisation'
         )
 
 
