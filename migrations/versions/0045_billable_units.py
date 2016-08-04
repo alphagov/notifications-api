@@ -83,27 +83,19 @@ def downgrade():
     ''')
     # set to 'null' if there are no billable services so we don't get a syntax error in the update statement
     service_ids = ','.join("'{}'".format(service.id) for service in billable_services) or 'null'
-    billable_services = session.query(Service).filter(Service.research_mode == False).all()
 
     # caveats:
     # only approximates character counts - billable * 153 to get at least a decent ballpark
     # research mode messages assumed to be one message length
     update_statement = '''
-        UPDATE {table}
+        UPDATE {}
         SET content_char_count = GREATEST(billable_units, 1) * 150
-        )
         WHERE service_id in ({})
         AND notification_type = 'sms'
     '''
 
     conn = op.get_bind()
-    conn.execute(update_statement.format(
-        'notifications',
-        services=','.join(repr(str(service.id)) for service in billable_services)
-    ))
-    conn.execute(update_statement.format(
-        'notification_history',
-        services=','.join(repr(str(service.id)) for service in billable_services)
-    ))
+    conn.execute(update_statement.format('notifications', service_ids))
+    conn.execute(update_statement.format('notification_history', service_ids))
     op.drop_column('notifications', 'billable_units')
     op.drop_column('notification_history', 'billable_units')
