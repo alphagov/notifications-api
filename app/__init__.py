@@ -71,6 +71,7 @@ def create_app(app_name=None):
     from app.events.rest import events as events_blueprint
     from app.provider_details.rest import provider_details as provider_details_blueprint
     from app.spec.rest import spec as spec_blueprint
+    from app.organisation.rest import organisation_blueprint
 
     application.register_blueprint(service_blueprint, url_prefix='/service')
     application.register_blueprint(user_blueprint, url_prefix='/user')
@@ -85,6 +86,7 @@ def create_app(app_name=None):
     application.register_blueprint(events_blueprint)
     application.register_blueprint(provider_details_blueprint, url_prefix='/provider-details')
     application.register_blueprint(spec_blueprint, url_prefix='/spec')
+    application.register_blueprint(organisation_blueprint, url_prefix='/organisation')
 
     return application
 

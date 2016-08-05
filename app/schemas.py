@@ -440,6 +440,12 @@ class EventSchema(BaseSchema):
         strict = True
 
 
+class OrganisationSchema(BaseSchema):
+    class Meta:
+        model = models.Organisation
+        strict = True
+
+
 class FromToDateSchema(ma.Schema):
 
     class Meta:
@@ -533,6 +539,7 @@ service_history_schema = ServiceHistorySchema()
 api_key_history_schema = ApiKeyHistorySchema()
 template_history_schema = TemplateHistorySchema()
 event_schema = EventSchema()
+organisation_schema = OrganisationSchema()
 from_to_date_schema = FromToDateSchema()
 provider_details_schema = ProviderDetailsSchema()
 week_aggregate_notification_statistics_schema = WeekAggregateNotificationStatisticsSchema()
