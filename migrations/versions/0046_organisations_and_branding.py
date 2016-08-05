@@ -33,6 +33,13 @@ def upgrade():
     op.add_column('services_history', sa.Column('organisation_id', postgresql.UUID(as_uuid=True)))
 
     op.execute("INSERT INTO branding_type VALUES ('govuk'), ('org'), ('both')")
+    # insert UKVI data as initial test data. hex and crest pulled from alphagov/whitehall
+    op.execute("""INSERT INTO organisation VALUES (
+        '9d25d02d-2915-4e98-874b-974e123e8536',
+        '#9325b2',
+        'ho_crest_27px_x2.png',
+        'UK Visas and Immigration'
+    )""")
     op.execute("UPDATE services SET branding='govuk'")
     op.execute("UPDATE services_history SET branding='govuk'")
 
