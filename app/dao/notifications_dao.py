@@ -299,30 +299,22 @@ def update_provider_stats(
         id_,
         notification_type,
         provider_name,
-        content_char_count=None):
+        billable_units=1):
     notification = Notification.query.filter(Notification.id == id_).one()
     provider = ProviderDetails.query.filter_by(identifier=provider_name).one()
-
-    def unit_count():
-        if notification_type == EMAIL_TYPE:
-            return 1
-        else:
-            if (content_char_count):
-                return get_sms_fragment_count(content_char_count)
-            return get_sms_fragment_count(notification.content_char_count)
 
     update_count = db.session.query(ProviderStatistics).filter_by(
         day=date.today(),
         service_id=notification.service_id,
         provider_id=provider.id
-    ).update({'unit_count': ProviderStatistics.unit_count + unit_count()})
+    ).update({'unit_count': ProviderStatistics.unit_count + billable_units})
 
     if update_count == 0:
         provider_stats = ProviderStatistics(
             day=notification.created_at.date(),
             service_id=notification.service_id,
             provider_id=provider.id,
-            unit_count=unit_count()
+            unit_count=billable_units
         )
 
         db.session.add(provider_stats)

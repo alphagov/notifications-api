@@ -329,9 +329,34 @@ class VerifyCode(db.Model):
     def check_code(self, cde):
         return check_hash(cde, self._code)
 
+NOTIFICATION_CREATED = 'created'
+NOTIFICATION_SENDING = 'sending'
+NOTIFICATION_DELIVERED = 'delivered'
+NOTIFICATION_PENDING = 'pending'
+NOTIFICATION_FAILED = 'failed'
+NOTIFICATION_TECHNICAL_FAILURE = 'technical-failure'
+NOTIFICATION_TEMPORARY_FAILURE = 'temporary-failure'
+NOTIFICATION_PERMANENT_FAILURE = 'permanent-failure'
 
-NOTIFICATION_STATUS_TYPES = ['created', 'sending', 'delivered', 'pending', 'failed',
-                             'technical-failure', 'temporary-failure', 'permanent-failure']
+NOTIFICATION_STATUS_TYPES_BILLABLE = [
+    NOTIFICATION_SENDING,
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_FAILED,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_TEMPORARY_FAILURE,
+    NOTIFICATION_PERMANENT_FAILURE
+]
+
+NOTIFICATION_STATUS_TYPES = [
+    NOTIFICATION_CREATED,
+    NOTIFICATION_SENDING,
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_PENDING,
+    NOTIFICATION_FAILED,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_TEMPORARY_FAILURE,
+    NOTIFICATION_PERMANENT_FAILURE
+]
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
 
@@ -352,11 +377,11 @@ class Notification(db.Model):
     api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), index=True, unique=False)
     api_key = db.relationship('ApiKey')
     key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False, nullable=False)
-    content_char_count = db.Column(db.Integer, nullable=True)
-    notification_type = db.Column(notification_types, nullable=False)
+    billable_units = db.Column(db.Integer, nullable=False, default=0)
+    notification_type = db.Column(notification_types, index=True, nullable=False)
     created_at = db.Column(
         db.DateTime,
-        index=False,
+        index=True,
         unique=False,
         nullable=False)
     sent_at = db.Column(
@@ -371,7 +396,7 @@ class Notification(db.Model):
         unique=False,
         nullable=True,
         onupdate=datetime.datetime.utcnow)
-    status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, nullable=False, default='created')
+    status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
     reference = db.Column(db.String, nullable=True, index=True)
     _personalisation = db.Column(db.String, nullable=True)
 
@@ -402,13 +427,13 @@ class NotificationHistory(db.Model):
     api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), index=True, unique=False)
     api_key = db.relationship('ApiKey')
     key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False, nullable=False)
-    content_char_count = db.Column(db.Integer, nullable=True)
-    notification_type = db.Column(notification_types, nullable=False)
-    created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False)
+    billable_units = db.Column(db.Integer, nullable=False, default=0)
+    notification_type = db.Column(notification_types, index=True, nullable=False)
+    created_at = db.Column(db.DateTime, index=True, unique=False, nullable=False)
     sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
     sent_by = db.Column(db.String, nullable=True)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
-    status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, nullable=False, default='created')
+    status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
     reference = db.Column(db.String, nullable=True, index=True)
 
     @classmethod
