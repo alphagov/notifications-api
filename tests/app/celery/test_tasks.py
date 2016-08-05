@@ -7,10 +7,10 @@ from mock import ANY
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import (encryption, DATETIME_FORMAT, statsd_client)
+from app import (encryption, DATETIME_FORMAT)
 from app.celery import provider_tasks
 from app.celery import tasks
-from app.celery.tasks import s3
+from app.celery.tasks import s3, remove_job
 from app.celery.tasks import (
     send_sms,
     process_job,
@@ -53,10 +53,15 @@ def _notification_json(template, to, personalisation=None, job_id=None, row_numb
     return notification
 
 
+def test_should_have_decorated_tasks_functions():
+    assert process_job.__wrapped__.__name__ == 'process_job'
+    assert remove_job.__wrapped__.__name__ == 'remove_job'
+    assert send_sms.__wrapped__.__name__ == 'send_sms'
+    assert send_email.__wrapped__.__name__ == 'send_email'
+
+
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_should_process_sms_job(sample_job, mocker, mock_celery_remove_job):
-    mocker.patch('app.statsd_client.incr')
-    mocker.patch('app.statsd_client.timing')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
@@ -81,8 +86,6 @@ def test_should_process_sms_job(sample_job, mocker, mock_celery_remove_job):
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
     assert job.status == 'finished'
-    statsd_client.incr.assert_called_once_with("notifications.tasks.process-job")
-    statsd_client.timing.assert_called_once_with("notifications.tasks.process-job.task-time", ANY)
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -278,9 +281,6 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
     notification = _notification_json(sample_template_with_placeholders,
                                       to="+447234123123", personalisation={"name": "Jo"})
 
-    mocker.patch('app.statsd_client.incr')
-    mocker.patch('app.statsd_client.timing_with_dates')
-    mocker.patch('app.statsd_client.timing')
     mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
 
     notification_id = uuid.uuid4()
@@ -292,15 +292,12 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
         datetime.utcnow().strftime(DATETIME_FORMAT)
     )
 
-    statsd_client.timing.assert_called_once_with("notifications.tasks.send-sms.task-time", ANY)
-
     provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
         (sample_template_with_placeholders.service_id,
          notification_id),
         queue="sms"
     )
 
-    statsd_client.incr.assert_called_once_with("notifications.tasks.send-sms")
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == '+447234123123'
@@ -436,9 +433,6 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
         "my_email@my_email.com",
         {"name": "Jo"},
         row_number=1)
-    mocker.patch('app.statsd_client.incr')
-    mocker.patch('app.statsd_client.timing_with_dates')
-    mocker.patch('app.statsd_client.timing')
     mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
 
     notification_id = uuid.uuid4()
@@ -456,8 +450,6 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
             key_type=KEY_TYPE_TEAM
         )
 
-    statsd_client.incr.assert_called_once_with("notifications.tasks.send-email")
-    statsd_client.timing.assert_called_once_with("notifications.tasks.send-email.task-time", ANY)
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     provider_tasks.send_email_to_provider.apply_async.assert_called_once_with(
         (sample_email_template_with_placeholders.service_id, notification_id), queue='email')

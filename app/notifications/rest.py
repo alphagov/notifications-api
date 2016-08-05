@@ -158,7 +158,6 @@ def process_firetext_response():
 
     response_code = request.form.get('code')
     status = request.form.get('status')
-    statsd_client.incr('notifications.callback.firetext.code.{}'.format(response_code))
     current_app.logger.info('Firetext status: {}, extended error code: {}'.format(status, response_code))
 
     success, errors = process_sms_client_response(status=status,

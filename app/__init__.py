@@ -1,7 +1,7 @@
 import uuid
 import os
 
-from flask import request, url_for, g
+from flask import request, url_for, g, current_app
 from flask import Flask, _request_ctx_stack
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
@@ -48,8 +48,8 @@ def create_app(app_name=None):
     init_app(application)
     db.init_app(application)
     ma.init_app(application)
-    logging.init_app(application)
     statsd_client.init_app(application)
+    logging.init_app(application, statsd_client)
     firetext_client.init_app(application, statsd_client=statsd_client)
     loadtest_client.init_app(application, statsd_client=statsd_client)
     mmg_client.init_app(application, statsd_client=statsd_client)
@@ -107,8 +107,9 @@ def init_app(app):
                 return error
 
     @app.before_request
-    def record_start_time():
+    def record_request_details():
         g.start = monotonic()
+        g.endpoint = request.endpoint
 
     @app.after_request
     def after_request(response):

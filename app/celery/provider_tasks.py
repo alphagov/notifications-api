@@ -24,6 +24,7 @@ from notifications_utils.template import Template
 from notifications_utils.renderers import HTMLEmail, PlainTextEmail, SMSMessage
 
 from app.models import SMS_TYPE, EMAIL_TYPE, KEY_TYPE_TEST
+from app.statsd_decorators import statsd
 
 
 def retry_iteration_to_delay(retry=0):
@@ -50,9 +51,8 @@ def retry_iteration_to_delay(retry=0):
 
 
 @notify_celery.task(bind=True, name="send-sms-to-provider", max_retries=5, default_retry_delay=5)
+@statsd(namespace="tasks")
 def send_sms_to_provider(self, service_id, notification_id):
-    task_start = monotonic()
-
     service = dao_fetch_service_by_id(service_id)
     provider = provider_to_use(SMS_TYPE, notification_id)
     notification = get_notification_by_id(notification_id)
@@ -101,8 +101,6 @@ def send_sms_to_provider(self, service_id, notification_id):
         current_app.logger.info(
             "SMS {} sent to provider at {}".format(notification_id, notification.sent_at)
         )
-        statsd_client.incr("notifications.tasks.send-sms-to-provider")
-        statsd_client.timing("notifications.tasks.send-sms-to-provider.task-time", monotonic() - task_start)
         delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
         statsd_client.timing("notifications.sms.total-time", delta_milliseconds)
 
@@ -122,8 +120,8 @@ def provider_to_use(notification_type, notification_id):
 
 
 @notify_celery.task(bind=True, name="send-email-to-provider", max_retries=5, default_retry_delay=5)
+@statsd(namespace="tasks")
 def send_email_to_provider(self, service_id, notification_id):
-    task_start = monotonic()
     service = dao_fetch_service_by_id(service_id)
     provider = provider_to_use(EMAIL_TYPE, notification_id)
     notification = get_notification_by_id(notification_id)
@@ -183,7 +181,5 @@ def send_email_to_provider(self, service_id, notification_id):
         current_app.logger.info(
             "Email {} sent to provider at {}".format(notification_id, notification.sent_at)
         )
-        statsd_client.incr("notifications.tasks.send-email-to-provider")
-        statsd_client.timing("notifications.tasks.send-email-to-provider.task-time", monotonic() - task_start)
         delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
         statsd_client.timing("notifications.email.total-time", delta_milliseconds)

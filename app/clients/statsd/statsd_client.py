@@ -10,16 +10,15 @@ class StatsdClient(StatsClient):
             prefix=app.config.get('STATSD_PREFIX')
         )
         self.active = app.config.get('STATSD_ENABLED')
+        self.namespace = "notifications.api."
+
+    def format_stat_name(self, stat):
+        return self.namespace + stat
 
     def incr(self, stat, count=1, rate=1):
         if self.active:
-            super(StatsClient, self).incr(stat, count, rate)
+            super(StatsClient, self).incr(self.format_stat_name(stat), count, rate)
 
     def timing(self, stat, delta, rate=1):
         if self.active:
-            super(StatsClient, self).timing(stat, delta, rate)
-
-    def timing_with_dates(self, stat, start, end, rate=1):
-        if self.active:
-            delta = (start - end).total_seconds() * 1000
-            super(StatsClient, self).timing(stat, delta, rate)
+            super(StatsClient, self).timing(self.format_stat_name(stat), delta, rate)

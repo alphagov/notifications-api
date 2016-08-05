@@ -20,6 +20,11 @@ from app.models import Notification, NotificationStatistics, Job, KEY_TYPE_NORMA
 from tests.app.conftest import sample_notification
 
 
+def test_should_have_decorated_tasks_functions():
+    assert send_sms_to_provider.__wrapped__.__name__ == 'send_sms_to_provider'
+    assert send_email_to_provider.__wrapped__.__name__ == 'send_email_to_provider'
+
+
 def test_should_by_10_second_delay_as_default():
     assert provider_tasks.retry_iteration_to_delay() == 10
 
@@ -91,9 +96,6 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
-    mocker.patch('app.statsd_client.incr')
-    mocker.patch('app.statsd_client.timing_with_dates')
-    mocker.patch('app.statsd_client.timing')
 
     send_sms_to_provider(
         db_notification.service_id,
@@ -130,9 +132,6 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
 
     mocker.patch('app.aws_ses_client.send_email', return_value='reference')
     mocker.patch('app.aws_ses_client.get_name', return_value="ses")
-    mocker.patch('app.statsd_client.incr')
-    mocker.patch('app.statsd_client.timing_with_dates')
-    mocker.patch('app.statsd_client.timing')
 
     send_email_to_provider(
         db_notification.service_id,
@@ -297,29 +296,6 @@ def test_should_not_send_to_provider_when_status_is_not_created(notify_db, notif
     app.celery.research_mode_tasks.send_sms_response.apply_async.assert_not_called()
 
 
-def test_send_sms_statsd_updates(notify_db, notify_db_session, sample_service, sample_notification, mocker):
-    mocker.patch('app.statsd_client.incr')
-    mocker.patch('app.statsd_client.timing')
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
-
-    send_sms_to_provider(
-        sample_notification.service_id,
-        sample_notification.id
-    )
-
-    statsd_client.incr.assert_called_once_with("notifications.tasks.send-sms-to-provider")
-
-    statsd_client.timing.assert_has_calls([
-        call("notifications.tasks.send-sms-to-provider.task-time", ANY),
-        call("notifications.sms.total-time", ANY)
-    ])
-
-    # assert that the ANYs above are at least floats
-    for call_arg in statsd_client.timing.call_args_list:
-        assert isinstance(call_arg[0][1], float)
-
-
 def test_should_go_into_technical_error_if_exceeds_retries(
         notify_db,
         notify_db_session,
@@ -329,8 +305,6 @@ def test_should_go_into_technical_error_if_exceeds_retries(
     notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                                        service=sample_service, status='created')
 
-    mocker.patch('app.statsd_client.incr')
-    mocker.patch('app.statsd_client.timing')
     mocker.patch('app.mmg_client.send_sms', side_effect=SmsClientException("EXPECTED"))
     mocker.patch('app.celery.provider_tasks.send_sms_to_provider.retry', side_effect=MaxRetriesExceededError())
 
@@ -340,8 +314,6 @@ def test_should_go_into_technical_error_if_exceeds_retries(
     )
 
     provider_tasks.send_sms_to_provider.retry.assert_called_with(queue='retry', countdown=10)
-    assert statsd_client.incr.assert_not_called
-    assert statsd_client.timing.assert_not_called
 
     db_notification = Notification.query.filter_by(id=notification.id).one()
     assert db_notification.status == 'technical-failure'
@@ -369,9 +341,6 @@ def test_should_send_sms_sender_from_service_if_present(
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
-    mocker.patch('app.statsd_client.incr')
-    mocker.patch('app.statsd_client.timing_with_dates')
-    mocker.patch('app.statsd_client.timing')
 
     send_sms_to_provider(
         db_notification.service_id,
@@ -450,8 +419,6 @@ def test_send_email_to_provider_should_go_into_technical_error_if_exceeds_retrie
     notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                                        service=sample_service, status='created', template=sample_email_template)
 
-    mocker.patch('app.statsd_client.incr')
-    mocker.patch('app.statsd_client.timing')
     mocker.patch('app.aws_ses_client.send_email', side_effect=EmailClientException("EXPECTED"))
     mocker.patch('app.celery.provider_tasks.send_email_to_provider.retry', side_effect=MaxRetriesExceededError())
 
@@ -461,8 +428,6 @@ def test_send_email_to_provider_should_go_into_technical_error_if_exceeds_retrie
     )
 
     provider_tasks.send_email_to_provider.retry.assert_called_with(queue='retry', countdown=10)
-    assert statsd_client.incr.assert_not_called
-    assert statsd_client.timing.assert_not_called
 
     db_notification = Notification.query.filter_by(id=notification.id).one()
     assert db_notification.status == 'technical-failure'
@@ -472,31 +437,6 @@ def test_send_email_to_provider_should_go_into_technical_error_if_exceeds_retrie
     job = Job.query.get(notification.job.id)
     assert job.notification_count == 1
     assert job.notifications_failed == 1
-
-
-def test_send_email_to_provider_statsd_updates(notify_db, notify_db_session, sample_service,
-                                               sample_email_template, mocker):
-    mocker.patch('app.statsd_client.incr')
-    mocker.patch('app.statsd_client.timing')
-    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
-    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
-    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                                       template=sample_email_template)
-    send_email_to_provider(
-        notification.service_id,
-        notification.id
-    )
-
-    statsd_client.incr.assert_called_once_with("notifications.tasks.send-email-to-provider")
-
-    statsd_client.timing.assert_has_calls([
-        call("notifications.tasks.send-email-to-provider.task-time", ANY),
-        call("notifications.email.total-time", ANY)
-    ])
-
-    # assert that the ANYs above are at least floats
-    for call_arg in statsd_client.timing.call_args_list:
-        assert isinstance(call_arg[0][1], float)
 
 
 def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_created(notify_db, notify_db_session,
@@ -525,8 +465,6 @@ def test_send_email_should_use_service_reply_to_email(
         sample_service,
         sample_email_template,
         mocker):
-    mocker.patch('app.statsd_client.incr')
-    mocker.patch('app.statsd_client.timing')
     mocker.patch('app.aws_ses_client.send_email', return_value='reference')
     mocker.patch('app.aws_ses_client.get_name', return_value="ses")
 

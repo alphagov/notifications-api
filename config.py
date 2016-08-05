@@ -102,31 +102,38 @@ class Config(object):
     FROM_NUMBER = os.getenv('FROM_NUMBER')
 
     STATSD_ENABLED = False
-    STATSD_HOST = "localhost"
-    STATSD_PORT = None
+    STATSD_HOST = "statsd.hostedgraphite.com"
+    STATSD_PORT = 8125
     STATSD_PREFIX = None
 
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200
 
 
 class Development(Config):
+    CSV_UPLOAD_BUCKET_NAME = 'developement-martyn-notifications-csv-upload'
     DEBUG = True
 
 
 class Preview(Config):
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
+    STATSD_PREFIX = "preview"
 
 
 class Test(Development):
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
+    STATSD_PREFIX = "test"
 
 
 class Staging(Config):
     CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
+    STATSD_PREFIX = os.getenv('STATSD_PREFIX')
+    STATSD_ENABLED = True
 
 
 class Live(Config):
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
+    STATSD_ENABLED = True
+    STATSD_PREFIX = os.getenv('STATSD_PREFIX')
     STATSD_ENABLED = True
 
 
