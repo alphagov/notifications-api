@@ -514,10 +514,10 @@ def test_should_not_set_billable_units_if_research_mode(notify_db, sample_servic
 
 def test_get_html_email_renderer_should_return_for_normal_service(sample_service):
     renderer = provider_tasks.get_html_email_renderer(sample_service)
-    assert renderer.govuk_banner == True
-    assert renderer.brand_colour == None
-    assert renderer.brand_logo == None
-    assert renderer.brand_name == None
+    assert renderer.govuk_banner
+    assert renderer.brand_colour is None
+    assert renderer.brand_logo is None
+    assert renderer.brand_name is None
 
 
 @pytest.mark.parametrize('branding_type, govuk_banner', [
@@ -534,12 +534,11 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
     renderer = provider_tasks.get_html_email_renderer(sample_service)
 
     assert renderer.govuk_banner == govuk_banner
-    assert renderer.brand_colour == '#000000'
+    assert renderer.brand_colour == '000000'
     assert renderer.brand_name == 'Justice League'
 
 
-@pytest.mark.xfail(strict=True)
-def test_get_html_email_renderer_prepends_logo_path(branding_type, govuk_banner, notify_db, sample_service):
+def test_get_html_email_renderer_prepends_logo_path(notify_db, sample_service):
     sample_service.branding = BRANDING_ORG
     org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
     sample_service.organisation = org
@@ -548,7 +547,7 @@ def test_get_html_email_renderer_prepends_logo_path(branding_type, govuk_banner,
 
     renderer = provider_tasks.get_html_email_renderer(sample_service)
 
-    assert renderer.brand_logo == 'https://localhost:6062/test/assets/images/justice-league.png'
+    assert renderer.brand_logo == 'http://localhost:6012/static/images/email-template/crests/justice-league.png'
 
 
 def _get_provider_statistics(service, **kwargs):
