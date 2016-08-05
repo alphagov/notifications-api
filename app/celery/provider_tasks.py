@@ -23,7 +23,7 @@ from app.dao.templates_dao import dao_get_template_by_id
 from notifications_utils.template import Template, get_sms_fragment_count
 from notifications_utils.renderers import HTMLEmail, PlainTextEmail, SMSMessage
 
-from app.models import SMS_TYPE, EMAIL_TYPE, KEY_TYPE_TEST
+from app.models import SMS_TYPE, EMAIL_TYPE, KEY_TYPE_TEST, BRANDING_ORG
 from app.statsd_decorators import statsd
 
 
@@ -133,7 +133,7 @@ def send_email_to_provider(self, service_id, notification_id):
             html_email = Template(
                 template_dict,
                 values=notification.personalisation,
-                renderer=HTMLEmail()
+                renderer=get_html_email_renderer(service)
             )
 
             plain_text_email = Template(
@@ -185,3 +185,17 @@ def send_email_to_provider(self, service_id, notification_id):
         )
         delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
         statsd_client.timing("email.total-time", delta_milliseconds)
+
+
+def get_html_email_renderer(service):
+    govuk_banner = service.branding != BRANDING_ORG
+    if service.organisation:
+        branding = {
+            'brand_colour': service.organisation.colour,
+            'brand_logo': service.organisation.logo,
+            'brand_name': service.organisation.name,
+        }
+    else:
+        branding = {}
+
+    return HTMLEmail(govuk_banner=govuk_banner, **branding)

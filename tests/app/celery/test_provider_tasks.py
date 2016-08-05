@@ -16,7 +16,16 @@ from app.clients.sms import SmsClientException
 from app.dao import notifications_dao, provider_details_dao
 from app.dao import provider_statistics_dao
 from app.dao.provider_statistics_dao import get_provider_statistics
-from app.models import Notification, NotificationStatistics, Job, KEY_TYPE_NORMAL, KEY_TYPE_TEST
+from app.models import (
+    Notification,
+    NotificationStatistics,
+    Job,
+    Organisation,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEST,
+    BRANDING_ORG,
+    BRANDING_BOTH
+)
 from tests.app.conftest import sample_notification
 
 
@@ -501,6 +510,45 @@ def test_should_not_set_billable_units_if_research_mode(notify_db, sample_servic
 
     persisted_notification = notifications_dao.get_notification(sample_service.id, sample_notification.id)
     assert persisted_notification.billable_units == 0
+
+
+def test_get_html_email_renderer_should_return_for_normal_service(sample_service):
+    renderer = provider_tasks.get_html_email_renderer(sample_service)
+    assert renderer.govuk_banner == True
+    assert renderer.brand_colour == None
+    assert renderer.brand_logo == None
+    assert renderer.brand_name == None
+
+
+@pytest.mark.parametrize('branding_type, govuk_banner', [
+    (BRANDING_ORG, False),
+    (BRANDING_BOTH, True)
+])
+def test_get_html_email_renderer_with_branding_details(branding_type, govuk_banner, notify_db, sample_service):
+    sample_service.branding = branding_type
+    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
+    sample_service.organisation = org
+    notify_db.session.add_all([sample_service, org])
+    notify_db.session.commit()
+
+    renderer = provider_tasks.get_html_email_renderer(sample_service)
+
+    assert renderer.govuk_banner == govuk_banner
+    assert renderer.brand_colour == '#000000'
+    assert renderer.brand_name == 'Justice League'
+
+
+@pytest.mark.xfail(strict=True)
+def test_get_html_email_renderer_prepends_logo_path(branding_type, govuk_banner, notify_db, sample_service):
+    sample_service.branding = BRANDING_ORG
+    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
+    sample_service.organisation = org
+    notify_db.session.add_all([sample_service, org])
+    notify_db.session.commit()
+
+    renderer = provider_tasks.get_html_email_renderer(sample_service)
+
+    assert renderer.brand_logo == 'https://localhost:6062/test/assets/images/justice-league.png'
 
 
 def _get_provider_statistics(service, **kwargs):
