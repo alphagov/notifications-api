@@ -1028,7 +1028,7 @@ def _notification_json(sample_template, job_id=None, id=None, status=None):
         'template_id': sample_template.id,
         'template_version': sample_template.version,
         'created_at': datetime.utcnow(),
-        'content_char_count': 160,
+        'billable_units': 1,
         'notification_type': sample_template.template_type,
         'key_type': KEY_TYPE_NORMAL
     }

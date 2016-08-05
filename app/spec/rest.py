@@ -1,4 +1,4 @@
-from flask import jsonify, current_app, Blueprint
+from flask import jsonify, Blueprint
 from apispec import APISpec
 
 
@@ -11,7 +11,7 @@ api_spec = APISpec(
 )
 
 api_spec.definition('NotificationWithTemplateSchema', properties={
-    "content_char_count": {
+    "billable_units": {
         "format": "int32",
         "type": "integer"
     },

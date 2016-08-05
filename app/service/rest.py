@@ -168,13 +168,7 @@ def remove_user_from_service(service_id, user_id):
 
 @service.route('/<uuid:service_id>/fragment/aggregate_statistics')
 def get_service_provider_aggregate_statistics(service_id):
-    service = dao_fetch_service_by_id(service_id)
-    data = from_to_date_schema.load(request.args).data
-    return jsonify(data=get_fragment_count(
-        service,
-        date_from=(data.pop('date_from') if 'date_from' in data else date.today()),
-        date_to=(data.pop('date_to') if 'date_to' in data else date.today())
-    ))
+    return jsonify(data=get_fragment_count(service_id))
 
 
 # This is placeholder get method until more thought
