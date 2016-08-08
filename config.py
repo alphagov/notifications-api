@@ -112,7 +112,7 @@ class Config(object):
 
 class Development(Config):
     NOTIFY_ENVIRONMENT = 'development'
-    CSV_UPLOAD_BUCKET_NAME = 'developement-martyn-notifications-csv-upload'
+    CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
     DEBUG = True
 
 
