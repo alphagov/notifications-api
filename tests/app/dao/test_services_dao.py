@@ -29,6 +29,7 @@ from app.models import (
     VerifyCode,
     ApiKey,
     Template,
+    TemplateHistory,
     Job,
     Notification,
     NotificationHistory,

@@ -249,7 +249,7 @@ class TemplateHistory(db.Model):
     subject = db.Column(db.Text)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     created_by = db.relationship('User')
-    version = db.Column(db.Integer)
+    version = db.Column(db.Integer, primary_key=True)
 
 
 MMG_PROVIDER = "mmg"

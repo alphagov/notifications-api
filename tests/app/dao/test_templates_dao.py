@@ -6,7 +6,7 @@ from app.dao.templates_dao import (
     dao_update_template,
     dao_get_template_versions)
 from tests.app.conftest import sample_template as create_sample_template
-from app.models import Template
+from app.models import Template, TemplateHistory
 import pytest
 
 
@@ -261,12 +261,16 @@ def test_get_template_versions(sample_template):
     sample_template.content = 'new version'
     dao_update_template(sample_template)
     versions = dao_get_template_versions(service_id=sample_template.service_id, template_id=sample_template.id)
-    assert versions.__len__() == 2
-    for x in versions:
-        if x.version == 2:
-            assert x.content == 'new version'
-        else:
-            assert x.content == original_content
+    assert len(versions) == 2
+    versions = sorted(versions, key=lambda x: x.version)
+    assert versions[0].content == original_content
+    assert versions[1].content == 'new version'
+
+    assert versions[0].created_at == versions[1].created_at
+
+    assert versions[0].updated_at is None
+    assert versions[1].updated_at is not None
+
     from app.schemas import template_history_schema
     v = template_history_schema.load(versions, many=True)
-    assert v.__len__() == 2
+    assert len(v) == 2

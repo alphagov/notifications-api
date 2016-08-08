@@ -172,17 +172,11 @@ class TemplateSchema(BaseTemplateSchema):
 
 class TemplateHistorySchema(BaseSchema):
 
-    class Meta:
-        # Use the base model class that the history class is created from
-        model = models.Template
-    # We have to use a method here because the relationship field on the
-    # history object is not created.
-    created_by = fields.Method("populate_created_by", dump_only=True)
+    created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
     created_at = field_for(models.Template, 'created_at', format='%Y-%m-%d %H:%M:%S.%f')
 
-    def populate_created_by(self, data):
-        usr = models.User.query.filter_by(id=data.created_by_id).one()
-        return {'id': str(usr.id), 'name': usr.name, 'email_address': usr.email_address}
+    class Meta:
+        model = models.TemplateHistory
 
 
 class NotificationsStatisticsSchema(BaseSchema):
