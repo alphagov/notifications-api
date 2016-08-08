@@ -10,7 +10,7 @@ class StatsdClient(StatsClient):
             prefix=app.config.get('STATSD_PREFIX')
         )
         self.active = app.config.get('STATSD_ENABLED')
-        self.namespace = "notifications.api."
+        self.namespace = app.config.get('NOTIFY_ENVIRONMENT') + ".notifications.api."
 
     def format_stat_name(self, stat):
         return self.namespace + stat

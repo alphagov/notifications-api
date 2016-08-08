@@ -110,27 +110,32 @@ class Config(object):
 
 
 class Development(Config):
+    NOTIFY_ENVIRONMENT = 'development'
     CSV_UPLOAD_BUCKET_NAME = 'developement-martyn-notifications-csv-upload'
     DEBUG = True
 
 
 class Preview(Config):
+    NOTIFY_ENVIRONMENT = 'preview'
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
     STATSD_PREFIX = "preview"
 
 
 class Test(Development):
+    NOTIFY_ENVIRONMENT = 'test'
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
     STATSD_PREFIX = "test"
 
 
 class Staging(Config):
+    NOTIFY_ENVIRONMENT = 'staging'
     CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
     STATSD_PREFIX = os.getenv('STATSD_PREFIX')
     STATSD_ENABLED = True
 
 
 class Live(Config):
+    NOTIFY_ENVIRONMENT = 'live'
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
     STATSD_ENABLED = True
     STATSD_PREFIX = os.getenv('STATSD_PREFIX')
