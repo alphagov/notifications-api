@@ -102,7 +102,7 @@ def send_sms_to_provider(self, service_id, notification_id):
             "SMS {} sent to provider at {}".format(notification_id, notification.sent_at)
         )
         delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
-        statsd_client.timing("notifications.sms.total-time", delta_milliseconds)
+        statsd_client.timing("sms.total-time", delta_milliseconds)
 
 
 def provider_to_use(notification_type, notification_id):
@@ -182,4 +182,4 @@ def send_email_to_provider(self, service_id, notification_id):
             "Email {} sent to provider at {}".format(notification_id, notification.sent_at)
         )
         delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
-        statsd_client.timing("notifications.email.total-time", delta_milliseconds)
+        statsd_client.timing("email.total-time", delta_milliseconds)

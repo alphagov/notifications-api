@@ -679,7 +679,7 @@ def test_process_mmg_response_records_statsd(notify_api, sample_notification, mo
         client.post(path='notifications/sms/mmg',
                     data=data,
                     headers=[('Content-Type', 'application/json')])
-        app.statsd_client.incr.assert_any_call("notifications.callback.mmg.delivered")
+        app.statsd_client.incr.assert_any_call("callback.mmg.delivered")
 
 
 def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db_session, mocker):
@@ -695,7 +695,7 @@ def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db
                 ),
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
-            app.statsd_client.incr.assert_any_call("notifications.callback.firetext.delivered")
+            app.statsd_client.incr.assert_any_call("callback.firetext.delivered")
 
 
 def ses_validation_code_callback():
