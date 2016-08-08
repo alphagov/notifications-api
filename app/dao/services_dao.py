@@ -24,6 +24,7 @@ from app.models import (
     InvitedUser,
     Service
 )
+from app.statsd_decorators import statsd
 
 
 def dao_fetch_all_services():
@@ -136,10 +137,12 @@ def delete_service_and_all_associated_db_objects(service):
     db.session.commit()
 
 
+@statsd(namespace="dao")
 def dao_fetch_stats_for_service(service_id):
     return _stats_for_service_query(service_id).all()
 
 
+@statsd(namespace="dao")
 def dao_fetch_todays_stats_for_service(service_id):
     return _stats_for_service_query(service_id).filter(
         func.date(Notification.created_at) == date.today()
@@ -159,6 +162,7 @@ def _stats_for_service_query(service_id):
     )
 
 
+@statsd(namespace="dao")
 def dao_fetch_weekly_historical_stats_for_service(service_id):
     monday_of_notification_week = func.date_trunc('week', NotificationHistory.created_at).label('week_start')
     return db.session.query(

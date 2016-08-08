@@ -10,7 +10,6 @@ from notifications_utils.recipients import (
 from notifications_utils.template import Template
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import statsd_client
 from app import (
     create_uuid,
     DATETIME_FORMAT,
@@ -36,11 +35,12 @@ from app.models import (
     SMS_TYPE,
     KEY_TYPE_NORMAL
 )
+from app.statsd_decorators import statsd
 
 
 @notify_celery.task(name="process-job")
+@statsd(namespace="tasks")
 def process_job(job_id):
-    task_start = monotonic()
     start = datetime.utcnow()
     job = dao_get_job_by_id(job_id)
 
@@ -116,11 +116,10 @@ def process_job(job_id):
     current_app.logger.info(
         "Job {} created at {} started at {} finished at {}".format(job_id, job.created_at, start, finished)
     )
-    statsd_client.incr("notifications.tasks.process-job")
-    statsd_client.timing("notifications.tasks.process-job.task-time", monotonic() - task_start)
 
 
 @notify_celery.task(name="remove-job")
+@statsd(namespace="tasks")
 def remove_job(job_id):
     job = dao_get_job_by_id(job_id)
     s3.remove_job_from_s3(job.service.id, str(job_id))
@@ -128,6 +127,7 @@ def remove_job(job_id):
 
 
 @notify_celery.task(bind=True, name="send-sms", max_retries=5, default_retry_delay=5)
+@statsd(namespace="tasks")
 def send_sms(self,
              service_id,
              notification_id,
@@ -135,7 +135,6 @@ def send_sms(self,
              created_at,
              api_key_id=None,
              key_type=KEY_TYPE_NORMAL):
-    task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
@@ -154,21 +153,19 @@ def send_sms(self,
             "SMS {} created at {}".format(notification_id, created_at)
         )
 
-        statsd_client.incr("notifications.tasks.send-sms")
-        statsd_client.timing("notifications.tasks.send-sms.task-time", monotonic() - task_start)
     except SQLAlchemyError as e:
         current_app.logger.exception(e)
         raise self.retry(queue="retry", exc=e)
 
 
 @notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=5)
+@statsd(namespace="tasks")
 def send_email(self, service_id,
                notification_id,
                encrypted_notification,
                created_at,
                api_key_id=None,
                key_type=KEY_TYPE_NORMAL):
-    task_start = monotonic()
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
@@ -182,8 +179,6 @@ def send_email(self, service_id,
         send_email_to_provider.apply_async((service_id, notification_id), queue='email')
 
         current_app.logger.info("Email {} created at {}".format(notification_id, created_at))
-        statsd_client.incr("notifications.tasks.send-email")
-        statsd_client.timing("notifications.tasks.send-email.task-time", monotonic() - task_start)
     except SQLAlchemyError as e:
         current_app.logger.exception(e)
         raise self.retry(queue="retry", exc=e)

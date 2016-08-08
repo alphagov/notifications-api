@@ -44,6 +44,12 @@ from tests.app.conftest import (
 )
 
 
+def test_should_have_decorated_services_dao_functions():
+    assert dao_fetch_weekly_historical_stats_for_service.__wrapped__.__name__ == 'dao_fetch_weekly_historical_stats_for_service'  # noqa
+    assert dao_fetch_todays_stats_for_service.__wrapped__.__name__ == 'dao_fetch_todays_stats_for_service'  # noqa
+    assert dao_fetch_stats_for_service.__wrapped__.__name__ == 'dao_fetch_stats_for_service'  # noqa
+
+
 def test_create_service(sample_user):
     assert Service.query.count() == 0
     service = Service(name="service_name",
