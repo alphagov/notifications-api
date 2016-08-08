@@ -542,34 +542,6 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
             assert stats.emails_failed == 0
 
 
-def test_ses_callback_should_update_record_statsd(
-        notify_api,
-        notify_db,
-        notify_db_session,
-        sample_email_template,
-        mocker):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            mocker.patch('app.statsd_client.incr')
-
-            notification = create_sample_notification(
-                notify_db,
-                notify_db_session,
-                template=sample_email_template,
-                reference='ref',
-                status='sending'
-            )
-
-            assert get_notification_by_id(notification.id).status == 'sending'
-
-            client.post(
-                path='/notifications/email/ses',
-                data=ses_notification_callback(),
-                headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-            )
-            app.statsd_client.incr.assert_called_once_with("notifications.callback.ses.delivered")
-
-
 def test_ses_callback_should_set_status_to_temporary_failure(notify_api,
                                                              notify_db,
                                                              notify_db_session,
@@ -707,9 +679,7 @@ def test_process_mmg_response_records_statsd(notify_api, sample_notification, mo
         client.post(path='notifications/sms/mmg',
                     data=data,
                     headers=[('Content-Type', 'application/json')])
-        assert app.statsd_client.incr.call_count == 2
-        app.statsd_client.incr.assert_any_call("notifications.callback.mmg.delivered")
-        app.statsd_client.incr.assert_any_call("notifications.callback.mmg.status.3")
+        app.statsd_client.incr.assert_any_call("callback.mmg.delivered")
 
 
 def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db_session, mocker):
@@ -725,10 +695,7 @@ def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db
                 ),
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
-            assert app.statsd_client.incr.call_count == 3
-            app.statsd_client.incr.assert_any_call("notifications.callback.firetext.code.101")
-            app.statsd_client.incr.assert_any_call("notifications.callback.firetext.status.0")
-            app.statsd_client.incr.assert_any_call("notifications.callback.firetext.delivered")
+            app.statsd_client.incr.assert_any_call("callback.firetext.delivered")
 
 
 def ses_validation_code_callback():

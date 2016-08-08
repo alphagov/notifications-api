@@ -106,10 +106,11 @@ class FiretextClient(SmsClient):
                     api_error.message
                 )
             )
-            self.statsd_client.incr("notifications.clients.firetext.error")
+            self.statsd_client.incr("clients.firetext.error")
             raise api_error
         finally:
             elapsed_time = monotonic() - start_time
             self.current_app.logger.info("Firetext request finished in {}".format(elapsed_time))
-            self.statsd_client.timing("notifications.clients.firetext.request-time", elapsed_time)
+            self.statsd_client.incr("clients.firetext.success")
+            self.statsd_client.timing("clients.firetext.request-time", elapsed_time)
         return response

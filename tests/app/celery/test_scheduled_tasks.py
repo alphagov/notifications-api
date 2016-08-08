@@ -11,6 +11,14 @@ from app.celery.scheduled_tasks import (delete_verify_codes,
 from tests.app.conftest import sample_notification
 
 
+def test_should_have_decorated_tasks_functions():
+    assert delete_verify_codes.__wrapped__.__name__ == 'delete_verify_codes'
+    assert delete_successful_notifications.__wrapped__.__name__ == 'delete_successful_notifications'
+    assert delete_failed_notifications.__wrapped__.__name__ == 'delete_failed_notifications'
+    assert timeout_notifications.__wrapped__.__name__ == 'timeout_notifications'
+    assert delete_invitations.__wrapped__.__name__ == 'delete_invitations'
+
+
 def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
     mocked = mocker.patch('app.celery.scheduled_tasksgit .delete_notifications_created_more_than_a_week_ago')
     delete_successful_notifications()

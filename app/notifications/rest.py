@@ -102,7 +102,7 @@ def process_ses_response():
                     )
                 )
 
-            statsd_client.incr('notifications.callback.ses.{}'.format(notification_statistics_status))
+            statsd_client.incr('callback.ses.{}'.format(notification_statistics_status))
             return jsonify(
                 result="success", message="SES callback succeeded"
             ), 200
@@ -158,7 +158,6 @@ def process_firetext_response():
 
     response_code = request.form.get('code')
     status = request.form.get('status')
-    statsd_client.incr('notifications.callback.firetext.code.{}'.format(response_code))
     current_app.logger.info('Firetext status: {}, extended error code: {}'.format(status, response_code))
 
     success, errors = process_sms_client_response(status=status,
@@ -306,7 +305,6 @@ def send_notification(notification_type):
             queue='email'
         )
 
-    statsd_client.incr('notifications.api.{}'.format(notification_type))
     return jsonify(
         data=get_notification_return_data(
             notification_id,

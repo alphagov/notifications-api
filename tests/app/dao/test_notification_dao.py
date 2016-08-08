@@ -5,6 +5,7 @@ from functools import partial
 import pytest
 
 from freezegun import freeze_time
+from mock import ANY
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from app import db
@@ -32,12 +33,34 @@ from app.dao.notifications_dao import (
     update_provider_stats,
     update_notification_status_by_reference,
     dao_get_template_statistics_for_service,
-    get_notifications_for_service
-)
+    get_notifications_for_service, dao_get_7_day_agg_notification_statistics_for_service,
+    dao_get_potential_notification_statistics_for_day, dao_get_notification_statistics_for_day,
+    dao_get_template_statistics_for_template, get_notification_by_id)
 
 from notifications_utils.template import get_sms_fragment_count
 
 from tests.app.conftest import (sample_notification)
+
+
+def test_should_have_decorated_notifications_dao_functions():
+    assert dao_get_notification_statistics_for_service.__wrapped__.__name__ == 'dao_get_notification_statistics_for_service'  # noqa
+    assert dao_get_notification_statistics_for_service_and_day.__wrapped__.__name__ == 'dao_get_notification_statistics_for_service_and_day'  # noqa
+    assert dao_get_notification_statistics_for_day.__wrapped__.__name__ == 'dao_get_notification_statistics_for_day'  # noqa
+    assert dao_get_potential_notification_statistics_for_day.__wrapped__.__name__ == 'dao_get_potential_notification_statistics_for_day'  # noqa
+    assert dao_get_7_day_agg_notification_statistics_for_service.__wrapped__.__name__ == 'dao_get_7_day_agg_notification_statistics_for_service'  # noqa
+    assert dao_get_template_statistics_for_service.__wrapped__.__name__ == 'dao_get_template_statistics_for_service'  # noqa
+    assert dao_get_template_statistics_for_template.__wrapped__.__name__ == 'dao_get_template_statistics_for_template'  # noqa
+    assert dao_create_notification.__wrapped__.__name__ == 'dao_create_notification'  # noqa
+    assert update_notification_status_by_id.__wrapped__.__name__ == 'update_notification_status_by_id'  # noqa
+    assert dao_update_notification.__wrapped__.__name__ == 'dao_update_notification'  # noqa
+    assert update_provider_stats.__wrapped__.__name__ == 'update_provider_stats'  # noqa
+    assert update_notification_status_by_reference.__wrapped__.__name__ == 'update_notification_status_by_reference'  # noqa
+    assert get_notification_for_job.__wrapped__.__name__ == 'get_notification_for_job'  # noqa
+    assert get_notifications_for_job.__wrapped__.__name__ == 'get_notifications_for_job'  # noqa
+    assert get_notification.__wrapped__.__name__ == 'get_notification'  # noqa
+    assert get_notifications_for_service.__wrapped__.__name__ == 'get_notifications_for_service'  # noqa
+    assert get_notification_by_id.__wrapped__.__name__ == 'get_notification_by_id'  # noqa
+    assert delete_notifications_created_more_than_a_week_ago.__wrapped__.__name__ == 'delete_notifications_created_more_than_a_week_ago'  # noqa
 
 
 def test_should_by_able_to_update_status_by_reference(sample_email_template, ses_provider):
@@ -163,7 +186,7 @@ def test_should_not_update_status_one_notification_status_is_delivered(notify_db
     _assert_job_stats(notification.job_id, sent=1, count=1, delivered=1, failed=0)
 
 
-def test_should_be_able_to_record_statistics_failure_for_sms(notify_db, notify_db_session,):
+def test_should_be_able_to_record_statistics_failure_for_sms(notify_db, notify_db_session, ):
     notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session, status='sending')
     assert Notification.query.get(notification.id).status == 'sending'
 
@@ -313,7 +336,6 @@ def test_should_be_able_to_get_all_statistics_for_a_service_for_several_days_pre
 def test_create_notification_creates_notification_with_personalisation(notify_db, notify_db_session,
                                                                        sample_template_with_placeholders,
                                                                        sample_job, mmg_provider):
-
     assert Notification.query.count() == 0
     assert NotificationStatistics.query.count() == 0
     assert TemplateStatistics.query.count() == 0
@@ -664,7 +686,6 @@ def test_get_all_notifications_for_job(notify_db, notify_db_session, sample_job)
 
 
 def test_get_all_notifications_for_job_by_status(notify_db, notify_db_session, sample_job):
-
     notifications = partial(get_notifications_for_job, sample_job.service.id, sample_job.id)
 
     for status in NOTIFICATION_STATUS_TYPES:

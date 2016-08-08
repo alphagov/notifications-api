@@ -106,10 +106,11 @@ class MMGClient(SmsClient):
                     api_error.message
                 )
             )
-            self.statsd_client.incr("notifications.clients.mmg.error")
+            self.statsd_client.incr("clients.mmg.error")
             raise api_error
         finally:
             elapsed_time = monotonic() - start_time
-            self.statsd_client.timing("notifications.clients.mmg.request-time", elapsed_time)
+            self.statsd_client.timing("clients.mmg.request-time", elapsed_time)
+            self.statsd_client.incr("clients.mmg.success")
             self.current_app.logger.info("MMG request finished in {}".format(elapsed_time))
         return response
