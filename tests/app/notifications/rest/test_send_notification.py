@@ -10,7 +10,7 @@ from notifications_python_client.authentication import create_jwt_token
 
 import app
 from app import encryption
-from app.models import ApiKey, KEY_TYPE_TEAM, KEY_TYPE_TEST
+from app.models import ApiKey, KEY_TYPE_TEAM
 from app.dao.templates_dao import dao_get_all_templates_for_service, dao_update_template
 from app.dao.services_dao import dao_update_service
 from app.dao.api_key_dao import save_model_api_key
@@ -37,7 +37,6 @@ def test_create_sms_should_reject_if_missing_required_fields(notify_api, sample_
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            app.celery.tasks.send_sms.apply_async.assert_not_called()
             assert json_resp['result'] == 'error'
             assert 'Missing data for required field.' in json_resp['message']['to'][0]
             assert 'Missing data for required field.' in json_resp['message']['template'][0]
@@ -313,13 +312,13 @@ def test_should_not_allow_template_from_another_service(notify_api, service_fact
     ]
 )
 def test_should_not_allow_template_content_too_large(
-    notify_api,
-    notify_db,
-    notify_db_session,
-    sample_user,
-    template_type,
-    mocker,
-    should_error
+        notify_api,
+        notify_db,
+        notify_db_session,
+        sample_user,
+        template_type,
+        mocker,
+        should_error
 ):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -653,50 +652,6 @@ def test_should_allow_api_call_if_under_day_limit_regardless_of_type(notify_db, 
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             assert response.status_code == 201
-
-
-def test_should_record_email_request_in_statsd(notify_api, sample_email_template, mocker):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            mocker.patch('app.statsd_client.incr')
-            mocker.patch('app.celery.tasks.send_email.apply_async')
-            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
-
-            data = {
-                'to': 'ok@ok.com',
-                'template': str(sample_email_template.id)
-            }
-
-            auth_header = create_authorization_header(service_id=sample_email_template.service_id)
-
-            response = client.post(
-                path='/notifications/email',
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert response.status_code == 201
-            app.statsd_client.incr.assert_called_once_with("notifications.api.email")
-
-
-def test_should_record_sms_request_in_statsd(notify_api, sample_template, mocker):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            mocker.patch('app.statsd_client.incr')
-            mocker.patch('app.celery.tasks.send_sms.apply_async')
-            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
-
-            data = {
-                'to': '07123123123',
-                'template': str(sample_template.id)
-            }
-
-            auth_header = create_authorization_header(service_id=sample_template.service_id)
-
-            response = client.post(
-                path='/notifications/sms',
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert response.status_code == 201
-            app.statsd_client.incr.assert_called_once_with("notifications.api.sms")
 
 
 def test_should_not_return_html_in_body(notify_api, notify_db, notify_db_session, mocker):

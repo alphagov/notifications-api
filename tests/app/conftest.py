@@ -371,6 +371,16 @@ def sample_notification(notify_db,
 
 
 @pytest.fixture(scope='function')
+def mock_statsd_inc(mocker):
+    return mocker.patch('app.statsd_client.incr')
+
+
+@pytest.fixture(scope='function')
+def mock_statsd_timing(mocker):
+    return mocker.patch('app.statsd_client.timing')
+
+
+@pytest.fixture(scope='function')
 def sample_notification_history(notify_db,
                                 notify_db_session,
                                 sample_template,

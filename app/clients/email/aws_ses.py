@@ -93,9 +93,10 @@ class AwsSesClient(EmailClient):
                 ReplyToAddresses=reply_to_addresses)
             elapsed_time = monotonic() - start_time
             current_app.logger.info("AWS SES request finished in {}".format(elapsed_time))
-            self.statsd_client.timing("notifications.clients.ses.request-time", elapsed_time)
+            self.statsd_client.timing("clients.ses.request-time", elapsed_time)
+            self.statsd_client.incr("clients.ses.success")
             return response['MessageId']
         except Exception as e:
             # TODO logging exceptions
-            self.statsd_client.incr("notifications.clients.ses.error")
+            self.statsd_client.incr("clients.ses.error")
             raise AwsSesClientException(str(e))

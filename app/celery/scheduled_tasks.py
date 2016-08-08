@@ -9,9 +9,11 @@ from app.dao.invited_user_dao import delete_invitations_created_more_than_two_da
 from app.dao.notifications_dao import delete_notifications_created_more_than_a_week_ago, get_notifications, \
     update_notification_status_by_id
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
+from app.statsd_decorators import statsd
 
 
 @notify_celery.task(name="delete-verify-codes")
+@statsd(namespace="tasks")
 def delete_verify_codes():
     try:
         start = datetime.utcnow()
@@ -25,6 +27,7 @@ def delete_verify_codes():
 
 
 @notify_celery.task(name="delete-successful-notifications")
+@statsd(namespace="tasks")
 def delete_successful_notifications():
     try:
         start = datetime.utcnow()
@@ -42,6 +45,7 @@ def delete_successful_notifications():
 
 
 @notify_celery.task(name="delete-failed-notifications")
+@statsd(namespace="tasks")
 def delete_failed_notifications():
     try:
         start = datetime.utcnow()
@@ -62,6 +66,7 @@ def delete_failed_notifications():
 
 
 @notify_celery.task(name="delete-invitations")
+@statsd(namespace="tasks")
 def delete_invitations():
     try:
         start = datetime.utcnow()
@@ -75,6 +80,7 @@ def delete_invitations():
 
 
 @notify_celery.task(name='timeout-sending-notifications')
+@statsd(namespace="tasks")
 def timeout_notifications():
     # TODO: optimize the query by adding the date where clause to this query.
     notifications = get_notifications(filter_dict={'status': 'sending'})
