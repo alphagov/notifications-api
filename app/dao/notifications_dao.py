@@ -391,7 +391,7 @@ def get_notifications_for_service(service_id,
     query = Notification.query.filter(*filters)
     query = _filter_query(query, filter_dict)
     if personalisation:
-        query.options(
+        query = query.options(
             joinedload('actual_template')
         )
     return query.order_by(desc(Notification.created_at)).paginate(

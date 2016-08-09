@@ -8,6 +8,7 @@ from freezegun import freeze_time
 
 from app.dao.notifications_dao import dao_update_notification
 from app.dao.api_key_dao import save_model_api_key
+from app.dao.templates_dao import dao_update_template
 from app.models import ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
@@ -29,7 +30,9 @@ def test_get_sms_notification_by_id(notify_api, sample_notification):
             assert notification['template'] == {
                 'id': str(sample_notification.template.id),
                 'name': sample_notification.template.name,
-                'template_type': sample_notification.template.template_type}
+                'template_type': sample_notification.template.template_type,
+                'version': 1
+            }
             assert notification['job'] == {
                 'id': str(sample_notification.job.id),
                 'original_file_name': sample_notification.job.original_file_name
@@ -62,7 +65,9 @@ def test_get_email_notification_by_id(notify_api, notify_db, notify_db_session, 
             assert notification['template'] == {
                 'id': str(email_notification.template.id),
                 'name': email_notification.template.name,
-                'template_type': email_notification.template.template_type}
+                'template_type': email_notification.template.template_type,
+                'version': 1
+            }
             assert notification['job'] == {
                 'id': str(email_notification.job.id),
                 'original_file_name': email_notification.job.original_file_name
@@ -166,7 +171,9 @@ def test_get_all_notifications(notify_api, sample_notification):
             assert notifications['notifications'][0]['template'] == {
                 'id': str(sample_notification.template.id),
                 'name': sample_notification.template.name,
-                'template_type': sample_notification.template.template_type}
+                'template_type': sample_notification.template.template_type,
+                'version': 1
+            }
             assert notifications['notifications'][0]['job'] == {
                 'id': str(sample_notification.job.id),
                 'original_file_name': sample_notification.job.original_file_name
@@ -626,8 +633,9 @@ def test_get_notification_selects_correct_template_for_personalisation(notify_ap
                                notify_db_session,
                                service=sample_template.service,
                                template=sample_template)
-
+    original_content = sample_template.content
     sample_template.content = '((name))'
+    dao_update_template(sample_template)
     notify_db.session.commit()
 
     create_sample_notification(notify_db,
@@ -641,14 +649,18 @@ def test_get_notification_selects_correct_template_for_personalisation(notify_ap
 
         response = client.get(path='/notifications', headers=[auth_header])
 
-    assert response.status_code == 200
+        assert response.status_code == 200
 
-    resp = json.loads(response.get_data(as_text=True))
-    assert len(resp['notifications']) == 2
-    assert resp['notifications'][0]['template_version'] == 1
-    assert resp['notifications'][0]['body'] == 'This is a template'
-    assert resp['notifications'][1]['template_version'] == 2
-    assert resp['notifications'][1]['body'] == 'foo'
+        resp = json.loads(response.get_data(as_text=True))
+        notis = sorted(resp['notifications'], key=lambda x: x['template_version'])
+        assert len(notis) == 2
+        assert notis[0]['template_version'] == 1
+        assert notis[0]['body'] == original_content
+        assert notis[1]['template_version'] == 2
+        assert notis[1]['body'] == 'foo'
+
+        assert notis[0]['template_version'] == notis[0]['template']['version']
+        assert notis[1]['template_version'] == notis[1]['template']['version']
 
 
 def _create_auth_header_from_key(api_key):

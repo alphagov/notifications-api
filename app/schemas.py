@@ -282,12 +282,21 @@ class NotificationWithTemplateSchema(BaseSchema):
         strict = True
         exclude = ('_personalisation',)
 
-    template = fields.Nested(TemplateSchema, only=["id", "name", "template_type", "content", "subject"], dump_only=True)
+    template = fields.Nested(
+        TemplateSchema,
+        only=['id', 'version', 'name', 'template_type', 'content', 'subject'],
+        dump_only=True
+    )
     job = fields.Nested(JobSchema, only=["id", "original_file_name"], dump_only=True)
     personalisation = fields.Dict(required=False)
 
 
 class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
+    template = None
+    actual_template = fields.Nested(TemplateHistorySchema,
+                                    only=['id', 'name', 'template_type', 'content', 'subject', 'version'],
+                                    dump_only=True)
+
     @pre_dump
     def handle_personalisation_property(self, in_data):
         self.personalisation = in_data.personalisation
@@ -295,6 +304,7 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
 
     @post_dump
     def handle_template_merge(self, in_data):
+        in_data['template'] = in_data.pop('actual_template')
         from notifications_utils.template import Template
         template = Template(
             in_data['template'],
