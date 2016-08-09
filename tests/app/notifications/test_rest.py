@@ -623,7 +623,6 @@ def test_get_notifications_for_service_returns_merged_template_content(notify_ap
             }
 
 
-@pytest.mark.xfail(strict=True, raises=NeededByTemplateError)
 def test_get_notification_selects_correct_template_for_personalisation(notify_api,
                                                                        notify_db,
                                                                        notify_db_session,
