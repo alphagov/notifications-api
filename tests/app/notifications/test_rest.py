@@ -640,14 +640,15 @@ def test_get_notification_selects_correct_template_for_personalisation(notify_ap
         auth_header = create_authorization_header(service_id=sample_template.service_id)
 
         response = client.get(path='/notifications', headers=[auth_header])
-        assert response.status_code == 200
 
-        resp = json.loads(response.get_data(as_text=True))
-        assert len(resp['notifications']) == 2
-        assert resp['notifications'][0]['template_version'] == 1
-        assert resp['notifications'][0]['body'] == 'This is a template'
-        assert resp['notifications'][1]['template_version'] == 2
-        assert resp['notifications'][1]['body'] == 'foo'
+    assert response.status_code == 200
+
+    resp = json.loads(response.get_data(as_text=True))
+    assert len(resp['notifications']) == 2
+    assert resp['notifications'][0]['template_version'] == 1
+    assert resp['notifications'][0]['body'] == 'This is a template'
+    assert resp['notifications'][1]['template_version'] == 2
+    assert resp['notifications'][1]['body'] == 'foo'
 
 
 def _create_auth_header_from_key(api_key):

@@ -5,7 +5,8 @@ from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
 )
-from sqlalchemy import UniqueConstraint, text
+from sqlalchemy import UniqueConstraint, text, ForeignKeyConstraint, and_
+from sqlalchemy.orm import foreign, remote
 
 from app.encryption import (
     hashpw,
@@ -446,6 +447,14 @@ class Notification(db.Model):
     status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
     reference = db.Column(db.String, nullable=True, index=True)
     _personalisation = db.Column(db.String, nullable=True)
+
+    # __table_args__ = (
+    #     ForeignKeyConstraint(['template_id', 'template_version'], ['template_history.id', 'template_history.version']),
+    # )
+    actual_template = db.relationship('TemplateHistory', primaryjoin=and_(
+        foreign(template_id) == remote(TemplateHistory.id),
+        foreign(template_version) == remote(TemplateHistory.version)
+    ))
 
     @property
     def personalisation(self):

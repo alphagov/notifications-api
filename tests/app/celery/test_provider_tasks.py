@@ -188,7 +188,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
         sender=None
     )
 
-    persisted_notification = notifications_dao.get_notification(sample_template.service_id, db_notification.id)
+    persisted_notification = notifications_dao.get_notification_by_id(db_notification.id)
     assert persisted_notification.to == db_notification.to
     assert persisted_notification.template_id == sample_template.id
     assert persisted_notification.template_version == version_on_notification
@@ -223,7 +223,7 @@ def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_s
         ('mmg', str(sample_notification.id), sample_notification.to), queue='research-mode'
     )
 
-    persisted_notification = notifications_dao.get_notification(sample_service.id, sample_notification.id)
+    persisted_notification = notifications_dao.get_notification_by_id(sample_notification.id)
     assert persisted_notification.to == sample_notification.to
     assert persisted_notification.template_id == sample_notification.template_id
     assert persisted_notification.status == 'sending'
@@ -499,7 +499,7 @@ def test_should_not_set_billable_units_if_research_mode(notify_db, sample_servic
         sample_notification.id
     )
 
-    persisted_notification = notifications_dao.get_notification(sample_service.id, sample_notification.id)
+    persisted_notification = notifications_dao.get_notification_by_id(sample_notification.id)
     assert persisted_notification.billable_units == 0
 
 

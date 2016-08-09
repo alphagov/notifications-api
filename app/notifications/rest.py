@@ -1,5 +1,6 @@
 from datetime import datetime
 import itertools
+
 from flask import (
     Blueprint,
     jsonify,
@@ -7,6 +8,7 @@ from flask import (
     current_app,
     json
 )
+
 from notifications_utils.recipients import allowed_to_send_to, first_column_heading
 from notifications_utils.template import Template
 from notifications_utils.renderers import PassThrough
@@ -170,10 +172,10 @@ def process_firetext_response():
 
 
 @notifications.route('/notifications/<uuid:notification_id>', methods=['GET'])
-def get_notifications(notification_id):
-    notification = notifications_dao.get_notification(str(api_user.service_id),
-                                                      notification_id,
-                                                      key_type=api_user.key_type)
+def get_notification_by_id(notification_id):
+    notification = notifications_dao.get_notification_with_personalisation(str(api_user.service_id),
+                                                                           notification_id,
+                                                                           key_type=api_user.key_type)
     return jsonify(data={"notification": notification_with_personalisation_schema.dump(notification).data}), 200
 
 
@@ -186,6 +188,7 @@ def get_all_notifications():
 
     pagination = notifications_dao.get_notifications_for_service(
         str(api_user.service_id),
+        personalisation=True,
         filter_dict=data,
         page=page,
         page_size=page_size,
