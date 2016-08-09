@@ -114,12 +114,13 @@ class ServiceSchema(BaseSchema):
                    'old_id',
                    'template_statistics',
                    'service_provider_stats',
-                   'service_notification_stats')
+                   'service_notification_stats',
+                   'organisation')
         strict = True
 
     @validates('sms_sender')
     def validate_sms_sender(self, value):
-        if value and not re.match('^[a-zA-Z0-9\s]+$', value):
+        if value and not re.match(r'^[a-zA-Z0-9\s]+$', value):
             raise ValidationError('Only alphanumeric characters allowed')
 
 
@@ -136,7 +137,8 @@ class DetailedServiceSchema(BaseSchema):
             'jobs',
             'template_statistics',
             'service_provider_stats',
-            'service_notification_stats'
+            'service_notification_stats',
+            'organisation'
         )
 
 
@@ -438,6 +440,12 @@ class EventSchema(BaseSchema):
         strict = True
 
 
+class OrganisationSchema(BaseSchema):
+    class Meta:
+        model = models.Organisation
+        strict = True
+
+
 class FromToDateSchema(ma.Schema):
 
     class Meta:
@@ -531,6 +539,7 @@ service_history_schema = ServiceHistorySchema()
 api_key_history_schema = ApiKeyHistorySchema()
 template_history_schema = TemplateHistorySchema()
 event_schema = EventSchema()
+organisation_schema = OrganisationSchema()
 from_to_date_schema = FromToDateSchema()
 provider_details_schema = ProviderDetailsSchema()
 week_aggregate_notification_statistics_schema = WeekAggregateNotificationStatisticsSchema()

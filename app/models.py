@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
 )
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, text
 
 from app.encryption import (
     hashpw,
@@ -74,6 +74,24 @@ user_to_service = db.Table(
 )
 
 
+BRANDING_GOVUK = 'govuk'
+BRANDING_ORG = 'org'
+BRANDING_BOTH = 'both'
+
+
+class BrandingTypes(db.Model):
+    __tablename__ = 'branding_type'
+    name = db.Column(db.String(255), primary_key=True)
+
+
+class Organisation(db.Model):
+    __tablename__ = 'organisation'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    colour = db.Column(db.String(7), nullable=True)
+    logo = db.Column(db.String(255), nullable=True)
+    name = db.Column(db.String(255), nullable=True)
+
+
 class Service(db.Model, Versioned):
     __tablename__ = 'services'
 
@@ -104,6 +122,15 @@ class Service(db.Model, Versioned):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     reply_to_email_address = db.Column(db.Text, index=False, unique=False, nullable=True)
     sms_sender = db.Column(db.String(11), nullable=True)
+    organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
+    organisation = db.relationship('Organisation')
+    branding = db.Column(
+        db.String(255),
+        db.ForeignKey('branding_type.name'),
+        index=True,
+        nullable=False,
+        default=BRANDING_GOVUK
+    )
 
 
 class ApiKey(db.Model, Versioned):
