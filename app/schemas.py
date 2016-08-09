@@ -308,8 +308,13 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
             renderer=PassThrough()
         )
         in_data['body'] = template.replaced
-        if in_data['template']['template_type'] == 'email':
+        template_type = in_data['template']['template_type']
+        if template_type == 'email':
             in_data['subject'] = template.replaced_subject
+            in_data['content_char_count'] = None
+        else:
+            in_data['content_char_count'] = len(in_data['body'])
+
         in_data.pop('personalisation', None)
         in_data['template'].pop('content', None)
         in_data['template'].pop('subject', None)

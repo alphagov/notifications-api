@@ -557,6 +557,7 @@ def test_get_notification_by_id_returns_merged_template_content(notify_db,
             assert response.status_code == 200
             assert notification['body'] == 'Hello world\nYour thing is due soon'
             assert 'subject' not in notification
+            assert notification['content_char_count'] == 34
 
 
 def test_get_notification_by_id_returns_merged_template_content_for_email(
@@ -580,6 +581,7 @@ def test_get_notification_by_id_returns_merged_template_content_for_email(
         assert response.status_code == 200
         assert notification['body'] == 'Hello world\nThis is an email from GOV.UK'
         assert notification['subject'] == 'world'
+        assert notification['content_char_count'] is None
 
 
 def test_get_notifications_for_service_returns_merged_template_content(notify_api,
