@@ -154,8 +154,14 @@ def send_sms(self,
         )
 
     except SQLAlchemyError as e:
-        current_app.logger.exception(e)
-        raise self.retry(queue="retry", exc=e)
+        current_app.logger.exception("RETRY: send_sms notification {}".format(notification_id), e)
+        try:
+            raise self.retry(queue="retry", exc=e)
+        except self.MaxRetriesExceededError:
+            current_app.logger.exception(
+                "RETRY FAILED: task send_sms failed for notification {}".format(notification.id),
+                e
+            )
 
 
 @notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=300)
@@ -180,8 +186,14 @@ def send_email(self, service_id,
 
         current_app.logger.info("Email {} created at {}".format(notification_id, created_at))
     except SQLAlchemyError as e:
-        current_app.logger.exception(e)
-        raise self.retry(queue="retry", exc=e)
+        current_app.logger.exception("RETRY: send_email notification {}".format(notification_id), e)
+        try:
+            raise self.retry(queue="retry", exc=e)
+        except self.MaxRetriesExceededError:
+            current_app.logger.error(
+                "RETRY FAILED: task send_email failed for notification {}".format(notification.id),
+                e
+            )
 
 
 def _save_notification(created_at, notification, notification_id, service_id, notification_type, api_key_id, key_type):

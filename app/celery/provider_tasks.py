@@ -92,11 +92,15 @@ def send_sms_to_provider(self, service_id, notification_id):
         except SmsClientException as e:
             try:
                 current_app.logger.error(
-                    "SMS notification {} failed".format(notification_id)
+                    "RETRY: SMS notification {} failed".format(notification_id)
                 )
                 current_app.logger.exception(e)
                 self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
             except self.MaxRetriesExceededError:
+                current_app.logger.error(
+                    "RETRY FAILED: task send_sms_to_provider failed for notification {}".format(notification.id),
+                    e
+                )
                 update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
 
         current_app.logger.info(
@@ -173,11 +177,15 @@ def send_email_to_provider(self, service_id, notification_id):
         except EmailClientException as e:
             try:
                 current_app.logger.error(
-                    "Email notification {} failed".format(notification_id)
+                    "RETRY: Email notification {} failed".format(notification_id)
                 )
                 current_app.logger.exception(e)
                 self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
             except self.MaxRetriesExceededError:
+                current_app.logger.error(
+                    "RETRY FAILED: task send_email_to_provider failed for notification {}".format(notification.id),
+                    e
+                )
                 update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
 
         current_app.logger.info(
