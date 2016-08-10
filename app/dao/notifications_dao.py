@@ -357,7 +357,7 @@ def get_notification_with_personalisation(service_id, notification_id, key_type)
     if key_type:
         filter_dict['key_type'] = key_type
 
-    return Notification.query.filter_by(**filter_dict).options(joinedload('actual_template')).one()
+    return Notification.query.filter_by(**filter_dict).options(joinedload('template_history')).one()
 
 
 @statsd(namespace="dao")
@@ -392,7 +392,7 @@ def get_notifications_for_service(service_id,
     query = _filter_query(query, filter_dict)
     if personalisation:
         query = query.options(
-            joinedload('actual_template')
+            joinedload('template_history')
         )
     return query.order_by(desc(Notification.created_at)).paginate(
         page=page,

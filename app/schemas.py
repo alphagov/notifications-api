@@ -292,9 +292,9 @@ class NotificationWithTemplateSchema(BaseSchema):
 
 
 class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
-    actual_template = fields.Nested(TemplateHistorySchema,
-                                    only=['id', 'name', 'template_type', 'content', 'subject', 'version'],
-                                    dump_only=True)
+    template_history = fields.Nested(TemplateHistorySchema,
+                                     only=['id', 'name', 'template_type', 'content', 'subject', 'version'],
+                                     dump_only=True)
 
     class Meta(NotificationWithTemplateSchema.Meta):
         # mark as many fields as possible as required since this is a public api.
@@ -307,7 +307,7 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
             # computed fields
             'personalisation',
             # relationships
-            'service', 'job', 'api_key', 'actual_template'
+            'service', 'job', 'api_key', 'template_history'
         )
 
     @pre_dump
@@ -317,7 +317,7 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
 
     @post_dump
     def handle_template_merge(self, in_data):
-        in_data['template'] = in_data.pop('actual_template')
+        in_data['template'] = in_data.pop('template_history')
         from notifications_utils.template import Template
         template = Template(
             in_data['template'],

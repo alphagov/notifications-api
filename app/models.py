@@ -448,7 +448,7 @@ class Notification(db.Model):
     reference = db.Column(db.String, nullable=True, index=True)
     _personalisation = db.Column(db.String, nullable=True)
 
-    actual_template = db.relationship('TemplateHistory', primaryjoin=and_(
+    template_history = db.relationship('TemplateHistory', primaryjoin=and_(
         foreign(template_id) == remote(TemplateHistory.id),
         foreign(template_version) == remote(TemplateHistory.version)
     ))
