@@ -126,7 +126,7 @@ def remove_job(job_id):
     current_app.logger.info("Job {} has been removed from s3.".format(job_id))
 
 
-@notify_celery.task(bind=True, name="send-sms", max_retries=5, default_retry_delay=5)
+@notify_celery.task(bind=True, name="send-sms", max_retries=5, default_retry_delay=300)
 @statsd(namespace="tasks")
 def send_sms(self,
              service_id,
@@ -158,7 +158,7 @@ def send_sms(self,
         raise self.retry(queue="retry", exc=e)
 
 
-@notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=5)
+@notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=300)
 @statsd(namespace="tasks")
 def send_email(self, service_id,
                notification_id,
