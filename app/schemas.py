@@ -292,10 +292,23 @@ class NotificationWithTemplateSchema(BaseSchema):
 
 
 class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
-    template = None
     actual_template = fields.Nested(TemplateHistorySchema,
                                     only=['id', 'name', 'template_type', 'content', 'subject', 'version'],
                                     dump_only=True)
+
+    class Meta(NotificationWithTemplateSchema.Meta):
+        # mark as many fields as possible as required since this is a public api.
+        # WARNING: Does _not_ reference fields computed in handle_template_merge, such as
+        # 'body', 'subject' [for emails], and 'content_char_count'
+        fields = (
+            # db rows
+            'id', 'to', 'job_row_number', 'template_version', 'billable_units', 'notification_type', 'created_at',
+            'sent_at', 'sent_by', 'updated_at', 'status', 'reference',
+            # computed fields
+            'personalisation',
+            # relationships
+            'service', 'job', 'api_key', 'actual_template'
+        )
 
     @pre_dump
     def handle_personalisation_property(self, in_data):
@@ -312,8 +325,13 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
             renderer=PassThrough()
         )
         in_data['body'] = template.replaced
-        if in_data['template']['template_type'] == 'email':
+        template_type = in_data['template']['template_type']
+        if template_type == 'email':
             in_data['subject'] = template.replaced_subject
+            in_data['content_char_count'] = None
+        else:
+            in_data['content_char_count'] = len(in_data['body'])
+
         in_data.pop('personalisation', None)
         in_data['template'].pop('content', None)
         in_data['template'].pop('subject', None)
@@ -532,7 +550,6 @@ job_email_template_notification_schema = JobEmailTemplateNotificationSchema()
 notification_schema = NotificationModelSchema()
 notification_with_template_schema = NotificationWithTemplateSchema()
 notification_with_personalisation_schema = NotificationWithPersonalisationSchema()
-notification_with_personalisation_schema_load_json = NotificationWithPersonalisationSchema(load_json=True)
 invited_user_schema = InvitedUserSchema()
 permission_schema = PermissionSchema()
 email_data_request_schema = EmailDataSchema()
