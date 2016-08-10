@@ -704,10 +704,9 @@ def test_should_not_send_email_if_team_api_key_and_not_a_service_user(notify_api
         app.celery.tasks.send_email.apply_async.assert_not_called()
 
         assert response.status_code == 400
-        assert [(
-            'Can’t send to this recipient when service is in trial mode – see '
-            'https://www.notifications.service.gov.uk/trial-mode'
-        )] == json_resp['message']['to']
+        assert [
+            'Can’t send to this recipient using a team-only API key'
+        ] == json_resp['message']['to']
 
 
 def test_should_not_send_sms_if_team_api_key_and_not_a_service_user(notify_api, sample_template, mocker):
@@ -730,10 +729,9 @@ def test_should_not_send_sms_if_team_api_key_and_not_a_service_user(notify_api, 
         app.celery.tasks.send_sms.apply_async.assert_not_called()
 
         assert response.status_code == 400
-        assert [(
-            'Can’t send to this recipient when service is in trial mode – see '
-            'https://www.notifications.service.gov.uk/trial-mode'
-        )] == json_resp['message']['to']
+        assert [
+            'Can’t send to this recipient using a team-only API key'
+        ] == json_resp['message']['to']
 
 
 def test_should_send_email_if_team_api_key_and_a_service_user(notify_api, sample_email_template, mocker):
