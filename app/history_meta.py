@@ -53,7 +53,12 @@ def _history_mapper(local_mapper):
         col = col.copy()
         orig.info['history_copy'] = col
         col.unique = False
-        col.default = col.server_default = None
+
+        # if the column is nullable, we could end up overwriting an on-purpose null value with a default.
+        # if it's not nullable, however, the default may be relied upon to correctly set values within the database,
+        # so we should preserve it
+        if col.nullable:
+            col.default = col.server_default = None
         return col
 
     properties = util.OrderedDict()
@@ -201,7 +206,9 @@ def create_history(obj):
 
         elif isinstance(prop, RelationshipProperty):
             if hasattr(history, prop.key+'_id'):
-                data[prop.key+'_id'] = getattr(obj, prop.key).id
+                foreign_obj = getattr(obj, prop.key)
+                # if it's a nullable relationship, foreign_obj will be None, and we actually want to record that
+                data[prop.key+'_id'] = getattr(foreign_obj, 'id', None)
 
     if not obj.version:
         obj.version = 1

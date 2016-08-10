@@ -22,7 +22,7 @@ Create a local environment.sh file containing the following:
 
 ```
 echo "
-export NOTIFY_API_ENVIRONMENT='config.Development'
+export NOTIFY_ENVIRONMENT='development'
 export ADMIN_BASE_URL='http://localhost:6012'
 export ADMIN_CLIENT_SECRET='dev-notify-secret-key'
 export ADMIN_CLIENT_USER_NAME='dev-notify-admin'

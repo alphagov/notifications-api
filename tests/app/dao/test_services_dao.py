@@ -35,7 +35,8 @@ from app.models import (
     Permission,
     User,
     InvitedUser,
-    Service
+    Service,
+    BRANDING_GOVUK
 )
 
 from tests.app.conftest import (
@@ -60,10 +61,13 @@ def test_create_service(sample_user):
                       created_by=sample_user)
     dao_create_service(service, sample_user)
     assert Service.query.count() == 1
-    assert Service.query.first().name == "service_name"
-    assert Service.query.first().id == service.id
-    assert not Service.query.first().research_mode
-    assert sample_user in Service.query.first().users
+
+    service_db = Service.query.first()
+    assert service_db.name == "service_name"
+    assert service_db.id == service.id
+    assert service_db.branding == BRANDING_GOVUK
+    assert not service_db.research_mode
+    assert sample_user in service_db.users
 
 
 def test_cannot_create_two_services_with_same_name(sample_user):
@@ -254,6 +258,8 @@ def test_create_service_creates_a_history_record_with_current_data(sample_user):
     assert service_from_db.version == service_history.version
     assert sample_user.id == service_history.created_by_id
     assert service_from_db.created_by.id == service_history.created_by_id
+    assert service_from_db.branding == BRANDING_GOVUK
+    assert service_history.branding == BRANDING_GOVUK
 
 
 def test_update_service_creates_a_history_record_with_current_data(sample_user):
