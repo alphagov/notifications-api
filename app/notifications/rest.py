@@ -270,9 +270,17 @@ def send_notification(notification_type):
             [user.mobile_number, user.email_address] for user in service.users
         )
     ):
-        message = 'Invalid {} for restricted service'.format(first_column_heading[notification_type])
-        errors = {'to': [message]}
-        raise InvalidRequest(errors, status_code=400)
+        if (api_user.key_type == KEY_TYPE_TEAM):
+            message = 'Can’t send to this recipient using a team-only API key'
+        else:
+            message = (
+                'Can’t send to this recipient when service is in trial mode '
+                '– see https://www.notifications.service.gov.uk/trial-mode'
+            )
+        raise InvalidRequest(
+            {'to': [message]},
+            status_code=400
+        )
 
     notification_id = create_uuid()
     notification.update({"template_version": template.version})
