@@ -26,15 +26,14 @@ from app.dao.notifications_dao import (
     get_notification,
     get_notification_for_job,
     get_notifications_for_job,
-    dao_get_notification_statistics_for_service,
     delete_notifications_created_more_than_a_week_ago,
     dao_get_notification_statistics_for_service_and_day,
     update_notification_status_by_id,
     update_provider_stats,
     update_notification_status_by_reference,
     dao_get_template_statistics_for_service,
-    get_notifications_for_service, dao_get_7_day_agg_notification_statistics_for_service,
-    dao_get_potential_notification_statistics_for_day, dao_get_notification_statistics_for_day,
+    get_notifications_for_service,
+    dao_get_potential_notification_statistics_for_day,
     dao_get_template_statistics_for_template, get_notification_by_id)
 
 from notifications_utils.template import get_sms_fragment_count
@@ -43,11 +42,8 @@ from tests.app.conftest import (sample_notification)
 
 
 def test_should_have_decorated_notifications_dao_functions():
-    assert dao_get_notification_statistics_for_service.__wrapped__.__name__ == 'dao_get_notification_statistics_for_service'  # noqa
     assert dao_get_notification_statistics_for_service_and_day.__wrapped__.__name__ == 'dao_get_notification_statistics_for_service_and_day'  # noqa
-    assert dao_get_notification_statistics_for_day.__wrapped__.__name__ == 'dao_get_notification_statistics_for_day'  # noqa
     assert dao_get_potential_notification_statistics_for_day.__wrapped__.__name__ == 'dao_get_potential_notification_statistics_for_day'  # noqa
-    assert dao_get_7_day_agg_notification_statistics_for_service.__wrapped__.__name__ == 'dao_get_7_day_agg_notification_statistics_for_service'  # noqa
     assert dao_get_template_statistics_for_service.__wrapped__.__name__ == 'dao_get_template_statistics_for_service'  # noqa
     assert dao_get_template_statistics_for_template.__wrapped__.__name__ == 'dao_get_template_statistics_for_template'  # noqa
     assert dao_create_notification.__wrapped__.__name__ == 'dao_create_notification'  # noqa
@@ -270,67 +266,6 @@ def test_should_be_able_to_get_all_statistics_for_a_service(sample_template, mmg
     dao_create_notification(notification_3, sample_template.template_type)
 
     _assert_notification_stats(sample_template.service.id, sms_requested=3)
-
-
-def test_should_be_able_to_get_all_statistics_for_a_service_for_several_days(sample_template, mmg_provider):
-    data = _notification_json(sample_template)
-
-    today = datetime.utcnow()
-    yesterday = datetime.utcnow() - timedelta(days=1)
-    two_days_ago = datetime.utcnow() - timedelta(days=2)
-    data.update({'created_at': today})
-    notification_1 = Notification(**data)
-    data.update({'created_at': yesterday})
-    notification_2 = Notification(**data)
-    data.update({'created_at': two_days_ago})
-    notification_3 = Notification(**data)
-
-    dao_create_notification(notification_1, sample_template.template_type)
-    dao_create_notification(notification_2, sample_template.template_type)
-    dao_create_notification(notification_3, sample_template.template_type)
-
-    stats = dao_get_notification_statistics_for_service(sample_template.service.id)
-    assert len(stats) == 3
-    assert stats[0].emails_requested == 0
-    assert stats[0].sms_requested == 1
-    assert stats[0].day == today.date()
-    assert stats[1].emails_requested == 0
-    assert stats[1].sms_requested == 1
-    assert stats[1].day == yesterday.date()
-    assert stats[2].emails_requested == 0
-    assert stats[2].sms_requested == 1
-    assert stats[2].day == two_days_ago.date()
-
-
-def test_should_be_empty_list_if_no_statistics_for_a_service(sample_service):
-    assert len(dao_get_notification_statistics_for_service(sample_service.id)) == 0
-
-
-def test_should_be_able_to_get_all_statistics_for_a_service_for_several_days_previous(sample_template,
-                                                                                      mmg_provider):
-    data = _notification_json(sample_template)
-
-    today = datetime.utcnow()
-    seven_days_ago = datetime.utcnow() - timedelta(days=7)
-    eight_days_ago = datetime.utcnow() - timedelta(days=8)
-    data.update({'created_at': today})
-    notification_1 = Notification(**data)
-    data.update({'created_at': seven_days_ago})
-    notification_2 = Notification(**data)
-    data.update({'created_at': eight_days_ago})
-    notification_3 = Notification(**data)
-    dao_create_notification(notification_1, sample_template.template_type)
-    dao_create_notification(notification_2, sample_template.template_type)
-    dao_create_notification(notification_3, sample_template.template_type)
-
-    stats = dao_get_notification_statistics_for_service(sample_template.service.id, 7)
-    assert len(stats) == 2
-    assert stats[0].emails_requested == 0
-    assert stats[0].sms_requested == 1
-    assert stats[0].day == today.date()
-    assert stats[1].emails_requested == 0
-    assert stats[1].sms_requested == 1
-    assert stats[1].day == seven_days_ago.date()
 
 
 def test_create_notification_creates_notification_with_personalisation(notify_db, notify_db_session,

@@ -80,7 +80,7 @@ def create_app(app_name=None):
     application.register_blueprint(job_blueprint)
     application.register_blueprint(invite_blueprint)
     application.register_blueprint(accept_invite, url_prefix='/invite')
-    
+
     application.register_blueprint(template_statistics_blueprint)
     application.register_blueprint(events_blueprint)
     application.register_blueprint(provider_details_blueprint, url_prefix='/provider-details')
