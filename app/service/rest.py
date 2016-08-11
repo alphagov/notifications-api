@@ -52,6 +52,8 @@ def get_services():
     if user_id:
         services = dao_fetch_all_services_by_user(user_id)
     else:
+        if request.args.get('detailed') == 'True':
+            return get_detailed_services()
         services = dao_fetch_all_services()
     data = service_schema.dump(services, many=True).data
     return jsonify(data=data)
@@ -242,6 +244,19 @@ def get_detailed_service(service_id, today_only=False):
     stats = stats_fn(service_id)
 
     service.statistics = statistics.format_statistics(stats)
+
+    data = detailed_service_schema.dump(service).data
+    return jsonify(data=data)
+
+
+def get_detailed_services():
+    services = {service.id: service for service in dao_fetch_all_services()}
+    stats = dao_fetch_todays_stats_for_all_services(service_id)
+
+    for row in stats:
+        services[row.service_id].statistics
+        # todo: how do we separate rows of statistics by service?
+        service.statistics = statistics.format_statistics(stats)
 
     data = detailed_service_schema.dump(service).data
     return jsonify(data=data)
