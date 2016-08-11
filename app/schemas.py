@@ -501,23 +501,6 @@ class DaySchema(ma.Schema):
         _validate_not_in_future(value)
 
 
-class WeekAggregateNotificationStatisticsSchema(ma.Schema):
-
-    class Meta:
-        strict = True
-
-    date_from = fields.Date()
-    week_count = fields.Int()
-
-    @validates('date_from')
-    def validate_date_from(self, value):
-        _validate_not_in_future(value)
-
-    @validates('week_count')
-    def validate_week_count(self, value):
-        _validate_positive_number(value)
-
-
 class UnarchivedTemplateSchema(BaseSchema):
     archived = fields.Boolean(required=True)
 
@@ -560,6 +543,5 @@ event_schema = EventSchema()
 organisation_schema = OrganisationSchema()
 from_to_date_schema = FromToDateSchema()
 provider_details_schema = ProviderDetailsSchema()
-week_aggregate_notification_statistics_schema = WeekAggregateNotificationStatisticsSchema()
 day_schema = DaySchema()
 unarchived_template_schema = UnarchivedTemplateSchema()
