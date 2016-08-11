@@ -465,30 +465,6 @@ class OrganisationSchema(BaseSchema):
         strict = True
 
 
-class FromToDateSchema(ma.Schema):
-
-    class Meta:
-        strict = True
-
-    date_from = fields.Date()
-    date_to = fields.Date()
-
-    @validates('date_from')
-    def validate_date_from(self, value):
-        _validate_not_in_future(value)
-
-    @validates('date_to')
-    def validate_date_to(self, value):
-        _validate_not_in_future(value)
-
-    @validates_schema
-    def validate_dates(self, data):
-        df = data.get('date_from')
-        dt = data.get('date_to')
-        if (df and dt) and (df > dt):
-            raise ValidationError("date_from needs to be greater than date_to")
-
-
 class DaySchema(ma.Schema):
 
     class Meta:
@@ -541,7 +517,6 @@ api_key_history_schema = ApiKeyHistorySchema()
 template_history_schema = TemplateHistorySchema()
 event_schema = EventSchema()
 organisation_schema = OrganisationSchema()
-from_to_date_schema = FromToDateSchema()
 provider_details_schema = ProviderDetailsSchema()
 day_schema = DaySchema()
 unarchived_template_schema = UnarchivedTemplateSchema()
