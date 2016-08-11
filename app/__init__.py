@@ -66,7 +66,6 @@ def create_app(app_name=None):
     from app.notifications.rest import notifications as notifications_blueprint
     from app.invite.rest import invite as invite_blueprint
     from app.accept_invite.rest import accept_invite
-    from app.notifications_statistics.rest import notifications_statistics as notifications_statistics_blueprint
     from app.template_statistics.rest import template_statistics as template_statistics_blueprint
     from app.events.rest import events as events_blueprint
     from app.provider_details.rest import provider_details as provider_details_blueprint
@@ -81,7 +80,7 @@ def create_app(app_name=None):
     application.register_blueprint(job_blueprint)
     application.register_blueprint(invite_blueprint)
     application.register_blueprint(accept_invite, url_prefix='/invite')
-    application.register_blueprint(notifications_statistics_blueprint)
+    
     application.register_blueprint(template_statistics_blueprint)
     application.register_blueprint(events_blueprint)
     application.register_blueprint(provider_details_blueprint, url_prefix='/provider-details')
