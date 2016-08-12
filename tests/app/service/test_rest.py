@@ -108,6 +108,8 @@ def test_get_service_by_id(notify_api, sample_service):
             assert json_resp['data']['name'] == sample_service.name
             assert json_resp['data']['id'] == str(sample_service.id)
             assert not json_resp['data']['research_mode']
+            assert json_resp['data']['organisation'] is None
+            assert json_resp['data']['branding'] == 'govuk'
 
 
 def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):

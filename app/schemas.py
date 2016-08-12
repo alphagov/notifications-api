@@ -103,6 +103,8 @@ class ProviderDetailsSchema(BaseSchema):
 class ServiceSchema(BaseSchema):
 
     created_by = field_for(models.Service, 'created_by', required=True)
+    organisation = field_for(models.Service, 'organisation_id', dump_only=True)
+    branding = field_for(models.Service, 'branding')
 
     class Meta:
         model = models.Service
@@ -114,8 +116,7 @@ class ServiceSchema(BaseSchema):
                    'old_id',
                    'template_statistics',
                    'service_provider_stats',
-                   'service_notification_stats',
-                   'organisation')
+                   'service_notification_stats')
         strict = True
 
     @validates('sms_sender')
