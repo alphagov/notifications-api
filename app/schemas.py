@@ -103,7 +103,7 @@ class ProviderDetailsSchema(BaseSchema):
 class ServiceSchema(BaseSchema):
 
     created_by = field_for(models.Service, 'created_by', required=True)
-    organisation = field_for(models.Service, 'organisation_id', dump_only=True)
+    organisation = field_for(models.Service, 'organisation')
     branding = field_for(models.Service, 'branding')
 
     class Meta:

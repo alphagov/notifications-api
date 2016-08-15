@@ -7,7 +7,7 @@ from freezegun import freeze_time
 
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
-from app.models import User
+from app.models import User, Organisation
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_service as create_sample_service,
@@ -341,7 +341,11 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_email
             assert "Duplicate service name '{}'".format(service_name) in json_resp['message']['name']
 
 
-def test_update_service(notify_api, sample_service):
+def test_update_service(notify_api, notify_db, sample_service):
+    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
+    notify_db.session.add(org)
+    notify_db.session.commit()
+
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header()
@@ -356,7 +360,8 @@ def test_update_service(notify_api, sample_service):
             data = {
                 'name': 'updated service name',
                 'email_from': 'updated.service.name',
-                'created_by': str(sample_service.created_by.id)
+                'created_by': str(sample_service.created_by.id),
+                'organisation': str(org.id)
             }
 
             auth_header = create_authorization_header()
@@ -370,6 +375,7 @@ def test_update_service(notify_api, sample_service):
             assert resp.status_code == 200
             assert result['data']['name'] == 'updated service name'
             assert result['data']['email_from'] == 'updated.service.name'
+            assert result['data']['organisation'] == str(org.id)
 
 
 def test_update_service_research_mode(notify_api, sample_service):
