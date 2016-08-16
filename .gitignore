@@ -24,6 +24,7 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+/cache
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -62,5 +63,8 @@ target/
 # Mac
 *.DS_Store
 environment.sh
+.envrc
 
 celerybeat-schedule
+
+app/version.py
