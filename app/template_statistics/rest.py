@@ -22,22 +22,6 @@ register_errors(template_statistics)
 
 
 @template_statistics.route('')
-def get_template_statistics_for_service(service_id):
-    if request.args.get('limit_days'):
-        try:
-            limit_days = int(request.args['limit_days'])
-        except ValueError as e:
-            error = '{} is not an integer'.format(request.args['limit_days'])
-            message = {'limit_days': [error]}
-            raise InvalidRequest(message, status_code=400)
-    else:
-        limit_days = None
-    stats = dao_get_template_statistics_for_service(service_id, limit_days=limit_days)
-    data = template_statistics_schema.dump(stats, many=True).data
-    return jsonify(data=data)
-
-
-@template_statistics.route('/replacement')
 def get_template_statistics_for_service_by_day(service_id):
     if request.args.get('limit_days'):
         try:
