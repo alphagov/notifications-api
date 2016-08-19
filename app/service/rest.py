@@ -45,11 +45,11 @@ from app.errors import (
 )
 from app.service import statistics
 
-service = Blueprint('service', __name__)
-register_errors(service)
+service_blueprint = Blueprint('service', __name__)
+register_errors(service_blueprint)
 
 
-@service.route('', methods=['GET'])
+@service_blueprint.route('', methods=['GET'])
 def get_services():
     user_id = request.args.get('user_id', None)
     if user_id:
@@ -62,7 +62,7 @@ def get_services():
     return jsonify(data=data)
 
 
-@service.route('/<uuid:service_id>', methods=['GET'])
+@service_blueprint.route('/<uuid:service_id>', methods=['GET'])
 def get_service_by_id(service_id):
     if request.args.get('detailed') == 'True':
         return get_detailed_service(service_id, today_only=request.args.get('today_only') == 'True')
@@ -73,7 +73,7 @@ def get_service_by_id(service_id):
         return jsonify(data=data)
 
 
-@service.route('', methods=['POST'])
+@service_blueprint.route('', methods=['POST'])
 def create_service():
     data = request.get_json()
     if not data.get('user_id', None):
@@ -87,7 +87,7 @@ def create_service():
     return jsonify(data=service_schema.dump(valid_service).data), 201
 
 
-@service.route('/<uuid:service_id>', methods=['POST'])
+@service_blueprint.route('/<uuid:service_id>', methods=['POST'])
 def update_service(service_id):
     fetched_service = dao_fetch_service_by_id(service_id)
     current_data = dict(service_schema.dump(fetched_service).data.items())
@@ -97,7 +97,7 @@ def update_service(service_id):
     return jsonify(data=service_schema.dump(fetched_service).data), 200
 
 
-@service.route('/<uuid:service_id>/api-key', methods=['POST'])
+@service_blueprint.route('/<uuid:service_id>/api-key', methods=['POST'])
 def create_api_key(service_id=None):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
     valid_api_key = api_key_schema.load(request.get_json()).data
@@ -107,14 +107,14 @@ def create_api_key(service_id=None):
     return jsonify(data=unsigned_api_key), 201
 
 
-@service.route('/<uuid:service_id>/api-key/revoke/<uuid:api_key_id>', methods=['POST'])
+@service_blueprint.route('/<uuid:service_id>/api-key/revoke/<uuid:api_key_id>', methods=['POST'])
 def revoke_api_key(service_id, api_key_id):
     expire_api_key(service_id=service_id, api_key_id=api_key_id)
     return jsonify(), 202
 
 
-@service.route('/<uuid:service_id>/api-keys', methods=['GET'])
-@service.route('/<uuid:service_id>/api-keys/<uuid:key_id>', methods=['GET'])
+@service_blueprint.route('/<uuid:service_id>/api-keys', methods=['GET'])
+@service_blueprint.route('/<uuid:service_id>/api-keys/<uuid:key_id>', methods=['GET'])
 def get_api_keys(service_id, key_id=None):
     dao_fetch_service_by_id(service_id=service_id)
 
@@ -130,14 +130,14 @@ def get_api_keys(service_id, key_id=None):
     return jsonify(apiKeys=api_key_schema.dump(api_keys, many=True).data), 200
 
 
-@service.route('/<uuid:service_id>/users', methods=['GET'])
+@service_blueprint.route('/<uuid:service_id>/users', methods=['GET'])
 def get_users_for_service(service_id):
     fetched = dao_fetch_service_by_id(service_id)
     result = user_schema.dump(fetched.users, many=True)
     return jsonify(data=result.data)
 
 
-@service.route('/<uuid:service_id>/users/<user_id>', methods=['POST'])
+@service_blueprint.route('/<uuid:service_id>/users/<user_id>', methods=['POST'])
 def add_user_to_service(service_id, user_id):
     service = dao_fetch_service_by_id(service_id)
     user = get_model_users(user_id=user_id)
@@ -152,7 +152,7 @@ def add_user_to_service(service_id, user_id):
     return jsonify(data=data), 201
 
 
-@service.route('/<uuid:service_id>/users/<user_id>', methods=['DELETE'])
+@service_blueprint.route('/<uuid:service_id>/users/<user_id>', methods=['DELETE'])
 def remove_user_from_service(service_id, user_id):
     service = dao_fetch_service_by_id(service_id)
     user = get_model_users(user_id=user_id)
@@ -168,7 +168,7 @@ def remove_user_from_service(service_id, user_id):
     return jsonify({}), 204
 
 
-@service.route('/<uuid:service_id>/fragment/aggregate_statistics')
+@service_blueprint.route('/<uuid:service_id>/fragment/aggregate_statistics')
 def get_service_provider_aggregate_statistics(service_id):
     return jsonify(data=get_fragment_count(service_id))
 
@@ -176,7 +176,7 @@ def get_service_provider_aggregate_statistics(service_id):
 # This is placeholder get method until more thought
 # goes into how we want to fetch and view various items in history
 # tables. This is so product owner can pass stories as done
-@service.route('/<uuid:service_id>/history', methods=['GET'])
+@service_blueprint.route('/<uuid:service_id>/history', methods=['GET'])
 def get_service_history(service_id):
     from app.models import (Service, ApiKey, Template, TemplateHistory, Event)
     from app.schemas import (
@@ -206,7 +206,7 @@ def get_service_history(service_id):
     return jsonify(data=data)
 
 
-@service.route('/<uuid:service_id>/notifications', methods=['GET'])
+@service_blueprint.route('/<uuid:service_id>/notifications', methods=['GET'])
 def get_all_notifications_for_service(service_id):
     data = notifications_filter_schema.load(request.args).data
     page = data['page'] if 'page' in data else 1
@@ -233,7 +233,7 @@ def get_all_notifications_for_service(service_id):
     ), 200
 
 
-@service.route('/<uuid:service_id>/notifications/weekly', methods=['GET'])
+@service_blueprint.route('/<uuid:service_id>/notifications/weekly', methods=['GET'])
 def get_weekly_notification_stats(service_id):
     service = dao_fetch_service_by_id(service_id)
     stats = dao_fetch_weekly_historical_stats_for_service(service_id)
@@ -259,5 +259,5 @@ def get_detailed_services():
     for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
         services[service_id].statistics = statistics.format_statistics(rows)
 
-    data = detailed_service_schema.dump(service, many=True).data
+    data = detailed_service_schema.dump(services, many=True).data
     return jsonify(data=data)

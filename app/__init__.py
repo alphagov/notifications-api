@@ -58,7 +58,7 @@ def create_app(app_name=None):
     encryption.init_app(application)
     clients.init_app(sms_clients=[firetext_client, mmg_client, loadtest_client], email_clients=[aws_ses_client])
 
-    from app.service.rest import service as service_blueprint
+    from app.service.rest import service_blueprint
     from app.user.rest import user as user_blueprint
     from app.template.rest import template as template_blueprint
     from app.status.healthcheck import status as status_blueprint
