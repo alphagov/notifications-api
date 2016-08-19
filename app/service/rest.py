@@ -1,3 +1,5 @@
+import itertools
+
 from flask import (
     jsonify,
     request,
@@ -21,7 +23,8 @@ from app.dao.services_dao import (
     dao_remove_user_from_service,
     dao_fetch_stats_for_service,
     dao_fetch_todays_stats_for_service,
-    dao_fetch_weekly_historical_stats_for_service
+    dao_fetch_weekly_historical_stats_for_service,
+    dao_fetch_todays_stats_for_all_services
 )
 from app.dao import notifications_dao
 from app.dao.provider_statistics_dao import get_fragment_count
@@ -51,9 +54,9 @@ def get_services():
     user_id = request.args.get('user_id', None)
     if user_id:
         services = dao_fetch_all_services_by_user(user_id)
+    elif request.args.get('detailed') == 'True':
+        return get_detailed_services()
     else:
-        if request.args.get('detailed') == 'True':
-            return get_detailed_services()
         services = dao_fetch_all_services()
     data = service_schema.dump(services, many=True).data
     return jsonify(data=data)
@@ -251,12 +254,10 @@ def get_detailed_service(service_id, today_only=False):
 
 def get_detailed_services():
     services = {service.id: service for service in dao_fetch_all_services()}
-    stats = dao_fetch_todays_stats_for_all_services(service_id)
+    stats = dao_fetch_todays_stats_for_all_services()
 
-    for row in stats:
-        services[row.service_id].statistics
-        # todo: how do we separate rows of statistics by service?
-        service.statistics = statistics.format_statistics(stats)
+    for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
+        services[service_id].statistics = statistics.format_statistics(rows)
 
-    data = detailed_service_schema.dump(service).data
+    data = detailed_service_schema.dump(service, many=True).data
     return jsonify(data=data)

@@ -187,6 +187,7 @@ def dao_fetch_todays_stats_for_all_services():
     return db.session.query(
         Notification.notification_type,
         Notification.status,
+        Notification.service_id,
         func.count(Notification.id).label('count')
     ).select_from(
         Service
@@ -198,5 +199,7 @@ def dao_fetch_todays_stats_for_all_services():
     ).group_by(
         Notification.notification_type,
         Notification.status,
+        Notification.service_id
+    ).order_by(
         Notification.service_id
     )
