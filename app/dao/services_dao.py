@@ -192,7 +192,6 @@ def dao_fetch_todays_stats_for_all_services():
     ).select_from(
         Service
     ).join(
-        # don't want to create a relationship in case we accidentally lazily load it, so manually define the join term
         Notification
     ).filter(
         func.date(Notification.created_at) == date.today()

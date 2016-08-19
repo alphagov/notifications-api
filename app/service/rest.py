@@ -55,7 +55,7 @@ def get_services():
     if user_id:
         services = dao_fetch_all_services_by_user(user_id)
     elif request.args.get('detailed') == 'True':
-        return get_detailed_services()
+        return jsonify(data=get_detailed_services())
     else:
         services = dao_fetch_all_services()
     data = service_schema.dump(services, many=True).data
@@ -65,7 +65,8 @@ def get_services():
 @service_blueprint.route('/<uuid:service_id>', methods=['GET'])
 def get_service_by_id(service_id):
     if request.args.get('detailed') == 'True':
-        return get_detailed_service(service_id, today_only=request.args.get('today_only') == 'True')
+        data = get_detailed_service(service_id, today_only=request.args.get('today_only') == 'True')
+        return jsonify(data=data)
     else:
         fetched = dao_fetch_service_by_id(service_id)
 
@@ -248,8 +249,7 @@ def get_detailed_service(service_id, today_only=False):
 
     service.statistics = statistics.format_statistics(stats)
 
-    data = detailed_service_schema.dump(service).data
-    return jsonify(data=data)
+    return detailed_service_schema.dump(service).data
 
 
 def get_detailed_services():
@@ -259,5 +259,4 @@ def get_detailed_services():
     for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
         services[service_id].statistics = statistics.format_statistics(rows)
 
-    data = detailed_service_schema.dump(services, many=True).data
-    return jsonify(data=data)
+    return detailed_service_schema.dump(services.values(), many=True).data
