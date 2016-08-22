@@ -137,14 +137,11 @@ def test_should_by_able_to_get_template_count_from_notifications_history_across_
 
     results = dao_get_template_usage(sample_service.id)
 
-    assert len(results) == 5
+    assert len(results) == 2
 
-    assert [(row.name, row.template_type, row.count, row.day) for row in results] == [
-        ('Email Template Name', 'email', 2,  datetime(today.year, today.month, today.day).date()),
-        ('Template Name', 'sms', 1, datetime(today.year, today.month, today.day).date()),
-        ('Email Template Name', 'email', 3,  datetime(yesterday.year, yesterday.month, yesterday.day).date()),
-        ('Template Name', 'sms', 1,  datetime(yesterday.year, yesterday.month, yesterday.day).date()),
-        ('Template Name', 'sms', 3,  datetime(one_month_ago.year, one_month_ago.month, one_month_ago.day).date())
+    assert [(row.name, row.template_type, row.count) for row in results] == [
+        ('Email Template Name', 'email', 5),
+        ('Template Name', 'sms', 5)
     ]
 
 
@@ -177,29 +174,24 @@ def test_should_by_able_to_get_template_count_from_notifications_history_with_da
     assert len(results_day_one) == 2
 
     results_day_two = dao_get_template_usage(sample_service.id, limit_days=1)
-    assert len(results_day_two) == 4
+    assert len(results_day_two) == 2
 
     results_day_30 = dao_get_template_usage(sample_service.id, limit_days=31)
-    assert len(results_day_30) == 5
+    assert len(results_day_30) == 2
 
-    assert [(row.name, row.template_type, row.count, row.day) for row in results_day_one] == [
-        ('Email Template Name', 'email', 2, datetime(today.year, today.month, today.day).date()),
-        ('Template Name', 'sms', 1, datetime(today.year, today.month, today.day).date())
+    assert [(row.name, row.template_type, row.count) for row in results_day_one] == [
+        ('Email Template Name', 'email', 2),
+        ('Template Name', 'sms', 1)
     ]
 
-    assert [(row.name, row.template_type, row.count, row.day) for row in results_day_two] == [
-        ('Email Template Name', 'email', 2, datetime(today.year, today.month, today.day).date()),
-        ('Template Name', 'sms', 1, datetime(today.year, today.month, today.day).date()),
-        ('Email Template Name', 'email', 3, datetime(yesterday.year, yesterday.month, yesterday.day).date()),
-        ('Template Name', 'sms', 1, datetime(yesterday.year, yesterday.month, yesterday.day).date())
+    assert [(row.name, row.template_type, row.count) for row in results_day_two] == [
+        ('Email Template Name', 'email', 5),
+        ('Template Name', 'sms', 2),
     ]
 
-    assert [(row.name, row.template_type, row.count, row.day) for row in results_day_30] == [
-        ('Email Template Name', 'email', 2, datetime(today.year, today.month, today.day).date()),
-        ('Template Name', 'sms', 1, datetime(today.year, today.month, today.day).date()),
-        ('Email Template Name', 'email', 3, datetime(yesterday.year, yesterday.month, yesterday.day).date()),
-        ('Template Name', 'sms', 1, datetime(yesterday.year, yesterday.month, yesterday.day).date()),
-        ('Template Name', 'sms', 3, datetime(one_month_ago.year, one_month_ago.month, one_month_ago.day).date())
+    assert [(row.name, row.template_type, row.count) for row in results_day_30] == [
+        ('Email Template Name', 'email', 5),
+        ('Template Name', 'sms', 5),
     ]
 
 

@@ -137,23 +137,27 @@ def dao_get_7_day_agg_notification_statistics_for_service(service_id,
 @statsd(namespace="dao")
 def dao_get_template_usage(service_id, limit_days=None):
 
+    table = NotificationHistory
+
+    if limit_days and limit_days <= 7:  # can get this data from notifications table
+        table = Notification
+
     query = db.session.query(
-        func.count(NotificationHistory.template_id).label('count'),
-        NotificationHistory.template_id,
-        func.DATE(NotificationHistory.created_at).label('day'),
+        func.count(table.template_id).label('count'),
+        table.template_id,
         Template.name,
         Template.template_type
     )
 
-    query_filter = [NotificationHistory.service_id == service_id]
+    query_filter = [table.service_id == service_id]
     if limit_days is not None:
-        query_filter.append(NotificationHistory.created_at >= days_ago(limit_days))
+        query_filter.append(table.created_at >= days_ago(limit_days))
 
     return query.filter(*query_filter) \
         .join(Template)\
-        .group_by(NotificationHistory.template_id, func.DATE(NotificationHistory.created_at), Template.name, Template.template_type)\
-        .order_by(desc(func.DATE(NotificationHistory.created_at)), asc(Template.name))\
-        .all()  # noqa
+        .group_by(table.template_id, Template.name, Template.template_type)\
+        .order_by(asc(Template.name))\
+        .all()
 
 
 @statsd(namespace="dao")

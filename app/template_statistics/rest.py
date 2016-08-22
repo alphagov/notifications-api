@@ -37,7 +37,6 @@ def get_template_statistics_for_service_by_day(service_id):
     def serialize(data):
         return {
             'count': data.count,
-            'day': str(data.day),
             'template_id': str(data.template_id),
             'template_name': data.name,
             'template_type': data.template_type
