@@ -10,7 +10,6 @@ from werkzeug.datastructures import MultiDict
 from sqlalchemy import (desc, func, Integer, or_, and_, asc)
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import cast
-from notifications_utils.template import get_sms_fragment_count
 
 from app import db
 from app.dao import days_ago
@@ -134,6 +133,32 @@ def dao_get_7_day_agg_notification_statistics_for_service(service_id,
     ).limit(
         week_count
     )
+
+
+@statsd(namespace="dao")
+def dao_get_template_usage(service_id, limit_days=None):
+
+    table = NotificationHistory
+
+    if limit_days and limit_days <= 7:  # can get this data from notifications table
+        table = Notification
+
+    query = db.session.query(
+        func.count(table.template_id).label('count'),
+        table.template_id,
+        Template.name,
+        Template.template_type
+    )
+
+    query_filter = [table.service_id == service_id]
+    if limit_days is not None:
+        query_filter.append(table.created_at >= days_ago(limit_days))
+
+    return query.filter(*query_filter) \
+        .join(Template)\
+        .group_by(table.template_id, Template.name, Template.template_type)\
+        .order_by(asc(Template.name))\
+        .all()
 
 
 @statsd(namespace="dao")
