@@ -171,17 +171,13 @@ class Versioned(object):
         return history_mapper.class_
 
 
-def versioned_objects(iter):
-    for obj in iter:
-        if hasattr(obj, '__history_mapper__'):
-            yield obj
+def create_history(obj, history_cls=None):
+    if not history_cls:
+        history_mapper = obj.__history_mapper__
+        history_cls = history_mapper.class_
 
-
-def create_history(obj):
-    obj_mapper = object_mapper(obj)
-    history_mapper = obj.__history_mapper__
-    history_cls = history_mapper.class_
     history = history_cls()
+    obj_mapper = object_mapper(obj)
 
     obj_state = attributes.instance_state(obj)
     data = {}

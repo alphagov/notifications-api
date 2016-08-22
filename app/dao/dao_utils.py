@@ -1,6 +1,7 @@
 import itertools
-from functools import wraps
-from app.history_meta import versioned_objects, create_history
+from functools import wraps, partial
+
+from app.history_meta import create_history
 
 
 def transactional(func):
@@ -19,14 +20,16 @@ def transactional(func):
     return commit_or_rollback
 
 
-def version_class(model_class):
+def version_class(model_class, history_cls=None):
+    create_hist = partial(create_history, history_cls=history_cls)
+
     def versioned(func):
         @wraps(func)
         def record_version(*args, **kwargs):
             from app import db
             func(*args, **kwargs)
-            history_objects = [create_history(obj) for obj in
-                               versioned_objects(itertools.chain(db.session.new, db.session.dirty))
+            history_objects = [create_hist(obj) for obj in
+                               itertools.chain(db.session.new, db.session.dirty)
                                if isinstance(obj, model_class)]
             for h_obj in history_objects:
                 db.session.add(h_obj)
