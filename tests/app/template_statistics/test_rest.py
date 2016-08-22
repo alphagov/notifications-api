@@ -13,7 +13,6 @@ from tests.app.conftest import sample_template as create_sample_template, sample
 def test_get_all_template_statistics_with_bad_arg_returns_400(notify_api, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             auth_header = create_authorization_header()
 
             response = client.get(
@@ -40,7 +39,6 @@ def test_get_template_statistics_for_service(notify_db, notify_db_session, notif
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             auth_header = create_authorization_header()
 
             response = client.get(
@@ -77,7 +75,6 @@ def test_get_template_statistics_for_service_limited_by_day(notify_db, notify_db
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             auth_header = create_authorization_header()
 
             response = client.get(
@@ -144,7 +141,6 @@ def test_get_template_statistics_for_service_limited_by_day(notify_db, notify_db
 def test_returns_empty_list_if_no_templates_used(notify_api, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             auth_header = create_authorization_header()
 
             response = client.get(
@@ -157,62 +153,48 @@ def test_returns_empty_list_if_no_templates_used(notify_api, sample_service):
             assert len(json_resp['data']) == 0
 
 
-def test_get_template_statistics_for_template_only_returns_for_provided_template(
+def test_get_template_statistics_by_id_returns_last_notification(
         notify_db,
         notify_db_session,
         notify_api,
-        sample_service
-):
-    template_1 = create_sample_template(
+        sample_service):
+
+    template = create_sample_template(
         notify_db,
         notify_db_session,
         template_name='Sample Template 1',
         service=sample_service
     )
-    template_2 = create_sample_template(
+
+    notification_1 = sample_notification(
         notify_db,
         notify_db_session,
-        template_name='Sample Template 2',
-        service=sample_service
-    )
-
-    template_1_stats_1 = TemplateStatistics(
-        template_id=template_1.id,
-        service_id=sample_service.id,
-        day=datetime(2001, 1, 1)
-    )
-    template_1_stats_2 = TemplateStatistics(
-        template_id=template_1.id,
-        service_id=sample_service.id,
-        day=datetime(2001, 1, 2)
-    )
-    template_2_stats = TemplateStatistics(
-        template_id=template_2.id,
-        service_id=sample_service.id,
-        day=datetime(2001, 1, 1)
-    )
-
-    # separate commit to ensure stats_1 has earlier updated_at time
-    db.session.add(template_1_stats_1)
-    db.session.commit()
-
-    db.session.add_all([template_1_stats_2, template_2_stats])
-    db.session.commit()
+        service=sample_service,
+        template=template)
+    notification_2 = sample_notification(
+        notify_db,
+        notify_db_session,
+        service=sample_service,
+        template=template)
+    notification_3 = sample_notification(
+        notify_db,
+        notify_db_session,
+        service=sample_service,
+        template=template)
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header()
 
             response = client.get(
-                '/service/{}/template-statistics/{}'.format(sample_service.id, template_1.id),
+                '/service/{}/template-statistics/{}'.format(sample_service.id, template.id),
                 headers=[('Content-Type', 'application/json'), auth_header],
             )
 
             assert response.status_code == 200
-            json_resp = json.loads(response.get_data(as_text=True))
-            assert len(json_resp['data']) == 2
-            assert json_resp['data'][0]['id'] == str(template_1_stats_2.id)
-            assert json_resp['data'][1]['id'] == str(template_1_stats_1.id)
+            json_resp = json.loads(response.get_data(as_text=True))['data']
+            print(json_resp)
+            assert json_resp['id'] == str(notification_3.id)
 
 
 def test_get_template_statistics_for_template_returns_empty_if_no_statistics(
@@ -221,36 +203,23 @@ def test_get_template_statistics_for_template_returns_empty_if_no_statistics(
         notify_api,
         sample_service
 ):
-    template_1 = create_sample_template(
+    template = create_sample_template(
         notify_db,
         notify_db_session,
         template_name='Sample Template 1',
         service=sample_service
     )
-    template_2 = create_sample_template(
-        notify_db,
-        notify_db_session,
-        template_name='Sample Template 2',
-        service=sample_service
-    )
-
-    template_1_stats = TemplateStatistics(
-        template_id=template_1.id,
-        service_id=sample_service.id,
-        day=datetime(2001, 1, 1)
-    )
-    db.session.add(template_1_stats)
-    db.session.commit()
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header()
 
             response = client.get(
-                '/service/{}/template-statistics/{}'.format(sample_service.id, template_2.id),
+                '/service/{}/template-statistics/{}'.format(sample_service.id, template.id),
                 headers=[('Content-Type', 'application/json'), auth_header],
             )
 
-            assert response.status_code == 200
+            assert response.status_code == 404
             json_resp = json.loads(response.get_data(as_text=True))
-            assert json_resp['data'] == []
+            assert json_resp['result'] == 'error'
+            assert json_resp['message']['template_id'] == ['No template found for id {}'.format(template.id)]
