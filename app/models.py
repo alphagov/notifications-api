@@ -5,7 +5,8 @@ from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
 )
-from sqlalchemy import UniqueConstraint, text
+from sqlalchemy import UniqueConstraint, text, ForeignKeyConstraint, and_
+from sqlalchemy.orm import foreign, remote
 
 from app.encryption import (
     hashpw,
@@ -206,7 +207,7 @@ TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
 template_types = db.Enum(*TEMPLATE_TYPES, name='template_type')
 
 
-class Template(db.Model, Versioned):
+class Template(db.Model):
     __tablename__ = 'templates'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -231,6 +232,26 @@ class Template(db.Model, Versioned):
     subject = db.Column(db.Text, index=False, unique=False, nullable=True)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     created_by = db.relationship('User')
+    version = db.Column(db.Integer, default=1)
+
+
+class TemplateHistory(db.Model):
+    __tablename__ = 'templates_history'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    template_type = db.Column(template_types, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False)
+    updated_at = db.Column(db.DateTime)
+    content = db.Column(db.Text, nullable=False)
+    archived = db.Column(db.Boolean, nullable=False, default=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
+    service = db.relationship('Service')
+    subject = db.Column(db.Text)
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+    created_by = db.relationship('User')
+    version = db.Column(db.Integer, primary_key=True)
+
 
 MMG_PROVIDER = "mmg"
 FIRETEXT_PROVIDER = "firetext"
@@ -426,6 +447,11 @@ class Notification(db.Model):
     status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
     reference = db.Column(db.String, nullable=True, index=True)
     _personalisation = db.Column(db.String, nullable=True)
+
+    template_history = db.relationship('TemplateHistory', primaryjoin=and_(
+        foreign(template_id) == remote(TemplateHistory.id),
+        foreign(template_version) == remote(TemplateHistory.version)
+    ))
 
     @property
     def personalisation(self):
