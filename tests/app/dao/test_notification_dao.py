@@ -35,15 +35,16 @@ from app.dao.notifications_dao import (
     dao_get_template_statistics_for_service,
     get_notifications_for_service, dao_get_7_day_agg_notification_statistics_for_service,
     dao_get_potential_notification_statistics_for_day, dao_get_notification_statistics_for_day,
-    dao_get_template_statistics_for_template, get_notification_by_id)
+    dao_get_template_statistics_for_template, get_notification_by_id, dao_get_template_usage)
 
 from notifications_utils.template import get_sms_fragment_count
 
-from tests.app.conftest import (sample_notification)
+from tests.app.conftest import (sample_notification, sample_template, sample_email_template, sample_service)
 
 
 def test_should_have_decorated_notifications_dao_functions():
     assert dao_get_notification_statistics_for_service.__wrapped__.__name__ == 'dao_get_notification_statistics_for_service'  # noqa
+    assert dao_get_template_usage.__wrapped__.__name__ == 'dao_get_template_usage'  # noqa
     assert dao_get_notification_statistics_for_service_and_day.__wrapped__.__name__ == 'dao_get_notification_statistics_for_service_and_day'  # noqa
     assert dao_get_notification_statistics_for_day.__wrapped__.__name__ == 'dao_get_notification_statistics_for_day'  # noqa
     assert dao_get_potential_notification_statistics_for_day.__wrapped__.__name__ == 'dao_get_potential_notification_statistics_for_day'  # noqa
@@ -61,6 +62,137 @@ def test_should_have_decorated_notifications_dao_functions():
     assert get_notifications_for_service.__wrapped__.__name__ == 'get_notifications_for_service'  # noqa
     assert get_notification_by_id.__wrapped__.__name__ == 'get_notification_by_id'  # noqa
     assert delete_notifications_created_more_than_a_week_ago.__wrapped__.__name__ == 'delete_notifications_created_more_than_a_week_ago'  # noqa
+
+
+def test_should_by_able_to_get_template_count_from_notifications_history(notify_db, notify_db_session, sample_service):
+    sms = sample_template(notify_db, notify_db_session)
+    email = sample_email_template(notify_db, notify_db_session)
+    sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
+    sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
+    sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
+    sample_notification(notify_db, notify_db_session, service=sample_service, template=email)
+    sample_notification(notify_db, notify_db_session, service=sample_service, template=email)
+
+    results = dao_get_template_usage(sample_service.id)
+    assert results[0].name == 'Email Template Name'
+    assert results[0].template_type == 'email'
+    assert results[0].count == 2
+
+    assert results[1].name == 'Template Name'
+    assert results[1].template_type == 'sms'
+    assert results[1].count == 3
+
+
+def test_should_by_able_to_get_template_count_from_notifications_history_for_service(
+        notify_db,
+        notify_db_session):
+    service_1 = sample_service(notify_db, notify_db_session, service_name="test1", email_from="test1")
+    service_2 = sample_service(notify_db, notify_db_session, service_name="test2", email_from="test2")
+    service_3 = sample_service(notify_db, notify_db_session, service_name="test3", email_from="test3")
+
+    sms = sample_template(notify_db, notify_db_session)
+
+    sample_notification(notify_db, notify_db_session, service=service_1, template=sms)
+    sample_notification(notify_db, notify_db_session, service=service_1, template=sms)
+    sample_notification(notify_db, notify_db_session, service=service_2, template=sms)
+
+    assert dao_get_template_usage(service_1.id)[0].count == 2
+    assert dao_get_template_usage(service_2.id)[0].count == 1
+    assert len(dao_get_template_usage(service_3.id)) == 0
+
+
+def test_should_by_able_to_get_zero_count_from_notifications_history_if_no_rows(sample_service):
+    results = dao_get_template_usage(sample_service.id)
+    assert len(results) == 0
+
+
+def test_should_by_able_to_get_zero_count_from_notifications_history_if_no_service():
+    results = dao_get_template_usage(str(uuid.uuid4()))
+    assert len(results) == 0
+
+
+def test_should_by_able_to_get_template_count_from_notifications_history_across_days(
+        notify_db,
+        notify_db_session,
+        sample_service):
+    sms = sample_template(notify_db, notify_db_session)
+    email = sample_email_template(notify_db, notify_db_session)
+
+    today = datetime.now()
+    yesterday = datetime.now() - timedelta(days=1)
+    one_month_ago = datetime.now() - timedelta(days=30)
+
+    sample_notification(notify_db, notify_db_session, created_at=today, service=sample_service, template=email)
+    sample_notification(notify_db, notify_db_session, created_at=today, service=sample_service, template=email)
+    sample_notification(notify_db, notify_db_session, created_at=today, service=sample_service, template=sms)
+
+    sample_notification(notify_db, notify_db_session, created_at=yesterday, service=sample_service, template=email)
+    sample_notification(notify_db, notify_db_session, created_at=yesterday, service=sample_service, template=email)
+    sample_notification(notify_db, notify_db_session, created_at=yesterday, service=sample_service, template=email)
+    sample_notification(notify_db, notify_db_session, created_at=yesterday, service=sample_service, template=sms)
+
+    sample_notification(notify_db, notify_db_session, created_at=one_month_ago, service=sample_service, template=sms)
+    sample_notification(notify_db, notify_db_session, created_at=one_month_ago, service=sample_service, template=sms)
+    sample_notification(notify_db, notify_db_session, created_at=one_month_ago, service=sample_service, template=sms)
+
+    results = dao_get_template_usage(sample_service.id)
+
+    assert len(results) == 2
+
+    assert [(row.name, row.template_type, row.count) for row in results] == [
+        ('Email Template Name', 'email', 5),
+        ('Template Name', 'sms', 5)
+    ]
+
+
+def test_should_by_able_to_get_template_count_from_notifications_history_with_day_limit(
+        notify_db,
+        notify_db_session,
+        sample_service):
+    sms = sample_template(notify_db, notify_db_session)
+
+    email = sample_email_template(notify_db, notify_db_session)
+
+    today = datetime.now()
+    yesterday = datetime.now() - timedelta(days=1)
+    one_month_ago = datetime.now() - timedelta(days=30)
+
+    sample_notification(notify_db, notify_db_session, created_at=today, service=sample_service, template=email)
+    sample_notification(notify_db, notify_db_session, created_at=today, service=sample_service, template=email)
+    sample_notification(notify_db, notify_db_session, created_at=today, service=sample_service, template=sms)
+
+    sample_notification(notify_db, notify_db_session, created_at=yesterday, service=sample_service, template=email)
+    sample_notification(notify_db, notify_db_session, created_at=yesterday, service=sample_service, template=email)
+    sample_notification(notify_db, notify_db_session, created_at=yesterday, service=sample_service, template=email)
+    sample_notification(notify_db, notify_db_session, created_at=yesterday, service=sample_service, template=sms)
+
+    sample_notification(notify_db, notify_db_session, created_at=one_month_ago, service=sample_service, template=sms)
+    sample_notification(notify_db, notify_db_session, created_at=one_month_ago, service=sample_service, template=sms)
+    sample_notification(notify_db, notify_db_session, created_at=one_month_ago, service=sample_service, template=sms)
+
+    results_day_one = dao_get_template_usage(sample_service.id, limit_days=0)
+    assert len(results_day_one) == 2
+
+    results_day_two = dao_get_template_usage(sample_service.id, limit_days=1)
+    assert len(results_day_two) == 2
+
+    results_day_30 = dao_get_template_usage(sample_service.id, limit_days=31)
+    assert len(results_day_30) == 2
+
+    assert [(row.name, row.template_type, row.count) for row in results_day_one] == [
+        ('Email Template Name', 'email', 2),
+        ('Template Name', 'sms', 1)
+    ]
+
+    assert [(row.name, row.template_type, row.count) for row in results_day_two] == [
+        ('Email Template Name', 'email', 5),
+        ('Template Name', 'sms', 2),
+    ]
+
+    assert [(row.name, row.template_type, row.count) for row in results_day_30] == [
+        ('Email Template Name', 'email', 5),
+        ('Template Name', 'sms', 5),
+    ]
 
 
 def test_should_by_able_to_update_status_by_reference(sample_email_template, ses_provider):
