@@ -176,7 +176,7 @@ def get_service_provider_aggregate_statistics(service_id):
 # tables. This is so product owner can pass stories as done
 @service.route('/<uuid:service_id>/history', methods=['GET'])
 def get_service_history(service_id):
-    from app.models import (Service, ApiKey, Template, Event)
+    from app.models import (Service, ApiKey, Template, TemplateHistory, Event)
     from app.schemas import (
         service_history_schema,
         api_key_history_schema,
@@ -189,7 +189,7 @@ def get_service_history(service_id):
     api_key_history = ApiKey.get_history_model().query.filter_by(service_id=service_id).all()
     api_keys_data = api_key_history_schema.dump(api_key_history, many=True).data
 
-    template_history = Template.get_history_model().query.filter_by(service_id=service_id).all()
+    template_history = TemplateHistory.query.filter_by(service_id=service_id).all()
     template_data, errors = template_history_schema.dump(template_history, many=True)
 
     events = Event.query.all()
