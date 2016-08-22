@@ -173,17 +173,11 @@ class TemplateSchema(BaseTemplateSchema):
 
 class TemplateHistorySchema(BaseSchema):
 
-    class Meta:
-        # Use the base model class that the history class is created from
-        model = models.Template
-    # We have to use a method here because the relationship field on the
-    # history object is not created.
-    created_by = fields.Method("populate_created_by", dump_only=True)
+    created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
     created_at = field_for(models.Template, 'created_at', format='%Y-%m-%d %H:%M:%S.%f')
 
-    def populate_created_by(self, data):
-        usr = models.User.query.filter_by(id=data.created_by_id).one()
-        return {'id': str(usr.id), 'name': usr.name, 'email_address': usr.email_address}
+    class Meta:
+        model = models.TemplateHistory
 
 
 class NotificationsStatisticsSchema(BaseSchema):
@@ -289,12 +283,20 @@ class NotificationWithTemplateSchema(BaseSchema):
         strict = True
         exclude = ('_personalisation',)
 
-    template = fields.Nested(TemplateSchema, only=["id", "name", "template_type", "content", "subject"], dump_only=True)
+    template = fields.Nested(
+        TemplateSchema,
+        only=['id', 'version', 'name', 'template_type', 'content', 'subject'],
+        dump_only=True
+    )
     job = fields.Nested(JobSchema, only=["id", "original_file_name"], dump_only=True)
     personalisation = fields.Dict(required=False)
 
 
 class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
+    template_history = fields.Nested(TemplateHistorySchema,
+                                     only=['id', 'name', 'template_type', 'content', 'subject', 'version'],
+                                     dump_only=True)
+
     class Meta(NotificationWithTemplateSchema.Meta):
         # mark as many fields as possible as required since this is a public api.
         # WARNING: Does _not_ reference fields computed in handle_template_merge, such as
@@ -306,7 +308,7 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
             # computed fields
             'personalisation',
             # relationships
-            'service', 'job', 'api_key', 'template'
+            'service', 'job', 'api_key', 'template_history'
         )
 
     @pre_dump
@@ -316,6 +318,7 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
 
     @post_dump
     def handle_template_merge(self, in_data):
+        in_data['template'] = in_data.pop('template_history')
         from notifications_utils.template import Template
         template = Template(
             in_data['template'],

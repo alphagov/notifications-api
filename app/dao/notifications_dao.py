@@ -8,6 +8,7 @@ from datetime import (
 from flask import current_app
 from werkzeug.datastructures import MultiDict
 from sqlalchemy import (desc, func, Integer, or_, and_, asc)
+from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import cast
 
 from app import db
@@ -376,12 +377,12 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
 
 
 @statsd(namespace="dao")
-def get_notification(service_id, notification_id, key_type=None):
+def get_notification_with_personalisation(service_id, notification_id, key_type):
     filter_dict = {'service_id': service_id, 'id': notification_id}
     if key_type:
         filter_dict['key_type'] = key_type
 
-    return Notification.query.filter_by(**filter_dict).one()
+    return Notification.query.filter_by(**filter_dict).options(joinedload('template_history')).one()
 
 
 @statsd(namespace="dao")
@@ -399,7 +400,8 @@ def get_notifications_for_service(service_id,
                                   page=1,
                                   page_size=None,
                                   limit_days=None,
-                                  key_type=None):
+                                  key_type=None,
+                                  personalisation=False):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
     filters = [Notification.service_id == service_id]
@@ -413,6 +415,10 @@ def get_notifications_for_service(service_id,
 
     query = Notification.query.filter(*filters)
     query = _filter_query(query, filter_dict)
+    if personalisation:
+        query = query.options(
+            joinedload('template_history')
+        )
     return query.order_by(desc(Notification.created_at)).paginate(
         page=page,
         per_page=page_size

@@ -6,7 +6,7 @@ from app.dao.templates_dao import (
     dao_update_template,
     dao_get_template_versions)
 from tests.app.conftest import sample_template as create_sample_template
-from app.models import Template
+from app.models import Template, TemplateHistory
 import pytest
 
 
@@ -185,7 +185,7 @@ def test_get_template_by_id_and_service_returns_none_if_no_template(sample_servi
 
 def test_create_template_creates_a_history_record_with_current_data(sample_service, sample_user):
     assert Template.query.count() == 0
-    assert Template.get_history_model().query.count() == 0
+    assert TemplateHistory.query.count() == 0
     data = {
         'name': 'Sample Template',
         'template_type': "email",
@@ -200,7 +200,7 @@ def test_create_template_creates_a_history_record_with_current_data(sample_servi
     assert Template.query.count() == 1
 
     template_from_db = Template.query.first()
-    template_history = Template.get_history_model().query.first()
+    template_history = TemplateHistory.query.first()
 
     assert template_from_db.id == template_history.id
     assert template_from_db.name == template_history.name
@@ -212,7 +212,7 @@ def test_create_template_creates_a_history_record_with_current_data(sample_servi
 
 def test_update_template_creates_a_history_record_with_current_data(sample_service, sample_user):
     assert Template.query.count() == 0
-    assert Template.get_history_model().query.count() == 0
+    assert TemplateHistory.query.count() == 0
     data = {
         'name': 'Sample Template',
         'template_type': "email",
@@ -228,20 +228,20 @@ def test_update_template_creates_a_history_record_with_current_data(sample_servi
     assert created.name == 'Sample Template'
     assert Template.query.count() == 1
     assert Template.query.first().version == 1
-    assert Template.get_history_model().query.count() == 1
+    assert TemplateHistory.query.count() == 1
 
     created.name = 'new name'
     dao_update_template(created)
 
     assert Template.query.count() == 1
-    assert Template.get_history_model().query.count() == 2
+    assert TemplateHistory.query.count() == 2
 
     template_from_db = Template.query.first()
 
     assert template_from_db.version == 2
 
-    assert Template.get_history_model().query.filter_by(name='Sample Template').one().version == 1
-    assert Template.get_history_model().query.filter_by(name='new name').one().version == 2
+    assert TemplateHistory.query.filter_by(name='Sample Template').one().version == 1
+    assert TemplateHistory.query.filter_by(name='new name').one().version == 2
 
 
 def test_get_template_history_version(sample_user, sample_service, sample_template):
@@ -261,12 +261,16 @@ def test_get_template_versions(sample_template):
     sample_template.content = 'new version'
     dao_update_template(sample_template)
     versions = dao_get_template_versions(service_id=sample_template.service_id, template_id=sample_template.id)
-    assert versions.__len__() == 2
-    for x in versions:
-        if x.version == 2:
-            assert x.content == 'new version'
-        else:
-            assert x.content == original_content
+    assert len(versions) == 2
+    versions = sorted(versions, key=lambda x: x.version)
+    assert versions[0].content == original_content
+    assert versions[1].content == 'new version'
+
+    assert versions[0].created_at == versions[1].created_at
+
+    assert versions[0].updated_at is None
+    assert versions[1].updated_at is not None
+
     from app.schemas import template_history_schema
     v = template_history_schema.load(versions, many=True)
-    assert v.__len__() == 2
+    assert len(v) == 2
