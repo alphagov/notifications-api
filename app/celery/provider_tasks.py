@@ -1,29 +1,29 @@
 from datetime import datetime
 from monotonic import monotonic
+from urllib.parse import urljoin
+
 from flask import current_app
+from notifications_utils.recipients import (
+    validate_and_format_phone_number
+)
+from notifications_utils.template import Template, get_sms_fragment_count
+from notifications_utils.renderers import HTMLEmail, PlainTextEmail, SMSMessage
+
 from app import notify_celery, statsd_client, clients, create_uuid
 from app.clients.email import EmailClientException
 from app.clients.sms import SmsClientException
-
 from app.dao.notifications_dao import (
     update_provider_stats,
     get_notification_by_id,
     dao_update_notification,
     update_notification_status_by_id
 )
-
 from app.dao.provider_details_dao import get_provider_details_by_notification_type
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
-from notifications_utils.recipients import (
-    validate_and_format_phone_number
-)
-
 from app.dao.templates_dao import dao_get_template_by_id
-from notifications_utils.template import Template, get_sms_fragment_count
-from notifications_utils.renderers import HTMLEmail, PlainTextEmail, SMSMessage
 
-from app.models import SMS_TYPE, EMAIL_TYPE, KEY_TYPE_TEST
+from app.models import SMS_TYPE, EMAIL_TYPE, KEY_TYPE_TEST, BRANDING_ORG
 from app.statsd_decorators import statsd
 
 
@@ -92,11 +92,15 @@ def send_sms_to_provider(self, service_id, notification_id):
         except SmsClientException as e:
             try:
                 current_app.logger.error(
-                    "SMS notification {} failed".format(notification_id)
+                    "RETRY: SMS notification {} failed".format(notification_id)
                 )
                 current_app.logger.exception(e)
                 self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
             except self.MaxRetriesExceededError:
+                current_app.logger.error(
+                    "RETRY FAILED: task send_sms_to_provider failed for notification {}".format(notification.id),
+                    e
+                )
                 update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
 
         current_app.logger.info(
@@ -133,7 +137,7 @@ def send_email_to_provider(self, service_id, notification_id):
             html_email = Template(
                 template_dict,
                 values=notification.personalisation,
-                renderer=HTMLEmail()
+                renderer=get_html_email_renderer(service)
             )
 
             plain_text_email = Template(
@@ -173,11 +177,15 @@ def send_email_to_provider(self, service_id, notification_id):
         except EmailClientException as e:
             try:
                 current_app.logger.error(
-                    "Email notification {} failed".format(notification_id)
+                    "RETRY: Email notification {} failed".format(notification_id)
                 )
                 current_app.logger.exception(e)
                 self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
             except self.MaxRetriesExceededError:
+                current_app.logger.error(
+                    "RETRY FAILED: task send_email_to_provider failed for notification {}".format(notification.id),
+                    e
+                )
                 update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
 
         current_app.logger.info(
@@ -185,3 +193,22 @@ def send_email_to_provider(self, service_id, notification_id):
         )
         delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
         statsd_client.timing("email.total-time", delta_milliseconds)
+
+
+def get_html_email_renderer(service):
+    govuk_banner = service.branding != BRANDING_ORG
+    if service.organisation:
+        logo = '{}{}{}'.format(
+            current_app.config['ADMIN_BASE_URL'],
+            current_app.config['BRANDING_PATH'],
+            service.organisation.logo
+        )
+        branding = {
+            'brand_colour': service.organisation.colour,
+            'brand_logo': logo,
+            'brand_name': service.organisation.name,
+        }
+    else:
+        branding = {}
+
+    return HTMLEmail(govuk_banner=govuk_banner, **branding)

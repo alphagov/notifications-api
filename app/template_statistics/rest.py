@@ -5,6 +5,7 @@ from flask import (
 )
 
 from app.dao.notifications_dao import (
+    dao_get_template_usage,
     dao_get_template_statistics_for_service,
     dao_get_template_statistics_for_template
 )
@@ -21,7 +22,7 @@ register_errors(template_statistics)
 
 
 @template_statistics.route('')
-def get_template_statistics_for_service(service_id):
+def get_template_statistics_for_service_by_day(service_id):
     if request.args.get('limit_days'):
         try:
             limit_days = int(request.args['limit_days'])
@@ -31,9 +32,17 @@ def get_template_statistics_for_service(service_id):
             raise InvalidRequest(message, status_code=400)
     else:
         limit_days = None
-    stats = dao_get_template_statistics_for_service(service_id, limit_days=limit_days)
-    data = template_statistics_schema.dump(stats, many=True).data
-    return jsonify(data=data)
+    stats = dao_get_template_usage(service_id, limit_days=limit_days)
+
+    def serialize(data):
+        return {
+            'count': data.count,
+            'template_id': str(data.template_id),
+            'template_name': data.name,
+            'template_type': data.template_type
+        }
+
+    return jsonify(data=[serialize(row) for row in stats])
 
 
 @template_statistics.route('/<template_id>')

@@ -16,7 +16,16 @@ from app.clients.sms import SmsClientException
 from app.dao import notifications_dao, provider_details_dao
 from app.dao import provider_statistics_dao
 from app.dao.provider_statistics_dao import get_provider_statistics
-from app.models import Notification, NotificationStatistics, Job, KEY_TYPE_NORMAL, KEY_TYPE_TEST
+from app.models import (
+    Notification,
+    NotificationStatistics,
+    Job,
+    Organisation,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEST,
+    BRANDING_ORG,
+    BRANDING_BOTH
+)
 from tests.app.conftest import sample_notification
 
 
@@ -188,7 +197,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
         sender=None
     )
 
-    persisted_notification = notifications_dao.get_notification(sample_template.service_id, db_notification.id)
+    persisted_notification = notifications_dao.get_notification_by_id(db_notification.id)
     assert persisted_notification.to == db_notification.to
     assert persisted_notification.template_id == sample_template.id
     assert persisted_notification.template_version == version_on_notification
@@ -223,7 +232,7 @@ def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_s
         ('mmg', str(sample_notification.id), sample_notification.to), queue='research-mode'
     )
 
-    persisted_notification = notifications_dao.get_notification(sample_service.id, sample_notification.id)
+    persisted_notification = notifications_dao.get_notification_by_id(sample_notification.id)
     assert persisted_notification.to == sample_notification.to
     assert persisted_notification.template_id == sample_notification.template_id
     assert persisted_notification.status == 'sending'
@@ -499,8 +508,46 @@ def test_should_not_set_billable_units_if_research_mode(notify_db, sample_servic
         sample_notification.id
     )
 
-    persisted_notification = notifications_dao.get_notification(sample_service.id, sample_notification.id)
+    persisted_notification = notifications_dao.get_notification_by_id(sample_notification.id)
     assert persisted_notification.billable_units == 0
+
+
+def test_get_html_email_renderer_should_return_for_normal_service(sample_service):
+    renderer = provider_tasks.get_html_email_renderer(sample_service)
+    assert renderer.govuk_banner
+    assert renderer.brand_colour is None
+    assert renderer.brand_logo is None
+    assert renderer.brand_name is None
+
+
+@pytest.mark.parametrize('branding_type, govuk_banner', [
+    (BRANDING_ORG, False),
+    (BRANDING_BOTH, True)
+])
+def test_get_html_email_renderer_with_branding_details(branding_type, govuk_banner, notify_db, sample_service):
+    sample_service.branding = branding_type
+    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
+    sample_service.organisation = org
+    notify_db.session.add_all([sample_service, org])
+    notify_db.session.commit()
+
+    renderer = provider_tasks.get_html_email_renderer(sample_service)
+
+    assert renderer.govuk_banner == govuk_banner
+    assert renderer.brand_colour == '000000'
+    assert renderer.brand_name == 'Justice League'
+
+
+def test_get_html_email_renderer_prepends_logo_path(notify_db, sample_service):
+    sample_service.branding = BRANDING_ORG
+    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
+    sample_service.organisation = org
+    notify_db.session.add_all([sample_service, org])
+    notify_db.session.commit()
+
+    renderer = provider_tasks.get_html_email_renderer(sample_service)
+
+    assert renderer.brand_logo == 'http://localhost:6012/static/images/email-template/crests/justice-league.png'
 
 
 def _get_provider_statistics(service, **kwargs):

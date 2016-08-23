@@ -24,6 +24,9 @@ function display_result {
   fi
 }
 
+if [ -d venv ]; then
+  source ./venv/bin/activate
+fi
 pep8 .
 display_result $? 1 "Code style check"
 
