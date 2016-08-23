@@ -28,7 +28,6 @@ msg "Started $(basename $0) at $(/bin/date "+%F %T")"
 start_sec=$(/bin/date +%s.%N)
 
 msg "Getting relevant load balancer"
-
 INSTANCE_NAME=$(get_instance_name_from_tags $INSTANCE_ID)
 
 if [[ "$(tr [:upper:] [:lower:] <<< "${INSTANCE_NAME}")" =~ 'delivery' ]]; then
@@ -37,6 +36,7 @@ if [[ "$(tr [:upper:] [:lower:] <<< "${INSTANCE_NAME}")" =~ 'delivery' ]]; then
 fi
 
 get_elb_name_for_instance_name $INSTANCE_NAME
+ELB_LIST=$ELB_NAME
 get_elb_list $INSTANCE_ID $ELB_NAME
 
 msg "Checking that user set at least one load balancer"
