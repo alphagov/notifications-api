@@ -210,7 +210,11 @@ class JobSchema(BaseSchema):
 
     class Meta:
         model = models.Job
-        exclude = ('notifications',)
+        exclude = (
+            'notifications',
+            'notifications_sent',
+            'notifications_delivered',
+            'notifications_failed')
         strict = True
 
 
