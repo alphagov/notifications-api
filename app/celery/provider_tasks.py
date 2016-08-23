@@ -113,7 +113,7 @@ def send_sms_to_provider(self, service_id, notification_id):
 def provider_to_use(notification_type, notification_id):
     active_providers_in_order = [
         provider for provider in get_provider_details_by_notification_type(notification_type) if provider.active
-        ]
+    ]
 
     if not active_providers_in_order:
         current_app.logger.error(

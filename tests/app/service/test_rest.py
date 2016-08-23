@@ -1110,7 +1110,7 @@ def test_set_sms_sender_for_service_rejects_invalid_characters(notify_api, sampl
         'delivered': 0,
         'failed': 0
     })
-    ], ids=['seven_days', 'today']
+], ids=['seven_days', 'today']
 )
 def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_service, today_only, stats):
     with notify_api.test_request_context(), notify_api.test_client() as client:
