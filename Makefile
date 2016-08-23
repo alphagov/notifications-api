@@ -75,7 +75,7 @@ upload-codedeploy-artifact: check-env-vars
 	aws s3 cp --region eu-west-1 target/notifications-api.zip s3://${DNS_NAME}-codedeploy/notifications-api-${DEPLOY_BUILD_NUMBER}.zip
 
 .PHONY: test
-test: venv ## Run tests
+test: venv generate-version-file ## Run tests
 	./scripts/run_tests.sh
 
 .PHONY: deploy-api
