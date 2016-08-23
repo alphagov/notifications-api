@@ -16,7 +16,6 @@ from tests.app.conftest import (
     sample_user as create_sample_user,
     sample_notification as create_sample_notification
 )
-from app.service.rest import get_detailed_services
 
 
 def test_get_service_list(notify_api, service_factory):
@@ -1096,18 +1095,17 @@ def test_set_sms_sender_for_service_rejects_invalid_characters(notify_api, sampl
 
 
 @pytest.mark.parametrize('today_only,stats', [
-        ('False', {
-            'requested': 2,
-            'delivered': 1,
-            'failed': 0
-        }),
-        ('True', {
-            'requested': 1,
-            'delivered': 0,
-            'failed': 0
-        })
-    ], ids=['seven_days', 'today']
-)
+    ('False', {
+        'requested': 2,
+        'delivered': 1,
+        'failed': 0
+    }),
+    ('True', {
+        'requested': 1,
+        'delivered': 0,
+        'failed': 0
+    })
+], ids=['seven_days', 'today'])
 def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_service, today_only, stats):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         with freeze_time('2000-01-01T12:00:00'):
@@ -1177,31 +1175,8 @@ def test_get_services_with_detailed_flag(notify_api, notify_db, notify_db_sessio
 
 
 def test_get_detailed_services_groups_by_service(notify_db, notify_db_session):
-    service_1 = create_sample_service(notify_db, notify_db_session, service_name="1", email_from='1')
-    service_2 = create_sample_service(notify_db, notify_db_session, service_name="2", email_from='2')
+    from app.service.rest import get_detailed_services
 
-    create_sample_notification(notify_db, notify_db_session, service=service_1, status='created')
-    create_sample_notification(notify_db, notify_db_session, service=service_2, status='created')
-    create_sample_notification(notify_db, notify_db_session, service=service_1, status='delivered')
-    create_sample_notification(notify_db, notify_db_session, service=service_1, status='created')
-
-    data = get_detailed_services()
-    data = sorted(data, key=lambda x: x['id'])
-
-    assert len(data) == 2
-    assert data[0]['id'] == str(service_1.id)
-    assert data[0]['statistics'] == {
-        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 1}
-    }
-    assert data[1]['id'] == str(service_2.id)
-    assert data[1]['statistics'] == {
-        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 1, 'failed': 0, 'requested': 2}
-    }
-
-
-def test_get_detailed_services_groups_by_service(notify_db, notify_db_session):
     service_1 = create_sample_service(notify_db, notify_db_session, service_name="1", email_from='1')
     service_2 = create_sample_service(notify_db, notify_db_session, service_name="2", email_from='2')
 
@@ -1226,8 +1201,33 @@ def test_get_detailed_services_groups_by_service(notify_db, notify_db_session):
     }
 
 
+def test_get_detailed_services_includes_services_with_no_notifications(notify_db, notify_db_session):
+    from app.service.rest import get_detailed_services
+
+    service_1 = create_sample_service(notify_db, notify_db_session, service_name="1", email_from='1')
+    service_2 = create_sample_service(notify_db, notify_db_session, service_name="2", email_from='2')
+
+    create_sample_notification(notify_db, notify_db_session, service=service_1)
+
+    data = get_detailed_services()
+    data = sorted(data, key=lambda x: x['name'])
+
+    assert len(data) == 2
+    assert data[0]['id'] == str(service_1.id)
+    assert data[0]['statistics'] == {
+        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 1}
+    }
+    assert data[1]['id'] == str(service_2.id)
+    assert data[1]['statistics'] == {
+        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 0}
+    }
+
 
 def test_get_detailed_services_only_includes_todays_notifications(notify_db, notify_db_session):
+    from app.service.rest import get_detailed_services
+
     create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 9, 23, 59))
     create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 10, 0, 0))
     create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 10, 12, 0))

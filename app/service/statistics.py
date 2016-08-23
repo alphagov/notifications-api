@@ -8,7 +8,7 @@ def format_statistics(statistics):
     # statistics come in a named tuple with uniqueness from 'notification_type', 'status' - however missing
     # statuses/notification types won't be represented and the status types need to be simplified/summed up
     # so we can return emails/sms * created, sent, and failed
-    counts = _create_zeroed_stats_dicts()
+    counts = create_zeroed_stats_dicts()
     for row in statistics:
         _update_statuses_from_row(counts[row.notification_type], row)
 
@@ -20,7 +20,7 @@ def format_weekly_notification_stats(statistics, service_created_at):
     # turn a datetime into midnight that day http://stackoverflow.com/a/1937636
     preceeding_monday_midnight = datetime.combine(preceeding_monday.date(), datetime.min.time())
     week_dict = {
-        week: _create_zeroed_stats_dicts()
+        week: create_zeroed_stats_dicts()
         for week in _weeks_for_range(preceeding_monday_midnight, datetime.utcnow())
     }
     for row in statistics:
@@ -29,7 +29,7 @@ def format_weekly_notification_stats(statistics, service_created_at):
     return week_dict
 
 
-def _create_zeroed_stats_dicts():
+def create_zeroed_stats_dicts():
     return {
         template_type: {
             status: 0 for status in ('requested', 'delivered', 'failed')

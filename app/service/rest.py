@@ -259,4 +259,9 @@ def get_detailed_services():
     for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
         services[service_id].statistics = statistics.format_statistics(rows)
 
+    # if service has not sent anything, query will not have set statistics correctly
+    for service in services.values():
+        if not hasattr(service, 'statistics'):
+            service.statistics = statistics.create_zeroed_stats_dicts()
+
     return detailed_service_schema.dump(services.values(), many=True).data
