@@ -27,50 +27,6 @@ notifications:
       secure: vCmpAjdXkprqGzSnQzcco1lNiFuj/nRQdlVTGSnvg2HEqZUM5vzmWtQYw3WNS/bcgbVxV/nLgza17cdsmFqOuaZll4kDM0swnmk17eynImAHPFF/flGsNcw4oRV7WzWrq7j1TvGzJzxJkHYOjJFk0iMLM7+P76sWHI6Oa5NHQYH2l7a4hqzqmuUKaloHeZX/Ro2RmFE+/t/SfNr0pmtTRO4CfLfPUdUs9D8Mx0cyc1Z9Ke4Cq+R2Lsp8BwH0nye6pb9cI4h1YmUY/Xt8O1Z0QbncHZviWojSB2vV0V5WQPzqjjseAznJ1depK/LPOlRHlqddkEbGK28rDwsxbzY1q3DCZZiZZTXBD80HyNr/J4rfRAXhoCafwR57cqqIQ7G/fb5A/ckUM8TFKqUPh7wvu67OAiSWJmO78C8fumF3HxcoGp7DQOQPFLtWGuCfh2zjI9WbUhiHQwWl9/9qpgMEuXH7LOJAzgQbEp1A7XRmT2GupYEkGdFMwT8ojp8OXds08diEy1FNonWAtFZs8pO92urK862pCRB8WRQZWMjpcnif1Ht4QtwYFO9iVp5ygReTEoFuiQPMAypCVCzKgHe/W8LX55xzSnlUQqDU2NzN37LfC4ctS1h3BfIIU5KP9PmdgkKRUWcrFE3eMXPG36OdU4hRj4FMURzmAOZYhaSXuP8=
 deploy:
 - provider: s3
-  access_key_id: AKIAJLWYN4T4D5WU4APA
-  secret_access_key: &1
-    secure: j89/yB4NUSUwgG4UKVBMuzkGW8UwFS3Fp9W/7sxFh0zXndMwEN8yl9OtaJ/K9gKds8FAKYCwdSJ90wztdEuDO7c1k60WtD08vbXx1TIEvk9N+VRCOAo5dKy3ZpoF8vQJYNP/luQyU5Ev8zm69nzW+40KaHosyS0b6/dvxy4luZnBiiX9bmR+12Mg3qT/NN7qf4SsImxc0OKl37NdUc03ygCPRPLhDD1bOgfLhDaZNby7DNbP3rKSB81T5cww8Ib2PkwjR9UTurD5JpIBJmZXhqVDtZ9cYUjrrmRPtHtzWBVt3QR7pQeqGupdLTlljV7o6FkAbwjYcEo72cMlwYcoDvBwGc0nyZCgQsQDkHRo8ez5WbXuDq3QvNNOCUh+HPCYSze3uWRIwY/Sb48dwLI1Y5ieQ5b+u2dusxRQbOHajPAO6I9Zl2IRuV6/lHhtfKfTF2BIKT2hfRdkMCIlTBGSPF6wZVhBd3dSTXJxwsarphDvfVilHI0tzz3gfnbmwAz/Z5KAASlCE73oX+0dvZDke1tNIURCM8MzfmK3BmRzh0V0zdET1wzRvhSzyvHSfOL6qRjxDfbvRRPQXD2EkFuW3RJlguOrX5k2eJ5eG0Da9hcI2XZ7VI7cK/UdLgRYjad8l6pKtYIQcxRw4EPb4OtsnMlzpzV9uFpObIZSgUgOoC4=
-  local_dir: dpl_cd_upload
-  skip_cleanup: true
-  region: eu-west-1
-  wait-until-deployed: true
-  on: &2
-    repo: alphagov/notifications-api
-  bucket: notify.works-notifications-api-codedeploy
-- provider: codedeploy
-  access_key_id: AKIAJLWYN4T4D5WU4APA
-  secret_access_key: *1
-  bucket: notify.works-notifications-api-codedeploy
-  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
-  bundle_type: zip
-  application: api
-  deployment_group: notifications_admin_api_deployment_group
-  region: eu-west-1
-  wait-until-deployed: true
-  on: *2
-- provider: codedeploy
-  access_key_id: AKIAJLWYN4T4D5WU4APA
-  secret_access_key: *1
-  bucket: notify.works-notifications-api-codedeploy
-  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
-  bundle_type: zip
-  application: api
-  deployment_group: notifications_api_deployment_group
-  region: eu-west-1
-  wait-until-deployed: true
-  on: *2
-- provider: codedeploy
-  access_key_id: AKIAJLWYN4T4D5WU4APA
-  secret_access_key: *1
-  bucket: notify.works-notifications-api-codedeploy
-  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
-  bundle_type: zip
-  application: api
-  deployment_group: notifications_delivery_api_deployment_group
-  region: eu-west-1
-  wait-until-deployed: true
-  on: *2
-- provider: s3
   access_key_id: AKIAJBHLXFS5UHJ6PXLA
   secret_access_key: &1
     secure: wYEw/AMHxcfddKP7Hc3r08onLtkZyYBnm+xhxMum3rQjR6Otj4rQ9pROw9V3xOzPBq/nKPTkO6G+4UVrHlPwBmplfpeyK/PXLll8gcNPV0qWxyKs7uVBW6KAgsXm5utuAyLNSWINWpbinjtHCTg3g+JwVFj32/RTUYTKfqzKl/M91Cd1Ezs0olrUIqkONTWRbM3fwCce//77XpRRYIK6baZK4I/qXXJ4P52cj9iqFVF1x684082cxcROtREC0Aeucldvft4WuNtUGZlczcG00PhTP9+pkKhgsNB9q/ICc3aBtbhjdKtJjweNfaNzbL1f/UgG+xJdf7zl4LEpTdSjklJeelHh93UlPObOUsm+BUU9ZRLa8xDpuWxvOxDpSIwBAORkYTl1kxfwb2GJVACZHrmF3zl9Z+btPYGyu6gCSf+3ez0HWFR76DfpsZfMyFUF9mxrBfpQR6d7hYAOdOggOpTB3jCkzMtkDeeYedYErUnfP6CA0rrN5voTqq5RuOWjJPMnuL7BMyM2ZQ2z5QJaUP7FV8z20YV89QiHN83GpZBBqm4t0ai+OLE5tqxGGztfoYpashqPsU6131lkA6X1eSCi9k4TlB40Ll2vcLoW+NhQTYtRr2TcdUiu23CPzzzsi6DOabJFu6PyvZ9IC5nISud/eegbJyDczZfiHETJuBQ=
