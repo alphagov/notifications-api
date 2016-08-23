@@ -357,7 +357,7 @@ def test_should_send_sms_sender_from_service_if_present(
 
     mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
-        content="Sample service: This is a template:\nwith a newline",
+        content="This is a template:\nwith a newline",
         reference=str(db_notification.id),
         sender=sample_service.sms_sender
     )
