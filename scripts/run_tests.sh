@@ -24,7 +24,7 @@ function display_result {
   fi
 }
 
-if [ -z "$VIRTUAL_ENV" ]; then
+if [[ -z "$VIRTUAL_ENV" ]] && [[ -d venv ]]; then
   source ./venv/bin/activate
 fi
 pep8 .
