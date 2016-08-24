@@ -208,6 +208,8 @@ class JobSchema(BaseSchema):
                                     dump_to="created_by", only=["id", "name"], dump_only=True)
     created_by = field_for(models.Job, 'created_by', required=True, load_only=True)
 
+    job_status = field_for(models.JobStatus, 'name', required=False)
+
     class Meta:
         model = models.Job
         exclude = ('notifications',)

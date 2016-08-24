@@ -111,8 +111,7 @@ def test_get_job_by_id(notify_api, sample_job):
 def test_create_job(notify_api, sample_template, mocker, fake_uuid):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            from time import sleep
-            sleep(30)
+
             mocker.patch('app.celery.tasks.process_job.apply_async')
             data = {
                 'id': fake_uuid,
@@ -125,6 +124,7 @@ def test_create_job(notify_api, sample_template, mocker, fake_uuid):
             path = '/service/{}/job'.format(sample_template.service.id)
             auth_header = create_authorization_header(service_id=sample_template.service.id)
             headers = [('Content-Type', 'application/json'), auth_header]
+
             response = client.post(
                 path,
                 data=json.dumps(data),
@@ -139,7 +139,8 @@ def test_create_job(notify_api, sample_template, mocker, fake_uuid):
             resp_json = json.loads(response.get_data(as_text=True))
 
             assert resp_json['data']['id'] == fake_uuid
-            assert resp_json['data']['service'] == str(sample_template.service.id)
+            assert resp_json['data']['status'] == 'pending'
+            assert resp_json['data']['job_status'] == 'pending'
             assert resp_json['data']['template'] == str(sample_template.id)
             assert resp_json['data']['original_file_name'] == 'thisisatest.csv'
 

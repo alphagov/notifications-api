@@ -310,7 +310,7 @@ JOB_STATUS_SENDING_LIMITS_EXCEEDED = 'sending limits exceeded'
 JOB_STATUS_SCHEDULED = 'scheduled'
 
 
-class JobStatusTypes(db.Model):
+class JobStatus(db.Model):
     __tablename__ = 'job_status'
 
     name = db.Column(db.String(255), primary_key=True)
