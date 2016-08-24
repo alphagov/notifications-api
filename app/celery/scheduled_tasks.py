@@ -117,6 +117,6 @@ def timeout_notifications():
                                              ", status has been updated.").format(noti.id))
         except Exception as e:
             current_app.logger.exception(e)
-            current_app.logger.error((
-                                         "Exception raised trying to timeout notification ({})"
-                                         ", skipping notification update.").format(noti.id))
+            current_app.logger.error(
+                "Exception raised trying to timeout notification ({}) skipping notification update.".format(noti.id)
+            )
