@@ -193,7 +193,6 @@ def test_get_template_statistics_by_id_returns_last_notification(
 
             assert response.status_code == 200
             json_resp = json.loads(response.get_data(as_text=True))['data']
-            print(json_resp)
             assert json_resp['id'] == str(notification_3.id)
 
 
