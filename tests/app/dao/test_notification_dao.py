@@ -5,7 +5,6 @@ from functools import partial
 import pytest
 
 from freezegun import freeze_time
-from mock import ANY
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from app import db
@@ -32,10 +31,9 @@ from app.dao.notifications_dao import (
     update_notification_status_by_id,
     update_provider_stats,
     update_notification_status_by_reference,
-    dao_get_template_statistics_for_service,
     get_notifications_for_service, dao_get_7_day_agg_notification_statistics_for_service,
     dao_get_potential_notification_statistics_for_day, dao_get_notification_statistics_for_day,
-    dao_get_template_statistics_for_template, get_notification_by_id, dao_get_template_usage)
+    get_notification_by_id, dao_get_template_usage, dao_get_last_template_usage)
 
 from notifications_utils.template import get_sms_fragment_count
 
@@ -44,13 +42,12 @@ from tests.app.conftest import (sample_notification, sample_template, sample_ema
 
 def test_should_have_decorated_notifications_dao_functions():
     assert dao_get_notification_statistics_for_service.__wrapped__.__name__ == 'dao_get_notification_statistics_for_service'  # noqa
+    assert dao_get_last_template_usage.__wrapped__.__name__ == 'dao_get_last_template_usage'  # noqa
     assert dao_get_template_usage.__wrapped__.__name__ == 'dao_get_template_usage'  # noqa
     assert dao_get_notification_statistics_for_service_and_day.__wrapped__.__name__ == 'dao_get_notification_statistics_for_service_and_day'  # noqa
     assert dao_get_notification_statistics_for_day.__wrapped__.__name__ == 'dao_get_notification_statistics_for_day'  # noqa
     assert dao_get_potential_notification_statistics_for_day.__wrapped__.__name__ == 'dao_get_potential_notification_statistics_for_day'  # noqa
     assert dao_get_7_day_agg_notification_statistics_for_service.__wrapped__.__name__ == 'dao_get_7_day_agg_notification_statistics_for_service'  # noqa
-    assert dao_get_template_statistics_for_service.__wrapped__.__name__ == 'dao_get_template_statistics_for_service'  # noqa
-    assert dao_get_template_statistics_for_template.__wrapped__.__name__ == 'dao_get_template_statistics_for_template'  # noqa
     assert dao_create_notification.__wrapped__.__name__ == 'dao_create_notification'  # noqa
     assert update_notification_status_by_id.__wrapped__.__name__ == 'update_notification_status_by_id'  # noqa
     assert dao_update_notification.__wrapped__.__name__ == 'dao_update_notification'  # noqa
@@ -62,6 +59,44 @@ def test_should_have_decorated_notifications_dao_functions():
     assert get_notifications_for_service.__wrapped__.__name__ == 'get_notifications_for_service'  # noqa
     assert get_notification_by_id.__wrapped__.__name__ == 'get_notification_by_id'  # noqa
     assert delete_notifications_created_more_than_a_week_ago.__wrapped__.__name__ == 'delete_notifications_created_more_than_a_week_ago'  # noqa
+
+
+def test_should_be_able_to_get_template_usage_history(notify_db, notify_db_session, sample_service):
+    with freeze_time('2000-01-01 12:00:00'):
+        sms = sample_template(notify_db, notify_db_session)
+        notification = sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
+        results = dao_get_last_template_usage(sms.id)
+        assert results.template.name == 'Template Name'
+        assert results.template.template_type == 'sms'
+        assert results.created_at == datetime(year=2000, month=1, day=1, hour=12, minute=0, second=0)
+        assert results.template_id == sms.id
+        assert results.id == notification.id
+
+
+def test_should_be_able_to_get_all_template_usage_history_order_by_notification_created_at(
+        notify_db,
+        notify_db_session,
+        sample_service):
+
+    sms = sample_template(notify_db, notify_db_session)
+
+    sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
+    sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
+    sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
+    most_recent = sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
+
+    results = dao_get_last_template_usage(sms.id)
+    assert results.id == most_recent.id
+
+
+def test_should_be_able_to_get_no_template_usage_history_if_no_notifications_using_template(
+        notify_db,
+        notify_db_session):
+
+    sms = sample_template(notify_db, notify_db_session)
+
+    results = dao_get_last_template_usage(sms.id)
+    assert not results
 
 
 def test_should_by_able_to_get_template_count_from_notifications_history(notify_db, notify_db_session, sample_service):
@@ -1010,103 +1045,6 @@ def test_successful_notification_inserts_followed_by_failure_does_not_increment_
     except Exception as e:
         # There should be no additional notification stats or counts
         _assert_notification_stats(sample_template.service.id, sms_requested=3)
-
-
-@freeze_time("2016-03-30")
-def test_get_template_stats_for_service_returns_stats_in_reverse_date_order(sample_template, sample_job):
-    template_stats = dao_get_template_statistics_for_service(sample_template.service.id)
-    assert len(template_stats) == 0
-    data = _notification_json(sample_template, job_id=sample_job.id)
-
-    notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type)
-
-    # move on one day
-    with freeze_time('2016-03-31'):
-        new_notification = Notification(**data)
-        dao_create_notification(new_notification, sample_template.template_type)
-
-    # move on one more day
-    with freeze_time('2016-04-01'):
-        new_notification = Notification(**data)
-        dao_create_notification(new_notification, sample_template.template_type)
-
-    template_stats = dao_get_template_statistics_for_service(sample_template.service_id)
-    assert len(template_stats) == 3
-    assert template_stats[0].day == date(2016, 4, 1)
-    assert template_stats[1].day == date(2016, 3, 31)
-    assert template_stats[2].day == date(2016, 3, 30)
-
-
-@freeze_time('2016-04-09')
-def test_get_template_stats_for_service_returns_stats_can_limit_number_of_days_returned(sample_template):
-    template_stats = dao_get_template_statistics_for_service(sample_template.service.id)
-    assert len(template_stats) == 0
-
-    # Make 9 stats records from 1st to 9th April
-    for i in range(1, 10):
-        past_date = '2016-04-0{}'.format(i)
-        with freeze_time(past_date):
-            template_stats = TemplateStatistics(template_id=sample_template.id,
-                                                service_id=sample_template.service_id)
-            db.session.add(template_stats)
-            db.session.commit()
-
-    # Retrieve last week of stats
-    template_stats = dao_get_template_statistics_for_service(sample_template.service_id, limit_days=7)
-    assert len(template_stats) == 8
-    assert template_stats[0].day == date(2016, 4, 9)
-    # Final day of stats should be the same as today, eg Monday
-    assert template_stats[0].day.isoweekday() == template_stats[7].day.isoweekday()
-    assert template_stats[7].day == date(2016, 4, 2)
-
-
-@freeze_time('2016-04-09')
-def test_get_template_stats_for_service_returns_stats_returns_all_stats_if_no_limit(sample_template):
-    template_stats = dao_get_template_statistics_for_service(sample_template.service.id)
-    assert len(template_stats) == 0
-
-    # make 9 stats records from 1st to 9th April
-    for i in range(1, 10):
-        past_date = '2016-04-0{}'.format(i)
-        with freeze_time(past_date):
-            template_stats = TemplateStatistics(template_id=sample_template.id,
-                                                service_id=sample_template.service_id)
-            db.session.add(template_stats)
-            db.session.commit()
-
-    template_stats = dao_get_template_statistics_for_service(sample_template.service_id)
-    assert len(template_stats) == 9
-    assert template_stats[0].day == date(2016, 4, 9)
-    assert template_stats[8].day == date(2016, 4, 1)
-
-
-@freeze_time('2016-04-30')
-def test_get_template_stats_for_service_returns_no_result_if_no_usage_within_limit_days(sample_template):
-    template_stats = dao_get_template_statistics_for_service(sample_template.service.id)
-    assert len(template_stats) == 0
-
-    # make 9 stats records from 1st to 9th April - no data after 10th
-    for i in range(1, 10):
-        past_date = '2016-04-0{}'.format(i)
-        with freeze_time(past_date):
-            template_stats = TemplateStatistics(template_id=sample_template.id,
-                                                service_id=sample_template.service_id)
-            db.session.add(template_stats)
-            db.session.commit()
-
-    # Retrieve a week of stats - read date is 2016-04-30
-    template_stats = dao_get_template_statistics_for_service(sample_template.service_id, limit_days=7)
-    assert len(template_stats) == 0
-
-    # Retrieve a month of stats - read date is 2016-04-30
-    template_stats = dao_get_template_statistics_for_service(sample_template.service_id, limit_days=30)
-    assert len(template_stats) == 9
-
-
-def test_get_template_stats_for_service_with_limit_if_no_records_returns_empty_list(sample_template):
-    template_stats = dao_get_template_statistics_for_service(sample_template.service.id, limit_days=7)
-    assert len(template_stats) == 0
 
 
 @freeze_time("2016-01-10")
