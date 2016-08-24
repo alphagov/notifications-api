@@ -6,11 +6,9 @@ from flask import (
 
 from app.dao.notifications_dao import (
     dao_get_template_usage,
-    dao_get_template_statistics_for_service,
-    dao_get_template_statistics_for_template
-)
+    dao_get_last_template_usage)
 
-from app.schemas import template_statistics_schema
+from app.schemas import notifications_filter_schema, NotificationWithTemplateSchema, notification_with_template_schema
 
 template_statistics = Blueprint('template-statistics',
                                 __name__,
@@ -47,6 +45,10 @@ def get_template_statistics_for_service_by_day(service_id):
 
 @template_statistics.route('/<template_id>')
 def get_template_statistics_for_template_id(service_id, template_id):
-    stats = dao_get_template_statistics_for_template(template_id)
-    data = template_statistics_schema.dump(stats, many=True).data
+    notification = dao_get_last_template_usage(template_id)
+    if not notification:
+        message = 'No template found for id {}'.format(template_id)
+        errors = {'template_id': [message]}
+        raise InvalidRequest(errors, status_code=404)
+    data = notification_with_template_schema.dump(notification).data
     return jsonify(data=data)

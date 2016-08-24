@@ -33,7 +33,6 @@ from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
 
 
-@statsd(namespace="dao")
 def dao_get_notification_statistics_for_service_and_day(service_id, day):
     # only used by stat-updating code in tasks.py
     return NotificationStatistics.query.filter_by(
@@ -92,7 +91,6 @@ def create_notification_statistics_dict(service_id, day):
 
 @statsd(namespace="dao")
 def dao_get_template_usage(service_id, limit_days=None):
-
     table = NotificationHistory
 
     if limit_days and limit_days <= 7:  # can get this data from notifications table
@@ -110,28 +108,18 @@ def dao_get_template_usage(service_id, limit_days=None):
         query_filter.append(table.created_at >= days_ago(limit_days))
 
     return query.filter(*query_filter) \
-        .join(Template)\
-        .group_by(table.template_id, Template.name, Template.template_type)\
-        .order_by(asc(Template.name))\
+        .join(Template) \
+        .group_by(table.template_id, Template.name, Template.template_type) \
+        .order_by(asc(Template.name)) \
         .all()
 
 
 @statsd(namespace="dao")
-def dao_get_template_statistics_for_service(service_id, limit_days=None):
-    query_filter = [TemplateStatistics.service_id == service_id]
-    if limit_days is not None:
-        query_filter.append(TemplateStatistics.day >= days_ago(limit_days))
-    return TemplateStatistics.query.filter(*query_filter).order_by(
-        desc(TemplateStatistics.updated_at)).all()
-
-
-@statsd(namespace="dao")
-def dao_get_template_statistics_for_template(template_id):
-    return TemplateStatistics.query.filter(
-        TemplateStatistics.template_id == template_id
-    ).order_by(
-        desc(TemplateStatistics.updated_at)
-    ).all()
+def dao_get_last_template_usage(template_id):
+    return NotificationHistory.query.filter(NotificationHistory.template_id == template_id)\
+        .join(Template) \
+        .order_by(desc(NotificationHistory.created_at)) \
+        .first()
 
 
 @statsd(namespace="dao")
