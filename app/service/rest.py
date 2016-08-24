@@ -1,5 +1,3 @@
-from datetime import date, timedelta
-
 from flask import (
     jsonify,
     request,
@@ -32,7 +30,6 @@ from app.schemas import (
     service_schema,
     api_key_schema,
     user_schema,
-    from_to_date_schema,
     permission_schema,
     notification_with_template_schema,
     notifications_filter_schema,
