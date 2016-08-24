@@ -39,11 +39,9 @@ def dao_get_notification_statistics_for_service(service_id, limit_days=None):
     query_filter = [NotificationStatistics.service_id == service_id]
     if limit_days is not None:
         query_filter.append(NotificationStatistics.day >= days_ago(limit_days))
-    return NotificationStatistics.query.filter(
-        *query_filter
-    ).order_by(
-        desc(NotificationStatistics.day)
-    ).all()
+    return NotificationStatistics.query.filter(*query_filter)\
+        .order_by(desc(NotificationStatistics.day))\
+        .all()
 
 
 @statsd(namespace="dao")
@@ -162,9 +160,8 @@ def dao_get_template_usage(service_id, limit_days=None):
 
 @statsd(namespace="dao")
 def dao_get_last_template_usage(template_id):
-    return NotificationHistory.query.filter(
-        NotificationHistory.template_id == template_id
-    ).join(Template) \
+    return NotificationHistory.query.filter(NotificationHistory.template_id == template_id)\
+        .join(Template) \
         .order_by(desc(NotificationHistory.created_at)) \
         .first()
 
