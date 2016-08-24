@@ -361,7 +361,8 @@ class Job(db.Model):
         index=True,
         unique=False,
         nullable=True)
-    job_status = db.Column(db.String(255), db.ForeignKey('job_status.name'), index=True, nullable=True)
+    job_status = db.Column(
+        db.String(255), db.ForeignKey('job_status.name'), index=True, nullable=True, default="pending")
 
 
 VERIFY_CODE_TYPES = [EMAIL_TYPE, SMS_TYPE]
