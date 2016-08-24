@@ -7,9 +7,8 @@ from datetime import (
 
 from flask import current_app
 from werkzeug.datastructures import MultiDict
-from sqlalchemy import (desc, func, Integer, or_, and_, asc)
+from sqlalchemy import (desc, func, or_, and_, asc)
 from sqlalchemy.orm import joinedload
-from sqlalchemy.sql.expression import cast
 
 from app import db
 from app.dao import days_ago
@@ -34,27 +33,12 @@ from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
 
 
-@statsd(namespace="dao")
-def dao_get_notification_statistics_for_service(service_id, limit_days=None):
-    query_filter = [NotificationStatistics.service_id == service_id]
-    if limit_days is not None:
-        query_filter.append(NotificationStatistics.day >= days_ago(limit_days))
-    return NotificationStatistics.query.filter(*query_filter)\
-        .order_by(desc(NotificationStatistics.day))\
-        .all()
-
-
-@statsd(namespace="dao")
 def dao_get_notification_statistics_for_service_and_day(service_id, day):
+    # only used by stat-updating code in tasks.py
     return NotificationStatistics.query.filter_by(
         service_id=service_id,
         day=day
     ).order_by(desc(NotificationStatistics.day)).first()
-
-
-@statsd(namespace="dao")
-def dao_get_notification_statistics_for_day(day):
-    return NotificationStatistics.query.filter_by(day=day).all()
 
 
 @statsd(namespace="dao")
@@ -103,34 +87,6 @@ def create_notification_statistics_dict(service_id, day):
         'day': day.isoformat(),
         'service': service_id
     }
-
-
-@statsd(namespace="dao")
-def dao_get_7_day_agg_notification_statistics_for_service(service_id,
-                                                          date_from,
-                                                          week_count=52):
-    doy = date_from.timetuple().tm_yday
-    return db.session.query(
-        cast(func.floor((func.extract('doy', NotificationStatistics.day) - doy) / 7), Integer),
-        cast(func.sum(NotificationStatistics.emails_requested), Integer),
-        cast(func.sum(NotificationStatistics.emails_delivered), Integer),
-        cast(func.sum(NotificationStatistics.emails_failed), Integer),
-        cast(func.sum(NotificationStatistics.sms_requested), Integer),
-        cast(func.sum(NotificationStatistics.sms_delivered), Integer),
-        cast(func.sum(NotificationStatistics.sms_failed), Integer)
-    ).filter(
-        NotificationStatistics.service_id == service_id
-    ).filter(
-        NotificationStatistics.day >= date_from
-    ).filter(
-        NotificationStatistics.day < date_from + timedelta(days=7 * week_count)
-    ).group_by(
-        func.floor(((func.extract('doy', NotificationStatistics.day) - doy) / 7))
-    ).order_by(
-        desc(func.floor(((func.extract('doy', NotificationStatistics.day) - doy) / 7)))
-    ).limit(
-        week_count
-    )
 
 
 @statsd(namespace="dao")
