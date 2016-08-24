@@ -128,7 +128,6 @@ def test_create_job(notify_api, sample_template, mocker, fake_uuid):
                 path,
                 data=json.dumps(data),
                 headers=headers)
-            print(json.loads(response.get_data(as_text=True)))
             assert response.status_code == 201
 
             app.celery.tasks.process_job.apply_async.assert_called_once_with(
