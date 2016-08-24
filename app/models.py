@@ -303,6 +303,19 @@ class ProviderDetails(db.Model):
 JOB_STATUS_TYPES = ['pending', 'in progress', 'finished', 'sending limits exceeded']
 
 
+JOB_STATUS_PENDING = 'pending'
+JOB_STATUS_IN_PROGRESS = 'in progress'
+JOB_STATUS_FINISHED = 'finished'
+JOB_STATUS_SENDING_LIMITS_EXCEEDED = 'sending limits exceeded'
+JOB_STATUS_SCHEDULED = 'scheduled'
+
+
+class JobStatusTypes(db.Model):
+    __tablename__ = 'job_status'
+
+    name = db.Column(db.String(255), primary_key=True)
+
+
 class Job(db.Model):
     __tablename__ = 'jobs'
 
@@ -343,6 +356,12 @@ class Job(db.Model):
         nullable=True)
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+    scheduled_for = db.Column(
+        db.DateTime,
+        index=True,
+        unique=False,
+        nullable=True)
+    job_status = db.Column(db.String(255), db.ForeignKey('job_status.name'), index=True, nullable=True)
 
 
 VERIFY_CODE_TYPES = [EMAIL_TYPE, SMS_TYPE]
