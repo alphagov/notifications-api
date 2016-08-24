@@ -6,10 +6,30 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import notify_celery
 from app.clients import STATISTICS_FAILURE
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
+from app.dao.jobs_dao import dao_get_scheduled_jobs, dao_update_job
 from app.dao.notifications_dao import delete_notifications_created_more_than_a_week_ago, get_notifications, \
     update_notification_status_by_id
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.statsd_decorators import statsd
+from app.models import JOB_STATUS_PENDING
+from app.celery.tasks import process_job
+
+
+@notify_celery.task(name="run-scheduled-jobs")
+@statsd(namespace="tasks")
+def run_scheduled_jobs():
+    try:
+        jobs = dao_get_scheduled_jobs()
+        for job in jobs:
+            job.job_status = JOB_STATUS_PENDING
+            dao_update_job(job)
+            process_job.apply_async([str(job.id)], queue="process-job")
+            current_app.logger.info(
+                "Job ID {} added to process job queue".format(job.id)
+            )
+    except SQLAlchemyError as e:
+        current_app.logger.exception("Failed to run scheduled jobs", e)
+        raise
 
 
 @notify_celery.task(name="delete-verify-codes")
@@ -21,8 +41,8 @@ def delete_verify_codes():
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} verify codes".format(start, datetime.utcnow(), deleted)
         )
-    except SQLAlchemyError:
-        current_app.logger.info("Failed to delete verify codes")
+    except SQLAlchemyError as e:
+        current_app.logger.exception("Failed to delete verify codes", e)
         raise
 
 
@@ -39,8 +59,8 @@ def delete_successful_notifications():
                 deleted
             )
         )
-    except SQLAlchemyError:
-        current_app.logger.info("Failed to delete successful notifications")
+    except SQLAlchemyError as e:
+        current_app.logger.exception("Failed to delete successful notifications", e)
         raise
 
 
@@ -60,8 +80,8 @@ def delete_failed_notifications():
                 deleted
             )
         )
-    except SQLAlchemyError:
-        current_app.logger.info("Failed to delete failed notifications")
+    except SQLAlchemyError as e:
+        current_app.logger.exception("Failed to delete failed notifications", e)
         raise
 
 
@@ -74,8 +94,8 @@ def delete_invitations():
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} invitations".format(start, datetime.utcnow(), deleted)
         )
-    except SQLAlchemyError:
-        current_app.logger.info("Failed to delete invitations")
+    except SQLAlchemyError as e:
+        current_app.logger.exception("Failed to delete invitations", e)
         raise
 
 
@@ -88,7 +108,7 @@ def timeout_notifications():
     for noti in notifications:
         try:
             if (now - noti.created_at) > timedelta(
-                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD')
+                    seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD')
             ):
                 # TODO: think about making this a bulk update rather than one at a time.
                 updated = update_notification_status_by_id(noti.id, 'temporary-failure', STATISTICS_FAILURE)
@@ -98,5 +118,5 @@ def timeout_notifications():
         except Exception as e:
             current_app.logger.exception(e)
             current_app.logger.error((
-                "Exception raised trying to timeout notification ({})"
-                ", skipping notification update.").format(noti.id))
+                                         "Exception raised trying to timeout notification ({})"
+                                         ", skipping notification update.").format(noti.id))
