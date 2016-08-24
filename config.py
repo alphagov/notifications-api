@@ -15,7 +15,6 @@ class Config(object):
     INVITATION_EMAIL_FROM = os.environ['INVITATION_EMAIL_FROM']
     NOTIFY_APP_NAME = 'api'
     NOTIFY_LOG_PATH = '/var/log/notify/application.log'
-    NOTIFY_JOB_QUEUE = os.environ['NOTIFY_JOB_QUEUE']
     # Notification Queue names are a combination of a prefix plus a name
     NOTIFICATION_QUEUE_PREFIX = os.environ['NOTIFICATION_QUEUE_PREFIX']
     SECRET_KEY = os.environ['SECRET_KEY']

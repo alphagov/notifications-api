@@ -7,11 +7,10 @@ export AWS_REGION='eu-west-1'
 export DANGEROUS_SALT='dangerous-salt'
 export INVITATION_EMAIL_FROM='invites'
 export INVITATION_EXPIRATION_DAYS=2
-export NOTIFY_JOB_QUEUE='notify-jobs-queue-test'
-export NOTIFICATION_QUEUE_PREFIX='notification_development-test'
+export NOTIFICATION_QUEUE_PREFIX='test-env-not-used'
 export SECRET_KEY='secret-key'
 export SQLALCHEMY_DATABASE_URI=${TEST_DATABASE:='postgresql://localhost/test_notification_api'}
-export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.works'
+export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.tools'
 export FIRETEXT_API_KEY="Firetext"
 export NOTIFY_EMAIL_DOMAIN="test.notify.com"
 export MMG_API_KEY='mmg-secret-key'

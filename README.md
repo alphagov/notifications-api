@@ -16,7 +16,7 @@ Get and update notification status.
 mkvirtualenv -p /usr/local/bin/python3 notifications-api
 ```
 
-Creating the environment.sh file. Replace [unique-to-environment] with your something unique to the environment. The local development environments are using the AWS on preview.
+Creating the environment.sh file. Replace [unique-to-environment] with your something unique to the environment. Your AWS credentials should be set up for notify-tools (the development/CI AWS account).
 
 Create a local environment.sh file containing the following:
 
@@ -24,30 +24,34 @@ Create a local environment.sh file containing the following:
 echo "
 export NOTIFY_ENVIRONMENT='development'
 export ADMIN_BASE_URL='http://localhost:6012'
-export ADMIN_CLIENT_SECRET='dev-notify-secret-key'
 export ADMIN_CLIENT_USER_NAME='dev-notify-admin'
+export ADMIN_CLIENT_SECRET='dev-notify-secret-key'
+export API_HOST_NAME='http://localhost:6011'
+
 export AWS_REGION='eu-west-1'
+export AWS_ACCESS_KEY_ID=[MY ACCESS KEY]
+export AWS_SECRET_ACCESS_KEY=[MY SECRET]
+
 export DANGEROUS_SALT='dev-notify-salt'
 export FIRETEXT_API_KEY=[contact team member for api key]
-export INVITATION_EMAIL_FROM='invites@notifications.service.gov.uk'
+export FROM_NUMBER='40605'
+export INVITATION_EMAIL_FROM='invites'
 export INVITATION_EXPIRATION_DAYS=2
-export NOTIFY_EMAIL_DOMAIN='notify.works'
-export NOTIFY_JOB_QUEUE='[unique-to-environment]-notify-jobs-queue' # NOTE unique prefix
-export NOTIFICATION_QUEUE_PREFIX='[unique-to-environment]-notification_development' # NOTE unique prefix
+export MMG_API_KEY=mmg=secret-key
+export MMG_URL="https://api.mmg.co.uk/json/api.php"
+export NOTIFICATION_QUEUE_PREFIX='[unique-to-environment]' #
+export NOTIFY_EMAIL_DOMAIN='notify.tools'
 export SECRET_KEY='dev-notify-secret-key'
 export SQLALCHEMY_DATABASE_URI='postgresql://localhost/notification_api'
-export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.works'
-export MMG_API_KEY=mmg=secret-key
 export STATSD_ENABLED=True
 export STATSD_HOST="localhost"
 export STATSD_PORT=1000
 export STATSD_PREFIX="stats-prefix"
-export FROM_NUMBER='from_number'
+export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.tools'
 "> environment.sh
 ```
 
-NOTE: the DELIVERY_CLIENT_USER_NAME, DELIVERY_CLIENT_SECRET, NOTIFY_JOB_QUEUE and NOTIFICATION_QUEUE_PREFIX must be the same as the ones in the [notifications-delivery](https://github.com/alphagov/notifications-delivery) app.
-The SECRET_KEY and DANGEROUS_SALT are the same in [notifications-delivery](https://github.com/alphagov/notifications-delivery) and [notifications-admin](https://github.com/alphagov/notifications-admin) app.
+NOTE: The SECRET_KEY and DANGEROUS_SALT should match those in the [notifications-admin](https://github.com/alphagov/notifications-admin) app.
 
 NOTE:  Also note the  unique prefix for the queue names. This prevents clashing with others queues in shared amazon environment and using a prefix enables filtering by queue name in the SQS interface.
 
