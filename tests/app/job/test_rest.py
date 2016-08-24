@@ -111,6 +111,8 @@ def test_get_job_by_id(notify_api, sample_job):
 def test_create_job(notify_api, sample_template, mocker, fake_uuid):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            from time import sleep
+            sleep(30)
             mocker.patch('app.celery.tasks.process_job.apply_async')
             data = {
                 'id': fake_uuid,
