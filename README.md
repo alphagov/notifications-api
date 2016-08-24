@@ -72,6 +72,22 @@ scripts/run_celery_beat.sh
 ```
 
 
+
+##  To test the application
+
+First, ensure that `scripts/boostrap.sh` has been run, as it creates the test database.
+
+Then simply run
+
+```
+make test
+```
+
+That will run pep8 for code analysis and our unit test suite. If you wish to run our functional tests, instructions can be found in the
+[notifications-functional-test](https://github.com/alphagov/notifications-functional-test) repository.
+
+
+
 ## To remove functional test data
 
 NOTE: There is assumption that both the server name prefix and user name prefix are followed by a uuid.
