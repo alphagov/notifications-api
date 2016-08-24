@@ -5,10 +5,12 @@ from app.dao.jobs_dao import (
     dao_get_job_by_service_id_and_job_id,
     dao_create_job,
     dao_update_job,
-    dao_get_jobs_by_service_id
+    dao_get_jobs_by_service_id,
+    dao_get_scheduled_jobs
 )
 
 from app.models import Job
+from tests.app.conftest import sample_job
 
 
 def test_create_job(sample_template):
@@ -137,3 +139,30 @@ def test_update_job(sample_job):
     job_from_db = Job.query.get(sample_job.id)
 
     assert job_from_db.status == 'in progress'
+
+
+def test_get_scheduled_jobs_gets_all_jobs_in_scheduled_state_scheduled_before_now(notify_db, notify_db_session):
+    one_minute_ago = datetime.utcnow() - timedelta(minutes=1)
+    one_hour_ago = datetime.utcnow() - timedelta(minutes=60)
+    job_new = sample_job(notify_db, notify_db_session, scheduled_for=one_minute_ago, job_status='scheduled')
+    job_old = sample_job(notify_db, notify_db_session, scheduled_for=one_hour_ago, job_status='scheduled')
+    jobs = dao_get_scheduled_jobs()
+    assert len(jobs) == 2
+    assert jobs[0].id == job_old.id
+    assert jobs[1].id == job_new.id
+
+
+def test_get_scheduled_jobs_gets_ignores_jobs_not_scheduled(notify_db, notify_db_session):
+    one_minute_ago = datetime.utcnow() - timedelta(minutes=1)
+    sample_job(notify_db, notify_db_session)
+    job_scheduled = sample_job(notify_db, notify_db_session, scheduled_for=one_minute_ago, job_status='scheduled')
+    jobs = dao_get_scheduled_jobs()
+    assert len(jobs) == 1
+    assert jobs[0].id == job_scheduled.id
+
+
+def test_get_scheduled_jobs_gets_ignores_jobs_scheduled_in_the_future(notify_db, notify_db_session):
+    one_minute_in_the_future = datetime.utcnow() + timedelta(minutes=1)
+    sample_job(notify_db, notify_db_session, scheduled_for=one_minute_in_the_future, job_status='scheduled')
+    jobs = dao_get_scheduled_jobs()
+    assert len(jobs) == 0

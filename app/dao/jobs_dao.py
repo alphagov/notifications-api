@@ -1,6 +1,6 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
-from sqlalchemy import desc, cast, Date as sql_date
+from sqlalchemy import desc, asc, cast, Date as sql_date
 from app import db
 from app.dao import days_ago
 from app.models import Job
@@ -19,6 +19,13 @@ def dao_get_jobs_by_service_id(service_id, limit_days=None):
 
 def dao_get_job_by_id(job_id):
     return Job.query.filter_by(id=job_id).one()
+
+
+def dao_get_scheduled_jobs():
+    return Job.query \
+        .filter(Job.job_status == 'scheduled', Job.scheduled_for < datetime.utcnow()) \
+        .order_by(asc(Job.scheduled_for)) \
+        .all()
 
 
 def dao_create_job(job):
