@@ -7,7 +7,7 @@ from freezegun import freeze_time
 from app.service.statistics import (
     format_statistics,
     _weeks_for_range,
-    _create_zeroed_stats_dicts,
+    create_zeroed_stats_dicts,
     format_weekly_notification_stats
 )
 
@@ -63,7 +63,7 @@ def test_weeks_for_range(start, end, dates):
 
 
 def test_create_zeroed_stats_dicts():
-    assert _create_zeroed_stats_dicts() == {
+    assert create_zeroed_stats_dicts() == {
         'sms': {'requested': 0, 'delivered': 0, 'failed': 0},
         'email': {'requested': 0, 'delivered': 0, 'failed': 0},
     }
