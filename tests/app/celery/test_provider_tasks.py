@@ -241,23 +241,6 @@ def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_s
     assert not persisted_notification.personalisation
 
 
-def test_should_update_provider_stats_on_success(notify_db, sample_service, sample_notification, mocker):
-    provider_stats = provider_statistics_dao.get_provider_statistics(sample_service).all()
-    assert len(provider_stats) == 0
-
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
-
-    send_sms_to_provider(
-        sample_notification.service_id,
-        sample_notification.id
-    )
-
-    updated_provider_stats = provider_statistics_dao.get_provider_statistics(sample_service).all()
-    assert updated_provider_stats[0].provider.identifier == 'mmg'
-    assert updated_provider_stats[0].unit_count == 1
-
-
 @pytest.mark.parametrize('research_mode,key_type', [
     (True, KEY_TYPE_NORMAL),
     (False, KEY_TYPE_TEST)

@@ -17,12 +17,9 @@ from app.models import (
     Notification,
     NotificationHistory,
     NotificationStatistics,
-    TemplateStatistics,
     SMS_TYPE,
     EMAIL_TYPE,
-    Template,
-    ProviderStatistics,
-    ProviderDetails)
+    Template)
 from app.clients import (
     STATISTICS_FAILURE,
     STATISTICS_DELIVERED,
@@ -240,33 +237,6 @@ def dao_update_notification(notification):
     notification_history.update_from_notification(notification)
     db.session.add(notification)
     db.session.commit()
-
-
-@statsd(namespace="dao")
-@transactional
-def update_provider_stats(
-        id_,
-        notification_type,
-        provider_name,
-        billable_units=1):
-    notification = Notification.query.filter(Notification.id == id_).one()
-    provider = ProviderDetails.query.filter_by(identifier=provider_name).one()
-
-    update_count = db.session.query(ProviderStatistics).filter_by(
-        day=date.today(),
-        service_id=notification.service_id,
-        provider_id=provider.id
-    ).update({'unit_count': ProviderStatistics.unit_count + billable_units})
-
-    if update_count == 0:
-        provider_stats = ProviderStatistics(
-            day=notification.created_at.date(),
-            service_id=notification.service_id,
-            provider_id=provider.id,
-            unit_count=billable_units
-        )
-
-        db.session.add(provider_stats)
 
 
 @statsd(namespace="dao")

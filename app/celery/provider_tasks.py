@@ -13,7 +13,6 @@ from app import notify_celery, statsd_client, clients, create_uuid
 from app.clients.email import EmailClientException
 from app.clients.sms import SmsClientException
 from app.dao.notifications_dao import (
-    update_provider_stats,
     get_notification_by_id,
     dao_update_notification,
     update_notification_status_by_id
@@ -77,13 +76,6 @@ def send_sms_to_provider(self, service_id, notification_id):
                     sender=service.sms_sender
                 )
                 notification.billable_units = get_sms_fragment_count(template.replaced_content_count)
-
-                update_provider_stats(
-                    notification_id,
-                    SMS_TYPE,
-                    provider.get_name(),
-                    billable_units=notification.billable_units
-                )
 
             notification.sent_at = datetime.utcnow()
             notification.sent_by = provider.get_name()
@@ -163,12 +155,6 @@ def send_email_to_provider(self, service_id, notification_id):
                     reply_to_address=service.reply_to_email_address,
                 )
 
-                update_provider_stats(
-                    notification_id,
-                    EMAIL_TYPE,
-                    provider.get_name(),
-                    billable_units=1
-                )
             notification.reference = reference
             notification.sent_at = datetime.utcnow()
             notification.sent_by = provider.get_name(),

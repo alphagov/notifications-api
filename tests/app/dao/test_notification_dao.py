@@ -33,8 +33,7 @@ from app.dao.notifications_dao import (
     get_notifications_for_job,
     get_notifications_for_service,
     update_notification_status_by_id,
-    update_notification_status_by_reference,
-    update_provider_stats,
+    update_notification_status_by_reference
 )
 
 from notifications_utils.template import get_sms_fragment_count
@@ -49,7 +48,6 @@ def test_should_have_decorated_notifications_dao_functions():
     assert dao_create_notification.__wrapped__.__name__ == 'dao_create_notification'  # noqa
     assert update_notification_status_by_id.__wrapped__.__name__ == 'update_notification_status_by_id'  # noqa
     assert dao_update_notification.__wrapped__.__name__ == 'dao_update_notification'  # noqa
-    assert update_provider_stats.__wrapped__.__name__ == 'update_provider_stats'  # noqa
     assert update_notification_status_by_reference.__wrapped__.__name__ == 'update_notification_status_by_reference'  # noqa
     assert get_notification_for_job.__wrapped__.__name__ == 'get_notification_for_job'  # noqa
     assert get_notifications_for_job.__wrapped__.__name__ == 'get_notifications_for_job'  # noqa
@@ -330,10 +328,6 @@ def test_should_not_update_status_one_notification_status_is_delivered(notify_db
                                        status='sending')
     assert Notification.query.get(notification.id).status == "sending"
 
-    update_provider_stats(
-        notification.id,
-        'email',
-        ses_provider.identifier)
     notification.reference = 'reference'
     dao_update_notification(notification)
     update_notification_status_by_reference('reference', 'delivered', 'delivered')
@@ -342,32 +336,6 @@ def test_should_not_update_status_one_notification_status_is_delivered(notify_db
     update_notification_status_by_reference('reference', 'failed', 'temporary-failure')
     assert Notification.query.get(notification.id).status == 'delivered'
     _assert_notification_stats(notification.service_id, emails_requested=1, emails_delivered=1, emails_failed=0)
-
-
-def test_should_be_able_to_record_statistics_failure_for_sms(notify_db, notify_db_session, ):
-    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session, status='sending')
-    assert Notification.query.get(notification.id).status == 'sending'
-
-    assert update_notification_status_by_id(notification.id, 'permanent-failure', 'failure')
-    assert Notification.query.get(notification.id).status == 'permanent-failure'
-    _assert_notification_stats(notification.service_id, sms_requested=1, sms_delivered=0, sms_failed=1)
-
-
-def test_should_be_able_to_record_statistics_failure_for_email(sample_email_template, sample_job, ses_provider):
-    data = _notification_json(sample_email_template, job_id=sample_job.id, status='sending')
-    notification = Notification(**data)
-    dao_create_notification(notification, sample_email_template.template_type)
-
-    update_provider_stats(
-        notification.id,
-        'email',
-        ses_provider.identifier)
-    notification.reference = 'reference'
-    dao_update_notification(notification)
-    count = update_notification_status_by_reference('reference', 'failed', 'failure')
-    assert count == 1
-    assert Notification.query.get(notification.id).status == 'failed'
-    _assert_notification_stats(notification.service_id, emails_requested=1, emails_delivered=0, emails_failed=1)
 
 
 def test_should_return_zero_count_if_no_notification_with_id():
