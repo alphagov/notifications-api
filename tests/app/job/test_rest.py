@@ -109,6 +109,7 @@ def test_create_job(notify_api, sample_template, mocker, fake_uuid):
             path = '/service/{}/job'.format(sample_template.service.id)
             auth_header = create_authorization_header(service_id=sample_template.service.id)
             headers = [('Content-Type', 'application/json'), auth_header]
+
             response = client.post(
                 path,
                 data=json.dumps(data),
