@@ -8,7 +8,8 @@ from flask import (
 from app.dao.jobs_dao import (
     dao_create_job,
     dao_get_job_by_service_id_and_job_id,
-    dao_get_jobs_by_service_id
+    dao_get_jobs_by_service_id,
+    dao_get_notification_outcomes_for_job
 )
 
 from app.dao.services_dao import (
@@ -42,7 +43,11 @@ register_errors(job)
 @job.route('/<job_id>', methods=['GET'])
 def get_job_by_service_and_job_id(service_id, job_id):
     job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
+    statistics = dao_get_notification_outcomes_for_job(service_id, job_id)
     data = job_schema.dump(job).data
+
+    data['statistics'] = [{'status': statistic[1], 'count': statistic[0]} for statistic in statistics]
+
     return jsonify(data=data)
 
 

@@ -35,9 +35,9 @@ check-env-vars: ## Check mandatory environment variables
 	$(if ${AWS_ACCESS_KEY_ID},,$(error Must specify AWS_ACCESS_KEY_ID))
 	$(if ${AWS_SECRET_ACCESS_KEY},,$(error Must specify AWS_SECRET_ACCESS_KEY))
 
-.PHONY: development
-development: ## Set environment to development
-	$(eval export DEPLOY_ENV=development)
+.PHONY: preview
+preview: ## Set environment to preview
+	$(eval export DEPLOY_ENV=preview)
 	$(eval export DNS_NAME="notify.works")
 	@true
 
