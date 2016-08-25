@@ -366,7 +366,7 @@ def sample_notification(notify_db,
         data['job_row_number'] = job_row_number
     notification = Notification(**data)
     if create:
-        dao_create_notification(notification, template.template_type)
+        dao_create_notification(notification)
     return notification
 
 

@@ -14,6 +14,7 @@ from notifications_utils.template import Template
 from notifications_utils.renderers import PassThrough
 from app.clients.email.aws_ses import get_aws_responses
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT, statsd_client
+from app.dao.services_dao import dao_fetch_todays_stats_for_service
 from app.models import KEY_TYPE_TEAM
 from app.dao import (
     templates_dao,
@@ -74,7 +75,6 @@ def process_ses_response():
             raise InvalidRequest(error, status_code=400)
 
         notification_status = aws_response_dict['notification_status']
-        notification_statistics_status = aws_response_dict['notification_statistics_status']
 
         try:
             source = ses_message['mail']['source']
@@ -89,8 +89,7 @@ def process_ses_response():
             reference = ses_message['mail']['messageId']
             if not notifications_dao.update_notification_status_by_reference(
                     reference,
-                    notification_status,
-                    notification_statistics_status
+                    notification_status
             ):
                 error = "SES callback failed: notification either not found or already updated " \
                         "from sending. Status {}".format(notification_status)
@@ -104,7 +103,7 @@ def process_ses_response():
                     )
                 )
 
-            statsd_client.incr('callback.ses.{}'.format(notification_statistics_status))
+            statsd_client.incr('callback.ses.{}'.format(notification_status))
             return jsonify(
                 result="success", message="SES callback succeeded"
             ), 200
@@ -214,18 +213,11 @@ def send_notification(notification_type):
     service_id = str(api_user.service_id)
     service = services_dao.dao_fetch_service_by_id(service_id)
 
-    service_stats = notifications_dao.dao_get_notification_statistics_for_service_and_day(
-        service_id,
-        datetime.today().strftime(DATE_FORMAT)
-    )
+    service_stats = sum(row.count for row in dao_fetch_todays_stats_for_service(service.id))
 
-    if service_stats:
-        total_sms_count = service_stats.sms_requested
-        total_email_count = service_stats.emails_requested
-
-        if (total_email_count + total_sms_count >= service.message_limit):
-            error = 'Exceeded send limits ({}) for today'.format(service.message_limit)
-            raise InvalidRequest(error, status_code=429)
+    if service_stats >= service.message_limit:
+        error = 'Exceeded send limits ({}) for today'.format(service.message_limit)
+        raise InvalidRequest(error, status_code=429)
 
     notification, errors = (
         sms_template_notification_schema if notification_type == SMS_TYPE else email_notification_schema

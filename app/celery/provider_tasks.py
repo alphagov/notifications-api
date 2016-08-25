@@ -93,7 +93,7 @@ def send_sms_to_provider(self, service_id, notification_id):
                     "RETRY FAILED: task send_sms_to_provider failed for notification {}".format(notification.id),
                     e
                 )
-                update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
+                update_notification_status_by_id(notification.id, 'technical-failure')
 
         current_app.logger.info(
             "SMS {} sent to provider at {}".format(notification_id, notification.sent_at)
@@ -172,7 +172,7 @@ def send_email_to_provider(self, service_id, notification_id):
                     "RETRY FAILED: task send_email_to_provider failed for notification {}".format(notification.id),
                     e
                 )
-                update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
+                update_notification_status_by_id(notification.id, 'technical-failure')
 
         current_app.logger.info(
             "Email {} sent to provider at {}".format(notification_id, notification.sent_at)

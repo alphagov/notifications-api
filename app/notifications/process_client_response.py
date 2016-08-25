@@ -6,9 +6,10 @@ from app.dao import notifications_dao
 from app.clients.sms.firetext import get_firetext_responses
 from app.clients.sms.mmg import get_mmg_responses
 
-sms_response_mapper = {'MMG': get_mmg_responses,
-                       'Firetext': get_firetext_responses
-                       }
+sms_response_mapper = {
+    'MMG': get_mmg_responses,
+    'Firetext': get_firetext_responses
+}
 
 
 def validate_callback_data(data, fields, client_name):
@@ -49,14 +50,11 @@ def process_sms_client_response(status, reference, client_name):
         return success, msg
 
     notification_status = response_dict['notification_status']
-    notification_statistics_status = response_dict['notification_statistics_status']
     notification_status_message = response_dict['message']
     notification_success = response_dict['success']
 
     # record stats
-    if not notifications_dao.update_notification_status_by_id(reference,
-                                                              notification_status,
-                                                              notification_statistics_status):
+    if not notifications_dao.update_notification_status_by_id(reference, notification_status):
         status_error = "{} callback failed: notification {} either not found or already updated " \
                        "from sending. Status {}".format(client_name,
                                                         reference,
@@ -69,6 +67,6 @@ def process_sms_client_response(status, reference, client_name):
                                                                                     reference,
                                                                                     notification_status_message))
 
-    statsd_client.incr('callback.{}.{}'.format(client_name.lower(), notification_statistics_status))
+    statsd_client.incr('callback.{}.{}'.format(client_name.lower(), notification_status))
     success = "{} callback succeeded. reference {} updated".format(client_name, reference)
     return success, errors

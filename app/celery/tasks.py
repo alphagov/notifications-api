@@ -27,7 +27,7 @@ from app.dao.notifications_dao import (
     dao_create_notification,
     dao_get_notification_statistics_for_service_and_day
 )
-from app.dao.services_dao import dao_fetch_service_by_id
+from app.dao.services_dao import dao_fetch_service_by_id, dao_fetch_todays_stats_for_service
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
     Notification,
@@ -46,14 +46,7 @@ def process_job(job_id):
 
     service = job.service
 
-    stats = dao_get_notification_statistics_for_service_and_day(
-        service_id=service.id,
-        day=job.created_at.strftime(DATE_FORMAT)
-    )
-
-    total_sent = 0
-    if stats:
-        total_sent = stats.emails_requested + stats.sms_requested
+    total_sent = sum(row.count for row in dao_fetch_todays_stats_for_service(service.id))
 
     if total_sent + job.notification_count > service.message_limit:
         job.status = 'sending limits exceeded'
@@ -212,7 +205,7 @@ def _save_notification(created_at, notification, notification_id, service_id, no
         api_key_id=api_key_id,
         key_type=key_type
     )
-    dao_create_notification(notification_db_object, notification_type)
+    dao_create_notification(notification_db_object)
 
 
 def service_allowed_to_send_to(recipient, service):

@@ -308,9 +308,6 @@ def test_should_go_into_technical_error_if_exceeds_retries(
 
     db_notification = Notification.query.filter_by(id=notification.id).one()
     assert db_notification.status == 'technical-failure'
-    notification_stats = NotificationStatistics.query.filter_by(service_id=notification.service.id).first()
-    assert notification_stats.sms_requested == 1
-    assert notification_stats.sms_failed == 1
 
 
 def test_should_send_sms_sender_from_service_if_present(
@@ -419,9 +416,6 @@ def test_send_email_to_provider_should_go_into_technical_error_if_exceeds_retrie
 
     db_notification = Notification.query.filter_by(id=notification.id).one()
     assert db_notification.status == 'technical-failure'
-    notification_stats = NotificationStatistics.query.filter_by(service_id=notification.service.id).first()
-    assert notification_stats.emails_requested == 1
-    assert notification_stats.emails_failed == 1
 
 
 def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_created(notify_db, notify_db_session,
