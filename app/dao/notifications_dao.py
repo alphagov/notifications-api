@@ -16,7 +16,6 @@ from app.models import (
     Service,
     Notification,
     NotificationHistory,
-    Job,
     NotificationStatistics,
     TemplateStatistics,
     SMS_TYPE,
@@ -138,17 +137,6 @@ def dao_create_notification(notification, notification_type):
             emails_requested=1 if notification_type == EMAIL_TYPE else 0
         )
         db.session.add(stats)
-
-    update_count = db.session.query(TemplateStatistics).filter_by(
-        day=date.today(),
-        service_id=notification.service_id,
-        template_id=notification.template_id
-    ).update({'usage_count': TemplateStatistics.usage_count + 1, 'updated_at': datetime.utcnow()})
-
-    if update_count == 0:
-        template_stats = TemplateStatistics(template_id=notification.template_id,
-                                            service_id=notification.service_id)
-        db.session.add(template_stats)
 
     if not notification.id:
         # need to populate defaulted fields before we create the notification history object

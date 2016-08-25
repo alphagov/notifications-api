@@ -458,15 +458,8 @@ def test_create_notification_creates_notification_with_personalisation(notify_db
     assert stats.emails_requested == 0
     assert stats.sms_requested == 1
 
-    template_stats = TemplateStatistics.query.filter(
-        TemplateStatistics.service_id == sample_template_with_placeholders.service.id,
-        TemplateStatistics.template_id == sample_template_with_placeholders.id).first()
-    assert template_stats.service_id == sample_template_with_placeholders.service.id
-    assert template_stats.template_id == sample_template_with_placeholders.id
-    assert template_stats.usage_count == 1
 
-
-def test_save_notification_creates_sms_and_template_stats(sample_template, sample_job, mmg_provider):
+def test_save_notification_creates_sms(sample_template, sample_job, mmg_provider):
     assert Notification.query.count() == 0
     assert NotificationStatistics.query.count() == 0
     assert TemplateStatistics.query.count() == 0
@@ -491,14 +484,8 @@ def test_save_notification_creates_sms_and_template_stats(sample_template, sampl
     assert stats.emails_requested == 0
     assert stats.sms_requested == 1
 
-    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
-                                                     TemplateStatistics.template_id == sample_template.id).first()
-    assert template_stats.service_id == sample_template.service.id
-    assert template_stats.template_id == sample_template.id
-    assert template_stats.usage_count == 1
 
-
-def test_save_notification_and_create_email_and_template_stats(sample_email_template, sample_job, ses_provider):
+def test_save_notification_and_create_email(sample_email_template, sample_job, ses_provider):
     assert Notification.query.count() == 0
     assert NotificationStatistics.query.count() == 0
     assert TemplateStatistics.query.count() == 0
@@ -524,13 +511,6 @@ def test_save_notification_and_create_email_and_template_stats(sample_email_temp
 
     assert stats.emails_requested == 1
     assert stats.sms_requested == 0
-
-    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_email_template.service.id,
-                                                     TemplateStatistics.template_id == sample_email_template.id).first()  # noqa
-
-    assert template_stats.service_id == sample_email_template.service.id
-    assert template_stats.template_id == sample_email_template.id
-    assert template_stats.usage_count == 1
 
 
 @freeze_time("2016-01-01 00:00:00.000000")
@@ -830,120 +810,6 @@ def test_should_not_delete_failed_notifications_before_seven_days(notify_db, not
     delete_notifications_created_more_than_a_week_ago('failed')
     assert len(Notification.query.all()) == 1
     assert Notification.query.first().to == 'do_not_delete'
-
-
-@freeze_time("2016-03-30")
-def test_save_new_notification_creates_template_stats(sample_template, sample_job, mmg_provider):
-    assert Notification.query.count() == 0
-    assert TemplateStatistics.query.count() == 0
-    data = _notification_json(sample_template, job_id=sample_job.id)
-
-    notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type)
-
-    assert TemplateStatistics.query.count() == 1
-    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
-                                                     TemplateStatistics.template_id == sample_template.id).first()
-    assert template_stats.service_id == sample_template.service.id
-    assert template_stats.template_id == sample_template.id
-    assert template_stats.usage_count == 1
-    assert template_stats.day == date(2016, 3, 30)
-
-
-@freeze_time("2016-03-30")
-def test_save_new_notification_creates_template_stats_per_day(sample_template, sample_job, mmg_provider):
-    assert Notification.query.count() == 0
-    assert TemplateStatistics.query.count() == 0
-    data = _notification_json(sample_template, job_id=sample_job.id)
-
-    notification = Notification(**data)
-    dao_create_notification(notification, sample_template.template_type)
-
-    assert TemplateStatistics.query.count() == 1
-    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
-                                                     TemplateStatistics.template_id == sample_template.id).first()
-    assert template_stats.service_id == sample_template.service.id
-    assert template_stats.template_id == sample_template.id
-    assert template_stats.usage_count == 1
-    assert template_stats.day == date(2016, 3, 30)
-
-    # move on one day
-    with freeze_time('2016-03-31'):
-        assert TemplateStatistics.query.count() == 1
-        new_notification = Notification(**data)
-        dao_create_notification(new_notification, sample_template.template_type)
-
-    assert TemplateStatistics.query.count() == 2
-    first_stats = TemplateStatistics.query.filter(TemplateStatistics.day == datetime(2016, 3, 30)).first()
-    second_stats = TemplateStatistics.query.filter(TemplateStatistics.day == datetime(2016, 3, 31)).first()
-
-    assert first_stats.template_id == second_stats.template_id
-    assert first_stats.service_id == second_stats.service_id
-
-    assert first_stats.day == date(2016, 3, 30)
-    assert first_stats.usage_count == 1
-
-    assert second_stats.day == date(2016, 3, 31)
-    assert second_stats.usage_count == 1
-
-
-def test_save_another_notification_increments_template_stats(sample_template, sample_job, mmg_provider):
-    assert Notification.query.count() == 0
-    assert TemplateStatistics.query.count() == 0
-    data = _notification_json(sample_template, job_id=sample_job.id)
-
-    notification_1 = Notification(**data)
-    notification_2 = Notification(**data)
-    dao_create_notification(notification_1, sample_template.template_type)
-
-    assert TemplateStatistics.query.count() == 1
-    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
-                                                     TemplateStatistics.template_id == sample_template.id).first()
-    assert template_stats.service_id == sample_template.service.id
-    assert template_stats.template_id == sample_template.id
-    assert template_stats.usage_count == 1
-
-    dao_create_notification(notification_2, sample_template.template_type)
-
-    assert TemplateStatistics.query.count() == 1
-    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
-                                                     TemplateStatistics.template_id == sample_template.id).first()
-    assert template_stats.usage_count == 2
-
-
-def test_successful_notification_inserts_followed_by_failure_does_not_increment_template_stats(sample_template,
-                                                                                               sample_job,
-                                                                                               mmg_provider):
-    assert Notification.query.count() == 0
-    assert NotificationStatistics.query.count() == 0
-    assert TemplateStatistics.query.count() == 0
-
-    data = _notification_json(sample_template, job_id=sample_job.id)
-
-    notification_1 = Notification(**data)
-    notification_2 = Notification(**data)
-    notification_3 = Notification(**data)
-    dao_create_notification(notification_1, sample_template.template_type)
-    dao_create_notification(notification_2, sample_template.template_type)
-    dao_create_notification(notification_3, sample_template.template_type)
-
-    _assert_notification_stats(sample_template.service.id, sms_requested=3)
-
-    assert TemplateStatistics.query.count() == 1
-    template_stats = TemplateStatistics.query.filter(TemplateStatistics.service_id == sample_template.service.id,
-                                                     TemplateStatistics.template_id == sample_template.id).first()
-    assert template_stats.service_id == sample_template.service.id
-    assert template_stats.template_id == sample_template.id
-    assert template_stats.usage_count == 3
-
-    failing_notification = Notification(**data)
-    try:
-        # Mess up db in really bad way
-        db.session.execute('DROP TABLE TEMPLATE_STATISTICS')
-        dao_create_notification(failing_notification, sample_template.template_type)
-    except Exception as e:
-        # There should be no additional notification stats or counts
-        _assert_notification_stats(sample_template.service.id, sms_requested=3)
 
 
 @freeze_time("2016-01-10")
