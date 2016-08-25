@@ -20,58 +20,7 @@ env:
   secure: tgeumbN2oayp1twu3iVuuo5eMz/XVO303A2wdnR6bFMCfLCA7SVeKvDZ21ZpSh+J7tu8/9MQD2ATo95qyO9oraSg09BQ7UoEtpyrrcP21UBcNMbIsAdmOUAostlvg4hy1ZuSjytpzLDMZfS0QCjWPtZiXKW3XzmHHJyIdatcHsO3Jpi1vPRP11cZHd1SKwd1POYXDuX3Y9e68yt0P7Wr1/3mZ8u0XHtSg++SnZ0qDDwnWIsHqkcxr7R/n1MYvyUD8XPB+guqEq/7G6ipR+QrHN0fCVGXFksXGLSMSBg9sGQ1Mr+2yiOXL+4EmCfpx9VofmEOFDTdK70lFFn1sOG/GmceW4JT2Y2vLG+6vSJTmaHxeZmpYoKRa1EJJqyEpvjRM3A8lV993qIdAEBIE8s0w+DhkmXXCI3chSDT+2B/SlFbGw7G7E4hto/3FUrk7N7w+c5WaOQSqz4ZxTX4iIg9T7Bxo3s8l+UYYw4NfzEreRieEiFo58FgYrghEOvMp9PZ3tN3u2H+2yISE0C/+MSFUB2CWgFiTTD2XtWuQJgGNxyTYD1sbHaYT1EeDoz8JbhsACvIxpQdycVibHjP4hvP32nFFaznNpCm1ArS+vDtzR6Psx2vYb/u0rf1QoipVE/GPzqB9bwGHZ/0Cpsqy4KxYM74MOu3Gi3KCYzKGq7hRGI=
 after_success:
 - coveralls
-- ./scripts/trigger-dependent-build.sh
 notifications:
   slack:
     rooms:
       secure: vCmpAjdXkprqGzSnQzcco1lNiFuj/nRQdlVTGSnvg2HEqZUM5vzmWtQYw3WNS/bcgbVxV/nLgza17cdsmFqOuaZll4kDM0swnmk17eynImAHPFF/flGsNcw4oRV7WzWrq7j1TvGzJzxJkHYOjJFk0iMLM7+P76sWHI6Oa5NHQYH2l7a4hqzqmuUKaloHeZX/Ro2RmFE+/t/SfNr0pmtTRO4CfLfPUdUs9D8Mx0cyc1Z9Ke4Cq+R2Lsp8BwH0nye6pb9cI4h1YmUY/Xt8O1Z0QbncHZviWojSB2vV0V5WQPzqjjseAznJ1depK/LPOlRHlqddkEbGK28rDwsxbzY1q3DCZZiZZTXBD80HyNr/J4rfRAXhoCafwR57cqqIQ7G/fb5A/ckUM8TFKqUPh7wvu67OAiSWJmO78C8fumF3HxcoGp7DQOQPFLtWGuCfh2zjI9WbUhiHQwWl9/9qpgMEuXH7LOJAzgQbEp1A7XRmT2GupYEkGdFMwT8ojp8OXds08diEy1FNonWAtFZs8pO92urK862pCRB8WRQZWMjpcnif1Ht4QtwYFO9iVp5ygReTEoFuiQPMAypCVCzKgHe/W8LX55xzSnlUQqDU2NzN37LfC4ctS1h3BfIIU5KP9PmdgkKRUWcrFE3eMXPG36OdU4hRj4FMURzmAOZYhaSXuP8=
-deploy:
-- provider: s3
-  access_key_id: AKIAIFLN7IJIIQT6S37Q
-  secret_access_key: &1
-    secure: ASg6jCj/On6IUN7Qdz9TpaY1E+sHqYlSX7A/h8qqwZ7ZuYR/zuW9fp7u/q+FxU2XLhyppNMG9fgOiS/uv+mTDLaxq+TIuGjI0tfxX8a/skSa/Uk5X+eqr1S0S4bN460EJvpcW/lv44f8z7Iz/whxU+Evi6k760Z9jIhu13lCtClBekymkK1wY0ul7QegtxA5W2psF/6aDo4MW7PYeq3DbFDfavZS5Xj6h57HImZ3O/BM0UFhBCulsbIC6QZUsXKbXFIVIwaUQbBwjRi2LxJsl0LxGQea4j5zXKWLR3bIvWQzWRTb6lUl29j45NRP5zcEBRld9yfd/Lb7LQtF/8yS33MvOQrCZ1vrbT/VIAjZS9sEzXIm7Pz7hLe/jhINnxvY1Iyqhpe2uI4bUQx3LfhN9PQKf7NoksqK1eoTLt4VD48sDTcNV6lA6d9ZUBkEA5FtSPfiCs0PTKiuRVJJZbY91DWrSdc5pLLi+4y4Ijgb/SaOAq1RnEWs/KPY91zdGOG2BEkpBQeOhQxrAiLEh8a9oC0UUnkqAfofTBqQjx9KV7ADsiKpb20Anhnqt7diuhgLKNCJesqd+66DSPOreBJLaFnACvN4ZJX9nhdz5eIoKe98jT4GWBjZoF5zTIipVPui47gfzbhfGZV4jyADEcJMtmRGpWCT3MXZVRAXLIlr4TQ=
-  local_dir: dpl_cd_upload
-  skip_cleanup: true
-  region: eu-west-1
-  wait-until-deployed: true
-  on: &2
-    repo: alphagov/notifications-api
-    branch: live
-  bucket: notifications.service.gov.uk-notifications-api-codedeploy
-- provider: codedeploy
-  access_key_id: AKIAIFLN7IJIIQT6S37Q
-  secret_access_key: *1
-  bucket: notifications.service.gov.uk-notifications-api-codedeploy
-  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
-  bundle_type: zip
-  application: api
-  deployment_group: notifications_admin_api_deployment_group
-  region: eu-west-1
-  wait-until-deployed: true
-  on: *2
-- provider: codedeploy
-  access_key_id: AKIAIFLN7IJIIQT6S37Q
-  secret_access_key: *1
-  bucket: notifications.service.gov.uk-notifications-api-codedeploy
-  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
-  bundle_type: zip
-  application: api
-  deployment_group: notifications_api_deployment_group
-  region: eu-west-1
-  wait-until-deployed: true
-  on: *2
-- provider: codedeploy
-  access_key_id: AKIAIFLN7IJIIQT6S37Q
-  secret_access_key: *1
-  bucket: notifications.service.gov.uk-notifications-api-codedeploy
-  key: notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
-  bundle_type: zip
-  application: api
-  deployment_group: notifications_delivery_api_deployment_group
-  region: eu-west-1
-  wait-until-deployed: true
-  on: *2
-before_deploy:
-  - zip -r  --exclude=*__pycache__* notifications-api *
-  - mkdir -p dpl_cd_upload
-  - mv notifications-api.zip dpl_cd_upload/notifications-api-$TRAVIS_BRANCH-$TRAVIS_BUILD_NUMBER-$TRAVIS_COMMIT.zip
