@@ -258,7 +258,6 @@ def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_
 
     assert Notification.query.get(notification.id).status == 'delivered'
     _assert_notification_stats(notification.service_id, sms_delivered=1, sms_requested=1, sms_failed=0)
-    _assert_job_stats(notification.job_id, sent=1, count=1, delivered=1, failed=0)
     assert notification.updated_at == datetime(2000, 1, 2, 12, 0, 0)
 
 
@@ -285,12 +284,10 @@ def test_should_by_able_to_update_status_by_id_from_pending_to_delivered(sample_
     assert update_notification_status_by_id(notification_id=notification.id, status='pending')
     assert Notification.query.get(notification.id).status == 'pending'
     _assert_notification_stats(notification.service_id, sms_requested=1, sms_delivered=0, sms_failed=0)
-    _assert_job_stats(sample_job.id, sent=1, count=1, delivered=0, failed=0)
 
     assert update_notification_status_by_id(notification.id, 'delivered', 'delivered')
     assert Notification.query.get(notification.id).status == 'delivered'
     _assert_notification_stats(notification.service_id, sms_requested=1, sms_delivered=1, sms_failed=0)
-    _assert_job_stats(notification.job_id, sent=1, count=1, delivered=1, failed=0)
 
 
 def test_should_by_able_to_update_status_by_id_from_pending_to_temporary_failure(sample_template, sample_job):
@@ -301,7 +298,6 @@ def test_should_by_able_to_update_status_by_id_from_pending_to_temporary_failure
     assert update_notification_status_by_id(notification_id=notification.id, status='pending')
     assert Notification.query.get(notification.id).status == 'pending'
     _assert_notification_stats(notification.service_id, sms_requested=1, sms_delivered=0, sms_failed=0)
-    _assert_job_stats(notification.job_id, sent=1, count=1, delivered=0, failed=0)
 
     assert update_notification_status_by_id(
         notification.id,
@@ -309,7 +305,6 @@ def test_should_by_able_to_update_status_by_id_from_pending_to_temporary_failure
         notification_statistics_status='failure')
     assert Notification.query.get(notification.id).status == 'temporary-failure'
     _assert_notification_stats(notification.service_id, sms_delivered=0, sms_requested=1, sms_failed=1)
-    _assert_job_stats(sample_job.id, sent=1, count=1, delivered=0, failed=1)
 
 
 def test_should_by_able_to_update_status_by_id_from_sending_to_permanent_failure(sample_template, sample_job):
@@ -325,7 +320,6 @@ def test_should_by_able_to_update_status_by_id_from_sending_to_permanent_failure
     )
     assert Notification.query.get(notification.id).status == 'permanent-failure'
     _assert_notification_stats(notification.service_id, sms_requested=1, sms_delivered=0, sms_failed=1)
-    _assert_job_stats(sample_job.id, sent=1, count=1, delivered=0, failed=1)
 
 
 def test_should_not_update_status_one_notification_status_is_delivered(notify_db, notify_db_session,
@@ -348,7 +342,6 @@ def test_should_not_update_status_one_notification_status_is_delivered(notify_db
     update_notification_status_by_reference('reference', 'failed', 'temporary-failure')
     assert Notification.query.get(notification.id).status == 'delivered'
     _assert_notification_stats(notification.service_id, emails_requested=1, emails_delivered=1, emails_failed=0)
-    _assert_job_stats(notification.job_id, sent=1, count=1, delivered=1, failed=0)
 
 
 def test_should_be_able_to_record_statistics_failure_for_sms(notify_db, notify_db_session, ):
@@ -358,7 +351,6 @@ def test_should_be_able_to_record_statistics_failure_for_sms(notify_db, notify_d
     assert update_notification_status_by_id(notification.id, 'permanent-failure', 'failure')
     assert Notification.query.get(notification.id).status == 'permanent-failure'
     _assert_notification_stats(notification.service_id, sms_requested=1, sms_delivered=0, sms_failed=1)
-    _assert_job_stats(notification.job_id, sent=1, count=1, delivered=0, failed=1)
 
 
 def test_should_be_able_to_record_statistics_failure_for_email(sample_email_template, sample_job, ses_provider):
@@ -376,7 +368,6 @@ def test_should_be_able_to_record_statistics_failure_for_email(sample_email_temp
     assert count == 1
     assert Notification.query.get(notification.id).status == 'failed'
     _assert_notification_stats(notification.service_id, emails_requested=1, emails_delivered=0, emails_failed=1)
-    _assert_job_stats(notification.job_id, sent=1, count=1, delivered=0, failed=1)
 
 
 def test_should_return_zero_count_if_no_notification_with_id():
@@ -461,7 +452,6 @@ def test_create_notification_creates_notification_with_personalisation(notify_db
     assert data.created_at == notification_from_db.created_at
     assert notification_from_db.status == 'created'
     assert {'name': 'Jo'} == notification_from_db.personalisation
-    _assert_job_stats(sample_job.id, sent=1, count=1, delivered=0, failed=0)
 
     stats = NotificationStatistics.query.filter(
         NotificationStatistics.service_id == sample_template_with_placeholders.service.id).first()
@@ -496,7 +486,6 @@ def test_save_notification_creates_sms_and_template_stats(sample_template, sampl
     assert data['template_version'] == notification_from_db.template_version
     assert data['created_at'] == notification_from_db.created_at
     assert notification_from_db.status == 'created'
-    _assert_job_stats(sample_job.id, sent=1, count=1, delivered=0, failed=0)
 
     stats = NotificationStatistics.query.filter(NotificationStatistics.service_id == sample_template.service.id).first()
     assert stats.emails_requested == 0
@@ -529,7 +518,6 @@ def test_save_notification_and_create_email_and_template_stats(sample_email_temp
     assert data['template_version'] == notification_from_db.template_version
     assert data['created_at'] == notification_from_db.created_at
     assert notification_from_db.status == 'created'
-    _assert_job_stats(sample_job.id, sent=1, count=1, delivered=0, failed=0)
 
     stats = NotificationStatistics.query.filter(
         NotificationStatistics.service_id == sample_email_template.service.id).first()
@@ -666,34 +654,10 @@ def test_save_notification_and_increment_job(sample_template, sample_job, mmg_pr
     assert data['template_version'] == notification_from_db.template_version
     assert data['created_at'] == notification_from_db.created_at
     assert notification_from_db.status == 'created'
-    assert Job.query.get(sample_job.id).notifications_sent == 1
 
     notification_2 = Notification(**data)
     dao_create_notification(notification_2, sample_template.template_type)
     assert Notification.query.count() == 2
-    # count is off because the count is defaulted to 1 in the sample_job
-    _assert_job_stats(sample_job.id, sent=2, count=1)
-
-
-def test_should_not_increment_job_if_notification_fails_to_persist(sample_template, sample_job, mmg_provider):
-    random_id = str(uuid.uuid4())
-    assert Notification.query.count() == 0
-    data = _notification_json(sample_template, job_id=sample_job.id, id=random_id)
-
-    notification_1 = Notification(**data)
-    dao_create_notification(notification_1, sample_template.template_type)
-
-    assert Notification.query.count() == 1
-    assert Job.query.get(sample_job.id).notifications_sent == 1
-    job_last_updated_at = Job.query.get(sample_job.id).updated_at
-
-    notification_2 = Notification(**data)
-    with pytest.raises(SQLAlchemyError):
-        dao_create_notification(notification_2, sample_template.template_type)
-
-    assert Notification.query.count() == 1
-    assert Job.query.get(sample_job.id).notifications_sent == 1
-    assert Job.query.get(sample_job.id).updated_at == job_last_updated_at
 
 
 def test_save_notification_and_increment_correct_job(notify_db, notify_db_session, sample_template, mmg_provider):
@@ -718,8 +682,6 @@ def test_save_notification_and_increment_correct_job(notify_db, notify_db_sessio
     assert data['created_at'] == notification_from_db.created_at
     assert notification_from_db.status == 'created'
     assert job_1.id != job_2.id
-    _assert_job_stats(job_id=job_1.id, sent=1, count=1)
-    _assert_job_stats(job_id=job_2.id, sent=0, count=1)
 
 
 def test_save_notification_with_no_job(sample_template, mmg_provider):
@@ -1084,11 +1046,3 @@ def _assert_notification_stats(service_id,
     assert stats[0].sms_requested == sms_requested
     assert stats[0].sms_failed == sms_failed
     assert stats[0].day == notification_created_at if notification_created_at else True
-
-
-def _assert_job_stats(job_id, sent=0, count=0, delivered=0, failed=0):
-    job = Job.query.get(job_id)
-    assert job.notifications_sent == sent
-    assert job.notification_count == count
-    assert job.notifications_delivered == delivered
-    assert job.notifications_failed == failed

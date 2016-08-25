@@ -125,14 +125,6 @@ def dao_get_last_template_usage(template_id):
 @statsd(namespace="dao")
 @transactional
 def dao_create_notification(notification, notification_type):
-    if notification.job_id:
-        db.session.query(Job).filter_by(
-            id=notification.job_id
-        ).update({
-            Job.notifications_sent: Job.notifications_sent + 1,
-            Job.updated_at: datetime.utcnow()
-        })
-
     update_count = db.session.query(NotificationStatistics).filter_by(
         day=notification.created_at.date(),
         service_id=notification.service_id
@@ -189,25 +181,12 @@ def _update_notification_stats_query(notification_type, status):
 
 
 def _update_statistics(notification, notification_statistics_status):
-    if notification.job_id:
-        db.session.query(Job).filter_by(
-            id=notification.job_id
-        ).update(_update_job_stats_query(notification_statistics_status))
-
     db.session.query(NotificationStatistics).filter_by(
         day=notification.created_at.date(),
         service_id=notification.service_id
     ).update(
         _update_notification_stats_query(notification.notification_type, notification_statistics_status)
     )
-
-
-def _update_job_stats_query(status):
-    mapping = {
-        STATISTICS_FAILURE: Job.notifications_failed,
-        STATISTICS_DELIVERED: Job.notifications_delivered
-    }
-    return {mapping[status]: mapping[status] + 1}
 
 
 def _decide_permanent_temporary_failure(current_status, status):
