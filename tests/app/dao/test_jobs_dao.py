@@ -215,15 +215,15 @@ def test_get_jobs_for_service_in_created_at_order(notify_db, notify_db_session, 
 
 
 def test_update_job(sample_job):
-    assert sample_job.status == 'pending'
+    assert sample_job.job_status == 'pending'
 
-    sample_job.status = 'in progress'
+    sample_job.job_status = 'in progress'
 
     dao_update_job(sample_job)
 
     job_from_db = Job.query.get(sample_job.id)
 
-    assert job_from_db.status == 'in progress'
+    assert job_from_db.job_status == 'in progress'
 
 
 def test_get_scheduled_jobs_gets_all_jobs_in_scheduled_state_scheduled_before_now(notify_db, notify_db_session):
