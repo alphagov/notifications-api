@@ -2,7 +2,6 @@ import itertools
 from datetime import (datetime)
 
 from flask import current_app
-from monotonic import monotonic
 from notifications_utils.recipients import (
     RecipientCSV,
     allowed_to_send_to
@@ -13,7 +12,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import (
     create_uuid,
     DATETIME_FORMAT,
-    DATE_FORMAT,
     notify_celery,
     encryption
 )
@@ -23,10 +21,7 @@ from app.dao.jobs_dao import (
     dao_update_job,
     dao_get_job_by_id
 )
-from app.dao.notifications_dao import (
-    dao_create_notification,
-    dao_get_notification_statistics_for_service_and_day
-)
+from app.dao.notifications_dao import (dao_create_notification)
 from app.dao.services_dao import dao_fetch_service_by_id, dao_fetch_todays_stats_for_service
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
