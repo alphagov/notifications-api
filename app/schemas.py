@@ -228,7 +228,11 @@ class JobSchema(BaseSchema):
 
     class Meta:
         model = models.Job
-        exclude = ('notifications',)
+        exclude = (
+            'notifications',
+            'notifications_sent',
+            'notifications_delivered',
+            'notifications_failed')
         strict = True
 
 
@@ -487,30 +491,6 @@ class OrganisationSchema(BaseSchema):
         strict = True
 
 
-class FromToDateSchema(ma.Schema):
-
-    class Meta:
-        strict = True
-
-    date_from = fields.Date()
-    date_to = fields.Date()
-
-    @validates('date_from')
-    def validate_date_from(self, value):
-        _validate_not_in_future(value)
-
-    @validates('date_to')
-    def validate_date_to(self, value):
-        _validate_not_in_future(value)
-
-    @validates_schema
-    def validate_dates(self, data):
-        df = data.get('date_from')
-        dt = data.get('date_to')
-        if (df and dt) and (df > dt):
-            raise ValidationError("date_from needs to be greater than date_to")
-
-
 class DaySchema(ma.Schema):
 
     class Meta:
@@ -521,23 +501,6 @@ class DaySchema(ma.Schema):
     @validates('day')
     def validate_day(self, value):
         _validate_not_in_future(value)
-
-
-class WeekAggregateNotificationStatisticsSchema(ma.Schema):
-
-    class Meta:
-        strict = True
-
-    date_from = fields.Date()
-    week_count = fields.Int()
-
-    @validates('date_from')
-    def validate_date_from(self, value):
-        _validate_not_in_future(value)
-
-    @validates('week_count')
-    def validate_week_count(self, value):
-        _validate_positive_number(value)
 
 
 class UnarchivedTemplateSchema(BaseSchema):
@@ -580,8 +543,6 @@ api_key_history_schema = ApiKeyHistorySchema()
 template_history_schema = TemplateHistorySchema()
 event_schema = EventSchema()
 organisation_schema = OrganisationSchema()
-from_to_date_schema = FromToDateSchema()
 provider_details_schema = ProviderDetailsSchema()
-week_aggregate_notification_statistics_schema = WeekAggregateNotificationStatisticsSchema()
 day_schema = DaySchema()
 unarchived_template_schema = UnarchivedTemplateSchema()

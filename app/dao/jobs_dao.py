@@ -1,9 +1,25 @@
 from datetime import date, timedelta, datetime
-
 from sqlalchemy import desc, asc, cast, Date as sql_date
 from app import db
 from app.dao import days_ago
-from app.models import Job
+from app.models import Job, NotificationHistory
+from app.statsd_decorators import statsd
+from sqlalchemy import func, asc
+
+
+@statsd(namespace="dao")
+def dao_get_notification_outcomes_for_job(service_id, job_id):
+    query = db.session.query(
+        func.count(NotificationHistory.status).label('count'),
+        NotificationHistory.status.label('status')
+    )
+
+    return query \
+        .filter(NotificationHistory.service_id == service_id) \
+        .filter(NotificationHistory.job_id == job_id)\
+        .group_by(NotificationHistory.status) \
+        .order_by(asc(NotificationHistory.status)) \
+        .all()
 
 
 def dao_get_job_by_service_id_and_job_id(service_id, job_id):

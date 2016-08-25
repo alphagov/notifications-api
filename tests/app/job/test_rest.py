@@ -10,7 +10,7 @@ import app.celery.tasks
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_job as create_job,
-    sample_notification as create_sample_notification)
+    sample_notification as create_sample_notification, sample_notification)
 from app.dao.templates_dao import dao_update_template
 from app.models import NOTIFICATION_STATUS_TYPES
 
@@ -446,3 +446,83 @@ def test_get_all_notifications_for_job_filtered_by_status(
         resp = json.loads(response.get_data(as_text=True))
         assert len(resp['notifications']) == expected_notification_count
         assert response.status_code == 200
+
+
+def test_get_job_by_id(notify_api, sample_job):
+    job_id = str(sample_job.id)
+    service_id = sample_job.service.id
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = '/service/{}/job/{}'.format(service_id, job_id)
+            auth_header = create_authorization_header(service_id=sample_job.service.id)
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 200
+            resp_json = json.loads(response.get_data(as_text=True))
+            assert resp_json['data']['id'] == job_id
+            assert resp_json['data']['statistics'] == []
+            assert resp_json['data']['created_by']['name'] == 'Test User'
+
+
+def test_get_job_by_id_should_return_statistics(notify_db, notify_db_session, notify_api, sample_job):
+    job_id = str(sample_job.id)
+    service_id = sample_job.service.id
+
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='created')
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='sending')
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='delivered')
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='pending')
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='failed')
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='technical-failure')  # noqa
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='temporary-failure')  # noqa
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='permanent-failure')  # noqa
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = '/service/{}/job/{}'.format(service_id, job_id)
+            auth_header = create_authorization_header(service_id=sample_job.service.id)
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 200
+            resp_json = json.loads(response.get_data(as_text=True))
+            print(resp_json)
+            assert resp_json['data']['id'] == job_id
+            assert {'status': 'created', 'count': 1} in resp_json['data']['statistics']
+            assert {'status': 'sending', 'count': 1} in resp_json['data']['statistics']
+            assert {'status': 'delivered', 'count': 1} in resp_json['data']['statistics']
+            assert {'status': 'pending', 'count': 1} in resp_json['data']['statistics']
+            assert {'status': 'failed', 'count': 1} in resp_json['data']['statistics']
+            assert {'status': 'technical-failure', 'count': 1} in resp_json['data']['statistics']
+            assert {'status': 'temporary-failure', 'count': 1} in resp_json['data']['statistics']
+            assert {'status': 'permanent-failure', 'count': 1} in resp_json['data']['statistics']
+            assert resp_json['data']['created_by']['name'] == 'Test User'
+
+
+def test_get_job_by_id_should_return_summed_statistics(notify_db, notify_db_session, notify_api, sample_job):
+    job_id = str(sample_job.id)
+    service_id = sample_job.service.id
+
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='created')
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='created')
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='created')
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='sending')
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='failed')
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='failed')
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='failed')
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='technical-failure')  # noqa
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='temporary-failure')  # noqa
+    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='temporary-failure')  # noqa
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = '/service/{}/job/{}'.format(service_id, job_id)
+            auth_header = create_authorization_header(service_id=sample_job.service.id)
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 200
+            resp_json = json.loads(response.get_data(as_text=True))
+            print(resp_json)
+            assert resp_json['data']['id'] == job_id
+            assert {'status': 'created', 'count': 3} in resp_json['data']['statistics']
+            assert {'status': 'sending', 'count': 1} in resp_json['data']['statistics']
+            assert {'status': 'failed', 'count': 3} in resp_json['data']['statistics']
+            assert {'status': 'technical-failure', 'count': 1} in resp_json['data']['statistics']
+            assert {'status': 'temporary-failure', 'count': 2} in resp_json['data']['statistics']
+            assert resp_json['data']['created_by']['name'] == 'Test User'

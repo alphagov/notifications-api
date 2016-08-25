@@ -180,3 +180,25 @@ def dao_fetch_weekly_historical_stats_for_service(service_id):
     ).order_by(
         asc(monday_of_notification_week), NotificationHistory.status
     ).all()
+
+
+@statsd(namespace='dao')
+def dao_fetch_todays_stats_for_all_services():
+    return db.session.query(
+        Notification.notification_type,
+        Notification.status,
+        Notification.service_id,
+        func.count(Notification.id).label('count')
+    ).select_from(
+        Service
+    ).join(
+        Notification
+    ).filter(
+        func.date(Notification.created_at) == date.today()
+    ).group_by(
+        Notification.notification_type,
+        Notification.status,
+        Notification.service_id
+    ).order_by(
+        Notification.service_id
+    )

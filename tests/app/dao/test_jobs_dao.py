@@ -6,11 +6,96 @@ from app.dao.jobs_dao import (
     dao_create_job,
     dao_update_job,
     dao_get_jobs_by_service_id,
-    dao_get_scheduled_jobs
+    dao_get_scheduled_jobs,
+    dao_get_notification_outcomes_for_job
 )
 
 from app.models import Job
-from tests.app.conftest import sample_job
+from tests.app.conftest import sample_notification, sample_job, sample_service
+
+
+def test_should_have_decorated_notifications_dao_functions():
+    assert dao_get_notification_outcomes_for_job.__wrapped__.__name__ == 'dao_get_notification_outcomes_for_job'  # noqa
+
+
+def test_should_get_all_statuses_for_notifications_associated_with_job(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        sample_job):
+
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='created')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='sending')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='delivered')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='pending')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='failed')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='technical-failure')  # noqa
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='temporary-failure')  # noqa
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='permanent-failure')  # noqa
+
+    results = dao_get_notification_outcomes_for_job(sample_service.id, sample_job.id)
+    assert [(row.count, row.status) for row in results] == [
+        (1, 'created'),
+        (1, 'sending'),
+        (1, 'delivered'),
+        (1, 'pending'),
+        (1, 'failed'),
+        (1, 'technical-failure'),
+        (1, 'temporary-failure'),
+        (1, 'permanent-failure')
+    ]
+
+
+def test_should_count_of_statuses_for_notifications_associated_with_job(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        sample_job):
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='created')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='created')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='sending')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='sending')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='sending')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='sending')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='delivered')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='delivered')
+
+    results = dao_get_notification_outcomes_for_job(sample_service.id, sample_job.id)
+    assert [(row.count, row.status) for row in results] == [
+        (2, 'created'),
+        (4, 'sending'),
+        (2, 'delivered')
+    ]
+
+
+def test_should_return_zero_length_array_if_no_notifications_for_job(sample_service, sample_job):
+    assert len(dao_get_notification_outcomes_for_job(sample_job.id, sample_service.id)) == 0
+
+
+def test_should_return_notifications_only_for_this_job(notify_db, notify_db_session, sample_service):
+    job_1 = sample_job(notify_db, notify_db_session, service=sample_service)
+    job_2 = sample_job(notify_db, notify_db_session, service=sample_service)
+
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_2, status='created')
+
+    results = dao_get_notification_outcomes_for_job(sample_service.id, job_1.id)
+    assert [(row.count, row.status) for row in results] == [
+        (1, 'created')
+    ]
+
+
+def test_should_return_notifications_only_for_this_service(notify_db, notify_db_session):
+    service_1 = sample_service(notify_db, notify_db_session, service_name="one", email_from="one")
+    service_2 = sample_service(notify_db, notify_db_session, service_name="two", email_from="two")
+
+    job_1 = sample_job(notify_db, notify_db_session, service=service_1)
+    job_2 = sample_job(notify_db, notify_db_session, service=service_2)
+
+    sample_notification(notify_db, notify_db_session, service=service_1, job=job_1, status='created')
+    sample_notification(notify_db, notify_db_session, service=service_2, job=job_2, status='created')
+
+    assert len(dao_get_notification_outcomes_for_job(service_1.id, job_2.id)) == 0
 
 
 def test_create_job(sample_template):
