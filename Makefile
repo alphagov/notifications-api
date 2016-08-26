@@ -5,7 +5,7 @@ DATE = $(shell date +%Y-%m-%d:%H:%M:%S)
 PIP_ACCEL_CACHE ?= ${CURDIR}/cache/pip-accel
 APP_VERSION_FILE = app/version.py
 
-GIT_BRANCH = $(shell git symbolic-ref --short HEAD 2> /dev/null || echo "detached")
+GIT_BRANCH ?= $(shell git symbolic-ref --short HEAD 2> /dev/null || echo "detached")
 GIT_COMMIT ?= $(shell git rev-parse HEAD)
 
 DOCKER_BUILDER_IMAGE_NAME = govuk/notify-api-builder
@@ -101,7 +101,7 @@ prepare-docker-build-image: ## Prepare the Docker builder image
 
 .PHONY: build-with-docker
 build-with-docker: prepare-docker-build-image ## Build inside a Docker container
-	docker run -i --rm \
+	@docker run -i --rm \
 		--name "${DOCKER_CONTAINER_PREFIX}-build" \
 		-v `pwd`:/var/project \
 		-v ${PIP_ACCEL_CACHE}:/var/project/cache/pip-accel \
@@ -113,7 +113,7 @@ build-with-docker: prepare-docker-build-image ## Build inside a Docker container
 
 .PHONY: test-with-docker
 test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests inside a Docker container
-	docker run -i --rm \
+	@docker run -i --rm \
 		--name "${DOCKER_CONTAINER_PREFIX}-test" \
 		--link "${DOCKER_CONTAINER_PREFIX}-db:postgres" \
 		-e TEST_DATABASE=postgresql://postgres:postgres@postgres/test_notification_api \
@@ -127,24 +127,29 @@ test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests 
 .PHONY: test-with-docker
 create-docker-test-db: ## Start the test database in a Docker container
 	docker rm -f ${DOCKER_CONTAINER_PREFIX}-db 2> /dev/null || true
-	docker run -d \
+	@docker run -d \
 		--name "${DOCKER_CONTAINER_PREFIX}-db" \
 		-e POSTGRES_PASSWORD="postgres" \
 		-e POSTGRES_DB=test_notification_api \
 		postgres:9.5
 	sleep 3
 
+.PHONY: coverage-with-docker
+coverage-with-docker: prepare-docker-build-image ## Generates coverage report inside a Docker container
+	@docker run -i --rm \
+		--name "${DOCKER_CONTAINER_PREFIX}-coverage" \
+		-v `pwd`:/var/project \
+		-e COVERALLS_REPO_TOKEN=${COVERALLS_REPO_TOKEN} \
+		-e CI_NAME=${CI_NAME} \
+		-e CI_BUILD_NUMBER=${BUILD_NUMBER} \
+		-e CI_BUILD_URL=${BUILD_URL} \
+		-e CI_BRANCH=${GIT_BRANCH} \
+		${DOCKER_BUILDER_IMAGE_NAME} \
+		make coverage
+
 .PHONY: clean-docker-containers
 clean-docker-containers: ## Clean up any remaining docker containers
 	docker rm -f $(shell docker ps -q -f "name=${DOCKER_CONTAINER_PREFIX}") 2> /dev/null || true
-
-.PHONY: coverage-with-docker
-coverage-with-docker: prepare-docker-build-image ## Generates coverage report inside a Docker container
-	docker run -i --rm \
-		--name "${DOCKER_CONTAINER_PREFIX}-coverage" \
-		-v `pwd`:/var/project \
-		${DOCKER_BUILDER_IMAGE_NAME} \
-		make coverage
 
 clean:
 	rm -rf node_modules cache target venv .coverage
