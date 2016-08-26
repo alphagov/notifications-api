@@ -9,7 +9,7 @@ import app.celery.tasks
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_job as create_job,
-    sample_notification as create_sample_notification, sample_notification)
+    sample_notification as create_sample_notification, sample_notification, sample_job)
 from app.dao.templates_dao import dao_update_template
 from app.models import NOTIFICATION_STATUS_TYPES
 
@@ -374,7 +374,6 @@ def test_get_job_by_id_should_return_statistics(notify_db, notify_db_session, no
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
-            print(resp_json)
             assert resp_json['data']['id'] == job_id
             assert {'status': 'created', 'count': 1} in resp_json['data']['statistics']
             assert {'status': 'sending', 'count': 1} in resp_json['data']['statistics']
@@ -409,7 +408,6 @@ def test_get_job_by_id_should_return_summed_statistics(notify_db, notify_db_sess
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
-            print(resp_json)
             assert resp_json['data']['id'] == job_id
             assert {'status': 'created', 'count': 3} in resp_json['data']['statistics']
             assert {'status': 'sending', 'count': 1} in resp_json['data']['statistics']
@@ -417,3 +415,51 @@ def test_get_job_by_id_should_return_summed_statistics(notify_db, notify_db_sess
             assert {'status': 'technical-failure', 'count': 1} in resp_json['data']['statistics']
             assert {'status': 'temporary-failure', 'count': 2} in resp_json['data']['statistics']
             assert resp_json['data']['created_by']['name'] == 'Test User'
+
+
+def test_get_jobs_for_service_should_return_statistics(notify_db, notify_db_session, notify_api, sample_service):
+    job_1 = sample_job(notify_db, notify_db_session, service=sample_service)
+    job_2 = sample_job(notify_db, notify_db_session, service=sample_service)
+
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_2, status='sending')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_2, status='sending')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_2, status='sending')
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = '/service/{}/job'.format(str(sample_service.id))
+            auth_header = create_authorization_header(service_id=str(sample_service.id))
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 200
+            resp_json = json.loads(response.get_data(as_text=True))
+            assert len(resp_json['data']) == 2
+            assert resp_json['data'][0]['id'] == str(job_2.id)
+            assert {'status': 'sending', 'count': 3} in resp_json['data'][0]['statistics']
+            assert resp_json['data'][1]['id'] == str(job_1.id)
+            assert {'status': 'created', 'count': 3} in resp_json['data'][1]['statistics']
+
+
+def test_get_jobs_for_service_should_return_no_stats_if_no_rows_in_notifications(
+        notify_db,
+        notify_db_session,
+        notify_api,
+        sample_service):
+
+    job_1 = sample_job(notify_db, notify_db_session, service=sample_service)
+    job_2 = sample_job(notify_db, notify_db_session, service=sample_service)
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = '/service/{}/job'.format(str(sample_service.id))
+            auth_header = create_authorization_header(service_id=str(sample_service.id))
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 200
+            resp_json = json.loads(response.get_data(as_text=True))
+            assert len(resp_json['data']) == 2
+            assert resp_json['data'][0]['id'] == str(job_2.id)
+            assert resp_json['data'][0]['statistics'] == []
+            assert resp_json['data'][1]['id'] == str(job_1.id)
+            assert resp_json['data'][1]['statistics'] == []

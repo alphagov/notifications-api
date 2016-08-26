@@ -91,6 +91,11 @@ def get_jobs_by_service(service_id):
 
     jobs = dao_get_jobs_by_service_id(service_id, limit_days)
     data = job_schema.dump(jobs, many=True).data
+
+    for job_data in data:
+        statistics = dao_get_notification_outcomes_for_job(service_id, job_data['id'])
+        job_data['statistics'] = [{'status': statistic[1], 'count': statistic[0]} for statistic in statistics]
+
     return jsonify(data=data)
 
 
