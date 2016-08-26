@@ -61,7 +61,7 @@ def send_sms_to_provider(self, service_id, notification_id):
         template = Template(
             template_model.__dict__,
             values={} if not notification.personalisation else notification.personalisation,
-            renderer=SMSMessage(prefix=service.name)
+            renderer=SMSMessage(prefix=service.name, sender=service.sms_sender)
         )
         try:
             if service.research_mode or notification.key_type == KEY_TYPE_TEST:
