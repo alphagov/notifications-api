@@ -418,8 +418,10 @@ def test_get_job_by_id_should_return_summed_statistics(notify_db, notify_db_sess
 
 
 def test_get_jobs_for_service_should_return_statistics(notify_db, notify_db_session, notify_api, sample_service):
-    job_1 = sample_job(notify_db, notify_db_session, service=sample_service)
-    job_2 = sample_job(notify_db, notify_db_session, service=sample_service)
+    now = datetime.utcnow()
+    earlier = datetime.utcnow() - timedelta(days=1)
+    job_1 = sample_job(notify_db, notify_db_session, service=sample_service, created_at=earlier)
+    job_2 = sample_job(notify_db, notify_db_session, service=sample_service, created_at=now)
 
     sample_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
     sample_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
@@ -448,8 +450,10 @@ def test_get_jobs_for_service_should_return_no_stats_if_no_rows_in_notifications
         notify_api,
         sample_service):
 
-    job_1 = sample_job(notify_db, notify_db_session, service=sample_service)
-    job_2 = sample_job(notify_db, notify_db_session, service=sample_service)
+    now = datetime.utcnow()
+    earlier = datetime.utcnow() - timedelta(days=1)
+    job_1 = sample_job(notify_db, notify_db_session, service=sample_service, created_at=earlier)
+    job_2 = sample_job(notify_db, notify_db_session, service=sample_service, created_at=now)
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
