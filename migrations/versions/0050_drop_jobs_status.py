@@ -22,7 +22,8 @@ def upgrade():
 
 
 def downgrade():
-    op.add_column('jobs', sa.Column('status', postgresql.ENUM('pending', 'in progress', 'finished', 'sending limits exceeded', name='job_status_types'), autoincrement=False, nullable=False))
+    # this downgrade leaves status empty and with no not null constraint.
+    op.add_column('jobs', sa.Column('status', postgresql.ENUM('pending', 'in progress', 'finished', 'sending limits exceeded', name='job_status_types'), autoincrement=False, nullable=True))
     op.alter_column('jobs', 'job_status',
                existing_type=sa.VARCHAR(length=255),
                nullable=True)
