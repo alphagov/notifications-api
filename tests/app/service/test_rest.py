@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import uuid
 
@@ -263,7 +264,7 @@ def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(no
             json_resp = json.loads(resp.get_data(as_text=True))
             assert resp.status_code == 404
             assert json_resp['result'] == 'error'
-            assert 'No result found' == json_resp['message']
+            assert json_resp['message'] == 'No result found'
 
 
 def test_should_not_create_service_if_missing_data(notify_api, sample_user):
@@ -288,8 +289,6 @@ def test_should_not_create_service_if_missing_data(notify_api, sample_user):
 
 
 def test_should_not_create_service_with_duplicate_name(notify_api,
-                                                       notify_db,
-                                                       notify_db_session,
                                                        sample_user,
                                                        sample_service):
     with notify_api.test_request_context():
@@ -314,8 +313,6 @@ def test_should_not_create_service_with_duplicate_name(notify_api,
 
 
 def test_create_service_should_throw_duplicate_key_constraint_for_existing_email_from(notify_api,
-                                                                                      notify_db,
-                                                                                      notify_db_session,
                                                                                       service_factory,
                                                                                       sample_user):
     first_service = service_factory.get('First service', email_from='first.service')
@@ -432,7 +429,7 @@ def test_update_service_research_mode_throws_validation_error(notify_api, sample
                 headers=[('Content-Type', 'application/json'), auth_header]
             )
             result = json.loads(resp.get_data(as_text=True))
-            result['message']['research_mode'][0] == "Not a valid boolean."
+            assert result['message']['research_mode'][0] == "Not a valid boolean."
             assert resp.status_code == 400
 
 
@@ -505,7 +502,7 @@ def test_should_not_update_service_with_duplicate_email_from(notify_api,
             )
 
 
-def test_update_service_should_404_if_id_is_invalid(notify_api, notify_db, notify_db_session):
+def test_update_service_should_404_if_id_is_invalid(notify_api):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
@@ -524,7 +521,7 @@ def test_update_service_should_404_if_id_is_invalid(notify_api, notify_db, notif
             assert resp.status_code == 404
 
 
-def test_get_users_by_service(notify_api, notify_db, notify_db_session, sample_service):
+def test_get_users_by_service(notify_api, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             user_on_service = sample_service.users[0]
@@ -544,8 +541,6 @@ def test_get_users_by_service(notify_api, notify_db, notify_db_session, sample_s
 
 
 def test_get_users_for_service_returns_empty_list_if_no_users_associated_with_service(notify_api,
-                                                                                      notify_db,
-                                                                                      notify_db_session,
                                                                                       sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -1110,8 +1105,7 @@ def test_set_sms_sender_for_service_rejects_invalid_characters(notify_api, sampl
         'delivered': 0,
         'failed': 0
     })
-], ids=['seven_days', 'today']
-)
+], ids=['seven_days', 'today'])
 def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_service, today_only, stats):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         with freeze_time('2000-01-01T12:00:00'):
@@ -1155,4 +1149,95 @@ def test_get_weekly_notification_stats(notify_api, notify_db, notify_db_session)
                 'failed': 0
             }
         }
+    }
+
+
+def test_get_services_with_detailed_flag(notify_api, notify_db, notify_db_session):
+    notifications = [
+        create_sample_notification(notify_db, notify_db_session),
+        create_sample_notification(notify_db, notify_db_session)
+    ]
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        resp = client.get(
+            '/service?detailed=True',
+            headers=[create_authorization_header()]
+        )
+
+    assert resp.status_code == 200
+    data = json.loads(resp.get_data(as_text=True))['data']
+    assert len(data) == 1
+    assert data[0]['name'] == 'Sample service'
+    assert data[0]['id'] == str(notifications[0].service_id)
+    assert data[0]['statistics'] == {
+        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 2}
+    }
+
+
+def test_get_detailed_services_groups_by_service(notify_db, notify_db_session):
+    from app.service.rest import get_detailed_services
+
+    service_1 = create_sample_service(notify_db, notify_db_session, service_name="1", email_from='1')
+    service_2 = create_sample_service(notify_db, notify_db_session, service_name="2", email_from='2')
+
+    create_sample_notification(notify_db, notify_db_session, service=service_1, status='created')
+    create_sample_notification(notify_db, notify_db_session, service=service_2, status='created')
+    create_sample_notification(notify_db, notify_db_session, service=service_1, status='delivered')
+    create_sample_notification(notify_db, notify_db_session, service=service_1, status='created')
+
+    data = get_detailed_services()
+    data = sorted(data, key=lambda x: x['name'])
+
+    assert len(data) == 2
+    assert data[0]['id'] == str(service_1.id)
+    assert data[0]['statistics'] == {
+        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
+        'sms': {'delivered': 1, 'failed': 0, 'requested': 3}
+    }
+    assert data[1]['id'] == str(service_2.id)
+    assert data[1]['statistics'] == {
+        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 1}
+    }
+
+
+def test_get_detailed_services_includes_services_with_no_notifications(notify_db, notify_db_session):
+    from app.service.rest import get_detailed_services
+
+    service_1 = create_sample_service(notify_db, notify_db_session, service_name="1", email_from='1')
+    service_2 = create_sample_service(notify_db, notify_db_session, service_name="2", email_from='2')
+
+    create_sample_notification(notify_db, notify_db_session, service=service_1)
+
+    data = get_detailed_services()
+    data = sorted(data, key=lambda x: x['name'])
+
+    assert len(data) == 2
+    assert data[0]['id'] == str(service_1.id)
+    assert data[0]['statistics'] == {
+        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 1}
+    }
+    assert data[1]['id'] == str(service_2.id)
+    assert data[1]['statistics'] == {
+        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 0}
+    }
+
+
+def test_get_detailed_services_only_includes_todays_notifications(notify_db, notify_db_session):
+    from app.service.rest import get_detailed_services
+
+    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 9, 23, 59))
+    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 10, 0, 0))
+    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 10, 12, 0))
+
+    with freeze_time('2015-10-10T12:00:00'):
+        data = get_detailed_services()
+        data = sorted(data, key=lambda x: x['id'])
+
+    assert len(data) == 1
+    assert data[0]['statistics'] == {
+        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 2}
     }

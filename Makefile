@@ -35,9 +35,9 @@ check-env-vars: ## Check mandatory environment variables
 	$(if ${AWS_ACCESS_KEY_ID},,$(error Must specify AWS_ACCESS_KEY_ID))
 	$(if ${AWS_SECRET_ACCESS_KEY},,$(error Must specify AWS_SECRET_ACCESS_KEY))
 
-.PHONY: development
-development: ## Set environment to development
-	$(eval export DEPLOY_ENV=development)
+.PHONY: preview
+preview: ## Set environment to preview
+	$(eval export DEPLOY_ENV=preview)
 	$(eval export DNS_NAME="notify.works")
 	@true
 
@@ -105,6 +105,9 @@ build-with-docker: prepare-docker-build-image ## Build inside a Docker container
 		--name "${DOCKER_CONTAINER_PREFIX}-build" \
 		-v `pwd`:/var/project \
 		-v ${PIP_ACCEL_CACHE}:/var/project/cache/pip-accel \
+		-e GIT_COMMIT=${GIT_COMMIT} \
+		-e BUILD_NUMBER=${BUILD_NUMBER} \
+		-e BUILD_URL=${BUILD_URL} \
 		${DOCKER_BUILDER_IMAGE_NAME} \
 		make build
 
@@ -114,6 +117,9 @@ test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests 
 		--name "${DOCKER_CONTAINER_PREFIX}-test" \
 		--link "${DOCKER_CONTAINER_PREFIX}-db:postgres" \
 		-e TEST_DATABASE=postgresql://postgres:postgres@postgres/test_notification_api \
+		-e GIT_COMMIT=${GIT_COMMIT} \
+		-e BUILD_NUMBER=${BUILD_NUMBER} \
+		-e BUILD_URL=${BUILD_URL} \
 		-v `pwd`:/var/project \
 		${DOCKER_BUILDER_IMAGE_NAME} \
 		make test

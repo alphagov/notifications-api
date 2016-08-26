@@ -207,7 +207,7 @@ def test_normal_api_key_returns_notifications_created_from_jobs_and_from_api(
 
         notifications = json.loads(response.get_data(as_text=True))['notifications']
         assert len(notifications) == 2
-        assert set(x['id'] for x in notifications) == set([str(sample_notification.id), str(api_notification.id)])
+        assert set(x['id'] for x in notifications) == {str(sample_notification.id), str(api_notification.id)}
 
 
 @pytest.mark.parametrize('key_type', [KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST])

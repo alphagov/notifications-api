@@ -4,9 +4,9 @@ from flask import json
 
 import app.celery.tasks
 from app.dao.notifications_dao import (
-    get_notification_by_id,
-    dao_get_notification_statistics_for_service
+    get_notification_by_id
 )
+from app.models import NotificationStatistics
 from tests.app.conftest import sample_notification as create_sample_notification
 
 
@@ -162,7 +162,7 @@ def test_firetext_callback_should_update_notification_status(notify_api, sample_
             updated = get_notification_by_id(sample_notification.id)
             assert updated.status == 'delivered'
             assert get_notification_by_id(sample_notification.id).status == 'delivered'
-            stats = dao_get_notification_statistics_for_service(sample_notification.service_id)[0]
+            stats = get_notification_stats(sample_notification.service_id)
             assert stats.sms_delivered == 1
             assert stats.sms_requested == 1
             assert stats.sms_failed == 0
@@ -189,7 +189,7 @@ def test_firetext_callback_should_update_notification_status_failed(notify_api, 
                 sample_notification.id
             )
             assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
-            stats = dao_get_notification_statistics_for_service(sample_notification.service_id)[0]
+            stats = get_notification_stats(sample_notification.service_id)
             assert stats.sms_delivered == 0
             assert stats.sms_requested == 1
             assert stats.sms_failed == 1
@@ -217,7 +217,7 @@ def test_firetext_callback_should_update_notification_status_pending(notify_api,
                 notification.id
             )
             assert get_notification_by_id(notification.id).status == 'pending'
-            stats = dao_get_notification_statistics_for_service(notification.service_id)[0]
+            stats = get_notification_stats(notification.service_id)
             assert stats.sms_delivered == 0
             assert stats.sms_requested == 1
             assert stats.sms_failed == 0
@@ -257,7 +257,7 @@ def test_firetext_callback_should_update_multiple_notification_status_sent(
                 ),
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
-            stats = dao_get_notification_statistics_for_service(notification1.service_id)[0]
+            stats = get_notification_stats(notification1.service_id)
             assert stats.sms_delivered == 3
             assert stats.sms_requested == 3
             assert stats.sms_failed == 0
@@ -481,7 +481,7 @@ def test_ses_callback_should_update_notification_status(
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'SES callback succeeded'
             assert get_notification_by_id(notification.id).status == 'delivered'
-            stats = dao_get_notification_statistics_for_service(notification.service_id)[0]
+            stats = get_notification_stats(notification.service_id)
             assert stats.emails_delivered == 1
             assert stats.emails_requested == 1
             assert stats.emails_failed == 0
@@ -536,7 +536,7 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
             assert resp2.status_code == 200
             assert resp3.status_code == 200
 
-            stats = dao_get_notification_statistics_for_service(notification1.service_id)[0]
+            stats = get_notification_stats(notification1.service_id)
             assert stats.emails_delivered == 3
             assert stats.emails_requested == 3
             assert stats.emails_failed == 0
@@ -568,7 +568,7 @@ def test_ses_callback_should_set_status_to_temporary_failure(notify_api,
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'SES callback succeeded'
             assert get_notification_by_id(notification.id).status == 'temporary-failure'
-            stats = dao_get_notification_statistics_for_service(notification.service_id)[0]
+            stats = get_notification_stats(notification.service_id)
             assert stats.emails_delivered == 0
             assert stats.emails_requested == 1
             assert stats.emails_failed == 1
@@ -628,7 +628,7 @@ def test_ses_callback_should_set_status_to_permanent_failure(notify_api,
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'SES callback succeeded'
             assert get_notification_by_id(notification.id).status == 'permanent-failure'
-            stats = dao_get_notification_statistics_for_service(notification.service_id)[0]
+            stats = get_notification_stats(notification.service_id)
             assert stats.emails_delivered == 0
             assert stats.emails_requested == 1
             assert stats.emails_failed == 1
@@ -730,3 +730,7 @@ def ses_hard_bounce_callback():
 
 def ses_soft_bounce_callback():
     return b'{\n  "Type" : "Notification",\n  "MessageId" : "ref",\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",\n  "Message" : "{\\"notificationType\\":\\"Bounce\\",\\"bounce\\":{\\"bounceType\\":\\"Undetermined\\",\\"bounceSubType\\":\\"General\\"}, \\"mail\\":{\\"messageId\\":\\"ref\\",\\"timestamp\\":\\"2016-03-14T12:35:25.909Z\\",\\"source\\":\\"test@test-domain.com\\",\\"sourceArn\\":\\"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify\\",\\"sendingAccountId\\":\\"123456789012\\",\\"destination\\":[\\"testing@digital.cabinet-office.gov.uk\\"]},\\"delivery\\":{\\"timestamp\\":\\"2016-03-14T12:35:26.567Z\\",\\"processingTimeMillis\\":658,\\"recipients\\":[\\"testing@digital.cabinet-office.gov.uk\\"],\\"smtpResponse\\":\\"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp\\",\\"reportingMTA\\":\\"a6-238.smtp-out.eu-west-1.amazonses.com\\"}}",\n  "Timestamp" : "2016-03-14T12:35:26.665Z",\n  "SignatureVersion" : "1",\n  "Signature" : "X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==",\n  "SigningCertURL" : "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem",\n  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"\n}'  # noqa
+
+
+def get_notification_stats(service_id):
+    return NotificationStatistics.query.filter_by(service_id=service_id).one()
