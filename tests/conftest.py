@@ -24,6 +24,12 @@ def notify_api(request):
     return app
 
 
+@pytest.yield_fixture(scope='function')
+def client(notify_api):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        yield client
+
+
 @pytest.fixture(scope='session')
 def notify_db(notify_api, request):
     Migrate(notify_api, db)
