@@ -291,7 +291,7 @@ def send_notification(notification_type):
                 'api_key_id': str(api_user.id),
                 'key_type': api_user.key_type
             },
-            queue='sms'
+            queue='db-sms'
         )
     else:
         send_email.apply_async(
@@ -305,7 +305,7 @@ def send_notification(notification_type):
                 'api_key_id': str(api_user.id),
                 'key_type': api_user.key_type
             },
-            queue='email'
+            queue='db-email'
         )
 
     return jsonify(

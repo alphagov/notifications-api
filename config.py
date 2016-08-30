@@ -52,7 +52,7 @@ class Config(object):
     CELERYBEAT_SCHEDULE = {
         'run-scheduled-jobs': {
             'task': 'run-scheduled-jobs',
-            'schedule': crontab(),
+            'schedule': crontab(minute=1),
             'options': {'queue': 'periodic'}
         },
         'delete-verify-codes': {
@@ -84,7 +84,11 @@ class Config(object):
     CELERY_QUEUES = [
         Queue('periodic', Exchange('default'), routing_key='periodic'),
         Queue('sms', Exchange('default'), routing_key='sms'),
+        Queue('db-sms', Exchange('default'), routing_key='db-sms'),
+        Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('email', Exchange('default'), routing_key='email'),
+        Queue('db-email', Exchange('default'), routing_key='db-email'),
+        Queue('send-email', Exchange('default'), routing_key='send-email'),
         Queue('sms-code', Exchange('default'), routing_key='sms-code'),
         Queue('email-code', Exchange('default'), routing_key='email-code'),
         Queue('email-reset-password', Exchange('default'), routing_key='email-reset-password'),

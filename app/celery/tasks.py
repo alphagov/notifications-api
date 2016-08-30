@@ -135,7 +135,7 @@ def send_sms(self,
     try:
         _save_notification(created_at, notification, notification_id, service_id, SMS_TYPE, api_key_id, key_type)
 
-        send_sms_to_provider.apply_async((service_id, notification_id), queue='sms')
+        send_sms_to_provider.apply_async((service_id, notification_id), queue='send-sms')
 
         current_app.logger.info(
             "SMS {} created at {}".format(notification_id, created_at)
@@ -170,7 +170,7 @@ def send_email(self, service_id,
     try:
         _save_notification(created_at, notification, notification_id, service_id, EMAIL_TYPE, api_key_id, key_type)
 
-        send_email_to_provider.apply_async((service_id, notification_id), queue='email')
+        send_email_to_provider.apply_async((service_id, notification_id), queue='send-email')
 
         current_app.logger.info("Email {} created at {}".format(notification_id, created_at))
     except SQLAlchemyError as e:
