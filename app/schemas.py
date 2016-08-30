@@ -431,7 +431,7 @@ class NotificationsFilterSchema(ma.Schema):
 
 class TemplateStatisticsSchema(BaseSchema):
 
-    template = fields.Nested(TemplateSchema, only=["id",  "name", "template_type"], dump_only=True)
+    template = fields.Nested(TemplateSchema, only=["id", "name", "template_type"], dump_only=True)
 
     class Meta:
         model = models.TemplateStatistics

@@ -73,7 +73,7 @@ class MMGClient(SmsClient):
             "reqType": "BULK",
             "MSISDN": to,
             "msg": content,
-            "sender":  self.from_number if sender is None else sender,
+            "sender": self.from_number if sender is None else sender,
             "cid": reference,
             "multi": multi
         }

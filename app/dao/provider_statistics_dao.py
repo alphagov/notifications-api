@@ -9,7 +9,7 @@ from app.models import (
     EMAIL_TYPE,
     NOTIFICATION_STATUS_TYPES_BILLABLE,
     KEY_TYPE_TEST
-    )
+)
 
 
 def get_provider_statistics(service, **kwargs):

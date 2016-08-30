@@ -75,7 +75,7 @@ def process_job(job_id):
             'personalisation': {
                 key: personalisation.get(key)
                 for key in template.placeholders
-                }
+            }
         })
 
         if template.template_type == SMS_TYPE:
