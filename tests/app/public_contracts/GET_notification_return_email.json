@@ -8,8 +8,10 @@
       "properties": {
         "notification": {"$ref": "email_notification.json"}
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": ["notification"]
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "required": ["data"]
 }

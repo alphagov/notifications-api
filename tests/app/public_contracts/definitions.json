@@ -8,5 +8,5 @@
   "datetime": {
     "type": "string",
     "format": "date-time"
-  },
+  }
 }
