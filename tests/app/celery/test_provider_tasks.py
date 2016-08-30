@@ -241,23 +241,6 @@ def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_s
     assert not persisted_notification.personalisation
 
 
-def test_should_update_provider_stats_on_success(notify_db, sample_service, sample_notification, mocker):
-    provider_stats = provider_statistics_dao.get_provider_statistics(sample_service).all()
-    assert len(provider_stats) == 0
-
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
-
-    send_sms_to_provider(
-        sample_notification.service_id,
-        sample_notification.id
-    )
-
-    updated_provider_stats = provider_statistics_dao.get_provider_statistics(sample_service).all()
-    assert updated_provider_stats[0].provider.identifier == 'mmg'
-    assert updated_provider_stats[0].unit_count == 1
-
-
 @pytest.mark.parametrize('research_mode,key_type', [
     (True, KEY_TYPE_NORMAL),
     (False, KEY_TYPE_TEST)
@@ -325,12 +308,6 @@ def test_should_go_into_technical_error_if_exceeds_retries(
 
     db_notification = Notification.query.filter_by(id=notification.id).one()
     assert db_notification.status == 'technical-failure'
-    notification_stats = NotificationStatistics.query.filter_by(service_id=notification.service.id).first()
-    assert notification_stats.sms_requested == 1
-    assert notification_stats.sms_failed == 1
-    job = Job.query.get(notification.job.id)
-    assert job.notification_count == 1
-    assert job.notifications_failed == 1
 
 
 def test_should_send_sms_sender_from_service_if_present(
@@ -439,12 +416,6 @@ def test_send_email_to_provider_should_go_into_technical_error_if_exceeds_retrie
 
     db_notification = Notification.query.filter_by(id=notification.id).one()
     assert db_notification.status == 'technical-failure'
-    notification_stats = NotificationStatistics.query.filter_by(service_id=notification.service.id).first()
-    assert notification_stats.emails_requested == 1
-    assert notification_stats.emails_failed == 1
-    job = Job.query.get(notification.job.id)
-    assert job.notification_count == 1
-    assert job.notifications_failed == 1
 
 
 def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_created(notify_db, notify_db_session,

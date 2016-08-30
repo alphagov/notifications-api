@@ -162,10 +162,6 @@ def test_firetext_callback_should_update_notification_status(notify_api, sample_
             updated = get_notification_by_id(sample_notification.id)
             assert updated.status == 'delivered'
             assert get_notification_by_id(sample_notification.id).status == 'delivered'
-            stats = get_notification_stats(sample_notification.service_id)
-            assert stats.sms_delivered == 1
-            assert stats.sms_requested == 1
-            assert stats.sms_failed == 0
 
 
 def test_firetext_callback_should_update_notification_status_failed(notify_api, sample_notification, mocker):
@@ -189,10 +185,6 @@ def test_firetext_callback_should_update_notification_status_failed(notify_api, 
                 sample_notification.id
             )
             assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
-            stats = get_notification_stats(sample_notification.service_id)
-            assert stats.sms_delivered == 0
-            assert stats.sms_requested == 1
-            assert stats.sms_failed == 1
 
 
 def test_firetext_callback_should_update_notification_status_pending(notify_api, notify_db, notify_db_session, mocker):
@@ -217,10 +209,6 @@ def test_firetext_callback_should_update_notification_status_pending(notify_api,
                 notification.id
             )
             assert get_notification_by_id(notification.id).status == 'pending'
-            stats = get_notification_stats(notification.service_id)
-            assert stats.sms_delivered == 0
-            assert stats.sms_requested == 1
-            assert stats.sms_failed == 0
 
 
 def test_firetext_callback_should_update_multiple_notification_status_sent(
@@ -256,11 +244,6 @@ def test_firetext_callback_should_update_multiple_notification_status_sent(
                     notification3.id
                 ),
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
-
-            stats = get_notification_stats(notification1.service_id)
-            assert stats.sms_delivered == 3
-            assert stats.sms_requested == 3
-            assert stats.sms_failed == 0
 
 
 def test_process_mmg_response_return_200_when_cid_is_send_sms_code(notify_api):
@@ -481,10 +464,6 @@ def test_ses_callback_should_update_notification_status(
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'SES callback succeeded'
             assert get_notification_by_id(notification.id).status == 'delivered'
-            stats = get_notification_stats(notification.service_id)
-            assert stats.emails_delivered == 1
-            assert stats.emails_requested == 1
-            assert stats.emails_failed == 0
 
 
 def test_ses_callback_should_update_multiple_notification_status_sent(
@@ -536,11 +515,6 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
             assert resp2.status_code == 200
             assert resp3.status_code == 200
 
-            stats = get_notification_stats(notification1.service_id)
-            assert stats.emails_delivered == 3
-            assert stats.emails_requested == 3
-            assert stats.emails_failed == 0
-
 
 def test_ses_callback_should_set_status_to_temporary_failure(notify_api,
                                                              notify_db,
@@ -568,10 +542,6 @@ def test_ses_callback_should_set_status_to_temporary_failure(notify_api,
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'SES callback succeeded'
             assert get_notification_by_id(notification.id).status == 'temporary-failure'
-            stats = get_notification_stats(notification.service_id)
-            assert stats.emails_delivered == 0
-            assert stats.emails_requested == 1
-            assert stats.emails_failed == 1
 
 
 def test_ses_callback_should_not_set_status_once_status_is_delivered(notify_api,
@@ -628,10 +598,6 @@ def test_ses_callback_should_set_status_to_permanent_failure(notify_api,
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'SES callback succeeded'
             assert get_notification_by_id(notification.id).status == 'permanent-failure'
-            stats = get_notification_stats(notification.service_id)
-            assert stats.emails_delivered == 0
-            assert stats.emails_requested == 1
-            assert stats.emails_failed == 1
 
 
 def test_should_handle_invite_email_callbacks(notify_api, notify_db, notify_db_session):

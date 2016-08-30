@@ -16,19 +16,9 @@ from app.models import (
     Service,
     Notification,
     NotificationHistory,
-    Job,
     NotificationStatistics,
-    TemplateStatistics,
-    SMS_TYPE,
-    EMAIL_TYPE,
-    Template,
-    ProviderStatistics,
-    ProviderDetails)
-from app.clients import (
-    STATISTICS_FAILURE,
-    STATISTICS_DELIVERED,
-    STATISTICS_REQUESTED
-)
+    Template)
+
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
 
@@ -124,40 +114,7 @@ def dao_get_last_template_usage(template_id):
 
 @statsd(namespace="dao")
 @transactional
-def dao_create_notification(notification, notification_type):
-    if notification.job_id:
-        db.session.query(Job).filter_by(
-            id=notification.job_id
-        ).update({
-            Job.notifications_sent: Job.notifications_sent + 1,
-            Job.updated_at: datetime.utcnow()
-        })
-
-    update_count = db.session.query(NotificationStatistics).filter_by(
-        day=notification.created_at.date(),
-        service_id=notification.service_id
-    ).update(_update_notification_stats_query(notification_type, 'requested'))
-
-    if update_count == 0:
-        stats = NotificationStatistics(
-            day=notification.created_at.date(),
-            service_id=notification.service_id,
-            sms_requested=1 if notification_type == SMS_TYPE else 0,
-            emails_requested=1 if notification_type == EMAIL_TYPE else 0
-        )
-        db.session.add(stats)
-
-    update_count = db.session.query(TemplateStatistics).filter_by(
-        day=date.today(),
-        service_id=notification.service_id,
-        template_id=notification.template_id
-    ).update({'usage_count': TemplateStatistics.usage_count + 1, 'updated_at': datetime.utcnow()})
-
-    if update_count == 0:
-        template_stats = TemplateStatistics(template_id=notification.template_id,
-                                            service_id=notification.service_id)
-        db.session.add(template_stats)
-
+def dao_create_notification(notification):
     if not notification.id:
         # need to populate defaulted fields before we create the notification history object
         notification.id = uuid.uuid4()
@@ -165,49 +122,8 @@ def dao_create_notification(notification, notification_type):
         notification.status = 'created'
 
     notification_history = NotificationHistory.from_notification(notification)
-
     db.session.add(notification)
     db.session.add(notification_history)
-
-
-def _update_notification_stats_query(notification_type, status):
-    mapping = {
-        SMS_TYPE: {
-            STATISTICS_REQUESTED: NotificationStatistics.sms_requested,
-            STATISTICS_DELIVERED: NotificationStatistics.sms_delivered,
-            STATISTICS_FAILURE: NotificationStatistics.sms_failed
-        },
-        EMAIL_TYPE: {
-            STATISTICS_REQUESTED: NotificationStatistics.emails_requested,
-            STATISTICS_DELIVERED: NotificationStatistics.emails_delivered,
-            STATISTICS_FAILURE: NotificationStatistics.emails_failed
-        }
-    }
-    return {
-        mapping[notification_type][status]: mapping[notification_type][status] + 1
-    }
-
-
-def _update_statistics(notification, notification_statistics_status):
-    if notification.job_id:
-        db.session.query(Job).filter_by(
-            id=notification.job_id
-        ).update(_update_job_stats_query(notification_statistics_status))
-
-    db.session.query(NotificationStatistics).filter_by(
-        day=notification.created_at.date(),
-        service_id=notification.service_id
-    ).update(
-        _update_notification_stats_query(notification.notification_type, notification_statistics_status)
-    )
-
-
-def _update_job_stats_query(status):
-    mapping = {
-        STATISTICS_FAILURE: Job.notifications_failed,
-        STATISTICS_DELIVERED: Job.notifications_delivered
-    }
-    return {mapping[status]: mapping[status] + 1}
 
 
 def _decide_permanent_temporary_failure(current_status, status):
@@ -219,12 +135,8 @@ def _decide_permanent_temporary_failure(current_status, status):
     return status
 
 
-def _update_notification_status(notification, status, notification_statistics_status):
+def _update_notification_status(notification, status):
     status = _decide_permanent_temporary_failure(current_status=notification.status, status=status)
-
-    if notification_statistics_status:
-        _update_statistics(notification, notification_statistics_status)
-
     notification.status = status
     dao_update_notification(notification)
     return True
@@ -232,7 +144,7 @@ def _update_notification_status(notification, status, notification_statistics_st
 
 @statsd(namespace="dao")
 @transactional
-def update_notification_status_by_id(notification_id, status, notification_statistics_status=None):
+def update_notification_status_by_id(notification_id, status):
     notification = Notification.query.with_lockmode("update").filter(
         Notification.id == notification_id,
         or_(Notification.status == 'created',
@@ -244,25 +156,24 @@ def update_notification_status_by_id(notification_id, status, notification_stati
 
     return _update_notification_status(
         notification=notification,
-        status=status,
-        notification_statistics_status=notification_statistics_status
+        status=status
     )
 
 
 @statsd(namespace="dao")
 @transactional
-def update_notification_status_by_reference(reference, status, notification_statistics_status):
-    notification = Notification.query.filter(Notification.reference == reference,
-                                             or_(Notification.status == 'sending',
-                                                 Notification.status == 'pending')
-                                             ).first()
+def update_notification_status_by_reference(reference, status):
+    notification = Notification.query.filter(
+        Notification.reference == reference,
+        or_(Notification.status == 'sending',
+            Notification.status == 'pending')).first()
+
     if not notification:
         return False
 
     return _update_notification_status(
         notification=notification,
-        status=status,
-        notification_statistics_status=notification_statistics_status
+        status=status
     )
 
 
@@ -273,33 +184,6 @@ def dao_update_notification(notification):
     notification_history.update_from_notification(notification)
     db.session.add(notification)
     db.session.commit()
-
-
-@statsd(namespace="dao")
-@transactional
-def update_provider_stats(
-        id_,
-        notification_type,
-        provider_name,
-        billable_units=1):
-    notification = Notification.query.filter(Notification.id == id_).one()
-    provider = ProviderDetails.query.filter_by(identifier=provider_name).one()
-
-    update_count = db.session.query(ProviderStatistics).filter_by(
-        day=date.today(),
-        service_id=notification.service_id,
-        provider_id=provider.id
-    ).update({'unit_count': ProviderStatistics.unit_count + billable_units})
-
-    if update_count == 0:
-        provider_stats = ProviderStatistics(
-            day=notification.created_at.date(),
-            service_id=notification.service_id,
-            provider_id=provider.id,
-            unit_count=billable_units
-        )
-
-        db.session.add(provider_stats)
 
 
 @statsd(namespace="dao")

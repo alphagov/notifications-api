@@ -91,10 +91,10 @@ def timeout_notifications():
                 seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD')
             ):
                 # TODO: think about making this a bulk update rather than one at a time.
-                updated = update_notification_status_by_id(noti.id, 'temporary-failure', STATISTICS_FAILURE)
+                updated = update_notification_status_by_id(noti.id, 'temporary-failure')
                 if updated:
-                    current_app.logger.info(("Timeout period reached for notification ({})"
-                                             ", status has been updated.").format(noti.id))
+                    current_app.logger.info(
+                        "Timeout period reached for notification ({}), status has been updated.".format(noti.id))
         except Exception as e:
             current_app.logger.exception(e)
             current_app.logger.error((
