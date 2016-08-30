@@ -764,7 +764,11 @@ def test_should_send_email_if_team_api_key_and_a_service_user(notify_api, sample
         assert response.status_code == 201
 
 
-def test_should_send_email_to_anyone_with_test_key(notify_api, sample_email_template, mocker):
+@pytest.mark.parametrize('restricted', [True, False])
+@pytest.mark.parametrize('limit', [0, 1])
+def test_should_send_email_to_anyone_with_test_key(
+    notify_api, sample_email_template, mocker, restricted, limit
+):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         mocker.patch('app.celery.tasks.send_email.apply_async')
 
@@ -772,7 +776,8 @@ def test_should_send_email_to_anyone_with_test_key(notify_api, sample_email_temp
             'to': 'anyone123@example.com',
             'template': sample_email_template.id
         }
-        sample_email_template.service.restricted = True
+        sample_email_template.service.restricted = restricted
+        sample_email_template.service.message_limit = limit
         api_key = ApiKey(
             service=sample_email_template.service,
             name='test_key',

@@ -215,7 +215,10 @@ def send_notification(notification_type):
 
     service_stats = sum(row.count for row in dao_fetch_todays_stats_for_service(service.id))
 
-    if service_stats >= service.message_limit:
+    if all((
+        api_user.key_type != KEY_TYPE_TEST,
+        service_stats >= service.message_limit
+    )):
         error = 'Exceeded send limits ({}) for today'.format(service.message_limit)
         raise InvalidRequest(error, status_code=429)
 
