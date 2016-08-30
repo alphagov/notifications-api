@@ -39,7 +39,7 @@ def _validate_positive_number(value, msg="Not a positive integer"):
         raise ValidationError(msg)
 
 
-def _validate_not_more_than_24_hours_in_future(dte, msg="Date cannot be more than 24hrs in the future"):
+def _validate_datetime_not_more_than_24_hours_in_future(dte, msg="Date cannot be more than 24hrs in the future"):
     if dte > datetime.utcnow() + timedelta(hours=24):
         raise ValidationError(msg)
 
@@ -50,7 +50,17 @@ def _validate_not_in_future(dte, msg="Date cannot be in the future"):
 
 
 def _validate_not_in_past(dte, msg="Date cannot be in the past"):
-    if dte < datetime.today():
+    if dte < date.today():
+        raise ValidationError(msg)
+
+
+def _validate_datetime_not_in_future(dte, msg="Date cannot be in the future"):
+    if dte > datetime.utcnow():
+        raise ValidationError(msg)
+
+
+def _validate_datetime_not_in_past(dte, msg="Date cannot be in the past"):
+    if dte < datetime.utcnow():
         raise ValidationError(msg)
 
 
@@ -223,8 +233,8 @@ class JobSchema(BaseSchema):
 
     @validates('scheduled_for')
     def validate_scheduled_for(self, value):
-        _validate_not_in_past(value)
-        _validate_not_more_than_24_hours_in_future(value)
+        _validate_datetime_not_in_past(value)
+        _validate_datetime_not_more_than_24_hours_in_future(value)
 
     class Meta:
         model = models.Job
