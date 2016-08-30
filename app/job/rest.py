@@ -28,6 +28,8 @@ from app.schemas import (
 
 from app.celery.tasks import process_job
 
+from app.models import JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING
+
 from app.utils import pagination_links
 
 job = Blueprint('job', __name__, url_prefix='/service/<uuid:service_id>/job')
@@ -91,6 +93,11 @@ def get_jobs_by_service(service_id):
 
     jobs = dao_get_jobs_by_service_id(service_id, limit_days)
     data = job_schema.dump(jobs, many=True).data
+
+    for job_data in data:
+        statistics = dao_get_notification_outcomes_for_job(service_id, job_data['id'])
+        job_data['statistics'] = [{'status': statistic[1], 'count': statistic[0]} for statistic in statistics]
+
     return jsonify(data=data)
 
 
@@ -99,6 +106,7 @@ def create_job(service_id):
     dao_fetch_service_by_id(service_id)
 
     data = request.get_json()
+
     data.update({
         "service": service_id
     })
@@ -110,7 +118,15 @@ def create_job(service_id):
         raise InvalidRequest(errors, status_code=400)
 
     data.update({"template_version": template.version})
+
     job = job_schema.load(data).data
+
+    if job.scheduled_for:
+        job.job_status = JOB_STATUS_SCHEDULED
+
     dao_create_job(job)
-    process_job.apply_async([str(job.id)], queue="process-job")
+
+    if job.job_status == JOB_STATUS_PENDING:
+        process_job.apply_async([str(job.id)], queue="process-job")
+
     return jsonify(data=job_schema.dump(job).data), 201

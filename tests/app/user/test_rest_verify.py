@@ -236,13 +236,14 @@ def test_send_user_sms_code(notify_api,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 204
             assert mocked.call_count == 1
-            encrypted = encryption.encrypt({'template': current_app.config['SMS_CODE_TEMPLATE_ID'],
-                                            'template_version': 1,
-                                            'to': sample_user.mobile_number,
-                                            'personalisation': {
-                                                'verify_code': '11111'
-                                                }
-                                            })
+            encrypted = encryption.encrypt({
+                'template': current_app.config['SMS_CODE_TEMPLATE_ID'],
+                'template_version': 1,
+                'to': sample_user.mobile_number,
+                'personalisation': {
+                    'verify_code': '11111'
+                }
+            })
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 ([current_app.config['NOTIFY_SERVICE_ID'],
                   "some_uuid",
@@ -274,13 +275,14 @@ def test_send_user_code_for_sms_with_optional_to_field(notify_api,
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             assert resp.status_code == 204
-            encrypted = encryption.encrypt({'template': current_app.config['SMS_CODE_TEMPLATE_ID'],
-                                            'template_version': 1,
-                                            'to': '+441119876757',
-                                            'personalisation': {
-                                                'verify_code': '11111'
-                                                }
-                                            })
+            encrypted = encryption.encrypt({
+                'template': current_app.config['SMS_CODE_TEMPLATE_ID'],
+                'template_version': 1,
+                'to': '+441119876757',
+                'personalisation': {
+                    'verify_code': '11111'
+                }
+            })
             assert mocked.call_count == 1
             app.celery.tasks.send_sms.apply_async.assert_called_once_with(
                 ([current_app.config['NOTIFY_SERVICE_ID'],

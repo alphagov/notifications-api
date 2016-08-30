@@ -310,7 +310,7 @@ JOB_STATUS_SENDING_LIMITS_EXCEEDED = 'sending limits exceeded'
 JOB_STATUS_SCHEDULED = 'scheduled'
 
 
-class JobStatusTypes(db.Model):
+class JobStatus(db.Model):
     __tablename__ = 'job_status'
 
     name = db.Column(db.String(255), primary_key=True)
@@ -362,7 +362,8 @@ class Job(db.Model):
         unique=False,
         nullable=True)
     job_status = db.Column(
-        db.String(255), db.ForeignKey('job_status.name'), index=True, nullable=True)
+        db.String(255), db.ForeignKey('job_status.name'), index=True, nullable=True, default='pending'
+    )
 
 
 VERIFY_CODE_TYPES = [EMAIL_TYPE, SMS_TYPE]
@@ -511,7 +512,9 @@ class NotificationHistory(db.Model):
 
     @classmethod
     def from_notification(cls, notification):
-        return cls(**{c.name: getattr(notification, c.name) for c in cls.__table__.columns})
+        history = cls(**{c.name: getattr(notification, c.name) for c in cls.__table__.columns})
+        history.template = notification.template
+        return history
 
     def update_from_notification(self, notification):
         for c in self.__table__.columns:

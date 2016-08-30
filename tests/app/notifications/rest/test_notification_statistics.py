@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 from flask import json
 from freezegun import freeze_time
+from datetime import datetime
 
 from tests import create_authorization_header
 from tests.app.conftest import (
@@ -196,7 +197,6 @@ def test_get_notification_statistics_returns_both_existing_stats_and_generated_z
             assert response.status_code == 200
 
 
-@freeze_time('1955-11-05T12:00:00')
 def test_get_notification_statistics_returns_zeros_when_only_stats_for_different_date(
     notify_api,
     sample_notification_statistics
@@ -208,7 +208,7 @@ def test_get_notification_statistics_returns_zeros_when_only_stats_for_different
                     service_id=sample_notification_statistics.service_id
                 )
                 response = client.get(
-                    '/notifications/statistics?day={}'.format(date.today().isoformat()),
+                    '/notifications/statistics?day={}'.format(datetime.utcnow().isoformat()),
                     headers=[auth_header]
                 )
 

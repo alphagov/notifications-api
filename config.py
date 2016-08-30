@@ -50,6 +50,11 @@ class Config(object):
     CELERY_TASK_SERIALIZER = 'json'
     CELERY_IMPORTS = ('app.celery.tasks', 'app.celery.scheduled_tasks')
     CELERYBEAT_SCHEDULE = {
+        'run-scheduled-jobs': {
+            'task': 'run-scheduled-jobs',
+            'schedule': crontab(),
+            'options': {'queue': 'periodic'}
+        },
         'delete-verify-codes': {
             'task': 'delete-verify-codes',
             'schedule': timedelta(minutes=63),

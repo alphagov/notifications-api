@@ -1,15 +1,16 @@
 import json
 import uuid
 from datetime import datetime, timedelta
+from freezegun import freeze_time
 
 import pytest
-
+import pytz
 import app.celery.tasks
 
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_job as create_job,
-    sample_notification as create_sample_notification, sample_notification)
+    sample_notification as create_sample_notification, sample_notification, sample_job)
 from app.dao.templates_dao import dao_update_template
 from app.models import NOTIFICATION_STATUS_TYPES
 
@@ -94,7 +95,21 @@ def test_get_job_with_unknown_id_returns404(notify_api, sample_template, fake_uu
             }
 
 
-def test_create_job(notify_api, sample_template, mocker, fake_uuid):
+def test_get_job_by_id(notify_api, sample_job):
+    job_id = str(sample_job.id)
+    service_id = sample_job.service.id
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = '/service/{}/job/{}'.format(service_id, job_id)
+            auth_header = create_authorization_header(service_id=sample_job.service.id)
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 200
+            resp_json = json.loads(response.get_data(as_text=True))
+            assert resp_json['data']['id'] == job_id
+            assert resp_json['data']['created_by']['name'] == 'Test User'
+
+
+def test_create_unscheduled_job(notify_api, sample_template, mocker, fake_uuid):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.tasks.process_job.apply_async')
@@ -124,9 +139,119 @@ def test_create_job(notify_api, sample_template, mocker, fake_uuid):
             resp_json = json.loads(response.get_data(as_text=True))
 
             assert resp_json['data']['id'] == fake_uuid
-            assert resp_json['data']['service'] == str(sample_template.service.id)
+            assert resp_json['data']['status'] == 'pending'
+            assert not resp_json['data']['scheduled_for']
+            assert resp_json['data']['job_status'] == 'pending'
             assert resp_json['data']['template'] == str(sample_template.id)
             assert resp_json['data']['original_file_name'] == 'thisisatest.csv'
+
+
+def test_create_scheduled_job(notify_api, sample_template, mocker, fake_uuid):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            with freeze_time("2016-01-01 12:00:00.000000"):
+                scheduled_date = (datetime.utcnow() + timedelta(hours=23, minutes=59)).isoformat()
+                mocker.patch('app.celery.tasks.process_job.apply_async')
+                data = {
+                    'id': fake_uuid,
+                    'service': str(sample_template.service.id),
+                    'template': str(sample_template.id),
+                    'original_file_name': 'thisisatest.csv',
+                    'notification_count': 1,
+                    'created_by': str(sample_template.created_by.id),
+                    'scheduled_for': scheduled_date
+                }
+                path = '/service/{}/job'.format(sample_template.service.id)
+                auth_header = create_authorization_header(service_id=sample_template.service.id)
+                headers = [('Content-Type', 'application/json'), auth_header]
+
+                response = client.post(
+                    path,
+                    data=json.dumps(data),
+                    headers=headers)
+                assert response.status_code == 201
+
+                app.celery.tasks.process_job.apply_async.assert_not_called()
+
+                resp_json = json.loads(response.get_data(as_text=True))
+
+                assert resp_json['data']['id'] == fake_uuid
+                assert resp_json['data']['status'] == 'pending'
+                assert resp_json['data']['scheduled_for'] == datetime(2016, 1, 2, 11, 59, 0,
+                                                                      tzinfo=pytz.UTC).isoformat()
+                assert resp_json['data']['job_status'] == 'scheduled'
+                assert resp_json['data']['template'] == str(sample_template.id)
+                assert resp_json['data']['original_file_name'] == 'thisisatest.csv'
+
+
+def test_should_not_create_scheduled_job_more_then_24_hours_hence(notify_api, sample_template, mocker, fake_uuid):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            with freeze_time("2016-01-01 11:09:00.061258"):
+                scheduled_date = (datetime.utcnow() + timedelta(hours=24, minutes=1)).isoformat()
+
+                mocker.patch('app.celery.tasks.process_job.apply_async')
+                data = {
+                    'id': fake_uuid,
+                    'service': str(sample_template.service.id),
+                    'template': str(sample_template.id),
+                    'original_file_name': 'thisisatest.csv',
+                    'notification_count': 1,
+                    'created_by': str(sample_template.created_by.id),
+                    'scheduled_for': scheduled_date
+                }
+                path = '/service/{}/job'.format(sample_template.service.id)
+                auth_header = create_authorization_header(service_id=sample_template.service.id)
+                headers = [('Content-Type', 'application/json'), auth_header]
+
+                print(json.dumps(data))
+                response = client.post(
+                    path,
+                    data=json.dumps(data),
+                    headers=headers)
+                assert response.status_code == 400
+
+                app.celery.tasks.process_job.apply_async.assert_not_called()
+
+                resp_json = json.loads(response.get_data(as_text=True))
+                assert resp_json['result'] == 'error'
+                assert 'scheduled_for' in resp_json['message']
+                assert resp_json['message']['scheduled_for'] == ['Date cannot be more than 24hrs in the future']
+
+
+def test_should_not_create_scheduled_job_in_the_past(notify_api, sample_template, mocker, fake_uuid):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            with freeze_time("2016-01-01 11:09:00.061258"):
+                scheduled_date = (datetime.utcnow() - timedelta(minutes=1)).isoformat()
+
+                mocker.patch('app.celery.tasks.process_job.apply_async')
+                data = {
+                    'id': fake_uuid,
+                    'service': str(sample_template.service.id),
+                    'template': str(sample_template.id),
+                    'original_file_name': 'thisisatest.csv',
+                    'notification_count': 1,
+                    'created_by': str(sample_template.created_by.id),
+                    'scheduled_for': scheduled_date
+                }
+                path = '/service/{}/job'.format(sample_template.service.id)
+                auth_header = create_authorization_header(service_id=sample_template.service.id)
+                headers = [('Content-Type', 'application/json'), auth_header]
+
+                print(json.dumps(data))
+                response = client.post(
+                    path,
+                    data=json.dumps(data),
+                    headers=headers)
+                assert response.status_code == 400
+
+                app.celery.tasks.process_job.apply_async.assert_not_called()
+
+                resp_json = json.loads(response.get_data(as_text=True))
+                assert resp_json['result'] == 'error'
+                assert 'scheduled_for' in resp_json['message']
+                assert resp_json['message']['scheduled_for'] == ['Date cannot be in the past']
 
 
 def test_create_job_returns_400_if_missing_data(notify_api, sample_template, mocker):
@@ -287,35 +412,19 @@ def test_get_all_notifications_for_job_in_order_of_job_number(notify_api,
 @pytest.mark.parametrize(
     "expected_notification_count, status_args",
     [
-        (
-            1,
-            '?status={}'.format(NOTIFICATION_STATUS_TYPES[0])
-        ),
-        (
-            0,
-            '?status={}'.format(NOTIFICATION_STATUS_TYPES[1])
-        ),
-        (
-            1,
-            '?status={}&status={}&status={}'.format(
-                *NOTIFICATION_STATUS_TYPES[0:3]
-            )
-        ),
-        (
-            0,
-            '?status={}&status={}&status={}'.format(
-                *NOTIFICATION_STATUS_TYPES[3:6]
-            )
-        ),
+        (1, '?status={}'.format(NOTIFICATION_STATUS_TYPES[0])),
+        (0, '?status={}'.format(NOTIFICATION_STATUS_TYPES[1])),
+        (1, '?status={}&status={}&status={}'.format(*NOTIFICATION_STATUS_TYPES[0:3])),
+        (0, '?status={}&status={}&status={}'.format(*NOTIFICATION_STATUS_TYPES[3:6])),
     ]
 )
 def test_get_all_notifications_for_job_filtered_by_status(
-    notify_api,
-    notify_db,
-    notify_db_session,
-    sample_service,
-    expected_notification_count,
-    status_args
+        notify_api,
+        notify_db,
+        notify_db_session,
+        sample_service,
+        expected_notification_count,
+        status_args
 ):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         job = create_job(notify_db, notify_db_session, service=sample_service)
@@ -374,7 +483,6 @@ def test_get_job_by_id_should_return_statistics(notify_db, notify_db_session, no
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
-            print(resp_json)
             assert resp_json['data']['id'] == job_id
             assert {'status': 'created', 'count': 1} in resp_json['data']['statistics']
             assert {'status': 'sending', 'count': 1} in resp_json['data']['statistics']
@@ -409,7 +517,6 @@ def test_get_job_by_id_should_return_summed_statistics(notify_db, notify_db_sess
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
-            print(resp_json)
             assert resp_json['data']['id'] == job_id
             assert {'status': 'created', 'count': 3} in resp_json['data']['statistics']
             assert {'status': 'sending', 'count': 1} in resp_json['data']['statistics']
@@ -417,3 +524,55 @@ def test_get_job_by_id_should_return_summed_statistics(notify_db, notify_db_sess
             assert {'status': 'technical-failure', 'count': 1} in resp_json['data']['statistics']
             assert {'status': 'temporary-failure', 'count': 2} in resp_json['data']['statistics']
             assert resp_json['data']['created_by']['name'] == 'Test User'
+
+
+def test_get_jobs_for_service_should_return_statistics(notify_db, notify_db_session, notify_api, sample_service):
+    now = datetime.utcnow()
+    earlier = datetime.utcnow() - timedelta(days=1)
+    job_1 = sample_job(notify_db, notify_db_session, service=sample_service, created_at=earlier)
+    job_2 = sample_job(notify_db, notify_db_session, service=sample_service, created_at=now)
+
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_2, status='sending')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_2, status='sending')
+    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_2, status='sending')
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = '/service/{}/job'.format(str(sample_service.id))
+            auth_header = create_authorization_header(service_id=str(sample_service.id))
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 200
+            resp_json = json.loads(response.get_data(as_text=True))
+            assert len(resp_json['data']) == 2
+            assert resp_json['data'][0]['id'] == str(job_2.id)
+            assert {'status': 'sending', 'count': 3} in resp_json['data'][0]['statistics']
+            assert resp_json['data'][1]['id'] == str(job_1.id)
+            assert {'status': 'created', 'count': 3} in resp_json['data'][1]['statistics']
+
+
+def test_get_jobs_for_service_should_return_no_stats_if_no_rows_in_notifications(
+        notify_db,
+        notify_db_session,
+        notify_api,
+        sample_service):
+
+    now = datetime.utcnow()
+    earlier = datetime.utcnow() - timedelta(days=1)
+    job_1 = sample_job(notify_db, notify_db_session, service=sample_service, created_at=earlier)
+    job_2 = sample_job(notify_db, notify_db_session, service=sample_service, created_at=now)
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = '/service/{}/job'.format(str(sample_service.id))
+            auth_header = create_authorization_header(service_id=str(sample_service.id))
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 200
+            resp_json = json.loads(response.get_data(as_text=True))
+            assert len(resp_json['data']) == 2
+            assert resp_json['data'][0]['id'] == str(job_2.id)
+            assert resp_json['data'][0]['statistics'] == []
+            assert resp_json['data'][1]['id'] == str(job_1.id)
+            assert resp_json['data'][1]['statistics'] == []

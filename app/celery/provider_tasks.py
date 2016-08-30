@@ -13,7 +13,6 @@ from app import notify_celery, statsd_client, clients, create_uuid
 from app.clients.email import EmailClientException
 from app.clients.sms import SmsClientException
 from app.dao.notifications_dao import (
-    update_provider_stats,
     get_notification_by_id,
     dao_update_notification,
     update_notification_status_by_id
@@ -78,13 +77,6 @@ def send_sms_to_provider(self, service_id, notification_id):
                 )
                 notification.billable_units = get_sms_fragment_count(template.replaced_content_count)
 
-                update_provider_stats(
-                    notification_id,
-                    SMS_TYPE,
-                    provider.get_name(),
-                    billable_units=notification.billable_units
-                )
-
             notification.sent_at = datetime.utcnow()
             notification.sent_by = provider.get_name()
             notification.status = 'sending'
@@ -101,7 +93,7 @@ def send_sms_to_provider(self, service_id, notification_id):
                     "RETRY FAILED: task send_sms_to_provider failed for notification {}".format(notification.id),
                     e
                 )
-                update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
+                update_notification_status_by_id(notification.id, 'technical-failure')
 
         current_app.logger.info(
             "SMS {} sent to provider at {}".format(notification_id, notification.sent_at)
@@ -113,7 +105,7 @@ def send_sms_to_provider(self, service_id, notification_id):
 def provider_to_use(notification_type, notification_id):
     active_providers_in_order = [
         provider for provider in get_provider_details_by_notification_type(notification_type) if provider.active
-        ]
+    ]
 
     if not active_providers_in_order:
         current_app.logger.error(
@@ -163,12 +155,6 @@ def send_email_to_provider(self, service_id, notification_id):
                     reply_to_address=service.reply_to_email_address,
                 )
 
-                update_provider_stats(
-                    notification_id,
-                    EMAIL_TYPE,
-                    provider.get_name(),
-                    billable_units=1
-                )
             notification.reference = reference
             notification.sent_at = datetime.utcnow()
             notification.sent_by = provider.get_name(),
@@ -186,7 +172,7 @@ def send_email_to_provider(self, service_id, notification_id):
                     "RETRY FAILED: task send_email_to_provider failed for notification {}".format(notification.id),
                     e
                 )
-                update_notification_status_by_id(notification.id, 'technical-failure', 'failure')
+                update_notification_status_by_id(notification.id, 'technical-failure')
 
         current_app.logger.info(
             "Email {} sent to provider at {}".format(notification_id, notification.sent_at)
