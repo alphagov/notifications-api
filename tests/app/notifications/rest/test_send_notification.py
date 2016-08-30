@@ -121,7 +121,7 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_email_t
                  ANY,
                  "2016-01-01T11:09:00.061258"),
                 kwargs=ANY,
-                queue="email"
+                queue="db-email"
             )
             assert response.status_code == 201
             assert encryption.decrypt(app.celery.tasks.send_email.apply_async.call_args[0][0][2]) == data
@@ -389,7 +389,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
                  "something_encrypted",
                  "2016-01-01T11:09:00.061258"),
                 kwargs=ANY,
-                queue="sms"
+                queue="db-sms"
             )
             assert response.status_code == 201
             assert notification_id
@@ -558,7 +558,7 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
                  "something_encrypted",
                  "2016-01-01T11:09:00.061258"),
                 kwargs=ANY,
-                queue="email"
+                queue="db-email"
             )
 
             assert response.status_code == 201
@@ -760,7 +760,7 @@ def test_should_send_email_if_team_api_key_and_a_service_user(notify_api, sample
                 'api_key_id': str(api_key.id),
                 'key_type': api_key.key_type
             },
-            queue='email')
+            queue='db-email')
         assert response.status_code == 201
 
 
@@ -790,5 +790,5 @@ def test_should_send_sms_if_team_api_key_and_a_service_user(notify_api, sample_t
                 'api_key_id': str(api_key.id),
                 'key_type': api_key.key_type
             },
-            queue='sms')
+            queue='db-sms')
         assert response.status_code == 201
