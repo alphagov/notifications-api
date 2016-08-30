@@ -84,7 +84,7 @@ def process_job(job_id):
                 create_uuid(),
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
-                queue='bulk-sms'
+                queue='db-sms'
             )
 
         if template.template_type == EMAIL_TYPE:
@@ -93,7 +93,7 @@ def process_job(job_id):
                 create_uuid(),
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
-                queue='bulk-email')
+                queue='db-email')
 
     finished = datetime.utcnow()
     job.status = 'finished'

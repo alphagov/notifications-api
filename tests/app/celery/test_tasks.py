@@ -82,7 +82,7 @@ def test_should_process_sms_job(sample_job, mocker, mock_celery_remove_job):
          "uuid",
          "something_encrypted",
          "2016-01-01T11:09:00.061258"),
-        queue="bulk-sms"
+        queue="db-sms"
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
     assert job.status == 'finished'
@@ -201,7 +201,7 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
             "something_encrypted",
             "2016-01-01T11:09:00.061258"
         ),
-        queue="bulk-email"
+        queue="db-email"
     )
     mock_celery_remove_job.assert_called_once_with((str(job.id),), queue="remove-job")
 
@@ -245,7 +245,7 @@ def test_should_process_email_job(sample_email_job, mocker, mock_celery_remove_j
             "something_encrypted",
             "2016-01-01T11:09:00.061258"
         ),
-        queue="bulk-email"
+        queue="db-email"
     )
     job = jobs_dao.dao_get_job_by_id(sample_email_job.id)
     assert job.status == 'finished'
