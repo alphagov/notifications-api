@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "GET notification return schema - for SMS notifications",
+  "type" : "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "notification": {
+          "type": "object",
+          "properties": {
+            "id": {"$ref": "#/definitions/uuid"},
+            "to": {"type": "string", "format": "email"},
+            "job_row_number": {"oneOf":[
+              {"type": "number"},
+              {"type": "null"}
+            ]},
+            "template_version": {"type": "number"},
+            "billable_units": {"type": "number"},
+            "notification_type": {
+              "type": "string",
+              "enum": ["email"]
+            },
+            "created_at": {"$ref": "#/definitions/datetime"},
+            "sent_at": {"oneOf":[
+              {"$ref": "#/definitions/datetime"},
+              {"type": "null"}
+            ]},
+            "sent_by": {"oneOf":[
+              {"type": "string"},
+              {"type": "null"}
+            ]},
+            "updated_at": {"oneOf":[
+              {"$ref": "#/definitions/datetime"},
+              {"type": "null"}
+            ]},
+            "status": {
+              "type": "string",
+              "enum": [
+                "created",
+                "sending",
+                "delivered",
+                "pending",
+                "failed",
+                "technical-failure",
+                "temporary-failure",
+                "permanent-failure"
+              ]
+            },
+            "reference": {"oneOf":[
+              {"type": "string"},
+              {"type": "null"}
+            ]},
+            "template": {
+              "type": "object",
+              "properties": {
+                "id": {"$ref": "#/definitions/uuid"},
+                "name": {"type": "string"},
+                "template_type": {
+                  "type": "string",
+                  "enum": ["email"]
+                },
+                "version": {"type": "number"}
+              },
+              "additionalProperties": false,
+              "required": ["id", "name", "template_type", "version"]
+            },
+            "service": {"$ref": "#/definitions/uuid"},
+            "job": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {"$ref": "#/definitions/uuid"},
+                    "original_file_name": {"type": "string"}
+                  },
+                  "additionalProperties": false,
+                  "required": ["id", "original_file_name"]
+                },
+                {"type": "null"}
+              ]
+            },
+            "api_key": {"oneOf":[
+              {"$ref": "#/definitions/uuid"},
+              {"type": "null"}
+            ]},
+            "body": {"type": "string"},
+            "content_char_count": {"type": "null"},
+            "subject": {"type": "string"}
+          },
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "to",
+            "job_row_number",
+            "template_version",
+            "billable_units",
+            "notification_type",
+            "created_at",
+            "sent_at",
+            "sent_by",
+            "updated_at",
+            "status",
+            "reference",
+            "template",
+            "service",
+            "job",
+            "api_key",
+            "body",
+            "content_char_count"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
+    },
+    "datetime": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
