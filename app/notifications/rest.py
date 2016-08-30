@@ -15,7 +15,7 @@ from notifications_utils.renderers import PassThrough
 from app.clients.email.aws_ses import get_aws_responses
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT, statsd_client
 from app.dao.services_dao import dao_fetch_todays_stats_for_service
-from app.models import KEY_TYPE_TEAM
+from app.models import KEY_TYPE_TEAM, KEY_TYPE_TEST
 from app.dao import (
     templates_dao,
     services_dao,
@@ -259,12 +259,16 @@ def send_notification(notification_type):
         errors = {'content': [message]}
         raise InvalidRequest(errors, status_code=400)
 
-    if (service.restricted or api_user.key_type == KEY_TYPE_TEAM) and not allowed_to_send_to(
-        notification['to'],
-        itertools.chain.from_iterable(
-            [user.mobile_number, user.email_address] for user in service.users
+    if all((
+        api_user.key_type != KEY_TYPE_TEST,
+        service.restricted or api_user.key_type == KEY_TYPE_TEAM,
+        not allowed_to_send_to(
+            notification['to'],
+            itertools.chain.from_iterable(
+                [user.mobile_number, user.email_address] for user in service.users
+            )
         )
-    ):
+    )):
         if (api_user.key_type == KEY_TYPE_TEAM):
             message = 'Can’t send to this recipient using a team-only API key'
         else:
