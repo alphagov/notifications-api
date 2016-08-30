@@ -52,7 +52,7 @@ class Config(object):
     CELERYBEAT_SCHEDULE = {
         'run-scheduled-jobs': {
             'task': 'run-scheduled-jobs',
-            'schedule': crontab(),
+            'schedule': crontab(minute=1),
             'options': {'queue': 'periodic'}
         },
         'delete-verify-codes': {
