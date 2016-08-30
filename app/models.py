@@ -310,7 +310,7 @@ JOB_STATUS_SENDING_LIMITS_EXCEEDED = 'sending limits exceeded'
 JOB_STATUS_SCHEDULED = 'scheduled'
 
 
-class JobStatusTypes(db.Model):
+class JobStatus(db.Model):
     __tablename__ = 'job_status'
 
     name = db.Column(db.String(255), primary_key=True)
@@ -362,7 +362,8 @@ class Job(db.Model):
         unique=False,
         nullable=True)
     job_status = db.Column(
-        db.String(255), db.ForeignKey('job_status.name'), index=True, nullable=True)
+        db.String(255), db.ForeignKey('job_status.name'), index=True, nullable=True, default='pending'
+    )
 
 
 VERIFY_CODE_TYPES = [EMAIL_TYPE, SMS_TYPE]

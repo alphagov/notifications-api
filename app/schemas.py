@@ -1,10 +1,9 @@
 import re
 from datetime import (
     datetime,
-    date
-)
+    date,
+    timedelta)
 from flask_marshmallow.fields import fields
-
 from marshmallow import (
     post_load,
     ValidationError,
@@ -40,8 +39,28 @@ def _validate_positive_number(value, msg="Not a positive integer"):
         raise ValidationError(msg)
 
 
+def _validate_datetime_not_more_than_24_hours_in_future(dte, msg="Date cannot be more than 24hrs in the future"):
+    if dte > datetime.utcnow() + timedelta(hours=24):
+        raise ValidationError(msg)
+
+
 def _validate_not_in_future(dte, msg="Date cannot be in the future"):
     if dte > date.today():
+        raise ValidationError(msg)
+
+
+def _validate_not_in_past(dte, msg="Date cannot be in the past"):
+    if dte < date.today():
+        raise ValidationError(msg)
+
+
+def _validate_datetime_not_in_future(dte, msg="Date cannot be in the future"):
+    if dte > datetime.utcnow():
+        raise ValidationError(msg)
+
+
+def _validate_datetime_not_in_past(dte, msg="Date cannot be in the past"):
+    if dte < datetime.utcnow():
         raise ValidationError(msg)
 
 
@@ -207,6 +226,15 @@ class JobSchema(BaseSchema):
     created_by_user = fields.Nested(UserSchema, attribute="created_by",
                                     dump_to="created_by", only=["id", "name"], dump_only=True)
     created_by = field_for(models.Job, 'created_by', required=True, load_only=True)
+
+    job_status = field_for(models.JobStatus, 'name', required=False)
+
+    scheduled_for = fields.DateTime()
+
+    @validates('scheduled_for')
+    def validate_scheduled_for(self, value):
+        _validate_datetime_not_in_past(value)
+        _validate_datetime_not_more_than_24_hours_in_future(value)
 
     class Meta:
         model = models.Job
