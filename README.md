@@ -47,7 +47,6 @@ export STATSD_ENABLED=True
 export STATSD_HOST="localhost"
 export STATSD_PORT=1000
 export STATSD_PREFIX="stats-prefix"
-export VERIFY_CODE_FROM_EMAIL_ADDRESS='no-reply@notify.tools'
 "> environment.sh
 ```
 
