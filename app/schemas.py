@@ -64,13 +64,6 @@ def _validate_datetime_not_in_past(dte, msg="Date cannot be in the past"):
         raise ValidationError(msg)
 
 
-# TODO I think marshmallow provides a better integration and error handling.
-# Would be better to replace functionality in dao with the marshmallow supported
-# functionality.
-# http://marshmallow.readthedocs.org/en/latest/api_reference.html
-# http://marshmallow.readthedocs.org/en/latest/extending.html
-
-
 class BaseSchema(ma.ModelSchema):
 
     def __init__(self, load_json=False, *args, **kwargs):
