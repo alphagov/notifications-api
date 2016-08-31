@@ -799,7 +799,7 @@ def test_should_send_email_to_anyone_with_test_key(
                 'api_key_id': str(api_key.id),
                 'key_type': api_key.key_type
             },
-            queue='email'
+            queue='db-email'
         )
         assert response.status_code == 201
 
