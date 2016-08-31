@@ -130,6 +130,7 @@ class Development(Config):
 
 class Test(Config):
     NOTIFY_ENVIRONMENT = 'test'
+    DEBUG = True
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
     STATSD_PREFIX = "test"
     CELERY_QUEUES = Config.CELERY_QUEUES + [
