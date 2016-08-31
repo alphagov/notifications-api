@@ -1,4 +1,4 @@
-from mock import ANY
+from unittest.mock import ANY
 
 from app.statsd_decorators import statsd
 import app

@@ -1,7 +1,7 @@
 import os
 
 import boto3
-import mock
+from unittest import mock
 import pytest
 from alembic.command import upgrade
 from alembic.config import Config
