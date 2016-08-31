@@ -18,7 +18,7 @@ def test_get_api_sms_contract(client, sample_notification):
     auth_header = create_authorization_header(service_id=sample_notification.service_id)
     response = client.get('/notifications/{}'.format(sample_notification.id), headers=[auth_header])
 
-    validate(response.get_data(as_text=True), './GET_notification_return_sms.json')
+    validate(response.get_data(as_text=True), 'GET_notification_return_sms.json')
 
 
 def test_get_api_email_contract(client, sample_email_notification):
@@ -35,25 +35,25 @@ def test_get_api_email_contract(client, sample_email_notification):
     auth_header = create_authorization_header(service_id=sample_email_notification.service_id)
     response = client.get('/notifications/{}'.format(sample_email_notification.id), headers=[auth_header])
 
-    validate(response.get_data(as_text=True), './GET_notification_return_email.json')
+    validate(response.get_data(as_text=True), 'GET_notification_return_email.json')
 
 
 def test_get_job_sms_contract(client, sample_notification):
     auth_header = create_authorization_header(service_id=sample_notification.service_id)
     response = client.get('/notifications/{}'.format(sample_notification.id), headers=[auth_header])
 
-    validate(response.get_data(as_text=True), './GET_notification_return_sms.json')
+    validate(response.get_data(as_text=True), 'GET_notification_return_sms.json')
 
 
 def test_get_job_email_contract(client, sample_email_notification):
     auth_header = create_authorization_header(service_id=sample_email_notification.service_id)
     response = client.get('/notifications/{}'.format(sample_email_notification.id), headers=[auth_header])
 
-    validate(response.get_data(as_text=True), './GET_notification_return_email.json')
+    validate(response.get_data(as_text=True), 'GET_notification_return_email.json')
 
 
 def test_get_notifications_contract(client, sample_notification, sample_email_notification):
     auth_header = create_authorization_header(service_id=sample_notification.service_id)
     response = client.get('/notifications', headers=[auth_header])
 
-    validate(response.get_data(as_text=True), './GET_notifications_return.json')
+    validate(response.get_data(as_text=True), 'GET_notifications_return.json')
