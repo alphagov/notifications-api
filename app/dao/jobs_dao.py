@@ -44,6 +44,13 @@ def dao_get_scheduled_jobs():
         .all()
 
 
+def dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id):
+    return Job.query \
+        .filter_by(service_id=service_id, id=job_id) \
+        .filter(Job.job_status == 'scheduled', Job.scheduled_for > datetime.utcnow()) \
+        .one()
+
+
 def dao_create_job(job):
     db.session.add(job)
     db.session.commit()

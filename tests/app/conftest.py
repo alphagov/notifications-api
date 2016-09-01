@@ -1,7 +1,7 @@
 import requests_mock
 import pytest
 import uuid
-from datetime import (datetime, date)
+from datetime import (datetime, date, timedelta)
 
 from flask import current_app
 
@@ -285,6 +285,22 @@ def sample_job_with_placeholdered_template(
         notify_db_session,
         service=service,
         template=sample_template_with_placeholders(notify_db, notify_db_session)
+    )
+
+
+@pytest.fixture(scope='function')
+def sample_scheduled_job(
+    notify_db,
+    notify_db_session,
+    service=None
+):
+    return sample_job(
+        notify_db,
+        notify_db_session,
+        service=service,
+        template=sample_template_with_placeholders(notify_db, notify_db_session),
+        scheduled_for=(datetime.utcnow() + timedelta(minutes=60)).isoformat(),
+        job_status='scheduled'
     )
 
 
