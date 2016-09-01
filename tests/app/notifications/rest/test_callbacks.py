@@ -297,8 +297,8 @@ def test_process_mmg_response_status_5_updates_notification_with_permanently_fai
         assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
 
 
-def test_process_mmg_response_status_2_updates_notification_with_temporary_failed(notify_api,
-                                                                                  sample_notification):
+def test_process_mmg_response_status_2_updates_notification_with_permanently_failed(notify_api,
+                                                                                    sample_notification):
     with notify_api.test_client() as client:
         data = json.dumps({"reference": "mmg_reference",
                            "CID": str(sample_notification.id),
@@ -312,7 +312,7 @@ def test_process_mmg_response_status_2_updates_notification_with_temporary_faile
         json_data = json.loads(response.data)
         assert json_data['result'] == 'success'
         assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
-        assert get_notification_by_id(sample_notification.id).status == 'temporary-failure'
+        assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
 
 
 def test_process_mmg_response_status_4_updates_notification_with_temporary_failed(notify_api,
