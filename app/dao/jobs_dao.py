@@ -46,8 +46,12 @@ def dao_get_scheduled_jobs():
 
 def dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id):
     return Job.query \
-        .filter_by(service_id=service_id, id=job_id) \
-        .filter(Job.job_status == 'scheduled', Job.scheduled_for > datetime.utcnow()) \
+        .filter(
+            Job.service_id == service_id,
+            Job.id == job_id,
+            Job.job_status == 'scheduled',
+            Job.scheduled_for > datetime.utcnow()
+        ) \
         .one()
 
 
