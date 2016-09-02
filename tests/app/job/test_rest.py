@@ -177,7 +177,6 @@ def test_create_scheduled_job(notify_api, sample_template, mocker, fake_uuid):
                 resp_json = json.loads(response.get_data(as_text=True))
 
                 assert resp_json['data']['id'] == fake_uuid
-                assert resp_json['data']['status'] == 'pending'
                 assert resp_json['data']['scheduled_for'] == datetime(2016, 1, 2, 11, 59, 0,
                                                                       tzinfo=pytz.UTC).isoformat()
                 assert resp_json['data']['job_status'] == 'scheduled'
