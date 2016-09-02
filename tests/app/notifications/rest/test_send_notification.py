@@ -10,7 +10,7 @@ from notifications_python_client.authentication import create_jwt_token
 
 import app
 from app import encryption
-from app.models import ApiKey, KEY_TYPE_TEAM
+from app.models import ApiKey, KEY_TYPE_TEAM, KEY_TYPE_TEST
 from app.dao.templates_dao import dao_get_all_templates_for_service, dao_update_template
 from app.dao.services_dao import dao_update_service
 from app.dao.api_key_dao import save_model_api_key
@@ -761,6 +761,46 @@ def test_should_send_email_if_team_api_key_and_a_service_user(notify_api, sample
                 'key_type': api_key.key_type
             },
             queue='db-email')
+        assert response.status_code == 201
+
+
+@pytest.mark.parametrize('restricted', [True, False])
+@pytest.mark.parametrize('limit', [0, 1])
+def test_should_send_email_to_anyone_with_test_key(
+    notify_api, sample_email_template, mocker, restricted, limit
+):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        mocker.patch('app.celery.tasks.send_email.apply_async')
+
+        data = {
+            'to': 'anyone123@example.com',
+            'template': sample_email_template.id
+        }
+        sample_email_template.service.restricted = restricted
+        sample_email_template.service.message_limit = limit
+        api_key = ApiKey(
+            service=sample_email_template.service,
+            name='test_key',
+            created_by=sample_email_template.created_by,
+            key_type=KEY_TYPE_TEST
+        )
+        save_model_api_key(api_key)
+        auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
+
+        response = client.post(
+            path='/notifications/email',
+            data=json.dumps(data),
+            headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))]
+        )
+
+        app.celery.tasks.send_email.apply_async.assert_called_once_with(
+            ANY,
+            kwargs={
+                'api_key_id': str(api_key.id),
+                'key_type': api_key.key_type
+            },
+            queue='db-email'
+        )
         assert response.status_code == 201
 
 

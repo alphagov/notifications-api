@@ -129,4 +129,7 @@ def create_job(service_id):
     if job.job_status == JOB_STATUS_PENDING:
         process_job.apply_async([str(job.id)], queue="process-job")
 
-    return jsonify(data=job_schema.dump(job).data), 201
+    job_json = job_schema.dump(job).data
+    job_json['statistics'] = []
+
+    return jsonify(data=job_json), 201

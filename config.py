@@ -15,7 +15,6 @@ class Config(object):
     INVITATION_EMAIL_FROM = os.environ['INVITATION_EMAIL_FROM']
     NOTIFY_APP_NAME = 'api'
     NOTIFY_LOG_PATH = '/var/log/notify/application.log'
-    NOTIFY_JOB_QUEUE = os.environ['NOTIFY_JOB_QUEUE']
     # Notification Queue names are a combination of a prefix plus a name
     NOTIFICATION_QUEUE_PREFIX = os.environ['NOTIFICATION_QUEUE_PREFIX']
     SECRET_KEY = os.environ['SECRET_KEY']
@@ -23,7 +22,6 @@ class Config(object):
     SQLALCHEMY_DATABASE_URI = os.environ['SQLALCHEMY_DATABASE_URI']
     SQLALCHEMY_RECORD_QUERIES = True
     SQLALCHEMY_TRACK_MODIFICATIONS = True
-    VERIFY_CODE_FROM_EMAIL_ADDRESS = os.environ['VERIFY_CODE_FROM_EMAIL_ADDRESS']
     NOTIFY_EMAIL_DOMAIN = os.environ['NOTIFY_EMAIL_DOMAIN']
     PAGE_SIZE = 50
     SMS_CHAR_COUNT_LIMIT = 495
@@ -84,11 +82,7 @@ class Config(object):
     CELERY_QUEUES = [
         Queue('periodic', Exchange('default'), routing_key='periodic'),
         Queue('sms', Exchange('default'), routing_key='sms'),
-        Queue('db-sms', Exchange('default'), routing_key='db-sms'),
-        Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('email', Exchange('default'), routing_key='email'),
-        Queue('db-email', Exchange('default'), routing_key='db-email'),
-        Queue('send-email', Exchange('default'), routing_key='send-email'),
         Queue('sms-code', Exchange('default'), routing_key='sms-code'),
         Queue('email-code', Exchange('default'), routing_key='email-code'),
         Queue('email-reset-password', Exchange('default'), routing_key='email-reset-password'),
@@ -123,18 +117,32 @@ class Development(Config):
     NOTIFY_ENVIRONMENT = 'development'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
     DEBUG = True
+    SQLALCHEMY_ECHO = False
+    CELERY_QUEUES = Config.CELERY_QUEUES + [
+        Queue('db-sms', Exchange('default'), routing_key='db-sms'),
+        Queue('send-sms', Exchange('default'), routing_key='send-sms'),
+        Queue('db-email', Exchange('default'), routing_key='db-email'),
+        Queue('send-email', Exchange('default'), routing_key='send-email')
+    ]
+
+
+class Test(Config):
+    NOTIFY_ENVIRONMENT = 'test'
+    DEBUG = True
+    CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
+    STATSD_PREFIX = "test"
+    CELERY_QUEUES = Config.CELERY_QUEUES + [
+        Queue('db-sms', Exchange('default'), routing_key='db-sms'),
+        Queue('send-sms', Exchange('default'), routing_key='send-sms'),
+        Queue('db-email', Exchange('default'), routing_key='db-email'),
+        Queue('send-email', Exchange('default'), routing_key='send-email')
+    ]
 
 
 class Preview(Config):
     NOTIFY_ENVIRONMENT = 'preview'
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
     STATSD_PREFIX = "preview"
-
-
-class Test(Development):
-    NOTIFY_ENVIRONMENT = 'test'
-    CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
-    STATSD_PREFIX = "test"
 
 
 class Staging(Config):
@@ -147,7 +155,6 @@ class Staging(Config):
 class Live(Config):
     NOTIFY_ENVIRONMENT = 'live'
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
-    STATSD_ENABLED = True
     STATSD_PREFIX = os.getenv('STATSD_PREFIX')
     STATSD_ENABLED = True
 

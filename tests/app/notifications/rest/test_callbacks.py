@@ -297,8 +297,8 @@ def test_process_mmg_response_status_5_updates_notification_with_permanently_fai
         assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
 
 
-def test_process_mmg_response_status_2_updates_notification_with_temporary_failed(notify_api,
-                                                                                  sample_notification):
+def test_process_mmg_response_status_2_updates_notification_with_permanently_failed(notify_api,
+                                                                                    sample_notification):
     with notify_api.test_client() as client:
         data = json.dumps({"reference": "mmg_reference",
                            "CID": str(sample_notification.id),
@@ -312,7 +312,7 @@ def test_process_mmg_response_status_2_updates_notification_with_temporary_faile
         json_data = json.loads(response.data)
         assert json_data['result'] == 'success'
         assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
-        assert get_notification_by_id(sample_notification.id).status == 'temporary-failure'
+        assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
 
 
 def test_process_mmg_response_status_4_updates_notification_with_temporary_failed(notify_api,
@@ -600,39 +600,6 @@ def test_ses_callback_should_set_status_to_permanent_failure(notify_api,
             assert get_notification_by_id(notification.id).status == 'permanent-failure'
 
 
-def test_should_handle_invite_email_callbacks(notify_api, notify_db, notify_db_session):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            notify_api.config['INVITATION_EMAIL_FROM'] = 'test-invite'
-            notify_api.config['NOTIFY_EMAIL_DOMAIN'] = 'test-domain.com'
-
-            response = client.post(
-                path='/notifications/email/ses',
-                data=ses_invite_callback(),
-                headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-            )
-            json_resp = json.loads(response.get_data(as_text=True))
-            assert response.status_code == 200
-            assert json_resp['result'] == 'success'
-            assert json_resp['message'] == 'SES callback succeeded'
-
-
-def test_should_handle_validation_code_callbacks(notify_api, notify_db, notify_db_session):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            notify_api.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'] = 'valid-code@test.com'
-
-            response = client.post(
-                path='/notifications/email/ses',
-                data=ses_validation_code_callback(),
-                headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-            )
-            json_resp = json.loads(response.get_data(as_text=True))
-            assert response.status_code == 200
-            assert json_resp['result'] == 'success'
-            assert json_resp['message'] == 'SES callback succeeded'
-
-
 def test_process_mmg_response_records_statsd(notify_api, sample_notification, mocker):
     with notify_api.test_client() as client:
         mocker.patch('app.statsd_client.incr')
@@ -662,14 +629,6 @@ def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
             app.statsd_client.incr.assert_any_call("callback.firetext.delivered")
-
-
-def ses_validation_code_callback():
-    return b'{\n  "Type" : "Notification",\n  "MessageId" : "ref",\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",\n  "Message" : "{\\"notificationType\\":\\"Delivery\\",\\"mail\\":{\\"timestamp\\":\\"2016-03-14T12:35:25.909Z\\",\\"source\\":\\"valid-code@test.com\\",\\"sourceArn\\":\\"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify\\",\\"sendingAccountId\\":\\"123456789012\\",\\"messageId\\":\\"ref\\",\\"destination\\":[\\"testing@digital.cabinet-office.gov.uk\\"]},\\"delivery\\":{\\"timestamp\\":\\"2016-03-14T12:35:26.567Z\\",\\"processingTimeMillis\\":658,\\"recipients\\":[\\"testing@digital.cabinet-office.gov.u\\"],\\"smtpResponse\\":\\"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp\\",\\"reportingMTA\\":\\"a6-238.smtp-out.eu-west-1.amazonses.com\\"}}",\n  "Timestamp" : "2016-03-14T12:35:26.665Z",\n  "SignatureVersion" : "1",\n  "Signature" : "X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==",\n  "SigningCertURL" : "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem",\n  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"\n}'  # noqa
-
-
-def ses_invite_callback():
-    return b'{\n  "Type" : "Notification",\n  "MessageId" : "ref",\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",\n  "Message" : "{\\"notificationType\\":\\"Delivery\\",\\"mail\\":{\\"timestamp\\":\\"2016-03-14T12:35:25.909Z\\",\\"source\\":\\"test-invite@test-domain.com\\",\\"sourceArn\\":\\"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify\\",\\"sendingAccountId\\":\\"123456789012\\",\\"messageId\\":\\"ref\\",\\"destination\\":[\\"testing@digital.cabinet-office.gov.uk\\"]},\\"delivery\\":{\\"timestamp\\":\\"2016-03-14T12:35:26.567Z\\",\\"processingTimeMillis\\":658,\\"recipients\\":[\\"testing@digital.cabinet-office.gov.u\\"],\\"smtpResponse\\":\\"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp\\",\\"reportingMTA\\":\\"a6-238.smtp-out.eu-west-1.amazonses.com\\"}}",\n  "Timestamp" : "2016-03-14T12:35:26.665Z",\n  "SignatureVersion" : "1",\n  "Signature" : "X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==",\n  "SigningCertURL" : "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem",\n  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"\n}'  # noqa
 
 
 def ses_notification_callback(ref='ref'):

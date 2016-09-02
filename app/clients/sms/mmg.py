@@ -6,10 +6,10 @@ from app.clients.sms import (SmsClient, SmsClientException)
 
 mmg_response_map = {
     '2': {
-        "message": ' Temporary failure',
+        "message": ' Permanent failure',
         "notification_statistics_status": STATISTICS_FAILURE,
         "success": False,
-        "notification_status": 'temporary-failure'
+        "notification_status": 'permanent-failure'
     },
     '3': {
         "message": 'Delivered',

@@ -15,7 +15,7 @@ from notifications_utils.renderers import PassThrough
 from app.clients.email.aws_ses import get_aws_responses
 from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT, statsd_client
 from app.dao.services_dao import dao_fetch_todays_stats_for_service
-from app.models import KEY_TYPE_TEAM
+from app.models import KEY_TYPE_TEAM, KEY_TYPE_TEST
 from app.dao import (
     templates_dao,
     services_dao,
@@ -77,15 +77,6 @@ def process_ses_response():
         notification_status = aws_response_dict['notification_status']
 
         try:
-            source = ses_message['mail']['source']
-            if is_not_a_notification(source):
-                current_app.logger.info(
-                    "SES callback for notify success:. source {} status {}".format(source, notification_status)
-                )
-                return jsonify(
-                    result="success", message="SES callback succeeded"
-                ), 200
-
             reference = ses_message['mail']['messageId']
             if not notifications_dao.update_notification_status_by_reference(
                     reference,
@@ -115,18 +106,6 @@ def process_ses_response():
     except ValueError as ex:
         error = "{} callback failed: invalid json".format(client_name)
         raise InvalidRequest(error, status_code=400)
-
-
-def is_not_a_notification(source):
-    invite_email = "{}@{}".format(
-        current_app.config['INVITATION_EMAIL_FROM'],
-        current_app.config['NOTIFY_EMAIL_DOMAIN']
-    )
-    if current_app.config['VERIFY_CODE_FROM_EMAIL_ADDRESS'] == source:
-        return True
-    if invite_email == source:
-        return True
-    return False
 
 
 @notifications.route('/notifications/sms/mmg', methods=['POST'])
@@ -215,7 +194,10 @@ def send_notification(notification_type):
 
     service_stats = sum(row.count for row in dao_fetch_todays_stats_for_service(service.id))
 
-    if service_stats >= service.message_limit:
+    if all((
+        api_user.key_type != KEY_TYPE_TEST,
+        service_stats >= service.message_limit
+    )):
         error = 'Exceeded send limits ({}) for today'.format(service.message_limit)
         raise InvalidRequest(error, status_code=429)
 
@@ -259,12 +241,16 @@ def send_notification(notification_type):
         errors = {'content': [message]}
         raise InvalidRequest(errors, status_code=400)
 
-    if (service.restricted or api_user.key_type == KEY_TYPE_TEAM) and not allowed_to_send_to(
-        notification['to'],
-        itertools.chain.from_iterable(
-            [user.mobile_number, user.email_address] for user in service.users
+    if all((
+        api_user.key_type != KEY_TYPE_TEST,
+        service.restricted or api_user.key_type == KEY_TYPE_TEAM,
+        not allowed_to_send_to(
+            notification['to'],
+            itertools.chain.from_iterable(
+                [user.mobile_number, user.email_address] for user in service.users
+            )
         )
-    ):
+    )):
         if (api_user.key_type == KEY_TYPE_TEAM):
             message = 'Can’t send to this recipient using a team-only API key'
         else:
