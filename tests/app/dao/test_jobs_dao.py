@@ -247,15 +247,11 @@ def test_get_scheduled_jobs_gets_ignores_jobs_not_scheduled(notify_db, notify_db
     assert jobs[0].id == job_scheduled.id
 
 
-def test_get_scheduled_jobs_gets_ignores_jobs_scheduled_in_the_future(
-    notify_db, notify_db_session, sample_scheduled_job
-):
+def test_get_scheduled_jobs_gets_ignores_jobs_scheduled_in_the_future(sample_scheduled_job):
     jobs = dao_get_scheduled_jobs()
     assert len(jobs) == 0
 
 
-def test_get_future_scheduled_job_gets_a_job_yet_to_send(
-    notify_db, notify_db_session, sample_scheduled_job
-):
+def test_get_future_scheduled_job_gets_a_job_yet_to_send(sample_scheduled_job):
     result = dao_get_future_scheduled_job_by_id_and_service_id(sample_scheduled_job.id, sample_scheduled_job.service_id)
     assert result.id == sample_scheduled_job.id
