@@ -39,7 +39,10 @@ def dao_get_job_by_id(job_id):
 
 def dao_get_scheduled_jobs():
     return Job.query \
-        .filter(Job.job_status == JOB_STATUS_SCHEDULED, Job.scheduled_for < datetime.utcnow()) \
+        .filter(
+            Job.job_status == JOB_STATUS_SCHEDULED,
+            Job.scheduled_for < datetime.utcnow()
+        ) \
         .order_by(asc(Job.scheduled_for)) \
         .all()
 
