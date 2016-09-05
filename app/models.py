@@ -300,9 +300,6 @@ class ProviderDetails(db.Model):
     active = db.Column(db.Boolean, default=False)
 
 
-JOB_STATUS_TYPES = ['pending', 'in progress', 'finished', 'sending limits exceeded']
-
-
 JOB_STATUS_PENDING = 'pending'
 JOB_STATUS_IN_PROGRESS = 'in progress'
 JOB_STATUS_FINISHED = 'finished'
@@ -338,7 +335,6 @@ class Job(db.Model):
         unique=False,
         nullable=True,
         onupdate=datetime.datetime.utcnow)
-    status = db.Column(db.Enum(*JOB_STATUS_TYPES, name='job_status_types'), nullable=False, default='pending')
     notification_count = db.Column(db.Integer, nullable=False)
     notifications_sent = db.Column(db.Integer, nullable=False, default=0)
     notifications_delivered = db.Column(db.Integer, nullable=False, default=0)
@@ -362,7 +358,7 @@ class Job(db.Model):
         unique=False,
         nullable=True)
     job_status = db.Column(
-        db.String(255), db.ForeignKey('job_status.name'), index=True, nullable=True, default='pending'
+        db.String(255), db.ForeignKey('job_status.name'), index=True, nullable=False, default='pending'
     )
 
 
