@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "GET notification return schema - for sms notifications",
+  "type" : "object",
+  "properties": {
+    "notifications": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"$ref": "sms_notification.json"},
+          {"$ref": "email_notification.json"}
+        ]
+      }
+    },
+    "links": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "page_size": {"type": "number"},
+    "total": {"type": "number"}
+  },
+  "additionalProperties": false,
+  "required": [
+    "notifications", "links", "page_size", "total"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "POST notification return schema - for email notifications",
+  "type" : "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "notification": {
+          "type": "object",
+          "properties": {
+            "id": {"$ref": "definitions.json#/uuid"}
+          },
+          "additionalProperties": false,
+          "required": ["id"]
+        },
+        "body": {"type": "string"},
+        "template_version": {"type": "number"},
+        "subject": {"type": "string"}
+      },
+      "additionalProperties": false,
+      "required": ["notification", "body", "template_version", "subject"]
+    }
+  },
+  "additionalProperties": false,
+  "required": ["data"]
+}

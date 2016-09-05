@@ -1,0 +1,106 @@
+{
+  "description": "Single email notification schema - as returned by GET /notification and GET /notification/{}",
+  "type": "object",
+  "properties": {
+    "id": {"$ref": "definitions.json#/uuid"},
+    "to": {"type": "string", "format": "email"},
+    "job_row_number": {"oneOf":[
+      {"type": "number"},
+      {"type": "null"}
+    ]},
+    "template_version": {"type": "number"},
+    "billable_units": {"type": "number"},
+    "notification_type": {
+      "type": "string",
+      "enum": ["email"]
+    },
+    "created_at": {"$ref": "definitions.json#/datetime"},
+    "sent_at": {"oneOf":[
+      {"$ref": "definitions.json#/datetime"},
+      {"type": "null"}
+    ]},
+    "sent_by": {"oneOf":[
+      {"type": "string"},
+      {"type": "null"}
+    ]},
+    "updated_at": {"oneOf":[
+      {"$ref": "definitions.json#/datetime"},
+      {"type": "null"}
+    ]},
+    "status": {
+      "type": "string",
+      "enum": [
+        "created",
+        "sending",
+        "delivered",
+        "pending",
+        "failed",
+        "technical-failure",
+        "temporary-failure",
+        "permanent-failure"
+      ]
+    },
+    "reference": {"oneOf":[
+      {"type": "string"},
+      {"type": "null"}
+    ]},
+    "template": {
+      "type": "object",
+      "properties": {
+        "id": {"$ref": "definitions.json#/uuid"},
+        "name": {"type": "string"},
+        "template_type": {
+          "type": "string",
+          "enum": ["email"]
+        },
+        "version": {"type": "number"}
+      },
+      "additionalProperties": false,
+      "required": ["id", "name", "template_type", "version"]
+    },
+    "service": {"$ref": "definitions.json#/uuid"},
+    "job": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "id": {"$ref": "definitions.json#/uuid"},
+            "original_file_name": {"type": "string"}
+          },
+          "additionalProperties": false,
+          "required": ["id", "original_file_name"]
+        },
+        {"type": "null"}
+      ]
+    },
+    "api_key": {"oneOf":[
+      {"$ref": "definitions.json#/uuid"},
+      {"type": "null"}
+    ]},
+    "body": {"type": "string"},
+    "content_char_count": {"type": "null"},
+    "subject": {"type": "string"}
+  },
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "to",
+    "job_row_number",
+    "template_version",
+    "billable_units",
+    "notification_type",
+    "created_at",
+    "sent_at",
+    "sent_by",
+    "updated_at",
+    "status",
+    "reference",
+    "template",
+    "service",
+    "job",
+    "api_key",
+    "body",
+    "content_char_count",
+    "subject"
+  ]
+}

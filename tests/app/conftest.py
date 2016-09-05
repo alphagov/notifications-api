@@ -1,8 +1,8 @@
-import requests_mock
-import pytest
 import uuid
 from datetime import (datetime, date)
 
+import requests_mock
+import pytest
 from flask import current_app
 
 from app import db
@@ -28,7 +28,6 @@ from app.dao.jobs_dao import dao_create_job
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
 from app.clients.sms.firetext import FiretextClient
-from app.clients.sms.mmg import MMGClient
 
 
 @pytest.yield_fixture
@@ -276,9 +275,9 @@ def sample_job(notify_db,
 
 @pytest.fixture(scope='function')
 def sample_job_with_placeholdered_template(
-    notify_db,
-    notify_db_session,
-    service=None
+        notify_db,
+        notify_db_session,
+        service=None
 ):
     return sample_job(
         notify_db,
@@ -371,6 +370,41 @@ def sample_notification(notify_db,
     notification = Notification(**data)
     if create:
         dao_create_notification(notification)
+    return notification
+
+
+@pytest.fixture(scope='function')
+def sample_email_notification(notify_db, notify_db_session):
+    created_at = datetime.utcnow()
+    service = sample_service(notify_db, notify_db_session)
+    template = sample_email_template(notify_db, notify_db_session, service=service)
+    job = sample_job(notify_db, notify_db_session, service=service, template=template)
+
+    notification_id = uuid.uuid4()
+
+    to = 'foo@bar.com'
+
+    data = {
+        'id': notification_id,
+        'to': to,
+        'job_id': job.id,
+        'job': job,
+        'service_id': service.id,
+        'service': service,
+        'template': template,
+        'template_version': template.version,
+        'status': 'created',
+        'reference': None,
+        'created_at': created_at,
+        'billable_units': 0,
+        'personalisation': None,
+        'notification_type': template.template_type,
+        'api_key_id': None,
+        'key_type': KEY_TYPE_NORMAL,
+        'job_row_number': 1
+    }
+    notification = Notification(**data)
+    dao_create_notification(notification)
     return notification
 
 

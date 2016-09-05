@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "GET notification return schema - for email notifications",
+  "type" : "object",
+  "properties": {
+    "data": {
+      "type": "object",
+      "properties": {
+        "notification": {"$ref": "email_notification.json"}
+      },
+      "additionalProperties": false,
+      "required": ["notification"]
+    }
+  },
+  "additionalProperties": false,
+  "required": ["data"]
+}

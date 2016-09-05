@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytest
 from freezegun import freeze_time
-from mock import ANY
+from unittest.mock import ANY
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 

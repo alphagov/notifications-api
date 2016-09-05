@@ -624,44 +624,6 @@ def test_get_notifications_for_service_returns_merged_template_content(notify_ap
             }
 
 
-def test_get_notification_public_api_format_is_not_changed(notify_api, sample_notification):
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        auth_header = create_authorization_header(service_id=sample_notification.service_id)
-
-        response = client.get(
-            '/notifications/{}'.format(sample_notification.id),
-            headers=[auth_header])
-
-        assert response.status_code == 200
-        notification = json.loads(response.get_data(as_text=True))['data']['notification']
-        # you should never remove things from this list!
-        assert set(notification.keys()) == {
-            # straight from db
-            'id',
-            'to',
-            'job_row_number',
-            'template_version',
-            'billable_units',
-            'notification_type',
-            'created_at',
-            'sent_at',
-            'sent_by',
-            'updated_at',
-            'status',
-            'reference',
-
-            # relationships
-            'template',
-            'service',
-            'job',
-            'api_key',
-
-            # other
-            'body',
-            'content_char_count'
-        }
-
-
 def test_get_notification_selects_correct_template_for_personalisation(notify_api,
                                                                        notify_db,
                                                                        notify_db_session,

@@ -1,7 +1,7 @@
 import os
 
 import boto3
-import mock
+from unittest import mock
 import pytest
 from alembic.command import upgrade
 from alembic.config import Config
@@ -22,6 +22,12 @@ def notify_api(request):
 
     request.addfinalizer(teardown)
     return app
+
+
+@pytest.fixture(scope='function')
+def client(notify_api):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        yield client
 
 
 @pytest.fixture(scope='session')
