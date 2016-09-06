@@ -192,15 +192,6 @@ def send_notification(notification_type):
     service_id = str(api_user.service_id)
     service = services_dao.dao_fetch_service_by_id(service_id)
 
-    service_stats = sum(row.count for row in dao_fetch_todays_stats_for_service(service.id))
-
-    if all((
-        api_user.key_type != KEY_TYPE_TEST,
-        service_stats >= service.message_limit
-    )):
-        error = 'Exceeded send limits ({}) for today'.format(service.message_limit)
-        raise InvalidRequest(error, status_code=429)
-
     notification, errors = (
         sms_template_notification_schema if notification_type == SMS_TYPE else email_notification_schema
     ).load(request.get_json())
