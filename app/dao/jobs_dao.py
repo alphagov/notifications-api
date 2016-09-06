@@ -2,7 +2,7 @@ from datetime import date, timedelta, datetime
 from sqlalchemy import desc, asc, cast, Date as sql_date
 from app import db
 from app.dao import days_ago
-from app.models import Job, NotificationHistory
+from app.models import Job, NotificationHistory, JOB_STATUS_SCHEDULED
 from app.statsd_decorators import statsd
 from sqlalchemy import func, asc
 
@@ -39,9 +39,23 @@ def dao_get_job_by_id(job_id):
 
 def dao_get_scheduled_jobs():
     return Job.query \
-        .filter(Job.job_status == 'scheduled', Job.scheduled_for < datetime.utcnow()) \
+        .filter(
+            Job.job_status == JOB_STATUS_SCHEDULED,
+            Job.scheduled_for < datetime.utcnow()
+        ) \
         .order_by(asc(Job.scheduled_for)) \
         .all()
+
+
+def dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id):
+    return Job.query \
+        .filter(
+            Job.service_id == service_id,
+            Job.id == job_id,
+            Job.job_status == JOB_STATUS_SCHEDULED,
+            Job.scheduled_for > datetime.utcnow()
+        ) \
+        .one()
 
 
 def dao_create_job(job):
