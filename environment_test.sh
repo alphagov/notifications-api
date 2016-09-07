@@ -1,4 +1,3 @@
-#!/bin/bash
 export SQLALCHEMY_DATABASE_URI=${TEST_DATABASE:='postgresql://localhost/test_notification_api'}
 export SECRET_KEY='secret-key'
 export DANGEROUS_SALT='dangerous-salt'
@@ -11,3 +10,4 @@ export MMG_API_KEY='mmg-secret-key'
 export LOADTESTING_API_KEY="loadtesting"
 export FIRETEXT_API_KEY="Firetext"
 export STATSD_PREFIX="stats-prefix"
+export NOTIFICATION_QUEUE_PREFIX='testing'
