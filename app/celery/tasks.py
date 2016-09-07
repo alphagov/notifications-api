@@ -161,8 +161,6 @@ def send_email(self, service_id,
                created_at,
                api_key_id=None,
                key_type=KEY_TYPE_NORMAL):
-
-
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
