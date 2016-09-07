@@ -25,7 +25,7 @@ def test_post_sms_contract(client, mocker, sample_template):
 
 
 def test_post_email_contract(client, mocker, sample_email_template):
-    mocker.patch('app.celery.tasks.send_sms.apply_async')
+    mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
     data = {
