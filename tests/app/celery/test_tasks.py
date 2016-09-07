@@ -17,7 +17,7 @@ from app.celery.tasks import (
     send_email
 )
 from app.dao import jobs_dao
-from app.models import Notification, KEY_TYPE_TEAM
+from app.models import Notification, KEY_TYPE_TEAM, KEY_TYPE_TEST
 from tests.app import load_example_csv
 from tests.app.conftest import (
     sample_service,
@@ -348,6 +348,66 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
     assert not persisted_notification.job_id
     assert not persisted_notification.personalisation
     assert persisted_notification.notification_type == 'sms'
+
+
+def test_should_not_send_sms_if_restricted_service_and_invalid_number_with_test_key(notify_db,
+                                                                                    notify_db_session,
+                                                                                    mocker):
+    user = sample_user(notify_db, notify_db_session, mobile_numnber="07700 900205")
+    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = sample_template(notify_db, notify_db_session, service=service)
+
+    notification = _notification_json(template, "07700 900849")
+    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+
+    notification_id = uuid.uuid4()
+    send_sms(
+        service.id,
+        notification_id,
+        encryption.encrypt(notification),
+        datetime.utcnow().strftime(DATETIME_FORMAT),
+        key_type=KEY_TYPE_TEST
+    )
+
+    provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
+        (service.id,
+         notification_id),
+        queue="send-sms"
+    )
+
+    persisted_notification = Notification.query.filter_by(id=notification_id).one()
+    assert persisted_notification.id == notification_id
+
+
+def test_should_not_send_email_if_restricted_service_and_invalid_email_address_with_test_key(notify_db,
+                                                                                             notify_db_session,
+                                                                                             mocker):
+    user = sample_user(notify_db, notify_db_session)
+    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = sample_template(
+        notify_db, notify_db_session, service=service, template_type='email', subject_line='Hello'
+    )
+
+    notification = _notification_json(template, to="test@example.com")
+    mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
+
+    notification_id = uuid.uuid4()
+    send_email(
+        service.id,
+        notification_id,
+        encryption.encrypt(notification),
+        datetime.utcnow().strftime(DATETIME_FORMAT),
+        key_type=KEY_TYPE_TEST
+    )
+
+    provider_tasks.send_email_to_provider.apply_async.assert_called_once_with(
+        (service.id,
+         notification_id),
+        queue="send-email"
+    )
+
+    persisted_notification = Notification.query.filter_by(id=notification_id).one()
+    assert persisted_notification.id == notification_id
 
 
 def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db, notify_db_session, mocker):

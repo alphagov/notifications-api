@@ -28,7 +28,8 @@ from app.models import (
     Notification,
     EMAIL_TYPE,
     SMS_TYPE,
-    KEY_TYPE_NORMAL
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEST
 )
 from app.statsd_decorators import statsd
 
@@ -126,7 +127,7 @@ def send_sms(self,
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
-    if not service_allowed_to_send_to(notification['to'], service):
+    if not service_allowed_to_send_to(notification['to'], service, key_type):
         current_app.logger.info(
             "SMS {} failed as restricted service".format(notification_id)
         )
@@ -166,7 +167,7 @@ def send_email(self, service_id,
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
-    if not service_allowed_to_send_to(notification['to'], service):
+    if not service_allowed_to_send_to(notification['to'], service, key_type):
         current_app.logger.info("Email {} failed as restricted service".format(notification_id))
         return
 
@@ -191,8 +192,8 @@ def send_email(self, service_id,
             )
 
 
-def service_allowed_to_send_to(recipient, service):
-    if not service.restricted:
+def service_allowed_to_send_to(recipient, service, key_type):
+    if not service.restricted or key_type == KEY_TYPE_TEST:
         return True
 
     return allowed_to_send_to(
