@@ -52,7 +52,11 @@ NOTE: The SECRET_KEY and DANGEROUS_SALT should match those in the [notifications
 
 NOTE:  Also note the  unique prefix for the queue names. This prevents clashing with others queues in shared amazon environment and using a prefix enables filtering by queue name in the SQS interface.
 
+Install Postgresql
 
+```shell
+    brew install postgres
+```
 
 ##  To run the application
 
@@ -71,7 +75,6 @@ scripts/run_celery.sh
 ```
 scripts/run_celery_beat.sh
 ```
-
 
 
 ##  To test the application
