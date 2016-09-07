@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta
 
 from flask import current_app
-
+from freezegun import freeze_time
+from app.celery.scheduled_tasks import s3
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (delete_verify_codes,
+                                        remove_csv_files,
                                         delete_successful_notifications,
                                         delete_failed_notifications,
                                         delete_invitations,
@@ -21,6 +23,7 @@ def test_should_have_decorated_tasks_functions():
     assert timeout_notifications.__wrapped__.__name__ == 'timeout_notifications'
     assert delete_invitations.__wrapped__.__name__ == 'delete_invitations'
     assert run_scheduled_jobs.__wrapped__.__name__ == 'run_scheduled_jobs'
+    assert remove_csv_files.__wrapped__.__name__ == 'remove_csv_files'
 
 
 def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
@@ -120,3 +123,19 @@ def test_should_update_all_scheduled_jobs_and_put_on_queue(notify_db, notify_db_
         call([str(job_2.id)], queue='process-job'),
         call([str(job_1.id)], queue='process-job')
     ])
+
+
+def test_will_remove_csv_files_for_jobs_older_than_seven_days(notify_db, notify_db_session, mocker):
+    mocker.patch('app.celery.scheduled_tasks.s3.remove_job_from_s3')
+
+    one_millisecond_before_midnight = datetime(2016, 10, 9, 23, 59, 59, 999)
+    midnight = datetime(2016, 10, 10, 0, 0, 0, 0)
+    one_millisecond_past_midnight = datetime(2016, 10, 10, 0, 0, 0, 1)
+
+    job_1 = sample_job(notify_db, notify_db_session, created_at=one_millisecond_before_midnight)
+    sample_job(notify_db, notify_db_session, created_at=midnight)
+    sample_job(notify_db, notify_db_session, created_at=one_millisecond_past_midnight)
+
+    with freeze_time('2016-10-17T00:00:00'):
+        remove_csv_files()
+    s3.remove_job_from_s3.assert_called_once_with(job_1.service_id, job_1.id)
