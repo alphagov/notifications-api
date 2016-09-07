@@ -13,7 +13,7 @@ from notifications_utils.recipients import allowed_to_send_to, first_column_head
 from notifications_utils.template import Template
 from notifications_utils.renderers import PassThrough
 from app.clients.email.aws_ses import get_aws_responses
-from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT, statsd_client
+from app import api_user, encryption, create_uuid, DATETIME_FORMAT, statsd_client
 from app.dao.services_dao import dao_fetch_todays_stats_for_service
 from app.models import KEY_TYPE_TEAM, KEY_TYPE_TEST
 from app.dao import (
