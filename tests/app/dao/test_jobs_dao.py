@@ -1,5 +1,6 @@
 from datetime import (datetime, timedelta)
 import uuid
+from freezegun import freeze_time
 
 from app.dao.jobs_dao import (
     dao_get_job_by_service_id_and_job_id,
@@ -8,8 +9,8 @@ from app.dao.jobs_dao import (
     dao_get_jobs_by_service_id,
     dao_get_scheduled_jobs,
     dao_get_future_scheduled_job_by_id_and_service_id,
-    dao_get_notification_outcomes_for_job
-)
+    dao_get_notification_outcomes_for_job,
+    dao_get_jobs_older_than)
 
 from app.models import Job
 from tests.app.conftest import sample_notification, sample_job, sample_service
@@ -255,3 +256,18 @@ def test_get_scheduled_jobs_gets_ignores_jobs_scheduled_in_the_future(sample_sch
 def test_get_future_scheduled_job_gets_a_job_yet_to_send(sample_scheduled_job):
     result = dao_get_future_scheduled_job_by_id_and_service_id(sample_scheduled_job.id, sample_scheduled_job.service_id)
     assert result.id == sample_scheduled_job.id
+
+
+def test_should_get_jobs_older_than_seven_days(notify_db, notify_db_session):
+    one_millisecond_before_midnight = datetime(2016, 10, 9, 23, 59, 59, 999)
+    midnight = datetime(2016, 10, 10, 0, 0, 0, 0)
+    one_millisecond_past_midnight = datetime(2016, 10, 10, 0, 0, 0, 1)
+
+    job_1 = sample_job(notify_db, notify_db_session, created_at=one_millisecond_before_midnight)
+    sample_job(notify_db, notify_db_session, created_at=midnight)
+    sample_job(notify_db, notify_db_session, created_at=one_millisecond_past_midnight)
+
+    with freeze_time('2016-10-17T00:00:00'):
+        jobs = dao_get_jobs_older_than(7)
+        assert len(jobs) == 1
+        assert jobs[0].id == job_1.id

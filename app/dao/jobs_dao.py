@@ -66,3 +66,9 @@ def dao_create_job(job):
 def dao_update_job(job):
     db.session.add(job)
     db.session.commit()
+
+
+def dao_get_jobs_older_than(limit_days):
+    return Job.query.filter(
+        cast(Job.created_at, sql_date) < days_ago(limit_days)
+    ).order_by(desc(Job.created_at)).all()
