@@ -60,7 +60,7 @@ def test_send_sms_calls_mmg_correctly(notify_api, mocker):
     assert request_args['reqType'] == 'BULK'
     assert request_args['MSISDN'] == to
     assert request_args['msg'] == content
-    assert request_args['sender'] == 'from_number'
+    assert request_args['sender'] == 'testing'
     assert request_args['cid'] == reference
     assert request_args['multi'] is True
 
