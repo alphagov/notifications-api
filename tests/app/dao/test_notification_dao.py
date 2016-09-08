@@ -33,7 +33,8 @@ from app.dao.notifications_dao import (
     get_notifications_for_job,
     get_notifications_for_service,
     update_notification_status_by_id,
-    update_notification_status_by_reference
+    update_notification_status_by_reference,
+    dao_delete_notifications_and_history_by_id
 )
 
 from notifications_utils.template import get_sms_fragment_count
@@ -55,6 +56,7 @@ def test_should_have_decorated_notifications_dao_functions():
     assert get_notifications_for_service.__wrapped__.__name__ == 'get_notifications_for_service'  # noqa
     assert get_notification_by_id.__wrapped__.__name__ == 'get_notification_by_id'  # noqa
     assert delete_notifications_created_more_than_a_week_ago.__wrapped__.__name__ == 'delete_notifications_created_more_than_a_week_ago'  # noqa
+    assert dao_delete_notifications_and_history_by_id.__wrapped__.__name__ == 'dao_delete_notifications_and_history_by_id'  # noqa
 
 
 def test_should_be_able_to_get_template_usage_history(notify_db, notify_db_session, sample_service):
@@ -73,7 +75,6 @@ def test_should_be_able_to_get_all_template_usage_history_order_by_notification_
         notify_db,
         notify_db_session,
         sample_service):
-
     sms = sample_template(notify_db, notify_db_session)
 
     sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
@@ -88,7 +89,6 @@ def test_should_be_able_to_get_all_template_usage_history_order_by_notification_
 def test_should_be_able_to_get_no_template_usage_history_if_no_notifications_using_template(
         notify_db,
         notify_db_session):
-
     sms = sample_template(notify_db, notify_db_session)
 
     results = dao_get_last_template_usage(sms.id)
@@ -727,6 +727,67 @@ def test_updating_notification_updates_notification_history(sample_notification)
     hist = NotificationHistory.query.one()
     assert hist.id == sample_notification.id
     assert hist.status == 'sending'
+
+
+def test_should_delete_notification_and_notification_history_for_id(notify_db, notify_db_session, sample_template):
+    data = _notification_json(sample_template)
+    notification = Notification(**data)
+
+    dao_create_notification(notification)
+
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 1
+
+    dao_delete_notifications_and_history_by_id(notification.id)
+
+    assert Notification.query.count() == 0
+    assert NotificationHistory.query.count() == 0
+
+
+def test_should_delete_only_notification_and_notification_history_with_id(notify_db, notify_db_session,
+                                                                          sample_template):
+    id_1 = uuid.uuid4()
+    id_2 = uuid.uuid4()
+    data_1 = _notification_json(sample_template, id=id_1)
+    data_2 = _notification_json(sample_template, id=id_2)
+
+    notification_1 = Notification(**data_1)
+    notification_2 = Notification(**data_2)
+
+    dao_create_notification(notification_1)
+    dao_create_notification(notification_2)
+
+    assert Notification.query.count() == 2
+    assert NotificationHistory.query.count() == 2
+
+    dao_delete_notifications_and_history_by_id(notification_1.id)
+
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 1
+    assert Notification.query.first().id == notification_2.id
+    assert NotificationHistory.query.first().id == notification_2.id
+
+
+def test_should_delete_no_notifications_or_notification_historys_if_no_matching_ids(
+        notify_db,
+        notify_db_session,
+        sample_template
+):
+    id_1 = uuid.uuid4()
+    id_2 = uuid.uuid4()
+    data_1 = _notification_json(sample_template, id=id_1)
+
+    notification_1 = Notification(**data_1)
+
+    dao_create_notification(notification_1)
+
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 1
+
+    dao_delete_notifications_and_history_by_id(id_2)
+
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 1
 
 
 def _notification_json(sample_template, job_id=None, id=None, status=None):

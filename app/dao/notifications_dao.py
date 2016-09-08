@@ -106,7 +106,7 @@ def dao_get_template_usage(service_id, limit_days=None):
 
 @statsd(namespace="dao")
 def dao_get_last_template_usage(template_id):
-    return NotificationHistory.query.filter(NotificationHistory.template_id == template_id)\
+    return NotificationHistory.query.filter(NotificationHistory.template_id == template_id) \
         .join(Template) \
         .order_by(desc(NotificationHistory.created_at)) \
         .first()
@@ -275,3 +275,14 @@ def delete_notifications_created_more_than_a_week_ago(status):
     ).delete(synchronize_session='fetch')
     db.session.commit()
     return deleted
+
+
+@statsd(namespace="dao")
+@transactional
+def dao_delete_notifications_and_history_by_id(notification_id):
+    db.session.query(Notification).filter(
+        Notification.id == notification_id
+    ).delete(synchronize_session='fetch')
+    db.session.query(NotificationHistory).filter(
+        NotificationHistory.id == notification_id
+    ).delete(synchronize_session='fetch')

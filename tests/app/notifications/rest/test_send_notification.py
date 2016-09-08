@@ -12,7 +12,7 @@ from notifications_python_client.authentication import create_jwt_token
 import app
 from app import encryption
 from app.dao import notifications_dao
-from app.models import ApiKey, KEY_TYPE_TEAM, KEY_TYPE_TEST, Notification
+from app.models import ApiKey, KEY_TYPE_TEAM, KEY_TYPE_TEST, Notification, NotificationHistory
 from app.dao.templates_dao import dao_get_all_templates_for_service, dao_update_template
 from app.dao.services_dao import dao_update_service
 from app.dao.api_key_dao import save_model_api_key
@@ -874,3 +874,73 @@ def test_should_persist_email_notification(notify_api, sample_email_template, fa
         assert notification.to == sample_email_template.service.created_by.email_address
         assert notification.template_id == sample_email_template.id
         assert notification.notification_type == 'email'
+
+
+def test_should_delete_email_notification_and_return_error_if_sqs_fails(
+        notify_api,
+        sample_email_template,
+        fake_uuid,
+        mocker):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        mocker.patch(
+            'app.celery.provider_tasks.send_email_to_provider.apply_async',
+            side_effect=Exception("failed to talk to SQS")
+        )
+        mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
+
+        data = {
+            'to': sample_email_template.service.created_by.email_address,
+            'template': sample_email_template.id
+        }
+        api_key = ApiKey(
+            service=sample_email_template.service,
+            name='team_key',
+            created_by=sample_email_template.created_by,
+            key_type=KEY_TYPE_TEAM)
+        save_model_api_key(api_key)
+        auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
+
+        response = client.post(
+            path='/notifications/email',
+            data=json.dumps(data),
+            headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+
+        app.celery.provider_tasks.send_email_to_provider.apply_async.assert_called_once_with(
+            (str(sample_email_template.service.id), fake_uuid), queue='send-email')
+
+        assert response.status_code == 500
+        assert not notifications_dao.get_notification_by_id(fake_uuid)
+        assert not NotificationHistory.query.get(fake_uuid)
+
+
+def test_should_delete_sms_notification_and_return_error_if_sqs_fails(notify_api, sample_template, fake_uuid, mocker):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        mocker.patch(
+            'app.celery.provider_tasks.send_sms_to_provider.apply_async',
+            side_effect=Exception("failed to talk to SQS")
+        )
+        mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
+
+        data = {
+            'to': sample_template.service.created_by.mobile_number,
+            'template': sample_template.id
+        }
+        api_key = ApiKey(
+            service=sample_template.service,
+            name='team_key',
+            created_by=sample_template.created_by,
+            key_type=KEY_TYPE_TEAM)
+        save_model_api_key(api_key)
+        auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
+
+        response = client.post(
+            path='/notifications/sms',
+            data=json.dumps(data),
+            headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+
+        app.celery.provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
+            (str(sample_template.service.id), fake_uuid), queue='send-sms')
+
+        assert response.status_code == 500
+        assert not notifications_dao.get_notification_by_id(fake_uuid)
+        assert not NotificationHistory.query.get(fake_uuid)

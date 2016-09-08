@@ -13,8 +13,8 @@ from notifications_utils.recipients import allowed_to_send_to, first_column_head
 from notifications_utils.template import Template
 from notifications_utils.renderers import PassThrough
 from app.clients.email.aws_ses import get_aws_responses
-from app import api_user, encryption, create_uuid, DATETIME_FORMAT, DATE_FORMAT, statsd_client
-from app.dao.notifications_dao import dao_create_notification
+from app import api_user, create_uuid, DATETIME_FORMAT, statsd_client
+from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
 from app.dao.services_dao import dao_fetch_todays_stats_for_service
 from app.models import KEY_TYPE_TEAM, KEY_TYPE_TEST, Notification, KEY_TYPE_NORMAL, EMAIL_TYPE
 from app.dao import (
@@ -36,7 +36,6 @@ from app.schemas import (
     day_schema,
     unarchived_template_schema
 )
-from app.celery.tasks import send_sms, send_email
 from app.utils import pagination_links
 
 notifications = Blueprint('notifications', __name__)
@@ -320,10 +319,15 @@ def persist_notification(
         )
     )
 
-    if notification_type == SMS_TYPE:
-        send_sms_to_provider.apply_async((str(service.id), str(notification_id)), queue='send-sms')
-    if notification_type == EMAIL_TYPE:
-        send_email_to_provider.apply_async((str(service.id), str(notification_id)), queue='send-email')
+    try:
+        if notification_type == SMS_TYPE:
+            send_sms_to_provider.apply_async((str(service.id), str(notification_id)), queue='send-sms')
+        if notification_type == EMAIL_TYPE:
+            send_email_to_provider.apply_async((str(service.id), str(notification_id)), queue='send-email')
+    except Exception as e:
+        current_app.logger.exception("Failed to send to SQS exception", e)
+        dao_delete_notifications_and_history_by_id(notification_id)
+        raise InvalidRequest(message="Internal server error", status_code=500)
 
     current_app.logger.info(
         "{} {} created at {}".format(notification_type, notification_id, created_at)
