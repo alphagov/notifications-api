@@ -480,8 +480,9 @@ class Notification(db.Model):
         if personalisation:
             self._personalisation = encryption.encrypt(personalisation)
 
-    @staticmethod
+    @classmethod
     def from_api_request(
+            cls,
             created_at,
             notification,
             notification_id,
@@ -489,7 +490,7 @@ class Notification(db.Model):
             notification_type,
             api_key_id,
             key_type):
-        return Notification(
+        return cls(
             id=notification_id,
             template_id=notification['template'],
             template_version=notification['template_version'],
