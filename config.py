@@ -5,27 +5,57 @@ import os
 
 
 class Config(object):
-    DEBUG = False
+    ########################################
+    # Secrets that are held in credstash ###
+    ########################################
+
+    # URL of admin app
     ADMIN_BASE_URL = os.environ['ADMIN_BASE_URL']
-    ADMIN_CLIENT_USER_NAME = os.environ['ADMIN_CLIENT_USER_NAME']
+
+    # admin app api key
     ADMIN_CLIENT_SECRET = os.environ['ADMIN_CLIENT_SECRET']
-    AWS_REGION = os.environ['AWS_REGION']
+
+    # encyption secret/salt
+    SECRET_KEY = os.environ['SECRET_KEY']
     DANGEROUS_SALT = os.environ['DANGEROUS_SALT']
-    INVITATION_EXPIRATION_DAYS = int(os.environ['INVITATION_EXPIRATION_DAYS'])
-    INVITATION_EMAIL_FROM = os.environ['INVITATION_EMAIL_FROM']
+
+    # DB conection string
+    SQLALCHEMY_DATABASE_URI = os.environ['SQLALCHEMY_DATABASE_URI']
+
+    # MMG API Url
+    MMG_URL = os.environ['MMG_URL']
+
+    # MMG API Key
+    MMG_API_KEY = os.environ['MMG_API_KEY']
+
+    # Firetext API Key
+    FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
+
+    # Firetext simluation key
+    LOADTESTING_API_KEY = os.getenv("LOADTESTING_API_KEY")
+
+    # Hosted graphite statsd prefix
+    STATSD_PREFIX = os.getenv('STATSD_PREFIX')
+
+    # Prefix to identify queues in SQS
+    NOTIFICATION_QUEUE_PREFIX = os.getenv('NOTIFICATION_QUEUE_PREFIX')
+
+    ###########################
+    # Default config values ###
+    ###########################
+
+    DEBUG = False
+    NOTIFY_ENVIRONMENT = 'development'
+    ADMIN_CLIENT_USER_NAME = 'notify-admin'
+    AWS_REGION = 'eu-west-1'
+    INVITATION_EXPIRATION_DAYS = 2
     NOTIFY_APP_NAME = 'api'
     NOTIFY_LOG_PATH = '/var/log/notify/application.log'
-    # Notification Queue names are a combination of a prefix plus a name
-    NOTIFICATION_QUEUE_PREFIX = os.environ['NOTIFICATION_QUEUE_PREFIX']
-    SECRET_KEY = os.environ['SECRET_KEY']
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False
-    SQLALCHEMY_DATABASE_URI = os.environ['SQLALCHEMY_DATABASE_URI']
     SQLALCHEMY_RECORD_QUERIES = True
     SQLALCHEMY_TRACK_MODIFICATIONS = True
-    NOTIFY_EMAIL_DOMAIN = os.environ['NOTIFY_EMAIL_DOMAIN']
     PAGE_SIZE = 50
     SMS_CHAR_COUNT_LIMIT = 495
-    MMG_URL = os.environ['MMG_URL']
     BRANDING_PATH = '/static/images/email-template/crests/'
 
     NOTIFY_SERVICE_ID = 'd6aa2c68-a2d9-4437-ab19-3ae8eb202553'
@@ -37,10 +67,10 @@ class Config(object):
 
     BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {
-        'region': 'eu-west-1',
+        'region': AWS_REGION,
         'polling_interval': 1,  # 1 second
         'visibility_timeout': 14410,  # 4 hours 10 seconds. 10 seconds longer than max retry
-        'queue_name_prefix': os.environ['NOTIFICATION_QUEUE_PREFIX'] + '-'
+        'queue_name_prefix': NOTIFICATION_QUEUE_PREFIX
     }
     CELERY_ENABLE_UTC = True,
     CELERY_TIMEZONE = 'Europe/London'
@@ -96,26 +126,27 @@ class Config(object):
         Queue('retry', Exchange('default'), routing_key='retry'),
         Queue('email-already-registered', Exchange('default'), routing_key='email-already-registered')
     ]
-    API_HOST_NAME = os.environ['API_HOST_NAME']
-    MMG_API_KEY = os.environ['MMG_API_KEY']
-    FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
-    LOADTESTING_NUMBER = os.getenv('LOADTESTING_NUMBER')
-    LOADTESTING_API_KEY = os.getenv("LOADTESTING_API_KEY")
-    CSV_UPLOAD_BUCKET_NAME = os.getenv("CSV_UPLOAD_BUCKET_NAME")
+    API_HOST_NAME = "http://localhost:6011"
+
     NOTIFICATIONS_ALERT = 5  # five mins
-    FROM_NUMBER = os.getenv('FROM_NUMBER')
+    FROM_NUMBER = 'development'
 
     STATSD_ENABLED = False
     STATSD_HOST = "statsd.hostedgraphite.com"
     STATSD_PORT = 8125
-    STATSD_PREFIX = None
 
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200
 
 
+######################
+# Config overrides ###
+######################
+
 class Development(Config):
-    NOTIFY_ENVIRONMENT = 'development'
+    NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
+    NOTIFY_ENVIRONMENT = 'development'
+    NOTIFICATION_QUEUE_PREFIX = 'development'
     DEBUG = True
     SQLALCHEMY_ECHO = False
     CELERY_QUEUES = Config.CELERY_QUEUES + [
@@ -127,10 +158,14 @@ class Development(Config):
 
 
 class Test(Config):
+    NOTIFY_EMAIL_DOMAIN = 'test.notify.com'
+    FROM_NUMBER = 'testing'
     NOTIFY_ENVIRONMENT = 'test'
     DEBUG = True
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
-    STATSD_PREFIX = "test"
+    STATSD_ENABLED = True
+    STATSD_HOST = "localhost"
+    STATSD_PORT = 1000
     CELERY_QUEUES = Config.CELERY_QUEUES + [
         Queue('db-sms', Exchange('default'), routing_key='db-sms'),
         Queue('send-sms', Exchange('default'), routing_key='send-sms'),
@@ -140,23 +175,29 @@ class Test(Config):
 
 
 class Preview(Config):
+    NOTIFY_EMAIL_DOMAIN = 'notify.works'
     NOTIFY_ENVIRONMENT = 'preview'
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
-    STATSD_PREFIX = "preview"
+    API_HOST_NAME = 'http://admin-api.internal'
+    FROM_NUMBER = 'NotifyPreview'
 
 
 class Staging(Config):
+    NOTIFY_EMAIL_DOMAIN = 'staging-notify.works'
     NOTIFY_ENVIRONMENT = 'staging'
     CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
-    STATSD_PREFIX = os.getenv('STATSD_PREFIX')
     STATSD_ENABLED = True
+    API_HOST_NAME = 'http://admin-api.internal'
+    FROM_NUMBER = 'NotifyStage'
 
 
 class Live(Config):
+    NOTIFY_EMAIL_DOMAIN = 'notifications.service.gov.uk'
     NOTIFY_ENVIRONMENT = 'live'
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
-    STATSD_PREFIX = os.getenv('STATSD_PREFIX')
     STATSD_ENABLED = True
+    API_HOST_NAME = 'http://admin-api.internal'
+    FROM_NUMBER = '40604'
 
 
 configs = {
