@@ -49,15 +49,11 @@ class Config(object):
     ADMIN_CLIENT_USER_NAME = 'notify-admin'
     AWS_REGION = 'eu-west-1'
     INVITATION_EXPIRATION_DAYS = 2
-    INVITATION_EMAIL_FROM = 'no-reply'
     NOTIFY_APP_NAME = 'api'
     NOTIFY_LOG_PATH = '/var/log/notify/application.log'
-    # Notification Queue names are a combination of a prefix plus a name
-    NOTIFICATION_QUEUE_PREFIX = 'development'
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False
     SQLALCHEMY_RECORD_QUERIES = True
     SQLALCHEMY_TRACK_MODIFICATIONS = True
-    NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     PAGE_SIZE = 50
     SMS_CHAR_COUNT_LIMIT = 495
     BRANDING_PATH = '/static/images/email-template/crests/'
@@ -132,7 +128,6 @@ class Config(object):
     ]
     API_HOST_NAME = "http://localhost:6011"
 
-    CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
     NOTIFICATIONS_ALERT = 5  # five mins
     FROM_NUMBER = 'development'
 
@@ -148,6 +143,8 @@ class Config(object):
 ######################
 
 class Development(Config):
+    NOTIFY_EMAIL_DOMAIN = 'notify.tools'
+    CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
     NOTIFY_ENVIRONMENT = 'development'
     NOTIFICATION_QUEUE_PREFIX = 'development'
     DEBUG = True
