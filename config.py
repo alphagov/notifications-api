@@ -179,7 +179,7 @@ class Preview(Config):
     NOTIFY_ENVIRONMENT = 'preview'
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
     API_HOST_NAME = 'http://admin-api.internal'
-    FROM_NUMBER = 'NotifyPreview'
+    FROM_NUMBER = 'preview'
 
 
 class Staging(Config):
@@ -188,7 +188,7 @@ class Staging(Config):
     CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
     STATSD_ENABLED = True
     API_HOST_NAME = 'http://admin-api.internal'
-    FROM_NUMBER = 'NotifyStage'
+    FROM_NUMBER = 'stage'
 
 
 class Live(Config):
