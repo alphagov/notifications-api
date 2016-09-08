@@ -550,19 +550,18 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
             assert response_data['template_version'] == sample_email_template.version
 
 
-@pytest.mark.parametrize('restricted', [True, False])
 @freeze_time("2016-01-01 12:00:00.061258")
-def test_should_block_api_call_if_over_day_limit_for_restricted_and_live_service(notify_db,
-                                                                                 notify_db_session,
-                                                                                 notify_api,
-                                                                                 mocker,
-                                                                                 restricted):
+def test_should_not_block_api_call_if_over_day_limit_for_live_service(
+        notify_db,
+        notify_db_session,
+        notify_api,
+        mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
-            service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=restricted)
+            service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=False)
             email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
             create_sample_notification(
                 notify_db, notify_db_session, template=email_template, service=service, created_at=datetime.utcnow()
@@ -579,14 +578,17 @@ def test_should_block_api_call_if_over_day_limit_for_restricted_and_live_service
                 path='/notifications/email',
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
-            json_resp = json.loads(response.get_data(as_text=True))
+            json.loads(response.get_data(as_text=True))
 
-            assert response.status_code == 429
-            assert 'Exceeded send limits (1) for today' in json_resp['message']
+            assert response.status_code == 201
 
 
 @freeze_time("2016-01-01 12:00:00.061258")
-def test_should_block_api_call_if_over_day_limit_regardless_of_type(notify_db, notify_db_session, notify_api, mocker):
+def test_should_block_api_call_if_over_day_limit_for_restricted_service(
+        notify_db,
+        notify_db_session,
+        notify_api,
+        mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
@@ -594,41 +596,47 @@ def test_should_block_api_call_if_over_day_limit_regardless_of_type(notify_db, n
 
             service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=True)
             email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
-            sms_template = create_sample_template(notify_db, notify_db_session, service=service)
             create_sample_notification(
                 notify_db, notify_db_session, template=email_template, service=service, created_at=datetime.utcnow()
             )
 
             data = {
-                'to': '+447234123123',
-                'template': str(sms_template.id)
+                'to': 'ok@ok.com',
+                'template': str(email_template.id)
             }
 
             auth_header = create_authorization_header(service_id=service.id)
 
             response = client.post(
-                path='/notifications/sms',
+                path='/notifications/email',
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
-            json_resp = json.loads(response.get_data(as_text=True))
+            json.loads(response.get_data(as_text=True))
+
             assert response.status_code == 429
-            assert 'Exceeded send limits (1) for today' in json_resp['message']
 
 
+@pytest.mark.parametrize('restricted', [True, False])
 @freeze_time("2016-01-01 12:00:00.061258")
-def test_should_allow_api_call_if_under_day_limit_regardless_of_type(notify_db, notify_db_session, notify_api, mocker):
+def test_should_allow_api_call_if_under_day_limit_regardless_of_type(
+        notify_db,
+        notify_db_session,
+        notify_api,
+        sample_user,
+        mocker,
+        restricted):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
-            service = create_sample_service(notify_db, notify_db_session, limit=2)
+            service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=restricted)
             email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
             sms_template = create_sample_template(notify_db, notify_db_session, service=service)
             create_sample_notification(notify_db, notify_db_session, template=email_template, service=service)
 
             data = {
-                'to': '+447634123123',
+                'to': sample_user.mobile_number,
                 'template': str(sms_template.id)
             }
 
