@@ -305,6 +305,7 @@ JOB_STATUS_IN_PROGRESS = 'in progress'
 JOB_STATUS_FINISHED = 'finished'
 JOB_STATUS_SENDING_LIMITS_EXCEEDED = 'sending limits exceeded'
 JOB_STATUS_SCHEDULED = 'scheduled'
+JOB_STATUS_CANCELLED = 'cancelled'
 
 
 class JobStatus(db.Model):

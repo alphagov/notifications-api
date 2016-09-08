@@ -109,6 +109,31 @@ def test_get_job_by_id(notify_api, sample_job):
             assert resp_json['data']['created_by']['name'] == 'Test User'
 
 
+def test_cancel_job(notify_api, sample_scheduled_job):
+    job_id = str(sample_scheduled_job.id)
+    service_id = sample_scheduled_job.service.id
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        path = '/service/{}/job/{}/cancel'.format(service_id, job_id)
+        auth_header = create_authorization_header(service_id=service_id)
+        response = client.post(path, headers=[auth_header])
+        assert response.status_code == 200
+        resp_json = json.loads(response.get_data(as_text=True))
+        assert resp_json['data']['id'] == job_id
+        assert resp_json['data']['job_status'] == 'cancelled'
+
+
+def test_cant_cancel_normal_job(notify_api, sample_job, mocker):
+    job_id = str(sample_job.id)
+    service_id = sample_job.service.id
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        mock_update = mocker.patch('app.dao.jobs_dao.dao_update_job')
+        path = '/service/{}/job/{}/cancel'.format(service_id, job_id)
+        auth_header = create_authorization_header(service_id=service_id)
+        response = client.post(path, headers=[auth_header])
+        assert response.status_code == 404
+        assert mock_update.call_count == 0
+
+
 def test_create_unscheduled_job(notify_api, sample_template, mocker, fake_uuid):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:

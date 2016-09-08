@@ -7,8 +7,10 @@ from flask import (
 
 from app.dao.jobs_dao import (
     dao_create_job,
+    dao_update_job,
     dao_get_job_by_service_id_and_job_id,
     dao_get_jobs_by_service_id,
+    dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job
 )
 
@@ -28,7 +30,7 @@ from app.schemas import (
 
 from app.celery.tasks import process_job
 
-from app.models import JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING
+from app.models import JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING, JOB_STATUS_CANCELLED
 
 from app.utils import pagination_links
 
@@ -51,6 +53,15 @@ def get_job_by_service_and_job_id(service_id, job_id):
     data['statistics'] = [{'status': statistic[1], 'count': statistic[0]} for statistic in statistics]
 
     return jsonify(data=data)
+
+
+@job.route('/<job_id>/cancel', methods=['POST'])
+def cancel_job(service_id, job_id):
+    job = dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id)
+    job.job_status = JOB_STATUS_CANCELLED
+    dao_update_job(job)
+
+    return get_job_by_service_and_job_id(service_id, job_id)
 
 
 @job.route('/<job_id>/notifications', methods=['GET'])

@@ -11,7 +11,7 @@ from app.celery.scheduled_tasks import (delete_verify_codes,
                                         run_scheduled_jobs)
 from app.dao.jobs_dao import dao_get_job_by_id
 from tests.app.conftest import sample_notification, sample_job
-from mock import call
+from unittest.mock import call
 
 
 def test_should_have_decorated_tasks_functions():

@@ -1,8 +1,6 @@
 ![](https://travis-ci.org/alphagov/notifications-api.svg)
 [![Requirements Status](https://requires.io/github/alphagov/notifications-api/requirements.svg?branch=master)](https://requires.io/github/alphagov/notifications-api/requirements/?branch=master)
 
-[![Deploy to staging](https://notify-build-monitor.herokuapp.com/deploys/notifications-api/master...staging.svg?prefix=Deploy%20to)](https://github.com/alphagov/notifications-api/compare/staging...master?expand=1&title=Deploy%20to%20staging) [![Deploy to live](https://notify-build-monitor.herokuapp.com/deploys/notifications-api/staging...live.svg?prefix=Deploy%20to)](https://github.com/alphagov/notifications-api/compare/live...staging?expand=1&title=Deploy%20to%20live)
-
 # notifications-api
 Notifications api
 Application for the notification api.
@@ -22,31 +20,19 @@ Create a local environment.sh file containing the following:
 
 ```
 echo "
-export NOTIFY_ENVIRONMENT='development'
-export ADMIN_BASE_URL='http://localhost:6012'
-export ADMIN_CLIENT_USER_NAME='dev-notify-admin'
-export ADMIN_CLIENT_SECRET='dev-notify-secret-key'
-export API_HOST_NAME='http://localhost:6011'
-
-export AWS_REGION='eu-west-1'
-export AWS_ACCESS_KEY_ID=[MY ACCESS KEY]
-export AWS_SECRET_ACCESS_KEY=[MY SECRET]
-
-export DANGEROUS_SALT='dev-notify-salt'
-export FIRETEXT_API_KEY=[contact team member for api key]
-export FROM_NUMBER='40605'
-export INVITATION_EMAIL_FROM='invites'
-export INVITATION_EXPIRATION_DAYS=2
-export MMG_API_KEY=mmg=secret-key
-export MMG_URL="https://api.mmg.co.uk/json/api.php"
-export NOTIFICATION_QUEUE_PREFIX='[unique-to-environment]' #
-export NOTIFY_EMAIL_DOMAIN='notify.tools'
-export SECRET_KEY='dev-notify-secret-key'
 export SQLALCHEMY_DATABASE_URI='postgresql://localhost/notification_api'
-export STATSD_ENABLED=True
-export STATSD_HOST="localhost"
-export STATSD_PORT=1000
-export STATSD_PREFIX="stats-prefix"
+export SECRET_KEY='secret-key'
+export DANGEROUS_SALT='dangerous-salt'
+export NOTIFY_ENVIRONMENT="development"
+export ADMIN_CLIENT_SECRET='notify-secret-key'
+export ADMIN_BASE_URL='http://localhost:6012'
+export FROM_NUMBER='development'
+export MMG_URL="https://api.mmg.co.uk/json/api.php"
+export MMG_API_KEY='MMG_API_KEY'
+export LOADTESTING_API_KEY="FIRETEXT_SIMULATION_KEY"
+export FIRETEXT_API_KEY="FIRETEXT_ACTUAL_KEY"
+export STATSD_PREFIX="FAKE_PREFIX"
+export NOTIFICATION_QUEUE_PREFIX="PREFIX-TO-IDENTIFY-SQS-QUEUE"
 "> environment.sh
 ```
 
@@ -54,7 +40,11 @@ NOTE: The SECRET_KEY and DANGEROUS_SALT should match those in the [notifications
 
 NOTE:  Also note the  unique prefix for the queue names. This prevents clashing with others queues in shared amazon environment and using a prefix enables filtering by queue name in the SQS interface.
 
+Install Postgresql
 
+```shell
+    brew install postgres
+```
 
 ##  To run the application
 
@@ -73,7 +63,6 @@ scripts/run_celery.sh
 ```
 scripts/run_celery_beat.sh
 ```
-
 
 
 ##  To test the application
