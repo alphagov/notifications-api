@@ -1,6 +1,5 @@
 import uuid
 import datetime
-
 from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
@@ -15,8 +14,8 @@ from app.encryption import (
 from app.authentication.utils import get_secret
 from app import (
     db,
-    encryption
-)
+    encryption,
+    DATETIME_FORMAT)
 
 from app.history_meta import Versioned
 
@@ -73,7 +72,6 @@ user_to_service = db.Table(
     db.Column('service_id', UUID(as_uuid=True), db.ForeignKey('services.id')),
     UniqueConstraint('user_id', 'service_id', name='uix_user_to_service')
 )
-
 
 BRANDING_GOVUK = 'govuk'
 BRANDING_ORG = 'org'
@@ -395,6 +393,7 @@ class VerifyCode(db.Model):
     def check_code(self, cde):
         return check_hash(cde, self._code)
 
+
 NOTIFICATION_CREATED = 'created'
 NOTIFICATION_SENDING = 'sending'
 NOTIFICATION_DELIVERED = 'delivered'
@@ -427,7 +426,6 @@ NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notif
 
 
 class Notification(db.Model):
-
     __tablename__ = 'notifications'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -482,6 +480,32 @@ class Notification(db.Model):
         if personalisation:
             self._personalisation = encryption.encrypt(personalisation)
 
+    @classmethod
+    def from_api_request(
+            cls,
+            created_at,
+            notification,
+            notification_id,
+            service_id,
+            notification_type,
+            api_key_id,
+            key_type):
+        return cls(
+            id=notification_id,
+            template_id=notification['template'],
+            template_version=notification['template_version'],
+            to=notification['to'],
+            service_id=service_id,
+            job_id=notification.get('job', None),
+            job_row_number=notification.get('row_number', None),
+            status='created',
+            created_at=datetime.datetime.strptime(created_at, DATETIME_FORMAT),
+            personalisation=notification.get('personalisation'),
+            notification_type=notification_type,
+            api_key_id=api_key_id,
+            key_type=key_type
+        )
+
 
 class NotificationHistory(db.Model):
     __tablename__ = 'notification_history'
@@ -522,7 +546,6 @@ INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
 
 
 class InvitedUser(db.Model):
-
     __tablename__ = 'invited_users'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -598,7 +621,6 @@ class Permission(db.Model):
 
 
 class TemplateStatistics(db.Model):
-
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
     service = db.relationship('Service', backref=db.backref('template_statistics', lazy='dynamic'))
@@ -615,7 +637,6 @@ class TemplateStatistics(db.Model):
 
 
 class Event(db.Model):
-
     __tablename__ = 'events'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
