@@ -125,8 +125,11 @@ def send_sms(self,
         return
 
     try:
-        _save_notification(created_at, notification, notification_id, service_id, SMS_TYPE, api_key_id, key_type)
-
+        dao_create_notification(
+            Notification.from_api_request(
+                created_at, notification, notification_id, service.id, SMS_TYPE, api_key_id, key_type
+            )
+        )
         send_sms_to_provider.apply_async((service_id, notification_id), queue='send-sms')
 
         current_app.logger.info(
@@ -160,7 +163,11 @@ def send_email(self, service_id,
         return
 
     try:
-        _save_notification(created_at, notification, notification_id, service_id, EMAIL_TYPE, api_key_id, key_type)
+        dao_create_notification(
+            Notification.from_api_request(
+                created_at, notification, notification_id, service.id, EMAIL_TYPE, api_key_id, key_type
+            )
+        )
 
         send_email_to_provider.apply_async((service_id, notification_id), queue='send-email')
 
@@ -174,25 +181,6 @@ def send_email(self, service_id,
                 "RETRY FAILED: task send_email failed for notification {}".format(notification.id),
                 e
             )
-
-
-def _save_notification(created_at, notification, notification_id, service_id, notification_type, api_key_id, key_type):
-    notification_db_object = Notification(
-        id=notification_id,
-        template_id=notification['template'],
-        template_version=notification['template_version'],
-        to=notification['to'],
-        service_id=service_id,
-        job_id=notification.get('job', None),
-        job_row_number=notification.get('row_number', None),
-        status='created',
-        created_at=datetime.strptime(created_at, DATETIME_FORMAT),
-        personalisation=notification.get('personalisation'),
-        notification_type=notification_type,
-        api_key_id=api_key_id,
-        key_type=key_type
-    )
-    dao_create_notification(notification_db_object)
 
 
 def service_allowed_to_send_to(recipient, service, key_type):

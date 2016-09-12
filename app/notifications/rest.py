@@ -13,9 +13,10 @@ from notifications_utils.recipients import allowed_to_send_to, first_column_head
 from notifications_utils.template import Template
 from notifications_utils.renderers import PassThrough
 from app.clients.email.aws_ses import get_aws_responses
-from app import api_user, encryption, create_uuid, DATETIME_FORMAT, statsd_client
+from app import api_user, create_uuid, DATETIME_FORMAT, statsd_client
+from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
 from app.dao.services_dao import dao_fetch_todays_stats_for_service
-from app.models import KEY_TYPE_TEAM, KEY_TYPE_TEST
+from app.models import KEY_TYPE_TEAM, KEY_TYPE_TEST, Notification, KEY_TYPE_NORMAL, EMAIL_TYPE
 from app.dao import (
     templates_dao,
     services_dao,
@@ -35,7 +36,6 @@ from app.schemas import (
     day_schema,
     unarchived_template_schema
 )
-from app.celery.tasks import send_sms, send_email
 from app.utils import pagination_links
 
 notifications = Blueprint('notifications', __name__)
@@ -46,6 +46,7 @@ from app.errors import (
 )
 
 register_errors(notifications)
+from app.celery.provider_tasks import send_sms_to_provider, send_email_to_provider
 
 
 @notifications.route('/notifications/email/ses', methods=['POST'])
@@ -192,18 +193,15 @@ def send_notification(notification_type):
     service_id = str(api_user.service_id)
     service = services_dao.dao_fetch_service_by_id(service_id)
 
-    service_stats = sum(row.count for row in dao_fetch_todays_stats_for_service(service.id))
-
-    if all((
-        api_user.key_type != KEY_TYPE_TEST,
-        service_stats >= service.message_limit
-    )):
-        error = 'Exceeded send limits ({}) for today'.format(service.message_limit)
-        raise InvalidRequest(error, status_code=429)
-
     notification, errors = (
         sms_template_notification_schema if notification_type == SMS_TYPE else email_notification_schema
     ).load(request.get_json())
+
+    if all((api_user.key_type != KEY_TYPE_TEST, service.restricted)):
+        service_stats = sum(row.count for row in dao_fetch_todays_stats_for_service(service.id))
+        if service_stats >= service.message_limit:
+            error = 'Exceeded send limits ({}) for today'.format(service.message_limit)
+            raise InvalidRequest(error, status_code=429)
 
     if errors:
         raise InvalidRequest(errors, status_code=400)
@@ -233,8 +231,8 @@ def send_notification(notification_type):
         raise InvalidRequest(errors, status_code=400)
 
     if (
-        template_object.template_type == SMS_TYPE and
-        template_object.replaced_content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+            template_object.template_type == SMS_TYPE and
+            template_object.replaced_content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
     ):
         char_count = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
         message = 'Content has a character count greater than the limit of {}'.format(char_count)
@@ -242,14 +240,14 @@ def send_notification(notification_type):
         raise InvalidRequest(errors, status_code=400)
 
     if all((
-        api_user.key_type != KEY_TYPE_TEST,
-        service.restricted or api_user.key_type == KEY_TYPE_TEAM,
-        not allowed_to_send_to(
-            notification['to'],
-            itertools.chain.from_iterable(
-                [user.mobile_number, user.email_address] for user in service.users
+            api_user.key_type != KEY_TYPE_TEST,
+            service.restricted or api_user.key_type == KEY_TYPE_TEAM,
+            not allowed_to_send_to(
+                notification['to'],
+                itertools.chain.from_iterable(
+                    [user.mobile_number, user.email_address] for user in service.users
+                )
             )
-        )
     )):
         if (api_user.key_type == KEY_TYPE_TEAM):
             message = 'Can’t send to this recipient using a team-only API key'
@@ -265,34 +263,15 @@ def send_notification(notification_type):
 
     notification_id = create_uuid()
     notification.update({"template_version": template.version})
-    if notification_type == SMS_TYPE:
-        send_sms.apply_async(
-            (
-                service_id,
-                notification_id,
-                encryption.encrypt(notification),
-                datetime.utcnow().strftime(DATETIME_FORMAT)
-            ),
-            kwargs={
-                'api_key_id': str(api_user.id),
-                'key_type': api_user.key_type
-            },
-            queue='db-sms'
-        )
-    else:
-        send_email.apply_async(
-            (
-                service_id,
-                notification_id,
-                encryption.encrypt(notification),
-                datetime.utcnow().strftime(DATETIME_FORMAT)
-            ),
-            kwargs={
-                'api_key_id': str(api_user.id),
-                'key_type': api_user.key_type
-            },
-            queue='db-email'
-        )
+    persist_notification(
+        service,
+        notification_id,
+        notification,
+        datetime.utcnow().strftime(DATETIME_FORMAT),
+        notification_type,
+        str(api_user.id),
+        api_user.key_type
+    )
 
     return jsonify(
         data=get_notification_return_data(
@@ -323,3 +302,33 @@ def get_notification_statistics_for_day():
     )
     data, errors = notifications_statistics_schema.dump(statistics, many=True)
     return jsonify(data=data), 200
+
+
+def persist_notification(
+        service,
+        notification_id,
+        notification,
+        created_at,
+        notification_type,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL,
+):
+    dao_create_notification(
+        Notification.from_api_request(
+            created_at, notification, notification_id, service.id, notification_type, api_key_id, key_type
+        )
+    )
+
+    try:
+        if notification_type == SMS_TYPE:
+            send_sms_to_provider.apply_async((str(service.id), str(notification_id)), queue='send-sms')
+        if notification_type == EMAIL_TYPE:
+            send_email_to_provider.apply_async((str(service.id), str(notification_id)), queue='send-email')
+    except Exception as e:
+        current_app.logger.exception("Failed to send to SQS exception", e)
+        dao_delete_notifications_and_history_by_id(notification_id)
+        raise InvalidRequest(message="Internal server error", status_code=500)
+
+    current_app.logger.info(
+        "{} {} created at {}".format(notification_type, notification_id, created_at)
+    )
