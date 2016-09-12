@@ -82,7 +82,7 @@ def send_sms_to_provider(self, service_id, notification_id):
             notification.sent_by = provider.get_name()
             notification.status = 'sending'
             dao_update_notification(notification)
-        except (SmsClientResponseException, SmsClientException) as e:
+        except SmsClientResponseException as e:
             try:
                 current_app.logger.error(
                     "RETRY: SMS notification {} failed".format(notification_id)
