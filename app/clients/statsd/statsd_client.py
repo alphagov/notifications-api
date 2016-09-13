@@ -27,5 +27,5 @@ class StatsdClient(StatsClient):
 
     def timing_with_dates(self, stat, start, end, rate=1):
         if self.active:
-            delta = (start - end).total_seconds() * 1000
+            delta = (start - end).total_seconds()
             super(StatsClient, self).timing(stat, delta, rate)
