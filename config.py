@@ -107,6 +107,11 @@ class Config(object):
             'task': 'timeout-sending-notifications',
             'schedule': crontab(minute=0, hour='0,1,2'),
             'options': {'queue': 'periodic'}
+        },
+        'remove_csv_files': {
+            'task': 'remove_csv_files',
+            'schedule': crontab(minute=1, hour='0,1,2'),
+            'options': {'queue': 'periodic'}
         }
     }
     CELERY_QUEUES = [

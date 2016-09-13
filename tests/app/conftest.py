@@ -480,11 +480,6 @@ def mock_encryption(mocker):
 
 
 @pytest.fixture(scope='function')
-def mock_celery_remove_job(mocker):
-    return mocker.patch('app.celery.tasks.remove_job.apply_async')
-
-
-@pytest.fixture(scope='function')
 def sample_invited_user(notify_db,
                         notify_db_session,
                         service=None,
