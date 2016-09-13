@@ -1,4 +1,6 @@
 import uuid
+
+from datetime import datetime
 from flask import current_app
 
 from app import statsd_client
@@ -54,7 +56,8 @@ def process_sms_client_response(status, reference, client_name):
     notification_success = response_dict['success']
 
     # record stats
-    if not notifications_dao.update_notification_status_by_id(reference, notification_status):
+    notification = notifications_dao.update_notification_status_by_id(reference, notification_status)
+    if not notification:
         status_error = "{} callback failed: notification {} either not found or already updated " \
                        "from sending. Status {}".format(client_name,
                                                         reference,
@@ -68,5 +71,9 @@ def process_sms_client_response(status, reference, client_name):
                                                                                     notification_status_message))
 
     statsd_client.incr('callback.{}.{}'.format(client_name.lower(), notification_status))
+    statsd_client.timing(
+        'callback.{}.elapsed-time'.format(client_name.lower()),
+        (datetime.utcnow() - notification.sent_at)
+    )
     success = "{} callback succeeded. reference {} updated".format(client_name, reference)
     return success, errors

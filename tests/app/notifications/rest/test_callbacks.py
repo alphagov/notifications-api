@@ -1,6 +1,9 @@
 import uuid
 
+from datetime import datetime
 from flask import json
+from freezegun import freeze_time
+from mock import call
 
 import app.celery.tasks
 from app.dao.notifications_dao import (
@@ -441,29 +444,38 @@ def test_ses_callback_should_update_notification_status(
         notify_api,
         notify_db,
         notify_db_session,
-        sample_email_template):
+        sample_email_template,
+        mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            notification = create_sample_notification(
-                notify_db,
-                notify_db_session,
-                template=sample_email_template,
-                reference='ref',
-                status='sending'
-            )
+            with freeze_time('2001-01-01T12:00:00'):
+                mocker.patch('app.statsd_client.incr')
+                mocker.patch('app.statsd_client.timing')
+                notification = create_sample_notification(
+                    notify_db,
+                    notify_db_session,
+                    template=sample_email_template,
+                    reference='ref',
+                    status='sending',
+                    sent_at=datetime.utcnow()
+                )
 
-            assert get_notification_by_id(notification.id).status == 'sending'
+                assert get_notification_by_id(notification.id).status == 'sending'
 
-            response = client.post(
-                path='/notifications/email/ses',
-                data=ses_notification_callback(),
-                headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-            )
-            json_resp = json.loads(response.get_data(as_text=True))
-            assert response.status_code == 200
-            assert json_resp['result'] == 'success'
-            assert json_resp['message'] == 'SES callback succeeded'
-            assert get_notification_by_id(notification.id).status == 'delivered'
+                response = client.post(
+                    path='/notifications/email/ses',
+                    data=ses_notification_callback(),
+                    headers=[('Content-Type', 'text/plain; charset=UTF-8')]
+                )
+                json_resp = json.loads(response.get_data(as_text=True))
+                assert response.status_code == 200
+                assert json_resp['result'] == 'success'
+                assert json_resp['message'] == 'SES callback succeeded'
+                assert get_notification_by_id(notification.id).status == 'delivered'
+                app.statsd_client.timing.assert_any_call(
+                    "callback.ses.elapsed-time", datetime.utcnow() - notification.sent_at
+                )
+                app.statsd_client.incr.assert_any_call("callback.ses.delivered")
 
 
 def test_ses_callback_should_update_multiple_notification_status_sent(
@@ -600,35 +612,54 @@ def test_ses_callback_should_set_status_to_permanent_failure(notify_api,
             assert get_notification_by_id(notification.id).status == 'permanent-failure'
 
 
-def test_process_mmg_response_records_statsd(notify_api, sample_notification, mocker):
+def test_process_mmg_response_records_statsd(notify_db, notify_db_session,notify_api, sample_notification, mocker):
     with notify_api.test_client() as client:
-        mocker.patch('app.statsd_client.incr')
-        data = json.dumps({"reference": "mmg_reference",
-                           "CID": str(sample_notification.id),
-                           "MSISDN": "447777349060",
-                           "status": "3",
-                           "deliverytime": "2016-04-05 16:01:07"})
+        with freeze_time('2001-01-01T12:00:00'):
 
-        client.post(path='notifications/sms/mmg',
-                    data=data,
-                    headers=[('Content-Type', 'application/json')])
-        app.statsd_client.incr.assert_any_call("callback.mmg.delivered")
+            mocker.patch('app.statsd_client.incr')
+            mocker.patch('app.statsd_client.timing')
+            notification = create_sample_notification(
+                notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
+            )
+
+            data = json.dumps({"reference": "mmg_reference",
+                               "CID": str(notification.id),
+                               "MSISDN": "447777349060",
+                               "status": "3",
+                               "deliverytime": "2016-04-05 16:01:07"})
+
+            client.post(path='notifications/sms/mmg',
+                        data=data,
+                        headers=[('Content-Type', 'application/json')])
+
+            app.statsd_client.incr.assert_any_call("callback.mmg.delivered")
+            app.statsd_client.timing.assert_any_call(
+                "callback.mmg.elapsed-time", datetime.utcnow() - notification.sent_at
+            )
 
 
 def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db_session, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocker.patch('app.statsd_client.incr')
-            notification = create_sample_notification(notify_db, notify_db_session, status='sending')
+            with freeze_time('2001-01-01T12:00:00'):
 
-            client.post(
-                path='/notifications/sms/firetext',
-                data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&code=101&reference={}'.format(
-                    notification.id
-                ),
-                headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+                mocker.patch('app.statsd_client.incr')
+                mocker.patch('app.statsd_client.timing')
+                notification = create_sample_notification(
+                    notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
+                )
 
-            app.statsd_client.incr.assert_any_call("callback.firetext.delivered")
+                client.post(
+                    path='/notifications/sms/firetext',
+                    data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&code=101&reference={}'.format(
+                        notification.id
+                    ),
+                    headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+                app.statsd_client.timing.assert_any_call(
+                    "callback.firetext.elapsed-time", datetime.utcnow() - notification.sent_at
+                )
+                app.statsd_client.incr.assert_any_call("callback.firetext.delivered")
 
 
 def ses_notification_callback(ref='ref'):
