@@ -142,17 +142,28 @@ def test_firetext_callback_should_return_404_if_cannot_find_notification_id(
             )
 
 
-def test_firetext_callback_should_update_notification_status(notify_api, sample_notification, mocker):
+def test_firetext_callback_should_update_notification_status(
+        notify_db, notify_db_session, notify_api, sample_email_template, mocker
+):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.statsd_client.incr')
-            original = get_notification_by_id(sample_notification.id)
-            assert original.status == 'created'
+
+            notification = create_sample_notification(
+                notify_db,
+                notify_db_session,
+                template=sample_email_template,
+                reference='ref',
+                status='sending',
+                sent_at=datetime.utcnow())
+
+            original = get_notification_by_id(notification.id)
+            assert original.status == 'sending'
 
             response = client.post(
                 path='/notifications/sms/firetext',
                 data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-                    sample_notification.id
+                    notification.id
                 ),
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
@@ -160,24 +171,35 @@ def test_firetext_callback_should_update_notification_status(notify_api, sample_
             assert response.status_code == 200
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
-                sample_notification.id
+                notification.id
             )
-            updated = get_notification_by_id(sample_notification.id)
+            updated = get_notification_by_id(notification.id)
             assert updated.status == 'delivered'
-            assert get_notification_by_id(sample_notification.id).status == 'delivered'
+            assert get_notification_by_id(notification.id).status == 'delivered'
 
 
-def test_firetext_callback_should_update_notification_status_failed(notify_api, sample_notification, mocker):
+def test_firetext_callback_should_update_notification_status_failed(
+        notify_db, notify_db_session, notify_api, sample_template, mocker
+):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.statsd_client.incr')
-            original = get_notification_by_id(sample_notification.id)
-            assert original.status == 'created'
+
+            notification = create_sample_notification(
+                notify_db,
+                notify_db_session,
+                template=sample_template,
+                reference='ref',
+                status='sending',
+                sent_at=datetime.utcnow())
+
+            original = get_notification_by_id(notification.id)
+            assert original.status == 'sending'
 
             response = client.post(
                 path='/notifications/sms/firetext',
                 data='mobile=441234123123&status=1&time=2016-03-10 14:17:00&reference={}'.format(
-                    sample_notification.id
+                    notification.id
                 ),
                 headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
@@ -185,16 +207,18 @@ def test_firetext_callback_should_update_notification_status_failed(notify_api, 
             assert response.status_code == 200
             assert json_resp['result'] == 'success'
             assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
-                sample_notification.id
+                notification.id
             )
-            assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
+            assert get_notification_by_id(notification.id).status == 'permanent-failure'
 
 
 def test_firetext_callback_should_update_notification_status_pending(notify_api, notify_db, notify_db_session, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.statsd_client.incr')
-            notification = create_sample_notification(notify_db, notify_db_session, status='sending')
+            notification = create_sample_notification(
+                notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
+            )
             original = get_notification_by_id(notification.id)
             assert original.status == 'sending'
 
@@ -223,9 +247,15 @@ def test_firetext_callback_should_update_multiple_notification_status_sent(
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.statsd_client.incr')
-            notification1 = create_sample_notification(notify_db, notify_db_session, status='sending')
-            notification2 = create_sample_notification(notify_db, notify_db_session, status='sending')
-            notification3 = create_sample_notification(notify_db, notify_db_session, status='sending')
+            notification1 = create_sample_notification(
+                notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
+            )
+            notification2 = create_sample_notification(
+                notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
+            )
+            notification3 = create_sample_notification(
+                notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
+            )
 
             client.post(
                 path='/notifications/sms/firetext',
@@ -264,10 +294,15 @@ def test_process_mmg_response_return_200_when_cid_is_send_sms_code(notify_api):
             assert json_data['message'] == 'MMG callback succeeded: send-sms-code'
 
 
-def test_process_mmg_response_returns_200_when_cid_is_valid_notification_id(notify_api, sample_notification):
+def test_process_mmg_response_returns_200_when_cid_is_valid_notification_id(
+        notify_db, notify_db_session, notify_api
+):
     with notify_api.test_client() as client:
+        notification = create_sample_notification(
+            notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
+        )
         data = json.dumps({"reference": "mmg_reference",
-                           "CID": str(sample_notification.id),
+                           "CID": str(notification.id),
                            "MSISDN": "447777349060",
                            "status": "3",
                            "deliverytime": "2016-04-05 16:01:07"})
@@ -278,15 +313,20 @@ def test_process_mmg_response_returns_200_when_cid_is_valid_notification_id(noti
         assert response.status_code == 200
         json_data = json.loads(response.data)
         assert json_data['result'] == 'success'
-        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
-        assert get_notification_by_id(sample_notification.id).status == 'delivered'
+        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(notification.id)
+        assert get_notification_by_id(notification.id).status == 'delivered'
 
 
-def test_process_mmg_response_status_5_updates_notification_with_permanently_failed(notify_api,
-                                                                                    sample_notification):
+def test_process_mmg_response_status_5_updates_notification_with_permanently_failed(
+    notify_db, notify_db_session, notify_api
+):
     with notify_api.test_client() as client:
+        notification = create_sample_notification(
+            notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
+        )
+
         data = json.dumps({"reference": "mmg_reference",
-                           "CID": str(sample_notification.id),
+                           "CID": str(notification.id),
                            "MSISDN": "447777349060",
                            "status": 5})
 
@@ -296,15 +336,19 @@ def test_process_mmg_response_status_5_updates_notification_with_permanently_fai
         assert response.status_code == 200
         json_data = json.loads(response.data)
         assert json_data['result'] == 'success'
-        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
-        assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
+        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(notification.id)
+        assert get_notification_by_id(notification.id).status == 'permanent-failure'
 
 
-def test_process_mmg_response_status_2_updates_notification_with_permanently_failed(notify_api,
-                                                                                    sample_notification):
+def test_process_mmg_response_status_2_updates_notification_with_permanently_failed(
+    notify_db, notify_db_session, notify_api
+):
     with notify_api.test_client() as client:
+        notification = create_sample_notification(
+            notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
+        )
         data = json.dumps({"reference": "mmg_reference",
-                           "CID": str(sample_notification.id),
+                           "CID": str(notification.id),
                            "MSISDN": "447777349060",
                            "status": 2})
 
@@ -314,15 +358,20 @@ def test_process_mmg_response_status_2_updates_notification_with_permanently_fai
         assert response.status_code == 200
         json_data = json.loads(response.data)
         assert json_data['result'] == 'success'
-        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
-        assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
+        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(notification.id)
+        assert get_notification_by_id(notification.id).status == 'permanent-failure'
 
 
-def test_process_mmg_response_status_4_updates_notification_with_temporary_failed(notify_api,
-                                                                                  sample_notification):
+def test_process_mmg_response_status_4_updates_notification_with_temporary_failed(
+        notify_db, notify_db_session, notify_api
+):
     with notify_api.test_client() as client:
+        notification = create_sample_notification(
+            notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
+        )
+
         data = json.dumps({"reference": "mmg_reference",
-                           "CID": str(sample_notification.id),
+                           "CID": str(notification.id),
                            "MSISDN": "447777349060",
                            "status": 4})
 
@@ -332,15 +381,20 @@ def test_process_mmg_response_status_4_updates_notification_with_temporary_faile
         assert response.status_code == 200
         json_data = json.loads(response.data)
         assert json_data['result'] == 'success'
-        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
-        assert get_notification_by_id(sample_notification.id).status == 'temporary-failure'
+        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(notification.id)
+        assert get_notification_by_id(notification.id).status == 'temporary-failure'
 
 
-def test_process_mmg_response_unknown_status_updates_notification_with_failed(notify_api,
-                                                                              sample_notification):
+def test_process_mmg_response_unknown_status_updates_notification_with_failed(
+        notify_db, notify_db_session, notify_api
+):
     with notify_api.test_client() as client:
+
+        notification = create_sample_notification(
+            notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
+        )
         data = json.dumps({"reference": "mmg_reference",
-                           "CID": str(sample_notification.id),
+                           "CID": str(notification.id),
                            "MSISDN": "447777349060",
                            "status": 10})
 
@@ -350,8 +404,8 @@ def test_process_mmg_response_unknown_status_updates_notification_with_failed(no
         assert response.status_code == 200
         json_data = json.loads(response.data)
         assert json_data['result'] == 'success'
-        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
-        assert get_notification_by_id(sample_notification.id).status == 'failed'
+        assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(notification.id)
+        assert get_notification_by_id(notification.id).status == 'failed'
 
 
 def test_process_mmg_response_returns_400_for_malformed_data(notify_api):
@@ -450,7 +504,7 @@ def test_ses_callback_should_update_notification_status(
         with notify_api.test_client() as client:
             with freeze_time('2001-01-01T12:00:00'):
                 mocker.patch('app.statsd_client.incr')
-                mocker.patch('app.statsd_client.timing')
+                mocker.patch('app.statsd_client.timing_with_dates')
                 notification = create_sample_notification(
                     notify_db,
                     notify_db_session,
@@ -472,8 +526,8 @@ def test_ses_callback_should_update_notification_status(
                 assert json_resp['result'] == 'success'
                 assert json_resp['message'] == 'SES callback succeeded'
                 assert get_notification_by_id(notification.id).status == 'delivered'
-                app.statsd_client.timing.assert_any_call(
-                    "callback.ses.elapsed-time", datetime.utcnow() - notification.sent_at
+                app.statsd_client.timing_with_dates.assert_any_call(
+                    "callback.ses.elapsed-time", datetime.utcnow(), notification.sent_at
                 )
                 app.statsd_client.incr.assert_any_call("callback.ses.delivered")
 
@@ -491,6 +545,7 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
                 notify_db_session,
                 template=sample_email_template,
                 reference='ref1',
+                sent_at=datetime.utcnow(),
                 status='sending')
 
             notification2 = create_sample_notification(
@@ -498,6 +553,7 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
                 notify_db_session,
                 template=sample_email_template,
                 reference='ref2',
+                sent_at=datetime.utcnow(),
                 status='sending')
 
             notification3 = create_sample_notification(
@@ -505,6 +561,7 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
                 notify_db_session,
                 template=sample_email_template,
                 reference='ref3',
+                sent_at=datetime.utcnow(),
                 status='sending')
 
             resp1 = client.post(
@@ -539,9 +596,9 @@ def test_ses_callback_should_set_status_to_temporary_failure(notify_api,
                 notify_db_session,
                 template=sample_email_template,
                 reference='ref',
-                status='sending'
+                status='sending',
+                sent_at=datetime.utcnow()
             )
-
             assert get_notification_by_id(notification.id).status == 'sending'
 
             response = client.post(
@@ -567,7 +624,8 @@ def test_ses_callback_should_not_set_status_once_status_is_delivered(notify_api,
                 notify_db_session,
                 template=sample_email_template,
                 reference='ref',
-                status='delivered'
+                status='delivered',
+                sent_at=datetime.utcnow()
             )
 
             assert get_notification_by_id(notification.id).status == 'delivered'
@@ -595,7 +653,8 @@ def test_ses_callback_should_set_status_to_permanent_failure(notify_api,
                 notify_db_session,
                 template=sample_email_template,
                 reference='ref',
-                status='sending'
+                status='sending',
+                sent_at=datetime.utcnow()
             )
 
             assert get_notification_by_id(notification.id).status == 'sending'
@@ -612,12 +671,12 @@ def test_ses_callback_should_set_status_to_permanent_failure(notify_api,
             assert get_notification_by_id(notification.id).status == 'permanent-failure'
 
 
-def test_process_mmg_response_records_statsd(notify_db, notify_db_session,notify_api, sample_notification, mocker):
+def test_process_mmg_response_records_statsd(notify_db, notify_db_session, notify_api, mocker):
     with notify_api.test_client() as client:
         with freeze_time('2001-01-01T12:00:00'):
 
             mocker.patch('app.statsd_client.incr')
-            mocker.patch('app.statsd_client.timing')
+            mocker.patch('app.statsd_client.timing_with_dates')
             notification = create_sample_notification(
                 notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
             )
@@ -633,8 +692,8 @@ def test_process_mmg_response_records_statsd(notify_db, notify_db_session,notify
                         headers=[('Content-Type', 'application/json')])
 
             app.statsd_client.incr.assert_any_call("callback.mmg.delivered")
-            app.statsd_client.timing.assert_any_call(
-                "callback.mmg.elapsed-time", datetime.utcnow() - notification.sent_at
+            app.statsd_client.timing_with_dates.assert_any_call(
+                "callback.mmg.elapsed-time", datetime.utcnow(), notification.sent_at
             )
 
 
@@ -644,7 +703,7 @@ def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db
             with freeze_time('2001-01-01T12:00:00'):
 
                 mocker.patch('app.statsd_client.incr')
-                mocker.patch('app.statsd_client.timing')
+                mocker.patch('app.statsd_client.timing_with_dates')
                 notification = create_sample_notification(
                     notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
                 )
@@ -656,8 +715,8 @@ def test_firetext_callback_should_record_statsd(notify_api, notify_db, notify_db
                     ),
                     headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
-                app.statsd_client.timing.assert_any_call(
-                    "callback.firetext.elapsed-time", datetime.utcnow() - notification.sent_at
+                app.statsd_client.timing_with_dates.assert_any_call(
+                    "callback.firetext.elapsed-time", datetime.utcnow(), notification.sent_at
                 )
                 app.statsd_client.incr.assert_any_call("callback.firetext.delivered")
 

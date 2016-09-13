@@ -71,9 +71,11 @@ def process_sms_client_response(status, reference, client_name):
                                                                                     notification_status_message))
 
     statsd_client.incr('callback.{}.{}'.format(client_name.lower(), notification_status))
-    statsd_client.timing(
-        'callback.{}.elapsed-time'.format(client_name.lower()),
-        (datetime.utcnow() - notification.sent_at)
-    )
+    if notification.sent_at:
+        statsd_client.timing_with_dates(
+            'callback.{}.elapsed-time'.format(client_name.lower()),
+            datetime.utcnow(),
+            notification.sent_at
+        )
     success = "{} callback succeeded. reference {} updated".format(client_name, reference)
     return success, errors

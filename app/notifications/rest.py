@@ -97,7 +97,12 @@ def process_ses_response():
                 )
 
             statsd_client.incr('callback.ses.{}'.format(notification_status))
-            statsd_client.timing('callback.ses.elapsed-time', (datetime.utcnow() - notification.sent_at))
+            if notification.sent_at:
+                statsd_client.timing_with_dates(
+                    'callback.ses.elapsed-time'.format(client_name.lower()),
+                    datetime.utcnow(),
+                    notification.sent_at
+                )
             return jsonify(
                 result="success", message="SES callback succeeded"
             ), 200
@@ -233,8 +238,8 @@ def send_notification(notification_type):
         raise InvalidRequest(errors, status_code=400)
 
     if (
-                    template_object.template_type == SMS_TYPE and
-                    template_object.replaced_content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+        template_object.template_type == SMS_TYPE and
+        template_object.replaced_content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
     ):
         char_count = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
         message = 'Content has a character count greater than the limit of {}'.format(char_count)
@@ -242,14 +247,14 @@ def send_notification(notification_type):
         raise InvalidRequest(errors, status_code=400)
 
     if all((
-                api_user.key_type != KEY_TYPE_TEST,
-                service.restricted or api_user.key_type == KEY_TYPE_TEAM,
-                not allowed_to_send_to(
-                    notification['to'],
-                    itertools.chain.from_iterable(
-                        [user.mobile_number, user.email_address] for user in service.users
-                    )
-                )
+        api_user.key_type != KEY_TYPE_TEST,
+        service.restricted or api_user.key_type == KEY_TYPE_TEAM,
+        not allowed_to_send_to(
+            notification['to'],
+            itertools.chain.from_iterable(
+                [user.mobile_number, user.email_address] for user in service.users
+            )
+        )
     )):
         if (api_user.key_type == KEY_TYPE_TEAM):
             message = 'Can’t send to this recipient using a team-only API key'
