@@ -210,7 +210,6 @@ def send_notification(notification_type):
         template_id=notification['template'],
         service_id=service_id
     )
-
     errors = unarchived_template_schema.validate({'archived': template.archived})
     if errors:
         raise InvalidRequest(errors, status_code=400)
@@ -261,24 +260,29 @@ def send_notification(notification_type):
             status_code=400
         )
 
-    notification_id = create_uuid()
-    notification.update({"template_version": template.version})
-    persist_notification(
-        service,
-        notification_id,
-        notification,
-        datetime.utcnow().strftime(DATETIME_FORMAT),
-        notification_type,
-        str(api_user.id),
-        api_user.key_type
-    )
-
-    return jsonify(
-        data=get_notification_return_data(
+    if not _simulated_recipient(notification['to'], notification_type):
+        notification_id = create_uuid()
+        notification.update({"template_version": template.version})
+        persist_notification(
+            service,
             notification_id,
             notification,
-            template_object)
-    ), 201
+            datetime.utcnow().strftime(DATETIME_FORMAT),
+            notification_type,
+            str(api_user.id),
+            api_user.key_type
+        )
+
+        return jsonify(
+            data=get_notification_return_data(
+                notification_id,
+                notification,
+                template_object)
+        ), 201
+    else:
+        return jsonify(
+            data=_get_simulated_recipient_response_data(template_object)
+        ), 200
 
 
 def get_notification_return_data(notification_id, notification, template):
@@ -302,6 +306,24 @@ def get_notification_statistics_for_day():
     )
     data, errors = notifications_statistics_schema.dump(statistics, many=True)
     return jsonify(data=data), 200
+
+
+def _simulated_recipient(to_address, notification_type):
+    return (to_address in current_app.config['SIMULATED_SMS_NUMBERS']
+            if notification_type == SMS_TYPE
+            else to_address in current_app.config['SIMULATED_EMAIL_ADDRESSES'])
+
+
+def _get_simulated_recipient_response_data(template_object):
+    response_data = {
+        'body': template_object.replaced,
+        'template_version': template_object._template['version']
+    }
+
+    if template_object._template['template_type'] == 'email':
+        response_data.update({'subject': template_object.replaced_subject})
+
+    return response_data
 
 
 def persist_notification(
