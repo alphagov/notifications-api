@@ -17,7 +17,11 @@ from app.models import (
     Notification,
     NotificationHistory,
     NotificationStatistics,
-    Template)
+    Template,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_SENDING,
+    NOTIFICATION_PENDING,
+    NOTIFICATION_TEMPORARY_FAILURE)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
@@ -286,3 +290,18 @@ def dao_delete_notifications_and_history_by_id(notification_id):
     db.session.query(NotificationHistory).filter(
         NotificationHistory.id == notification_id
     ).delete(synchronize_session='fetch')
+
+
+def dao_timeout_notifications(timeout_period_in_seconds):
+    # update all notifications that are older that the timeout_period_in_seconds
+    #  with a status of created|sending|pending
+    updated = db.session.query(Notification). \
+        filter(Notification.created_at < (datetime.utcnow() - timedelta(seconds=timeout_period_in_seconds))). \
+        filter(Notification.status.in_([NOTIFICATION_CREATED, NOTIFICATION_SENDING, NOTIFICATION_PENDING])). \
+        update({'status': NOTIFICATION_TEMPORARY_FAILURE}, synchronize_session=False)
+    db.session.query(NotificationHistory). \
+        filter(NotificationHistory.created_at < (datetime.utcnow() - timedelta(seconds=timeout_period_in_seconds))). \
+        filter(NotificationHistory.status.in_([NOTIFICATION_CREATED, NOTIFICATION_SENDING, NOTIFICATION_PENDING])). \
+        update({'status': NOTIFICATION_TEMPORARY_FAILURE}, synchronize_session=False)
+    db.session.commit()
+    return updated
