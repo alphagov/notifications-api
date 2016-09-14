@@ -963,7 +963,7 @@ def test_should_not_send_email_if_simulated_email_address(client, to_email, samp
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header])
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     apply_async.assert_not_called()
 
 
@@ -987,5 +987,5 @@ def test_should_not_send_sms_if_simulated_sms_number(client, to_sms, sample_temp
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header])
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     apply_async.assert_not_called()
