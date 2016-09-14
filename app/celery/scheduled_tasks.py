@@ -111,13 +111,7 @@ def delete_invitations():
 @notify_celery.task(name='timeout-sending-notifications')
 @statsd(namespace="tasks")
 def timeout_notifications():
-    try:
-        updated = dao_timeout_notifications(current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'))
-        if updated:
-            current_app.logger.info(
-                "Timeout period reached for {} notifications, status has been updated.".format(updated))
-    except Exception as e:
-        current_app.logger.exception(e)
-        current_app.logger.error(
-            "Exception raised trying to timeout notification skipping notification update."
-        )
+    updated = dao_timeout_notifications(current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'))
+    if updated:
+        current_app.logger.info(
+            "Timeout period reached for {} notifications, status has been updated.".format(updated))
