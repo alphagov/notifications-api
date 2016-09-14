@@ -11,7 +11,6 @@ from app.dao.templates_dao import dao_update_template
 from app.models import ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
-from notifications_utils.template import NeededByTemplateError
 
 
 def test_get_sms_notification_by_id(notify_api, sample_notification):
