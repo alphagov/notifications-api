@@ -948,7 +948,13 @@ def test_should_delete_sms_notification_and_return_error_if_sqs_fails(notify_api
     'simulate-permanent-failure@notifications.service.gov.uk',
     'simulate-temporary-failure@notifications.service.gov.uk'
 ])
-def test_should_not_send_email_if_simulated_email_address(client, to_email, sample_email_template, mocker):
+def test_should_not_persist_notification_or_send_email_if_simulated_email(
+        client,
+        to_email,
+        sample_email_template,
+        fake_uuid,
+        mocker):
+    mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
     apply_async = mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
 
     data = {
@@ -964,6 +970,7 @@ def test_should_not_send_email_if_simulated_email_address(client, to_email, samp
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 201
+    assert not notifications_dao.get_notification_by_id(fake_uuid)
     apply_async.assert_not_called()
 
 
@@ -972,7 +979,13 @@ def test_should_not_send_email_if_simulated_email_address(client, to_email, samp
     '07700 900111',
     '07700 900222'
 ])
-def test_should_not_send_sms_if_simulated_sms_number(client, to_sms, sample_template, mocker):
+def test_should_not_persist_notification_or_send_sms_if_simulated_number(
+        client,
+        to_sms,
+        sample_template,
+        fake_uuid,
+        mocker):
+    mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
     apply_async = mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
 
     data = {
@@ -988,4 +1001,5 @@ def test_should_not_send_sms_if_simulated_sms_number(client, to_sms, sample_temp
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 201
+    assert not notifications_dao.get_notification_by_id(fake_uuid)
     apply_async.assert_not_called()
