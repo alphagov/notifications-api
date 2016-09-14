@@ -143,7 +143,7 @@ def _update_notification_status(notification, status):
     status = _decide_permanent_temporary_failure(current_status=notification.status, status=status)
     notification.status = status
     dao_update_notification(notification)
-    return True
+    return notification
 
 
 @statsd(namespace="dao")
@@ -156,7 +156,7 @@ def update_notification_status_by_id(notification_id, status):
             Notification.status == 'pending')).first()
 
     if not notification:
-        return False
+        return None
 
     return _update_notification_status(
         notification=notification,
@@ -173,7 +173,7 @@ def update_notification_status_by_reference(reference, status):
             Notification.status == 'pending')).first()
 
     if not notification:
-        return False
+        return None
 
     return _update_notification_status(
         notification=notification,

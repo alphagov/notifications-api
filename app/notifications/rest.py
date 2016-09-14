@@ -79,10 +79,11 @@ def process_ses_response():
 
         try:
             reference = ses_message['mail']['messageId']
-            if not notifications_dao.update_notification_status_by_reference(
-                    reference,
-                    notification_status
-            ):
+            notification = notifications_dao.update_notification_status_by_reference(
+                reference,
+                notification_status
+            )
+            if not notification:
                 error = "SES callback failed: notification either not found or already updated " \
                         "from sending. Status {}".format(notification_status)
                 raise InvalidRequest(error, status_code=404)
@@ -96,6 +97,12 @@ def process_ses_response():
                 )
 
             statsd_client.incr('callback.ses.{}'.format(notification_status))
+            if notification.sent_at:
+                statsd_client.timing_with_dates(
+                    'callback.ses.elapsed-time'.format(client_name.lower()),
+                    datetime.utcnow(),
+                    notification.sent_at
+                )
             return jsonify(
                 result="success", message="SES callback succeeded"
             ), 200
@@ -231,8 +238,8 @@ def send_notification(notification_type):
         raise InvalidRequest(errors, status_code=400)
 
     if (
-            template_object.template_type == SMS_TYPE and
-            template_object.replaced_content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+        template_object.template_type == SMS_TYPE and
+        template_object.replaced_content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
     ):
         char_count = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
         message = 'Content has a character count greater than the limit of {}'.format(char_count)
@@ -240,14 +247,14 @@ def send_notification(notification_type):
         raise InvalidRequest(errors, status_code=400)
 
     if all((
-            api_user.key_type != KEY_TYPE_TEST,
-            service.restricted or api_user.key_type == KEY_TYPE_TEAM,
-            not allowed_to_send_to(
-                notification['to'],
-                itertools.chain.from_iterable(
-                    [user.mobile_number, user.email_address] for user in service.users
-                )
+        api_user.key_type != KEY_TYPE_TEST,
+        service.restricted or api_user.key_type == KEY_TYPE_TEAM,
+        not allowed_to_send_to(
+            notification['to'],
+            itertools.chain.from_iterable(
+                [user.mobile_number, user.email_address] for user in service.users
             )
+        )
     )):
         if (api_user.key_type == KEY_TYPE_TEAM):
             message = 'Can’t send to this recipient using a team-only API key'

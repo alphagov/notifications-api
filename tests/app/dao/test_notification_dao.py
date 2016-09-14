@@ -236,7 +236,8 @@ def test_should_by_able_to_update_status_by_reference(sample_email_template, ses
     notification.reference = 'reference'
     dao_update_notification(notification)
 
-    update_notification_status_by_reference('reference', 'delivered')
+    updated = update_notification_status_by_reference('reference', 'delivered')
+    assert updated.status == 'delivered'
     assert Notification.query.get(notification.id).status == 'delivered'
 
 
@@ -249,8 +250,10 @@ def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_
     assert Notification.query.get(notification.id).status == 'sending'
 
     with freeze_time('2000-01-02 12:00:00'):
-        assert update_notification_status_by_id(notification.id, 'delivered')
+        updated = update_notification_status_by_id(notification.id, 'delivered')
 
+    assert updated.status == 'delivered'
+    assert updated.updated_at == datetime(2000, 1, 2, 12, 0, 0)
     assert Notification.query.get(notification.id).status == 'delivered'
     assert notification.updated_at == datetime(2000, 1, 2, 12, 0, 0)
 
@@ -264,10 +267,29 @@ def test_should_not_update_status_by_id_if_not_sending_and_does_not_update_job(n
     assert job == Job.query.get(notification.job_id)
 
 
-def test_should_update_status_if_created(notify_db, notify_db_session):
+def test_should_not_update_status_by_reference_if_not_sending_and_does_not_update_job(notify_db, notify_db_session):
+    notification = sample_notification(notify_db, notify_db_session, status='delivered', reference='reference')
+    job = Job.query.get(notification.job_id)
+    assert Notification.query.get(notification.id).status == 'delivered'
+    assert not update_notification_status_by_reference('reference', 'failed')
+    assert Notification.query.get(notification.id).status == 'delivered'
+    assert job == Job.query.get(notification.job_id)
+
+
+def test_should_update_status_by_id_if_created(notify_db, notify_db_session):
     notification = sample_notification(notify_db, notify_db_session, status='created')
     assert Notification.query.get(notification.id).status == 'created'
-    assert update_notification_status_by_id(notification.id, 'failed')
+    updated = update_notification_status_by_id(notification.id, 'failed')
+    assert Notification.query.get(notification.id).status == 'failed'
+    assert updated.status == 'failed'
+
+
+def test_should_not_update_status_by_reference_if_not_sending(notify_db, notify_db_session):
+    notification = sample_notification(notify_db, notify_db_session, status='created', reference='reference')
+    assert Notification.query.get(notification.id).status == 'created'
+    updated = update_notification_status_by_reference('reference', 'failed')
+    assert Notification.query.get(notification.id).status == 'created'
+    assert not updated
 
 
 def test_should_by_able_to_update_status_by_id_from_pending_to_delivered(sample_template, sample_job):
