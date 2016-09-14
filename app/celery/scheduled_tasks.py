@@ -7,8 +7,8 @@ from app.aws import s3
 from app import notify_celery
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
 from app.dao.jobs_dao import dao_get_scheduled_jobs, dao_update_job, dao_get_jobs_older_than
-from app.dao.notifications_dao import delete_notifications_created_more_than_a_week_ago, get_notifications, \
-    update_notification_status_by_id
+from app.dao.notifications_dao import (delete_notifications_created_more_than_a_week_ago,
+                                       dao_timeout_notifications)
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.statsd_decorators import statsd
 from app.models import JOB_STATUS_PENDING
@@ -111,21 +111,7 @@ def delete_invitations():
 @notify_celery.task(name='timeout-sending-notifications')
 @statsd(namespace="tasks")
 def timeout_notifications():
-    # TODO: optimize the query by adding the date where clause to this query.
-    notifications = get_notifications(filter_dict={'status': 'sending'})
-    now = datetime.utcnow()
-    for noti in notifications:
-        try:
-            if (now - noti.created_at) > timedelta(
-                    seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD')
-            ):
-                # TODO: think about making this a bulk update rather than one at a time.
-                updated = update_notification_status_by_id(noti.id, 'temporary-failure')
-                if updated:
-                    current_app.logger.info(
-                        "Timeout period reached for notification ({}), status has been updated.".format(noti.id))
-        except Exception as e:
-            current_app.logger.exception(e)
-            current_app.logger.error(
-                "Exception raised trying to timeout notification ({}) skipping notification update.".format(noti.id)
-            )
+    updated = dao_timeout_notifications(current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'))
+    if updated:
+        current_app.logger.info(
+            "Timeout period reached for {} notifications, status has been updated.".format(updated))

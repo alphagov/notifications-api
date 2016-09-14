@@ -34,8 +34,8 @@ from app.dao.notifications_dao import (
     get_notifications_for_service,
     update_notification_status_by_id,
     update_notification_status_by_reference,
-    dao_delete_notifications_and_history_by_id
-)
+    dao_delete_notifications_and_history_by_id,
+    dao_timeout_notifications)
 
 from notifications_utils.template import get_sms_fragment_count
 
@@ -810,3 +810,45 @@ def _notification_json(sample_template, job_id=None, id=None, status=None):
     if status:
         data.update({'status': status})
     return data
+
+
+def test_dao_timeout_notifications(notify_db, notify_db_session,):
+    with freeze_time(datetime.utcnow() - timedelta(minutes=1)):
+        created = sample_notification(notify_db, notify_db_session)
+        sending = sample_notification(notify_db, notify_db_session, status='sending')
+        pending = sample_notification(notify_db, notify_db_session, status='pending')
+        delivered = sample_notification(notify_db, notify_db_session, status='delivered')
+
+    assert Notification.query.get(created.id).status == 'created'
+    assert Notification.query.get(sending.id).status == 'sending'
+    assert Notification.query.get(pending.id).status == 'pending'
+    assert Notification.query.get(delivered.id).status == 'delivered'
+    updated = dao_timeout_notifications(1)
+    assert Notification.query.get(created.id).status == 'temporary-failure'
+    assert Notification.query.get(sending.id).status == 'temporary-failure'
+    assert Notification.query.get(pending.id).status == 'temporary-failure'
+    assert Notification.query.get(delivered.id).status == 'delivered'
+    assert NotificationHistory.query.get(created.id).status == 'temporary-failure'
+    assert NotificationHistory.query.get(sending.id).status == 'temporary-failure'
+    assert NotificationHistory.query.get(pending.id).status == 'temporary-failure'
+    assert NotificationHistory.query.get(delivered.id).status == 'delivered'
+    assert updated == 3
+
+
+def test_dao_timeout_notifications_only_updates_for_older_notifications(notify_db, notify_db_session):
+    with freeze_time(datetime.utcnow() + timedelta(minutes=10)):
+        created = sample_notification(notify_db, notify_db_session)
+        sending = sample_notification(notify_db, notify_db_session, status='sending')
+        pending = sample_notification(notify_db, notify_db_session, status='pending')
+        delivered = sample_notification(notify_db, notify_db_session, status='delivered')
+
+    assert Notification.query.get(created.id).status == 'created'
+    assert Notification.query.get(sending.id).status == 'sending'
+    assert Notification.query.get(pending.id).status == 'pending'
+    assert Notification.query.get(delivered.id).status == 'delivered'
+    updated = dao_timeout_notifications(1)
+    assert NotificationHistory.query.get(created.id).status == 'created'
+    assert NotificationHistory.query.get(sending.id).status == 'sending'
+    assert NotificationHistory.query.get(pending.id).status == 'pending'
+    assert NotificationHistory.query.get(delivered.id).status == 'delivered'
+    assert updated == 0
