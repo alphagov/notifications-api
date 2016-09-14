@@ -674,14 +674,11 @@ def test_should_not_return_html_in_body(notify_api, notify_db, notify_db_session
 def test_should_not_send_email_if_team_api_key_and_not_a_service_user(notify_api, sample_email_template, mocker):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
-
         data = {
             'to': "not-someone-we-trust@email-address.com",
             'template': str(sample_email_template.id),
         }
 
-        # import pdb
-        # pdb.set_trace()
         auth_header = create_authorization_header(service_id=sample_email_template.service_id, key_type=KEY_TYPE_TEAM)
 
         response = client.post(
@@ -944,3 +941,61 @@ def test_should_delete_sms_notification_and_return_error_if_sqs_fails(notify_api
         assert response.status_code == 500
         assert not notifications_dao.get_notification_by_id(fake_uuid)
         assert not NotificationHistory.query.get(fake_uuid)
+
+
+@pytest.mark.parametrize('to_email', [
+    'simulate-delivered@notifications.service.gov.uk',
+    'simulate-permanent-failure@notifications.service.gov.uk',
+    'simulate-temporary-failure@notifications.service.gov.uk'
+])
+def test_should_not_persist_notification_or_send_email_if_simulated_email(
+        client,
+        to_email,
+        sample_email_template,
+        mocker):
+    apply_async = mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
+
+    data = {
+        'to': to_email,
+        'template': sample_email_template.id
+    }
+
+    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+
+    response = client.post(
+        path='/notifications/email',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 201
+    apply_async.assert_not_called()
+    assert Notification.query.count() == 0
+
+
+@pytest.mark.parametrize('to_sms', [
+    '07700 900000',
+    '07700 900111',
+    '07700 900222'
+])
+def test_should_not_persist_notification_or_send_sms_if_simulated_number(
+        client,
+        to_sms,
+        sample_template,
+        mocker):
+    apply_async = mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+
+    data = {
+        'to': to_sms,
+        'template': sample_template.id
+    }
+
+    auth_header = create_authorization_header(service_id=sample_template.service_id)
+
+    response = client.post(
+        path='/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 201
+    apply_async.assert_not_called()
+    assert Notification.query.count() == 0
