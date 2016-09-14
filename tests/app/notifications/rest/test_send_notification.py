@@ -952,9 +952,7 @@ def test_should_not_persist_notification_or_send_email_if_simulated_email(
         client,
         to_email,
         sample_email_template,
-        fake_uuid,
         mocker):
-    mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
     apply_async = mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
 
     data = {
@@ -970,8 +968,8 @@ def test_should_not_persist_notification_or_send_email_if_simulated_email(
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 201
-    assert not notifications_dao.get_notification_by_id(fake_uuid)
     apply_async.assert_not_called()
+    assert Notification.query.count() == 0
 
 
 @pytest.mark.parametrize('to_sms', [
@@ -983,9 +981,7 @@ def test_should_not_persist_notification_or_send_sms_if_simulated_number(
         client,
         to_sms,
         sample_template,
-        fake_uuid,
         mocker):
-    mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
     apply_async = mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
 
     data = {
@@ -1001,5 +997,5 @@ def test_should_not_persist_notification_or_send_sms_if_simulated_number(
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 201
-    assert not notifications_dao.get_notification_by_id(fake_uuid)
     apply_async.assert_not_called()
+    assert Notification.query.count() == 0
