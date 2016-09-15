@@ -19,7 +19,7 @@ from app.models import (
     ProviderStatistics,
     ProviderDetails,
     NotificationStatistics,
-    KEY_TYPE_NORMAL)
+    KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
@@ -242,6 +242,16 @@ def sample_api_key(notify_db,
 
 
 @pytest.fixture(scope='function')
+def sample_test_api_key(notify_db, notify_db_session, service=None):
+    return sample_api_key(notify_db, notify_db_session, service, KEY_TYPE_TEST)
+
+
+@pytest.fixture(scope='function')
+def sample_team_api_key(notify_db, notify_db_session, service=None):
+    return sample_api_key(notify_db, notify_db_session, service, KEY_TYPE_TEAM)
+
+
+@pytest.fixture(scope='function')
 def sample_job(notify_db,
                notify_db_session,
                service=None,
@@ -332,6 +342,48 @@ def sample_email_job(notify_db,
 
 
 @pytest.fixture(scope='function')
+def sample_notification_with_job(
+        notify_db,
+        notify_db_session,
+        service=None,
+        template=None,
+        job=None,
+        job_row_number=None,
+        to_field=None,
+        status='created',
+        reference=None,
+        created_at=None,
+        sent_at=None,
+        billable_units=1,
+        create=True,
+        personalisation=None,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL
+):
+    if job is None:
+        job = sample_job(notify_db, notify_db_session, service=service, template=template)
+
+    return sample_notification(
+        notify_db,
+        notify_db_session,
+        service,
+        template,
+        job=job,
+        job_row_number=job_row_number if job_row_number else None,
+        to_field=to_field,
+        status=status,
+        reference=reference,
+        created_at=created_at,
+        sent_at=sent_at,
+        billable_units=billable_units,
+        create=create,
+        personalisation=personalisation,
+        api_key_id=api_key_id,
+        key_type=key_type
+    )
+
+
+@pytest.fixture(scope='function')
 def sample_notification(notify_db,
                         notify_db_session,
                         service=None,
@@ -354,8 +406,6 @@ def sample_notification(notify_db,
         service = sample_service(notify_db, notify_db_session)
     if template is None:
         template = sample_template(notify_db, notify_db_session, service=service)
-    if job is None:
-        job = sample_job(notify_db, notify_db_session, service=service, template=template)
 
     notification_id = uuid.uuid4()
 
@@ -367,7 +417,7 @@ def sample_notification(notify_db,
     data = {
         'id': notification_id,
         'to': to,
-        'job_id': job.id,
+        'job_id': job.id if job else None,
         'job': job,
         'service_id': service.id,
         'service': service,
