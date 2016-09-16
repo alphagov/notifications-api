@@ -211,7 +211,7 @@ def test_authentication_returns_error_when_service_doesnt_exit(
         )
         assert response.status_code == 403
         error_message = json.loads(response.get_data())
-        assert error_message['message'] == {'token': ['Invalid token: no api keys for service']}
+        assert error_message['message'] == {'token': ['Invalid token: service not found']}
 
 
 def test_authentication_returns_error_when_service_has_no_secrets(notify_api,
