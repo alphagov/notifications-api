@@ -46,7 +46,7 @@ def requires_auth():
             continue
 
         if api_key.expiry_date:
-            raise AuthError("Invalid token: revoked", 403)
+            raise AuthError("Invalid token: API key revoked", 403)
 
         _request_ctx_stack.top.api_user = api_key
         return
@@ -57,7 +57,7 @@ def requires_auth():
         raise AuthError("Invalid token: service not found", 403)
 
     if not api_keys:
-        raise AuthError("Invalid token: no api keys for service", 403)
+        raise AuthError("Invalid token: service has no API keys", 403)
     else:
         raise AuthError("Invalid token: signature", 403)
 
