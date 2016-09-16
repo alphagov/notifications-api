@@ -441,6 +441,30 @@ def test_fetch_stats_counts_correctly(notify_db, notify_db_session, sample_templ
     assert stats[2].count == 1
 
 
+def test_fetch_stats_counts_should_ignore_team_key(
+        notify_db,
+        notify_db_session,
+        sample_template,
+        sample_api_key,
+        sample_test_api_key,
+        sample_team_api_key
+):
+    # two created email, one failed email, and one created sms
+    create_notification(notify_db, notify_db_session, api_key_id=sample_api_key.id, key_type=sample_api_key.key_type)
+    create_notification(
+        notify_db, notify_db_session, api_key_id=sample_test_api_key.id, key_type=sample_test_api_key.key_type)
+    create_notification(
+        notify_db, notify_db_session, api_key_id=sample_team_api_key.id, key_type=sample_team_api_key.key_type)
+    create_notification(
+        notify_db, notify_db_session)
+
+    stats = dao_fetch_stats_for_service(sample_template.service_id)
+    assert len(stats) == 1
+    assert stats[0].notification_type == 'sms'
+    assert stats[0].status == 'created'
+    assert stats[0].count == 3
+
+
 def test_fetch_stats_for_today_only_includes_today(notify_db, notify_db_session, sample_template):
     # two created email, one failed email, and one created sms
     with freeze_time('2001-01-01T23:59:00'):

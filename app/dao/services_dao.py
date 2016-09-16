@@ -23,8 +23,8 @@ from app.models import (
     Permission,
     User,
     InvitedUser,
-    Service
-)
+    Service,
+    KEY_TYPE_TEST)
 from app.statsd_decorators import statsd
 
 
@@ -156,7 +156,8 @@ def _stats_for_service_query(service_id):
         Notification.status,
         func.count(Notification.id).label('count')
     ).filter(
-        Notification.service_id == service_id
+        Notification.service_id == service_id,
+        Notification.key_type != KEY_TYPE_TEST
     ).group_by(
         Notification.notification_type,
         Notification.status,
