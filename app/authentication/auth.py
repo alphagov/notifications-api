@@ -1,8 +1,11 @@
 from flask import request, jsonify, _request_ctx_stack, current_app
+from sqlalchemy.orm.exc import NoResultFound
+
 from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
 from notifications_python_client.errors import TokenDecodeError, TokenExpiredError
 
 from app.dao.api_key_dao import get_model_api_keys
+from app.dao.services_dao import dao_fetch_service_by_id
 
 
 class AuthError(Exception):
@@ -43,13 +46,18 @@ def requires_auth():
             continue
 
         if api_key.expiry_date:
-            raise AuthError("Invalid token: revoked", 403)
+            raise AuthError("Invalid token: API key revoked", 403)
 
         _request_ctx_stack.top.api_user = api_key
         return
 
+    try:
+        dao_fetch_service_by_id(client)
+    except NoResultFound:
+        raise AuthError("Invalid token: service not found", 403)
+
     if not api_keys:
-        raise AuthError("Invalid token: no api keys for service", 403)
+        raise AuthError("Invalid token: service has no API keys", 403)
     else:
         raise AuthError("Invalid token: signature", 403)
 

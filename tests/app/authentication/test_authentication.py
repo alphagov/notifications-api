@@ -169,7 +169,7 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
                 headers={'Authorization': 'Bearer {}'.format(token)})
             assert response.status_code == 403
             data = json.loads(response.get_data())
-            assert data['message'] == {"token": ['Invalid token: revoked']}
+            assert data['message'] == {"token": ['Invalid token: API key revoked']}
 
 
 def test_authentication_returns_error_when_admin_client_has_no_secrets(notify_api,
@@ -192,6 +192,28 @@ def test_authentication_returns_error_when_admin_client_has_no_secrets(notify_ap
             notify_api.config['ADMIN_CLIENT_SECRET'] = api_secret
 
 
+def test_authentication_returns_error_when_service_doesnt_exit(
+    notify_api,
+    notify_db,
+    notify_db_session,
+    sample_service,
+    fake_uuid
+):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        # get service ID and secret the wrong way around
+        token = create_jwt_token(
+            secret=str(sample_service.id),
+            client_id=fake_uuid
+        )
+        response = client.get(
+            '/service',
+            headers={'Authorization': 'Bearer {}'.format(token)}
+        )
+        assert response.status_code == 403
+        error_message = json.loads(response.get_data())
+        assert error_message['message'] == {'token': ['Invalid token: service not found']}
+
+
 def test_authentication_returns_error_when_service_has_no_secrets(notify_api,
                                                                   notify_db,
                                                                   notify_db_session,
@@ -208,7 +230,7 @@ def test_authentication_returns_error_when_service_has_no_secrets(notify_api,
                 headers={'Authorization': 'Bearer {}'.format(token)})
             assert response.status_code == 403
             error_message = json.loads(response.get_data())
-            assert error_message['message'] == {'token': ['Invalid token: no api keys for service']}
+            assert error_message['message'] == {'token': ['Invalid token: service has no API keys']}
 
 
 def test_should_attach_the_current_api_key_to_current_app(notify_api, sample_service, sample_api_key):
