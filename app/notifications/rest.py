@@ -168,6 +168,7 @@ def get_notification_by_id(notification_id):
 @notifications.route('/notifications', methods=['GET'])
 def get_all_notifications():
     data = notifications_filter_schema.load(request.args).data
+    include_jobs = data.get('include_jobs', False)
     page = data['page'] if 'page' in data else 1
     page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
     limit_days = data.get('limit_days')
@@ -179,7 +180,8 @@ def get_all_notifications():
         page=page,
         page_size=page_size,
         limit_days=limit_days,
-        key_type=api_user.key_type)
+        key_type=api_user.key_type,
+        include_jobs=include_jobs)
     return jsonify(
         notifications=notification_with_personalisation_schema.dump(pagination.items, many=True).data,
         page_size=page_size,

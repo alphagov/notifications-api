@@ -219,7 +219,8 @@ def get_all_notifications_for_service(service_id):
         filter_dict=data,
         page=page,
         page_size=page_size,
-        limit_days=limit_days)
+        limit_days=limit_days,
+        include_jobs=True)
     kwargs = request.args.to_dict()
     kwargs['service_id'] = service_id
     return jsonify(

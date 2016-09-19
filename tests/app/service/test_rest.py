@@ -14,8 +14,8 @@ from tests.app.conftest import (
     sample_service as create_sample_service,
     sample_service_permission as create_sample_service_permission,
     sample_user as create_sample_user,
-    sample_notification as create_sample_notification
-)
+    sample_notification as create_sample_notification,
+    sample_notification_with_job)
 
 
 def test_get_service_list(notify_api, service_factory):
@@ -1034,6 +1034,28 @@ def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notif
         assert resp['notifications'][0]['to'] == notification_3.to
         assert resp['notifications'][1]['to'] == notification_2.to
         assert resp['notifications'][2]['to'] == notification_1.to
+        assert response.status_code == 200
+
+
+def test_get_all_notifications_for_service_including_ones_made_by_jobs(
+        notify_api,
+        notify_db,
+        notify_db_session,
+        sample_service):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        with_job = sample_notification_with_job(notify_db, notify_db_session, service=sample_service)
+        without_job = create_sample_notification(notify_db, notify_db_session, service=sample_service)
+
+        auth_header = create_authorization_header()
+
+        response = client.get(
+            path='/service/{}/notifications'.format(sample_service.id),
+            headers=[auth_header])
+
+        resp = json.loads(response.get_data(as_text=True))
+        assert len(resp['notifications']) == 2
+        assert resp['notifications'][0]['to'] == with_job.to
+        assert resp['notifications'][1]['to'] == without_job.to
         assert response.status_code == 200
 
 
