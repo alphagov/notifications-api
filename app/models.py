@@ -132,6 +132,17 @@ class Service(db.Model, Versioned):
     )
 
 
+class ServiceWhitelist(db.Model):
+    __tablename__ = 'service_whitelist'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
+    service = db.relationship('Service', backref='whitelist')
+    email_address = db.Column(db.String(255), nullable=True)
+    mobile_number = db.Column(db.String, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+
 class ApiKey(db.Model, Versioned):
     __tablename__ = 'api_keys'
 
