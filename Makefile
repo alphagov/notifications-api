@@ -70,9 +70,17 @@ build-codedeploy-artifact: ## Build the deploy artifact for CodeDeploy
 	mkdir -p target
 	zip -r -x@deploy-exclude.lst target/notifications-api.zip *
 
+	rm -rf build/db-migration-codedeploy
+	mkdir -p build/db-migration-codedeploy
+	unzip target/notifications-api.zip -d build/db-migration-codedeploy
+	cd build/db-migration-codedeploy && \
+		mv -f appspec-db-migration.yml appspec.yml && \
+		zip -r -x@deploy-exclude.lst ../../target/notifications-api-db-migration.zip *
+
 .PHONY: upload-codedeploy-artifact ## Upload the deploy artifact for CodeDeploy
 upload-codedeploy-artifact: check-env-vars
 	aws s3 cp --region eu-west-1 target/notifications-api.zip s3://${DNS_NAME}-codedeploy/notifications-api-${DEPLOY_BUILD_NUMBER}.zip
+	aws s3 cp --region eu-west-1 target/notifications-api-db-migration.zip s3://${DNS_NAME}-codedeploy/notifications-api-db-migration-${DEPLOY_BUILD_NUMBER}.zip
 
 .PHONY: test
 test: venv generate-version-file ## Run tests
@@ -81,6 +89,10 @@ test: venv generate-version-file ## Run tests
 .PHONY: deploy-api
 deploy-api: check-env-vars ## Trigger CodeDeploy for the api
 	aws deploy create-deployment --application-name notify-api --deployment-config-name CodeDeployDefault.OneAtATime --deployment-group-name notify-api --s3-location bucket=${DNS_NAME}-codedeploy,key=notifications-api-${DEPLOY_BUILD_NUMBER}.zip,bundleType=zip --region eu-west-1
+
+.PHONY: deploy-api
+deploy-api-db-migration: check-env-vars ## Trigger CodeDeploy for the api db migration
+	aws deploy create-deployment --application-name notify-api-db-migration --deployment-config-name CodeDeployDefault.OneAtATime --deployment-group-name notify-api-db-migration --s3-location bucket=${DNS_NAME}-codedeploy,key=notifications-api-db-migration-${DEPLOY_BUILD_NUMBER}.zip,bundleType=zip --region eu-west-1
 
 .PHONY: deploy-admin-api
 deploy-admin-api: check-env-vars ## Trigger CodeDeploy for the admin api
@@ -155,4 +167,4 @@ clean-docker-containers: ## Clean up any remaining docker containers
 	docker rm -f $(shell docker ps -q -f "name=${DOCKER_CONTAINER_PREFIX}") 2> /dev/null || true
 
 clean:
-	rm -rf node_modules cache target venv .coverage
+	rm -rf node_modules cache target venv .coverage build tests/.cache
