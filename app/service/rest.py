@@ -26,6 +26,10 @@ from app.dao.services_dao import (
     dao_fetch_weekly_historical_stats_for_service,
     dao_fetch_todays_stats_for_all_services
 )
+from app.dao.service_whitelist_dao import (
+    dao_fetch_service_whitelist,
+    dao_add_whitelisted_contact
+)
 from app.dao import notifications_dao
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_model_users
@@ -44,6 +48,7 @@ from app.errors import (
     InvalidRequest
 )
 from app.service import statistics
+
 
 service_blueprint = Blueprint('service', __name__)
 register_errors(service_blueprint)
@@ -266,3 +271,27 @@ def get_detailed_services():
             service.statistics = statistics.create_zeroed_stats_dicts()
 
     return detailed_service_schema.dump(services.values(), many=True).data
+
+
+@service_blueprint.route('/<uuid:service_id>/whitelist', methods=['GET'])
+def get_whitelist(service_id):
+    whitelist = dao_fetch_service_whitelist(service_id)
+
+    return {
+        'emails': [
+            {'id': item.id, 'email_address': item.email_address}
+            for item in whitelist if item.email_address is not None
+        ],
+        'mobile_numbers': [
+            {'id': item.id, 'mobile_number': item.mobile_number}
+            for item in whitelist if item.mobile_number is not None
+        ]
+    }
+
+
+@service_blueprint.route('/<uuid:service_id>/whitelist', methods=['POST'])
+def update_whitelist(service_id):
+    # todo: make this transactional
+    dao_remove_service_whitelist(service_id)
+    for contact in request.get_json():
+        dao_add_whitelisted_contact(ServiceWhitelist.from_string(contact))
