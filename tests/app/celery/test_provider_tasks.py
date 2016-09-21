@@ -1,31 +1,8 @@
-import uuid
-from datetime import datetime
-
-import pytest
 from celery.exceptions import MaxRetriesExceededError
-from unittest.mock import ANY, call
-from notifications_utils.recipients import validate_phone_number, format_phone_number
-
-import app
-from app import statsd_client, mmg_client
 from app.celery import provider_tasks
 from app.celery.provider_tasks import send_sms_to_provider, send_email_to_provider
-from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.clients.email import EmailClientException
-from app.clients.sms import SmsClientException
-from app.dao import notifications_dao, provider_details_dao
-from app.dao import provider_statistics_dao
-from app.dao.provider_statistics_dao import get_provider_statistics
-from app.models import (
-    Notification,
-    NotificationStatistics,
-    Job,
-    Organisation,
-    KEY_TYPE_NORMAL,
-    KEY_TYPE_TEST,
-    BRANDING_ORG,
-    BRANDING_BOTH
-)
+from app.models import Notification
 from tests.app.conftest import sample_notification
 
 

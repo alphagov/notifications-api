@@ -5,6 +5,7 @@ import pytest
 from mock import ANY
 
 import app
+from sqlalchemy.orm.exc import NoResultFound
 from app import mmg_client
 from app.dao import (provider_details_dao, notifications_dao, provider_statistics_dao)
 from app.dao.provider_statistics_dao import get_provider_statistics
@@ -44,6 +45,18 @@ def test_should_return_highest_priority_active_provider(notify_db, notify_db_ses
     provider_details_dao.dao_update_provider_details(first)
 
     assert send_to_providers.provider_to_use('sms', '1234').name == first.identifier
+
+
+def test_raises_not_found_exception_if_no_notification_for_id(notify_db, notify_db_session, mocker):
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="mmg")
+    notification_id = uuid.uuid4()
+
+    with pytest.raises(NoResultFound) as exc:
+        send_to_providers.send_sms_to_provider(notification_id)
+
+    assert str(exc.value) == "No notification for {}".format(str(notification_id))
+    app.mmg_client.send_sms.assert_not_called()
 
 
 def test_should_send_personalised_template_to_correct_sms_provider_and_persist(

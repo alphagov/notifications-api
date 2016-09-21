@@ -20,10 +20,9 @@ from app.dao.templates_dao import dao_get_template_by_id
 from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE
 
 
-def send_sms_to_provider(notification_id):
-    notification = get_notification_by_id(notification_id)
+def send_sms_to_provider(notification):
     service = dao_fetch_service_by_id(notification.service_id)
-    provider = provider_to_use(SMS_TYPE, notification_id)
+    provider = provider_to_use(SMS_TYPE, notification.id)
     if notification.status == 'created':
         template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
         template = Template(
@@ -33,7 +32,7 @@ def send_sms_to_provider(notification_id):
         )
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
             send_sms_response.apply_async(
-                (provider.get_name(), str(notification_id), notification.to), queue='research-mode'
+                (provider.get_name(), str(notification.id), notification.to), queue='research-mode'
             )
             notification.billable_units = 0
         else:

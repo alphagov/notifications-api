@@ -31,6 +31,47 @@ def retry_iteration_to_delay(retry=0):
     return delays.get(retry, 10)
 
 
+@notify_celery.task(bind=True, name="deliver_sms", max_retries=5, default_retry_delay=5)
+@statsd(namespace="tasks")
+def deliver_sms(self, notification_id):
+    try:
+        send_to_providers.send_sms_to_provider(notification_id)
+    except Exception as e:
+        try:
+            current_app.logger.error(
+                "RETRY: SMS notification {} failed".format(notification_id)
+            )
+            current_app.logger.exception(e)
+            self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
+        except self.MaxRetriesExceededError:
+            current_app.logger.error(
+                "RETRY FAILED: task send_sms_to_provider failed for notification {}".format(notification_id),
+                e
+            )
+            update_notification_status_by_id(notification_id, 'technical-failure')
+
+
+@notify_celery.task(bind=True, name="deliver_email", max_retries=5, default_retry_delay=5)
+@statsd(namespace="tasks")
+def deliver_email(self, notification_id):
+    try:
+        send_to_providers.send_email_response(notification_id)
+    except Exception as e:
+        try:
+            current_app.logger.error(
+                "RETRY: Email notification {} failed".format(notification_id)
+            )
+            current_app.logger.exception(e)
+            self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
+        except self.MaxRetriesExceededError:
+            current_app.logger.error(
+                "RETRY FAILED: task send_email_to_provider failed for notification {}".format(notification_id),
+                e
+            )
+            update_notification_status_by_id(notification_id, 'technical-failure')
+
+
+
 @notify_celery.task(bind=True, name="send-sms-to-provider", max_retries=5, default_retry_delay=5)
 @statsd(namespace="tasks")
 def send_sms_to_provider(self, service_id, notification_id):
