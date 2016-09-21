@@ -1,0 +1,18 @@
+---
+os: linux
+version: 0.0
+files:
+  - destination: /home/notify-app/notifications-api
+    source: /
+hooks:
+  AfterInstall:
+    - location: scripts/aws_install_dependencies.sh
+      runas: root
+      timeout: 1000
+    - location: scripts/aws_change_ownership.sh
+      runas: root
+      timeout: 300
+  ApplicationStart:
+    - location: scripts/aws_run_db_migrations.sh
+      runas: root
+      timeout: 300

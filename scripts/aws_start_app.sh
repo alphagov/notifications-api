@@ -1,31 +1,19 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-if [ -e "/etc/init/notifications-api.conf" ]
-then
-  echo "Starting api"
-  sudo service notifications-api start
-fi
+set -eo pipefail
 
-if [ -e "/etc/init/notifications-api-celery-worker.conf" ]
-then
-  echo "Starting celery worker"
-  sudo service notifications-api-celery-worker start
-fi
+function start
+{
+  service=$1
+  if [ -e "/etc/init/${service}.conf" ]
+  then
+    echo "Starting ${service}"
+    service ${service} start
+  fi
+}
 
-if [ -e "/etc/init/notifications-api-celery-worker-sender.conf" ]
-then
-  echo "Starting celery worker"
-  sudo service notifications-api-celery-worker-sender start
-fi
-
-if [ -e "/etc/init/notifications-api-celery-worker-db.conf" ]
-then
-  echo "Starting celery worker"
-  sudo service notifications-api-celery-worker-db start
-fi
-
-if [ -e "/etc/init/notifications-api-celery-beat.conf" ]
-then
-  echo "Starting celery beat"
-  sudo service notifications-api-celery-beat start
-fi
+start "notifications-api"
+start "notifications-api-celery-worker"
+start "notifications-api-celery-worker-sender"
+start "notifications-api-celery-worker-db"
+start "notifications-api-celery-beat"

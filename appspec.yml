@@ -1,35 +1,28 @@
 ---
+os: linux
+version: 0.0
 files:
-  -
-    destination: /home/notify-app/notifications-api
+  - destination: /home/notify-app/notifications-api
     source: /
 hooks:
   AfterInstall:
-    -
-      location: scripts/aws_install_dependencies.sh
+    - location: scripts/aws_install_dependencies.sh
       runas: root
       timeout: 1000
-    -
-      location: scripts/aws_change_ownership.sh
+    - location: scripts/aws_change_ownership.sh
       runas: root
       timeout: 300
   ApplicationStart:
-    -
-      location: scripts/aws_start_app.sh
+    - location: scripts/aws_start_app.sh
       runas: root
       timeout: 300
-    -
-      location: scripts/register_with_elb.sh
+    - location: scripts/register_with_elb.sh
       runas: ubuntu
       timeout: 300
   ApplicationStop:
-    -
-      location: scripts/deregister_from_elb.sh
+    - location: scripts/deregister_from_elb.sh
       runas: ubuntu
       timeout: 300
-    -
-      location: scripts/aws_stop_app.sh
+    - location: scripts/aws_stop_app.sh
       runas: root
       timeout: 300
-os: linux
-version: 0.0
