@@ -15,16 +15,17 @@
     "links": {
       "type": "object",
       "properties" : {
-        "last": {
+        "prev" : {
           "type" : "string"
         },
         "next" : {
           "type" : "string"
         },
-        "prev" : {
+        "last": {
           "type" : "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "page_size": {"type": "number"},
     "total": {"type": "number"}
