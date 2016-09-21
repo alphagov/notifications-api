@@ -1,5 +1,6 @@
 from datetime import datetime
 from monotonic import monotonic
+from requests import RequestException
 from urllib.parse import urljoin
 
 from flask import current_app
@@ -11,7 +12,7 @@ from notifications_utils.renderers import HTMLEmail, PlainTextEmail, SMSMessage
 
 from app import notify_celery, statsd_client, clients, create_uuid
 from app.clients.email import EmailClientException
-from app.clients.sms import SmsClientException
+from app.clients.sms import SmsClientException, SmsClientResponseException
 from app.dao.notifications_dao import (
     get_notification_by_id,
     dao_update_notification,
@@ -81,7 +82,7 @@ def send_sms_to_provider(self, service_id, notification_id):
             notification.sent_by = provider.get_name()
             notification.status = 'sending'
             dao_update_notification(notification)
-        except SmsClientException as e:
+        except SmsClientResponseException as e:
             try:
                 current_app.logger.error(
                     "RETRY: SMS notification {} failed".format(notification_id)

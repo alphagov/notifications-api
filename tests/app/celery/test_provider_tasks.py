@@ -12,14 +12,12 @@ from app.celery import provider_tasks
 from app.celery.provider_tasks import send_sms_to_provider, send_email_to_provider
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.clients.email import EmailClientException
-from app.clients.sms import SmsClientException
+from app.clients.sms import SmsClientException, SmsClientResponseException
 from app.dao import notifications_dao, provider_details_dao
 from app.dao import provider_statistics_dao
 from app.dao.provider_statistics_dao import get_provider_statistics
 from app.models import (
     Notification,
-    NotificationStatistics,
-    Job,
     Organisation,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
@@ -296,7 +294,7 @@ def test_should_go_into_technical_error_if_exceeds_retries(
     notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                                        service=sample_service, status='created')
 
-    mocker.patch('app.mmg_client.send_sms', side_effect=SmsClientException("EXPECTED"))
+    mocker.patch('app.mmg_client.send_sms', side_effect=SmsClientResponseException("EXPECTED"))
     mocker.patch('app.celery.provider_tasks.send_sms_to_provider.retry', side_effect=MaxRetriesExceededError())
 
     send_sms_to_provider(
@@ -519,12 +517,3 @@ def test_get_html_email_renderer_prepends_logo_path(notify_db, sample_service):
     renderer = provider_tasks.get_html_email_renderer(sample_service)
 
     assert renderer.brand_logo == 'http://localhost:6012/static/images/email-template/crests/justice-league.png'
-
-
-def _get_provider_statistics(service, **kwargs):
-    query = ProviderStatistics.query.filter_by(service=service)
-    if 'providers' in kwargs:
-        providers = ProviderDetails.query.filter(ProviderDetails.identifier.in_(kwargs['providers'])).all()
-        provider_ids = [provider.id for provider in providers]
-        query = query.filter(ProviderStatistics.provider_id.in_(provider_ids))
-    return query

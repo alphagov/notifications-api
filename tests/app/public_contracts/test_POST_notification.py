@@ -20,7 +20,6 @@ def test_post_sms_contract(client, mocker, sample_template):
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header]
     )
-
     validate(response.get_data(as_text=True), 'POST_notification_return_sms.json')
 
 
