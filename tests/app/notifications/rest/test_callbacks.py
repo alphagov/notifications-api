@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from flask import json
 from freezegun import freeze_time
-from mock import call
+from unittest.mock import call
 
 import app.celery.tasks
 from app.dao.notifications_dao import (
