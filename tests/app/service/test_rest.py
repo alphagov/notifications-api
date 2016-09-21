@@ -1059,6 +1059,27 @@ def test_get_all_notifications_for_service_including_ones_made_by_jobs(
         assert response.status_code == 200
 
 
+def test_get_only_api_created_notifications_for_service(
+    client,
+    notify_db,
+    notify_db_session,
+    sample_service
+):
+    with_job = sample_notification_with_job(notify_db, notify_db_session, service=sample_service)
+    without_job = create_sample_notification(notify_db, notify_db_session, service=sample_service)
+
+    auth_header = create_authorization_header()
+
+    response = client.get(
+        path='/service/{}/notifications?include_jobs=false'.format(sample_service.id),
+        headers=[auth_header])
+
+    resp = json.loads(response.get_data(as_text=True))
+    assert len(resp['notifications']) == 1
+    assert resp['notifications'][0]['id'] == str(without_job.id)
+    assert response.status_code == 200
+
+
 def test_set_sms_sender_for_service(notify_api, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
