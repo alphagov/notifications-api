@@ -1,5 +1,6 @@
-from datetime import (datetime, timedelta)
+from datetime import datetime, timedelta
 import uuid
+
 from freezegun import freeze_time
 
 from app.dao.jobs_dao import (
@@ -10,9 +11,10 @@ from app.dao.jobs_dao import (
     dao_get_scheduled_jobs,
     dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job,
-    dao_get_jobs_older_than)
-
+    dao_get_jobs_older_than
+)
 from app.models import Job
+
 from tests.app.conftest import sample_notification, sample_job, sample_service
 
 
@@ -143,8 +145,8 @@ def test_get_jobs_for_service(notify_db, notify_db_session, sample_template):
     other_template = create_template(notify_db, notify_db_session, service=other_service)
     other_job = create_job(notify_db, notify_db_session, service=other_service, template=other_template)
 
-    one_job_from_db = dao_get_jobs_by_service_id(one_job.service_id)
-    other_job_from_db = dao_get_jobs_by_service_id(other_job.service_id)
+    one_job_from_db = dao_get_jobs_by_service_id(one_job.service_id).items
+    other_job_from_db = dao_get_jobs_by_service_id(other_job.service_id).items
 
     assert len(one_job_from_db) == 1
     assert one_job == one_job_from_db[0]
@@ -162,13 +164,13 @@ def test_get_jobs_for_service_with_limit_days_param(notify_db, notify_db_session
     old_job = create_job(notify_db, notify_db_session, sample_template.service, sample_template,
                          created_at=datetime.now() - timedelta(days=8))
 
-    jobs = dao_get_jobs_by_service_id(one_job.service_id)
+    jobs = dao_get_jobs_by_service_id(one_job.service_id).items
 
     assert len(jobs) == 2
     assert one_job in jobs
     assert old_job in jobs
 
-    jobs_limit_days = dao_get_jobs_by_service_id(one_job.service_id, limit_days=7)
+    jobs_limit_days = dao_get_jobs_by_service_id(one_job.service_id, limit_days=7).items
     assert len(jobs_limit_days) == 1
     assert one_job in jobs_limit_days
     assert old_job not in jobs_limit_days
@@ -187,7 +189,7 @@ def test_get_jobs_for_service_with_limit_days_edge_case(notify_db, notify_db_ses
     job_eight_days_old = create_job(notify_db, notify_db_session, sample_template.service, sample_template,
                                     created_at=datetime.now() - timedelta(days=8))
 
-    jobs_limit_days = dao_get_jobs_by_service_id(one_job.service_id, limit_days=7)
+    jobs_limit_days = dao_get_jobs_by_service_id(one_job.service_id, limit_days=7).items
     assert len(jobs_limit_days) == 3
     assert one_job in jobs_limit_days
     assert job_two in jobs_limit_days
@@ -207,7 +209,7 @@ def test_get_jobs_for_service_in_created_at_order(notify_db, notify_db_session, 
     job_4 = create_job(
         notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
 
-    jobs = dao_get_jobs_by_service_id(sample_template.service.id)
+    jobs = dao_get_jobs_by_service_id(sample_template.service.id).items
 
     assert len(jobs) == 4
     assert jobs[0].id == job_4.id
@@ -271,3 +273,27 @@ def test_should_get_jobs_older_than_seven_days(notify_db, notify_db_session):
         jobs = dao_get_jobs_older_than(7)
         assert len(jobs) == 1
         assert jobs[0].id == job_1.id
+
+
+def test_get_jobs_for_service_is_paginated(notify_db, notify_db_session, sample_service, sample_template):
+
+    from tests.app.conftest import sample_job as create_job
+
+    with freeze_time('2015-01-01T00:00:00') as the_time:
+        for _ in range(10):
+            the_time.tick(timedelta(hours=1))
+            create_job(notify_db, notify_db_session, sample_service, sample_template)
+
+    res = dao_get_jobs_by_service_id(sample_service.id, page=1, page_size=2)
+
+    assert res.per_page == 2
+    assert res.total == 10
+    assert len(res.items) == 2
+    assert res.items[0].created_at == datetime(2015, 1, 1, 10)
+    assert res.items[1].created_at == datetime(2015, 1, 1, 9)
+
+    res = dao_get_jobs_by_service_id(sample_service.id, page=2, page_size=2)
+
+    assert len(res.items) == 2
+    assert res.items[0].created_at == datetime(2015, 1, 1, 8)
+    assert res.items[1].created_at == datetime(2015, 1, 1, 7)
