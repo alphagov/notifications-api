@@ -66,11 +66,10 @@ def test_should_add_to_retry_queue_if_notification_not_found_in_deliver_sms_task
 
 
 def test_should_call_send_sms_to_provider_from_send_sms_to_provider_task(
-    notify_db,
-    notify_db_session,
-    sample_notification,
-    mocker):
-
+        notify_db,
+        notify_db_session,
+        sample_notification,
+        mocker):
     mocker.patch('app.delivery.send_to_providers.send_sms_to_provider')
 
     send_sms_to_provider(sample_notification.service_id, sample_notification.id)
@@ -93,11 +92,10 @@ def test_should_add_to_retry_queue_if_notification_not_found_in_send_sms_to_prov
 
 
 def test_should_call_send_email_to_provider_from_deliver_email_task(
-    notify_db,
-    notify_db_session,
-    sample_notification,
-    mocker):
-
+        notify_db,
+        notify_db_session,
+        sample_notification,
+        mocker):
     mocker.patch('app.delivery.send_to_providers.send_email_to_provider')
 
     deliver_email(sample_notification.id)
@@ -119,11 +117,10 @@ def test_should_add_to_retry_queue_if_notification_not_found_in_deliver_email_ta
 
 
 def test_should_call_send_email_to_provider_from_email_task(
-    notify_db,
-    notify_db_session,
-    sample_notification,
-    mocker):
-
+        notify_db,
+        notify_db_session,
+        sample_notification,
+        mocker):
     mocker.patch('app.delivery.send_to_providers.send_email_to_provider')
 
     send_email_to_provider(sample_notification.service_id, sample_notification.id)

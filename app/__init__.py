@@ -70,6 +70,7 @@ def create_app(app_name=None):
     from app.provider_details.rest import provider_details as provider_details_blueprint
     from app.spec.rest import spec as spec_blueprint
     from app.organisation.rest import organisation_blueprint
+    from app.delivery.rest import delivery_blueprint
 
     application.register_blueprint(service_blueprint, url_prefix='/service')
     application.register_blueprint(user_blueprint, url_prefix='/user')
@@ -78,6 +79,7 @@ def create_app(app_name=None):
     application.register_blueprint(notifications_blueprint)
     application.register_blueprint(job_blueprint)
     application.register_blueprint(invite_blueprint)
+    application.register_blueprint(delivery_blueprint)
     application.register_blueprint(accept_invite, url_prefix='/invite')
 
     application.register_blueprint(template_statistics_blueprint)
