@@ -164,6 +164,7 @@ class ServiceWhitelist(db.Model):
 
         return instance
 
+
 class ApiKey(db.Model, Versioned):
     __tablename__ = 'api_keys'
 

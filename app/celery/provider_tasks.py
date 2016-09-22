@@ -1,6 +1,4 @@
 from datetime import datetime
-from monotonic import monotonic
-from urllib.parse import urljoin
 
 from flask import current_app
 from notifications_utils.recipients import (
@@ -143,6 +141,7 @@ def send_email_to_provider(self, service_id, notification_id):
                 send_email_response.apply_async(
                     (provider.get_name(), reference, notification.to), queue='research-mode'
                 )
+                notification.billable_units = 0
             else:
                 from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
                                                      current_app.config['NOTIFY_EMAIL_DOMAIN'])

@@ -84,6 +84,7 @@ def test_should_build_service_whitelist_from_mobile_number(mobile_number):
     assert service_whitelist.mobile_number == mobile_number
     assert service_whitelist.email_address is None
 
+
 @pytest.mark.parametrize('email_address', [
     'test@example.com'
 ])
