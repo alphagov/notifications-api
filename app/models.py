@@ -1,11 +1,18 @@
 import uuid
 import datetime
+
 from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
 )
-from sqlalchemy import UniqueConstraint, text, ForeignKeyConstraint, and_
+from sqlalchemy import UniqueConstraint, and_
 from sqlalchemy.orm import foreign, remote
+from notifications_utils.recipients import (
+    validate_email_address,
+    validate_phone_number,
+    InvalidPhoneError,
+    InvalidEmailError
+)
 
 from app.encryption import (
     hashpw,
@@ -142,6 +149,20 @@ class ServiceWhitelist(db.Model):
     mobile_number = db.Column(db.String, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
+    @classmethod
+    def from_string(cls, service_id, contact):
+        instance = cls(service_id=service_id)
+        try:
+            validate_email_address(contact)
+            instance.email_address = contact
+        except InvalidEmailError:
+            try:
+                validate_phone_number(contact)
+                instance.mobile_number = contact
+            except InvalidPhoneError:
+                raise ValueError("Invalid contact: {}".format(contact))
+
+        return instance
 
 class ApiKey(db.Model, Versioned):
     __tablename__ = 'api_keys'
@@ -307,6 +328,7 @@ class ProviderDetails(db.Model):
     priority = db.Column(db.Integer, nullable=False)
     notification_type = db.Column(notification_types, nullable=False)
     active = db.Column(db.Boolean, default=False)
+    blah = db.Column
 
 
 JOB_STATUS_PENDING = 'pending'
