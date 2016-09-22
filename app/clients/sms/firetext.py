@@ -1,12 +1,10 @@
+import json
 import logging
 
 from monotonic import monotonic
-from requests import request, RequestException, HTTPError
+from requests import request, RequestException
 
-from app.clients.sms import (
-    SmsClient,
-    SmsClientException
-)
+from app.clients.sms import (SmsClient, SmsClientResponseException)
 from app.clients import STATISTICS_DELIVERED, STATISTICS_FAILURE
 
 logger = logging.getLogger(__name__)
@@ -42,13 +40,14 @@ def get_firetext_responses(status):
     return firetext_responses[status]
 
 
-class FiretextClientException(SmsClientException):
-    def __init__(self, response):
-        self.code = response['code']
-        self.description = response['description']
+class FiretextClientResponseException(SmsClientResponseException):
+    def __init__(self, response, exception):
+        self.status_code = response.status_code
+        self.text = response.text
+        self.exception = exception
 
     def __str__(self):
-        return "Code {} description {}".format(self.code, self.description)
+        return "Code {} text {} exception {}".format(self.status_code, self.text, str(self.exception))
 
 
 class FiretextClient(SmsClient):
@@ -62,10 +61,34 @@ class FiretextClient(SmsClient):
         self.api_key = current_app.config.get('FIRETEXT_API_KEY')
         self.from_number = current_app.config.get('FROM_NUMBER')
         self.name = 'firetext'
+        self.url = "https://www.firetext.co.uk/api/sendsms/json"
         self.statsd_client = statsd_client
 
     def get_name(self):
         return self.name
+
+    def record_outcome(self, success, response):
+        log_message = "API {} request {} on {} response status_code {} response text'{}'".format(
+            "POST",
+            "succeeded" if success else "failed",
+            self.url,
+            response.status_code,
+            response.text
+        )
+
+        if not success:
+            self.statsd_client.incr("clients.firetext.error")
+            self.current_app.logger.error(log_message)
+        else:
+            self.current_app.logger.info(log_message)
+            self.statsd_client.incr("clients.firetext.success")
+
+    @staticmethod
+    def check_response(response):
+        response.raise_for_status()
+        json.loads(response.text)
+        if response.json()['code'] != 0:
+            raise ValueError()
 
     def send_sms(self, to, content, reference, sender=None):
 
@@ -81,36 +104,23 @@ class FiretextClient(SmsClient):
         try:
             response = request(
                 "POST",
-                "https://www.firetext.co.uk/api/sendsms/json",
+                self.url,
                 data=data
             )
-            firetext_response = response.json()
-            if firetext_response['code'] != 0:
-                raise FiretextClientException(firetext_response)
             response.raise_for_status()
-            self.current_app.logger.info(
-                "API {} request on {} succeeded with {} '{}'".format(
-                    "POST",
-                    "https://www.firetext.co.uk/api/sendsms",
-                    response.status_code,
-                    firetext_response.items()
-                )
-            )
+            try:
+                json.loads(response.text)
+                if response.json()['code'] != 0:
+                    raise ValueError()
+            except (ValueError, AttributeError) as e:
+                self.record_outcome(False, response)
+                raise FiretextClientResponseException(response=response, exception=e)
+            self.record_outcome(True, response)
         except RequestException as e:
-            api_error = HTTPError.create(e)
-            logger.error(
-                "API {} request on {} failed with {} '{}'".format(
-                    "POST",
-                    "https://www.firetext.co.uk/api/sendsms",
-                    api_error.status_code,
-                    api_error.message
-                )
-            )
-            self.statsd_client.incr("clients.firetext.error")
-            raise api_error
+            self.record_outcome(False, e.response)
+            raise FiretextClientResponseException(response=e.response, exception=e)
         finally:
             elapsed_time = monotonic() - start_time
             self.current_app.logger.info("Firetext request finished in {}".format(elapsed_time))
-            self.statsd_client.incr("clients.firetext.success")
             self.statsd_client.timing("clients.firetext.request-time", elapsed_time)
         return response

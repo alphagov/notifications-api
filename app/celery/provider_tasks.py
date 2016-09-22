@@ -8,6 +8,7 @@ from app.statsd_decorators import statsd
 from app.delivery import send_to_providers
 from sqlalchemy.orm.exc import NoResultFound
 
+
 def retry_iteration_to_delay(retry=0):
     """
     :param retry times we have performed a retry
