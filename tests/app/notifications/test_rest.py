@@ -11,7 +11,6 @@ from app.dao.templates_dao import dao_update_template
 from app.models import ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
-from notifications_utils.template import NeededByTemplateError
 
 
 def test_get_sms_notification_by_id(notify_api, sample_notification):
@@ -31,10 +30,6 @@ def test_get_sms_notification_by_id(notify_api, sample_notification):
                 'name': sample_notification.template.name,
                 'template_type': sample_notification.template.template_type,
                 'version': 1
-            }
-            assert notification['job'] == {
-                'id': str(sample_notification.job.id),
-                'original_file_name': sample_notification.job.original_file_name
             }
             assert notification['to'] == '+447700900855'
             assert notification['service'] == str(sample_notification.service_id)
@@ -67,11 +62,6 @@ def test_get_email_notification_by_id(notify_api, notify_db, notify_db_session, 
                 'template_type': email_notification.template.template_type,
                 'version': 1
             }
-            assert notification['job'] == {
-                'id': str(email_notification.job.id),
-                'original_file_name': email_notification.job.original_file_name
-            }
-
             assert notification['to'] == '+447700900855'
             assert notification['service'] == str(email_notification.service_id)
             assert response.status_code == 200
@@ -173,10 +163,6 @@ def test_get_all_notifications(notify_api, sample_notification):
                 'template_type': sample_notification.template.template_type,
                 'version': 1
             }
-            assert notifications['notifications'][0]['job'] == {
-                'id': str(sample_notification.job.id),
-                'original_file_name': sample_notification.job.original_file_name
-            }
 
             assert notifications['notifications'][0]['to'] == '+447700900855'
             assert notifications['notifications'][0]['service'] == str(sample_notification.service_id)
@@ -270,6 +256,149 @@ def test_get_all_notifications_only_returns_notifications_of_matching_type(
         notifications = json.loads(response.get_data(as_text=True))['notifications']
         assert len(notifications) == 1
         assert notifications[0]['id'] == str(notification_objs[key_type].id)
+
+
+@pytest.mark.parametrize('key_type', [KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST])
+def test_no_api_keys_return_job_notifications_by_default(
+    notify_api,
+    notify_db,
+    notify_db_session,
+    sample_service,
+    sample_job,
+    key_type
+):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        team_api_key = ApiKey(service=sample_service,
+                              name='team_api_key',
+                              created_by=sample_service.created_by,
+                              key_type=KEY_TYPE_TEAM)
+        save_model_api_key(team_api_key)
+
+        normal_api_key = ApiKey(service=sample_service,
+                                name='normal_api_key',
+                                created_by=sample_service.created_by,
+                                key_type=KEY_TYPE_NORMAL)
+        save_model_api_key(normal_api_key)
+
+        test_api_key = ApiKey(service=sample_service,
+                              name='test_api_key',
+                              created_by=sample_service.created_by,
+                              key_type=KEY_TYPE_TEST)
+        save_model_api_key(test_api_key)
+
+        job_notification = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            api_key_id=normal_api_key.id,
+            job=sample_job
+        )
+        normal_notification = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            api_key_id=normal_api_key.id,
+            key_type=KEY_TYPE_NORMAL
+        )
+        team_notification = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            api_key_id=team_api_key.id,
+            key_type=KEY_TYPE_TEAM
+        )
+        test_notification = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            api_key_id=test_api_key.id,
+            key_type=KEY_TYPE_TEST
+        )
+
+        notification_objs = {
+            KEY_TYPE_NORMAL: normal_notification,
+            KEY_TYPE_TEAM: team_notification,
+            KEY_TYPE_TEST: test_notification
+        }
+
+        response = client.get(
+            path='/notifications',
+            headers=_create_auth_header_from_key(notification_objs[key_type].api_key))
+
+        assert response.status_code == 200
+
+        notifications = json.loads(response.get_data(as_text=True))['notifications']
+        assert len(notifications) == 1
+        assert notifications[0]['id'] == str(notification_objs[key_type].id)
+
+
+@pytest.mark.parametrize('key_type', [
+    (KEY_TYPE_NORMAL, 2),
+    (KEY_TYPE_TEAM, 1),
+    (KEY_TYPE_TEST, 1)
+])
+def test_only_normal_api_keys_can_return_job_notifications(
+    notify_api,
+    notify_db,
+    notify_db_session,
+    sample_service,
+    sample_job,
+    key_type
+):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        team_api_key = ApiKey(service=sample_service,
+                              name='team_api_key',
+                              created_by=sample_service.created_by,
+                              key_type=KEY_TYPE_TEAM)
+        save_model_api_key(team_api_key)
+
+        normal_api_key = ApiKey(service=sample_service,
+                                name='normal_api_key',
+                                created_by=sample_service.created_by,
+                                key_type=KEY_TYPE_NORMAL)
+        save_model_api_key(normal_api_key)
+
+        test_api_key = ApiKey(service=sample_service,
+                              name='test_api_key',
+                              created_by=sample_service.created_by,
+                              key_type=KEY_TYPE_TEST)
+        save_model_api_key(test_api_key)
+
+        job_notification = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            api_key_id=normal_api_key.id,
+            job=sample_job
+        )
+        normal_notification = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            api_key_id=normal_api_key.id,
+            key_type=KEY_TYPE_NORMAL
+        )
+        team_notification = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            api_key_id=team_api_key.id,
+            key_type=KEY_TYPE_TEAM
+        )
+        test_notification = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            api_key_id=test_api_key.id,
+            key_type=KEY_TYPE_TEST
+        )
+
+        notification_objs = {
+            KEY_TYPE_NORMAL: normal_notification,
+            KEY_TYPE_TEAM: team_notification,
+            KEY_TYPE_TEST: test_notification
+        }
+
+        response = client.get(
+            path='/notifications?include_jobs=true',
+            headers=_create_auth_header_from_key(notification_objs[key_type[0]].api_key))
+
+        assert response.status_code == 200
+        notifications = json.loads(response.get_data(as_text=True))['notifications']
+        assert len(notifications) == key_type[1]
+        assert notifications[0]['id'] == str(notification_objs[key_type[0]].id)
 
 
 def test_get_all_notifications_newest_first(notify_api, notify_db, notify_db_session, sample_email_template):

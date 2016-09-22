@@ -21,7 +21,7 @@ from app.models import (
     NOTIFICATION_CREATED,
     NOTIFICATION_SENDING,
     NOTIFICATION_PENDING,
-    NOTIFICATION_TEMPORARY_FAILURE)
+    NOTIFICATION_TEMPORARY_FAILURE, KEY_TYPE_NORMAL, KEY_TYPE_TEST)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
@@ -97,7 +97,7 @@ def dao_get_template_usage(service_id, limit_days=None):
         Template.template_type
     )
 
-    query_filter = [table.service_id == service_id]
+    query_filter = [table.service_id == service_id, table.key_type != KEY_TYPE_TEST]
     if limit_days is not None:
         query_filter.append(table.created_at >= days_ago(limit_days))
 
@@ -110,7 +110,9 @@ def dao_get_template_usage(service_id, limit_days=None):
 
 @statsd(namespace="dao")
 def dao_get_last_template_usage(template_id):
-    return NotificationHistory.query.filter(NotificationHistory.template_id == template_id) \
+    return NotificationHistory.query.filter(
+        NotificationHistory.template_id == template_id,
+        NotificationHistory.key_type != KEY_TYPE_TEST) \
         .join(Template) \
         .order_by(desc(NotificationHistory.created_at)) \
         .first()
@@ -232,17 +234,24 @@ def get_notifications_for_service(service_id,
                                   page_size=None,
                                   limit_days=None,
                                   key_type=None,
-                                  personalisation=False):
+                                  personalisation=False,
+                                  include_jobs=False):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
+
     filters = [Notification.service_id == service_id]
 
     if limit_days is not None:
         days_ago = date.today() - timedelta(days=limit_days)
         filters.append(func.date(Notification.created_at) >= days_ago)
 
+    if not include_jobs or (key_type and key_type != KEY_TYPE_NORMAL):
+        filters.append(Notification.job_id.is_(None))
+
     if key_type is not None:
         filters.append(Notification.key_type == key_type)
+    else:
+        filters.append(Notification.key_type != KEY_TYPE_TEST)
 
     query = Notification.query.filter(*filters)
     query = _filter_query(query, filter_dict)
@@ -250,6 +259,7 @@ def get_notifications_for_service(service_id,
         query = query.options(
             joinedload('template_history')
         )
+
     return query.order_by(desc(Notification.created_at)).paginate(
         page=page,
         per_page=page_size
