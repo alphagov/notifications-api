@@ -19,6 +19,7 @@ from app.models import (
     ProviderStatistics,
     ProviderDetails,
     NotificationStatistics,
+    ServiceWhitelist,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
@@ -862,3 +863,18 @@ def already_registered_template(notify_db,
         template = Template(**data)
         db.session.add(template)
     return template
+
+
+@pytest.fixture(scope='function')
+def sample_service_whitelist(notify_db, notify_db_session, service=None, email_address=None, mobile_number=None):
+    if service is None:
+        service = sample_service(notify_db, notify_db_session)
+
+    if not email_address and not mobile_number:
+        email_address = 'whitelisted_user@digital.gov.uk'
+
+    whitelisted_user = ServiceWhitelist.from_string(service.id, email_address or mobile_number)
+
+    notify_db.session.add(whitelisted_user)
+    notify_db.session.commit()
+    return whitelisted_user

@@ -28,7 +28,8 @@ from app.dao.services_dao import (
 )
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
-    dao_add_whitelisted_contact
+    dao_add_and_commit_whitelisted_contacts,
+    dao_remove_service_whitelist
 )
 from app.dao import notifications_dao
 from app.dao.provider_statistics_dao import get_fragment_count
@@ -278,14 +279,8 @@ def get_whitelist(service_id):
     whitelist = dao_fetch_service_whitelist(service_id)
 
     return {
-        'emails': [
-            {'id': item.id, 'email_address': item.email_address}
-            for item in whitelist if item.email_address is not None
-        ],
-        'mobile_numbers': [
-            {'id': item.id, 'mobile_number': item.mobile_number}
-            for item in whitelist if item.mobile_number is not None
-        ]
+        'emails': [item.email_address for item in whitelist if item.email_address is not None],
+        'mobile_numbers': [item.mobile_number for item in whitelist if item.mobile_number is not None]
     }
 
 
@@ -293,5 +288,7 @@ def get_whitelist(service_id):
 def update_whitelist(service_id):
     # todo: make this transactional
     dao_remove_service_whitelist(service_id)
-    for contact in request.get_json():
-        dao_add_whitelisted_contact(ServiceWhitelist.from_string(contact))
+
+    whitelist_objs = [ServiceWhitelist.from_string(service_id, contact) for contact in request.get_json()]
+
+    dao_add_and_commit_whitelisted_contacts(whitelist_objs)
