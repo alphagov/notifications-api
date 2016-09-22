@@ -1,6 +1,7 @@
 from flask import current_app
 
 from app import notify_celery
+from app.dao import notifications_dao
 from app.dao.notifications_dao import update_notification_status_by_id
 from app.statsd_decorators import statsd
 
@@ -35,7 +36,8 @@ def retry_iteration_to_delay(retry=0):
 @statsd(namespace="tasks")
 def deliver_sms(self, notification_id):
     try:
-        send_to_providers.send_sms_to_provider(notification_id)
+        notification = notifications_dao.get_notification_by_id(notification_id)
+        send_to_providers.send_sms_to_provider(notification)
     except Exception as e:
         try:
             current_app.logger.error(
@@ -55,7 +57,8 @@ def deliver_sms(self, notification_id):
 @statsd(namespace="tasks")
 def deliver_email(self, notification_id):
     try:
-        send_to_providers.send_email_response(notification_id)
+        notification = notifications_dao.get_notification_by_id(notification_id)
+        send_to_providers.send_email_to_provider(notification)
     except Exception as e:
         try:
             current_app.logger.error(
@@ -69,7 +72,6 @@ def deliver_email(self, notification_id):
                 e
             )
             update_notification_status_by_id(notification_id, 'technical-failure')
-
 
 
 @notify_celery.task(bind=True, name="send-sms-to-provider", max_retries=5, default_retry_delay=5)

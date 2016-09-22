@@ -39,7 +39,7 @@ def send_sms_to_provider(notification):
             provider.send_sms(
                 to=validate_and_format_phone_number(notification.to),
                 content=template.replaced,
-                reference=str(notification_id),
+                reference=str(notification.id),
                 sender=service.sms_sender
             )
             notification.billable_units = get_sms_fragment_count(template.replaced_content_count)
@@ -50,16 +50,15 @@ def send_sms_to_provider(notification):
         dao_update_notification(notification)
 
         current_app.logger.info(
-            "SMS {} sent to provider at {}".format(notification_id, notification.sent_at)
+            "SMS {} sent to provider at {}".format(notification.id, notification.sent_at)
         )
         delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
         statsd_client.timing("sms.total-time", delta_milliseconds)
 
 
-def send_email_to_provider(notification_id):
-    notification = get_notification_by_id(notification_id)
+def send_email_to_provider(notification):
     service = dao_fetch_service_by_id(notification.service_id)
-    provider = provider_to_use(EMAIL_TYPE, notification_id)
+    provider = provider_to_use(EMAIL_TYPE, notification.id)
     if notification.status == 'created':
         template_dict = dao_get_template_by_id(notification.template_id, notification.template_version).__dict__
 
@@ -99,7 +98,7 @@ def send_email_to_provider(notification_id):
         dao_update_notification(notification)
 
         current_app.logger.info(
-            "Email {} sent to provider at {}".format(notification_id, notification.sent_at)
+            "Email {} sent to provider at {}".format(notification.id, notification.sent_at)
         )
         delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
         statsd_client.timing("email.total-time", delta_milliseconds)

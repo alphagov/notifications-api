@@ -47,18 +47,6 @@ def test_should_return_highest_priority_active_provider(notify_db, notify_db_ses
     assert send_to_providers.provider_to_use('sms', '1234').name == first.identifier
 
 
-def test_raises_not_found_exception_if_no_notification_for_id(notify_db, notify_db_session, mocker):
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
-    notification_id = uuid.uuid4()
-
-    with pytest.raises(NoResultFound) as exc:
-        send_to_providers.send_sms_to_provider(notification_id)
-
-    assert str(exc.value) == "No notification for {}".format(str(notification_id))
-    app.mmg_client.send_sms.assert_not_called()
-
-
 def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     notify_db,
     notify_db_session,
@@ -73,7 +61,7 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
 
     send_to_providers.send_sms_to_provider(
-        db_notification.id
+        db_notification
     )
 
     mmg_client.send_sms.assert_called_once_with(
@@ -108,7 +96,7 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
     mocker.patch('app.aws_ses_client.get_name', return_value="ses")
 
     send_to_providers.send_email_to_provider(
-        db_notification.id
+        db_notification
     )
 
     app.aws_ses_client.send_email.assert_called_once_with(
@@ -150,7 +138,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     assert t.version > version_on_notification
 
     send_to_providers.send_sms_to_provider(
-        db_notification.id
+        db_notification
     )
 
     mmg_client.send_sms.assert_called_once_with(
@@ -187,7 +175,7 @@ def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_s
     sample_notification.key_type = key_type
 
     send_to_providers.send_sms_to_provider(
-        sample_notification.id
+        sample_notification
     )
     assert not mmg_client.send_sms.called
     send_to_providers.send_sms_response.apply_async.assert_called_once_with(
@@ -222,7 +210,7 @@ def test_should_set_billable_units_to_zero_in_research_mode_or_test_key(
     sample_notification.key_type = key_type
 
     send_to_providers.send_sms_to_provider(
-        sample_notification.id
+        sample_notification
     )
 
     assert notifications_dao.get_notification_by_id(sample_notification.id).billable_units == 0
@@ -239,7 +227,7 @@ def test_should_not_send_to_provider_when_status_is_not_created(notify_db, notif
     mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
 
     send_to_providers.send_sms_to_provider(
-        notification.id
+        notification
     )
 
     app.mmg_client.send_sms.assert_not_called()
@@ -264,7 +252,7 @@ def test_should_send_sms_sender_from_service_if_present(
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
 
     send_to_providers.send_sms_to_provider(
-        db_notification.id
+        db_notification
     )
 
     mmg_client.send_sms.assert_called_once_with(
@@ -307,8 +295,9 @@ def test_send_email_to_provider_should_call_research_mode_task_response_task_if_
     assert not get_provider_statistics(
         sample_email_template.service,
         providers=[ses_provider.identifier]).first()
+
     send_to_providers.send_email_to_provider(
-        notification.id
+        notification
     )
     assert not app.aws_ses_client.send_email.called
     send_to_providers.send_email_response.apply_async.assert_called_once_with(
@@ -341,7 +330,7 @@ def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_c
     mocker.patch('app.celery.research_mode_tasks.send_email_response.apply_async')
 
     send_to_providers.send_sms_to_provider(
-        notification.id
+        notification
     )
 
     app.aws_ses_client.send_email.assert_not_called()
@@ -360,7 +349,7 @@ def test_send_email_should_use_service_reply_to_email(
     sample_service.reply_to_email_address = 'foo@bar.com'
 
     send_to_providers.send_email_to_provider(
-        db_notification.id,
+        db_notification,
     )
 
     app.aws_ses_client.send_email.assert_called_once_with(
@@ -421,7 +410,7 @@ def test_should_not_set_billable_units_if_research_mode(notify_db, sample_servic
     notify_db.session.commit()
 
     send_to_providers.send_sms_to_provider(
-        sample_notification.id
+        sample_notification
     )
 
     persisted_notification = notifications_dao.get_notification_by_id(sample_notification.id)
