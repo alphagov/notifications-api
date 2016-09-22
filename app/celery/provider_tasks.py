@@ -6,7 +6,7 @@ from app.dao.notifications_dao import update_notification_status_by_id
 from app.statsd_decorators import statsd
 
 from app.delivery import send_to_providers
-
+from sqlalchemy.orm.exc import NoResultFound
 
 def retry_iteration_to_delay(retry=0):
     """
@@ -37,6 +37,8 @@ def retry_iteration_to_delay(retry=0):
 def deliver_sms(self, notification_id):
     try:
         notification = notifications_dao.get_notification_by_id(notification_id)
+        if not notification:
+            raise NoResultFound()
         send_to_providers.send_sms_to_provider(notification)
     except Exception as e:
         try:
@@ -58,6 +60,8 @@ def deliver_sms(self, notification_id):
 def deliver_email(self, notification_id):
     try:
         notification = notifications_dao.get_notification_by_id(notification_id)
+        if not notification:
+            raise NoResultFound()
         send_to_providers.send_email_to_provider(notification)
     except Exception as e:
         try:
@@ -78,7 +82,10 @@ def deliver_email(self, notification_id):
 @statsd(namespace="tasks")
 def send_sms_to_provider(self, service_id, notification_id):
     try:
-        send_to_providers.send_sms_to_provider(notification_id)
+        notification = notifications_dao.get_notification_by_id(notification_id)
+        if not notification:
+            raise NoResultFound()
+        send_to_providers.send_sms_to_provider(notification)
     except Exception as e:
         try:
             current_app.logger.error(
@@ -98,7 +105,10 @@ def send_sms_to_provider(self, service_id, notification_id):
 @statsd(namespace="tasks")
 def send_email_to_provider(self, service_id, notification_id):
     try:
-        send_to_providers.send_email_response(notification_id)
+        notification = notifications_dao.get_notification_by_id(notification_id)
+        if not notification:
+            raise NoResultFound()
+        send_to_providers.send_email_to_provider(notification)
     except Exception as e:
         try:
             current_app.logger.error(
