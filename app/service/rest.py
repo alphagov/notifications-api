@@ -287,7 +287,6 @@ def get_whitelist(service_id):
 
 @service_blueprint.route('/<uuid:service_id>/whitelist', methods=['POST'])
 def update_whitelist(service_id):
-    # todo: make this transactional
     dao_remove_service_whitelist(service_id)
 
     whitelist_objs = [ServiceWhitelist.from_string(service_id, contact) for contact in request.get_json()]

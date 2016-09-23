@@ -130,9 +130,11 @@ def sample_service(notify_db,
                    user=None,
                    restricted=False,
                    limit=1000,
-                   email_from="sample.service"):
+                   email_from=None):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
+    if email_from is None:
+        email_from = service_name.lower().replace(' ', '.')
     data = {
         'name': service_name,
         'message_limit': limit,
