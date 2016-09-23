@@ -1046,12 +1046,12 @@ def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notif
     ]
 )
 def test_get_all_notifications_for_service_including_ones_made_by_jobs(
-        notify_api,
-        notify_db,
-        notify_db_session,
-        sample_service,
-        include_from_test_key,
-        expected_count_of_notifications
+    notify_api,
+    notify_db,
+    notify_db_session,
+    sample_service,
+    include_from_test_key,
+    expected_count_of_notifications
 ):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         with_job = sample_notification_with_job(notify_db, notify_db_session, service=sample_service)
