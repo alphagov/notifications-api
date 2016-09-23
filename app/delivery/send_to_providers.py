@@ -79,6 +79,7 @@ def send_email_to_provider(notification):
             send_email_response.apply_async(
                 (provider.get_name(), reference, notification.to), queue='research-mode'
             )
+            notification.billable_units = 0
         else:
             from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
                                                  current_app.config['NOTIFY_EMAIL_DOMAIN'])

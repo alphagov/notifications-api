@@ -1,53 +1,22 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
+set -eo pipefail
 
-function error_exit
+function stop
 {
-	echo "$1" 1>&2
-	exit 0
+  service=$1
+  if [ -e "/etc/init/${service}.conf" ]; then
+    echo "stopping ${service}"
+    if service ${service} stop; then
+      echo "${service} stopped"
+    else
+      >&2 echo "Could not stop ${service}"
+    fi
+  fi
 }
 
-if [ -e "/etc/init/notifications-api.conf" ]; then
-    echo "stopping notifications-api"
-    if sudo service notifications-api stop; then
-        echo "notifications-api stopped"
-    else
-        error_exit "Could not stop notifications-api"
-    fi
-fi
-
-if [ -e "/etc/init/notifications-api-celery-beat.conf" ]; then
-    echo "stopping notifications-api-celery-beat"
-    if sudo service notifications-api-celery-beat stop; then
-        echo "notifications-api beat stopped"
-    else
-        error_exit "Could not stop notifications-celery-beat"
-    fi
-fi
-
-if [ -e "/etc/init/notifications-api-celery-worker.conf" ]; then
-    echo "stopping notifications-api-celery-worker"
-    if sudo service notifications-api-celery-worker stop; then
-        echo "notifications-api worker stopped"
-    else
-        error_exit "Could not stop notifications-celery-worker"
-    fi
-fi
-
-if [ -e "/etc/init/notifications-api-celery-worker-sender.conf" ]; then
-    echo "stopping notifications-api-celery-worker-sender"
-    if sudo service notifications-api-celery-worker-sender stop; then
-        echo "notifications-api sender worker stopped"
-    else
-        error_exit "Could not stop notifications-celery-worker-sender"
-    fi
-fi
-
-if [ -e "/etc/init/notifications-api-celery-worker-db.conf" ]; then
-    echo "stopping notifications-api-celery-worker-db"
-    if sudo service notifications-api-celery-worker-db stop; then
-        echo "notifications-api db worker stopped"
-    else
-        error_exit "Could not stop notifications-celery-worker-db"
-    fi
-fi
+stop "notifications-api"
+stop "notifications-api-celery-beat"
+stop "notifications-api-celery-worker"
+stop "notifications-api-celery-worker-sender"
+stop "notifications-api-celery-worker-db"

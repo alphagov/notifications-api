@@ -7,10 +7,10 @@ from mock import ANY
 import app
 from sqlalchemy.orm.exc import NoResultFound
 from app import mmg_client
-from app.dao import (provider_details_dao, notifications_dao, provider_statistics_dao)
-from app.dao.provider_statistics_dao import get_provider_statistics
+from app.dao import (provider_details_dao, notifications_dao)
 from app.delivery import send_to_providers
-from app.models import Notification, KEY_TYPE_NORMAL, KEY_TYPE_TEST, BRANDING_ORG, BRANDING_BOTH, Organisation
+from app.models import Notification, KEY_TYPE_NORMAL, KEY_TYPE_TEST, BRANDING_ORG, BRANDING_BOTH, Organisation, \
+    KEY_TYPE_TEAM
 from tests.app.conftest import sample_notification
 
 from notifications_utils.recipients import validate_phone_number, format_phone_number
@@ -197,8 +197,6 @@ def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_s
 ])
 def test_should_set_billable_units_to_zero_in_research_mode_or_test_key(
         notify_db, sample_service, sample_notification, mocker, research_mode, key_type):
-    provider_stats = provider_statistics_dao.get_provider_statistics(sample_service).all()
-    assert len(provider_stats) == 0
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
@@ -292,9 +290,6 @@ def test_send_email_to_provider_should_call_research_mode_task_response_task_if_
         sample_service.research_mode = True
         notify_db.session.add(sample_service)
         notify_db.session.commit()
-    assert not get_provider_statistics(
-        sample_email_template.service,
-        providers=[ses_provider.identifier]).first()
 
     send_to_providers.send_email_to_provider(
         notification
@@ -303,9 +298,6 @@ def test_send_email_to_provider_should_call_research_mode_task_response_task_if_
     send_to_providers.send_email_response.apply_async.assert_called_once_with(
         ('ses', str(reference), 'john@smith.com'), queue="research-mode"
     )
-    assert not get_provider_statistics(
-        sample_email_template.service,
-        providers=[ses_provider.identifier]).first()
     persisted_notification = Notification.query.filter_by(id=notification.id).one()
 
     assert persisted_notification.to == 'john@smith.com'
@@ -315,6 +307,7 @@ def test_send_email_to_provider_should_call_research_mode_task_response_task_if_
     assert persisted_notification.created_at <= datetime.utcnow()
     assert persisted_notification.sent_by == 'ses'
     assert persisted_notification.reference == str(reference)
+    assert persisted_notification.billable_units == 0
 
 
 def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_created(notify_db, notify_db_session,
@@ -415,3 +408,39 @@ def test_should_not_set_billable_units_if_research_mode(notify_db, sample_servic
 
     persisted_notification = notifications_dao.get_notification_by_id(sample_notification.id)
     assert persisted_notification.billable_units == 0
+
+
+@pytest.mark.parametrize('research_mode,key_type, billable_units', [
+    (True, KEY_TYPE_NORMAL, 0),
+    (False, KEY_TYPE_NORMAL, 1),
+    (False, KEY_TYPE_TEST, 0),
+    (True, KEY_TYPE_TEST, 0),
+    (True, KEY_TYPE_TEAM, 0),
+    (False, KEY_TYPE_TEAM, 1)
+])
+def test_should_update_billable_units_according_to_research_mode_and_key_type(notify_db,
+                                                                              sample_service,
+                                                                              sample_notification,
+                                                                              mocker,
+                                                                              research_mode,
+                                                                              key_type,
+                                                                              billable_units):
+
+    assert Notification.query.count() == 1
+
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.mmg_client.get_name', return_value="mmg")
+    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
+    if research_mode:
+        sample_service.research_mode = True
+        notify_db.session.add(sample_service)
+        notify_db.session.commit()
+
+    sample_notification.key_type = key_type
+
+    send_to_providers.send_sms_to_provider(
+        sample_notification
+    )
+
+    assert Notification.query.get(sample_notification.id).billable_units == billable_units, \
+        "Research mode: {0}, key type: {1}, billable_units: {2}".format(research_mode, key_type, billable_units)

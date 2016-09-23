@@ -7,3 +7,6 @@
 *node_modules*
 *target*
 *venv*
+*build*
+*.envrc*
+*tests/.cache*

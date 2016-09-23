@@ -142,7 +142,9 @@ def test_should_add_to_retry_queue_if_notification_not_found_in_send_email_to_pr
     app.celery.provider_tasks.send_email_to_provider.retry.assert_called_with(queue="retry", countdown=10)
 
 
-def test_should_go_into_technical_error_if_exceeds_retries(
+# DO THESE FOR THE 4 TYPES OF TASK
+
+def test_should_go_into_technical_error_if_exceeds_retries_on_send_sms_to_provider_task(
         notify_db,
         notify_db_session,
         sample_service,
@@ -164,7 +166,28 @@ def test_should_go_into_technical_error_if_exceeds_retries(
     assert db_notification.status == 'technical-failure'
 
 
-def test_send_email_to_provider_should_go_into_technical_error_if_exceeds_retries(
+def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_sms_task(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        mocker):
+    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                       service=sample_service, status='created')
+
+    mocker.patch('app.delivery.send_to_providers.send_sms_to_provider', side_effect=Exception("EXPECTED"))
+    mocker.patch('app.celery.provider_tasks.deliver_sms.retry', side_effect=MaxRetriesExceededError())
+
+    deliver_sms(
+        notification.id
+    )
+
+    provider_tasks.deliver_sms.retry.assert_called_with(queue='retry', countdown=10)
+
+    db_notification = Notification.query.filter_by(id=notification.id).one()
+    assert db_notification.status == 'technical-failure'
+
+
+def test_send_email_to_provider_should_go_into_technical_error_if_exceeds_retries_on_send_email_to_provider_task(
         notify_db,
         notify_db_session,
         sample_service,
@@ -182,6 +205,27 @@ def test_send_email_to_provider_should_go_into_technical_error_if_exceeds_retrie
     )
 
     provider_tasks.send_email_to_provider.retry.assert_called_with(queue='retry', countdown=10)
+
+    db_notification = Notification.query.filter_by(id=notification.id).one()
+    assert db_notification.status == 'technical-failure'
+
+
+def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_email_task(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        mocker):
+    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                       service=sample_service, status='created')
+
+    mocker.patch('app.delivery.send_to_providers.send_email_to_provider', side_effect=Exception("EXPECTED"))
+    mocker.patch('app.celery.provider_tasks.deliver_email.retry', side_effect=MaxRetriesExceededError())
+
+    deliver_email(
+        notification.id
+    )
+
+    provider_tasks.deliver_email.retry.assert_called_with(queue='retry', countdown=10)
 
     db_notification = Notification.query.filter_by(id=notification.id).one()
     assert db_notification.status == 'technical-failure'
