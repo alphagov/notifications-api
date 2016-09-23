@@ -232,10 +232,11 @@ def sample_email_template_with_placeholders(notify_db, notify_db_session):
 def sample_api_key(notify_db,
                    notify_db_session,
                    service=None,
-                   key_type=KEY_TYPE_NORMAL):
+                   key_type=KEY_TYPE_NORMAL,
+                   name=None):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
-    data = {'service': service, 'name': uuid.uuid4(), 'created_by': service.created_by, 'key_type': key_type}
+    data = {'service': service, 'name': name or uuid.uuid4(), 'created_by': service.created_by, 'key_type': key_type}
     api_key = ApiKey(**data)
     save_model_api_key(api_key)
     return api_key
@@ -438,6 +439,17 @@ def sample_notification(notify_db,
     notification = Notification(**data)
     if create:
         dao_create_notification(notification)
+    return notification
+
+
+@pytest.fixture(scope='function')
+def sample_notification_with_api_key(notify_db, notify_db_session):
+    notification = sample_notification(notify_db, notify_db_session)
+    notification.api_key_id = sample_api_key(
+        notify_db,
+        notify_db_session,
+        name='Test key'
+    ).id
     return notification
 
 

@@ -315,6 +315,16 @@ class NotificationWithTemplateSchema(BaseSchema):
     )
     job = fields.Nested(JobSchema, only=["id", "original_file_name"], dump_only=True)
     personalisation = fields.Dict(required=False)
+    key_type = field_for(models.Notification, 'key_type', required=True)
+    key_name = fields.String()
+
+    @pre_dump
+    def add_api_key_name(self, in_data):
+        if in_data.api_key:
+            in_data.key_name = in_data.api_key.name
+        else:
+            in_data.key_name = None
+        return in_data
 
 
 class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
