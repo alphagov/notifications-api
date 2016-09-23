@@ -1000,11 +1000,15 @@ def test_get_notifications_created_by_api_or_csv_are_returned_correctly_excludin
     all_notifications = Notification.query.all()
     assert len(all_notifications) == 4
 
-    # returns all API derived notifications
+    # returns all real API derived notifications
     all_notifications = get_notifications_for_service(sample_service.id).items
     assert len(all_notifications) == 2
 
-    # all notifications including jobs
+    # returns all API derived notifications, including those created with test key
+    all_notifications = get_notifications_for_service(sample_service.id, include_from_test_key=True).items
+    assert len(all_notifications) == 3
+
+    # all real notifications including jobs
     all_notifications = get_notifications_for_service(sample_service.id, limit_days=1, include_jobs=True).items
     assert len(all_notifications) == 3
 

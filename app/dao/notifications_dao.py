@@ -236,7 +236,8 @@ def get_notifications_for_service(
     limit_days=None,
     key_type=None,
     personalisation=False,
-    include_jobs=False
+    include_jobs=False,
+    include_from_test_key=False
 ):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
@@ -252,7 +253,7 @@ def get_notifications_for_service(
 
     if key_type is not None:
         filters.append(Notification.key_type == key_type)
-    else:
+    elif not include_from_test_key:
         filters.append(Notification.key_type != KEY_TYPE_TEST)
 
     query = Notification.query.filter(*filters)
