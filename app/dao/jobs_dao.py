@@ -27,10 +27,14 @@ def dao_get_job_by_service_id_and_job_id(service_id, job_id):
     return Job.query.filter_by(service_id=service_id, id=job_id).one()
 
 
-def dao_get_jobs_by_service_id(service_id, limit_days=None, page=1, page_size=50):
+def dao_get_jobs_by_service_id(service_id, limit_days=None, page=1, page_size=50, statuses=''):
     query_filter = [Job.service_id == service_id]
     if limit_days is not None:
         query_filter.append(cast(Job.created_at, sql_date) >= days_ago(limit_days))
+    if statuses != ['']:
+        query_filter.append(
+            Job.job_status.in_(statuses)
+        )
     return Job.query \
         .filter(*query_filter) \
         .order_by(desc(Job.created_at)) \
