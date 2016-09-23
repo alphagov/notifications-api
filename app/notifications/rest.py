@@ -205,6 +205,8 @@ def send_notification(notification_type):
     notification, errors = (
         sms_template_notification_schema if notification_type == SMS_TYPE else email_notification_schema
     ).load(request.get_json())
+    if errors:
+        raise InvalidRequest(errors, status_code=400)
 
     if all((api_user.key_type != KEY_TYPE_TEST, service.restricted)):
         service_stats = sum(row.count for row in dao_fetch_todays_stats_for_service(service.id))
@@ -212,13 +214,16 @@ def send_notification(notification_type):
             error = 'Exceeded send limits ({}) for today'.format(service.message_limit)
             raise InvalidRequest(error, status_code=429)
 
-    if errors:
-        raise InvalidRequest(errors, status_code=400)
-
     template = templates_dao.dao_get_template_by_id_and_service_id(
         template_id=notification['template'],
         service_id=service_id
     )
+
+    if notification_type != template.template_type:
+        raise InvalidRequest("{0} template is not suitable for a {1} notification".format(template.template_type,
+                                                                                          notification_type),
+                             status_code=400)
+
     errors = unarchived_template_schema.validate({'archived': template.archived})
     if errors:
         raise InvalidRequest(errors, status_code=400)
