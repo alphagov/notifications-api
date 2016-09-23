@@ -8,6 +8,7 @@ from flask import (
 )
 from sqlalchemy.orm.exc import NoResultFound
 
+from app.dao.dao_utils import dao_rollback
 from app.dao.api_key_dao import (
     save_model_api_key,
     get_model_api_keys,
@@ -49,6 +50,7 @@ from app.errors import (
     InvalidRequest
 )
 from app.service import statistics
+from app.models import ServiceWhitelist
 
 
 service_blueprint = Blueprint('service', __name__)
@@ -279,16 +281,24 @@ def get_detailed_services():
 def get_whitelist(service_id):
     whitelist = dao_fetch_service_whitelist(service_id)
 
-    return {
-        'emails': [item.email_address for item in whitelist if item.email_address is not None],
-        'mobile_numbers': [item.mobile_number for item in whitelist if item.mobile_number is not None]
-    }
+    return jsonify(
+        email_addresses=[item.email_address for item in whitelist if item.email_address is not None],
+        mobile_numbers=[item.mobile_number for item in whitelist if item.mobile_number is not None]
+    )
 
 
-@service_blueprint.route('/<uuid:service_id>/whitelist', methods=['POST'])
+@service_blueprint.route('/<uuid:service_id>/whitelist', methods=['PUT'])
 def update_whitelist(service_id):
+    # doesn't commit so if there are any errors, we preserve old values in db
     dao_remove_service_whitelist(service_id)
 
-    whitelist_objs = [ServiceWhitelist.from_string(service_id, contact) for contact in request.get_json()]
-
-    dao_add_and_commit_whitelisted_contacts(whitelist_objs)
+    try:
+        whitelist_objs = [ServiceWhitelist.from_string(service_id, contact) for contact in request.get_json()]
+    except ValueError as e:
+        current_app.logger.exception(e)
+        dao_rollback()
+        msg = '{} is not a valid email address or phone number'.format(str(e))
+        return jsonify(result='error', message=msg), 400
+    else:
+        dao_add_and_commit_whitelisted_contacts(whitelist_objs)
+        return '', 204

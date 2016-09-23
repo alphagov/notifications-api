@@ -1,6 +1,7 @@
 import itertools
 from functools import wraps, partial
 
+from app import db
 from app.history_meta import create_history
 
 
@@ -35,3 +36,7 @@ def version_class(model_class, history_cls=None):
                 db.session.add(h_obj)
         return record_version
     return versioned
+
+
+def dao_rollback():
+    db.session.rollback()

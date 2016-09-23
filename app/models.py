@@ -160,7 +160,7 @@ class ServiceWhitelist(db.Model):
                 validate_phone_number(contact)
                 instance.mobile_number = contact
             except InvalidPhoneError:
-                raise ValueError("Invalid contact: {}".format(contact))
+                raise ValueError('Invalid whitelist: "{}"'.format(contact))
 
         return instance
 
