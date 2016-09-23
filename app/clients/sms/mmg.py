@@ -68,12 +68,11 @@ class MMGClient(SmsClient):
         self.mmg_url = current_app.config.get('MMG_URL')
 
     def record_outcome(self, success, response):
-        log_message = "API {} request {} on {} response status_code {} response text'{}'".format(
+        log_message = "API {} request {} on {} response status_code {}".format(
             "POST",
             "succeeded" if success else "failed",
             self.mmg_url,
-            response.status_code,
-            response.text
+            response.status_code
         )
 
         if not success:

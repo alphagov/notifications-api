@@ -68,12 +68,11 @@ class FiretextClient(SmsClient):
         return self.name
 
     def record_outcome(self, success, response):
-        log_message = "API {} request {} on {} response status_code {} response text'{}'".format(
+        log_message = "API {} request {} on {} response status_code {}".format(
             "POST",
             "succeeded" if success else "failed",
             self.url,
-            response.status_code,
-            response.text
+            response.status_code
         )
 
         if not success:
@@ -82,13 +81,6 @@ class FiretextClient(SmsClient):
         else:
             self.current_app.logger.info(log_message)
             self.statsd_client.incr("clients.firetext.success")
-
-    @staticmethod
-    def check_response(response):
-        response.raise_for_status()
-        json.loads(response.text)
-        if response.json()['code'] != 0:
-            raise ValueError()
 
     def send_sms(self, to, content, reference, sender=None):
 
