@@ -8,10 +8,7 @@ from notifications_utils.template import Template, get_sms_fragment_count
 from notifications_utils.renderers import HTMLEmail, PlainTextEmail, SMSMessage
 
 from app import clients, statsd_client, create_uuid
-from app.dao.notifications_dao import (
-    get_notification_by_id,
-    dao_update_notification
-)
+from app.dao.notifications_dao import dao_update_notification
 from app.dao.provider_details_dao import get_provider_details_by_notification_type
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.celery.research_mode_tasks import send_sms_response, send_email_response

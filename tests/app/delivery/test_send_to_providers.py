@@ -2,10 +2,9 @@ import uuid
 from datetime import datetime
 
 import pytest
-from mock import ANY
+from unittest.mock import ANY
 
 import app
-from sqlalchemy.orm.exc import NoResultFound
 from app import mmg_client
 from app.dao import (provider_details_dao, notifications_dao)
 from app.delivery import send_to_providers

@@ -75,12 +75,12 @@ class FiretextClient(SmsClient):
             response.status_code
         )
 
-        if not success:
-            self.statsd_client.incr("clients.firetext.error")
-            self.current_app.logger.error(log_message)
-        else:
+        if success:
             self.current_app.logger.info(log_message)
             self.statsd_client.incr("clients.firetext.success")
+        else:
+            self.statsd_client.incr("clients.firetext.error")
+            self.current_app.logger.error(log_message)
 
     def send_sms(self, to, content, reference, sender=None):
 
