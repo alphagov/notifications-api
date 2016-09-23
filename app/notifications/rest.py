@@ -220,8 +220,8 @@ def send_notification(notification_type):
     )
 
     if notification_type != template.template_type:
-        raise InvalidRequest("{0} template is not suitable for a {1} notification".format(template.template_type,
-                                                                                          notification_type),
+        raise InvalidRequest("{0} template is not suitable for {1} notification".format(template.template_type,
+                                                                                        notification_type),
                              status_code=400)
 
     errors = unarchived_template_schema.validate({'archived': template.archived})

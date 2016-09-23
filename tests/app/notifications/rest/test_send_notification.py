@@ -1024,5 +1024,5 @@ def test_should_error_if_notification_type_does_not_match_template_type(
     assert response.status_code == 400
     json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp['result'] == 'error'
-    assert '{0} template is not suitable for a {1} notification'.format(template_type, notification_type) \
+    assert '{0} template is not suitable for {1} notification'.format(template_type, notification_type) \
            in json_resp['message']
