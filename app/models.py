@@ -313,6 +313,7 @@ JOB_STATUS_TYPES = [
     JOB_STATUS_CANCELLED
 ]
 
+
 class JobStatus(db.Model):
     __tablename__ = 'job_status'
 
