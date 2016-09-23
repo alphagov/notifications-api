@@ -257,7 +257,7 @@ def sample_job(notify_db,
                service=None,
                template=None,
                notification_count=1,
-               created_at=datetime.utcnow(),
+               created_at=None,
                job_status='pending',
                scheduled_for=None):
     if service is None:
@@ -273,7 +273,7 @@ def sample_job(notify_db,
         'template_version': template.version,
         'original_file_name': 'some.csv',
         'notification_count': notification_count,
-        'created_at': created_at,
+        'created_at': created_at or datetime.utcnow(),
         'created_by': service.created_by,
         'job_status': job_status,
         'scheduled_for': scheduled_for

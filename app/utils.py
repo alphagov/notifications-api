@@ -4,7 +4,7 @@ from flask import url_for
 def pagination_links(pagination, endpoint, **kwargs):
     if 'page' in kwargs:
         kwargs.pop('page', None)
-    links = dict()
+    links = {}
     if pagination.has_prev:
         links['prev'] = url_for(endpoint, page=pagination.prev_num, **kwargs)
     if pagination.has_next:
