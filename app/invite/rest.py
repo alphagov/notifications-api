@@ -44,7 +44,7 @@ def create_invited_user(service_id):
         str(uuid.uuid4()),
         encryption.encrypt(message),
         datetime.utcnow().strftime(DATETIME_FORMAT)
-    ), queue="email-invited-user")
+    ), queue="notify")
 
     return jsonify(data=invited_user_schema.dump(invited_user).data), 201
 

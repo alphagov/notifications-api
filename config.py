@@ -116,20 +116,10 @@ class Config(object):
     }
     CELERY_QUEUES = [
         Queue('periodic', Exchange('default'), routing_key='periodic'),
-        Queue('sms', Exchange('default'), routing_key='sms'),
-        Queue('email', Exchange('default'), routing_key='email'),
-        Queue('sms-code', Exchange('default'), routing_key='sms-code'),
-        Queue('email-code', Exchange('default'), routing_key='email-code'),
-        Queue('email-reset-password', Exchange('default'), routing_key='email-reset-password'),
         Queue('process-job', Exchange('default'), routing_key='process-job'),
-        Queue('remove-job', Exchange('default'), routing_key='remove-job'),
-        Queue('bulk-sms', Exchange('default'), routing_key='bulk-sms'),
-        Queue('bulk-email', Exchange('default'), routing_key='bulk-email'),
-        Queue('email-invited-user', Exchange('default'), routing_key='email-invited-user'),
-        Queue('email-registration-verification', Exchange('default'), routing_key='email-registration-verification'),
         Queue('research-mode', Exchange('default'), routing_key='research-mode'),
         Queue('retry', Exchange('default'), routing_key='retry'),
-        Queue('email-already-registered', Exchange('default'), routing_key='email-already-registered')
+        Queue('notify', Exchange('default'), routing_key='notify')
     ]
     API_HOST_NAME = "http://localhost:6011"
 

@@ -421,7 +421,7 @@ def test_send_user_reset_password_should_send_reset_password_link(notify_api,
                  'some_uuid',
                  app.encryption.encrypt(message),
                  "2016-01-01T11:09:00.061258"],
-                queue="email-reset-password")
+                queue="notify")
 
 
 def test_send_user_reset_password_should_return_400_when_email_is_missing(notify_api):
@@ -501,7 +501,7 @@ def test_send_already_registered_email(notify_api, sample_user, already_register
                  'some_uuid',
                  app.encryption.encrypt(message),
                  "2016-01-01T11:09:00.061258"),
-                queue="email-already-registered")
+                queue="notify")
 
 
 def test_send_already_registered_email_returns_400_when_data_is_missing(notify_api, sample_user):

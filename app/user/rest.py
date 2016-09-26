@@ -142,7 +142,7 @@ def send_user_sms_code(user_id):
                           str(uuid.uuid4()),
                           verification_message,
                           datetime.utcnow().strftime(DATETIME_FORMAT)
-                          ], queue='sms-code')
+                          ], queue='notify')
 
     return jsonify({}), 204
 
@@ -168,7 +168,7 @@ def send_user_email_verification(user_id):
         str(uuid.uuid4()),
         encryption.encrypt(message),
         datetime.utcnow().strftime(DATETIME_FORMAT)
-    ), queue='email-registration-verification')
+    ), queue='notify')
 
     return jsonify({}), 204
 
@@ -193,7 +193,7 @@ def send_already_registered_email(user_id):
         str(uuid.uuid4()),
         encryption.encrypt(message),
         datetime.utcnow().strftime(DATETIME_FORMAT)
-    ), queue='email-already-registered')
+    ), queue='notify')
 
     return jsonify({}), 204
 
@@ -252,7 +252,7 @@ def send_user_reset_password():
     send_email.apply_async([current_app.config['NOTIFY_SERVICE_ID'],
                             str(uuid.uuid4()),
                             encryption.encrypt(message),
-                            datetime.utcnow().strftime(DATETIME_FORMAT)], queue='email-reset-password')
+                            datetime.utcnow().strftime(DATETIME_FORMAT)], queue='notify')
 
     return jsonify({}), 204
 
