@@ -422,6 +422,7 @@ class NotificationsFilterSchema(ma.Schema):
     page_size = fields.Int(required=False)
     limit_days = fields.Int(required=False)
     include_jobs = fields.Boolean(required=False)
+    include_from_test_key = fields.Boolean(required=False)
 
     @pre_load
     def handle_multidict(self, in_data):
