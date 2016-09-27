@@ -138,6 +138,11 @@ class Service(db.Model, Versioned):
         default=BRANDING_GOVUK
     )
 
+MOBILE_TYPE = 'mobile'
+EMAIL_TYPE = 'email'
+
+WHITELIST_RECIPIENT_TYPE = [MOBILE_TYPE, EMAIL_TYPE]
+whitelist_recipient_types = db.Enum(*WHITELIST_RECIPIENT_TYPE, name='recipient_type')
 
 class ServiceWhitelist(db.Model):
     __tablename__ = 'service_whitelist'
@@ -145,24 +150,33 @@ class ServiceWhitelist(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service', backref='whitelist')
-    email_address = db.Column(db.String(255), nullable=True)
-    mobile_number = db.Column(db.String, nullable=True)
+    recipient_type = db.Column(whitelist_recipient_types, nullable=False)
+    recipient = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
     @classmethod
-    def from_string(cls, service_id, contact):
-        instance = cls(service_id=service_id)
-        try:
-            validate_email_address(contact)
-            instance.email_address = contact
-        except InvalidEmailError:
-            try:
-                validate_phone_number(contact)
-                instance.mobile_number = contact
-            except InvalidPhoneError:
-                raise ValueError('Invalid whitelist: "{}"'.format(contact))
+    def from_string(cls, service_id, recipient_type, recipient):
+        instance = cls(service_id=service_id, recipient_type=recipient_type)
 
-        return instance
+        try:
+            if recipient_type == MOBILE_TYPE:
+                validate_phone_number(recipient)
+                instance.recipient = recipient
+            elif recipient_type == EMAIL_TYPE:
+                validate_email_address(recipient)
+                instance.recipient = recipient
+            else:
+                raise ValueError('Invalid recipient type')
+        except InvalidPhoneError:
+            raise ValueError('Invalid whitelist: "{}"'.format(recipient))
+        except InvalidEmailError:
+            raise ValueError('Invalid whitelist: "{}"'.format(recipient))
+        else:
+            return instance
+
+        def __repr__(self):
+            return 'Recipient {} of type: {}'.format(self.recipient,
+                                                     self.recipient_type)
 
 
 class ApiKey(db.Model, Versioned):
@@ -329,7 +343,6 @@ class ProviderDetails(db.Model):
     priority = db.Column(db.Integer, nullable=False)
     notification_type = db.Column(notification_types, nullable=False)
     active = db.Column(db.Boolean, default=False)
-    blah = db.Column
 
 
 JOB_STATUS_PENDING = 'pending'
