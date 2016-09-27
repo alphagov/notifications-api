@@ -252,11 +252,13 @@ def send_notification(notification_type):
         service.restricted or api_user.key_type == KEY_TYPE_TEAM,
         not allowed_to_send_to(
             notification['to'],
-            itertools.chain.from_iterable(
-                [user.mobile_number, user.email_address] for user in service.users
+            itertools.chain(
+                itertools.chain.from_iterable([user.mobile_number, user.email_address] for user in service.users),
+                ([member.recipient for member in service.whitelist]) if api_user.key_type == KEY_TYPE_NORMAL else iter([])
             )
         )
     )):
+
         if (api_user.key_type == KEY_TYPE_TEAM):
             message = 'Can’t send to this recipient using a team-only API key'
         else:

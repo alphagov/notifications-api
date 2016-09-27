@@ -21,7 +21,9 @@ from tests.app.conftest import (
     sample_notification as create_sample_notification,
     sample_service as create_sample_service,
     sample_email_template as create_sample_email_template,
-    sample_template as create_sample_template
+    sample_template as create_sample_template,
+    sample_service_whitelist as create_sample_service_whitelist,
+    sample_api_key as create_sample_api_key
 )
 
 
@@ -999,3 +1001,238 @@ def test_should_not_persist_notification_or_send_sms_if_simulated_number(
     assert response.status_code == 201
     apply_async.assert_not_called()
     assert Notification.query.count() == 0
+
+
+@pytest.mark.parametrize('to_sms', ['07827992635'])
+def test_should_not_send_sms_to_non_whitelist_recipient_in_trial_mode_with_live_key(
+    client,
+    notify_db,
+    notify_db_session,
+    to_sms,
+    mocker):
+    apply_async = mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+    service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
+    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service)
+    sms_template = create_sample_template(notify_db, notify_db_session, service=service)
+
+    assert service_whitelist.service_id == service.id
+    assert to_sms not in [member.recipient for member in service.whitelist]
+
+    create_sample_notification(notify_db, notify_db_session, template=sms_template, service=service)
+
+    data = {
+        'to': to_sms,
+        'template': str(sms_template.id)
+    }
+
+    live_key = create_sample_api_key(notify_db, notify_db_session, service)
+    auth_header = create_jwt_token(secret=live_key.unsigned_secret, client_id=str(live_key.service_id))
+
+    response = client.post(
+        path='/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+
+    expected_response_message = (
+        'Can’t send to this recipient when service is in trial mode '
+        '– see https://www.notifications.service.gov.uk/trial-mode'
+    )
+
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 400
+    assert json_resp['result'] == 'error'
+    assert expected_response_message in json_resp['message']['to']
+    apply_async.assert_not_called()
+
+@pytest.mark.parametrize('to_email', ['non_whitelist_recipient@mail.com'])
+def test_should_not_send_email_to_non_whitelist_recipient_in_trial_mode_with_live_key(
+    client,
+    notify_db,
+    notify_db_session,
+    to_email,
+    mocker):
+    apply_async = mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
+    service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
+    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service)
+    email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
+
+    assert service_whitelist.service_id == service.id
+    assert to_email not in [member.recipient for member in service.whitelist]
+
+    create_sample_notification(notify_db, notify_db_session, template=email_template, service=service)
+
+    data = {
+        'to': to_email,
+        'template': str(email_template.id)
+    }
+
+    live_key = create_sample_api_key(notify_db, notify_db_session, service)
+    auth_header = create_jwt_token(secret=live_key.unsigned_secret, client_id=str(live_key.service_id))
+
+    response = client.post(
+        path='/notifications/email',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+
+    expected_response_message = (
+        'Can’t send to this recipient when service is in trial mode '
+        '– see https://www.notifications.service.gov.uk/trial-mode'
+    )
+
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 400
+    assert json_resp['result'] == 'error'
+    assert expected_response_message in json_resp['message']['to']
+    apply_async.assert_not_called()
+
+
+@pytest.mark.parametrize('to_sms', ['07827992635'])
+def test_should_not_send_sms_to_whitelist_recipient_in_trial_mode_with_team_key(
+    client,
+    notify_db,
+    notify_db_session,
+    to_sms,
+    mocker):
+    apply_async = mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+    service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
+    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service, mobile_number=to_sms)
+    sms_template = create_sample_template(notify_db, notify_db_session, service=service)
+
+    assert service_whitelist.service_id == service.id
+    assert to_sms in [member.recipient for member in service.whitelist]
+
+    create_sample_notification(notify_db, notify_db_session, template=sms_template, service=service)
+
+    data = {
+        'to': to_sms,
+        'template': str(sms_template.id)
+    }
+
+    team_key = create_sample_api_key(notify_db, notify_db_session, service, key_type=KEY_TYPE_TEAM)
+    auth_header = create_jwt_token(secret=team_key.unsigned_secret, client_id=str(team_key.service_id))
+
+    response = client.post(
+        path='/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 400
+    assert json_resp['result'] == 'error'
+    assert 'Can’t send to this recipient using a team-only API key' in json_resp['message']['to']
+    apply_async.assert_not_called()
+
+
+@pytest.mark.parametrize('to_email', ['non_whitelist_recipient@mail.com'])
+def test_should_not_send_email_to_whitelist_recipient_in_trial_mode_with_team_key(
+    client,
+    notify_db,
+    notify_db_session,
+    to_email,
+    mocker):
+    apply_async = mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+    service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
+    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service, email_address=to_email)
+    email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
+
+    assert service_whitelist.service_id == service.id
+    assert to_email in [member.recipient for member in service.whitelist]
+
+    create_sample_notification(notify_db, notify_db_session, template=email_template, service=service)
+
+    data = {
+        'to': to_email,
+        'template': str(email_template.id)
+    }
+
+    team_key = create_sample_api_key(notify_db, notify_db_session, service, key_type=KEY_TYPE_TEAM)
+    auth_header = create_jwt_token(secret=team_key.unsigned_secret, client_id=str(team_key.service_id))
+
+    response = client.post(
+        path='/notifications/email',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 400
+    assert json_resp['result'] == 'error'
+    assert 'Can’t send to this recipient using a team-only API key' in json_resp['message']['to']
+    apply_async.assert_not_called()
+
+
+@pytest.mark.parametrize('to_sms', ['07123123123'])
+def test_should_send_sms_to_whitelist_recipient_in_trial_mode_with_live_key(
+    client,
+    notify_db,
+    notify_db_session,
+    to_sms,
+    mocker):
+    apply_async = mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+
+    service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
+    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service, mobile_number=to_sms)
+    sms_template = create_sample_template(notify_db, notify_db_session, service=service)
+
+    assert service_whitelist.service_id == service.id
+    assert to_sms in [member.recipient for member in service.whitelist]
+
+    create_sample_notification(notify_db, notify_db_session, template=sms_template, service=service)
+
+    data = {
+        'to': to_sms,
+        'template': str(sms_template.id)
+    }
+
+    sample_live_key = create_sample_api_key(notify_db, notify_db_session, service)
+    auth_header = create_jwt_token(secret=sample_live_key.unsigned_secret, client_id=str(sample_live_key.service_id))
+
+    response = client.post(
+        path='/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 201
+    assert json_resp['data']['notification']['id']
+    assert json_resp['data']['body'] == sms_template.content
+    assert json_resp['data']['template_version'] == sms_template.version
+    apply_async.called
+
+
+@pytest.mark.parametrize('to_email', ['whitelist_recipient@mail.com'])
+def test_should_send_email_to_whitelist_recipient_in_trial_mode_with_live_key(
+    client,
+    notify_db,
+    notify_db_session,
+    to_email,
+    mocker):
+    apply_async = mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
+
+    service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
+    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service, email_address=to_email)
+    email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
+
+    assert service_whitelist.service_id == service.id
+    assert to_email in [member.recipient for member in service.whitelist]
+
+    create_sample_notification(notify_db, notify_db_session, template=email_template, service=service)
+
+    data = {
+        'to': to_email,
+        'template': str(email_template.id)
+    }
+
+    sample_live_key = create_sample_api_key(notify_db, notify_db_session, service)
+    auth_header = create_jwt_token(secret=sample_live_key.unsigned_secret, client_id=str(sample_live_key.service_id))
+
+    response = client.post(
+        path='/notifications/email',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 201
+    assert json_resp['data']['notification']['id']
+    assert json_resp['data']['body'] == email_template.content
+    assert json_resp['data']['template_version'] == email_template.version
+    apply_async.called
