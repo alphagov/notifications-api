@@ -96,20 +96,16 @@ def get_jobs_by_service(service_id):
     if request.args.get('limit_days'):
         try:
             limit_days = int(request.args['limit_days'])
-        except ValueError as e:
+        except ValueError:
             errors = {'limit_days': ['{} is not an integer'.format(request.args['limit_days'])]}
             raise InvalidRequest(errors, status_code=400)
     else:
         limit_days = None
 
-    jobs = dao_get_jobs_by_service_id(service_id, limit_days)
-    data = job_schema.dump(jobs, many=True).data
+    statuses = [x.strip() for x in request.args.get('statuses', '').split(',')]
 
-    for job_data in data:
-        statistics = dao_get_notification_outcomes_for_job(service_id, job_data['id'])
-        job_data['statistics'] = [{'status': statistic[1], 'count': statistic[0]} for statistic in statistics]
-
-    return jsonify(data=data)
+    page = int(request.args.get('page', 1))
+    return jsonify(**get_paginated_jobs(service_id, limit_days, statuses, page))
 
 
 @job.route('', methods=['POST'])
@@ -144,3 +140,28 @@ def create_job(service_id):
     job_json['statistics'] = []
 
     return jsonify(data=job_json), 201
+
+
+def get_paginated_jobs(service_id, limit_days, statuses, page):
+    pagination = dao_get_jobs_by_service_id(
+        service_id,
+        limit_days=limit_days,
+        page=page,
+        page_size=current_app.config['PAGE_SIZE'],
+        statuses=statuses
+    )
+    data = job_schema.dump(pagination.items, many=True).data
+    for job_data in data:
+        statistics = dao_get_notification_outcomes_for_job(service_id, job_data['id'])
+        job_data['statistics'] = [{'status': statistic[1], 'count': statistic[0]} for statistic in statistics]
+
+    return {
+        'data': data,
+        'page_size': pagination.per_page,
+        'total': pagination.total,
+        'links': pagination_links(
+            pagination,
+            '.get_jobs_by_service',
+            service_id=service_id
+        )
+    }

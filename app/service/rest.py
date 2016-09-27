@@ -224,6 +224,7 @@ def get_all_notifications_for_service(service_id):
     page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
     limit_days = data.get('limit_days')
     include_jobs = data.get('include_jobs', True)
+    include_from_test_key = data.get('include_from_test_key', False)
 
     pagination = notifications_dao.get_notifications_for_service(
         service_id,
@@ -231,7 +232,9 @@ def get_all_notifications_for_service(service_id):
         page=page,
         page_size=page_size,
         limit_days=limit_days,
-        include_jobs=include_jobs)
+        include_jobs=include_jobs,
+        include_from_test_key=include_from_test_key
+    )
     kwargs = request.args.to_dict()
     kwargs['service_id'] = service_id
     return jsonify(

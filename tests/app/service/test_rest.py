@@ -16,6 +16,7 @@ from tests.app.conftest import (
     sample_user as create_sample_user,
     sample_notification as create_sample_notification,
     sample_notification_with_job)
+from app.models import KEY_TYPE_TEST
 
 
 def test_get_service_list(notify_api, service_factory):
@@ -1037,26 +1038,41 @@ def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notif
         assert response.status_code == 200
 
 
+@pytest.mark.parametrize(
+    'include_from_test_key, expected_count_of_notifications',
+    [
+        (False, 2),
+        (True, 3)
+    ]
+)
 def test_get_all_notifications_for_service_including_ones_made_by_jobs(
-        notify_api,
-        notify_db,
-        notify_db_session,
-        sample_service):
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        with_job = sample_notification_with_job(notify_db, notify_db_session, service=sample_service)
-        without_job = create_sample_notification(notify_db, notify_db_session, service=sample_service)
+    client,
+    notify_db,
+    notify_db_session,
+    sample_service,
+    include_from_test_key,
+    expected_count_of_notifications
+):
+    with_job = sample_notification_with_job(notify_db, notify_db_session, service=sample_service)
+    without_job = create_sample_notification(notify_db, notify_db_session, service=sample_service)
+    from_test_api_key = create_sample_notification(
+        notify_db, notify_db_session, service=sample_service, key_type=KEY_TYPE_TEST
+    )
 
-        auth_header = create_authorization_header()
+    auth_header = create_authorization_header()
 
-        response = client.get(
-            path='/service/{}/notifications'.format(sample_service.id),
-            headers=[auth_header])
+    response = client.get(
+        path='/service/{}/notifications?include_from_test_key={}'.format(
+            sample_service.id, include_from_test_key
+        ),
+        headers=[auth_header]
+    )
 
-        resp = json.loads(response.get_data(as_text=True))
-        assert len(resp['notifications']) == 2
-        assert resp['notifications'][0]['to'] == with_job.to
-        assert resp['notifications'][1]['to'] == without_job.to
-        assert response.status_code == 200
+    resp = json.loads(response.get_data(as_text=True))
+    assert len(resp['notifications']) == expected_count_of_notifications
+    assert resp['notifications'][0]['to'] == with_job.to
+    assert resp['notifications'][1]['to'] == without_job.to
+    assert response.status_code == 200
 
 
 def test_get_only_api_created_notifications_for_service(

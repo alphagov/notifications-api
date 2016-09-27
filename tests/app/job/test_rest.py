@@ -1,59 +1,20 @@
 import json
 import uuid
 from datetime import datetime, timedelta
-from freezegun import freeze_time
 
+from freezegun import freeze_time
 import pytest
 import pytz
 import app.celery.tasks
 
 from tests import create_authorization_header
+from tests.conftest import set_config
 from tests.app.conftest import (
     sample_job as create_job,
-    sample_notification as create_sample_notification, sample_notification, sample_job)
+    sample_notification as create_notification
+)
 from app.dao.templates_dao import dao_update_template
-from app.models import NOTIFICATION_STATUS_TYPES
-
-
-def test_get_jobs(notify_api, notify_db, notify_db_session, sample_template):
-    _setup_jobs(notify_db, notify_db_session, sample_template)
-
-    service_id = sample_template.service.id
-
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            path = '/service/{}/job'.format(service_id)
-            auth_header = create_authorization_header(service_id=service_id)
-            response = client.get(path, headers=[auth_header])
-            assert response.status_code == 200
-            resp_json = json.loads(response.get_data(as_text=True))
-            assert len(resp_json['data']) == 5
-
-
-def test_get_jobs_with_limit_days(notify_api, notify_db, notify_db_session, sample_template):
-    create_job(
-        notify_db,
-        notify_db_session,
-        service=sample_template.service,
-        template=sample_template,
-    )
-    create_job(
-        notify_db,
-        notify_db_session,
-        service=sample_template.service,
-        template=sample_template,
-        created_at=datetime.now() - timedelta(days=7))
-
-    service_id = sample_template.service.id
-
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            path = '/service/{}/job'.format(service_id)
-            auth_header = create_authorization_header(service_id=service_id)
-            response = client.get(path, headers=[auth_header], query_string={'limit_days': 5})
-            assert response.status_code == 200
-            resp_json = json.loads(response.get_data(as_text=True))
-            assert len(resp_json['data']) == 1
+from app.models import NOTIFICATION_STATUS_TYPES, JOB_STATUS_TYPES, JOB_STATUS_PENDING
 
 
 def test_get_job_with_invalid_service_id_returns404(notify_api, sample_api_key, sample_service):
@@ -391,7 +352,7 @@ def test_get_all_notifications_for_job_in_order_of_job_number(notify_api,
         main_job = create_job(notify_db, notify_db_session, service=sample_service)
         another_job = create_job(notify_db, notify_db_session, service=sample_service)
 
-        notification_1 = create_sample_notification(
+        notification_1 = create_notification(
             notify_db,
             notify_db_session,
             job=main_job,
@@ -399,7 +360,7 @@ def test_get_all_notifications_for_job_in_order_of_job_number(notify_api,
             created_at=datetime.utcnow(),
             job_row_number=1
         )
-        notification_2 = create_sample_notification(
+        notification_2 = create_notification(
             notify_db,
             notify_db_session,
             job=main_job,
@@ -407,7 +368,7 @@ def test_get_all_notifications_for_job_in_order_of_job_number(notify_api,
             created_at=datetime.utcnow(),
             job_row_number=2
         )
-        notification_3 = create_sample_notification(
+        notification_3 = create_notification(
             notify_db,
             notify_db_session,
             job=main_job,
@@ -415,7 +376,7 @@ def test_get_all_notifications_for_job_in_order_of_job_number(notify_api,
             created_at=datetime.utcnow(),
             job_row_number=3
         )
-        create_sample_notification(notify_db, notify_db_session, job=another_job)
+        create_notification(notify_db, notify_db_session, job=another_job)
 
         auth_header = create_authorization_header()
 
@@ -454,7 +415,7 @@ def test_get_all_notifications_for_job_filtered_by_status(
     with notify_api.test_request_context(), notify_api.test_client() as client:
         job = create_job(notify_db, notify_db_session, service=sample_service)
 
-        create_sample_notification(
+        create_notification(
             notify_db,
             notify_db_session,
             job=job,
@@ -492,14 +453,14 @@ def test_get_job_by_id_should_return_statistics(notify_db, notify_db_session, no
     job_id = str(sample_job.id)
     service_id = sample_job.service.id
 
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='created')
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='sending')
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='delivered')
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='pending')
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='failed')
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='technical-failure')  # noqa
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='temporary-failure')  # noqa
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='permanent-failure')  # noqa
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='created')
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='sending')
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='delivered')
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='pending')
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='failed')
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='technical-failure')  # noqa
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='temporary-failure')  # noqa
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='permanent-failure')  # noqa
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -524,16 +485,16 @@ def test_get_job_by_id_should_return_summed_statistics(notify_db, notify_db_sess
     job_id = str(sample_job.id)
     service_id = sample_job.service.id
 
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='created')
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='created')
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='created')
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='sending')
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='failed')
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='failed')
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='failed')
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='technical-failure')  # noqa
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='temporary-failure')  # noqa
-    sample_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='temporary-failure')  # noqa
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='created')
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='created')
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='created')
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='sending')
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='failed')
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='failed')
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='failed')
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='technical-failure')  # noqa
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='temporary-failure')  # noqa
+    create_notification(notify_db, notify_db_session, service=sample_job.service, job=sample_job, status='temporary-failure')  # noqa
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -551,22 +512,63 @@ def test_get_job_by_id_should_return_summed_statistics(notify_db, notify_db_sess
             assert resp_json['data']['created_by']['name'] == 'Test User'
 
 
-def test_get_jobs_for_service_should_return_statistics(notify_db, notify_db_session, notify_api, sample_service):
-    now = datetime.utcnow()
-    earlier = datetime.utcnow() - timedelta(days=1)
-    job_1 = sample_job(notify_db, notify_db_session, service=sample_service, created_at=earlier)
-    job_2 = sample_job(notify_db, notify_db_session, service=sample_service, created_at=now)
+def test_get_jobs(notify_api, notify_db, notify_db_session, sample_template):
+    _setup_jobs(notify_db, notify_db_session, sample_template)
 
-    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
-    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
-    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
-    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_2, status='sending')
-    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_2, status='sending')
-    sample_notification(notify_db, notify_db_session, service=sample_service, job=job_2, status='sending')
+    service_id = sample_template.service.id
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            path = '/service/{}/job'.format(str(sample_service.id))
+            path = '/service/{}/job'.format(service_id)
+            auth_header = create_authorization_header(service_id=service_id)
+            response = client.get(path, headers=[auth_header])
+            assert response.status_code == 200
+            resp_json = json.loads(response.get_data(as_text=True))
+            assert len(resp_json['data']) == 5
+
+
+def test_get_jobs_with_limit_days(notify_api, notify_db, notify_db_session, sample_template):
+    create_job(
+        notify_db,
+        notify_db_session,
+        service=sample_template.service,
+        template=sample_template,
+    )
+    create_job(
+        notify_db,
+        notify_db_session,
+        service=sample_template.service,
+        template=sample_template,
+        created_at=datetime.now() - timedelta(days=7))
+
+    service_id = sample_template.service.id
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = '/service/{}/job'.format(service_id)
+            auth_header = create_authorization_header(service_id=service_id)
+            response = client.get(path, headers=[auth_header], query_string={'limit_days': 5})
+            assert response.status_code == 200
+            resp_json = json.loads(response.get_data(as_text=True))
+            assert len(resp_json['data']) == 1
+
+
+def test_get_jobs_should_return_statistics(notify_db, notify_db_session, notify_api, sample_service):
+    now = datetime.utcnow()
+    earlier = datetime.utcnow() - timedelta(days=1)
+    job_1 = create_job(notify_db, notify_db_session, service=sample_service, created_at=earlier)
+    job_2 = create_job(notify_db, notify_db_session, service=sample_service, created_at=now)
+
+    create_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
+    create_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
+    create_notification(notify_db, notify_db_session, service=sample_service, job=job_1, status='created')
+    create_notification(notify_db, notify_db_session, service=sample_service, job=job_2, status='sending')
+    create_notification(notify_db, notify_db_session, service=sample_service, job=job_2, status='sending')
+    create_notification(notify_db, notify_db_session, service=sample_service, job=job_2, status='sending')
+
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            path = '/service/{}/job'.format(sample_service.id)
             auth_header = create_authorization_header(service_id=str(sample_service.id))
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
@@ -578,7 +580,7 @@ def test_get_jobs_for_service_should_return_statistics(notify_db, notify_db_sess
             assert {'status': 'created', 'count': 3} in resp_json['data'][1]['statistics']
 
 
-def test_get_jobs_for_service_should_return_no_stats_if_no_rows_in_notifications(
+def test_get_jobs_should_return_no_stats_if_no_rows_in_notifications(
         notify_db,
         notify_db_session,
         notify_api,
@@ -586,12 +588,12 @@ def test_get_jobs_for_service_should_return_no_stats_if_no_rows_in_notifications
 
     now = datetime.utcnow()
     earlier = datetime.utcnow() - timedelta(days=1)
-    job_1 = sample_job(notify_db, notify_db_session, service=sample_service, created_at=earlier)
-    job_2 = sample_job(notify_db, notify_db_session, service=sample_service, created_at=now)
+    job_1 = create_job(notify_db, notify_db_session, service=sample_service, created_at=earlier)
+    job_2 = create_job(notify_db, notify_db_session, service=sample_service, created_at=now)
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            path = '/service/{}/job'.format(str(sample_service.id))
+            path = '/service/{}/job'.format(sample_service.id)
             auth_header = create_authorization_header(service_id=str(sample_service.id))
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
@@ -601,3 +603,96 @@ def test_get_jobs_for_service_should_return_no_stats_if_no_rows_in_notifications
             assert resp_json['data'][0]['statistics'] == []
             assert resp_json['data'][1]['id'] == str(job_1.id)
             assert resp_json['data'][1]['statistics'] == []
+
+
+def test_get_jobs_should_paginate(
+        notify_db,
+        notify_db_session,
+        client,
+        sample_template
+):
+    create_10_jobs(notify_db, notify_db_session, sample_template.service, sample_template)
+
+    path = '/service/{}/job'.format(sample_template.service_id)
+    auth_header = create_authorization_header(service_id=str(sample_template.service_id))
+
+    with set_config(client.application, 'PAGE_SIZE', 2):
+        response = client.get(path, headers=[auth_header])
+
+    assert response.status_code == 200
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert len(resp_json['data']) == 2
+    assert resp_json['data'][0]['created_at'] == '2015-01-01T10:00:00+00:00'
+    assert resp_json['data'][1]['created_at'] == '2015-01-01T09:00:00+00:00'
+    assert resp_json['page_size'] == 2
+    assert resp_json['total'] == 10
+    assert 'links' in resp_json
+    assert set(resp_json['links'].keys()) == {'next', 'last'}
+
+
+def test_get_jobs_accepts_page_parameter(
+        notify_db,
+        notify_db_session,
+        client,
+        sample_template
+):
+    create_10_jobs(notify_db, notify_db_session, sample_template.service, sample_template)
+
+    path = '/service/{}/job'.format(sample_template.service_id)
+    auth_header = create_authorization_header(service_id=str(sample_template.service_id))
+
+    with set_config(client.application, 'PAGE_SIZE', 2):
+        response = client.get(path, headers=[auth_header], query_string={'page': 2})
+
+    assert response.status_code == 200
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert len(resp_json['data']) == 2
+    assert resp_json['data'][0]['created_at'] == '2015-01-01T08:00:00+00:00'
+    assert resp_json['data'][1]['created_at'] == '2015-01-01T07:00:00+00:00'
+    assert resp_json['page_size'] == 2
+    assert resp_json['total'] == 10
+    assert 'links' in resp_json
+    assert set(resp_json['links'].keys()) == {'prev', 'next', 'last'}
+
+
+@pytest.mark.parametrize('statuses_filter, expected_statuses', [
+    ('', JOB_STATUS_TYPES),
+    ('pending', [JOB_STATUS_PENDING]),
+    ('pending, in progress, finished, sending limits exceeded, scheduled, cancelled', JOB_STATUS_TYPES),
+    # bad statuses are accepted, just return no data
+    ('foo', [])
+])
+def test_get_jobs_can_filter_on_statuses(
+        notify_db,
+        notify_db_session,
+        client,
+        sample_service,
+        statuses_filter,
+        expected_statuses
+):
+    create_job(notify_db, notify_db_session, job_status='pending')
+    create_job(notify_db, notify_db_session, job_status='in progress')
+    create_job(notify_db, notify_db_session, job_status='finished')
+    create_job(notify_db, notify_db_session, job_status='sending limits exceeded')
+    create_job(notify_db, notify_db_session, job_status='scheduled')
+    create_job(notify_db, notify_db_session, job_status='cancelled')
+
+    path = '/service/{}/job'.format(sample_service.id)
+    response = client.get(
+        path,
+        headers=[create_authorization_header()],
+        query_string={'statuses': statuses_filter}
+    )
+
+    assert response.status_code == 200
+    resp_json = json.loads(response.get_data(as_text=True))
+    from pprint import pprint
+    pprint(resp_json)
+    assert {x['job_status'] for x in resp_json['data']} == set(expected_statuses)
+
+
+def create_10_jobs(db, session, service, template):
+    with freeze_time('2015-01-01T00:00:00') as the_time:
+        for _ in range(10):
+            the_time.tick(timedelta(hours=1))
+            create_job(db, session, service, template)

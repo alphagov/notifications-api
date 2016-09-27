@@ -53,7 +53,7 @@ def test_should_not_allow_invalid_secret(notify_api, sample_api_key):
             )
             assert response.status_code == 403
             data = json.loads(response.get_data())
-            assert data['message'] == {"token": ['Invalid token: signature']}
+            assert data['message'] == {"token": ['Invalid token: signature, api token is not valid']}
 
 
 def test_should_allow_valid_token(notify_api, sample_api_key):
@@ -65,6 +65,20 @@ def test_should_allow_valid_token(notify_api, sample_api_key):
                 headers={'Authorization': 'Bearer {}'.format(token)}
             )
             assert response.status_code == 200
+
+
+def test_should_not_allow_service_id_that_is_not_the_wrong_data_type(notify_api, sample_api_key):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            token = create_jwt_token(secret=get_unsigned_secrets(sample_api_key.service_id)[0],
+                                     client_id=str('not-a-valid-id'))
+            response = client.get(
+                '/service',
+                headers={'Authorization': "Bearer {}".format(token)}
+            )
+            assert response.status_code == 403
+            data = json.loads(response.get_data())
+            assert data['message'] == {"token": ['Invalid token: service id is not the right data type']}
 
 
 def test_should_allow_valid_token_for_request_with_path_params(notify_api, sample_api_key):
@@ -95,8 +109,6 @@ def test_should_allow_valid_token_when_service_has_multiple_keys(notify_api, sam
 
 
 def test_authentication_passes_admin_client_token(notify_api,
-                                                  notify_db,
-                                                  notify_db_session,
                                                   sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -173,8 +185,7 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
 
 
 def test_authentication_returns_error_when_admin_client_has_no_secrets(notify_api,
-                                                                       notify_db,
-                                                                       notify_db_session):
+                                                                       sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             api_secret = notify_api.config.get('ADMIN_CLIENT_SECRET')
@@ -194,17 +205,14 @@ def test_authentication_returns_error_when_admin_client_has_no_secrets(notify_ap
 
 def test_authentication_returns_error_when_service_doesnt_exit(
     notify_api,
-    notify_db,
-    notify_db_session,
-    sample_service,
-    fake_uuid
+    sample_api_key
 ):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         # get service ID and secret the wrong way around
         token = create_jwt_token(
-            secret=str(sample_service.id),
-            client_id=fake_uuid
-        )
+            secret=str(sample_api_key.service_id),
+            client_id=str(sample_api_key.id))
+
         response = client.get(
             '/service',
             headers={'Authorization': 'Bearer {}'.format(token)}
@@ -215,8 +223,6 @@ def test_authentication_returns_error_when_service_doesnt_exit(
 
 
 def test_authentication_returns_error_when_service_has_no_secrets(notify_api,
-                                                                  notify_db,
-                                                                  notify_db_session,
                                                                   sample_service,
                                                                   fake_uuid):
     with notify_api.test_request_context():
@@ -248,8 +254,6 @@ def test_should_attach_the_current_api_key_to_current_app(notify_api, sample_ser
 
 
 def test_should_return_403_when_token_is_expired(notify_api,
-                                                 notify_db,
-                                                 notify_db_session,
                                                  sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:

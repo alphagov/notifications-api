@@ -228,14 +228,17 @@ def get_notifications(filter_dict=None):
 
 
 @statsd(namespace="dao")
-def get_notifications_for_service(service_id,
-                                  filter_dict=None,
-                                  page=1,
-                                  page_size=None,
-                                  limit_days=None,
-                                  key_type=None,
-                                  personalisation=False,
-                                  include_jobs=False):
+def get_notifications_for_service(
+    service_id,
+    filter_dict=None,
+    page=1,
+    page_size=None,
+    limit_days=None,
+    key_type=None,
+    personalisation=False,
+    include_jobs=False,
+    include_from_test_key=False
+):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
 
@@ -250,7 +253,7 @@ def get_notifications_for_service(service_id,
 
     if key_type is not None:
         filters.append(Notification.key_type == key_type)
-    else:
+    elif not include_from_test_key:
         filters.append(Notification.key_type != KEY_TYPE_TEST)
 
     query = Notification.query.filter(*filters)

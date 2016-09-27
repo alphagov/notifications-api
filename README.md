@@ -1,4 +1,3 @@
-![](https://travis-ci.org/alphagov/notifications-api.svg)
 [![Requirements Status](https://requires.io/github/alphagov/notifications-api/requirements.svg?branch=master)](https://requires.io/github/alphagov/notifications-api/requirements/?branch=master)
 
 # notifications-api

@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import os
 
 import boto3
@@ -83,3 +84,11 @@ def pytest_generate_tests(metafunc):
         argnames, testdata = idparametrize.args
         ids, argvalues = zip(*sorted(testdata.items()))
         metafunc.parametrize(argnames, argvalues, ids=ids)
+
+
+@contextmanager
+def set_config(app, name, value):
+    old_val = app.config.get(name)
+    app.config[name] = value
+    yield
+    app.config[name] = old_val
