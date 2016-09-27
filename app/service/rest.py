@@ -50,7 +50,9 @@ from app.errors import (
     InvalidRequest
 )
 from app.service import statistics
-from app.models import ServiceWhitelist
+from app.models import (
+    ServiceWhitelist,
+    MOBILE_TYPE, EMAIL_TYPE)
 
 
 service_blueprint = Blueprint('service', __name__)
@@ -279,11 +281,17 @@ def get_detailed_services():
 
 @service_blueprint.route('/<uuid:service_id>/whitelist', methods=['GET'])
 def get_whitelist(service_id):
-    whitelist = dao_fetch_service_whitelist(service_id)
+    service = dao_fetch_service_by_id(service_id)
 
+    if not service:
+        raise InvalidRequest("Service does not exist", status_code=404)
+
+    whitelist = dao_fetch_service_whitelist(service.id)
     return jsonify(
-        email_addresses=[item.email_address for item in whitelist if item.email_address is not None],
-        mobile_numbers=[item.mobile_number for item in whitelist if item.mobile_number is not None]
+        email_addresses=[item.recipient for item in whitelist
+                         if item.recipient_type == EMAIL_TYPE],
+        phone_numbers=[item.recipient for item in whitelist
+                       if item.recipient_type == MOBILE_TYPE]
     )
 
 
@@ -291,9 +299,12 @@ def get_whitelist(service_id):
 def update_whitelist(service_id):
     # doesn't commit so if there are any errors, we preserve old values in db
     dao_remove_service_whitelist(service_id)
-
     try:
-        whitelist_objs = [ServiceWhitelist.from_string(service_id, contact) for contact in request.get_json()]
+        whitelist_objs = itertools.chain(
+            [ServiceWhitelist.from_string(service_id, MOBILE_TYPE, recipient)
+             for recipient in request.get_json().get('phone_numbers')],
+            [ServiceWhitelist.from_string(service_id, EMAIL_TYPE, recipient)
+             for recipient in request.get_json().get('email_addresses')])
     except ValueError as e:
         current_app.logger.exception(e)
         dao_rollback()
