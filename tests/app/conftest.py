@@ -20,7 +20,8 @@ from app.models import (
     ProviderDetails,
     NotificationStatistics,
     ServiceWhitelist,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM)
+    KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM,
+    MOBILE_TYPE, EMAIL_TYPE)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
@@ -872,10 +873,12 @@ def sample_service_whitelist(notify_db, notify_db_session, service=None, email_a
     if service is None:
         service = sample_service(notify_db, notify_db_session)
 
-    if not email_address and not mobile_number:
-        email_address = 'whitelisted_user@digital.gov.uk'
-
-    whitelisted_user = ServiceWhitelist.from_string(service.id, email_address or mobile_number)
+    if email_address:
+        whitelisted_user = ServiceWhitelist.from_string(service.id, EMAIL_TYPE, email_address)
+    elif mobile_number:
+        whitelisted_user = ServiceWhitelist.from_string(service.id, MOBILE_TYPE, mobile_number)
+    else:
+        whitelisted_user = ServiceWhitelist.from_string(service.id, EMAIL_TYPE, 'whitelisted_user@digital.gov.uk')
 
     notify_db.session.add(whitelisted_user)
     notify_db.session.commit()
