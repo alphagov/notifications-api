@@ -1004,12 +1004,11 @@ def test_should_not_persist_notification_or_send_sms_if_simulated_number(
 
 
 @pytest.mark.parametrize('to_sms', ['07827992635'])
-def test_should_not_send_sms_to_non_whitelist_recipient_in_trial_mode_with_live_key(
-    client,
-    notify_db,
-    notify_db_session,
-    to_sms,
-    mocker):
+def test_should_not_send_sms_to_non_whitelist_recipient_in_trial_mode_with_live_key(client,
+                                                                                    notify_db,
+                                                                                    notify_db_session,
+                                                                                    to_sms,
+                                                                                    mocker):
     apply_async = mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
     service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
     service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service)
@@ -1044,13 +1043,13 @@ def test_should_not_send_sms_to_non_whitelist_recipient_in_trial_mode_with_live_
     assert expected_response_message in json_resp['message']['to']
     apply_async.assert_not_called()
 
+
 @pytest.mark.parametrize('to_email', ['non_whitelist_recipient@mail.com'])
-def test_should_not_send_email_to_non_whitelist_recipient_in_trial_mode_with_live_key(
-    client,
-    notify_db,
-    notify_db_session,
-    to_email,
-    mocker):
+def test_should_not_send_email_to_non_whitelist_recipient_in_trial_mode_with_live_key(client,
+                                                                                      notify_db,
+                                                                                      notify_db_session,
+                                                                                      to_email,
+                                                                                      mocker):
     apply_async = mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
     service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
     service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service)
@@ -1087,15 +1086,15 @@ def test_should_not_send_email_to_non_whitelist_recipient_in_trial_mode_with_liv
 
 
 @pytest.mark.parametrize('to_sms', ['07827992635'])
-def test_should_not_send_sms_to_whitelist_recipient_in_trial_mode_with_team_key(
-    client,
-    notify_db,
-    notify_db_session,
-    to_sms,
-    mocker):
+def test_should_not_send_sms_to_whitelist_recipient_in_trial_mode_with_team_key(client,
+                                                                                notify_db,
+                                                                                notify_db_session,
+                                                                                to_sms,
+                                                                                mocker):
     apply_async = mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
     service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
-    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service, mobile_number=to_sms)
+    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session,
+                                                        service=service, mobile_number=to_sms)
     sms_template = create_sample_template(notify_db, notify_db_session, service=service)
 
     assert service_whitelist.service_id == service.id
@@ -1124,15 +1123,15 @@ def test_should_not_send_sms_to_whitelist_recipient_in_trial_mode_with_team_key(
 
 
 @pytest.mark.parametrize('to_email', ['non_whitelist_recipient@mail.com'])
-def test_should_not_send_email_to_whitelist_recipient_in_trial_mode_with_team_key(
-    client,
-    notify_db,
-    notify_db_session,
-    to_email,
-    mocker):
+def test_should_not_send_email_to_whitelist_recipient_in_trial_mode_with_team_key(client,
+                                                                                  notify_db,
+                                                                                  notify_db_session,
+                                                                                  to_email,
+                                                                                  mocker):
     apply_async = mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
     service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
-    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service, email_address=to_email)
+    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session,
+                                                        service=service, email_address=to_email)
     email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
 
     assert service_whitelist.service_id == service.id
@@ -1161,16 +1160,16 @@ def test_should_not_send_email_to_whitelist_recipient_in_trial_mode_with_team_ke
 
 
 @pytest.mark.parametrize('to_sms', ['07123123123'])
-def test_should_send_sms_to_whitelist_recipient_in_trial_mode_with_live_key(
-    client,
-    notify_db,
-    notify_db_session,
-    to_sms,
-    mocker):
+def test_should_send_sms_to_whitelist_recipient_in_trial_mode_with_live_key(client,
+                                                                            notify_db,
+                                                                            notify_db_session,
+                                                                            to_sms,
+                                                                            mocker):
     apply_async = mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
 
     service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
-    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service, mobile_number=to_sms)
+    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session,
+                                                        service=service, mobile_number=to_sms)
     sms_template = create_sample_template(notify_db, notify_db_session, service=service)
 
     assert service_whitelist.service_id == service.id
@@ -1200,16 +1199,16 @@ def test_should_send_sms_to_whitelist_recipient_in_trial_mode_with_live_key(
 
 
 @pytest.mark.parametrize('to_email', ['whitelist_recipient@mail.com'])
-def test_should_send_email_to_whitelist_recipient_in_trial_mode_with_live_key(
-    client,
-    notify_db,
-    notify_db_session,
-    to_email,
-    mocker):
+def test_should_send_email_to_whitelist_recipient_in_trial_mode_with_live_key(client,
+                                                                              notify_db,
+                                                                              notify_db_session,
+                                                                              to_email,
+                                                                              mocker):
     apply_async = mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
 
     service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
-    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service, email_address=to_email)
+    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session,
+                                                        service=service, email_address=to_email)
     email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
 
     assert service_whitelist.service_id == service.id

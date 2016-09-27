@@ -254,7 +254,8 @@ def send_notification(notification_type):
             notification['to'],
             itertools.chain(
                 itertools.chain.from_iterable([user.mobile_number, user.email_address] for user in service.users),
-                ([member.recipient for member in service.whitelist]) if api_user.key_type == KEY_TYPE_NORMAL else iter([])
+                ([member.recipient for member in service.whitelist])
+                if api_user.key_type == KEY_TYPE_NORMAL else iter([])
             )
         )
     )):

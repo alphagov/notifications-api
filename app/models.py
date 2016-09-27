@@ -144,6 +144,7 @@ EMAIL_TYPE = 'email'
 WHITELIST_RECIPIENT_TYPE = [MOBILE_TYPE, EMAIL_TYPE]
 whitelist_recipient_types = db.Enum(*WHITELIST_RECIPIENT_TYPE, name='recipient_type')
 
+
 class ServiceWhitelist(db.Model):
     __tablename__ = 'service_whitelist'
 

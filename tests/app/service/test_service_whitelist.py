@@ -20,6 +20,7 @@ def test_get_whitelist_returns_data(client, sample_service_whitelist):
         'phone_numbers': []
     }
 
+
 def test_get_whitelist_separates_emails_and_phones(client, sample_service):
     dao_add_and_commit_whitelisted_contacts([
         ServiceWhitelist.from_string(sample_service.id, EMAIL_TYPE, 'service@example.com'),
@@ -70,6 +71,7 @@ def test_update_whitelist_replaces_old_whitelist(client, sample_service_whitelis
     assert len(whitelist) == 2
     assert whitelist[0].recipient == '07123456789'
     assert whitelist[1].recipient == 'foo@bar.com'
+
 
 def test_update_whitelist_doesnt_remove_old_whitelist_if_error(client, sample_service_whitelist):
 
