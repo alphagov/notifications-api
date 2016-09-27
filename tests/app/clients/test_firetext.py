@@ -1,9 +1,10 @@
+from requests import HTTPError
 from urllib.parse import parse_qs
 
 import pytest
 import requests_mock
 
-from app.clients.sms.firetext import (get_firetext_responses, FiretextClientException)
+from app.clients.sms.firetext import get_firetext_responses, SmsClientResponseException
 
 
 def test_should_return_correct_details_for_delivery():
@@ -88,12 +89,26 @@ def test_send_sms_raises_if_firetext_rejects(mocker, mock_firetext_client):
         'responseData': ''
     }
 
-    with pytest.raises(FiretextClientException) as exc, requests_mock.Mocker() as request_mock:
+    with pytest.raises(SmsClientResponseException) as exc, requests_mock.Mocker() as request_mock:
         request_mock.post('https://www.firetext.co.uk/api/sendsms/json', json=response_dict, status_code=200)
         mock_firetext_client.send_sms(to, content, reference)
 
-    assert exc.value.code == 1
-    assert exc.value.description == 'Some kind of error'
+    assert exc.value.status_code == 200
+    assert '"description": "Some kind of error"' in exc.value.text
+    assert '"code": 1' in exc.value.text
+
+
+def test_send_sms_raises_if_firetext_rejects(mocker, mock_firetext_client):
+    to = content = reference = 'foo'
+    response_dict = {"something": "gone bad"}
+
+    with pytest.raises(SmsClientResponseException) as exc, requests_mock.Mocker() as request_mock:
+        request_mock.post('https://www.firetext.co.uk/api/sendsms/json', json=response_dict, status_code=400)
+        mock_firetext_client.send_sms(to, content, reference)
+
+    assert exc.value.status_code == 400
+    assert exc.value.text == '{"something": "gone bad"}'
+    assert type(exc.value.exception) == HTTPError
 
 
 def test_send_sms_override_configured_shortcode_with_sender(mocker, mock_firetext_client):
