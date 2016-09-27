@@ -18,8 +18,8 @@ def upgrade():
     op.create_table('service_whitelist',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('service_id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('email_address', sa.String(length=255), nullable=True),
-        sa.Column('mobile_number', sa.String(), nullable=True),
+        sa.Column('recipient_type', sa.Enum('mobile', 'email', name='recipient_type'), nullable=False),
+        sa.Column('recipient', sa.String(length=255), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=True),
         sa.ForeignKeyConstraint(['service_id'], ['services.id'], ),
         sa.PrimaryKeyConstraint('id')
