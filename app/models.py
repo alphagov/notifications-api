@@ -1,11 +1,18 @@
 import uuid
 import datetime
+
 from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
 )
-from sqlalchemy import UniqueConstraint, text, ForeignKeyConstraint, and_
+from sqlalchemy import UniqueConstraint, and_
 from sqlalchemy.orm import foreign, remote
+from notifications_utils.recipients import (
+    validate_email_address,
+    validate_phone_number,
+    InvalidPhoneError,
+    InvalidEmailError
+)
 
 from app.encryption import (
     hashpw,
@@ -130,6 +137,47 @@ class Service(db.Model, Versioned):
         nullable=False,
         default=BRANDING_GOVUK
     )
+
+MOBILE_TYPE = 'mobile'
+EMAIL_TYPE = 'email'
+
+WHITELIST_RECIPIENT_TYPE = [MOBILE_TYPE, EMAIL_TYPE]
+whitelist_recipient_types = db.Enum(*WHITELIST_RECIPIENT_TYPE, name='recipient_type')
+
+
+class ServiceWhitelist(db.Model):
+    __tablename__ = 'service_whitelist'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
+    service = db.relationship('Service', backref='whitelist')
+    recipient_type = db.Column(whitelist_recipient_types, nullable=False)
+    recipient = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    @classmethod
+    def from_string(cls, service_id, recipient_type, recipient):
+        instance = cls(service_id=service_id, recipient_type=recipient_type)
+
+        try:
+            if recipient_type == MOBILE_TYPE:
+                validate_phone_number(recipient)
+                instance.recipient = recipient
+            elif recipient_type == EMAIL_TYPE:
+                validate_email_address(recipient)
+                instance.recipient = recipient
+            else:
+                raise ValueError('Invalid recipient type')
+        except InvalidPhoneError:
+            raise ValueError('Invalid whitelist: "{}"'.format(recipient))
+        except InvalidEmailError:
+            raise ValueError('Invalid whitelist: "{}"'.format(recipient))
+        else:
+            return instance
+
+        def __repr__(self):
+            return 'Recipient {} of type: {}'.format(self.recipient,
+                                                     self.recipient_type)
 
 
 class ApiKey(db.Model, Versioned):
