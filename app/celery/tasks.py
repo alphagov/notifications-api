@@ -1,10 +1,8 @@
-import itertools
 from datetime import (datetime)
 
 from flask import current_app
 from notifications_utils.recipients import (
-    RecipientCSV,
-    allowed_to_send_to
+    RecipientCSV
 )
 from notifications_utils.template import Template
 from sqlalchemy.exc import SQLAlchemyError
@@ -31,6 +29,7 @@ from app.models import (
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST
 )
+from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
 
 
@@ -181,15 +180,3 @@ def send_email(self, service_id,
                 "RETRY FAILED: task send_email failed for notification {}".format(notification.id),
                 e
             )
-
-
-def service_allowed_to_send_to(recipient, service, key_type):
-    if not service.restricted or key_type == KEY_TYPE_TEST:
-        return True
-
-    return allowed_to_send_to(
-        recipient,
-        itertools.chain.from_iterable(
-            [user.mobile_number, user.email_address] for user in service.users
-        )
-    )

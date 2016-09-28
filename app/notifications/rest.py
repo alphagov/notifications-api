@@ -9,7 +9,7 @@ from flask import (
     json
 )
 
-from notifications_utils.recipients import allowed_to_send_to, first_column_heading
+from notifications_utils.recipients import first_column_heading
 from notifications_utils.template import Template
 from notifications_utils.renderers import PassThrough
 from app.clients.email.aws_ses import get_aws_responses
@@ -27,6 +27,7 @@ from app.notifications.process_client_response import (
     validate_callback_data,
     process_sms_client_response
 )
+from app.service.utils import service_allowed_to_send_to
 from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
@@ -252,19 +253,7 @@ def send_notification(notification_type):
         errors = {'content': [message]}
         raise InvalidRequest(errors, status_code=400)
 
-    if all((
-        api_user.key_type != KEY_TYPE_TEST,
-        service.restricted or api_user.key_type == KEY_TYPE_TEAM,
-        not allowed_to_send_to(
-            notification['to'],
-            itertools.chain(
-                itertools.chain.from_iterable([user.mobile_number, user.email_address] for user in service.users),
-                ([member.recipient for member in service.whitelist])
-                if api_user.key_type == KEY_TYPE_NORMAL else iter([])
-            )
-        )
-    )):
-
+    if not service_allowed_to_send_to(notification['to'], service, api_user.key_type):
         if (api_user.key_type == KEY_TYPE_TEAM):
             message = 'Can’t send to this recipient using a team-only API key'
         else:
@@ -279,7 +268,6 @@ def send_notification(notification_type):
 
     notification_id = create_uuid()
     notification.update({"template_version": template.version})
-
     if not _simulated_recipient(notification['to'], notification_type):
         persist_notification(
             service,
