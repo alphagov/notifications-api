@@ -56,7 +56,7 @@ def test_create_invited_user(notify_api, sample_service, mocker, invitation_emai
                  'some_uuid',
                  encryption.encrypt(message),
                  "2016-01-01T11:09:00.061258"),
-                queue="email-invited-user")
+                queue="notify")
 
 
 def test_create_invited_user_invalid_email(notify_api, sample_service, mocker):

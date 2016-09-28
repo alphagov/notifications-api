@@ -249,7 +249,7 @@ def test_send_user_sms_code(notify_api,
                   "some_uuid",
                   encrypted,
                   "2016-01-01T11:09:00.061258"]),
-                queue="sms-code"
+                queue="notify"
             )
 
 
@@ -289,7 +289,7 @@ def test_send_user_code_for_sms_with_optional_to_field(notify_api,
                   "some_uuid",
                   encrypted,
                   "2016-01-01T11:09:00.061258"]),
-                queue="sms-code"
+                queue="notify"
             )
 
 
@@ -344,7 +344,7 @@ def test_send_user_email_verification(notify_api,
                  'some_uuid',
                  encryption.encrypt(message),
                  "2016-01-01T11:09:00.061258"),
-                queue="email-registration-verification")
+                queue="notify")
 
 
 def test_send_email_verification_returns_404_for_bad_input_data(notify_api, notify_db, notify_db_session):
