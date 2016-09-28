@@ -131,7 +131,10 @@ def send_sms(self,
                 created_at, notification, notification_id, service.id, SMS_TYPE, api_key_id, key_type
             )
         )
-        provider_tasks.deliver_sms.apply_async((notification_id), queue='send-sms')
+        provider_tasks.deliver_sms.apply_async(
+            (notification_id),
+            queue='send-sms' if not service.research_mode else 'research-mode'
+        )
 
         current_app.logger.info(
             "SMS {} created at {}".format(notification_id, created_at)
@@ -170,7 +173,10 @@ def send_email(self, service_id,
             )
         )
 
-        provider_tasks.deliver_email.apply_async((notification_id), queue='send-email')
+        provider_tasks.deliver_email.apply_async(
+            (notification_id),
+            queue='send-email' if not service.research_mode else 'research-mode'
+        )
 
         current_app.logger.info("Email {} created at {}".format(notification_id, created_at))
     except SQLAlchemyError as e:

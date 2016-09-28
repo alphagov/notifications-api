@@ -357,6 +357,32 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
     assert persisted_notification.notification_type == 'sms'
 
 
+def test_should_put_send_sms_task_in_research_mode_queue_if_research_mode_service(notify_db, notify_db_session, mocker):
+    service = sample_service(notify_db, notify_db_session)
+    service.research_mode = True
+    services_dao.dao_update_service(service)
+
+    template = sample_template(notify_db, notify_db_session, service=service)
+
+    notification = _notification_json(template, to="+447234123123")
+
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    notification_id = uuid.uuid4()
+
+    send_sms(
+        template.service_id,
+        notification_id,
+        encryption.encrypt(notification),
+        datetime.utcnow().strftime(DATETIME_FORMAT)
+    )
+
+    provider_tasks.deliver_sms.apply_async.assert_called_once_with(
+        (notification_id),
+        queue="research-mode"
+    )
+
+
 def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notify_db_session, mocker):
     user = sample_user(notify_db, notify_db_session, mobile_numnber="07700 900890")
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
@@ -489,6 +515,33 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
 
     with pytest.raises(NoResultFound):
         Notification.query.filter_by(id=notification_id).one()
+
+
+def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_service(notify_db, notify_db_session, mocker):
+    service = sample_service(notify_db, notify_db_session)
+    service.research_mode = True
+    services_dao.dao_update_service(service)
+
+    template = sample_email_template(notify_db, notify_db_session, service=service)
+
+    notification = _notification_json(template, to="test@test.com")
+
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    notification_id = uuid.uuid4()
+
+    send_email(
+        template.service_id,
+        notification_id,
+        encryption.encrypt(notification),
+        datetime.utcnow().strftime(DATETIME_FORMAT)
+    )
+
+    provider_tasks.deliver_email.apply_async.assert_called_once_with(
+        (notification_id),
+        queue="research-mode"
+    )
+
 
 
 def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_api_key, mocker):
