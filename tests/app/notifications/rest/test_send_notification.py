@@ -5,6 +5,7 @@ import pytest
 
 from flask import (json, current_app)
 from freezegun import freeze_time
+from mock import ANY
 from notifications_python_client.authentication import create_jwt_token
 
 import app
@@ -18,8 +19,8 @@ from tests.app.conftest import (
     sample_notification as create_sample_notification,
     sample_service as create_sample_service,
     sample_email_template as create_sample_email_template,
-    sample_template as create_sample_template
-)
+    sample_template as create_sample_template,
+    sample_service, sample_template, sample_email_template)
 
 
 def test_create_sms_should_reject_if_missing_required_fields(notify_api, sample_api_key, mocker):
@@ -746,6 +747,39 @@ def test_should_send_email_if_team_api_key_and_a_service_user(notify_api, sample
 
 @pytest.mark.parametrize('restricted', [True, False])
 @pytest.mark.parametrize('limit', [0, 1])
+def test_should_send_sms_to_anyone_with_test_key(
+    notify_api, sample_template, mocker, restricted, limit, fake_uuid
+):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+        mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
+
+        data = {
+            'to': '07811111111',
+            'template': sample_template.id
+        }
+        sample_template.service.restricted = restricted
+        sample_template.service.message_limit = limit
+        api_key = ApiKey(
+            service=sample_template.service,
+            name='test_key',
+            created_by=sample_template.created_by,
+            key_type=KEY_TYPE_TEST
+        )
+        save_model_api_key(api_key)
+        auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
+
+        response = client.post(
+            path='/notifications/sms',
+            data=json.dumps(data),
+            headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))]
+        )
+        app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with((fake_uuid), queue='research-mode')
+        assert response.status_code == 201
+
+
+@pytest.mark.parametrize('restricted', [True, False])
+@pytest.mark.parametrize('limit', [0, 1])
 def test_should_send_email_to_anyone_with_test_key(
     notify_api, sample_email_template, mocker, restricted, limit, fake_uuid
 ):
@@ -775,7 +809,7 @@ def test_should_send_email_to_anyone_with_test_key(
         )
 
         app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
-            (fake_uuid), queue='send-email')
+            (fake_uuid), queue='research-mode')
         assert response.status_code == 201
 
 
@@ -1024,3 +1058,67 @@ def test_should_error_if_notification_type_does_not_match_template_type(
     assert json_resp['result'] == 'error'
     assert '{0} template is not suitable for {1} notification'.format(template_type, notification_type) \
            in json_resp['message']
+
+
+def test_should_send_sms_in_research_mode_queue_if_research_mode_service(
+        notify_api, notify_db, notify_db_session, mocker
+):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+            service = sample_service(notify_db, notify_db_session)
+            service.research_mode = True
+            dao_update_service(service)
+
+            template = sample_template(notify_db, notify_db_session, service=service)
+
+            data = {
+                'to': service.created_by.mobile_number,
+                'template': template.id
+            }
+
+            auth_header = create_authorization_header(service_id=service.id)
+
+            response = client.post(
+                path='/notifications/sms',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
+                (ANY),
+                queue="research-mode"
+            )
+            assert response.status_code == 201
+
+
+def test_should_send_email_in_research_mode_queue_if_research_mode_service(
+        notify_api, notify_db, notify_db_session, mocker
+):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+            service = sample_service(notify_db, notify_db_session)
+            service.research_mode = True
+            dao_update_service(service)
+
+            template = sample_email_template(notify_db, notify_db_session, service=service)
+
+            data = {
+                'to': service.created_by.email_address,
+                'template': template.id
+            }
+
+            auth_header = create_authorization_header(service_id=service.id)
+
+            response = client.post(
+                path='/notifications/email',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+
+            app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
+                (ANY),
+                queue="research-mode"
+            )
+            assert response.status_code == 201

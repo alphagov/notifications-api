@@ -341,10 +341,17 @@ def persist_notification(
     )
 
     try:
+        research_mode = service.research_mode or key_type == KEY_TYPE_TEST
         if notification_type == SMS_TYPE:
-            provider_tasks.deliver_sms.apply_async((str(notification_id)), queue='send-sms')
+            provider_tasks.deliver_sms.apply_async(
+                (str(notification_id)),
+                queue='send-sms' if not research_mode else 'research-mode'
+            )
         if notification_type == EMAIL_TYPE:
-            provider_tasks.deliver_email.apply_async((str(notification_id)), queue='send-email')
+            provider_tasks.deliver_email.apply_async(
+                (str(notification_id)),
+                queue='send-email' if not research_mode else 'research-mode'
+            )
     except Exception as e:
         current_app.logger.exception("Failed to send to SQS exception", e)
         dao_delete_notifications_and_history_by_id(notification_id)

@@ -517,7 +517,9 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
         Notification.query.filter_by(id=notification_id).one()
 
 
-def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_service(notify_db, notify_db_session, mocker):
+def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_service(
+        notify_db, notify_db_session, mocker
+):
     service = sample_service(notify_db, notify_db_session)
     service.research_mode = True
     services_dao.dao_update_service(service)
@@ -541,7 +543,6 @@ def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_serv
         (notification_id),
         queue="research-mode"
     )
-
 
 
 def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_api_key, mocker):
