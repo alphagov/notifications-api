@@ -35,6 +35,12 @@ from app.dao.service_whitelist_dao import (
 from app.dao import notifications_dao
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_model_users
+from app.errors import (
+    register_errors,
+    InvalidRequest
+)
+from app.service import statistics
+from app.service.utils import get_whitelist_objects
 from app.schemas import (
     service_schema,
     api_key_schema,
@@ -45,15 +51,6 @@ from app.schemas import (
     detailed_service_schema
 )
 from app.utils import pagination_links
-from app.errors import (
-    register_errors,
-    InvalidRequest
-)
-from app.service import statistics
-from app.models import (
-    ServiceWhitelist,
-    MOBILE_TYPE, EMAIL_TYPE)
-
 
 service_blueprint = Blueprint('service', __name__)
 register_errors(service_blueprint)
@@ -284,6 +281,7 @@ def get_detailed_services():
 
 @service_blueprint.route('/<uuid:service_id>/whitelist', methods=['GET'])
 def get_whitelist(service_id):
+    from app.models import (EMAIL_TYPE, MOBILE_TYPE)
     service = dao_fetch_service_by_id(service_id)
 
     if not service:
@@ -303,11 +301,7 @@ def update_whitelist(service_id):
     # doesn't commit so if there are any errors, we preserve old values in db
     dao_remove_service_whitelist(service_id)
     try:
-        whitelist_objs = itertools.chain(
-            [ServiceWhitelist.from_string(service_id, MOBILE_TYPE, recipient)
-             for recipient in request.get_json().get('phone_numbers')],
-            [ServiceWhitelist.from_string(service_id, EMAIL_TYPE, recipient)
-             for recipient in request.get_json().get('email_addresses')])
+        whitelist_objs = get_whitelist_objects(service_id, request.get_json())
     except ValueError as e:
         current_app.logger.exception(e)
         dao_rollback()
