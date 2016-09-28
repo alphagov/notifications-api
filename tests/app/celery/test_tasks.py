@@ -326,7 +326,7 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
     notification = _notification_json(sample_template_with_placeholders,
                                       to="+447234123123", personalisation={"name": "Jo"})
 
-    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     notification_id = uuid.uuid4()
 
@@ -337,9 +337,8 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
         datetime.utcnow().strftime(DATETIME_FORMAT)
     )
 
-    provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
-        (sample_template_with_placeholders.service_id,
-         notification_id),
+    provider_tasks.deliver_sms.apply_async.assert_called_once_with(
+        (notification_id),
         queue="send-sms"
     )
 
@@ -364,7 +363,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
     template = sample_template(notify_db, notify_db_session, service=service)
     notification = _notification_json(template, "+447700900890")  # The user’s own number, but in a different format
 
-    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     notification_id = uuid.uuid4()
     encrypt_notification = encryption.encrypt(notification)
@@ -375,9 +374,8 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
         datetime.utcnow().strftime(DATETIME_FORMAT)
     )
 
-    provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
-        (service.id,
-         notification_id),
+    provider_tasks.deliver_sms.apply_async.assert_called_once_with(
+        (notification_id),
         queue="send-sms"
     )
 
@@ -403,7 +401,7 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number_with_test_
     template = sample_template(notify_db, notify_db_session, service=service)
 
     notification = _notification_json(template, "07700 900849")
-    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     notification_id = uuid.uuid4()
     send_sms(
@@ -414,9 +412,8 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number_with_test_
         key_type=KEY_TYPE_TEST
     )
 
-    provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
-        (service.id,
-         notification_id),
+    provider_tasks.deliver_sms.apply_async.assert_called_once_with(
+        (notification_id),
         queue="send-sms"
     )
 
@@ -434,7 +431,7 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address_w
     )
 
     notification = _notification_json(template, to="test@example.com")
-    mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
     notification_id = uuid.uuid4()
     send_email(
@@ -445,9 +442,8 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address_w
         key_type=KEY_TYPE_TEST
     )
 
-    provider_tasks.send_email_to_provider.apply_async.assert_called_once_with(
-        (service.id,
-         notification_id),
+    provider_tasks.deliver_email.apply_async.assert_called_once_with(
+        (notification_id),
         queue="send-email"
     )
 
@@ -461,7 +457,7 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
     template = sample_template(notify_db, notify_db_session, service=service)
 
     notification = _notification_json(template, "07700 900849")
-    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     notification_id = uuid.uuid4()
     send_sms(
@@ -470,7 +466,7 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
         encryption.encrypt(notification),
         datetime.utcnow().strftime(DATETIME_FORMAT)
     )
-    provider_tasks.send_sms_to_provider.apply_async.assert_not_called()
+    provider_tasks.deliver_sms.apply_async.assert_not_called()
     with pytest.raises(NoResultFound):
         Notification.query.filter_by(id=notification_id).one()
 
@@ -501,7 +497,7 @@ def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_
         to="+447234123123",
         job_id=sample_job.id,
         row_number=2)
-    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     notification_id = uuid.uuid4()
     send_sms(
@@ -512,9 +508,8 @@ def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_
         api_key_id=str(sample_api_key.id),
         key_type=KEY_TYPE_TEAM
     )
-    provider_tasks.send_sms_to_provider.apply_async.assert_called_once_with(
-        (sample_job.service.id,
-         notification_id),
+    provider_tasks.deliver_sms.apply_async.assert_called_once_with(
+        (notification_id),
         queue="send-sms"
     )
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
@@ -538,7 +533,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
         "my_email@my_email.com",
         {"name": "Jo"},
         row_number=1)
-    mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
     notification_id = uuid.uuid4()
 
@@ -556,8 +551,8 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
         )
 
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
-    provider_tasks.send_email_to_provider.apply_async.assert_called_once_with(
-        (sample_email_template_with_placeholders.service_id, notification_id), queue='send-email')
+    provider_tasks.deliver_email.apply_async.assert_called_once_with(
+        (notification_id), queue='send-email')
 
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'my_email@my_email.com'
@@ -581,7 +576,7 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
     # Change the template
     from app.dao.templates_dao import dao_update_template, dao_get_template_by_id
     sample_email_template.content = sample_email_template.content + " another version of the template"
-    mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     dao_update_template(sample_email_template)
     t = dao_get_template_by_id(sample_email_template.id)
     assert t.version > version_on_notification
@@ -594,8 +589,7 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
         now.strftime(DATETIME_FORMAT)
     )
 
-    provider_tasks.send_email_to_provider.apply_async.assert_called_once_with((sample_email_template.service_id,
-                                                                               notification_id), queue='send-email')
+    provider_tasks.deliver_email.apply_async.assert_called_once_with((notification_id), queue='send-email')
 
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
@@ -612,7 +606,7 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
 def test_should_use_email_template_subject_placeholders(sample_email_template_with_placeholders, mocker):
     notification = _notification_json(sample_email_template_with_placeholders,
                                       "my_email@my_email.com", {"name": "Jo"})
-    mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
     notification_id = uuid.uuid4()
     now = datetime.utcnow()
@@ -622,8 +616,8 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
         encryption.encrypt(notification),
         now.strftime(DATETIME_FORMAT)
     )
-    provider_tasks.send_email_to_provider.apply_async.assert_called_once_with(
-        (sample_email_template_with_placeholders.service_id, notification_id, ), queue='send-email'
+    provider_tasks.deliver_email.apply_async.assert_called_once_with(
+        (notification_id), queue='send-email'
     )
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
@@ -638,7 +632,7 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
 
 def test_should_use_email_template_and_persist_without_personalisation(sample_email_template, mocker):
     notification = _notification_json(sample_email_template, "my_email@my_email.com")
-    mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
     notification_id = uuid.uuid4()
 
@@ -649,8 +643,7 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
         encryption.encrypt(notification),
         now.strftime(DATETIME_FORMAT)
     )
-    provider_tasks.send_email_to_provider.apply_async.assert_called_once_with((sample_email_template.service_id,
-                                                                               notification_id), queue='send-email')
+    provider_tasks.deliver_email.apply_async.assert_called_once_with((notification_id), queue='send-email')
 
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
@@ -670,7 +663,7 @@ def test_send_sms_should_go_to_retry_queue_if_database_errors(sample_template, m
 
     expected_exception = SQLAlchemyError()
 
-    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
     mocker.patch('app.celery.tasks.send_sms.retry', side_effect=Exception())
     mocker.patch('app.celery.tasks.dao_create_notification', side_effect=expected_exception)
     now = datetime.utcnow()
@@ -684,7 +677,7 @@ def test_send_sms_should_go_to_retry_queue_if_database_errors(sample_template, m
             encryption.encrypt(notification),
             now.strftime(DATETIME_FORMAT)
         )
-    provider_tasks.send_sms_to_provider.apply_async.assert_not_called()
+    provider_tasks.deliver_sms.apply_async.assert_not_called()
     tasks.send_sms.retry.assert_called_with(exc=expected_exception, queue='retry')
 
     with pytest.raises(NoResultFound) as e:
@@ -697,7 +690,7 @@ def test_send_email_should_go_to_retry_queue_if_database_errors(sample_email_tem
 
     expected_exception = SQLAlchemyError()
 
-    mocker.patch('app.celery.provider_tasks.send_email_to_provider.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     mocker.patch('app.celery.tasks.send_email.retry', side_effect=Exception())
     mocker.patch('app.celery.tasks.dao_create_notification', side_effect=expected_exception)
     now = datetime.utcnow()
@@ -711,7 +704,7 @@ def test_send_email_should_go_to_retry_queue_if_database_errors(sample_email_tem
             encryption.encrypt(notification),
             now.strftime(DATETIME_FORMAT)
         )
-    provider_tasks.send_email_to_provider.apply_async.assert_not_called()
+    provider_tasks.deliver_email.apply_async.assert_not_called()
     tasks.send_email.retry.assert_called_with(exc=expected_exception, queue='retry')
 
     with pytest.raises(NoResultFound) as e:

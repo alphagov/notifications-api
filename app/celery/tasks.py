@@ -16,7 +16,7 @@ from app import (
     encryption
 )
 from app.aws import s3
-from app.celery.provider_tasks import send_sms_to_provider, send_email_to_provider
+from app.celery import provider_tasks
 from app.dao.jobs_dao import (
     dao_update_job,
     dao_get_job_by_id
@@ -131,7 +131,7 @@ def send_sms(self,
                 created_at, notification, notification_id, service.id, SMS_TYPE, api_key_id, key_type
             )
         )
-        send_sms_to_provider.apply_async((service_id, notification_id), queue='send-sms')
+        provider_tasks.deliver_sms.apply_async((notification_id), queue='send-sms')
 
         current_app.logger.info(
             "SMS {} created at {}".format(notification_id, created_at)
@@ -170,7 +170,7 @@ def send_email(self, service_id,
             )
         )
 
-        send_email_to_provider.apply_async((service_id, notification_id), queue='send-email')
+        provider_tasks.deliver_email.apply_async((notification_id), queue='send-email')
 
         current_app.logger.info("Email {} created at {}".format(notification_id, created_at))
     except SQLAlchemyError as e:

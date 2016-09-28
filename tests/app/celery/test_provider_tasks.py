@@ -8,8 +8,8 @@ import app
 
 
 def test_should_have_decorated_tasks_functions():
-    assert send_sms_to_provider.__wrapped__.__name__ == 'send_sms_to_provider'
-    assert send_email_to_provider.__wrapped__.__name__ == 'send_email_to_provider'
+    assert deliver_sms.__wrapped__.__name__ == 'deliver_sms'
+    assert deliver_email.__wrapped__.__name__ == 'deliver_email'
 
 
 def test_should_by_10_second_delay_as_default():
