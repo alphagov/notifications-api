@@ -1,16 +1,13 @@
-import uuid
 from datetime import datetime
 import random
 import string
 import pytest
 
-from unittest.mock import ANY
 from flask import (json, current_app)
 from freezegun import freeze_time
 from notifications_python_client.authentication import create_jwt_token
 
 import app
-from app import encryption
 from app.dao import notifications_dao
 from app.models import ApiKey, KEY_TYPE_TEAM, KEY_TYPE_TEST, Notification, NotificationHistory
 from app.dao.templates_dao import dao_get_all_templates_for_service, dao_update_template
@@ -999,3 +996,33 @@ def test_should_not_persist_notification_or_send_sms_if_simulated_number(
     assert response.status_code == 201
     apply_async.assert_not_called()
     assert Notification.query.count() == 0
+
+
+@pytest.mark.parametrize(
+    'notification_type, template_type, to', [
+        ('email', 'sms', 'notify@digital.cabinet-office.gov.uk'),
+        ('sms', 'email', '+447700900986')
+    ])
+def test_should_error_if_notification_type_does_not_match_template_type(
+        client,
+        notify_db,
+        notify_db_session,
+        template_type,
+        notification_type,
+        to
+):
+    template = create_sample_template(notify_db, notify_db_session, template_type=template_type)
+    data = {
+        'to': to,
+        'template': template.id
+    }
+    auth_header = create_authorization_header(service_id=template.service_id)
+    response = client.post("/notifications/{}".format(notification_type),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 400
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp['result'] == 'error'
+    assert '{0} template is not suitable for {1} notification'.format(template_type, notification_type) \
+           in json_resp['message']

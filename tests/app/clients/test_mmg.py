@@ -1,8 +1,13 @@
+import json
+
 import pytest
 import requests_mock
-from app import mmg_client
+from requests import HTTPError
 
-from app.clients.sms.mmg import (get_mmg_responses, MMGClientException)
+from app import mmg_client
+from app.clients.sms import SmsClientResponseException
+
+from app.clients.sms.mmg import get_mmg_responses
 
 
 def test_should_return_correct_details_for_delivery():
@@ -72,12 +77,14 @@ def test_send_sms_raises_if_mmg_rejects(notify_api, mocker):
         'Description': 'Some kind of error'
     }
 
-    with pytest.raises(MMGClientException) as exc, requests_mock.Mocker() as request_mock:
+    with pytest.raises(SmsClientResponseException) as exc, requests_mock.Mocker() as request_mock:
         request_mock.post('https://api.mmg.co.uk/json/api.php', json=response_dict, status_code=400)
         mmg_client.send_sms(to, content, reference)
 
-    assert exc.value.code == 206
-    assert exc.value.description == 'Some kind of error'
+    assert exc.value.status_code == 400
+    assert '"Error": 206' in exc.value.text
+    assert '"Description": "Some kind of error"' in exc.value.text
+    assert type(exc.value.exception) == HTTPError
 
 
 def test_send_sms_override_configured_shortcode_with_sender(notify_api, mocker):
@@ -93,3 +100,16 @@ def test_send_sms_override_configured_shortcode_with_sender(notify_api, mocker):
 
     request_args = request_mock.request_history[0].json()
     assert request_args['sender'] == 'fromservice'
+
+
+def test_send_sms_raises_if_mmg_fails_to_return_json(notify_api, mocker):
+    to = content = reference = 'foo'
+    response_dict = 'NOT AT ALL VALID JSON {"key" : "value"}}'
+
+    with pytest.raises(SmsClientResponseException) as exc, requests_mock.Mocker() as request_mock:
+        request_mock.post('https://api.mmg.co.uk/json/api.php', text=response_dict, status_code=200)
+        mmg_client.send_sms(to, content, reference)
+
+    assert 'app.clients.sms.mmg.MMGClientResponseException: Code 200 text NOT AT ALL VALID JSON {"key" : "value"}} exception Expecting value: line 1 column 1 (char 0)' in str(exc)  # noqa
+    assert exc.value.status_code == 200
+    assert exc.value.text == 'NOT AT ALL VALID JSON {"key" : "value"}}'

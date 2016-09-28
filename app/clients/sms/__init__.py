@@ -1,11 +1,16 @@
 from app.clients import (Client, ClientException)
 
 
-class SmsClientException(ClientException):
+class SmsClientResponseException(ClientException):
     '''
-    Base Exception for SmsClients
+    Base Exception for SmsClientsResponses
     '''
-    pass
+
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return "Message {}".format(self.message)
 
 
 class SmsClient(Client):
