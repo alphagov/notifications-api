@@ -85,7 +85,7 @@ def process_job(job_id):
                 create_uuid(),
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
-                queue='db-sms'
+                queue='db-sms' if not service.research_mode else 'research-mode'
             )
 
         if template.template_type == EMAIL_TYPE:
@@ -94,7 +94,8 @@ def process_job(job_id):
                 create_uuid(),
                 encrypted,
                 datetime.utcnow().strftime(DATETIME_FORMAT)),
-                queue='db-email')
+                queue='db-email' if not service.research_mode else 'research-mode'
+            )
 
     finished = datetime.utcnow()
     job.status = 'finished'

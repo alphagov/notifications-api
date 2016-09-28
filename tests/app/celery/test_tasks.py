@@ -16,7 +16,7 @@ from app.celery.tasks import (
     process_job,
     send_email
 )
-from app.dao import jobs_dao
+from app.dao import jobs_dao, services_dao
 from app.models import Notification, KEY_TYPE_TEAM, KEY_TYPE_TEST
 from tests.app import load_example_csv
 from tests.app.conftest import (
@@ -85,6 +85,61 @@ def test_should_process_sms_job(sample_job, mocker):
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
     assert job.status == 'finished'
+
+
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_should_process_sms_job_into_research_mode_queue_if_research_mode_service(notify_db, notify_db_session, mocker):
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
+    mocker.patch('app.celery.tasks.send_sms.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+
+    service = sample_service(notify_db, notify_db_session)
+    service.research_mode = True
+    services_dao.dao_update_service(service)
+    job = sample_job(notify_db, notify_db_session, service=service)
+
+    process_job(job.id)
+    s3.get_job_from_s3.assert_called_once_with(
+        str(job.service.id),
+        str(job.id)
+    )
+    tasks.send_sms.apply_async.assert_called_once_with(
+        (str(job.service_id),
+         "uuid",
+         "something_encrypted",
+         "2016-01-01T11:09:00.061258"),
+        queue="research-mode"
+    )
+
+
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_should_process_email_job_into_research_mode_queue_if_research_mode_service(
+        notify_db, notify_db_session, mocker
+):
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
+    mocker.patch('app.celery.tasks.send_email.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+
+    service = sample_service(notify_db, notify_db_session)
+    service.research_mode = True
+    services_dao.dao_update_service(service)
+    template = sample_email_template(notify_db, notify_db_session, service=service)
+    job = sample_job(notify_db, notify_db_session, template=template, service=service)
+
+    process_job(job.id)
+    s3.get_job_from_s3.assert_called_once_with(
+        str(job.service.id),
+        str(job.id)
+    )
+    tasks.send_email.apply_async.assert_called_once_with(
+        (str(job.service_id),
+         "uuid",
+         "something_encrypted",
+         "2016-01-01T11:09:00.061258"),
+        queue="research-mode"
+    )
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
