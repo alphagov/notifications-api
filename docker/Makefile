@@ -7,4 +7,4 @@ help:
 
 .PHONY: build-build-image
 build-build-image:
-	docker build -f Dockerfile-build -t govuk/notify-api-builder .
+	docker build --pull -f Dockerfile-build -t govuk/notify-api-builder .
