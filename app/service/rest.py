@@ -310,3 +310,13 @@ def update_whitelist(service_id):
     else:
         dao_add_and_commit_whitelisted_contacts(whitelist_objs)
         return '', 204
+
+
+@service_blueprint.route('/<uuid:service_id>/billable-units')
+def get_billable_unit_count(service_id):
+    try:
+        return jsonify(notifications_dao.get_notification_billable_unit_count_per_month(
+            service_id, int(request.args.get('year'))
+        ))
+    except TypeError:
+        return jsonify(result='error', message='No valid year provided'), 400

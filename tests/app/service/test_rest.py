@@ -1300,3 +1300,27 @@ def test_get_detailed_services_only_includes_todays_notifications(notify_db, not
         'email': {'delivered': 0, 'failed': 0, 'requested': 0},
         'sms': {'delivered': 0, 'failed': 0, 'requested': 2}
     }
+
+
+@freeze_time('2012-12-12T12:00:01')
+def test_get_notification_billable_unit_count(client, notify_db, notify_db_session):
+    notification = create_sample_notification(notify_db, notify_db_session)
+    response = client.get(
+        '/service/{}/billable-units?year=2012'.format(notification.service_id),
+        headers=[create_authorization_header(service_id=notification.service_id)]
+    )
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == {
+        'December': 1
+    }
+
+
+def test_get_notification_billable_unit_count_missing_year(client, sample_service):
+    response = client.get(
+        '/service/{}/billable-units'.format(sample_service.id),
+        headers=[create_authorization_header(service_id=sample_service.id)]
+    )
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True)) == {
+        'message': 'No valid year provided', 'result': 'error'
+    }
