@@ -7,7 +7,7 @@ from datetime import (
 
 from flask import current_app
 from werkzeug.datastructures import MultiDict
-from sqlalchemy import (desc, func, or_, and_, asc)
+from sqlalchemy import (desc, func, or_, and_, asc, cast, Text)
 from sqlalchemy.orm import joinedload
 
 from app import db
@@ -210,6 +210,24 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
 
 
 @statsd(namespace="dao")
+def get_notification_billable_unit_count_per_month(service_id, year):
+    start, end = get_financial_year(year)
+    return db.session.query(
+        func.to_char(NotificationHistory.created_at, "FMMonth"),
+        func.sum(NotificationHistory.billable_units)
+    ).group_by(
+        func.to_char(NotificationHistory.created_at, "FMMonth"),
+        func.to_char(NotificationHistory.created_at, "YYYY-MM")
+    ).order_by(
+        func.to_char(NotificationHistory.created_at, "YYYY-MM")
+    ).filter(
+        NotificationHistory.service_id == service_id,
+        NotificationHistory.created_at >= start,
+        NotificationHistory.created_at < end
+    ).all()
+
+
+@statsd(namespace="dao")
 def get_notification_with_personalisation(service_id, notification_id, key_type):
     filter_dict = {'service_id': service_id, 'id': notification_id}
     if key_type:
@@ -319,3 +337,10 @@ def dao_timeout_notifications(timeout_period_in_seconds):
         update({'status': NOTIFICATION_TEMPORARY_FAILURE, 'updated_at': update_at}, synchronize_session=False)
     db.session.commit()
     return updated
+
+
+def get_financial_year(year):
+    return (
+        date(year, 4, 1),
+        date(year + 1, 4, 1)
+    )

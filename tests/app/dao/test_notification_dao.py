@@ -31,13 +31,15 @@ from app.dao.notifications_dao import (
     delete_notifications_created_more_than_a_week_ago,
     get_notification_by_id,
     get_notification_for_job,
+    get_notification_billable_unit_count_per_month,
     get_notification_with_personalisation,
     get_notifications_for_job,
     get_notifications_for_service,
     update_notification_status_by_id,
     update_notification_status_by_reference,
     dao_delete_notifications_and_history_by_id,
-    dao_timeout_notifications)
+    dao_timeout_notifications,
+    get_financial_year)
 
 from notifications_utils.template import get_sms_fragment_count
 
@@ -685,6 +687,42 @@ def test_get_all_notifications_for_job_by_status(notify_db, notify_db_session, s
     assert len(notifications(filter_dict={'status': NOTIFICATION_STATUS_TYPES[:3]}).items) == 3
 
 
+def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_session, sample_service):
+
+    for year, month, day in (
+        (2017, 1, 1),
+        (2016, 8, 1),
+        (2016, 7, 31),
+        (2016, 4, 6),
+        (2016, 4, 6),
+        (2016, 4, 1),
+        (2016, 3, 31),
+        (2016, 1, 1)
+    ):
+        sample_notification(
+            notify_db, notify_db_session, service=sample_service,
+            created_at=date(year, month, day)
+        )
+
+    for financial_year, months in (
+        (
+            2017,
+            []
+        ),
+        (
+            2016,
+            [('April', 3), ('July', 1), ('August', 1), ('January', 1)]
+        ),
+        (
+            2015,
+            [('January', 1), ('March', 1)]
+        )
+    ):
+        assert get_notification_billable_unit_count_per_month(
+            sample_service.id, financial_year
+        ) == months
+
+
 def test_update_notification(sample_notification, sample_template):
     assert sample_notification.status == 'created'
     sample_notification.status = 'failed'
@@ -1158,3 +1196,9 @@ def test_should_exclude_test_key_notifications_by_default(
 
     all_notifications = get_notifications_for_service(sample_service.id, limit_days=1, key_type=KEY_TYPE_TEST).items
     assert len(all_notifications) == 1
+
+
+def test_get_financial_year():
+    start, end = get_financial_year(2000)
+    assert start == date(2000, 4, 1)
+    assert end == date(2001, 4, 1)
