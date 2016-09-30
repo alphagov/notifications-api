@@ -117,7 +117,6 @@ class Config(object):
     CELERY_QUEUES = [
         Queue('periodic', Exchange('default'), routing_key='periodic'),
         Queue('process-job', Exchange('default'), routing_key='process-job'),
-        Queue('research-mode', Exchange('default'), routing_key='research-mode'),
         Queue('retry', Exchange('default'), routing_key='retry'),
         Queue('notify', Exchange('default'), routing_key='notify')
     ]
@@ -156,7 +155,8 @@ class Development(Config):
         Queue('db-sms', Exchange('default'), routing_key='db-sms'),
         Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('db-email', Exchange('default'), routing_key='db-email'),
-        Queue('send-email', Exchange('default'), routing_key='send-email')
+        Queue('send-email', Exchange('default'), routing_key='send-email'),
+        Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
 
 
@@ -173,7 +173,8 @@ class Test(Config):
         Queue('db-sms', Exchange('default'), routing_key='db-sms'),
         Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('db-email', Exchange('default'), routing_key='db-email'),
-        Queue('send-email', Exchange('default'), routing_key='send-email')
+        Queue('send-email', Exchange('default'), routing_key='send-email'),
+        Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
 
 
