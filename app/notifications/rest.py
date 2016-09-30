@@ -335,12 +335,12 @@ def persist_notification(
         research_mode = service.research_mode or key_type == KEY_TYPE_TEST
         if notification_type == SMS_TYPE:
             provider_tasks.deliver_sms.apply_async(
-                (str(notification_id)),
+                [str(notification_id)],
                 queue='send-sms' if not research_mode else 'research-mode'
             )
         if notification_type == EMAIL_TYPE:
             provider_tasks.deliver_email.apply_async(
-                (str(notification_id)),
+                [str(notification_id)],
                 queue='send-email' if not research_mode else 'research-mode'
             )
     except Exception as e:

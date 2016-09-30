@@ -337,7 +337,7 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
     )
 
     provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-        (notification_id),
+        [notification_id],
         queue="send-sms"
     )
 
@@ -377,7 +377,7 @@ def test_should_put_send_sms_task_in_research_mode_queue_if_research_mode_servic
     )
 
     provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-        (notification_id),
+        [notification_id],
         queue="research-mode"
     )
 
@@ -400,7 +400,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
     )
 
     provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-        (notification_id),
+        [notification_id],
         queue="send-sms"
     )
 
@@ -438,7 +438,7 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number_with_test_
     )
 
     provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-        (notification_id),
+        [notification_id],
         queue="send-sms"
     )
 
@@ -468,7 +468,7 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address_w
     )
 
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
-        (notification_id),
+        [notification_id],
         queue="send-email"
     )
 
@@ -539,7 +539,7 @@ def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_serv
     )
 
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
-        (notification_id),
+        [notification_id],
         queue="research-mode"
     )
 
@@ -562,7 +562,7 @@ def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_
         key_type=KEY_TYPE_NORMAL
     )
     provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-        (notification_id),
+        [notification_id],
         queue="send-sms"
     )
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
@@ -661,7 +661,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
 
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
-        (notification_id), queue='send-email')
+        [notification_id], queue='send-email')
 
     assert persisted_notification.id == notification_id
     assert persisted_notification.to == 'my_email@my_email.com'
@@ -698,7 +698,7 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
         now.strftime(DATETIME_FORMAT)
     )
 
-    provider_tasks.deliver_email.apply_async.assert_called_once_with((notification_id), queue='send-email')
+    provider_tasks.deliver_email.apply_async.assert_called_once_with([notification_id], queue='send-email')
 
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
@@ -726,7 +726,7 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
         now.strftime(DATETIME_FORMAT)
     )
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
-        (notification_id), queue='send-email'
+        [notification_id], queue='send-email'
     )
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
@@ -752,7 +752,7 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
         encryption.encrypt(notification),
         now.strftime(DATETIME_FORMAT)
     )
-    provider_tasks.deliver_email.apply_async.assert_called_once_with((notification_id), queue='send-email')
+    provider_tasks.deliver_email.apply_async.assert_called_once_with([notification_id], queue='send-email')
 
     persisted_notification = Notification.query.filter_by(id=notification_id).one()
     assert persisted_notification.id == notification_id
