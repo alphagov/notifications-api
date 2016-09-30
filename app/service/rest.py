@@ -8,6 +8,7 @@ from flask import (
 )
 from sqlalchemy.orm.exc import NoResultFound
 
+from app.dao.dao_utils import dao_rollback
 from app.dao.api_key_dao import (
     save_model_api_key,
     get_model_api_keys,
@@ -26,9 +27,20 @@ from app.dao.services_dao import (
     dao_fetch_weekly_historical_stats_for_service,
     dao_fetch_todays_stats_for_all_services
 )
+from app.dao.service_whitelist_dao import (
+    dao_fetch_service_whitelist,
+    dao_add_and_commit_whitelisted_contacts,
+    dao_remove_service_whitelist
+)
 from app.dao import notifications_dao
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_model_users
+from app.errors import (
+    register_errors,
+    InvalidRequest
+)
+from app.service import statistics
+from app.service.utils import get_whitelist_objects
 from app.schemas import (
     service_schema,
     api_key_schema,
@@ -39,11 +51,6 @@ from app.schemas import (
     detailed_service_schema
 )
 from app.utils import pagination_links
-from app.errors import (
-    register_errors,
-    InvalidRequest
-)
-from app.service import statistics
 
 service_blueprint = Blueprint('service', __name__)
 register_errors(service_blueprint)
@@ -270,3 +277,36 @@ def get_detailed_services():
             service.statistics = statistics.create_zeroed_stats_dicts()
 
     return detailed_service_schema.dump(services.values(), many=True).data
+
+
+@service_blueprint.route('/<uuid:service_id>/whitelist', methods=['GET'])
+def get_whitelist(service_id):
+    from app.models import (EMAIL_TYPE, MOBILE_TYPE)
+    service = dao_fetch_service_by_id(service_id)
+
+    if not service:
+        raise InvalidRequest("Service does not exist", status_code=404)
+
+    whitelist = dao_fetch_service_whitelist(service.id)
+    return jsonify(
+        email_addresses=[item.recipient for item in whitelist
+                         if item.recipient_type == EMAIL_TYPE],
+        phone_numbers=[item.recipient for item in whitelist
+                       if item.recipient_type == MOBILE_TYPE]
+    )
+
+
+@service_blueprint.route('/<uuid:service_id>/whitelist', methods=['PUT'])
+def update_whitelist(service_id):
+    # doesn't commit so if there are any errors, we preserve old values in db
+    dao_remove_service_whitelist(service_id)
+    try:
+        whitelist_objs = get_whitelist_objects(service_id, request.get_json())
+    except ValueError as e:
+        current_app.logger.exception(e)
+        dao_rollback()
+        msg = '{} is not a valid email address or phone number'.format(str(e))
+        return jsonify(result='error', message=msg), 400
+    else:
+        dao_add_and_commit_whitelisted_contacts(whitelist_objs)
+        return '', 204
