@@ -118,7 +118,7 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_email_t
             data.update({"template_version": sample_email_template_with_placeholders.version})
 
             app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
-                (str(notification_id)),
+                [str(notification_id)],
                 queue="send-email"
             )
             assert response.status_code == 201
@@ -378,7 +378,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
             notification_id = response_data['notification']['id']
 
             app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-                (notification_id), queue='send-sms')
+                [notification_id], queue='send-sms')
             assert response.status_code == 201
             assert notification_id
             assert 'subject' not in response_data
@@ -538,7 +538,7 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
             response_data = json.loads(response.get_data(as_text=True))['data']
             notification_id = response_data['notification']['id']
             app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
-                (notification_id),
+                [notification_id],
                 queue="send-email"
             )
 
@@ -742,7 +742,7 @@ def test_should_send_email_if_team_api_key_and_a_service_user(notify_api, sample
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
         app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
-            (fake_uuid),
+            [fake_uuid],
             queue='send-email')
         assert response.status_code == 201
 
@@ -776,7 +776,7 @@ def test_should_send_sms_to_anyone_with_test_key(
             data=json.dumps(data),
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))]
         )
-        app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with((fake_uuid), queue='research-mode')
+        app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with([fake_uuid], queue='research-mode')
         assert response.status_code == 201
 
 
@@ -811,7 +811,7 @@ def test_should_send_email_to_anyone_with_test_key(
         )
 
         app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
-            (fake_uuid), queue='research-mode')
+            [fake_uuid], queue='research-mode')
         assert response.status_code == 201
 
 
@@ -837,7 +837,7 @@ def test_should_send_sms_if_team_api_key_and_a_service_user(notify_api, sample_t
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
         app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-            (fake_uuid), queue='send-sms')
+            [fake_uuid], queue='send-sms')
         assert response.status_code == 201
 
 
@@ -864,7 +864,7 @@ def test_should_persist_sms_notification(notify_api, sample_template, fake_uuid,
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
         app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-            (fake_uuid), queue='send-sms')
+            [fake_uuid], queue='send-sms')
         assert response.status_code == 201
 
         notification = notifications_dao.get_notification_by_id(fake_uuid)
@@ -896,7 +896,7 @@ def test_should_persist_email_notification(notify_api, sample_email_template, fa
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
         app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
-            (fake_uuid), queue='send-email')
+            [fake_uuid], queue='send-email')
         assert response.status_code == 201
 
         notification = notifications_dao.get_notification_by_id(fake_uuid)
@@ -935,7 +935,7 @@ def test_should_delete_email_notification_and_return_error_if_sqs_fails(
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
         app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
-            (fake_uuid), queue='send-email')
+            [fake_uuid], queue='send-email')
 
         assert response.status_code == 500
         assert not notifications_dao.get_notification_by_id(fake_uuid)
@@ -967,7 +967,7 @@ def test_should_delete_sms_notification_and_return_error_if_sqs_fails(notify_api
             data=json.dumps(data),
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
-        app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with((fake_uuid), queue='send-sms')
+        app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with([fake_uuid], queue='send-sms')
 
         assert response.status_code == 500
         assert not notifications_dao.get_notification_by_id(fake_uuid)

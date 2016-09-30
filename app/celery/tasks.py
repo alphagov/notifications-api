@@ -131,7 +131,7 @@ def send_sms(self,
             )
         )
         provider_tasks.deliver_sms.apply_async(
-            (notification_id),
+            [notification_id],
             queue='send-sms' if not service.research_mode else 'research-mode'
         )
 
@@ -173,7 +173,7 @@ def send_email(self, service_id,
         )
 
         provider_tasks.deliver_email.apply_async(
-            (notification_id),
+            [notification_id],
             queue='send-email' if not service.research_mode else 'research-mode'
         )
 
