@@ -5,7 +5,7 @@ import pytest
 
 from flask import (json, current_app)
 from freezegun import freeze_time
-from mock import ANY
+from unittest.mock import ANY
 from notifications_python_client.authentication import create_jwt_token
 
 import app
