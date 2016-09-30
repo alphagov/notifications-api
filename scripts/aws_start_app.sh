@@ -15,5 +15,6 @@ function start
 start "notifications-api"
 start "notifications-api-celery-worker"
 start "notifications-api-celery-worker-sender"
+start "notifications-api-celery-worker-research"
 start "notifications-api-celery-worker-db"
 start "notifications-api-celery-beat"
