@@ -1,9 +1,11 @@
 import uuid
+import pytz
 from datetime import (
     datetime,
     timedelta,
     date
 )
+from itertools import groupby
 
 from flask import current_app
 from werkzeug.datastructures import MultiDict
@@ -212,19 +214,24 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
 @statsd(namespace="dao")
 def get_notification_billable_unit_count_per_month(service_id, year):
     start, end = get_financial_year(year)
-    return db.session.query(
-        func.to_char(NotificationHistory.created_at, "FMMonth"),
-        func.sum(NotificationHistory.billable_units)
-    ).group_by(
-        func.to_char(NotificationHistory.created_at, "FMMonth"),
-        func.to_char(NotificationHistory.created_at, "YYYY-MM")
+
+    notifications = db.session.query(
+        NotificationHistory.created_at,
+        NotificationHistory.billable_units
     ).order_by(
-        func.to_char(NotificationHistory.created_at, "YYYY-MM")
+        NotificationHistory.created_at
     ).filter(
         NotificationHistory.service_id == service_id,
         NotificationHistory.created_at >= start,
         NotificationHistory.created_at < end
     ).all()
+
+    return [
+        (month, sum(count for _, count in row))
+        for month, row in groupby(
+            notifications, lambda row: get_bst_month(row[0])
+        )
+    ]
 
 
 @statsd(namespace="dao")
@@ -340,7 +347,17 @@ def dao_timeout_notifications(timeout_period_in_seconds):
 
 
 def get_financial_year(year):
-    return (
-        date(year, 4, 1),
-        date(year + 1, 4, 1)
-    )
+    return (get_april_fools(year), get_april_fools(year + 1))
+
+
+def get_april_fools(year):
+    return datetime(
+        year, 4, 1, 0, 0, 0, 0,
+        pytz.timezone("Europe/London")
+    ).astimezone(pytz.utc)
+
+
+def get_bst_month(datetime):
+    return pytz.utc.localize(datetime).replace(
+        tzinfo=pytz.timezone("Europe/London")
+    ).strftime('%B')
