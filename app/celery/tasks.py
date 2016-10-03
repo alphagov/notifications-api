@@ -1,12 +1,10 @@
 from datetime import (datetime)
-
 from flask import current_app
 from notifications_utils.recipients import (
     RecipientCSV
 )
 from notifications_utils.template import Template
 from sqlalchemy.exc import SQLAlchemyError
-
 from app import (
     create_uuid,
     DATETIME_FORMAT,
@@ -20,14 +18,13 @@ from app.dao.jobs_dao import (
     dao_get_job_by_id
 )
 from app.dao.notifications_dao import (dao_create_notification)
-from app.dao.services_dao import dao_fetch_service_by_id, dao_fetch_todays_stats_for_service
+from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
     Notification,
     EMAIL_TYPE,
     SMS_TYPE,
-    KEY_TYPE_NORMAL,
-    KEY_TYPE_TEST
+    KEY_TYPE_NORMAL
 )
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
@@ -41,7 +38,7 @@ def process_job(job_id):
 
     service = job.service
 
-    total_sent = sum(row.count for row in dao_fetch_todays_stats_for_service(service.id))
+    total_sent = fetch_todays_total_message_count(service.id)
 
     if total_sent + job.notification_count > service.message_limit:
         job.status = 'sending limits exceeded'

@@ -19,7 +19,8 @@ from app.dao.services_dao import (
     delete_service_and_all_associated_db_objects,
     dao_fetch_stats_for_service,
     dao_fetch_todays_stats_for_service,
-    dao_fetch_weekly_historical_stats_for_service
+    dao_fetch_weekly_historical_stats_for_service,
+    fetch_todays_total_message_count
 )
 from app.dao.users_dao import save_model_user
 from app.models import (
@@ -556,3 +557,14 @@ def test_fetch_weekly_historical_stats_separates_types(notify_db,
     assert ret[1].week_start == datetime(2016, 7, 25)
     assert ret[1].count == 1
     assert ret[1].notification_type == 'sms'
+
+
+def test_dao_fetch_todays_total_message_count_returns_0_when_no_messages_for_today(notify_db,
+                                                                                   notify_db_session,
+                                                                                   sample_notification):
+    assert fetch_todays_total_message_count(sample_notification.service.id) == 1
+
+
+def test_dao_fetch_todays_total_message_count_returns_0_when_no_messages_for_today(notify_db,
+                                                                                   notify_db_session):
+    assert fetch_todays_total_message_count(uuid.uuid4()) == 0
