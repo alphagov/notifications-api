@@ -1,5 +1,4 @@
 from datetime import datetime
-import itertools
 
 from flask import (
     Blueprint,
@@ -9,13 +8,11 @@ from flask import (
     json
 )
 
-from notifications_utils.recipients import first_column_heading
 from notifications_utils.template import Template
 from notifications_utils.renderers import PassThrough
 from app.clients.email.aws_ses import get_aws_responses
 from app import api_user, create_uuid, DATETIME_FORMAT, statsd_client
 from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
-from app.dao.services_dao import dao_fetch_todays_stats_for_service
 from app.models import KEY_TYPE_TEAM, KEY_TYPE_TEST, Notification, KEY_TYPE_NORMAL, EMAIL_TYPE
 from app.dao import (
     templates_dao,
@@ -195,6 +192,16 @@ def get_all_notifications():
     ), 200
 
 
+@notifications.route('/notifications/statistics')
+def get_notification_statistics_for_day():
+    data = day_schema.load(request.args).data
+    statistics = notifications_dao.dao_get_potential_notification_statistics_for_day(
+        day=data['day']
+    )
+    data, errors = notifications_statistics_schema.dump(statistics, many=True)
+    return jsonify(data=data), 200
+
+
 @notifications.route('/notifications/<string:notification_type>', methods=['POST'])
 def send_notification(notification_type):
     if notification_type not in ['sms', 'email']:
@@ -209,8 +216,9 @@ def send_notification(notification_type):
     if errors:
         raise InvalidRequest(errors, status_code=400)
 
-    if all((api_user.key_type != KEY_TYPE_TEST, service.restricted)):
-        service_stats = sum(row.count for row in dao_fetch_todays_stats_for_service(service.id))
+    if all((api_user.key_type != KEY_TYPE_TEST,
+            service.restricted)):
+        service_stats = services_dao.fetch_todays_total_message_count(service.id)
         if service_stats >= service.message_limit:
             error = 'Exceeded send limits ({}) for today'.format(service.message_limit)
             raise InvalidRequest(error, status_code=429)
@@ -229,42 +237,9 @@ def send_notification(notification_type):
     if errors:
         raise InvalidRequest(errors, status_code=400)
 
-    template_object = Template(
-        template.__dict__,
-        notification.get('personalisation', {}),
-        renderer=PassThrough()
-    )
-    if template_object.missing_data:
-        message = 'Missing personalisation: {}'.format(", ".join(template_object.missing_data))
-        errors = {'template': [message]}
-        raise InvalidRequest(errors, status_code=400)
+    template_object = create_template_object_for_notification(template, notification.get('personalisation', {}))
 
-    if template_object.additional_data:
-        message = 'Personalisation not needed for template: {}'.format(", ".join(template_object.additional_data))
-        errors = {'template': [message]}
-        raise InvalidRequest(errors, status_code=400)
-
-    if (
-        template_object.template_type == SMS_TYPE and
-        template_object.replaced_content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
-    ):
-        char_count = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
-        message = 'Content has a character count greater than the limit of {}'.format(char_count)
-        errors = {'content': [message]}
-        raise InvalidRequest(errors, status_code=400)
-
-    if not service_allowed_to_send_to(notification['to'], service, api_user.key_type):
-        if (api_user.key_type == KEY_TYPE_TEAM):
-            message = 'Can’t send to this recipient using a team-only API key'
-        else:
-            message = (
-                'Can’t send to this recipient when service is in trial mode '
-                '– see https://www.notifications.service.gov.uk/trial-mode'
-            )
-        raise InvalidRequest(
-            {'to': [message]},
-            status_code=400
-        )
+    _service_allowed_to_send_to(notification, service)
 
     notification_id = create_uuid()
     notification.update({"template_version": template.version})
@@ -298,16 +273,6 @@ def get_notification_return_data(notification_id, notification, template):
         output.update({'subject': template.replaced_subject})
 
     return output
-
-
-@notifications.route('/notifications/statistics')
-def get_notification_statistics_for_day():
-    data = day_schema.load(request.args).data
-    statistics = notifications_dao.dao_get_potential_notification_statistics_for_day(
-        day=data['day']
-    )
-    data, errors = notifications_statistics_schema.dump(statistics, many=True)
-    return jsonify(data=data), 200
 
 
 def _simulated_recipient(to_address, notification_type):
@@ -351,3 +316,45 @@ def persist_notification(
     current_app.logger.info(
         "{} {} created at {}".format(notification_type, notification_id, created_at)
     )
+
+
+def _service_allowed_to_send_to(notification, service):
+    if not service_allowed_to_send_to(notification['to'], service, api_user.key_type):
+        if api_user.key_type == KEY_TYPE_TEAM:
+            message = 'Can’t send to this recipient using a team-only API key'
+        else:
+            message = (
+                'Can’t send to this recipient when service is in trial mode '
+                '– see https://www.notifications.service.gov.uk/trial-mode'
+            )
+        raise InvalidRequest(
+            {'to': [message]},
+            status_code=400
+        )
+
+
+def create_template_object_for_notification(template, personalisation):
+    template_object = Template(
+        template.__dict__,
+        personalisation,
+        renderer=PassThrough()
+    )
+    if template_object.missing_data:
+        message = 'Missing personalisation: {}'.format(", ".join(template_object.missing_data))
+        errors = {'template': [message]}
+        raise InvalidRequest(errors, status_code=400)
+
+    if template_object.additional_data:
+        message = 'Personalisation not needed for template: {}'.format(", ".join(template_object.additional_data))
+        errors = {'template': [message]}
+        raise InvalidRequest(errors, status_code=400)
+
+    if (
+        template_object.template_type == SMS_TYPE and
+        template_object.replaced_content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+    ):
+        char_count = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+        message = 'Content has a character count greater than the limit of {}'.format(char_count)
+        errors = {'content': [message]}
+        raise InvalidRequest(errors, status_code=400)
+    return template_object
