@@ -44,7 +44,7 @@ from app.errors import (
 )
 
 register_errors(notifications)
-from app.celery.provider_tasks import send_sms_to_provider, send_email_to_provider
+from app.celery import provider_tasks
 
 
 @notifications.route('/notifications/email/ses', methods=['POST'])
@@ -297,10 +297,17 @@ def persist_notification(
     )
 
     try:
+        research_mode = service.research_mode or key_type == KEY_TYPE_TEST
         if notification_type == SMS_TYPE:
-            send_sms_to_provider.apply_async((str(service.id), str(notification_id)), queue='send-sms')
+            provider_tasks.deliver_sms.apply_async(
+                [str(notification_id)],
+                queue='send-sms' if not research_mode else 'research-mode'
+            )
         if notification_type == EMAIL_TYPE:
-            send_email_to_provider.apply_async((str(service.id), str(notification_id)), queue='send-email')
+            provider_tasks.deliver_email.apply_async(
+                [str(notification_id)],
+                queue='send-email' if not research_mode else 'research-mode'
+            )
     except Exception as e:
         current_app.logger.exception("Failed to send to SQS exception", e)
         dao_delete_notifications_and_history_by_id(notification_id)
