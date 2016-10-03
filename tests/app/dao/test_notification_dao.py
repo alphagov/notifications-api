@@ -716,6 +716,10 @@ def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_ses
         (
             2015,
             [('January', 1), ('March', 1)]
+        ),
+        (
+            2014,
+            []
         )
     ):
         assert get_notification_billable_unit_count_per_month(
