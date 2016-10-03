@@ -679,9 +679,9 @@ def test_should_delete_notification_and_return_error_if_sqs_fails(
         template_type):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         mocked = mocker.patch(
-                'app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type),
-                side_effect=Exception("failed to talk to SQS")
-            )
+            'app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type),
+            side_effect=Exception("failed to talk to SQS")
+        )
         mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
         template = sample_template if template_type == 'sms' else sample_email_template
         to = sample_template.service.created_by.mobile_number if template_type == 'sms' \
