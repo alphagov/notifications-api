@@ -33,11 +33,7 @@ def test_create_notification_should_reject_if_missing_required_fields(notify_api
                                                                       sample_api_key, mocker, template_type):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            if template_type == 'sms':
-                mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-            else:
-                mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type))
             data = {}
             auth_header = create_authorization_header(service_id=sample_api_key.service_id)
 
@@ -47,10 +43,7 @@ def test_create_notification_should_reject_if_missing_required_fields(notify_api
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            if template_type == 'sms':
-                app.celery.provider_tasks.deliver_sms.apply_async.assert_not_called()
-            else:
-                app.celery.provider_tasks.deliver_email.apply_async.assert_not_called()
+            mocked.assert_not_called()
             assert json_resp['result'] == 'error'
             assert 'Missing data for required field.' in json_resp['message']['to'][0]
             assert 'Missing data for required field.' in json_resp['message']['template'][0]
@@ -60,7 +53,7 @@ def test_create_notification_should_reject_if_missing_required_fields(notify_api
 def test_should_reject_bad_phone_numbers(notify_api, sample_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
             data = {
                 'to': 'invalid',
@@ -74,7 +67,7 @@ def test_should_reject_bad_phone_numbers(notify_api, sample_template, mocker):
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            app.celery.provider_tasks.deliver_sms.apply_async.assert_not_called()
+            mocked.assert_not_called()
             assert json_resp['result'] == 'error'
             assert len(json_resp['message'].keys()) == 1
             assert 'Invalid phone number: Must not contain letters or symbols' in json_resp['message']['to']
@@ -87,10 +80,7 @@ def test_should_reject_bad_phone_numbers(notify_api, sample_template, mocker):
 def test_send_notification_invalid_template_id(notify_api, sample_template, mocker, fake_uuid, template_type, to):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            if template_type == 'sms':
-                mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-            else:
-                mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type))
 
             data = {
                 'to': to,
@@ -104,10 +94,7 @@ def test_send_notification_invalid_template_id(notify_api, sample_template, mock
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            if template_type == 'sms':
-                app.celery.provider_tasks.deliver_sms.apply_async.assert_not_called()
-            else:
-                app.celery.provider_tasks.deliver_email.apply_async.assert_not_called()
+            mocked.assert_not_called()
             assert response.status_code == 404
             test_string = 'No result found'
             assert test_string in json_resp['message']
@@ -117,7 +104,7 @@ def test_send_notification_invalid_template_id(notify_api, sample_template, mock
 def test_send_notification_with_placeholders_replaced(notify_api, sample_email_template_with_placeholders, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
             data = {
                 'to': 'ok@ok.com',
@@ -137,7 +124,7 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_email_t
             notification_id = response_data['notification']['id']
             data.update({"template_version": sample_email_template_with_placeholders.version})
 
-            app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
+            mocked.assert_called_once_with(
                 [notification_id],
                 queue="send-email"
             )
@@ -177,10 +164,7 @@ def test_should_not_send_notification_if_restricted_and_not_a_service_user(notif
                                                                            to):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            if template_type == 'sms':
-                mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-            else:
-                mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type))
             template = sample_template if template_type == 'sms' else sample_email_template
             template.service.restricted = True
             dao_update_service(template.service)
@@ -197,10 +181,7 @@ def test_should_not_send_notification_if_restricted_and_not_a_service_user(notif
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            if template_type == 'sms':
-                app.celery.provider_tasks.deliver_sms.apply_async.assert_not_called()
-            else:
-                app.celery.provider_tasks.deliver_email.apply_async.assert_not_called()
+            mocked.assert_not_called()
 
             assert response.status_code == 400
             assert [(
@@ -218,10 +199,7 @@ def test_should_send_notification_if_restricted_and_a_service_user(notify_api,
                                                                    mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            if template_type == 'sms':
-                mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-            else:
-                mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type))
 
             template = sample_template if template_type == 'sms' else sample_email_template
             to = template.service.created_by.mobile_number if template_type == 'sms' \
@@ -240,10 +218,7 @@ def test_should_send_notification_if_restricted_and_a_service_user(notify_api,
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
 
-            if template_type == 'sms':
-                assert app.celery.provider_tasks.deliver_sms.apply_async.called
-            else:
-                assert app.celery.provider_tasks.deliver_email.apply_async.called
+            assert mocked.called == 1
             assert response.status_code == 201
 
 
@@ -256,10 +231,7 @@ def test_should_not_allow_template_from_another_service(notify_api,
                                                         template_type):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            if template_type == 'sms':
-                mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-            else:
-                mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type))
             service_1 = service_factory.get('service 1', user=sample_user, email_from='service.1')
             service_2 = service_factory.get('service 2', user=sample_user, email_from='service.2')
 
@@ -278,10 +250,7 @@ def test_should_not_allow_template_from_another_service(notify_api,
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             json_resp = json.loads(response.get_data(as_text=True))
-            if template_type == 'sms':
-                app.celery.provider_tasks.deliver_sms.apply_async.assert_not_called()
-            else:
-                app.celery.provider_tasks.deliver_email.apply_async.assert_not_called()
+            mocked.assert_not_called()
             assert response.status_code == 404
             test_string = 'No result found'
             assert test_string in json_resp['message']
@@ -291,7 +260,7 @@ def test_should_not_allow_template_from_another_service(notify_api,
 def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             data = {
@@ -309,8 +278,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
             response_data = json.loads(response.data)['data']
             notification_id = response_data['notification']['id']
 
-            app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-                [notification_id], queue='send-sms')
+            mocked.assert_called_once_with([notification_id], queue='send-sms')
             assert response.status_code == 201
             assert notification_id
             assert 'subject' not in response_data
@@ -321,7 +289,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
 def test_should_reject_email_notification_with_bad_email(notify_api, sample_email_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
             to_address = "bad-email"
             data = {
                 'to': to_address,
@@ -335,7 +303,7 @@ def test_should_reject_email_notification_with_bad_email(notify_api, sample_emai
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             data = json.loads(response.get_data(as_text=True))
-            app.celery.provider_tasks.deliver_email.apply_async.assert_not_called()
+            mocked.apply_async.assert_not_called()
             assert response.status_code == 400
             assert data['result'] == 'error'
             assert data['message']['to'][0] == 'Not a valid email address'
@@ -669,10 +637,7 @@ def test_should_persist_notification(notify_api, sample_template,
                                      template_type,
                                      fake_uuid, mocker):
     with notify_api.test_request_context(), notify_api.test_client() as client:
-        if template_type == 'sms':
-            mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-        else:
-            mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+        mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type))
         mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
         template = sample_template if template_type == 'sms' else sample_email_template
         to = sample_template.service.created_by.mobile_number if template_type == 'sms' \
@@ -694,10 +659,7 @@ def test_should_persist_notification(notify_api, sample_template,
             data=json.dumps(data),
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
-        if template_type == 'sms':
-            app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with([fake_uuid], queue='send-sms')
-        else:
-            app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with([fake_uuid], queue='send-email')
+        mocked.assert_called_once_with([fake_uuid], queue='send-{}'.format(template_type))
         assert response.status_code == 201
 
         notification = notifications_dao.get_notification_by_id(fake_uuid)
@@ -716,14 +678,8 @@ def test_should_delete_notification_and_return_error_if_sqs_fails(
         mocker,
         template_type):
     with notify_api.test_request_context(), notify_api.test_client() as client:
-        if template_type == 'email':
-            mocker.patch(
-                'app.celery.provider_tasks.deliver_email.apply_async',
-                side_effect=Exception("failed to talk to SQS")
-            )
-        else:
-            mocker.patch(
-                'app.celery.provider_tasks.deliver_sms.apply_async',
+        mocked = mocker.patch(
+                'app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type),
                 side_effect=Exception("failed to talk to SQS")
             )
         mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
@@ -747,10 +703,7 @@ def test_should_delete_notification_and_return_error_if_sqs_fails(
             data=json.dumps(data),
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
-        if template_type == 'email':
-            app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with([fake_uuid], queue='send-email')
-        else:
-            app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with([fake_uuid], queue='send-sms')
+        mocked.assert_called_once_with([fake_uuid], queue='send-{}'.format(template_type))
 
         assert response.status_code == 500
         assert not notifications_dao.get_notification_by_id(fake_uuid)
@@ -830,12 +783,10 @@ def test_should_not_send_notification_to_non_whitelist_recipient_in_trial_mode(c
     service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
     service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service)
 
+    apply_async = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
     if notification_type == 'sms':
-        apply_async = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
         template = create_sample_template(notify_db, notify_db_session, service=service)
-
     elif notification_type == 'email':
-        apply_async = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
         template = create_sample_email_template(notify_db, notify_db_session, service=service)
 
     assert service_whitelist.service_id == service.id
@@ -878,13 +829,12 @@ def test_should_send_notification_to_whitelist_recipient_in_trial_mode_with_live
                                                                                      to,
                                                                                      mocker):
     service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
+    apply_async = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
     if notification_type == 'sms':
-        apply_async = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
         template = create_sample_template(notify_db, notify_db_session, service=service)
         service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session,
                                                             service=service, mobile_number=to)
     elif notification_type == 'email':
-        apply_async = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
         template = create_sample_email_template(notify_db, notify_db_session, service=service)
         service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session,
                                                             service=service, email_address=to)
@@ -912,7 +862,7 @@ def test_should_send_notification_to_whitelist_recipient_in_trial_mode_with_live
     assert json_resp['data']['notification']['id']
     assert json_resp['data']['body'] == template.content
     assert json_resp['data']['template_version'] == template.version
-    apply_async.called
+    assert apply_async.called
 
 
 @pytest.mark.parametrize(

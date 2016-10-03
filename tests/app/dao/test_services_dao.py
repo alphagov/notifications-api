@@ -559,9 +559,9 @@ def test_fetch_weekly_historical_stats_separates_types(notify_db,
     assert ret[1].notification_type == 'sms'
 
 
-def test_dao_fetch_todays_total_message_count_returns_0_when_no_messages_for_today(notify_db,
-                                                                                   notify_db_session,
-                                                                                   sample_notification):
+def test_dao_fetch_todays_total_message_count_returns_count_for_today(notify_db,
+                                                                      notify_db_session,
+                                                                      sample_notification):
     assert fetch_todays_total_message_count(sample_notification.service.id) == 1
 
 
