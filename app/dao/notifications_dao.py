@@ -359,6 +359,6 @@ def get_april_fools(year):
 
 
 def get_bst_month(datetime):
-    return pytz.utc.localize(datetime).replace(
-        tzinfo=pytz.timezone("Europe/London")
+    return pytz.utc.localize(datetime).astimezone(
+        pytz.timezone("Europe/London")
     ).strftime('%B')

@@ -691,21 +691,20 @@ def test_get_all_notifications_for_job_by_status(notify_db, notify_db_session, s
 def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_session, sample_service):
 
     for year, month, day in (
-        (2017, 1, 1),  # ↓ 2016 financial year
+        (2017, 1, 15),  # ↓ 2016 financial year
         (2016, 8, 1),
-        (2016, 7, 31),
-        (2016, 4, 6),
-        (2016, 4, 6),
+        (2016, 7, 15),
+        (2016, 4, 15),
+        (2016, 4, 15),
         (2016, 4, 1),  # ↓ 2015 financial year
         (2016, 3, 31),
-        (2016, 1, 1)
+        (2016, 1, 15)
     ):
         sample_notification(
             notify_db, notify_db_session, service=sample_service,
             created_at=datetime(
-                year, month, day, 0, 0, 0, 0,
-                tzinfo=pytz.utc
-            )
+                year, month, day, 0, 0, 0, 0
+            ) - timedelta(hours=1, seconds=1)  # one second before midnight
         )
 
     for financial_year, months in (
@@ -715,11 +714,11 @@ def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_ses
         ),
         (
             2016,
-            [('April', 2), ('July', 1), ('August', 1), ('January', 1)]
+            [('April', 2), ('July', 2), ('January', 1)]
         ),
         (
             2015,
-            [('January', 1), ('March', 1), ('April', 1)]
+            [('January', 1), ('March', 2)]
         ),
         (
             2014,
