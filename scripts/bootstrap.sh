@@ -25,10 +25,8 @@ if [ ! $VIRTUAL_ENV ]; then
   . ./venv/bin/activate
 fi
 
-# if there isn't a version file we should copy the .dist one
-if [ ! -f ./app/version.py ]; then
-  cp ./app/version.py.dist ./app/version.py
-fi
+# we need the version file to exist otherwise the app will blow up
+make generate-version-file
 
 # Install Python development dependencies
 pip3 install -r requirements_for_test.txt
