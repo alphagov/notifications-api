@@ -7,54 +7,53 @@ Application for the notification api.
 Read and write notifications/status queue.
 Get and update notification status.
 
-## Before you start
+## Setting Up
+
+### AWS credentials
 
 To run the API you will need appropriate AWS credentials. You should receive these from whoever administrates your AWS account. Make sure you've got both an access key id and a secret access key.
 
-## Setting Up
+Your aws credentials should be stored in a folder located at `~/.aws`. Follow [Amazon's instructions](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html#cli-config-files) for storing them correctly.
+
+### Virtualenv
 
 ```
 mkvirtualenv -p /usr/local/bin/python3 notifications-api
 ```
 
+### `environment.sh`
+
 Creating the environment.sh file. Replace [unique-to-environment] with your something unique to the environment. Your AWS credentials should be set up for notify-tools (the development/CI AWS account).
 
-Create a local environment.sh file containing the following, updating the AWS key entries with your own values:
+Create a local environment.sh file containing the following:
 
 ```
 echo "
 export SQLALCHEMY_DATABASE_URI='postgresql://localhost/notification_api'
-export SECRET_KEY='secret-key'
-export DANGEROUS_SALT='dangerous-salt'
-export NOTIFY_ENVIRONMENT="development"
-export ADMIN_CLIENT_SECRET='notify-secret-key'
+export SECRET_KEY='dev-notify-secret-key'
+export DANGEROUS_SALT='dev-notify-salt'
+export NOTIFY_ENVIRONMENT='development'
+export ADMIN_CLIENT_SECRET='dev-notify-secret-key'
 export ADMIN_BASE_URL='http://localhost:6012'
 export FROM_NUMBER='development'
-export MMG_URL="https://api.mmg.co.uk/json/api.php"
+export MMG_URL='https://api.mmg.co.uk/json/api.php'
 export MMG_API_KEY='MMG_API_KEY'
-export LOADTESTING_API_KEY="FIRETEXT_SIMULATION_KEY"
-export FIRETEXT_API_KEY="FIRETEXT_ACTUAL_KEY"
-export STATSD_PREFIX="FAKE_PREFIX"
-export NOTIFICATION_QUEUE_PREFIX="PREFIX-TO-IDENTIFY-SQS-QUEUE"
-export AWS_REGION=<YOUR AWS REGION>
-export AWS_ACCESS_KEY_ID=<YOUR ACCESS KEY ID>
-export AWS_SECRET_ACCESS_KEY=<YOUR SECRET ACCESS KEY>
+export LOADTESTING_API_KEY='FIRETEXT_SIMULATION_KEY'
+export FIRETEXT_API_KEY='FIRETEXT_ACTUAL_KEY'
+export STATSD_PREFIX='YOU_OWN_PREFIX'
+export NOTIFICATION_QUEUE_PREFIX='YOUR_OWN_PREFIX'
 "> environment.sh
 ```
 
-NOTE: The SECRET_KEY and DANGEROUS_SALT should match those in the [notifications-admin](https://github.com/alphagov/notifications-admin) app.
+NOTES:
 
-NOTE:  Also note the  unique prefix for the queue names. This prevents clashing with others queues in shared amazon environment and using a prefix enables filtering by queue name in the SQS interface.
+ * Replace the placeholder key and prefix values as appropriate
+ * The SECRET_KEY and DANGEROUS_SALT should match those in the [notifications-admin](https://github.com/alphagov/notifications-admin) app.
+ * The  unique prefix for the queue names prevents clashing with others' queues in shared amazon environment and enables filtering by queue name in the SQS interface.
+
+### Postgres
 
 Install [Postgres.app](http://postgresapp.com/). You will need admin on your machine to do this.
-
-Assuming you downloaded the ZIP file to `~/Downloads` and expanded it there, you should be able to run the following to install the app:
-
-```
-sudo -b ~/Downloads/Postgres.app/Contents/MacOS/Postgres
-```
-
-This will execute the app as a background process (so you can close the terminal window and it won't stop). The install process should offer to move the app to `Applications`.
 
 ##  To run the application
 
