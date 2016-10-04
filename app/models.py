@@ -278,7 +278,7 @@ class Template(db.Model):
     subject = db.Column(db.Text, index=False, unique=False, nullable=True)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     created_by = db.relationship('User')
-    version = db.Column(db.Integer, default=1)
+    version = db.Column(db.Integer, default=1, nullable=False)
 
 
 class TemplateHistory(db.Model):
@@ -296,7 +296,7 @@ class TemplateHistory(db.Model):
     subject = db.Column(db.Text)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     created_by = db.relationship('User')
-    version = db.Column(db.Integer, primary_key=True)
+    version = db.Column(db.Integer, primary_key=True, nullable=False)
 
 
 MMG_PROVIDER = "mmg"
