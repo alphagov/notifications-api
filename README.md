@@ -7,6 +7,10 @@ Application for the notification api.
 Read and write notifications/status queue.
 Get and update notification status.
 
+## Before you start
+
+To run the API you will need appropriate AWS credentials. You should receive these from whoever administrates your AWS account. Make sure you've got both an `access key id` and a `secret access key`.
+
 ## Setting Up
 
 ```
@@ -15,7 +19,7 @@ mkvirtualenv -p /usr/local/bin/python3 notifications-api
 
 Creating the environment.sh file. Replace [unique-to-environment] with your something unique to the environment. Your AWS credentials should be set up for notify-tools (the development/CI AWS account).
 
-Create a local environment.sh file containing the following:
+Create a local environment.sh file containing the following, updating the AWS key entries with your own values:
 
 ```
 echo "
@@ -32,6 +36,9 @@ export LOADTESTING_API_KEY="FIRETEXT_SIMULATION_KEY"
 export FIRETEXT_API_KEY="FIRETEXT_ACTUAL_KEY"
 export STATSD_PREFIX="FAKE_PREFIX"
 export NOTIFICATION_QUEUE_PREFIX="PREFIX-TO-IDENTIFY-SQS-QUEUE"
+export AWS_REGION='eu-west-1'
+export AWS_ACCESS_KEY_ID=<YOUR ACCESS KEY ID>
+export AWS_SECRET_ACCESS_KEY=<YOUR SECRET ACCESS KEY>
 "> environment.sh
 ```
 
@@ -39,11 +46,15 @@ NOTE: The SECRET_KEY and DANGEROUS_SALT should match those in the [notifications
 
 NOTE:  Also note the  unique prefix for the queue names. This prevents clashing with others queues in shared amazon environment and using a prefix enables filtering by queue name in the SQS interface.
 
-Install Postgresql
+Install [Postgres.app](http://postgresapp.com/). You will need admin on your machine to do this.
 
-```shell
-    brew install postgres
+Assuming you downloaded the ZIP file to `~/Downloads` and expanded it there, you should be able to run the following to install the app:
+
 ```
+sudo -b ~/Downloads/Postgres.app/Contents/MacOS/Postgres
+```
+
+This will execute the app as a background process (so you can close the terminal window and it won't stop). The install process should offer to move the app to `Applications`.
 
 ##  To run the application
 
