@@ -9,7 +9,7 @@ Get and update notification status.
 
 ## Before you start
 
-To run the API you will need appropriate AWS credentials. You should receive these from whoever administrates your AWS account. Make sure you've got both an `access key id` and a `secret access key`.
+To run the API you will need appropriate AWS credentials. You should receive these from whoever administrates your AWS account. Make sure you've got both an access key id and a secret access key.
 
 ## Setting Up
 
