@@ -1,13 +1,15 @@
 import uuid
+import pytz
 from datetime import (
     datetime,
     timedelta,
     date
 )
+from itertools import groupby
 
 from flask import current_app
 from werkzeug.datastructures import MultiDict
-from sqlalchemy import (desc, func, or_, and_, asc)
+from sqlalchemy import (desc, func, or_, and_, asc, cast, Text)
 from sqlalchemy.orm import joinedload
 
 from app import db
@@ -210,6 +212,30 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
 
 
 @statsd(namespace="dao")
+def get_notification_billable_unit_count_per_month(service_id, year):
+    start, end = get_financial_year(year)
+
+    notifications = db.session.query(
+        NotificationHistory.created_at,
+        NotificationHistory.billable_units
+    ).order_by(
+        NotificationHistory.created_at
+    ).filter(
+        NotificationHistory.billable_units != 0,
+        NotificationHistory.service_id == service_id,
+        NotificationHistory.created_at >= start,
+        NotificationHistory.created_at < end
+    )
+
+    return [
+        (month, sum(count for _, count in row))
+        for month, row in groupby(
+            notifications, lambda row: get_bst_month(row[0])
+        )
+    ]
+
+
+@statsd(namespace="dao")
 def get_notification_with_personalisation(service_id, notification_id, key_type):
     filter_dict = {'service_id': service_id, 'id': notification_id}
     if key_type:
@@ -319,3 +345,20 @@ def dao_timeout_notifications(timeout_period_in_seconds):
         update({'status': NOTIFICATION_TEMPORARY_FAILURE, 'updated_at': update_at}, synchronize_session=False)
     db.session.commit()
     return updated
+
+
+def get_financial_year(year):
+    return get_april_fools(year), get_april_fools(year + 1)
+
+
+def get_april_fools(year):
+    return datetime(
+        year, 4, 1, 0, 0, 0, 0,
+        pytz.timezone("Europe/London")
+    ).astimezone(pytz.utc)
+
+
+def get_bst_month(datetime):
+    return pytz.utc.localize(datetime).astimezone(
+        pytz.timezone("Europe/London")
+    ).strftime('%B')
