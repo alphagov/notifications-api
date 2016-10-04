@@ -86,7 +86,7 @@ make test
 ```
 
 That will run pep8 for code analysis and our unit test suite. If you wish to run our functional tests, instructions can be found in the
-[notifications-functional-test](https://github.com/alphagov/notifications-functional-test) repository.
+[notifications-functional-tests](https://github.com/alphagov/notifications-functional-tests) repository.
 
 
 
