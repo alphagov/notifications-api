@@ -41,7 +41,7 @@ def process_job(job_id):
     total_sent = fetch_todays_total_message_count(service.id)
 
     if total_sent + job.notification_count > service.message_limit:
-        job.status = 'sending limits exceeded'
+        job.job_status = 'sending limits exceeded'
         job.processing_finished = datetime.utcnow()
         dao_update_job(job)
         current_app.logger.info(
@@ -50,7 +50,7 @@ def process_job(job_id):
         )
         return
 
-    job.status = 'in progress'
+    job.job_status = 'in progress'
     dao_update_job(job)
 
     template = Template(
@@ -94,7 +94,7 @@ def process_job(job_id):
             )
 
     finished = datetime.utcnow()
-    job.status = 'finished'
+    job.job_status = 'finished'
     job.processing_started = start
     job.processing_finished = finished
     dao_update_job(job)

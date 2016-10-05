@@ -83,7 +83,7 @@ def test_should_process_sms_job(sample_job, mocker):
         queue="db-sms"
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
-    assert job.status == 'finished'
+    assert job.job_status == 'finished'
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -157,7 +157,7 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db,
 
     s3.get_job_from_s3.assert_not_called()
     job = jobs_dao.dao_get_job_by_id(job.id)
-    assert job.status == 'sending limits exceeded'
+    assert job.job_status == 'sending limits exceeded'
     tasks.send_sms.apply_async.assert_not_called()
 
 
@@ -177,7 +177,7 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify
     process_job(job.id)
 
     job = jobs_dao.dao_get_job_by_id(job.id)
-    assert job.status == 'sending limits exceeded'
+    assert job.job_status == 'sending limits exceeded'
     s3.get_job_from_s3.assert_not_called()
     tasks.send_sms.apply_async.assert_not_called()
 
@@ -197,7 +197,7 @@ def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(noti
     process_job(job.id)
 
     job = jobs_dao.dao_get_job_by_id(job.id)
-    assert job.status == 'sending limits exceeded'
+    assert job.job_status == 'sending limits exceeded'
     s3.get_job_from_s3.assert_not_called()
     tasks.send_email.apply_async.assert_not_called()
 
@@ -217,7 +217,7 @@ def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, not
 
     s3.get_job_from_s3.assert_not_called
     job = jobs_dao.dao_get_job_by_id(job.id)
-    assert job.status == 'sending limits exceeded'
+    assert job.job_status == 'sending limits exceeded'
     tasks.send_email.apply_async.assert_not_called
 
 
@@ -241,7 +241,7 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
         str(job.id)
     )
     job = jobs_dao.dao_get_job_by_id(job.id)
-    assert job.status == 'finished'
+    assert job.job_status == 'finished'
     tasks.send_email.apply_async.assert_called_with(
         (
             str(job.service_id),
@@ -264,7 +264,7 @@ def test_should_not_create_send_task_for_empty_file(sample_job, mocker):
         str(sample_job.id)
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
-    assert job.status == 'finished'
+    assert job.job_status == 'finished'
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -294,7 +294,7 @@ def test_should_process_email_job(sample_email_job, mocker):
         queue="db-email"
     )
     job = jobs_dao.dao_get_job_by_id(sample_email_job.id)
-    assert job.status == 'finished'
+    assert job.job_status == 'finished'
 
 
 def test_should_process_all_sms_job(sample_job,
@@ -318,7 +318,7 @@ def test_should_process_all_sms_job(sample_job,
     assert encryption.encrypt.call_args[0][0]['personalisation'] == {'name': 'chris'}
     tasks.send_sms.apply_async.call_count == 10
     job = jobs_dao.dao_get_job_by_id(sample_job_with_placeholdered_template.id)
-    assert job.status == 'finished'
+    assert job.job_status == 'finished'
 
 
 def test_should_send_template_to_correct_sms_task_and_persist(sample_template_with_placeholders, mocker):
