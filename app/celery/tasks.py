@@ -36,6 +36,9 @@ def process_job(job_id):
     start = datetime.utcnow()
     job = dao_get_job_by_id(job_id)
 
+    if job.job_status != 'pending':
+        return
+
     service = job.service
 
     total_sent = fetch_todays_total_message_count(service.id)
