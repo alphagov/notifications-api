@@ -27,17 +27,24 @@ def remove_csv_files():
 @notify_celery.task(name="run-scheduled-jobs")
 @statsd(namespace="tasks")
 def run_scheduled_jobs():
+    from app import db
     try:
         jobs = dao_get_scheduled_jobs()
         for job in jobs:
             job.job_status = JOB_STATUS_PENDING
-            dao_update_job(job)
-            process_job.apply_async([str(job.id)], queue="process-job")
+            from time import sleep
+            sleep(1)
+            print('SCHEDULING' + str(job.id))
+            # dao_update_job(job)
+            # process_job.apply_async([str(job.id)], queue="process-job")
             current_app.logger.info(
                 "Job ID {} added to process job queue".format(job.id)
             )
+        db.session.add_all(jobs)
+        db.session.commit()
     except SQLAlchemyError as e:
         current_app.logger.exception("Failed to run scheduled jobs", e)
+        db.session.rollback()
         raise
 
 

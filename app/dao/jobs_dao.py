@@ -52,6 +52,7 @@ def dao_get_scheduled_jobs():
             Job.scheduled_for < datetime.utcnow()
         ) \
         .order_by(asc(Job.scheduled_for)) \
+        .with_for_update() \
         .all()
 
 
