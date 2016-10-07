@@ -71,7 +71,6 @@ def dao_set_scheduled_jobs_to_pending():
     return jobs
 
 
-
 def dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id):
     return Job.query \
         .filter(

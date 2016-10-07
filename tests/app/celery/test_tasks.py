@@ -221,6 +221,18 @@ def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, not
     assert tasks.send_email.apply_async.called is False
 
 
+def test_should_not_process_job_if_already_pending(notify_db, notify_db_session, mocker):
+    job = sample_job(notify_db, notify_db_session, job_status='scheduled')
+
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3')
+    mocker.patch('app.celery.tasks.send_sms.apply_async')
+
+    process_job(job.id)
+
+    assert s3.get_job_from_s3.called is False
+    assert tasks.send_sms.apply_async.called is False
+
+
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
                                                             notify_db_session,

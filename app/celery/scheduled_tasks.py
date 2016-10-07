@@ -29,9 +29,7 @@ def run_scheduled_jobs():
     try:
         for job in dao_set_scheduled_jobs_to_pending():
             process_job.apply_async([str(job.id)], queue="process-job")
-            current_app.logger.info(
-            "Job ID {} added to process job queue".format(job.id)
-            )
+            current_app.logger.info("Job ID {} added to process job queue".format(job.id))
     except SQLAlchemyError as e:
         current_app.logger.exception("Failed to run scheduled jobs", e)
         raise
