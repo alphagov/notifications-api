@@ -4,7 +4,7 @@ from sqlalchemy import func, desc, asc, cast, Date as sql_date
 
 from app import db
 from app.dao import days_ago
-from app.models import Job, NotificationHistory, JOB_STATUS_SCHEDULED
+from app.models import Job, NotificationHistory, JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING
 from app.statsd_decorators import statsd
 
 
@@ -45,8 +45,15 @@ def dao_get_job_by_id(job_id):
     return Job.query.filter_by(id=job_id).one()
 
 
-def dao_get_scheduled_jobs():
-    return Job.query \
+def dao_set_scheduled_jobs_to_pending():
+    """
+    Sets all past scheduled jobs to pending, and then returns them for further processing.
+
+    this is used in the run_scheduled_jobs task, so we put a FOR UPDATE lock on the job table for the duration of
+    the transaction so that if the task is run more than once concurrently, one task will block the other select
+    from completing until it commits.
+    """
+    jobs = Job.query \
         .filter(
             Job.job_status == JOB_STATUS_SCHEDULED,
             Job.scheduled_for < datetime.utcnow()
@@ -54,6 +61,15 @@ def dao_get_scheduled_jobs():
         .order_by(asc(Job.scheduled_for)) \
         .with_for_update() \
         .all()
+
+    for job in jobs:
+        job.job_status = JOB_STATUS_PENDING
+
+    db.session.add_all(jobs)
+    db.session.commit()
+
+    return jobs
+
 
 
 def dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id):
