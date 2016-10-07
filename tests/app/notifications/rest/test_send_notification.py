@@ -819,23 +819,34 @@ def test_should_not_send_notification_to_non_whitelist_recipient_in_trial_mode(c
     apply_async.assert_not_called()
 
 
-@pytest.mark.parametrize('notification_type,to', [
-    ('sms', '07123123123'),
-    ('email', 'whitelist_recipient@mail.com')])
-def test_should_send_notification_to_whitelist_recipient_in_trial_mode_with_live_key(client,
-                                                                                     notify_db,
-                                                                                     notify_db_session,
-                                                                                     notification_type,
-                                                                                     to,
-                                                                                     mocker):
-    service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
+@pytest.mark.parametrize('service_restricted', [
+    True, False
+])
+@pytest.mark.parametrize('key_type', [
+    KEY_TYPE_NORMAL, KEY_TYPE_TEAM
+])
+@pytest.mark.parametrize('notification_type, to, _create_sample_template', [
+    ('sms', '07123123123', create_sample_template),
+    ('email', 'whitelist_recipient@mail.com', create_sample_email_template)]
+)
+def test_should_send_notification_to_whitelist_recipient(
+    client,
+    notify_db,
+    notify_db_session,
+    notification_type,
+    to,
+    _create_sample_template,
+    key_type,
+    service_restricted,
+    mocker
+):
+    service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=service_restricted)
     apply_async = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
+    template = _create_sample_template(notify_db, notify_db_session, service=service)
     if notification_type == 'sms':
-        template = create_sample_template(notify_db, notify_db_session, service=service)
         service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session,
                                                             service=service, mobile_number=to)
     elif notification_type == 'email':
-        template = create_sample_email_template(notify_db, notify_db_session, service=service)
         service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session,
                                                             service=service, email_address=to)
 
@@ -849,8 +860,8 @@ def test_should_send_notification_to_whitelist_recipient_in_trial_mode_with_live
         'template': str(template.id)
     }
 
-    sample_live_key = create_sample_api_key(notify_db, notify_db_session, service)
-    auth_header = create_jwt_token(secret=sample_live_key.unsigned_secret, client_id=str(sample_live_key.service_id))
+    sample_key = create_sample_api_key(notify_db, notify_db_session, service, key_type=key_type)
+    auth_header = create_jwt_token(secret=sample_key.unsigned_secret, client_id=str(sample_key.service_id))
 
     response = client.post(
         path='/notifications/{}'.format(notification_type),
