@@ -155,10 +155,10 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db,
 
     process_job(job.id)
 
-    s3.get_job_from_s3.assert_not_called()
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.job_status == 'sending limits exceeded'
-    tasks.send_sms.apply_async.assert_not_called()
+    assert s3.get_job_from_s3.called is False
+    assert tasks.send_sms.apply_async.called is False
 
 
 def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify_db,
@@ -178,8 +178,8 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify
 
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.job_status == 'sending limits exceeded'
-    s3.get_job_from_s3.assert_not_called()
-    tasks.send_sms.apply_async.assert_not_called()
+    assert s3.get_job_from_s3.called is False
+    assert tasks.send_sms.apply_async.called is False
 
 
 def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(notify_db, notify_db_session, mocker):
@@ -198,8 +198,8 @@ def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(noti
 
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.job_status == 'sending limits exceeded'
-    s3.get_job_from_s3.assert_not_called()
-    tasks.send_email.apply_async.assert_not_called()
+    assert s3.get_job_from_s3.called is False
+    assert tasks.send_email.apply_async.called is False
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -208,17 +208,17 @@ def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, not
     template = sample_email_template(notify_db, notify_db_session, service=service)
     job = sample_job(notify_db, notify_db_session, service=service, template=template)
 
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
 
     process_job(job.id)
 
-    s3.get_job_from_s3.assert_not_called
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.job_status == 'sending limits exceeded'
-    tasks.send_email.apply_async.assert_not_called
+    assert s3.get_job_from_s3.called is False
+    assert tasks.send_email.apply_async.called is False
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -491,7 +491,7 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
         encryption.encrypt(notification),
         datetime.utcnow().strftime(DATETIME_FORMAT)
     )
-    provider_tasks.deliver_sms.apply_async.assert_not_called()
+    assert provider_tasks.deliver_sms.apply_async.called is False
     with pytest.raises(NoResultFound):
         Notification.query.filter_by(id=notification_id).one()
 
@@ -631,7 +631,7 @@ def test_should_not_send_sms_if_team_key_and_recipient_not_in_team(notify_db, no
         encryption.encrypt(notification),
         datetime.utcnow().strftime(DATETIME_FORMAT)
     )
-    provider_tasks.send_sms_to_provider.apply_async.assert_not_called()
+    assert provider_tasks.send_sms_to_provider.apply_async.called is False
     with pytest.raises(NoResultFound):
         Notification.query.filter_by(id=notification_id).one()
 
@@ -786,7 +786,7 @@ def test_send_sms_should_go_to_retry_queue_if_database_errors(sample_template, m
             encryption.encrypt(notification),
             now.strftime(DATETIME_FORMAT)
         )
-    provider_tasks.deliver_sms.apply_async.assert_not_called()
+    assert provider_tasks.deliver_sms.apply_async.called is False
     tasks.send_sms.retry.assert_called_with(exc=expected_exception, queue='retry')
 
     with pytest.raises(NoResultFound) as e:
@@ -813,7 +813,7 @@ def test_send_email_should_go_to_retry_queue_if_database_errors(sample_email_tem
             encryption.encrypt(notification),
             now.strftime(DATETIME_FORMAT)
         )
-    provider_tasks.deliver_email.apply_async.assert_not_called()
+    assert provider_tasks.deliver_email.apply_async.called is False
     tasks.send_email.retry.assert_called_with(exc=expected_exception, queue='retry')
 
     with pytest.raises(NoResultFound) as e:
