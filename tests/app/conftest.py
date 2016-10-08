@@ -264,7 +264,8 @@ def sample_job(notify_db,
                notification_count=1,
                created_at=None,
                job_status='pending',
-               scheduled_for=None):
+               scheduled_for=None,
+               processing_started=None):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:
@@ -281,7 +282,8 @@ def sample_job(notify_db,
         'created_at': created_at or datetime.utcnow(),
         'created_by': service.created_by,
         'job_status': job_status,
-        'scheduled_for': scheduled_for
+        'scheduled_for': scheduled_for,
+        'processing_started': processing_started
     }
     job = Job(**data)
     dao_create_job(job)

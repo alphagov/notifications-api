@@ -37,7 +37,7 @@ def dao_get_jobs_by_service_id(service_id, limit_days=None, page=1, page_size=50
         )
     return Job.query \
         .filter(*query_filter) \
-        .order_by(desc(Job.created_at)) \
+        .order_by(Job.processing_started.desc(), Job.created_at.desc()) \
         .paginate(page=page, per_page=page_size)
 
 

@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from functools import partial
 import uuid
 
 from freezegun import freeze_time
@@ -192,23 +193,26 @@ def test_get_jobs_for_service_with_limit_days_edge_case(notify_db, notify_db_ses
     assert job_eight_days_old not in jobs_limit_days
 
 
-def test_get_jobs_for_service_in_created_at_order(notify_db, notify_db_session, sample_template):
-    job_1 = create_job(
-        notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
-    job_2 = create_job(
-        notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
-    job_3 = create_job(
-        notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
-    job_4 = create_job(
-        notify_db, notify_db_session, sample_template.service, sample_template, created_at=datetime.utcnow())
+def test_get_jobs_for_service_in_processed_at_then_created_at_order(notify_db, notify_db_session, sample_template):
+    _create_job = partial(create_job, notify_db, notify_db_session, sample_template.service, sample_template)
+    scheduled_jobs, processed_jobs = [], []
+
+    for index in range(0, 4):
+        scheduled_jobs.append(_create_job(
+            created_at=datetime.utcnow() - timedelta(seconds=index)
+        ))
+        processed_jobs.append(_create_job(
+            created_at=datetime.utcnow() - timedelta(minutes=(4 - index)),
+            processing_started=datetime.utcnow() - timedelta(hours=index)
+        ))
 
     jobs = dao_get_jobs_by_service_id(sample_template.service.id).items
 
-    assert len(jobs) == 4
-    assert jobs[0].id == job_4.id
-    assert jobs[1].id == job_3.id
-    assert jobs[2].id == job_2.id
-    assert jobs[3].id == job_1.id
+    assert len(jobs) == 8
+
+    for index in range(0, 4):
+        assert jobs[index].id == scheduled_jobs[index].id
+        assert jobs[index + 4].id == processed_jobs[index].id
 
 
 def test_update_job(sample_job):
