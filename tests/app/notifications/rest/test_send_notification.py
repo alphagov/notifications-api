@@ -768,27 +768,27 @@ def test_should_not_persist_notification_or_send_sms_if_simulated_number(
     assert Notification.query.count() == 0
 
 
-@pytest.mark.parametrize('notification_type,to, key_type', [
-    ('sms', '07827992635', KEY_TYPE_NORMAL),
-    ('email', 'non_whitelist_recipient@mail.com', KEY_TYPE_NORMAL),
-    ('sms', '07827992635', KEY_TYPE_TEAM),
-    ('email', 'non_whitelist_recipient@mail.com', KEY_TYPE_TEAM)])
-def test_should_not_send_notification_to_non_whitelist_recipient_in_trial_mode(client,
-                                                                               notify_db,
-                                                                               notify_db_session,
-                                                                               notification_type,
-                                                                               to,
-                                                                               key_type,
-                                                                               mocker):
+@pytest.mark.parametrize('key_type', [
+    KEY_TYPE_NORMAL, KEY_TYPE_TEAM
+])
+@pytest.mark.parametrize('notification_type, to, _create_sample_template', [
+    ('sms', '07827992635', create_sample_template),
+    ('email', 'non_whitelist_recipient@mail.com', create_sample_email_template)]
+)
+def test_should_not_send_notification_to_non_whitelist_recipient_in_trial_mode(
+    client,
+    notify_db,
+    notify_db_session,
+    notification_type,
+    to,
+    _create_sample_template,
+    key_type,
+    mocker):
     service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
     service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service)
 
     apply_async = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
-    if notification_type == 'sms':
-        template = create_sample_template(notify_db, notify_db_session, service=service)
-    elif notification_type == 'email':
-        template = create_sample_email_template(notify_db, notify_db_session, service=service)
-
+    template = _create_sample_template(notify_db, notify_db_session, service=service)
     assert service_whitelist.service_id == service.id
     assert to not in [member.recipient for member in service.whitelist]
 
