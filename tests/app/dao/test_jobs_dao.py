@@ -202,7 +202,7 @@ def test_get_jobs_for_service_in_processed_at_then_created_at_order(notify_db, n
         _create_job(created_at=from_hour(2), processing_started=None),
         _create_job(created_at=from_hour(1), processing_started=None),
         _create_job(created_at=from_hour(1), processing_started=from_hour(4)),
-        _create_job(created_at=from_hour(4), processing_started=from_hour(3)),
+        _create_job(created_at=from_hour(2), processing_started=from_hour(3)),
     ]
 
     jobs = dao_get_jobs_by_service_id(sample_template.service.id).items
