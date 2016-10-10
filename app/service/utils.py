@@ -34,16 +34,16 @@ def service_allowed_to_send_to(recipient, service, key_type):
         return True
 
     team_members = itertools.chain.from_iterable(
-        [user.mobile_number, user.email_address] for user in service.users)
+        [user.mobile_number, user.email_address] for user in service.users
+    )
+    whitelist_members = [
+        member.recipient for member in service.whitelist
+    ]
 
-    if key_type == KEY_TYPE_TEAM:
-        return allowed_to_send_to(
-            recipient,
-            team_members
-        )
-
-    if key_type == KEY_TYPE_NORMAL and service.restricted:
-        whitelist_members = [member.recipient for member in service.whitelist]
+    if (
+        (key_type == KEY_TYPE_NORMAL and service.restricted) or
+        (key_type == KEY_TYPE_TEAM)
+    ):
         return allowed_to_send_to(
             recipient,
             itertools.chain(
