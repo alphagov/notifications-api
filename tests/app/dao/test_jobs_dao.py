@@ -196,21 +196,13 @@ def test_get_jobs_for_service_with_limit_days_edge_case(notify_db, notify_db_ses
 def test_get_jobs_for_service_in_processed_at_then_created_at_order(notify_db, notify_db_session, sample_template):
 
     _create_job = partial(create_job, notify_db, notify_db_session, sample_template.service, sample_template)
-
-    def _time_from_hour(hour):
-        return datetime(2001, 1, 1, hour) if hour is not None else None
+    from_hour = partial(datetime, 2001, 1, 1)
 
     created_jobs = [
-        _create_job(
-            created_at=_time_from_hour(created_at_hour),
-            processing_started=_time_from_hour(processing_started_hour),
-        )
-        for created_at_hour, processing_started_hour in [
-            (2, None),
-            (1, None),
-            (1, 4),
-            (4, 3),
-        ]
+        _create_job(created_at=from_hour(2), processing_started=None),
+        _create_job(created_at=from_hour(1), processing_started=None),
+        _create_job(created_at=from_hour(1), processing_started=from_hour(4)),
+        _create_job(created_at=from_hour(4), processing_started=from_hour(3)),
     ]
 
     jobs = dao_get_jobs_by_service_id(sample_template.service.id).items
