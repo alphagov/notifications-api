@@ -783,7 +783,8 @@ def test_should_not_send_notification_to_non_whitelist_recipient_in_trial_mode(
     to,
     _create_sample_template,
     key_type,
-    mocker):
+    mocker
+):
     service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
     service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service)
 
