@@ -159,7 +159,7 @@ def process_firetext_response():
 def get_notification_by_id(notification_id):
     notification = notifications_dao.get_notification_with_personalisation(str(api_user.service_id),
                                                                            notification_id,
-                                                                           key_type=api_user.key_type)
+                                                                           key_type=None)
     return jsonify(data={"notification": notification_with_personalisation_schema.dump(notification).data}), 200
 
 
