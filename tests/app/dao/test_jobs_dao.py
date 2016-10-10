@@ -194,25 +194,31 @@ def test_get_jobs_for_service_with_limit_days_edge_case(notify_db, notify_db_ses
 
 
 def test_get_jobs_for_service_in_processed_at_then_created_at_order(notify_db, notify_db_session, sample_template):
-    _create_job = partial(create_job, notify_db, notify_db_session, sample_template.service, sample_template)
-    scheduled_jobs, processed_jobs = [], []
 
-    for index in range(0, 4):
-        scheduled_jobs.append(_create_job(
-            created_at=datetime.utcnow() - timedelta(seconds=index)
-        ))
-        processed_jobs.append(_create_job(
-            created_at=datetime.utcnow() - timedelta(minutes=(4 - index)),
-            processing_started=datetime.utcnow() - timedelta(hours=index)
-        ))
+    _create_job = partial(create_job, notify_db, notify_db_session, sample_template.service, sample_template)
+
+    def _time_from_hour(hour):
+        return datetime(2001, 1, 1, hour) if hour is not None else None
+
+    created_jobs = [
+        _create_job(
+            created_at=_time_from_hour(created_at_hour),
+            processing_started=_time_from_hour(processing_started_hour),
+        )
+        for created_at_hour, processing_started_hour in [
+            (2, None),
+            (1, None),
+            (1, 4),
+            (4, 3),
+        ]
+    ]
 
     jobs = dao_get_jobs_by_service_id(sample_template.service.id).items
 
-    assert len(jobs) == 8
+    assert len(jobs) == len(created_jobs)
 
-    for index in range(0, 4):
-        assert jobs[index].id == scheduled_jobs[index].id
-        assert jobs[index + 4].id == processed_jobs[index].id
+    for index in range(0, len(created_jobs)):
+        assert jobs[index].id == created_jobs[index].id
 
 
 def test_update_job(sample_job):
