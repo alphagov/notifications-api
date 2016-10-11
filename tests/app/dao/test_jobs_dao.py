@@ -32,15 +32,15 @@ def test_should_get_all_statuses_for_notifications_associated_with_job(
         notify_db_session,
         sample_service,
         sample_job):
-
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='created')
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='sending')
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='delivered')
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='pending')
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='failed')
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='technical-failure')  # noqa
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='temporary-failure')  # noqa
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='permanent-failure')  # noqa
+    notification = partial(create_notification, notify_db, notify_db_session, service=sample_service, job=sample_job)
+    notification(status='created')
+    notification(status='sending')
+    notification(status='delivered')
+    notification(status='pending')
+    notification(status='failed')
+    notification(status='technical-failure')
+    notification(status='temporary-failure')
+    notification(status='permanent-failure')
 
     results = dao_get_notification_outcomes_for_job(sample_service.id, sample_job.id)
     assert [(row.count, row.status) for row in results] == [
@@ -60,14 +60,15 @@ def test_should_count_of_statuses_for_notifications_associated_with_job(
         notify_db_session,
         sample_service,
         sample_job):
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='created')
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='created')
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='sending')
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='sending')
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='sending')
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='sending')
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='delivered')
-    create_notification(notify_db, notify_db_session, service=sample_service, job=sample_job, status='delivered')
+    notification = partial(create_notification, notify_db, notify_db_session, service=sample_service, job=sample_job)
+    notification(status='created')
+    notification(status='created')
+    notification(status='sending')
+    notification(status='sending')
+    notification(status='sending')
+    notification(status='sending')
+    notification(status='delivered')
+    notification(status='delivered')
 
     results = dao_get_notification_outcomes_for_job(sample_service.id, sample_job.id)
     assert [(row.count, row.status) for row in results] == [
