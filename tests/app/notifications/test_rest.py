@@ -93,7 +93,7 @@ def test_get_notifications_empty_result(notify_api, sample_api_key):
     (KEY_TYPE_TEAM, KEY_TYPE_NORMAL),
     (KEY_TYPE_TEAM, KEY_TYPE_TEST),
 ])
-def test_get_notification_from_different_api_key_fails(
+def test_get_notification_from_different_api_key_works(
     notify_api,
     sample_notification,
     api_key_type,
@@ -110,10 +110,7 @@ def test_get_notification_from_different_api_key_fails(
         response = client.get(
             path='/notifications/{}'.format(sample_notification.id),
             headers=_create_auth_header_from_key(api_key))
-        notification = json.loads(response.get_data(as_text=True))
-        assert response.status_code == 404
-        assert notification['result'] == "error"
-        assert notification['message'] == "No result found"
+        assert response.status_code == 200
 
 
 @pytest.mark.parametrize('key_type', [KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST])
