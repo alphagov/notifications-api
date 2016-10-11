@@ -300,3 +300,16 @@ def test_get_jobs_for_service_is_paginated(notify_db, notify_db_session, sample_
     assert len(res.items) == 2
     assert res.items[0].created_at == datetime(2015, 1, 1, 8)
     assert res.items[1].created_at == datetime(2015, 1, 1, 7)
+
+
+def test_get_jobs_for_service_doesnt_return_test_messages(notify_db, notify_db_session, sample_template, sample_job):
+    test_job = create_job(
+        notify_db,
+        notify_db_session,
+        sample_template.service,
+        sample_template,
+        original_file_name='Test message')
+
+    jobs = dao_get_jobs_by_service_id(sample_job.service_id).items
+
+    assert jobs == [sample_job]
