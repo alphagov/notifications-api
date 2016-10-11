@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from flask import current_app
 from sqlalchemy import func, desc, asc, cast, Date as sql_date
 
 from app import db
@@ -28,7 +29,10 @@ def dao_get_job_by_service_id_and_job_id(service_id, job_id):
 
 
 def dao_get_jobs_by_service_id(service_id, limit_days=None, page=1, page_size=50, statuses=None):
-    query_filter = [Job.service_id == service_id]
+    query_filter = [
+        Job.service_id == service_id,
+        Job.original_file_name != current_app.config['TEST_MESSAGE_FILENAME']
+    ]
     if limit_days is not None:
         query_filter.append(cast(Job.created_at, sql_date) >= days_ago(limit_days))
     if statuses is not None and statuses != ['']:
