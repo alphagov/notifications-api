@@ -516,3 +516,39 @@ def test_send_already_registered_email_returns_400_when_data_is_missing(notify_a
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 400
             assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Missing data for required field.']}
+
+
+@freeze_time("2016-01-01T11:09:00.061258")
+def test_send_user_confirm_new_email_returns_204(notify_api, sample_user, mocker, change_email_confirmation_template):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocker.patch("app.encryption.encrypt", return_value='encrypted_message')
+            mocked = mocker.patch('app.celery.tasks.send_email.apply_async')
+            mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
+            new_email = 'new_address@dig.gov.uk'
+            data = json.dumps({'email': new_email})
+            auth_header = create_authorization_header()
+
+            resp = client.post(url_for('user.send_user_confirm_new_email', user_id=str(sample_user.id)),
+                               data=data,
+                               headers=[('Content-Type', 'application/json'), auth_header])
+            assert resp.status_code == 204
+            mocked.assert_called_once_with((
+                str(current_app.config['NOTIFY_SERVICE_ID']),
+                "some_uuid",
+                'encrypted_message',
+                "2016-01-01T11:09:00.061258"), queue="notify")
+
+
+def test_send_user_confirm_new_email_returns_400_when_email_missing(notify_api, sample_user, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocked = mocker.patch('app.celery.tasks.send_email.apply_async')
+            data = json.dumps({})
+            auth_header = create_authorization_header()
+            resp = client.post(url_for('user.send_user_confirm_new_email', user_id=str(sample_user.id)),
+                               data=data,
+                               headers=[('Content-Type', 'application/json'), auth_header])
+            assert resp.status_code == 400
+            assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Missing data for required field.']}
+            mocked.assert_not_called()
