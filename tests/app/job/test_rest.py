@@ -137,7 +137,7 @@ def test_create_scheduled_job(notify_api, sample_template, mocker, fake_uuid):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             with freeze_time("2016-01-01 12:00:00.000000"):
-                scheduled_date = (datetime.utcnow() + timedelta(hours=23, minutes=59)).isoformat()
+                scheduled_date = (datetime.utcnow() + timedelta(hours=95, minutes=59)).isoformat()
                 mocker.patch('app.celery.tasks.process_job.apply_async')
                 data = {
                     'id': fake_uuid,
@@ -163,7 +163,7 @@ def test_create_scheduled_job(notify_api, sample_template, mocker, fake_uuid):
                 resp_json = json.loads(response.get_data(as_text=True))
 
                 assert resp_json['data']['id'] == fake_uuid
-                assert resp_json['data']['scheduled_for'] == datetime(2016, 1, 2, 11, 59, 0,
+                assert resp_json['data']['scheduled_for'] == datetime(2016, 1, 5, 11, 59, 0,
                                                                       tzinfo=pytz.UTC).isoformat()
                 assert resp_json['data']['job_status'] == 'scheduled'
                 assert resp_json['data']['template'] == str(sample_template.id)
@@ -174,7 +174,7 @@ def test_should_not_create_scheduled_job_more_then_24_hours_hence(notify_api, sa
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             with freeze_time("2016-01-01 11:09:00.061258"):
-                scheduled_date = (datetime.utcnow() + timedelta(hours=24, minutes=1)).isoformat()
+                scheduled_date = (datetime.utcnow() + timedelta(hours=96, minutes=1)).isoformat()
 
                 mocker.patch('app.celery.tasks.process_job.apply_async')
                 data = {
@@ -202,7 +202,7 @@ def test_should_not_create_scheduled_job_more_then_24_hours_hence(notify_api, sa
                 resp_json = json.loads(response.get_data(as_text=True))
                 assert resp_json['result'] == 'error'
                 assert 'scheduled_for' in resp_json['message']
-                assert resp_json['message']['scheduled_for'] == ['Date cannot be more than 24hrs in the future']
+                assert resp_json['message']['scheduled_for'] == ['Date cannot be more than 96hrs in the future']
 
 
 def test_should_not_create_scheduled_job_in_the_past(notify_api, sample_template, mocker, fake_uuid):
