@@ -34,6 +34,7 @@ from app.errors import (
     register_errors,
     InvalidRequest
 )
+from app.utils import url_with_token
 
 user = Blueprint('user', __name__)
 register_errors(user)
@@ -43,7 +44,6 @@ register_errors(user)
 def create_user():
     user_to_create, errors = user_schema.load(request.get_json())
     req_json = request.get_json()
-    # TODO password policy, what is valid password
     if not req_json.get('password', None):
         errors.update({'password': ['Missing data for required field.']})
         raise InvalidRequest(errors, status_code=400)
@@ -143,6 +143,35 @@ def send_user_sms_code(user_id):
                           verification_message,
                           datetime.utcnow().strftime(DATETIME_FORMAT)
                           ], queue='notify')
+
+    return jsonify({}), 204
+
+
+@user.route('/<uuid:user_id>/change-email-verification', methods=['POST'])
+def send_user_confirm_new_email(user_id):
+    user_to_send_to = get_model_users(user_id=user_id)
+    email, errors = email_data_request_schema.load(request.get_json())
+    if errors:
+        raise InvalidRequest(message=errors, status_code=400)
+
+    template = dao_get_template_by_id(current_app.config['CHANGE_EMAIL_CONFIRMATION_TEMPLATE_ID'])
+    message = {
+        'template': str(template.id),
+        'template_version': template.version,
+        'to': email['email'],
+        'personalisation': {
+            'name': user_to_send_to.name,
+            'url': _create_confirmation_url(user=user_to_send_to, email_address=email['email']),
+            'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/feedback'
+        }
+    }
+
+    send_email.apply_async((
+        current_app.config['NOTIFY_SERVICE_ID'],
+        str(uuid.uuid4()),
+        encryption.encrypt(message),
+        datetime.utcnow().strftime(DATETIME_FORMAT)
+    ), queue='notify')
 
     return jsonify({}), 204
 
@@ -258,16 +287,18 @@ def send_user_reset_password():
 
 
 def _create_reset_password_url(email):
-    from notifications_utils.url_safe_token import generate_token
     data = json.dumps({'email': email, 'created_at': str(datetime.utcnow())})
-    token = generate_token(data, current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
-
-    return current_app.config['ADMIN_BASE_URL'] + '/new-password/' + token
+    url = '/new-password/'
+    return url_with_token(data, url, current_app.config)
 
 
 def _create_verification_url(user, secret_code):
-    from notifications_utils.url_safe_token import generate_token
     data = json.dumps({'user_id': str(user.id), 'email': user.email_address, 'secret_code': secret_code})
-    token = generate_token(data, current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
+    url = '/verify-email/'
+    return url_with_token(data, url, current_app.config)
 
-    return current_app.config['ADMIN_BASE_URL'] + '/verify-email/' + token
+
+def _create_confirmation_url(user, email_address):
+    data = json.dumps({'user_id': str(user.id), 'email': email_address})
+    url = '/user-profile/email/confirm/'
+    return url_with_token(data, url, current_app.config)

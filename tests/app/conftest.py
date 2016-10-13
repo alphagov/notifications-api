@@ -713,144 +713,100 @@ def mock_firetext_client(mocker, statsd_client=None):
 @pytest.fixture(scope='function')
 def sms_code_template(notify_db,
                       notify_db_session):
-    user = sample_user(notify_db, notify_db_session)
-    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
-    if not service:
-        data = {
-            'id': current_app.config['NOTIFY_SERVICE_ID'],
-            'name': 'Notify Service',
-            'message_limit': 1000,
-            'active': True,
-            'restricted': False,
-            'email_from': 'notify.service',
-            'created_by': user
-        }
-        service = Service(**data)
-        db.session.add(service)
-
-    template = Template.query.get(current_app.config['SMS_CODE_TEMPLATE_ID'])
-    if not template:
-        data = {
-            'id': current_app.config['SMS_CODE_TEMPLATE_ID'],
-            'name': 'Sms code template',
-            'template_type': 'sms',
-            'content': '((verify_code))',
-            'service': service,
-            'created_by': user,
-            'archived': False
-        }
-        template = Template(**data)
-        db.session.add(template)
-    return template
+    service, user = notify_service(notify_db, notify_db_session)
+    return create_notify_template(service=service,
+                                  user=user,
+                                  template_config_name='SMS_CODE_TEMPLATE_ID',
+                                  content='((verify_code))',
+                                  template_type='sms')
 
 
 @pytest.fixture(scope='function')
 def email_verification_template(notify_db,
                                 notify_db_session):
-    user = sample_user(notify_db, notify_db_session)
-    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
-    if not service:
-        data = {
-            'id': current_app.config['NOTIFY_SERVICE_ID'],
-            'name': 'Notify Service',
-            'message_limit': 1000,
-            'active': True,
-            'restricted': False,
-            'email_from': 'notify.service',
-            'created_by': user
-        }
-        service = Service(**data)
-        db.session.add(service)
-
-    template = Template.query.get(current_app.config['EMAIL_VERIFY_CODE_TEMPLATE_ID'])
-    if not template:
-        data = {
-            'id': current_app.config['EMAIL_VERIFY_CODE_TEMPLATE_ID'],
-            'name': 'Email verification template',
-            'template_type': 'email',
-            'content': '((user_name)) use ((url)) to complete registration',
-            'service': service,
-            'created_by': user,
-            'archived': False
-        }
-        template = Template(**data)
-        db.session.add(template)
-    return template
+    service, user = notify_service(notify_db, notify_db_session)
+    return create_notify_template(service=service,
+                                  user=user,
+                                  template_config_name='EMAIL_VERIFY_CODE_TEMPLATE_ID',
+                                  content='((user_name)) use ((url)) to complete registration',
+                                  template_type='email')
 
 
 @pytest.fixture(scope='function')
 def invitation_email_template(notify_db,
                               notify_db_session):
-    user = sample_user(notify_db, notify_db_session)
-    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
-    if not service:
-        data = {
-            'id': current_app.config['NOTIFY_SERVICE_ID'],
-            'name': 'Notify Service',
-            'message_limit': 1000,
-            'active': True,
-            'restricted': False,
-            'email_from': 'notify.service',
-            'created_by': user
-        }
-        service = Service(**data)
-        db.session.add(service)
-
-    template = Template.query.get(current_app.config['INVITATION_EMAIL_TEMPLATE_ID'])
-    if not template:
-        data = {
-            'id': current_app.config['INVITATION_EMAIL_TEMPLATE_ID'],
-            'name': 'Invitaion template',
-            'template_type': 'email',
-            'content': '((user_name)) is invited to Notify by ((service_name)) ((url)) to complete registration',
-            'subject': 'Invitation to ((service_name))',
-            'service': service,
-            'created_by': user,
-            'archived': False
-        }
-        template = Template(**data)
-        db.session.add(template)
-    return template
+    service, user = notify_service(notify_db, notify_db_session)
+    content = '((user_name)) is invited to Notify by ((service_name)) ((url)) to complete registration',
+    return create_notify_template(service=service,
+                                  user=user,
+                                  template_config_name='INVITATION_EMAIL_TEMPLATE_ID',
+                                  content=content,
+                                  subject='Invitation to ((service_name))',
+                                  template_type='email')
 
 
 @pytest.fixture(scope='function')
 def password_reset_email_template(notify_db,
                                   notify_db_session):
-    user = sample_user(notify_db, notify_db_session)
-    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
-    if not service:
-        data = {
-            'id': current_app.config['NOTIFY_SERVICE_ID'],
-            'name': 'Notify Service',
-            'message_limit': 1000,
-            'active': True,
-            'restricted': False,
-            'email_from': 'notify.service',
-            'created_by': user
-        }
-        service = Service(**data)
-        db.session.add(service)
+    service, user = notify_service(notify_db, notify_db_session)
 
-    template = Template.query.get(current_app.config['PASSWORD_RESET_TEMPLATE_ID'])
-    if not template:
-        data = {
-            'id': current_app.config['PASSWORD_RESET_TEMPLATE_ID'],
-            'name': 'Password reset template',
-            'template_type': 'email',
-            'content': '((user_name)) you can reset password by clicking ((url))',
-            'subject': 'Reset your password',
-            'service': service,
-            'created_by': user,
-            'archived': False
-        }
-        template = Template(**data)
-        db.session.add(template)
-    return template
+    return create_notify_template(service=service,
+                                  user=user,
+                                  template_config_name='PASSWORD_RESET_TEMPLATE_ID',
+                                  content='((user_name)) you can reset password by clicking ((url))',
+                                  subject='Reset your password',
+                                  template_type='email')
 
 
 @pytest.fixture(scope='function')
 def already_registered_template(notify_db,
                                 notify_db_session):
+    service, user = notify_service(notify_db, notify_db_session)
+
+    content = """Sign in here: ((signin_url)) If you’ve forgotten your password,
+                          you can reset it here: ((forgot_password_url)) feedback:((feedback_url))"""
+    return create_notify_template(service=service, user=user,
+                                  template_config_name='ALREADY_REGISTERED_EMAIL_TEMPLATE_ID',
+                                  content=content,
+                                  template_type='email')
+
+
+@pytest.fixture(scope='function')
+def change_email_confirmation_template(notify_db,
+                                       notify_db_session):
+    service, user = notify_service(notify_db, notify_db_session)
+    content = """Hi ((name)),
+              Click this link to confirm your new email address:
+              ((url))
+              If you didn’t try to change the email address for your GOV.UK Notify account, let us know here:
+              ((feedback_url))"""
+    template = create_notify_template(service=service,
+                                      user=user,
+                                      template_config_name='CHANGE_EMAIL_CONFIRMATION_TEMPLATE_ID',
+                                      content=content,
+                                      template_type='email')
+    return template
+
+
+def create_notify_template(service, user, template_config_name, content, template_type, subject=None):
+    template = Template.query.get(current_app.config[template_config_name])
+    if not template:
+        data = {
+            'id': current_app.config[template_config_name],
+            'name': template_config_name,
+            'template_type': template_type,
+            'content': content,
+            'service': service,
+            'created_by': user,
+            'subject': subject,
+            'archived': False
+        }
+        template = Template(**data)
+        db.session.add(template)
+    return template
+
+
+def notify_service(notify_db, notify_db_session):
     user = sample_user(notify_db, notify_db_session)
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
     if not service:
@@ -865,22 +821,7 @@ def already_registered_template(notify_db,
         }
         service = Service(**data)
         db.session.add(service)
-
-    template = Template.query.get(current_app.config['ALREADY_REGISTERED_EMAIL_TEMPLATE_ID'])
-    if not template:
-        data = {
-            'id': current_app.config['ALREADY_REGISTERED_EMAIL_TEMPLATE_ID'],
-            'name': 'ALREADY_REGISTERED_EMAIL_TEMPLATE_ID',
-            'template_type': 'email',
-            'content': """Sign in here: ((signin_url)) If you’ve forgotten your password,
-                          you can reset it here: ((forgot_password_url)) feedback:((feedback_url))""",
-            'service': service,
-            'created_by': user,
-            'archived': False
-        }
-        template = Template(**data)
-        db.session.add(template)
-    return template
+    return service, user
 
 
 @pytest.fixture(scope='function')
