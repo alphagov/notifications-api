@@ -34,6 +34,7 @@ from app.errors import (
     register_errors,
     InvalidRequest
 )
+from app.utils import url_with_token
 
 user = Blueprint('user', __name__)
 register_errors(user)
@@ -146,7 +147,7 @@ def send_user_sms_code(user_id):
     return jsonify({}), 204
 
 
-@user.route('/<uuid:user_id>/confirm-new-email', methods=['POST'])
+@user.route('/<uuid:user_id>/change-email-verification', methods=['POST'])
 def send_user_confirm_new_email(user_id):
     user_to_send_to = get_model_users(user_id=user_id)
     email, errors = email_data_request_schema.load(request.get_json())
@@ -157,10 +158,10 @@ def send_user_confirm_new_email(user_id):
     message = {
         'template': str(template.id),
         'template_version': template.version,
-        'to': user_to_send_to.email_address,
+        'to': email['email'],
         'personalisation': {
             'name': user_to_send_to.name,
-            'url': _create_confirmation_url(user=user_to_send_to, email_address=email),
+            'url': _create_confirmation_url(user=user_to_send_to, email_address=email['email']),
             'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/feedback'
         }
     }
@@ -285,25 +286,19 @@ def send_user_reset_password():
     return jsonify({}), 204
 
 
-def _create_url(data, base_url):
-    from notifications_utils.url_safe_token import generate_token
-    token = generate_token(data, current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
-    return base_url + token
-
-
 def _create_reset_password_url(email):
     data = json.dumps({'email': email, 'created_at': str(datetime.utcnow())})
-    base_url = current_app.config['ADMIN_BASE_URL'] + '/new-password/'
-    return _create_url(data=data, base_url=base_url)
+    url = '/new-password/'
+    return url_with_token(data, url, current_app.config)
 
 
 def _create_verification_url(user, secret_code):
     data = json.dumps({'user_id': str(user.id), 'email': user.email_address, 'secret_code': secret_code})
-    base_url = current_app.config['ADMIN_BASE_URL'] + '/verify-email/'
-    return _create_url(data=data, base_url=base_url)
+    url = '/verify-email/'
+    return url_with_token(data, url, current_app.config)
 
 
 def _create_confirmation_url(user, email_address):
-    data = json.dumps({'user_id': str(user.id), 'email': user.email_address})
-    base_url = current_app.config['ADMIN_BASE_URL'] + '/confirm-new-email/'
-    return _create_url(data=data, base_url=base_url)
+    data = json.dumps({'user_id': str(user.id), 'email': email_address})
+    url = '/user-profile/email/confirm/'
+    return url_with_token(data, url, current_app.config)

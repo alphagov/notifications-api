@@ -6,6 +6,7 @@ from freezegun import freeze_time
 import app
 from app.models import (User, Permission, MANAGE_SETTINGS, MANAGE_TEMPLATES)
 from app.dao.permissions_dao import default_service_permissions
+from app.utils import url_with_token
 from tests import create_authorization_header
 
 
@@ -519,10 +520,9 @@ def test_send_already_registered_email_returns_400_when_data_is_missing(notify_a
 
 
 @freeze_time("2016-01-01T11:09:00.061258")
-def test_send_user_confirm_new_email_returns_204(notify_api, sample_user, mocker, change_email_confirmation_template):
+def test_send_user_confirm_new_email_returns_204(notify_api, sample_user, change_email_confirmation_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocker.patch("app.encryption.encrypt", return_value='encrypted_message')
             mocked = mocker.patch('app.celery.tasks.send_email.apply_async')
             mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
             new_email = 'new_address@dig.gov.uk'
@@ -533,10 +533,22 @@ def test_send_user_confirm_new_email_returns_204(notify_api, sample_user, mocker
                                data=data,
                                headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 204
+            token_data = json.dumps({'user_id': str(sample_user.id), 'email': new_email})
+            url = url_with_token(data=token_data, url='/user-profile/email/confirm/', config=current_app.config)
+            message = {
+                'template': current_app.config['CHANGE_EMAIL_CONFIRMATION_TEMPLATE_ID'],
+                'template_version': 1,
+                'to': 'new_address@dig.gov.uk',
+                'personalisation': {
+                    'name': sample_user.name,
+                    'url': url,
+                    'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/feedback'
+                }
+            }
             mocked.assert_called_once_with((
                 str(current_app.config['NOTIFY_SERVICE_ID']),
                 "some_uuid",
-                'encrypted_message',
+                app.encryption.encrypt(message),
                 "2016-01-01T11:09:00.061258"), queue="notify")
 
 
