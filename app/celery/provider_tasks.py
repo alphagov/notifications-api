@@ -1,12 +1,12 @@
 from flask import current_app
+from notifications_utils.recipients import InvalidEmailError
+from sqlalchemy.orm.exc import NoResultFound
 
 from app import notify_celery
 from app.dao import notifications_dao
 from app.dao.notifications_dao import update_notification_status_by_id
 from app.statsd_decorators import statsd
-
 from app.delivery import send_to_providers
-from sqlalchemy.orm.exc import NoResultFound
 
 
 def retry_iteration_to_delay(retry=0):
@@ -64,6 +64,9 @@ def deliver_email(self, notification_id):
         if not notification:
             raise NoResultFound()
         send_to_providers.send_email_to_provider(notification)
+    except InvalidEmailError as e:
+        current_app.logger.exception(e)
+        update_notification_status_by_id(notification_id, 'technical-failure')
     except Exception as e:
         try:
             current_app.logger.error(
@@ -82,6 +85,7 @@ def deliver_email(self, notification_id):
 @notify_celery.task(bind=True, name="send-sms-to-provider", max_retries=5, default_retry_delay=5)
 @statsd(namespace="tasks")
 def send_sms_to_provider(self, service_id, notification_id):
+    # todo: delete this task?
     try:
         notification = notifications_dao.get_notification_by_id(notification_id)
         if not notification:
@@ -105,6 +109,7 @@ def send_sms_to_provider(self, service_id, notification_id):
 @notify_celery.task(bind=True, name="send-email-to-provider", max_retries=5, default_retry_delay=5)
 @statsd(namespace="tasks")
 def send_email_to_provider(self, service_id, notification_id):
+    # todo: delete this task?
     try:
         notification = notifications_dao.get_notification_by_id(notification_id)
         if not notification:

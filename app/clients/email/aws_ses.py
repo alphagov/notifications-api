@@ -1,6 +1,9 @@
 import boto3
+import botocore
 from flask import current_app
 from monotonic import monotonic
+from notifications_utils.recipients import InvalidEmailError
+
 from app.clients import STATISTICS_DELIVERED, STATISTICS_FAILURE
 from app.clients.email import (EmailClientException, EmailClient)
 
@@ -92,13 +95,18 @@ class AwsSesClient(EmailClient):
                 },
                 ReplyToAddresses=reply_to_addresses
             )
+        except botocore.exceptions.ClientError as e:
+            if e.response['Error']['Code'] == 'InvalidParameterValue':
+                raise InvalidEmailError('email: "{}" message: "{}"'.format(
+                    to_addresses[0],
+                    e.response['Error']['Message']
+                ))
         except Exception as e:
-            # TODO logging exceptions
             self.statsd_client.incr("clients.ses.error")
             raise AwsSesClientException(str(e))
-
-        elapsed_time = monotonic() - start_time
-        current_app.logger.info("AWS SES request finished in {}".format(elapsed_time))
-        self.statsd_client.timing("clients.ses.request-time", elapsed_time)
-        self.statsd_client.incr("clients.ses.success")
-        return response['MessageId']
+        else:
+            elapsed_time = monotonic() - start_time
+            current_app.logger.info("AWS SES request finished in {}".format(elapsed_time))
+            self.statsd_client.timing("clients.ses.request-time", elapsed_time)
+            self.statsd_client.incr("clients.ses.success")
+            return response['MessageId']
