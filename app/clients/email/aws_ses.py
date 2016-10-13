@@ -96,11 +96,17 @@ class AwsSesClient(EmailClient):
                 ReplyToAddresses=reply_to_addresses
             )
         except botocore.exceptions.ClientError as e:
+            self.statsd_client.incr("clients.ses.error")
+
+            # http://docs.aws.amazon.com/ses/latest/DeveloperGuide/api-error-codes.html
             if e.response['Error']['Code'] == 'InvalidParameterValue':
                 raise InvalidEmailError('email: "{}" message: "{}"'.format(
                     to_addresses[0],
                     e.response['Error']['Message']
                 ))
+            else:
+                self.statsd_client.incr("clients.ses.error")
+                raise AwsSesClientException(str(e))
         except Exception as e:
             self.statsd_client.incr("clients.ses.error")
             raise AwsSesClientException(str(e))
