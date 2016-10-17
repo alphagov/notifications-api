@@ -634,7 +634,7 @@ def test_should_not_send_sms_if_team_key_and_recipient_not_in_team(notify_db, no
     assert "07890 300000" not in team_members
 
     notification = _notification_json(template, "07700 900849")
-    mocker.patch('app.celery.provider_tasks.send_sms_to_provider.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     notification_id = uuid.uuid4()
     send_sms(
@@ -643,7 +643,7 @@ def test_should_not_send_sms_if_team_key_and_recipient_not_in_team(notify_db, no
         encryption.encrypt(notification),
         datetime.utcnow().strftime(DATETIME_FORMAT)
     )
-    assert provider_tasks.send_sms_to_provider.apply_async.called is False
+    assert provider_tasks.deliver_sms.apply_async.called is False
     with pytest.raises(NoResultFound):
         Notification.query.filter_by(id=notification_id).one()
 

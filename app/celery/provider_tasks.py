@@ -1,12 +1,12 @@
 from flask import current_app
+from notifications_utils.recipients import InvalidEmailError
+from sqlalchemy.orm.exc import NoResultFound
 
 from app import notify_celery
 from app.dao import notifications_dao
 from app.dao.notifications_dao import update_notification_status_by_id
 from app.statsd_decorators import statsd
-
 from app.delivery import send_to_providers
-from sqlalchemy.orm.exc import NoResultFound
 
 
 def retry_iteration_to_delay(retry=0):
@@ -64,52 +64,9 @@ def deliver_email(self, notification_id):
         if not notification:
             raise NoResultFound()
         send_to_providers.send_email_to_provider(notification)
-    except Exception as e:
-        try:
-            current_app.logger.error(
-                "RETRY: Email notification {} failed".format(notification_id)
-            )
-            current_app.logger.exception(e)
-            self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
-        except self.MaxRetriesExceededError:
-            current_app.logger.error(
-                "RETRY FAILED: task send_email_to_provider failed for notification {}".format(notification_id),
-                e
-            )
-            update_notification_status_by_id(notification_id, 'technical-failure')
-
-
-@notify_celery.task(bind=True, name="send-sms-to-provider", max_retries=5, default_retry_delay=5)
-@statsd(namespace="tasks")
-def send_sms_to_provider(self, service_id, notification_id):
-    try:
-        notification = notifications_dao.get_notification_by_id(notification_id)
-        if not notification:
-            raise NoResultFound()
-        send_to_providers.send_sms_to_provider(notification)
-    except Exception as e:
-        try:
-            current_app.logger.error(
-                "RETRY: SMS notification {} failed".format(notification_id)
-            )
-            current_app.logger.exception(e)
-            self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
-        except self.MaxRetriesExceededError:
-            current_app.logger.error(
-                "RETRY FAILED: task send_sms_to_provider failed for notification {}".format(notification_id),
-                e
-            )
-            update_notification_status_by_id(notification_id, 'technical-failure')
-
-
-@notify_celery.task(bind=True, name="send-email-to-provider", max_retries=5, default_retry_delay=5)
-@statsd(namespace="tasks")
-def send_email_to_provider(self, service_id, notification_id):
-    try:
-        notification = notifications_dao.get_notification_by_id(notification_id)
-        if not notification:
-            raise NoResultFound()
-        send_to_providers.send_email_to_provider(notification)
+    except InvalidEmailError as e:
+        current_app.logger.exception(e)
+        update_notification_status_by_id(notification_id, 'technical-failure')
     except Exception as e:
         try:
             current_app.logger.error(
