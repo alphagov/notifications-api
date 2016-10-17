@@ -14,12 +14,12 @@ flask-marshmallow==0.6.2
 Flask-Bcrypt==0.6.2
 credstash==1.8.0
 boto3==1.4.0
-boto==2.42.0
 celery==3.1.23
 monotonic==1.2
 statsd==3.2.1
 
 git+https://github.com/alphagov/notifications-python-client.git@1.3.0#egg=notifications-python-client==1.3.0
 
-
 git+https://github.com/alphagov/notifications-utils.git@9.0.5#egg=notifications-utils==9.0.5
+
+git+https://github.com/alphagov/boto.git@2.42.0-patch1#egg=boto==2.42.0-patch1
