@@ -31,7 +31,7 @@ def run_scheduled_jobs():
             process_job.apply_async([str(job.id)], queue="process-job")
             current_app.logger.info("Job ID {} added to process job queue".format(job.id))
     except SQLAlchemyError as e:
-        current_app.logger.exception("Failed to run scheduled jobs", e)
+        current_app.logger.exception("Failed to run scheduled jobs")
         raise
 
 
@@ -45,7 +45,7 @@ def delete_verify_codes():
             "Delete job started {} finished {} deleted {} verify codes".format(start, datetime.utcnow(), deleted)
         )
     except SQLAlchemyError as e:
-        current_app.logger.exception("Failed to delete verify codes", e)
+        current_app.logger.exception("Failed to delete verify codes")
         raise
 
 
@@ -63,7 +63,7 @@ def delete_successful_notifications():
             )
         )
     except SQLAlchemyError as e:
-        current_app.logger.exception("Failed to delete successful notifications", e)
+        current_app.logger.exception("Failed to delete successful notifications")
         raise
 
 
@@ -84,7 +84,7 @@ def delete_failed_notifications():
             )
         )
     except SQLAlchemyError as e:
-        current_app.logger.exception("Failed to delete failed notifications", e)
+        current_app.logger.exception("Failed to delete failed notifications")
         raise
 
 
@@ -98,7 +98,7 @@ def delete_invitations():
             "Delete job started {} finished {} deleted {} invitations".format(start, datetime.utcnow(), deleted)
         )
     except SQLAlchemyError as e:
-        current_app.logger.exception("Failed to delete invitations", e)
+        current_app.logger.exception("Failed to delete invitations")
         raise
 
 
