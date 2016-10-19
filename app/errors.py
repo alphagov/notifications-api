@@ -42,10 +42,7 @@ def register_errors(blueprint):
 
     @blueprint.app_errorhandler(400)
     def bad_request(e):
-        if isinstance(e, str):
-            msg = e
-        else:
-            msg = e.description or "Invalid request parameters"
+        msg = e.description or "Invalid request parameters"
         current_app.logger.exception(msg)
         return jsonify(result='error', message=str(msg)), 400
 
@@ -61,10 +58,7 @@ def register_errors(blueprint):
 
     @blueprint.app_errorhandler(404)
     def page_not_found(e):
-        if isinstance(e, str):
-            msg = e
-        else:
-            msg = e.description or "Not found"
+        msg = e.description or "Not found"
         current_app.logger.exception(msg)
         return jsonify(result='error', message=msg), 404
 
@@ -73,18 +67,9 @@ def register_errors(blueprint):
         current_app.logger.exception(e)
         return jsonify(result='error', message=str(e.description)), 429
 
-    @blueprint.app_errorhandler(500)
-    def internal_server_error(e):
-        current_app.logger.exception(e)
-        return jsonify(result='error', message="Internal server error"), 500
-
     @blueprint.app_errorhandler(NoResultFound)
-    def no_result_found(e):
-        current_app.logger.exception(e)
-        return jsonify(result='error', message="No result found"), 404
-
     @blueprint.app_errorhandler(DataError)
-    def data_error(e):
+    def no_result_found(e):
         current_app.logger.exception(e)
         return jsonify(result='error', message="No result found"), 404
 
@@ -100,4 +85,11 @@ def register_errors(blueprint):
                     e.params.get('name', e.params.get('email_from', ''))
                 )]}
             ), 400
+        return jsonify(result='error', message="Internal server error"), 500
+
+    # this must be defined after all other error handlers since it catches the generic Exception object
+    @blueprint.app_errorhandler(500)
+    @blueprint.app_errorhandler(Exception)
+    def internal_server_error(e):
+        current_app.logger.exception(e)
         return jsonify(result='error', message="Internal server error"), 500

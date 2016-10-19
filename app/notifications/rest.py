@@ -309,7 +309,7 @@ def persist_notification(
                 queue='send-email' if not research_mode else 'research-mode'
             )
     except Exception as e:
-        current_app.logger.exception("Failed to send to SQS exception", e)
+        current_app.logger.exception("Failed to send to SQS exception")
         dao_delete_notifications_and_history_by_id(notification_id)
         raise InvalidRequest(message="Internal server error", status_code=500)
 
