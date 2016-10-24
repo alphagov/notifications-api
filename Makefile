@@ -67,6 +67,7 @@ build: dependencies generate-version-file ## Build project
 
 .PHONY: build-codedeploy-artifact
 build-codedeploy-artifact: ## Build the deploy artifact for CodeDeploy
+	pip3 install wheel
 	pip3 wheel --wheel-dir=wheelhouse -r requirements.txt
 	mkdir -p target
 	zip -r -x@deploy-exclude.lst target/notifications-api.zip *
