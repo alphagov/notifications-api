@@ -193,6 +193,7 @@ def test_create_service(notify_api, sample_user):
             json_resp = json.loads(resp.get_data(as_text=True))
             assert json_resp['data']['name'] == 'created service'
             assert not json_resp['data']['research_mode']
+            assert not json_resp['data']['can_send_letters']
 
 
 def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_uuid):
@@ -376,7 +377,7 @@ def test_update_service(notify_api, notify_db, sample_service):
             assert result['data']['organisation'] == str(org.id)
 
 
-def test_update_service_research_mode(notify_api, sample_service):
+def test_update_service_flags(notify_api, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header()
@@ -387,10 +388,12 @@ def test_update_service_research_mode(notify_api, sample_service):
             json_resp = json.loads(resp.get_data(as_text=True))
             assert resp.status_code == 200
             assert json_resp['data']['name'] == sample_service.name
-            assert not json_resp['data']['research_mode']
+            assert json_resp['data']['research_mode'] is False
+            assert json_resp['data']['can_send_letters'] is False
 
             data = {
-                'research_mode': True
+                'research_mode': True,
+                'can_send_letters': True
             }
 
             auth_header = create_authorization_header()
@@ -402,7 +405,8 @@ def test_update_service_research_mode(notify_api, sample_service):
             )
             result = json.loads(resp.get_data(as_text=True))
             assert resp.status_code == 200
-            assert result['data']['research_mode']
+            assert result['data']['research_mode'] is True
+            assert result['data']['can_send_letters'] is True
 
 
 def test_update_service_research_mode_throws_validation_error(notify_api, sample_service):
