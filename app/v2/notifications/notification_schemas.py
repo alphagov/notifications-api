@@ -54,3 +54,14 @@ post_sms_response = {
     },
     "required": ["id", "content", "uri", "template"]
 }
+
+
+def create_post_sms_response_from_notification(notification, content):
+    return {"id": notification.id,
+            "reference": None,  # not yet implemented
+            "content": content,
+            "uri": "v2/notifications/{}".format(notification.id),
+            "template": {"id": notification.template_id,
+                         "version": notification.template_version,
+                         "uri": "v2/templates/{}".format(notification.template_id)}
+            }

@@ -22,7 +22,7 @@ from app.authentication.utils import get_secret
 from app import (
     db,
     encryption,
-    DATETIME_FORMAT)
+    DATETIME_FORMAT, create_uuid)
 
 from app.history_meta import Versioned
 
@@ -557,6 +557,30 @@ class Notification(db.Model):
             status='created',
             created_at=datetime.datetime.strptime(created_at, DATETIME_FORMAT),
             personalisation=notification.get('personalisation'),
+            notification_type=notification_type,
+            api_key_id=api_key_id,
+            key_type=key_type
+        )
+
+    @classmethod
+    def from_v2_api_request(cls,
+                            template_id,
+                            template_version,
+                            recipient,
+                            service_id,
+                            personalisation,
+                            notification_type,
+                            api_key_id,
+                            key_type):
+        return cls(
+            id=create_uuid(),
+            template_id=template_id,
+            template_version=template_version,
+            to=recipient,
+            service_id=service_id,
+            status='created',
+            created_at=datetime.datetime.strftime(datetime.datetime.utcnow(), DATETIME_FORMAT),
+            personalisation=personalisation,
             notification_type=notification_type,
             api_key_id=api_key_id,
             key_type=key_type
