@@ -150,7 +150,7 @@ def test_should_not_send_notification_for_archived_template(notify_api, sample_t
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 400
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert 'Template has been deleted' in json_resp['message']['template']
+            assert 'Template has been deleted' in json_resp['message']
 
 
 @pytest.mark.parametrize('template_type, to',

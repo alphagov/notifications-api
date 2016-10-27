@@ -24,6 +24,8 @@ from app.notifications.process_client_response import (
     validate_callback_data,
     process_sms_client_response
 )
+from app.notifications.validators import check_service_message_limit, check_template_is_for_notification_type, \
+    check_template_is_active
 from app.service.utils import service_allowed_to_send_to
 from app.schemas import (
     email_notification_schema,
@@ -31,8 +33,7 @@ from app.schemas import (
     notification_with_personalisation_schema,
     notifications_filter_schema,
     notifications_statistics_schema,
-    day_schema,
-    unarchived_template_schema
+    day_schema
 )
 from app.utils import pagination_links
 
@@ -216,26 +217,15 @@ def send_notification(notification_type):
     if errors:
         raise InvalidRequest(errors, status_code=400)
 
-    if all((api_user.key_type != KEY_TYPE_TEST,
-            service.restricted)):
-        service_stats = services_dao.fetch_todays_total_message_count(service.id)
-        if service_stats >= service.message_limit:
-            error = 'Exceeded send limits ({}) for today'.format(service.message_limit)
-            raise InvalidRequest(error, status_code=429)
+    check_service_message_limit(api_user.key_type, service)
 
     template = templates_dao.dao_get_template_by_id_and_service_id(
         template_id=notification['template'],
         service_id=service_id
     )
 
-    if notification_type != template.template_type:
-        raise InvalidRequest("{0} template is not suitable for {1} notification".format(template.template_type,
-                                                                                        notification_type),
-                             status_code=400)
-
-    errors = unarchived_template_schema.validate({'archived': template.archived})
-    if errors:
-        raise InvalidRequest(errors, status_code=400)
+    check_template_is_for_notification_type(notification_type, template.template_type)
+    check_template_is_active(template)
 
     template_object = create_template_object_for_notification(template, notification.get('personalisation', {}))
 
