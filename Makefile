@@ -64,11 +64,10 @@ generate-version-file: ## Generates the app version file
 
 .PHONY: build
 build: dependencies generate-version-file ## Build project
+	./venv/bin/pip-accel wheel --wheel-dir=wheelhouse -r requirements.txt
 
 .PHONY: build-codedeploy-artifact
 build-codedeploy-artifact: ## Build the deploy artifact for CodeDeploy
-	pip3 install wheel
-	pip3 wheel --wheel-dir=wheelhouse -r requirements.txt
 	mkdir -p target
 	zip -r -x@deploy-exclude.lst target/notifications-api.zip *
 
