@@ -57,6 +57,8 @@ production: ## Set environment to production
 dependencies: venv ## Install build dependencies
 	mkdir -p ${PIP_ACCEL_CACHE}
 	PIP_ACCEL_CACHE=${PIP_ACCEL_CACHE} ./venv/bin/pip-accel install -r requirements_for_test.txt
+	pip3 install wheel
+	pip3 wheel --wheel-dir=wheelhouse -r requirements.txt
 
 .PHONY: generate-version-file
 generate-version-file: ## Generates the app version file
@@ -67,8 +69,6 @@ build: dependencies generate-version-file ## Build project
 
 .PHONY: build-codedeploy-artifact
 build-codedeploy-artifact: ## Build the deploy artifact for CodeDeploy
-	pip3 install wheel
-	pip3 wheel --wheel-dir=wheelhouse -r requirements.txt
 	mkdir -p target
 	zip -r -x@deploy-exclude.lst target/notifications-api.zip *
 
