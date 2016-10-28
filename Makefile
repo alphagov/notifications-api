@@ -57,8 +57,6 @@ production: ## Set environment to production
 dependencies: venv ## Install build dependencies
 	mkdir -p ${PIP_ACCEL_CACHE}
 	PIP_ACCEL_CACHE=${PIP_ACCEL_CACHE} ./venv/bin/pip-accel install -r requirements_for_test.txt
-	./venv/bin/pip-accel install wheel
-	./venv/bin/pip-accel wheel --wheel-dir=wheelhouse -r requirements.txt
 
 .PHONY: generate-version-file
 generate-version-file: ## Generates the app version file
@@ -66,6 +64,7 @@ generate-version-file: ## Generates the app version file
 
 .PHONY: build
 build: dependencies generate-version-file ## Build project
+	./venv/bin/pip-accel wheel --wheel-dir=wheelhouse -r requirements.txt
 
 .PHONY: build-codedeploy-artifact
 build-codedeploy-artifact: ## Build the deploy artifact for CodeDeploy
