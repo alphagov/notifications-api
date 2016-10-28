@@ -516,7 +516,7 @@ def test_should_not_send_sms_if_team_api_key_and_not_a_service_user(notify_api, 
 def test_should_send_email_if_team_api_key_and_a_service_user(notify_api, sample_email_template, fake_uuid, mocker):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-        mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
+        mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
 
         data = {
             'to': sample_email_template.service.created_by.email_address,
@@ -545,7 +545,7 @@ def test_should_send_sms_to_anyone_with_test_key(
 ):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-        mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
+        mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
 
         data = {
             'to': '07811111111',
@@ -578,7 +578,7 @@ def test_should_send_email_to_anyone_with_test_key(
 ):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-        mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
+        mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
 
         data = {
             'to': 'anyone123@example.com',
@@ -608,7 +608,7 @@ def test_should_send_email_to_anyone_with_test_key(
 def test_should_send_sms_if_team_api_key_and_a_service_user(notify_api, sample_template, fake_uuid, mocker):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-        mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
+        mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
 
         data = {
             'to': sample_template.service.created_by.mobile_number,
@@ -638,7 +638,7 @@ def test_should_persist_notification(notify_api, sample_template,
                                      fake_uuid, mocker):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type))
-        mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
+        mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
         template = sample_template if template_type == 'sms' else sample_email_template
         to = sample_template.service.created_by.mobile_number if template_type == 'sms' \
             else sample_email_template.service.created_by.email_address
@@ -682,7 +682,7 @@ def test_should_delete_notification_and_return_error_if_sqs_fails(
             'app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type),
             side_effect=Exception("failed to talk to SQS")
         )
-        mocker.patch('app.notifications.rest.create_uuid', return_value=fake_uuid)
+        m1 = mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
         template = sample_template if template_type == 'sms' else sample_email_template
         to = sample_template.service.created_by.mobile_number if template_type == 'sms' \
             else sample_email_template.service.created_by.email_address

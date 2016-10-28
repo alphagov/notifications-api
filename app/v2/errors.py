@@ -19,7 +19,7 @@ class BadRequestError(InvalidRequest):
     link = "link to documentation"
     message = "An error occurred"
 
-    def __init__(self, fields, message=None):
+    def __init__(self, fields=None, message=None):
         self.fields = fields
         self.message = message if message else self.message
 

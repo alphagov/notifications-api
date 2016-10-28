@@ -46,5 +46,4 @@ def test_post_sms_notification_returns_404_when_template_is_wrong_type(notify_ap
             assert resp_text['code'] == '10400'
             assert resp_text['message'] == '{0} template is not suitable for {1} notification'.format('email', 'sms')
             assert resp_text['link'] == 'link to documentation'
-            field = "{0} template is not suitable for {1} notification".format("email", "sms")
-            assert resp_text['fields'][0]['template'] == field
+            assert resp_text.get('fields', None) is None

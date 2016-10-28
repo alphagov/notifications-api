@@ -1,4 +1,3 @@
-import uuid
 import pytz
 from datetime import (
     datetime,
@@ -12,7 +11,7 @@ from werkzeug.datastructures import MultiDict
 from sqlalchemy import (desc, func, or_, and_, asc, cast, Text)
 from sqlalchemy.orm import joinedload
 
-from app import db
+from app import db, create_uuid
 from app.dao import days_ago
 from app.models import (
     Service,
@@ -125,7 +124,7 @@ def dao_get_last_template_usage(template_id):
 def dao_create_notification(notification):
     if not notification.id:
         # need to populate defaulted fields before we create the notification history object
-        notification.id = uuid.uuid4()
+        notification.id = create_uuid()
     if not notification.status:
         notification.status = 'created'
 
