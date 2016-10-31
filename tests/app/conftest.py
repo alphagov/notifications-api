@@ -139,7 +139,7 @@ def sample_service(notify_db,
     data = {
         'name': service_name,
         'message_limit': limit,
-        'active': False,
+        'active': True,
         'restricted': restricted,
         'email_from': email_from,
         'created_by': user

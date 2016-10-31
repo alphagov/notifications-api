@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
 )
-from sqlalchemy import UniqueConstraint, and_
+from sqlalchemy import UniqueConstraint, and_, false, true
 from sqlalchemy.orm import foreign, remote
 from notifications_utils.recipients import (
     validate_email_address,
@@ -58,7 +58,7 @@ class User(db.Model):
     logged_in_at = db.Column(db.DateTime, nullable=True)
     failed_login_count = db.Column(db.Integer, nullable=False, default=0)
     state = db.Column(db.String, nullable=False, default='pending')
-    platform_admin = db.Column(db.Boolean, nullable=False, default=False)
+    platform_admin = db.Column(db.Boolean, nullable=False, default=false())
 
     @property
     def password(self):
@@ -115,15 +115,15 @@ class Service(db.Model, Versioned):
         unique=False,
         nullable=True,
         onupdate=datetime.datetime.utcnow)
-    active = db.Column(db.Boolean, index=False, unique=False, nullable=False)
+    active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=true())
     message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False)
     users = db.relationship(
         'User',
         secondary=user_to_service,
         backref=db.backref('user_to_service', lazy='dynamic'))
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
-    research_mode = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=False)
-    can_send_letters = db.Column(db.Boolean, nullable=False, default=False)
+    research_mode = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=false())
+    can_send_letters = db.Column(db.Boolean, nullable=False, default=false())
     email_from = db.Column(db.Text, index=False, unique=True, nullable=False)
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
@@ -273,7 +273,7 @@ class Template(db.Model):
         nullable=True,
         onupdate=datetime.datetime.utcnow)
     content = db.Column(db.Text, index=False, unique=False, nullable=False)
-    archived = db.Column(db.Boolean, index=False, nullable=False, default=False)
+    archived = db.Column(db.Boolean, index=False, nullable=False, default=false())
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
     service = db.relationship('Service', backref=db.backref('templates', lazy='dynamic'))
     subject = db.Column(db.Text, index=False, unique=False, nullable=True)
@@ -291,7 +291,7 @@ class TemplateHistory(db.Model):
     created_at = db.Column(db.DateTime, nullable=False)
     updated_at = db.Column(db.DateTime)
     content = db.Column(db.Text, nullable=False)
-    archived = db.Column(db.Boolean, nullable=False, default=False)
+    archived = db.Column(db.Boolean, nullable=False, default=false())
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service')
     subject = db.Column(db.Text)
@@ -344,7 +344,7 @@ class ProviderDetails(db.Model):
     identifier = db.Column(db.String, nullable=False)
     priority = db.Column(db.Integer, nullable=False)
     notification_type = db.Column(notification_types, nullable=False)
-    active = db.Column(db.Boolean, default=False)
+    active = db.Column(db.Boolean, default=false())
 
 
 JOB_STATUS_PENDING = 'pending'
@@ -431,7 +431,7 @@ class VerifyCode(db.Model):
     code_type = db.Column(db.Enum(*VERIFY_CODE_TYPES, name='verify_code_types'),
                           index=False, unique=False, nullable=False)
     expiry_datetime = db.Column(db.DateTime, nullable=False)
-    code_used = db.Column(db.Boolean, default=False)
+    code_used = db.Column(db.Boolean, default=false())
     created_at = db.Column(
         db.DateTime,
         index=False,

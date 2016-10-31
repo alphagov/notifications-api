@@ -285,7 +285,6 @@ def test_should_not_create_service_if_missing_data(notify_api, sample_user):
             assert resp.status_code == 400
             assert json_resp['result'] == 'error'
             assert 'Missing data for required field.' in json_resp['message']['name']
-            assert 'Missing data for required field.' in json_resp['message']['active']
             assert 'Missing data for required field.' in json_resp['message']['message_limit']
             assert 'Missing data for required field.' in json_resp['message']['restricted']
 
