@@ -190,7 +190,11 @@ def sample_template(notify_db,
 
 @pytest.fixture(scope='function')
 def sample_template_with_placeholders(notify_db, notify_db_session):
-    return sample_template(notify_db, notify_db_session, content="Hello ((name))\nYour thing is due soon")
+    return sample_template(
+        notify_db,
+        notify_db_session,
+        content="Hello (( name))\nYour thing is due soon"  # deliberate space in placeholder
+    )
 
 
 @pytest.fixture(scope='function')

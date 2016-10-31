@@ -10,6 +10,7 @@ from flask import (
 
 from notifications_utils.template import Template
 from notifications_utils.renderers import PassThrough
+from notifications_utils.columns import Columns
 from app.clients.email.aws_ses import get_aws_responses
 from app import api_user, create_uuid, DATETIME_FORMAT, statsd_client
 from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
@@ -336,7 +337,7 @@ def _service_allowed_to_send_to(notification, service):
 def create_template_object_for_notification(template, personalisation):
     template_object = Template(
         template.__dict__,
-        personalisation,
+        Columns(personalisation),
         renderer=PassThrough()
     )
     if template_object.missing_data:

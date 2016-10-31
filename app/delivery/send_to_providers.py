@@ -4,6 +4,7 @@ from flask import current_app
 from notifications_utils.recipients import (
     validate_and_format_phone_number
 )
+from notifications_utils.columns import Columns
 from notifications_utils.template import Template, get_sms_fragment_count
 from notifications_utils.renderers import HTMLEmail, PlainTextEmail, SMSMessage
 
@@ -24,7 +25,7 @@ def send_sms_to_provider(notification):
         template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
         template = Template(
             template_model.__dict__,
-            values={} if not notification.personalisation else notification.personalisation,
+            values={} if not notification.personalisation else Columns(notification.personalisation),
             renderer=SMSMessage(prefix=service.name, sender=service.sms_sender)
         )
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
@@ -61,13 +62,13 @@ def send_email_to_provider(notification):
 
         html_email = Template(
             template_dict,
-            values=notification.personalisation,
+            values=Columns(notification.personalisation),
             renderer=get_html_email_renderer(service)
         )
 
         plain_text_email = Template(
             template_dict,
-            values=notification.personalisation,
+            values=Columns(notification.personalisation),
             renderer=PlainTextEmail()
         )
 
