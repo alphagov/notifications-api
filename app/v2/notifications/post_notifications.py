@@ -1,4 +1,6 @@
 from flask import request, jsonify
+from sqlalchemy.orm.exc import NoResultFound
+
 from app import api_user
 from app.dao import services_dao, templates_dao
 from app.models import SMS_TYPE
@@ -11,6 +13,7 @@ from app.notifications.validators import (check_service_message_limit,
                                           service_can_send_to_recipient,
                                           check_sms_content_char_count)
 from app.schema_validation import validate
+from app.v2.errors import BadRequestError
 from app.v2.notifications import notification_blueprint
 from app.v2.notifications.notification_schemas import (post_sms_request,
                                                        create_post_sms_response_from_notification)
@@ -52,8 +55,14 @@ def post_email_notification():
 
 
 def __validate_template(form, service):
-    template = templates_dao.dao_get_template_by_id_and_service_id(template_id=form['template_id'],
-                                                                   service_id=service.id)
+    try:
+        template = templates_dao.dao_get_template_by_id_and_service_id(template_id=form['template_id'],
+                                                                       service_id=service.id)
+    except NoResultFound:
+        message = 'Template not found'
+        raise BadRequestError(message=message,
+                              fields=[{'template': message}])
+
     check_template_is_for_notification_type(SMS_TYPE, template.template_type)
     check_template_is_active(template)
     template_with_content = create_content_for_notification(template, form.get('personalisation', {}))

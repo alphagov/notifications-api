@@ -25,12 +25,12 @@ def create_content_for_notification(template, personalisation):
 def check_placeholders(template_object):
     if template_object.missing_data:
         message = 'Template missing personalisation: {}'.format(", ".join(template_object.missing_data))
-        raise BadRequestError(message=message)
+        raise BadRequestError(fields=[{'template': message}], message=message)
 
     if template_object.additional_data:
         message = 'Template personalisation not needed for template: {}'.format(
             ", ".join(template_object.additional_data))
-        raise BadRequestError(message=message)
+        raise BadRequestError(fields=[{'template': message}], message=message)
 
 
 def persist_notification(template_id,

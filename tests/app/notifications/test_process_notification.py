@@ -62,9 +62,11 @@ def test_persist_notification_throws_exception_when_missing_template(sample_temp
 
 @pytest.mark.parametrize('research_mode, queue, notification_type, key_type',
                          [(True, 'research-mode', 'sms', 'normal'),
-                          (False, 'send-sms', 'sms', 'normal'),
                           (True, 'research-mode', 'email', 'normal'),
+                          (True, 'research-mode', 'email', 'team'),
+                          (False, 'send-sms', 'sms', 'normal'),
                           (False, 'send-email', 'email', 'normal'),
+                          (False, 'send-sms', 'sms', 'team'),
                           (False, 'research-mode', 'sms', 'test')])
 def test_send_notification_to_queue(notify_db, notify_db_session,
                                     research_mode, notification_type,

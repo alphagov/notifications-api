@@ -1,4 +1,8 @@
 from flask import jsonify, current_app
+from sqlalchemy.exc import SQLAlchemyError, DataError
+from sqlalchemy.orm.exc import NoResultFound
+
+from app.authentication.auth import AuthError
 from app.errors import InvalidRequest
 
 
@@ -15,11 +19,11 @@ class TooManyRequestsError(InvalidRequest):
 
 class BadRequestError(InvalidRequest):
     status_code = 400
-    code = "10400"
+    code = 10400
     link = "link to documentation"
     message = "An error occurred"
 
-    def __init__(self, fields=None, message=None):
+    def __init__(self, fields=[], message=None):
         self.fields = fields
         self.message = message if message else self.message
 
@@ -31,7 +35,20 @@ def register_errors(blueprint):
         response = jsonify(error.to_dict_v2()), error.status_code
         return response
 
+    @blueprint.errorhandler(NoResultFound)
+    @blueprint.errorhandler(DataError)
+    def no_result_found(e):
+        current_app.logger.exception(e)
+        return jsonify(message="No result found"), 404
+
+    @blueprint.errorhandler(AuthError)
+    def auth_error(error):
+        return jsonify(status_code=error.code,
+                       message=error.message,
+                       code=error.code,
+                       link='link to docs'), error.code
+
     @blueprint.errorhandler(Exception)
-    def authentication_error(error):
-        # v2 error format - NOT this
-        return jsonify(result='error', message=error.message), error.code
+    def internal_server_error(error):
+        current_app.logger.exception(error)
+        return jsonify(message='Internal server error'), 500

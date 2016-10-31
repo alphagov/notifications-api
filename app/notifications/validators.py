@@ -16,14 +16,15 @@ def check_service_message_limit(key_type, service):
 
 def check_template_is_for_notification_type(notification_type, template_type):
     if notification_type != template_type:
-        raise BadRequestError(
-            message="{0} template is not suitable for {1} notification".format(template_type,
-                                                                               notification_type))
+        message = "{0} template is not suitable for {1} notification".format(template_type,
+                                                                             notification_type)
+        raise BadRequestError(fields=[{'template': message}], message=message)
 
 
 def check_template_is_active(template):
     if template.archived:
-        raise BadRequestError(message="Template has been deleted")
+        raise BadRequestError(fields=[{'template': 'Template has been deleted'}],
+                              message="Template has been deleted")
 
 
 def service_can_send_to_recipient(send_to, key_type, service):
