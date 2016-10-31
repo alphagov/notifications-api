@@ -1,5 +1,8 @@
+import json
+
 from flask import jsonify, current_app
-from sqlalchemy.exc import SQLAlchemyError, DataError
+from jsonschema import ValidationError
+from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.authentication.auth import AuthError
@@ -34,6 +37,11 @@ def register_errors(blueprint):
         current_app.logger.error(error)
         response = jsonify(error.to_dict_v2()), error.status_code
         return response
+
+    @blueprint.errorhandler(ValidationError)
+    def validation_error(error):
+        current_app.logger.exception(error)
+        return jsonify(json.loads(error.message)), 400
 
     @blueprint.errorhandler(NoResultFound)
     @blueprint.errorhandler(DataError)
