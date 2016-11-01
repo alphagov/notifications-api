@@ -51,10 +51,7 @@ def register_errors(blueprint):
 
     @blueprint.errorhandler(AuthError)
     def auth_error(error):
-        return jsonify(status_code=error.code,
-                       message=error.message,
-                       code=error.code,
-                       link='link to docs'), error.code
+        return jsonify(error.to_dict_v2()), error.code
 
     @blueprint.errorhandler(Exception)
     def internal_server_error(error):

@@ -12,7 +12,14 @@ from app.dao.services_dao import dao_fetch_service_by_id
 class AuthError(Exception):
     def __init__(self, message, code):
         self.message = {"token": [message]}
+        self.short_message = message
         self.code = code
+
+    def to_dict_v2(self):
+        return {'code': self.code,
+                'message': self.short_message,
+                'fields': self.message,
+                'link': 'link to docs'}
 
 
 def get_auth_token(req):

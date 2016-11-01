@@ -2,6 +2,7 @@ import uuid
 
 from flask import json
 
+from app.models import Notification
 from tests import create_authorization_header
 
 
@@ -22,10 +23,17 @@ def test_post_sms_notification_returns_201(notify_api, sample_template, mocker):
 
             assert response.status_code == 201
             resp_json = json.loads(response.get_data(as_text=True))
+            notifications = Notification.query.all()
+            assert len(notifications) == 1
+            notification_id = notifications[0].id
             assert resp_json['id'] is not None
             assert resp_json['reference'] is None
+            assert resp_json['content']['body'] == sample_template.content
+            assert resp_json['content']['from_number'] == sample_template.service.sms_sender
+            assert 'v2/notifications/{}'.format(notification_id) in resp_json['uri']
             assert resp_json['template']['id'] == str(sample_template.id)
             assert resp_json['template']['version'] == sample_template.version
+            assert 'v2/templates/{}'.format(sample_template.id) in resp_json['template']['uri']
             assert mocked.called
 
 
@@ -70,7 +78,9 @@ def test_post_sms_notification_returns_403_and_well_formed_auth_error(notify_api
             assert response.headers['Content-type'] == 'application/json'
             error_resp = json.loads(response.get_data(as_text=True))
             assert error_resp['code'] == 401
-            assert error_resp['message'] == {'token': ['Unauthorized, authentication token must be provided']}
+            assert error_resp['message'] == 'Unauthorized, authentication token must be provided'
+            assert error_resp['fields'] == {'token': ['Unauthorized, authentication token must be provided']}
+            assert error_resp['link'] == 'link to docs'
 
 
 def test_post_sms_notification_returns_400_and_for_schema_problems(notify_api, sample_template):

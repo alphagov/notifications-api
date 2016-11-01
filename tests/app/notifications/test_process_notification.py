@@ -30,8 +30,9 @@ def test_create_content_for_notification_fails_with_missing_personalisation(samp
 
 def test_create_content_for_notification_fails_with_additional_personalisation(sample_template_with_placeholders):
     template = Template.query.get(sample_template_with_placeholders.id)
-    with pytest.raises(BadRequestError):
-        create_content_for_notification(template, {'name': 'Bobbhy', 'Additional': 'Data'})
+    with pytest.raises(BadRequestError) as e:
+        create_content_for_notification(template, {'name': 'Bobby', 'Additional placeholder': 'Data'})
+    assert e.value.message == 'Template personalisation not needed for template: Additional placeholder'
 
 
 def test_persist_notification_creates_and_save_to_db(sample_template, sample_api_key):
@@ -41,7 +42,7 @@ def test_persist_notification_creates_and_save_to_db(sample_template, sample_api
                                         sample_template.service.id, {}, 'sms', sample_api_key.id,
                                         sample_api_key.key_type)
     assert Notification.query.count() == 1
-    assert Notification.query.get(notification.id).__eq__(notification)
+    assert Notification.query.get(notification.id) is not None
     assert NotificationHistory.query.count() == 1
 
 

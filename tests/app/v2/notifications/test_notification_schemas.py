@@ -25,16 +25,15 @@ def test_post_sms_schema_is_valid(input):
 
 def test_post_sms_json_schema_bad_uuid_and_missing_phone_number():
     j = {"template_id": "notUUID"}
-    try:
+    with pytest.raises(ValidationError) as e:
         validate(j, post_sms_request)
-    except ValidationError as e:
-        error = json.loads(e.message)
-        assert "POST v2/notifications/sms" in error['message']
-        assert len(error.get('fields')) == 2
-        assert "phone_number" in e.message
-        assert "template_id" in e.message
-        assert error.get('code') == '1001'
-        assert error.get('link', None) is not None
+    error = json.loads(e.value.message)
+    assert "POST v2/notifications/sms" in error['message']
+    assert len(error.get('fields')) == 2
+    assert "'phone_number' is a required property" in error['fields']
+    assert "'template_id' not a valid UUID" in error['fields']
+    assert error.get('code') == '1001'
+    assert error.get('link', None) is not None
 
 
 def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
@@ -44,15 +43,14 @@ def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
         "reference": "reference from caller",
         "personalisation": "not_a_dict"
     }
-    try:
+    with pytest.raises(ValidationError) as e:
         validate(j, post_sms_request)
-    except ValidationError as e:
-        error = json.loads(e.message)
-        assert "POST v2/notifications/sms" in error['message']
-        assert len(error.get('fields')) == 1
-        assert "personalisation" in e.message
-        assert error.get('code') == '1001'
-        assert error.get('link', None) is not None
+    error = json.loads(e.value.message)
+    assert "POST v2/notifications/sms" in error['message']
+    assert len(error.get('fields')) == 1
+    assert error['fields'][0] == "'personalisation' should contain key value pairs"
+    assert error.get('code') == '1001'
+    assert error.get('link', None) is not None
 
 
 valid_response = {
@@ -85,7 +83,6 @@ def test_post_sms_response_schema_is_valid(input):
 def test_post_sms_response_schema_missing_uri():
     j = valid_response
     del j["uri"]
-    try:
+    with pytest.raises(ValidationError) as e:
         validate(j, post_sms_response)
-    except ValidationError as e:
-        assert 'uri' in e.message
+    assert 'uri' in e.value.message
