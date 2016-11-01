@@ -32,6 +32,9 @@ from app.dao.service_whitelist_dao import (
     dao_add_and_commit_whitelisted_contacts,
     dao_remove_service_whitelist
 )
+from app.dao.templates_dao import (
+    dao_update_template
+)
 from app.dao import notifications_dao
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_model_users
@@ -310,6 +313,29 @@ def update_whitelist(service_id):
     else:
         dao_add_and_commit_whitelisted_contacts(whitelist_objs)
         return '', 204
+
+
+@service_blueprint.route('/<uuid:service_id>/deactivate', methods=['POST'])
+def deactivate_service(service_id):
+    service = dao_fetch_service_by_id(service_id)
+
+    if not service.active:
+        # assume already inactive, don't change service name
+        return '', 204
+
+    service.active = False
+    service.name = '_archived_' + service.name
+    service.email_from = '_archived_' + service.email_from
+    dao_update_service(service)
+
+    for template in service.templates:
+        template.archived = True
+        dao_update_template(template)
+
+    for api_key in service.api_keys:
+        expire_api_key(service.id, api_key.id)
+
+    return '', 204
 
 
 @service_blueprint.route('/<uuid:service_id>/billable-units')
