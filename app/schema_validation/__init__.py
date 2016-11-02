@@ -19,7 +19,7 @@ def build_error_message(errors, schema):
         field = {s[1]: s[2].strip()}
         fields.append(field)
     message = {
-        "code": "1001",
+        "status_code": 400,
         "message": "Validation error occurred - {}".format(schema['title']),
         "fields": fields
     }

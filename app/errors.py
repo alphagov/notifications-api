@@ -25,7 +25,7 @@ class InvalidRequest(Exception):
         Version 2 of the public api error response.
         '''
         return {
-            "code": self.code,
+            "status_code": self.code,
             "message": self.message,
             "fields": self.fields
         }
