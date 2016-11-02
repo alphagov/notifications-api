@@ -7,33 +7,34 @@ from flask import (
     current_app,
     json
 )
-
-from notifications_utils.template import Template
 from notifications_utils.renderers import PassThrough
+from notifications_utils.template import Template
+
+from app import api_user, create_uuid, statsd_client
 from app.clients.email.aws_ses import get_aws_responses
-from app import api_user, create_uuid, DATETIME_FORMAT, statsd_client
-from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
-from app.models import KEY_TYPE_TEAM, KEY_TYPE_TEST, Notification, KEY_TYPE_NORMAL, EMAIL_TYPE
 from app.dao import (
     templates_dao,
     services_dao,
     notifications_dao
 )
+from app.models import KEY_TYPE_TEAM
 from app.models import SMS_TYPE
 from app.notifications.process_client_response import (
     validate_callback_data,
     process_sms_client_response
 )
-from app.service.utils import service_allowed_to_send_to
+from app.notifications.process_notifications import persist_notification, send_notification_to_queue
+from app.notifications.validators import check_service_message_limit, check_template_is_for_notification_type, \
+    check_template_is_active
 from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
     notification_with_personalisation_schema,
     notifications_filter_schema,
     notifications_statistics_schema,
-    day_schema,
-    unarchived_template_schema
+    day_schema
 )
+from app.service.utils import service_allowed_to_send_to
 from app.utils import pagination_links
 
 notifications = Blueprint('notifications', __name__)
@@ -44,7 +45,6 @@ from app.errors import (
 )
 
 register_errors(notifications)
-from app.celery import provider_tasks
 
 
 @notifications.route('/notifications/email/ses', methods=['POST'])
@@ -216,43 +216,32 @@ def send_notification(notification_type):
     if errors:
         raise InvalidRequest(errors, status_code=400)
 
-    if all((api_user.key_type != KEY_TYPE_TEST,
-            service.restricted)):
-        service_stats = services_dao.fetch_todays_total_message_count(service.id)
-        if service_stats >= service.message_limit:
-            error = 'Exceeded send limits ({}) for today'.format(service.message_limit)
-            raise InvalidRequest(error, status_code=429)
+    check_service_message_limit(api_user.key_type, service)
 
-    template = templates_dao.dao_get_template_by_id_and_service_id(
-        template_id=notification['template'],
-        service_id=service_id
-    )
+    template = templates_dao.dao_get_template_by_id_and_service_id(template_id=notification['template'],
+                                                                   service_id=service_id)
 
-    if notification_type != template.template_type:
-        raise InvalidRequest("{0} template is not suitable for {1} notification".format(template.template_type,
-                                                                                        notification_type),
-                             status_code=400)
-
-    errors = unarchived_template_schema.validate({'archived': template.archived})
-    if errors:
-        raise InvalidRequest(errors, status_code=400)
+    check_template_is_for_notification_type(notification_type, template.template_type)
+    check_template_is_active(template)
 
     template_object = create_template_object_for_notification(template, notification.get('personalisation', {}))
 
     _service_allowed_to_send_to(notification, service)
 
-    notification_id = create_uuid()
-    notification.update({"template_version": template.version})
+    saved_notification = None
     if not _simulated_recipient(notification['to'], notification_type):
-        persist_notification(
-            service,
-            notification_id,
-            notification,
-            datetime.utcnow().strftime(DATETIME_FORMAT),
-            notification_type,
-            str(api_user.id),
-            api_user.key_type
-        )
+        saved_notification = persist_notification(template_id=template.id,
+                                                  template_version=template.version,
+                                                  recipient=notification['to'],
+                                                  service_id=service.id,
+                                                  personalisation=notification.get('personalisation', None),
+                                                  notification_type=notification_type,
+                                                  api_key_id=api_user.id,
+                                                  key_type=api_user.key_type)
+        send_notification_to_queue(saved_notification, service.research_mode)
+
+    notification_id = create_uuid() if saved_notification is None else saved_notification.id
+    notification.update({"template_version": template.version})
 
     return jsonify(
         data=get_notification_return_data(
@@ -279,43 +268,6 @@ def _simulated_recipient(to_address, notification_type):
     return (to_address in current_app.config['SIMULATED_SMS_NUMBERS']
             if notification_type == SMS_TYPE
             else to_address in current_app.config['SIMULATED_EMAIL_ADDRESSES'])
-
-
-def persist_notification(
-        service,
-        notification_id,
-        notification,
-        created_at,
-        notification_type,
-        api_key_id=None,
-        key_type=KEY_TYPE_NORMAL,
-):
-    dao_create_notification(
-        Notification.from_api_request(
-            created_at, notification, notification_id, service.id, notification_type, api_key_id, key_type
-        )
-    )
-
-    try:
-        research_mode = service.research_mode or key_type == KEY_TYPE_TEST
-        if notification_type == SMS_TYPE:
-            provider_tasks.deliver_sms.apply_async(
-                [str(notification_id)],
-                queue='send-sms' if not research_mode else 'research-mode'
-            )
-        if notification_type == EMAIL_TYPE:
-            provider_tasks.deliver_email.apply_async(
-                [str(notification_id)],
-                queue='send-email' if not research_mode else 'research-mode'
-            )
-    except Exception as e:
-        current_app.logger.exception("Failed to send to SQS exception")
-        dao_delete_notifications_and_history_by_id(notification_id)
-        raise InvalidRequest(message="Internal server error", status_code=500)
-
-    current_app.logger.info(
-        "{} {} created at {}".format(notification_type, notification_id, created_at)
-    )
 
 
 def _service_allowed_to_send_to(notification, service):

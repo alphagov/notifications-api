@@ -563,6 +563,29 @@ class Notification(db.Model):
             key_type=key_type
         )
 
+    @classmethod
+    def from_v2_api_request(cls,
+                            template_id,
+                            template_version,
+                            recipient,
+                            service_id,
+                            personalisation,
+                            notification_type,
+                            api_key_id,
+                            key_type):
+        return cls(
+            template_id=template_id,
+            template_version=template_version,
+            to=recipient,
+            service_id=service_id,
+            status='created',
+            created_at=datetime.datetime.utcnow(),
+            personalisation=personalisation,
+            notification_type=notification_type,
+            api_key_id=api_key_id,
+            key_type=key_type
+        )
+
 
 class NotificationHistory(db.Model):
     __tablename__ = 'notification_history'

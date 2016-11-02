@@ -1,7 +1,7 @@
 import uuid
 import os
 
-from flask import request, url_for, g
+from flask import request, url_for, g, jsonify
 from flask import Flask, _request_ctx_stack
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
@@ -57,6 +57,13 @@ def create_app(app_name=None):
     encryption.init_app(application)
     clients.init_app(sms_clients=[firetext_client, mmg_client, loadtest_client], email_clients=[aws_ses_client])
 
+    register_blueprint(application)
+    register_v2_blueprints(application)
+
+    return application
+
+
+def register_blueprint(application):
     from app.service.rest import service_blueprint
     from app.user.rest import user as user_blueprint
     from app.template.rest import template as template_blueprint
@@ -81,14 +88,16 @@ def create_app(app_name=None):
     application.register_blueprint(invite_blueprint)
     application.register_blueprint(delivery_blueprint)
     application.register_blueprint(accept_invite, url_prefix='/invite')
-
     application.register_blueprint(template_statistics_blueprint)
     application.register_blueprint(events_blueprint)
     application.register_blueprint(provider_details_blueprint, url_prefix='/provider-details')
     application.register_blueprint(spec_blueprint, url_prefix='/spec')
     application.register_blueprint(organisation_blueprint, url_prefix='/organisation')
 
-    return application
+
+def register_v2_blueprints(application):
+    from app.v2.notifications.post_notifications import notification_blueprint
+    application.register_blueprint(notification_blueprint)
 
 
 def init_app(app):
@@ -119,6 +128,12 @@ def init_app(app):
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
         return response
+
+    @app.errorhandler(404)
+    def page_not_found(e):
+        msg = e.description or "Not found"
+        app.logger.exception(msg)
+        return jsonify(result='error', message=msg), 404
 
 
 def create_uuid():

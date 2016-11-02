@@ -9,6 +9,9 @@ from app.authentication.auth import AuthError
 
 
 class InvalidRequest(Exception):
+    code = None
+    link = None
+    fields = []
 
     def __init__(self, message, status_code):
         super().__init__()
@@ -18,62 +21,67 @@ class InvalidRequest(Exception):
     def to_dict(self):
         return {'result': 'error', 'message': self.message}
 
+    def to_dict_v2(self):
+        '''
+        Version 2 of the public api error response.
+        '''
+        return {
+            "code": self.code,
+            "message": self.message,
+            "link": self.link,
+            "fields": self.fields
+        }
+
     def __str__(self):
         return str(self.to_dict())
 
 
 def register_errors(blueprint):
 
-    @blueprint.app_errorhandler(AuthError)
+    @blueprint.errorhandler(AuthError)
     def authentication_error(error):
         return jsonify(result='error', message=error.message), error.code
 
-    @blueprint.app_errorhandler(ValidationError)
+    @blueprint.errorhandler(ValidationError)
     def validation_error(error):
         current_app.logger.error(error)
         return jsonify(result='error', message=error.messages), 400
 
-    @blueprint.app_errorhandler(InvalidRequest)
+    @blueprint.errorhandler(InvalidRequest)
     def invalid_data(error):
         response = jsonify(error.to_dict())
         response.status_code = error.status_code
         current_app.logger.error(error)
         return response
 
-    @blueprint.app_errorhandler(400)
+    @blueprint.errorhandler(400)
     def bad_request(e):
         msg = e.description or "Invalid request parameters"
         current_app.logger.exception(msg)
         return jsonify(result='error', message=str(msg)), 400
 
-    @blueprint.app_errorhandler(401)
+    @blueprint.errorhandler(401)
     def unauthorized(e):
         error_message = "Unauthorized, authentication token must be provided"
         return jsonify(result='error', message=error_message), 401, [('WWW-Authenticate', 'Bearer')]
 
-    @blueprint.app_errorhandler(403)
+    @blueprint.errorhandler(403)
     def forbidden(e):
         error_message = "Forbidden, invalid authentication token provided"
         return jsonify(result='error', message=error_message), 403
 
-    @blueprint.app_errorhandler(404)
-    def page_not_found(e):
-        msg = e.description or "Not found"
-        current_app.logger.exception(msg)
-        return jsonify(result='error', message=msg), 404
-
-    @blueprint.app_errorhandler(429)
+    @blueprint.errorhandler(429)
     def limit_exceeded(e):
         current_app.logger.exception(e)
         return jsonify(result='error', message=str(e.description)), 429
 
-    @blueprint.app_errorhandler(NoResultFound)
-    @blueprint.app_errorhandler(DataError)
+    @blueprint.errorhandler(NoResultFound)
+    @blueprint.errorhandler(DataError)
     def no_result_found(e):
         current_app.logger.exception(e)
         return jsonify(result='error', message="No result found"), 404
 
-    @blueprint.app_errorhandler(SQLAlchemyError)
+    @blueprint.errorhandler(SQLAlchemyError)
     def db_error(e):
         current_app.logger.exception(e)
         if e.orig.pgerror and \
@@ -89,7 +97,7 @@ def register_errors(blueprint):
 
     # this must be defined after all other error handlers since it catches the generic Exception object
     @blueprint.app_errorhandler(500)
-    @blueprint.app_errorhandler(Exception)
+    @blueprint.errorhandler(Exception)
     def internal_server_error(e):
         current_app.logger.exception(e)
         return jsonify(result='error', message="Internal server error"), 500
