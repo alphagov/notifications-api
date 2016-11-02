@@ -103,4 +103,4 @@ def test_post_sms_notification_returns_400_and_for_schema_problems(notify_api, s
             assert error_resp['code'] == '1001'
             assert error_resp['message'] == 'Validation error occurred - POST v2/notifications/sms'
             assert error_resp['link'] == "link to error documentation (not yet implemented)"
-            assert error_resp['fields'] == ["'template_id' is a required property"]
+            assert error_resp['fields'] == [{"template_id": "is a required property"}]

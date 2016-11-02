@@ -15,6 +15,8 @@ def build_error_message(errors, schema):
     for e in errors:
         field = "'{}' {}".format(e.path[0], e.schema.get('validationMessage')) if e.schema.get(
             'validationMessage') else e.message
+        s = field.split("'")
+        field = {s[1]: s[2].strip()}
         fields.append(field)
     message = {
         "code": "1001",

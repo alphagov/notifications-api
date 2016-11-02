@@ -30,8 +30,8 @@ def test_post_sms_json_schema_bad_uuid_and_missing_phone_number():
     error = json.loads(e.value.message)
     assert "POST v2/notifications/sms" in error['message']
     assert len(error.get('fields')) == 2
-    assert "'phone_number' is a required property" in error['fields']
-    assert "'template_id' not a valid UUID" in error['fields']
+    assert {"phone_number": "is a required property"} in error['fields']
+    assert {"template_id": "not a valid UUID"} in error['fields']
     assert error.get('code') == '1001'
     assert error.get('link', None) is not None
 
@@ -48,9 +48,9 @@ def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
     error = json.loads(e.value.message)
     assert "POST v2/notifications/sms" in error['message']
     assert len(error.get('fields')) == 1
-    assert error['fields'][0] == "'personalisation' should contain key value pairs"
+    assert error['fields'][0] == {"personalisation": "should contain key value pairs"}
     assert error.get('code') == '1001'
-    assert error.get('link', None) is not None
+    assert error.get('link', None) == 'link to error documentation (not yet implemented)'
 
 
 valid_response = {
@@ -85,4 +85,8 @@ def test_post_sms_response_schema_missing_uri():
     del j["uri"]
     with pytest.raises(ValidationError) as e:
         validate(j, post_sms_response)
-    assert 'uri' in e.value.message
+    error = json.loads(e.value.message)
+    assert '1001' == error['code']
+    assert 'link to error documentation (not yet implemented)' == error['link']
+    assert 'Validation error occurred - response v2/notifications/sms' == error['message']
+    assert [{"uri": "is a required property"}] == error['fields']
