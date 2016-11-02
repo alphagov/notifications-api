@@ -123,6 +123,7 @@ class Service(db.Model, Versioned):
         backref=db.backref('user_to_service', lazy='dynamic'))
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
     research_mode = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=False)
+    can_send_letters = db.Column(db.Boolean, nullable=False, default=False)
     email_from = db.Column(db.Text, index=False, unique=True, nullable=False)
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
