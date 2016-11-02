@@ -58,7 +58,6 @@ def test_post_sms_notification_returns_404_and_missing_template(notify_api, samp
             assert error_json['code'] == 10400
             assert error_json['message'] == 'Template not found'
             assert error_json['fields'] == [{'template': 'Template not found'}]
-            assert error_json['link'] == 'link to documentation'
 
 
 def test_post_sms_notification_returns_403_and_well_formed_auth_error(notify_api, sample_template):
@@ -80,7 +79,6 @@ def test_post_sms_notification_returns_403_and_well_formed_auth_error(notify_api
             assert error_resp['code'] == 401
             assert error_resp['message'] == 'Unauthorized, authentication token must be provided'
             assert error_resp['fields'] == {'token': ['Unauthorized, authentication token must be provided']}
-            assert error_resp['link'] == 'link to docs'
 
 
 def test_post_sms_notification_returns_400_and_for_schema_problems(notify_api, sample_template):
@@ -102,5 +100,4 @@ def test_post_sms_notification_returns_400_and_for_schema_problems(notify_api, s
             error_resp = json.loads(response.get_data(as_text=True))
             assert error_resp['code'] == '1001'
             assert error_resp['message'] == 'Validation error occurred - POST v2/notifications/sms'
-            assert error_resp['link'] == "link to error documentation (not yet implemented)"
             assert error_resp['fields'] == [{"template_id": "is a required property"}]

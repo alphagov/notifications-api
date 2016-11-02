@@ -33,7 +33,6 @@ def test_post_sms_json_schema_bad_uuid_and_missing_phone_number():
     assert {"phone_number": "is a required property"} in error['fields']
     assert {"template_id": "not a valid UUID"} in error['fields']
     assert error.get('code') == '1001'
-    assert error.get('link', None) is not None
 
 
 def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
@@ -50,7 +49,6 @@ def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
     assert len(error.get('fields')) == 1
     assert error['fields'][0] == {"personalisation": "should contain key value pairs"}
     assert error.get('code') == '1001'
-    assert error.get('link', None) == 'link to error documentation (not yet implemented)'
 
 
 valid_response = {
@@ -87,6 +85,5 @@ def test_post_sms_response_schema_missing_uri():
         validate(j, post_sms_response)
     error = json.loads(e.value.message)
     assert '1001' == error['code']
-    assert 'link to error documentation (not yet implemented)' == error['link']
     assert 'Validation error occurred - response v2/notifications/sms' == error['message']
     assert [{"uri": "is a required property"}] == error['fields']

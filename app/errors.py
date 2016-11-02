@@ -10,7 +10,6 @@ from app.authentication.auth import AuthError
 
 class InvalidRequest(Exception):
     code = None
-    link = None
     fields = []
 
     def __init__(self, message, status_code):
@@ -28,7 +27,6 @@ class InvalidRequest(Exception):
         return {
             "code": self.code,
             "message": self.message,
-            "link": self.link,
             "fields": self.fields
         }
 

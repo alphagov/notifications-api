@@ -11,9 +11,7 @@ from app.errors import InvalidRequest
 
 class TooManyRequestsError(InvalidRequest):
     status_code = 429
-    # code and link will be in a static file
     code = "10429"
-    link = "link to docs"
     message_template = 'Exceeded send limits ({}) for today'
 
     def __init__(self, sending_limit):
@@ -23,7 +21,6 @@ class TooManyRequestsError(InvalidRequest):
 class BadRequestError(InvalidRequest):
     status_code = 400
     code = 10400
-    link = "link to documentation"
     message = "An error occurred"
 
     def __init__(self, fields=[], message=None):

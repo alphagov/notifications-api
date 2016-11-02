@@ -21,7 +21,6 @@ def build_error_message(errors, schema):
     message = {
         "code": "1001",
         "message": "Validation error occurred - {}".format(schema['title']),
-        "link": "link to error documentation (not yet implemented)",
         "fields": fields
     }
 
