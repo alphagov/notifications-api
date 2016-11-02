@@ -8,5 +8,4 @@ moto==0.4.25
 flex==5.8.0
 freezegun==0.3.7
 requests-mock==1.0.0
-jsonschema==2.5.1
 strict-rfc3339==0.7
