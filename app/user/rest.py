@@ -55,14 +55,10 @@ def create_user():
 def update_user(user_id):
     user_to_update = get_model_users(user_id=user_id)
     req_json = request.get_json()
-    update_dct, errors = user_schema_load_json.load(req_json)
     pwd = req_json.get('password', None)
-    # TODO password validation, it is already done on the admin app
-    # but would be good to have the same validation here.
-    if pwd is not None and not pwd:
-        errors.update({'password': ['Invalid data for field']})
-        raise InvalidRequest(errors, status_code=400)
-    save_model_user(user_to_update, update_dict=update_dct, pwd=pwd)
+    if not pwd:
+        raise InvalidRequest('Invalid entry for password', status_code=400)
+    save_model_user(user_to_update, update_dict=req_json, pwd=pwd)
     return jsonify(data=user_schema.dump(user_to_update).data), 200
 
 
