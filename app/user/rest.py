@@ -56,7 +56,7 @@ def update_user(user_id):
     user_to_update = get_model_users(user_id=user_id)
     req_json = request.get_json()
     pwd = req_json.get('password', None)
-    if not pwd:
+    if pwd is not None and not pwd:
         raise InvalidRequest('Invalid entry for password', status_code=400)
     save_model_user(user_to_update, update_dict=req_json, pwd=pwd)
     return jsonify(data=user_schema.dump(user_to_update).data), 200
