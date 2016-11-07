@@ -12,6 +12,7 @@ from app.dao.templates_dao import dao_get_template_by_id
 @pytest.mark.parametrize('template_type, subject', [
     ('sms', None),
     ('email', 'subject'),
+    ('letter', 'subject'),
 ])
 def test_should_create_a_new_template_for_a_service(
     notify_api, sample_user, sample_service, template_type, subject
@@ -116,12 +117,13 @@ def test_should_be_error_if_service_does_not_exist_on_update(notify_api, fake_uu
             assert json_resp['message'] == 'No result found'
 
 
-def test_must_have_a_subject_on_an_email_template(notify_api, sample_user, sample_service):
+@pytest.mark.parametrize('template_type', ['email', 'letter'])
+def test_must_have_a_subject_on_an_email_or_letter_template(notify_api, sample_user, sample_service, template_type):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
                 'name': 'my template',
-                'template_type': 'email',
+                'template_type': template_type,
                 'content': 'template content',
                 'service': str(sample_service.id),
                 'created_by': str(sample_user.id)
