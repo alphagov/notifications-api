@@ -32,23 +32,6 @@ def test_create_template(sample_service, sample_user, template_type, subject):
     assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'Sample Template'
 
 
-def test_create_email_template(sample_service, sample_user):
-    data = {
-        'name': 'Sample Template',
-        'template_type': "email",
-        'subject': "subject",
-        'content': "Template content",
-        'service': sample_service,
-        'created_by': sample_user
-    }
-    template = Template(**data)
-    dao_create_template(template)
-
-    assert Template.query.count() == 1
-    assert len(dao_get_all_templates_for_service(sample_service.id)) == 1
-    assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'Sample Template'
-
-
 def test_update_template(sample_service, sample_user):
     data = {
         'name': 'Sample Template',
