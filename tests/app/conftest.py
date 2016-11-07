@@ -180,7 +180,7 @@ def sample_template(notify_db,
         'created_by': created_by,
         'archived': archived
     }
-    if template_type == 'email':
+    if template_type in ['email', 'letter']:
         data.update({
             'subject': subject_line
         })

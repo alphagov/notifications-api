@@ -321,6 +321,11 @@ def test_should_get_only_templates_for_that_service(notify_api, sample_user, ser
             None,
             'hello ((name)) we’ve received your ((thing))',
             'sms'
+        ),
+        (
+            'about your ((thing))',
+            'hello ((name)) we’ve received your ((thing))',
+            'letter'
         )
     ]
 )
