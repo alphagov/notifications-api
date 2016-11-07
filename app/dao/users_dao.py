@@ -7,8 +7,18 @@ from app import db
 from app.models import (User, VerifyCode)
 
 
+def _remove_values_for_keys_if_present(dict, keys):
+    for key in keys:
+        dict.pop(key, None)
+
+
 def create_secret_code():
     return ''.join(map(str, random.sample(range(9), 5)))
+
+
+def save_user_attribute(usr, update_dict={}):
+    db.session.query(User).filter_by(id=usr.id).update(update_dict)
+    db.session.commit()
 
 
 def save_model_user(usr, update_dict={}, pwd=None):
@@ -16,9 +26,7 @@ def save_model_user(usr, update_dict={}, pwd=None):
         usr.password = pwd
         usr.password_changed_at = datetime.utcnow()
     if update_dict:
-        if update_dict.get('id'):
-            del update_dict['id']
-            update_dict.pop('password_changed_at')
+        _remove_values_for_keys_if_present(update_dict, ['id', 'password_changed_at'])
         db.session.query(User).filter_by(id=usr.id).update(update_dict)
     else:
         db.session.add(usr)
@@ -74,7 +82,7 @@ def delete_user_verify_codes(user):
     db.session.commit()
 
 
-def get_model_users(user_id=None):
+def get_user_by_id(user_id=None):
     if user_id:
         return User.query.filter_by(id=user_id).one()
     return User.query.filter_by().all()
