@@ -132,6 +132,10 @@ class Config(object):
     STATSD_HOST = "statsd.hostedgraphite.com"
     STATSD_PORT = 8125
 
+    REDIS_ENABLED = True
+    REDIS_HOST = "localhost"
+    REDIS_PORT = 6379
+
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200
 
     SIMULATED_EMAIL_ADDRESSES = ('simulate-delivered@notifications.service.gov.uk',
