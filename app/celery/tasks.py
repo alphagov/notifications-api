@@ -136,7 +136,7 @@ def send_sms(self,
         )
 
         current_app.logger.info(
-            "SMS {} created at {}".format(notification_id, created_at)
+            "SMS {} created at {} for job {}".format(notification_id, created_at, notification.get('job', None))
         )
 
     except SQLAlchemyError as e:
