@@ -1,3 +1,4 @@
+import pytest
 import json
 import random
 import string
@@ -8,16 +9,24 @@ from tests.app.conftest import sample_template as create_sample_template
 from app.dao.templates_dao import dao_get_template_by_id
 
 
-def test_should_create_a_new_sms_template_for_a_service(notify_api, sample_user, sample_service):
+@pytest.mark.parametrize('template_type, subject', [
+    ('sms', None),
+    ('email', 'subject'),
+])
+def test_should_create_a_new_template_for_a_service(
+    notify_api, sample_user, sample_service, template_type, subject
+):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
                 'name': 'my template',
-                'template_type': 'sms',
+                'template_type': template_type,
                 'content': 'template <b>content</b>',
                 'service': str(sample_service.id),
                 'created_by': str(sample_user.id)
             }
+            if subject:
+                data.update({'subject': subject})
             data = json.dumps(data)
             auth_header = create_authorization_header()
 
@@ -29,12 +38,15 @@ def test_should_create_a_new_sms_template_for_a_service(notify_api, sample_user,
             assert response.status_code == 201
             json_resp = json.loads(response.get_data(as_text=True))
             assert json_resp['data']['name'] == 'my template'
-            assert json_resp['data']['template_type'] == 'sms'
+            assert json_resp['data']['template_type'] == template_type
             assert json_resp['data']['content'] == 'template content'
             assert json_resp['data']['service'] == str(sample_service.id)
             assert json_resp['data']['id']
             assert json_resp['data']['version'] == 1
-            assert not json_resp['data']['subject']
+            if subject:
+                assert json_resp['data']['subject'] == 'subject'
+            else:
+                assert not json_resp['data']['subject']
 
 
 def test_should_create_a_new_email_template_for_a_service(notify_api, sample_user, sample_service):

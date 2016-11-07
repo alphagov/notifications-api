@@ -10,14 +10,20 @@ from app.models import Template, TemplateHistory
 import pytest
 
 
-def test_create_template(sample_service, sample_user):
+@pytest.mark.parametrize('template_type, subject', [
+    ('sms', None),
+    ('email', 'subject'),
+])
+def test_create_template(sample_service, sample_user, template_type, subject):
     data = {
         'name': 'Sample Template',
-        'template_type': "sms",
+        'template_type': template_type,
         'content': "Template content",
         'service': sample_service,
         'created_by': sample_user
     }
+    if subject:
+        data.update({'subject': subject})
     template = Template(**data)
     dao_create_template(template)
 
