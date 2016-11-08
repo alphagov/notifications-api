@@ -23,4 +23,4 @@ git+https://github.com/alphagov/notifications-python-client.git@1.3.0#egg=notifi
 
 git+https://github.com/alphagov/notifications-utils.git@9.1.1#egg=notifications-utils==9.1.1
 
-git+https://github.com/alphagov/boto.git@2.42.0-patch2#egg=boto==2.42.0-patch2
+git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3

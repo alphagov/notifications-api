@@ -56,13 +56,14 @@ def test_should_not_allow_invalid_secret(notify_api, sample_api_key):
             assert data['message'] == {"token": ['Invalid token: signature, api token is not valid']}
 
 
-def test_should_allow_valid_token(notify_api, sample_api_key):
+@pytest.mark.parametrize('scheme', ['bearer', 'Bearer'])
+def test_should_allow_valid_token(notify_api, sample_api_key, scheme):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             token = __create_get_token(sample_api_key.service_id)
             response = client.get(
                 '/service/{}'.format(str(sample_api_key.service_id)),
-                headers={'Authorization': 'Bearer {}'.format(token)}
+                headers={'Authorization': '{} {}'.format(scheme, token)}
             )
             assert response.status_code == 200
 

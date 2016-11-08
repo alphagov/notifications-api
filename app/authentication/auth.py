@@ -28,7 +28,7 @@ def get_auth_token(req):
     if not auth_header:
         raise AuthError('Unauthorized, authentication token must be provided', 401)
 
-    auth_scheme = auth_header[:7]
+    auth_scheme = auth_header[:7].title()
 
     if auth_scheme != 'Bearer ':
         raise AuthError('Unauthorized, authentication bearer scheme must be used', 401)
