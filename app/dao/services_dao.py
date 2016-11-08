@@ -70,6 +70,7 @@ def dao_create_service(service, user):
     service.users.append(user)
     permission_dao.add_default_service_permissions_for_user(user, service)
     service.id = uuid.uuid4()  # must be set now so version history model can use same id
+    service.active = True
     service.research_mode = False
     db.session.add(service)
 

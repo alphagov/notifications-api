@@ -67,7 +67,8 @@ def test_create_service(sample_user):
     assert service_db.name == "service_name"
     assert service_db.id == service.id
     assert service_db.branding == BRANDING_GOVUK
-    assert not service_db.research_mode
+    assert service_db.research_mode is False
+    assert service.active is True
     assert sample_user in service_db.users
 
 
