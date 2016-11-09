@@ -38,6 +38,23 @@ def test_get_service_list(notify_api, service_factory):
             assert json_resp['data'][2]['name'] == 'three'
 
 
+def test_get_service_list_with_only_active_flag(client, service_factory):
+    inactive = service_factory.get('one', email_from='one')
+    active = service_factory.get('two', email_from='two')
+
+    inactive.active = False
+
+    auth_header = create_authorization_header()
+    response = client.get(
+        '/service?only_active=True',
+        headers=[auth_header]
+    )
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert len(json_resp['data']) == 1
+    assert json_resp['data'][0]['id'] == str(active.id)
+
+
 def test_get_service_list_by_user(notify_db, notify_db_session, client, sample_user, service_factory):
     other_user = create_sample_user(notify_db, notify_db_session, email='foo@bar.gov.uk')
     service_factory.get('one', sample_user, email_from='one')

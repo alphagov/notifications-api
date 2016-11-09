@@ -28,12 +28,17 @@ from app.models import (
 from app.statsd_decorators import statsd
 
 
-def dao_fetch_all_services():
-    return Service.query.order_by(
+def dao_fetch_all_services(only_active=False):
+    query = Service.query.order_by(
         asc(Service.created_at)
     ).options(
         joinedload('users')
-    ).all()
+    )
+
+    if only_active:
+        query = query.filter(Service.active)
+
+    return query.all()
 
 
 def dao_fetch_service_by_id(service_id):

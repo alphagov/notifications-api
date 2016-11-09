@@ -67,7 +67,7 @@ def get_services():
     elif request.args.get('detailed') == 'True':
         return jsonify(data=get_detailed_services())
     else:
-        services = dao_fetch_all_services()
+        services = dao_fetch_all_services(only_active=request.args.get('only_active') == 'True')
     data = service_schema.dump(services, many=True).data
     return jsonify(data=data)
 
