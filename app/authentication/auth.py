@@ -18,8 +18,12 @@ class AuthError(Exception):
     def to_dict_v2(self):
         return {
             'status_code': self.code,
-            'message': self.short_message,
-            'fields': self.message
+            "errors": [
+                {
+                    "error": "AuthError",
+                    "message": self.short_message
+                }
+            ]
         }
 
 

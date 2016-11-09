@@ -25,9 +25,13 @@ class InvalidRequest(Exception):
         Version 2 of the public api error response.
         '''
         return {
-            "status_code": self.code,
-            "message": self.message,
-            "fields": self.fields
+            "status_code": self.status_code,
+            "errors": [
+                {
+                    "error": self.__class__.__name__,
+                    "message": self.message
+                }
+            ]
         }
 
     def __str__(self):

@@ -1,4 +1,6 @@
 import json
+from collections import OrderedDict
+
 from jsonschema import Draft4Validator, ValidationError
 
 
@@ -16,12 +18,11 @@ def build_error_message(errors, schema):
         field = "'{}' {}".format(e.path[0], e.schema.get('validationMessage')) if e.schema.get(
             'validationMessage') else e.message
         s = field.split("'")
-        field = {s[1]: s[2].strip()}
+        field = OrderedDict({"error": "ValidationError", "message": {s[1]: s[2].strip()}})
         fields.append(field)
     message = {
         "status_code": 400,
-        "message": "Validation error occurred - {}".format(schema['title']),
-        "fields": fields
+        "errors": fields
     }
 
     return json.dumps(message)

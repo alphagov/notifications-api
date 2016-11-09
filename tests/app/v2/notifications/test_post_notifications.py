@@ -55,8 +55,8 @@ def test_post_sms_notification_returns_404_and_missing_template(notify_api, samp
             assert response.headers['Content-type'] == 'application/json'
 
             error_json = json.loads(response.get_data(as_text=True))
-            assert error_json['message'] == 'Template not found'
-            assert error_json['fields'] == [{'template': 'Template not found'}]
+            assert error_json['errors'] == [{"error": "BadRequestError",
+                                             "message": 'Template not found'}]
 
 
 def test_post_sms_notification_returns_403_and_well_formed_auth_error(notify_api, sample_template):
@@ -76,8 +76,8 @@ def test_post_sms_notification_returns_403_and_well_formed_auth_error(notify_api
             assert response.headers['Content-type'] == 'application/json'
             error_resp = json.loads(response.get_data(as_text=True))
             assert error_resp['status_code'] == 401
-            assert error_resp['message'] == 'Unauthorized, authentication token must be provided'
-            assert error_resp['fields'] == {'token': ['Unauthorized, authentication token must be provided']}
+            assert error_resp['errors'] == [{'error': "AuthError",
+                                             'message': 'Unauthorized, authentication token must be provided'}]
 
 
 def test_post_sms_notification_returns_400_and_for_schema_problems(notify_api, sample_template):
@@ -98,5 +98,7 @@ def test_post_sms_notification_returns_400_and_for_schema_problems(notify_api, s
             assert response.headers['Content-type'] == 'application/json'
             error_resp = json.loads(response.get_data(as_text=True))
             assert error_resp['status_code'] == 400
-            assert error_resp['message'] == 'Validation error occurred - POST v2/notifications/sms'
-            assert error_resp['fields'] == [{"template_id": "is a required property"}]
+            print(error_resp['errors'])
+            assert error_resp['errors'] == [{'error': 'ValidationError',
+                                             'message': {"template_id": "is a required property"}
+                                             }]

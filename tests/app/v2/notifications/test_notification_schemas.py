@@ -20,7 +20,7 @@ valid_json_with_optionals = {
 
 @pytest.mark.parametrize("input", [valid_json, valid_json_with_optionals])
 def test_post_sms_schema_is_valid(input):
-    validate(input, post_sms_request)
+    assert validate(input, post_sms_request) == input
 
 
 def test_post_sms_json_schema_bad_uuid_and_missing_phone_number():
@@ -28,11 +28,13 @@ def test_post_sms_json_schema_bad_uuid_and_missing_phone_number():
     with pytest.raises(ValidationError) as e:
         validate(j, post_sms_request)
     error = json.loads(e.value.message)
-    assert "POST v2/notifications/sms" in error['message']
-    assert len(error.get('fields')) == 2
-    assert {"phone_number": "is a required property"} in error['fields']
-    assert {"template_id": "not a valid UUID"} in error['fields']
+    assert len(error.keys()) == 2
     assert error.get('status_code') == 400
+    assert len(error.get('errors')) == 2
+    assert {'error': 'ValidationError',
+            'message': {"phone_number": "is a required property"}} in error['errors']
+    assert {'error': 'ValidationError',
+            'message': {"template_id": "not a valid UUID"}} in error['errors']
 
 
 def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
@@ -45,10 +47,11 @@ def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
     with pytest.raises(ValidationError) as e:
         validate(j, post_sms_request)
     error = json.loads(e.value.message)
-    assert "POST v2/notifications/sms" in error['message']
-    assert len(error.get('fields')) == 1
-    assert error['fields'][0] == {"personalisation": "should contain key value pairs"}
+    assert len(error.get('errors')) == 1
+    assert error['errors'] == [{'error': 'ValidationError',
+                                'message': {"personalisation": "should contain key value pairs"}}]
     assert error.get('status_code') == 400
+    assert len(error.keys()) == 2
 
 
 valid_response = {
@@ -75,7 +78,7 @@ valid_response_with_optionals = {
 
 @pytest.mark.parametrize('input', [valid_response])
 def test_post_sms_response_schema_is_valid(input):
-    validate(input, post_sms_response)
+    assert validate(input, post_sms_response) == input
 
 
 def test_post_sms_response_schema_missing_uri():
@@ -85,5 +88,5 @@ def test_post_sms_response_schema_missing_uri():
         validate(j, post_sms_response)
     error = json.loads(e.value.message)
     assert error['status_code'] == 400
-    assert 'Validation error occurred - response v2/notifications/sms' == error['message']
-    assert [{"uri": "is a required property"}] == error['fields']
+    assert error['errors'] == [{'error': 'ValidationError',
+                               'message': {"uri": "is a required property"}}]
