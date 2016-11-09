@@ -22,9 +22,9 @@ from app.models import KEY_TYPE_TEST
 def test_get_service_list(notify_api, service_factory):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            service_factory.get('one', email_from='one')
-            service_factory.get('two', email_from='two')
-            service_factory.get('three', email_from='three')
+            service_factory.get('one')
+            service_factory.get('two')
+            service_factory.get('three')
             auth_header = create_authorization_header()
             response = client.get(
                 '/service',
@@ -39,8 +39,8 @@ def test_get_service_list(notify_api, service_factory):
 
 
 def test_get_service_list_with_only_active_flag(client, service_factory):
-    inactive = service_factory.get('one', email_from='one')
-    active = service_factory.get('two', email_from='two')
+    inactive = service_factory.get('one')
+    active = service_factory.get('two')
 
     inactive.active = False
 
@@ -55,11 +55,37 @@ def test_get_service_list_with_only_active_flag(client, service_factory):
     assert json_resp['data'][0]['id'] == str(active.id)
 
 
+def test_get_service_list_with_user_id_and_only_active_flag(
+    notify_db,
+    notify_db_session,
+    client,
+    sample_user,
+    service_factory
+):
+    other_user = create_sample_user(notify_db, notify_db_session, email='foo@bar.gov.uk')
+
+    inactive = service_factory.get('one', user=sample_user)
+    active = service_factory.get('two', user=sample_user)
+    from_other_user = service_factory.get('three', user=other_user)
+
+    inactive.active = False
+
+    auth_header = create_authorization_header()
+    response = client.get(
+        '/service?user_id={}&only_active=True'.format(sample_user.id),
+        headers=[auth_header]
+    )
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert len(json_resp['data']) == 1
+    assert json_resp['data'][0]['id'] == str(active.id)
+
+
 def test_get_service_list_by_user(notify_db, notify_db_session, client, sample_user, service_factory):
     other_user = create_sample_user(notify_db, notify_db_session, email='foo@bar.gov.uk')
-    service_factory.get('one', sample_user, email_from='one')
-    service_factory.get('two', sample_user, email_from='two')
-    service_factory.get('three', other_user, email_from='three')
+    service_factory.get('one', sample_user)
+    service_factory.get('two', sample_user)
+    service_factory.get('three', other_user)
 
     auth_header = create_authorization_header()
     response = client.get(
@@ -140,7 +166,7 @@ def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
 def test_get_service_by_id_and_user(notify_api, service_factory, sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            service = service_factory.get('new service', sample_user, email_from='new.service')
+            service = service_factory.get('new.service', sample_user)
             auth_header = create_authorization_header()
             resp = client.get(
                 '/service/{}?user_id={}'.format(service.id, sample_user.id),

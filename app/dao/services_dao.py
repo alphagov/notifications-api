@@ -41,22 +41,32 @@ def dao_fetch_all_services(only_active=False):
     return query.all()
 
 
-def dao_fetch_service_by_id(service_id):
-    return Service.query.filter_by(
+def dao_fetch_service_by_id(service_id, only_active=False):
+    query = Service.query.filter_by(
         id=service_id
     ).options(
         joinedload('users')
-    ).one()
+    )
+
+    if only_active:
+        query = query.filter(Service.active)
+
+    return query.one()
 
 
-def dao_fetch_all_services_by_user(user_id):
-    return Service.query.filter(
+def dao_fetch_all_services_by_user(user_id, only_active=False):
+    query = Service.query.filter(
         Service.users.any(id=user_id)
     ).order_by(
         asc(Service.created_at)
     ).options(
         joinedload('users')
-    ).all()
+    )
+
+    if only_active:
+        query = query.filter(Service.active)
+
+    return query.all()
 
 
 def dao_fetch_service_by_id_and_user(service_id, user_id):
