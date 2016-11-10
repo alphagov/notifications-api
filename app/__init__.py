@@ -4,7 +4,6 @@ import os
 from flask import request, url_for, g, jsonify
 from flask import Flask, _request_ctx_stack
 from flask.ext.sqlalchemy import SQLAlchemy
-from flask.ext.redis import FlaskRedis
 from flask_marshmallow import Marshmallow
 from monotonic import monotonic
 from werkzeug.local import LocalProxy
@@ -16,6 +15,7 @@ from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.loadtesting import LoadtestingClient
 from app.clients.email.aws_ses import AwsSesClient
 from app.clients.statsd.statsd_client import StatsdClient
+from app.clients.redis.redis_client import RedisClient
 from app.encryption import Encryption
 
 
@@ -31,7 +31,7 @@ mmg_client = MMGClient()
 aws_ses_client = AwsSesClient()
 encryption = Encryption()
 statsd_client = StatsdClient()
-redis_store = FlaskRedis()
+redis_store = RedisClient()
 
 clients = Clients()
 

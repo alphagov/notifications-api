@@ -36,6 +36,7 @@ from app.schemas import (
 )
 from app.service.utils import service_allowed_to_send_to
 from app.utils import pagination_links
+from app import redis_store
 
 notifications = Blueprint('notifications', __name__)
 
@@ -205,6 +206,8 @@ def get_notification_statistics_for_day():
 
 @notifications.route('/notifications/<string:notification_type>', methods=['POST'])
 def send_notification(notification_type):
+    redis_store.set('key1', 'value')
+
     if notification_type not in ['sms', 'email']:
         assert False
 
