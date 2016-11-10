@@ -46,10 +46,19 @@ def requires_auth():
         return handle_admin_key(auth_token, current_app.config.get('ADMIN_CLIENT_SECRET'))
 
     try:
-        api_keys = get_model_api_keys(client)
+        service = dao_fetch_service_by_id(client)
     except DataError:
         raise AuthError("Invalid token: service id is not the right data type", 403)
-    for api_key in api_keys:
+    except NoResultFound:
+        raise AuthError("Invalid token: service not found", 403)
+
+    if not service.api_keys:
+        raise AuthError("Invalid token: service has no API keys", 403)
+
+    if not service.active:
+        raise AuthError("Invalid token: service is archived", 403)
+
+    for api_key in service.api_keys:
         try:
             get_decode_errors(auth_token, api_key.unsigned_secret)
         except TokenDecodeError:
@@ -60,15 +69,8 @@ def requires_auth():
 
         _request_ctx_stack.top.api_user = api_key
         return
-
-    try:
-        dao_fetch_service_by_id(client)
-    except NoResultFound:
-        raise AuthError("Invalid token: service not found", 403)
-
-    if not api_keys:
-        raise AuthError("Invalid token: service has no API keys", 403)
     else:
+        # service has API keys, but none matching the one the user provided
         raise AuthError("Invalid token: signature, api token is not valid", 403)
 
 

@@ -188,7 +188,7 @@ class ApiKey(db.Model, Versioned):
     name = db.Column(db.String(255), nullable=False)
     secret = db.Column(db.String(255), unique=True, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
-    service = db.relationship('Service', backref=db.backref('api_keys', lazy='dynamic'))
+    service = db.relationship('Service', backref='api_keys')
     key_type = db.Column(db.String(255), db.ForeignKey('key_types.name'), index=True, nullable=False)
     expiry_date = db.Column(db.DateTime)
     created_at = db.Column(

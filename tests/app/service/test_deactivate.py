@@ -11,19 +11,19 @@ from tests.app.conftest import (
 
 
 def test_deactivate_only_allows_post(client, sample_service):
-    auth_header = create_authorization_header(service_id=str(sample_service.id))
+    auth_header = create_authorization_header()
     response = client.get('/service/{}/deactivate'.format(uuid.uuid4()), headers=[auth_header])
     assert response.status_code == 405
 
 
 def test_deactivate_service_errors_with_bad_service_id(client, sample_service):
-    auth_header = create_authorization_header(service_id=str(sample_service.id))
+    auth_header = create_authorization_header()
     response = client.post('/service/{}/deactivate'.format(uuid.uuid4()), headers=[auth_header])
     assert response.status_code == 404
 
 
 def test_deactivating_inactive_service_does_nothing(client, sample_service):
-    auth_header = create_authorization_header(service_id=str(sample_service.id))
+    auth_header = create_authorization_header()
     sample_service.active = False
     response = client.post('/service/{}/deactivate'.format(sample_service.id), headers=[auth_header])
     assert response.status_code == 204
@@ -37,7 +37,7 @@ def deactivated_service(client, notify_db, notify_db_session, sample_service):
     create_api_key(notify_db, notify_db_session)
     create_api_key(notify_db, notify_db_session)
 
-    auth_header = create_authorization_header(service_id=str(sample_service.id))
+    auth_header = create_authorization_header()
     response = client.post('/service/{}/deactivate'.format(sample_service.id), headers=[auth_header])
     assert response.status_code == 204
     assert response.data == b''
@@ -50,7 +50,7 @@ def test_deactivating_service_changes_name_and_email(deactivated_service):
 
 
 def test_deactivating_service_revokes_api_keys(deactivated_service):
-    assert deactivated_service.api_keys.count() == 2
+    assert len(deactivated_service.api_keys) == 2
     for key in deactivated_service.api_keys:
         assert key.expiry_date is not None
         assert key.version == 2

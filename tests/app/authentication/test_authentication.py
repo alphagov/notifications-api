@@ -223,6 +223,17 @@ def test_authentication_returns_error_when_service_doesnt_exit(
         assert error_message['message'] == {'token': ['Invalid token: service not found']}
 
 
+def test_authentication_returns_error_when_service_inactive(client, sample_api_key):
+    sample_api_key.service.active = False
+    token = create_jwt_token(secret=str(sample_api_key.id), client_id=str(sample_api_key.service_id))
+
+    response = client.get('/service', headers={'Authorization': 'Bearer {}'.format(token)})
+
+    assert response.status_code == 403
+    error_message = json.loads(response.get_data())
+    assert error_message['message'] == {'token': ['Invalid token: service is archived']}
+
+
 def test_authentication_returns_error_when_service_has_no_secrets(notify_api,
                                                                   sample_service,
                                                                   fake_uuid):
