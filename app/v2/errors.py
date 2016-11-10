@@ -1,10 +1,8 @@
 import json
-
 from flask import jsonify, current_app
 from jsonschema import ValidationError
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
-
 from app.authentication.auth import AuthError
 from app.errors import InvalidRequest
 
@@ -42,7 +40,8 @@ def register_errors(blueprint):
     @blueprint.errorhandler(DataError)
     def no_result_found(e):
         current_app.logger.exception(e)
-        return jsonify(message="No result found"), 404
+        return jsonify(status_code=404,
+                       errors=[{"error": e.__class__.__name__, "message": "No result found"}]), 404
 
     @blueprint.errorhandler(AuthError)
     def auth_error(error):
@@ -51,4 +50,5 @@ def register_errors(blueprint):
     @blueprint.errorhandler(Exception)
     def internal_server_error(error):
         current_app.logger.exception(error)
-        return jsonify(message='Internal server error'), 500
+        return jsonify(status_code=500,
+                       errors=[{"error": error.__class__.__name__, "message": 'Internal server error'}]), 500

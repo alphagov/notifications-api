@@ -1,7 +1,7 @@
 import json
-
 import pytest
 from flask import url_for
+from sqlalchemy.exc import DataError
 
 
 @pytest.fixture(scope='function')
@@ -34,6 +34,14 @@ def app_for_test(mocker):
         from app.schema_validation import validate
         from app.v2.notifications.notification_schemas import post_sms_request
         validate({"template_id": "bad_uuid"}, post_sms_request)
+
+    @blue.route("raise_data_error", methods=["GET"])
+    def raising_data_error():
+        raise DataError("There was a db problem", "params", "orig")
+
+    @blue.route("raise_exception", methods=["GET"])
+    def raising_exception():
+        raise AssertionError("Raising any old exception")
 
     register_errors(blue)
     app.register_blueprint(blue)
@@ -87,3 +95,23 @@ def test_validation_error(app_for_test):
                     'message': {'phone_number': 'is a required property'}} in error['errors']
             assert {'error': 'ValidationError',
                     'message': {'template_id': 'not a valid UUID'}} in error['errors']
+
+
+def test_data_errors(app_for_test):
+    with app_for_test.test_request_context():
+        with app_for_test.test_client() as client:
+            response = client.get(url_for('v2_under_test.raising_data_error'))
+            assert response.status_code == 404
+            error = json.loads(response.get_data(as_text=True))
+            assert error == {"status_code": 404,
+                             "errors": [{"error": "DataError", "message": "No result found"}]}
+
+
+def test_internal_server_error_handler(app_for_test):
+    with app_for_test.test_request_context():
+        with app_for_test.test_client() as client:
+            response = client.get(url_for("v2_under_test.raising_exception"))
+            assert response.status_code == 500
+            error = json.loads(response.get_data(as_text=True))
+            assert error == {"status_code": 500,
+                             "errors": [{"error": "AssertionError", "message": "Internal server error"}]}
