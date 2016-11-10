@@ -44,7 +44,6 @@ from app.errors import (
     InvalidRequest
 )
 
-from app import redis_client
 
 register_errors(notifications)
 
@@ -206,9 +205,6 @@ def get_notification_statistics_for_day():
 
 @notifications.route('/notifications/<string:notification_type>', methods=['POST'])
 def send_notification(notification_type):
-
-    current_app.logger.info(redis_client.incr(api_user.service_id))
-
     if notification_type not in ['sms', 'email']:
         assert False
 

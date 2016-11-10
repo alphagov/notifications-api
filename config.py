@@ -133,8 +133,7 @@ class Config(object):
     STATSD_PORT = 8125
 
     REDIS_ENABLED = True
-    REDIS_HOST = "localhost"
-    REDIS_PORT = 6379
+    REDIS_URL = "redis://localhost:6379/0"
 
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200
 
