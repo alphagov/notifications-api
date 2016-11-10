@@ -275,7 +275,7 @@ class Template(db.Model):
     content = db.Column(db.Text, index=False, unique=False, nullable=False)
     archived = db.Column(db.Boolean, index=False, nullable=False, default=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
-    service = db.relationship('Service', backref=db.backref('templates', lazy='dynamic'))
+    service = db.relationship('Service', backref='templates')
     subject = db.Column(db.Text, index=False, unique=False, nullable=True)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     created_by = db.relationship('User')

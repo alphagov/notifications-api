@@ -25,15 +25,13 @@ from app.dao.services_dao import (
     dao_fetch_stats_for_service,
     dao_fetch_todays_stats_for_service,
     dao_fetch_weekly_historical_stats_for_service,
-    dao_fetch_todays_stats_for_all_services
+    dao_fetch_todays_stats_for_all_services,
+    dao_deactive_service
 )
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
     dao_add_and_commit_whitelisted_contacts,
     dao_remove_service_whitelist
-)
-from app.dao.templates_dao import (
-    dao_update_template
 )
 from app.dao import notifications_dao
 from app.dao.provider_statistics_dao import get_fragment_count
@@ -326,17 +324,7 @@ def deactivate_service(service_id):
         # assume already inactive, don't change service name
         return '', 204
 
-    service.active = False
-    service.name = '_archived_' + service.name
-    service.email_from = '_archived_' + service.email_from
-    dao_update_service(service)
-
-    for template in service.templates:
-        template.archived = True
-        dao_update_template(template)
-
-    for api_key in service.api_keys:
-        expire_api_key(service.id, api_key.id)
+    dao_deactive_service(service.id)
 
     return '', 204
 

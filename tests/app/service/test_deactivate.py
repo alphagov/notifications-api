@@ -57,7 +57,7 @@ def test_deactivating_service_revokes_api_keys(deactivated_service):
 
 
 def test_deactivating_service_archives_templates(deactivated_service):
-    assert deactivated_service.templates.count() == 2
+    assert len(deactivated_service.templates) == 2
     for template in deactivated_service.templates:
         assert template.archived is True
         assert template.version == 2
