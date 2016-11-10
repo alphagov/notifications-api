@@ -64,11 +64,8 @@ def test_get_user_not_exists(notify_api, notify_db, notify_db_session, fake_uuid
 
 
 def test_get_user_invalid_id(notify_api, notify_db, notify_db_session):
-    try:
+    with pytest.raises(DataError):
         get_user_by_id(user_id="blah")
-        pytest.fail("DataError exception not thrown.")
-    except DataError:
-        pass
 
 
 def test_delete_users(notify_api, notify_db, notify_db_session, sample_user):

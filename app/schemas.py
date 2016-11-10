@@ -110,8 +110,9 @@ class UserUpdateAttributeSchema(BaseSchema):
     class Meta:
         model = models.User
         exclude = (
-            "updated_at", "created_at", "user_to_service",
-            "_password", "verify_codes")
+            'id', 'updated_at', 'created_at', 'user_to_service',
+            '_password', 'verify_codes', 'logged_in_at', 'password_changed_at',
+            'failed_login_count', 'state', 'platform_admin')
         strict = True
 
     @validates('name')
