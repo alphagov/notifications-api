@@ -3,7 +3,7 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
 from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
-from notifications_python_client.errors import TokenDecodeError, TokenExpiredError
+from notifications_python_client.errors import TokenDecodeError, TokenExpiredError, TokenIssuerError
 
 from app.dao.api_key_dao import get_model_api_keys
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -39,8 +39,10 @@ def requires_auth():
     auth_token = get_auth_token(request)
     try:
         client = get_token_issuer(auth_token)
-    except TokenDecodeError:
-        raise AuthError("Invalid token: signature", 403)
+    except TokenDecodeError as e:
+        raise AuthError(e.message, 403)
+    except TokenIssuerError:
+        raise AuthError("Invalid token: iss not provided", 403)
 
     if client == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
         return handle_admin_key(auth_token, current_app.config.get('ADMIN_CLIENT_SECRET'))
@@ -76,8 +78,8 @@ def handle_admin_key(auth_token, secret):
     try:
         get_decode_errors(auth_token, secret)
         return
-    except TokenDecodeError:
-        raise AuthError("Invalid token: signature", 403)
+    except TokenDecodeError as e:
+        raise AuthError(e.message, 403)
 
 
 def get_decode_errors(auth_token, unsigned_secret):
