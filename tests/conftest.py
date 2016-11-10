@@ -2,7 +2,6 @@ from contextlib import contextmanager
 import os
 
 import boto3
-from unittest import mock
 import pytest
 from alembic.command import upgrade
 from alembic.config import Config
@@ -13,16 +12,31 @@ from app import create_app, db
 
 
 @pytest.fixture(scope='session')
-def notify_api(request):
+def notify_api():
     app = create_app()
+
+    # deattach server-error error handlers - error_handler_spec looks like:
+    #   {'blueprint_name': {
+    #       status_code: [error_handlers],
+    #       None: [ tuples of (exception, )]
+    # }}
+    for error_handlers in app.error_handler_spec.values():
+        error_handlers.pop(500, None)
+        if None in error_handlers:
+            error_handlers[None] = [
+                exception_handler
+                for exception_handler in error_handlers[None]
+                if exception_handler[0] != Exception
+            ]
+            if error_handlers[None] == []:
+                error_handlers.pop(None)
+
     ctx = app.app_context()
     ctx.push()
 
-    def teardown():
-        ctx.pop()
+    yield app
 
-    request.addfinalizer(teardown)
-    return app
+    ctx.pop()
 
 
 @pytest.fixture(scope='function')
@@ -32,7 +46,7 @@ def client(notify_api):
 
 
 @pytest.fixture(scope='session')
-def notify_db(notify_api, request):
+def notify_db(notify_api):
     Migrate(notify_api, db)
     Manager(db, MigrateCommand)
     BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -43,36 +57,30 @@ def notify_db(notify_api, request):
     with notify_api.app_context():
         upgrade(config, 'head')
 
-    def teardown():
-        db.session.remove()
-        db.get_engine(notify_api).dispose()
+    yield db
 
-    request.addfinalizer(teardown)
-    return db
+    db.session.remove()
+    db.get_engine(notify_api).dispose()
 
 
 @pytest.fixture(scope='function')
-def notify_db_session(request, notify_db):
-    def teardown():
-        notify_db.session.remove()
-        for tbl in reversed(notify_db.metadata.sorted_tables):
-            if tbl.name not in ["provider_details", "key_types", "branding_type", "job_status"]:
-                notify_db.engine.execute(tbl.delete())
-        notify_db.session.commit()
+def notify_db_session(notify_db):
+    yield notify_db
 
-    request.addfinalizer(teardown)
-
-
-@pytest.fixture(scope='function')
-def os_environ(request):
-    env_patch = mock.patch('os.environ', {})
-    request.addfinalizer(env_patch.stop)
-
-    return env_patch.start()
+    notify_db.session.remove()
+    for tbl in reversed(notify_db.metadata.sorted_tables):
+        if tbl.name not in ["provider_details", "key_types", "branding_type", "job_status"]:
+            notify_db.engine.execute(tbl.delete())
+    notify_db.session.commit()
 
 
 @pytest.fixture(scope='function')
-def sqs_client_conn(request):
+def os_environ(mocker):
+    mocker.patch('os.environ', {})
+
+
+@pytest.fixture(scope='function')
+def sqs_client_conn():
     boto3.setup_default_session(region_name='eu-west-1')
     return boto3.resource('sqs')
 
