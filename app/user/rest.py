@@ -69,7 +69,7 @@ def update_user(user_id):
     return jsonify(data=user_schema.dump(user_to_update).data), 200
 
 
-@user.route('/<uuid:user_id>/update-attribute', methods=['PUT'])
+@user.route('/<uuid:user_id>', methods=['POST'])
 def update_user_attribute(user_id):
     user_to_update = get_user_by_id(user_id=user_id)
     req_json = request.get_json()

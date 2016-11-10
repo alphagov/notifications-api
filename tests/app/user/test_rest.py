@@ -186,7 +186,7 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_service):
     ('email_address', 'newuser@mail.com'),
     ('mobile_number', '+4407700900460')
 ])
-def test_put_user_attribute(client, sample_user, user_attribute, user_value):
+def test_post_user_attribute(client, sample_user, user_attribute, user_value):
     assert getattr(sample_user, user_attribute) != user_value
     update_dict = {
         user_attribute: user_value
@@ -194,7 +194,7 @@ def test_put_user_attribute(client, sample_user, user_attribute, user_value):
     auth_header = create_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
 
-    resp = client.put(
+    resp = client.post(
         url_for('user.update_user_attribute', user_id=sample_user.id),
         data=json.dumps(update_dict),
         headers=headers)
