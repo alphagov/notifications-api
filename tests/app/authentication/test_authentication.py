@@ -1,3 +1,6 @@
+import jwt
+import uuid
+import time
 from datetime import datetime
 
 import pytest
@@ -39,6 +42,46 @@ def test_should_not_allow_request_with_incorrect_token(notify_api, sample_user):
             assert response.status_code == 403
             data = json.loads(response.get_data())
             assert data['message'] == {"token": ['Invalid token: signature']}
+
+
+def test_should_not_allow_request_with_no_iss(client):
+    # code copied from notifications_python_client.authentication.py::create_jwt_token
+    headers = {
+        "typ": 'JWT',
+        "alg": 'HS256'
+    }
+
+    claims = {
+        # 'iss': not provided
+        'iat': int(time.time())
+    }
+
+    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers).decode()
+
+    response = client.get('/service', headers={'Authorization': 'Bearer {}'.format(token)})
+    assert response.status_code == 403
+    data = json.loads(response.get_data())
+    assert data['message'] == {"token": ['Invalid token: iss field not provided']}
+
+
+def test_should_not_allow_request_with_no_iat(client, sample_api_key):
+    # code copied from notifications_python_client.authentication.py::create_jwt_token
+    headers = {
+        "typ": 'JWT',
+        "alg": 'HS256'
+    }
+
+    claims = {
+        'iss': str(sample_api_key.service_id)
+        # 'iat': not provided
+    }
+
+    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers).decode()
+
+    response = client.get('/service', headers={'Authorization': 'Bearer {}'.format(token)})
+    assert response.status_code == 403
+    data = json.loads(response.get_data())
+    assert data['message'] == {"token": ['Invalid token: signature, api token is not valid']}
 
 
 def test_should_not_allow_invalid_secret(notify_api, sample_api_key):
