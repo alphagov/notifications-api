@@ -32,9 +32,9 @@ def test_post_sms_json_schema_bad_uuid_and_missing_phone_number():
     assert error.get('status_code') == 400
     assert len(error.get('errors')) == 2
     assert {'error': 'ValidationError',
-            'message': {"phone_number": "is a required property"}} in error['errors']
+            'message': "phone_number is a required property"} in error['errors']
     assert {'error': 'ValidationError',
-            'message': {"template_id": "not a valid UUID"}} in error['errors']
+            'message': "template_id is not a valid UUID"} in error['errors']
 
 
 def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
@@ -49,7 +49,7 @@ def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
     error = json.loads(e.value.message)
     assert len(error.get('errors')) == 1
     assert error['errors'] == [{'error': 'ValidationError',
-                                'message': {"personalisation": "should contain key value pairs"}}]
+                                'message': "personalisation should contain key value pairs"}]
     assert error.get('status_code') == 400
     assert len(error.keys()) == 2
 
@@ -89,4 +89,4 @@ def test_post_sms_response_schema_missing_uri():
     error = json.loads(e.value.message)
     assert error['status_code'] == 400
     assert error['errors'] == [{'error': 'ValidationError',
-                               'message': {"uri": "is a required property"}}]
+                               'message': "uri is a required property"}]

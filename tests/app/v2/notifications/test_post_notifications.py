@@ -55,6 +55,7 @@ def test_post_sms_notification_returns_404_and_missing_template(notify_api, samp
             assert response.headers['Content-type'] == 'application/json'
 
             error_json = json.loads(response.get_data(as_text=True))
+            assert error_json['status_code'] == 400
             assert error_json['errors'] == [{"error": "BadRequestError",
                                              "message": 'Template not found'}]
 
@@ -98,7 +99,6 @@ def test_post_sms_notification_returns_400_and_for_schema_problems(notify_api, s
             assert response.headers['Content-type'] == 'application/json'
             error_resp = json.loads(response.get_data(as_text=True))
             assert error_resp['status_code'] == 400
-            print(error_resp['errors'])
             assert error_resp['errors'] == [{'error': 'ValidationError',
-                                             'message': {"template_id": "is a required property"}
+                                             'message': "template_id is a required property"
                                              }]

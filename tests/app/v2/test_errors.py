@@ -88,13 +88,14 @@ def test_validation_error(app_for_test):
             response = client.get(url_for('v2_under_test.raising_validation_error'))
             assert response.status_code == 400
             error = json.loads(response.get_data(as_text=True))
+            print(error)
             assert len(error.keys()) == 2
             assert error['status_code'] == 400
             assert len(error['errors']) == 2
             assert {'error': 'ValidationError',
-                    'message': {'phone_number': 'is a required property'}} in error['errors']
+                    'message': "phone_number is a required property"} in error['errors']
             assert {'error': 'ValidationError',
-                    'message': {'template_id': 'not a valid UUID'}} in error['errors']
+                    'message': "template_id is not a valid UUID"} in error['errors']
 
 
 def test_data_errors(app_for_test):
