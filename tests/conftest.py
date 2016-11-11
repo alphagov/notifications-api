@@ -47,6 +47,7 @@ def client(notify_api):
 
 @pytest.fixture(scope='session')
 def notify_db(notify_api):
+    assert db.engine.url.database != 'notification_api', 'dont run tests against main db'
     Migrate(notify_api, db)
     Manager(db, MigrateCommand)
     BASE_DIR = os.path.dirname(os.path.dirname(__file__))

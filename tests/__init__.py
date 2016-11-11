@@ -30,3 +30,12 @@ def create_authorization_header(service_id=None, key_type=KEY_TYPE_NORMAL):
 
     token = create_jwt_token(secret=secret, client_id=client_id)
     return 'Authorization', 'Bearer {}'.format(token)
+
+
+def unwrap_function(fn):
+    """
+    Given a function, returns its undecorated original.
+    """
+    while hasattr(fn, '__wrapped__'):
+        fn = fn.__wrapped__
+    return fn

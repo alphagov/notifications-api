@@ -25,7 +25,8 @@ from app.dao.services_dao import (
     dao_fetch_stats_for_service,
     dao_fetch_todays_stats_for_service,
     dao_fetch_weekly_historical_stats_for_service,
-    dao_fetch_todays_stats_for_all_services
+    dao_fetch_todays_stats_for_all_services,
+    dao_deactive_service
 )
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
@@ -58,13 +59,16 @@ register_errors(service_blueprint)
 
 @service_blueprint.route('', methods=['GET'])
 def get_services():
+    only_active = request.args.get('only_active') == 'True'
+    detailed = request.args.get('detailed') == 'True'
     user_id = request.args.get('user_id', None)
+
     if user_id:
-        services = dao_fetch_all_services_by_user(user_id)
-    elif request.args.get('detailed') == 'True':
-        return jsonify(data=get_detailed_services())
+        services = dao_fetch_all_services_by_user(user_id, only_active)
+    elif detailed:
+        return jsonify(data=get_detailed_services(only_active))
     else:
-        services = dao_fetch_all_services()
+        services = dao_fetch_all_services(only_active)
     data = service_schema.dump(services, many=True).data
     return jsonify(data=data)
 
@@ -264,8 +268,8 @@ def get_detailed_service(service_id, today_only=False):
     return detailed_service_schema.dump(service).data
 
 
-def get_detailed_services():
-    services = {service.id: service for service in dao_fetch_all_services()}
+def get_detailed_services(only_active=False):
+    services = {service.id: service for service in dao_fetch_all_services(only_active)}
     stats = dao_fetch_todays_stats_for_all_services()
 
     for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
@@ -310,6 +314,19 @@ def update_whitelist(service_id):
     else:
         dao_add_and_commit_whitelisted_contacts(whitelist_objs)
         return '', 204
+
+
+@service_blueprint.route('/<uuid:service_id>/deactivate', methods=['POST'])
+def deactivate_service(service_id):
+    service = dao_fetch_service_by_id(service_id)
+
+    if not service.active:
+        # assume already inactive, don't change service name
+        return '', 204
+
+    dao_deactive_service(service.id)
+
+    return '', 204
 
 
 @service_blueprint.route('/<uuid:service_id>/billable-units')
