@@ -130,26 +130,26 @@ def send_sms(self,
         return
 
     try:
-        persist_notification(template_id=notification['template'],
-                             template_version=notification['template_version'],
-                             recipient=notification['to'],
-                             service_id=service.id,
-                             personalisation=notification.get('personalisation'),
-                             notification_type=SMS_TYPE,
-                             api_key_id=api_key_id,
-                             key_type=key_type,
-                             created_at=created_at,
-                             job_id=notification.get('job', None),
-                             job_row_number=notification.get('row_number', None),
-                             )
+        saved_notification = persist_notification(template_id=notification['template'],
+                                                  template_version=notification['template_version'],
+                                                  recipient=notification['to'],
+                                                  service_id=service.id,
+                                                  personalisation=notification.get('personalisation'),
+                                                  notification_type=SMS_TYPE,
+                                                  api_key_id=api_key_id,
+                                                  key_type=key_type,
+                                                  created_at=created_at,
+                                                  job_id=notification.get('job', None),
+                                                  job_row_number=notification.get('row_number', None),
+                                                  )
 
         provider_tasks.deliver_sms.apply_async(
-            [notification_id],
+            [saved_notification.id],
             queue='send-sms' if not service.research_mode else 'research-mode'
         )
 
         current_app.logger.info(
-            "SMS {} created at {} for job {}".format(notification_id, created_at, notification.get('job', None))
+            "SMS {} created at {} for job {}".format(saved_notification.id, created_at, notification.get('job', None))
         )
 
     except SQLAlchemyError as e:
@@ -179,7 +179,7 @@ def send_email(self, service_id,
         return
 
     try:
-        persist_notification(
+        saved_notification = persist_notification(
             template_id=notification['template'],
             template_version=notification['template_version'],
             recipient=notification['to'],
@@ -195,7 +195,7 @@ def send_email(self, service_id,
         )
 
         provider_tasks.deliver_email.apply_async(
-            [notification_id],
+            [saved_notification.id],
             queue='send-email' if not service.research_mode else 'research-mode'
         )
 

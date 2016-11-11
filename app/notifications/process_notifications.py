@@ -77,7 +77,7 @@ def send_notification_to_queue(notification, research_mode):
                 [str(notification.id)],
                 queue='send-email' if not research_mode else 'research-mode'
             )
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("Failed to send to SQS exception")
         dao_delete_notifications_and_history_by_id(notification.id)
         raise
