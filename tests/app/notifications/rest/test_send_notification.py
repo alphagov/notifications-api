@@ -343,7 +343,7 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
 
 
 @freeze_time("2016-01-01 12:00:00.061258")
-def test_should_not_block_api_call_if_over_day_limit_for_live_service(
+def test_should_block_api_call_if_over_day_limit_for_live_service(
         notify_db,
         notify_db_session,
         notify_api,
@@ -371,8 +371,7 @@ def test_should_not_block_api_call_if_over_day_limit_for_live_service(
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
             json.loads(response.get_data(as_text=True))
-
-            assert response.status_code == 201
+            assert response.status_code == 429
 
 
 @freeze_time("2016-01-01 12:00:00.061258")
