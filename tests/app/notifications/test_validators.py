@@ -48,7 +48,7 @@ def test_check_template_is_for_notification_type_fails_when_template_type_does_n
     with pytest.raises(BadRequestError) as e:
         check_template_is_for_notification_type(notification_type=notification_type,
                                                 template_type=template_type)
-    e.value.status_code == 400
+    assert e.value.status_code == 400
     error_message = '{0} template is not suitable for {1} notification'.format(template_type, notification_type)
     assert e.value.message == error_message
     assert e.value.fields == [{'template': error_message}]

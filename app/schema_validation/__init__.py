@@ -18,7 +18,7 @@ def build_error_message(errors, schema):
         field = "'{}' {}".format(e.path[0], e.schema.get('validationMessage')) if e.schema.get(
             'validationMessage') else e.message
         s = field.split("'")
-        field = OrderedDict({"error": "ValidationError", "message": "{}{}".format(s[1], s[2])})
+        field = {"error": "ValidationError", "message": "{}{}".format(s[1], s[2])}
         fields.append(field)
     message = {
         "status_code": 400,
