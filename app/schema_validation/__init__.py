@@ -1,5 +1,4 @@
 import json
-from collections import OrderedDict
 
 from jsonschema import Draft4Validator, ValidationError
 
