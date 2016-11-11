@@ -72,10 +72,7 @@ def process_job(job_id):
             'job': str(job.id),
             'to': recipient,
             'row_number': row_number,
-            'personalisation': {
-                key: personalisation.get(key)
-                for key in template.placeholders
-            }
+            'personalisation': dict(personalisation)
         })
 
         if template.template_type == SMS_TYPE:
