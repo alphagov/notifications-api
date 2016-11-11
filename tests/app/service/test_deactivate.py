@@ -1,22 +1,26 @@
 import uuid
+from unittest import mock
 
 import pytest
 
-from app.models import Service
-from tests import create_authorization_header
+from app import db
+from app.models import Service, TemplateHistory, ApiKey
+from app.dao.services_dao import dao_deactive_service
+
+from tests import create_authorization_header, unwrap_function
 from tests.app.conftest import (
     sample_template as create_template,
     sample_api_key as create_api_key
 )
 
 
-def test_deactivate_only_allows_post(client, sample_service):
+def test_deactivate_only_allows_post(client):
     auth_header = create_authorization_header()
     response = client.get('/service/{}/deactivate'.format(uuid.uuid4()), headers=[auth_header])
     assert response.status_code == 405
 
 
-def test_deactivate_service_errors_with_bad_service_id(client, sample_service):
+def test_deactivate_service_errors_with_bad_service_id(client):
     auth_header = create_authorization_header()
     response = client.post('/service/{}/deactivate'.format(uuid.uuid4()), headers=[auth_header])
     assert response.status_code == 404
@@ -73,3 +77,13 @@ def test_deactivating_service_creates_history(deactivated_service):
 
     assert history.version == 2
     assert history.active is False
+
+
+def test_deactivating_service_rolls_back_everything_on_error(sample_service, sample_api_key, sample_template):
+    unwrapped_deactive_service = unwrap_function(dao_deactive_service)
+
+    unwrapped_deactive_service(sample_service.id)
+
+    assert sample_service in db.session.dirty
+    assert sample_api_key in db.session.dirty
+    assert sample_template in db.session.dirty

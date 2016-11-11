@@ -75,6 +75,7 @@ def dao_fetch_all_services_by_user(user_id, only_active=False):
 @version_class(ApiKey)
 def dao_deactive_service(service_id):
     # have to eager load templates and api keys so that we don't flush when we loop through them
+    # to ensure that db.session still contains the models when it comes to creating history objects
     service = Service.query.options(
         joinedload('templates'),
         joinedload('api_keys'),
@@ -84,16 +85,11 @@ def dao_deactive_service(service_id):
     service.name = '_archived_' + service.name
     service.email_from = '_archived_' + service.email_from
 
-
     for template in service.templates:
         template.archived = True
 
     for api_key in service.api_keys:
         api_key.expiry_date = datetime.utcnow()
-
-    db.session.add(service)
-    db.session.add_all(service.templates)
-    db.session.add_all(service.api_keys)
 
 
 def dao_fetch_service_by_id_and_user(service_id, user_id):
