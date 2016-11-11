@@ -572,7 +572,9 @@ class Notification(db.Model):
                             personalisation,
                             notification_type,
                             api_key_id,
-                            key_type):
+                            key_type,
+                            job_id,
+                            job_row_number):
         return cls(
             template_id=template_id,
             template_version=template_version,
@@ -583,7 +585,9 @@ class Notification(db.Model):
             personalisation=personalisation,
             notification_type=notification_type,
             api_key_id=api_key_id,
-            key_type=key_type
+            key_type=key_type,
+            job_id=job_id,
+            job_row_number=job_row_number,
         )
 
 

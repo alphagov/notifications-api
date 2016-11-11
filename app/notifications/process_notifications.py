@@ -40,7 +40,9 @@ def persist_notification(template_id,
                          personalisation,
                          notification_type,
                          api_key_id,
-                         key_type):
+                         key_type,
+                         job_id=None,
+                         job_row_number=None):
     notification = Notification.from_v2_api_request(template_id=template_id,
                                                     template_version=template_version,
                                                     recipient=recipient,
@@ -48,7 +50,10 @@ def persist_notification(template_id,
                                                     personalisation=personalisation,
                                                     notification_type=notification_type,
                                                     api_key_id=api_key_id,
-                                                    key_type=key_type)
+                                                    key_type=key_type,
+                                                    job_id=job_id,
+                                                    job_row_number=job_row_number
+                                                    )
     dao_create_notification(notification)
     return notification
 
