@@ -105,6 +105,42 @@ class UserSchema(BaseSchema):
         strict = True
 
 
+class UserUpdateAttributeSchema(BaseSchema):
+
+    class Meta:
+        model = models.User
+        exclude = (
+            'id', 'updated_at', 'created_at', 'user_to_service',
+            '_password', 'verify_codes', 'logged_in_at', 'password_changed_at',
+            'failed_login_count', 'state', 'platform_admin')
+        strict = True
+
+    @validates('name')
+    def validate_name(self, value):
+        if not value:
+            raise ValidationError('Invalid name')
+
+    @validates('email_address')
+    def validate_email_address(self, value):
+        try:
+            validate_email_address(value)
+        except InvalidEmailError as e:
+            raise ValidationError(e.message)
+
+    @validates('mobile_number')
+    def validate_mobile_number(self, value):
+        try:
+            validate_phone_number(value)
+        except InvalidPhoneError as error:
+            raise ValidationError('Invalid phone number: {}'.format(error))
+
+    @validates_schema(pass_original=True)
+    def check_unknown_fields(self, data, original_data):
+        for key in original_data:
+            if key not in self.fields:
+                raise ValidationError('Unknown field name {}'.format(key))
+
+
 class ProviderDetailsSchema(BaseSchema):
     class Meta:
         model = models.ProviderDetails
@@ -529,6 +565,7 @@ class UnarchivedTemplateSchema(BaseSchema):
 
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
+user_update_schema_load_json = UserUpdateAttributeSchema(load_json=True, partial=True)
 service_schema = ServiceSchema()
 service_schema_load_json = ServiceSchema(load_json=True)
 detailed_service_schema = DetailedServiceSchema()

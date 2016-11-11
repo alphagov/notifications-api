@@ -34,7 +34,7 @@ from app.dao.service_whitelist_dao import (
 )
 from app.dao import notifications_dao
 from app.dao.provider_statistics_dao import get_fragment_count
-from app.dao.users_dao import get_model_users
+from app.dao.users_dao import get_user_by_id
 from app.errors import (
     register_errors,
     InvalidRequest
@@ -88,7 +88,7 @@ def create_service():
         errors = {'user_id': ['Missing data for required field.']}
         raise InvalidRequest(errors, status_code=400)
 
-    user = get_model_users(data['user_id'])
+    user = get_user_by_id(data['user_id'])
     data.pop('user_id', None)
     valid_service = service_schema.load(request.get_json()).data
     dao_create_service(valid_service, user)
@@ -148,7 +148,7 @@ def get_users_for_service(service_id):
 @service_blueprint.route('/<uuid:service_id>/users/<user_id>', methods=['POST'])
 def add_user_to_service(service_id, user_id):
     service = dao_fetch_service_by_id(service_id)
-    user = get_model_users(user_id=user_id)
+    user = get_user_by_id(user_id=user_id)
 
     if user in service.users:
         error = 'User id: {} already part of service id: {}'.format(user_id, service_id)
@@ -163,7 +163,7 @@ def add_user_to_service(service_id, user_id):
 @service_blueprint.route('/<uuid:service_id>/users/<user_id>', methods=['DELETE'])
 def remove_user_from_service(service_id, user_id):
     service = dao_fetch_service_by_id(service_id)
-    user = get_model_users(user_id=user_id)
+    user = get_user_by_id(user_id=user_id)
     if user not in service.users:
         error = 'User not found'
         raise InvalidRequest(error, status_code=404)

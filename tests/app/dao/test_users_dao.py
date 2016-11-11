@@ -7,12 +7,13 @@ import pytest
 
 from app.dao.users_dao import (
     save_model_user,
-    get_model_users,
+    save_user_attribute,
+    get_user_by_id,
     delete_model_user,
     increment_failed_login_count,
     reset_failed_login_count,
     get_user_by_email,
-    delete_codes_older_created_more_than_a_day_ago
+    delete_codes_older_created_more_than_a_day_ago,
 )
 
 from tests.app.conftest import sample_user as create_sample_user
@@ -37,13 +38,13 @@ def test_create_user(notify_api, notify_db, notify_db_session):
 
 def test_get_all_users(notify_api, notify_db, notify_db_session, sample_user):
     assert User.query.count() == 1
-    assert len(get_model_users()) == 1
+    assert len(get_user_by_id()) == 1
     email = "another.notify@digital.cabinet-office.gov.uk"
     another_user = create_sample_user(notify_db,
                                       notify_db_session,
                                       email=email)
     assert User.query.count() == 2
-    assert len(get_model_users()) == 2
+    assert len(get_user_by_id()) == 2
 
 
 def test_get_user(notify_api, notify_db, notify_db_session):
@@ -51,23 +52,20 @@ def test_get_user(notify_api, notify_db, notify_db_session):
     another_user = create_sample_user(notify_db,
                                       notify_db_session,
                                       email=email)
-    assert get_model_users(user_id=another_user.id).email_address == email
+    assert get_user_by_id(user_id=another_user.id).email_address == email
 
 
 def test_get_user_not_exists(notify_api, notify_db, notify_db_session, fake_uuid):
     try:
-        get_model_users(user_id=fake_uuid)
+        get_user_by_id(user_id=fake_uuid)
         pytest.fail("NoResultFound exception not thrown.")
     except NoResultFound as e:
         pass
 
 
 def test_get_user_invalid_id(notify_api, notify_db, notify_db_session):
-    try:
-        get_model_users(user_id="blah")
-        pytest.fail("DataError exception not thrown.")
-    except DataError:
-        pass
+    with pytest.raises(DataError):
+        get_user_by_id(user_id="blah")
 
 
 def test_delete_users(notify_api, notify_db, notify_db_session, sample_user):
@@ -131,3 +129,17 @@ def make_verify_code(user, age=timedelta(hours=0), code="12335"):
     )
     db.session.add(verify_code)
     db.session.commit()
+
+
+@pytest.mark.parametrize('user_attribute, user_value', [
+    ('name', 'New User'),
+    ('email_address', 'newuser@mail.com'),
+    ('mobile_number', '+4407700900460')
+])
+def test_update_user_attribute(client, sample_user, user_attribute, user_value):
+    assert getattr(sample_user, user_attribute) != user_value
+    update_dict = {
+        user_attribute: user_value
+    }
+    save_user_attribute(sample_user, update_dict)
+    assert getattr(sample_user, user_attribute) == user_value
