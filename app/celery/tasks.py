@@ -150,12 +150,12 @@ def send_sms(self,
         )
 
     except SQLAlchemyError as e:
-        current_app.logger.exception("RETRY: send_sms notification {}".format(saved_notification.id), e)
+        current_app.logger.exception("RETRY: send_sms notification", e)
         try:
             raise self.retry(queue="retry", exc=e)
         except self.MaxRetriesExceededError:
             current_app.logger.exception(
-                "RETRY FAILED: task send_sms failed for notification {}".format(saved_notification.id),
+                "RETRY FAILED: task send_sms failed for notification",
                 e
             )
 
@@ -198,11 +198,11 @@ def send_email(self, service_id,
 
         current_app.logger.info("Email {} created at {}".format(saved_notification.id, created_at))
     except SQLAlchemyError as e:
-        current_app.logger.exception("RETRY: send_email notification {}".format(saved_notification.id), e)
+        current_app.logger.exception("RETRY: send_email notification", e)
         try:
             raise self.retry(queue="retry", exc=e)
         except self.MaxRetriesExceededError:
             current_app.logger.error(
-                "RETRY FAILED: task send_email failed for notification {}".format(saved_notification.id),
+                "RETRY FAILED: task send_email failed for notification",
                 e
             )
