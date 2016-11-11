@@ -132,7 +132,7 @@ class Config(object):
     STATSD_HOST = "statsd.hostedgraphite.com"
     STATSD_PORT = 8125
 
-    REDIS_ENABLED = True
+    REDIS_ENABLED = False
     REDIS_URL = "redis://localhost:6379/0"
 
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200
@@ -166,7 +166,6 @@ class Development(Config):
 
 
 class Test(Config):
-    REDIS_ENABLED = False
     NOTIFY_EMAIL_DOMAIN = 'test.notify.com'
     FROM_NUMBER = 'testing'
     NOTIFY_ENVIRONMENT = 'test'

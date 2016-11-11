@@ -28,6 +28,8 @@ from app.models import (
 )
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
+from app import redis_store
+from app.clients.redis import cache_key
 
 
 @notify_celery.task(name="process-job")
@@ -148,6 +150,8 @@ def send_sms(self,
                 "RETRY FAILED: task send_sms failed for notification {}".format(notification.id),
                 e
             )
+    else:
+        redis_store.inc(cache_key(service_id))
 
 
 @notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=300)
@@ -187,3 +191,5 @@ def send_email(self, service_id,
                 "RETRY FAILED: task send_email failed for notification {}".format(notification.id),
                 e
             )
+    else:
+        redis_store.inc(cache_key(service_id))
