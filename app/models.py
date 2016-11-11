@@ -538,56 +538,31 @@ class Notification(db.Model):
             self._personalisation = encryption.encrypt(personalisation)
 
     @classmethod
-    def from_api_request(
-            cls,
-            created_at,
-            notification,
-            notification_id,
-            service_id,
-            notification_type,
-            api_key_id,
-            key_type):
-        return cls(
-            id=notification_id,
-            template_id=notification['template'],
-            template_version=notification['template_version'],
-            to=notification['to'],
-            service_id=service_id,
-            job_id=notification.get('job', None),
-            job_row_number=notification.get('row_number', None),
-            status='created',
-            created_at=datetime.datetime.strptime(created_at, DATETIME_FORMAT),
-            personalisation=notification.get('personalisation'),
-            notification_type=notification_type,
-            api_key_id=api_key_id,
-            key_type=key_type
-        )
-
-    @classmethod
-    def from_v2_api_request(cls,
-                            template_id,
-                            template_version,
-                            recipient,
-                            service_id,
-                            personalisation,
-                            notification_type,
-                            api_key_id,
-                            key_type,
-                            job_id,
-                            job_row_number):
+    def from_request(cls,
+                     template_id,
+                     template_version,
+                     recipient,
+                     service_id,
+                     personalisation,
+                     notification_type,
+                     api_key_id,
+                     key_type,
+                     job_id,
+                     job_row_number,
+                     created_at):
         return cls(
             template_id=template_id,
             template_version=template_version,
             to=recipient,
             service_id=service_id,
             status='created',
-            created_at=datetime.datetime.utcnow(),
+            created_at=created_at,
             personalisation=personalisation,
             notification_type=notification_type,
             api_key_id=api_key_id,
             key_type=key_type,
             job_id=job_id,
-            job_row_number=job_row_number,
+            job_row_number=job_row_number
         )
 
 

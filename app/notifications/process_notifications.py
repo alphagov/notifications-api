@@ -1,7 +1,10 @@
+from datetime import datetime
+
 from flask import current_app
 from notifications_utils.renderers import PassThrough
 from notifications_utils.template import Template
 
+from app import DATETIME_FORMAT
 from app.celery import provider_tasks
 from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
 from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE
@@ -41,19 +44,22 @@ def persist_notification(template_id,
                          notification_type,
                          api_key_id,
                          key_type,
+                         created_at=None,
                          job_id=None,
                          job_row_number=None):
-    notification = Notification.from_v2_api_request(template_id=template_id,
-                                                    template_version=template_version,
-                                                    recipient=recipient,
-                                                    service_id=service_id,
-                                                    personalisation=personalisation,
-                                                    notification_type=notification_type,
-                                                    api_key_id=api_key_id,
-                                                    key_type=key_type,
-                                                    job_id=job_id,
-                                                    job_row_number=job_row_number
-                                                    )
+    notification = Notification.from_request(
+        template_id=template_id,
+        template_version=template_version,
+        recipient=recipient,
+        service_id=service_id,
+        personalisation=personalisation,
+        notification_type=notification_type,
+        api_key_id=api_key_id,
+        key_type=key_type,
+        created_at=created_at if created_at else datetime.utcnow().strftime(DATETIME_FORMAT),
+        job_id=job_id,
+        job_row_number=job_row_number
+    )
     dao_create_notification(notification)
     return notification
 

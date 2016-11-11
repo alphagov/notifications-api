@@ -17,11 +17,9 @@ from app.dao.jobs_dao import (
     dao_update_job,
     dao_get_job_by_id
 )
-from app.dao.notifications_dao import dao_create_notification
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
-    Notification,
     EMAIL_TYPE,
     SMS_TYPE,
     KEY_TYPE_NORMAL
@@ -140,6 +138,7 @@ def send_sms(self,
                              notification_type=SMS_TYPE,
                              api_key_id=api_key_id,
                              key_type=key_type,
+                             created_at=created_at,
                              job_id=notification.get('job', None),
                              job_row_number=notification.get('row_number', None),
                              )
@@ -189,8 +188,10 @@ def send_email(self, service_id,
             notification_type=EMAIL_TYPE,
             api_key_id=api_key_id,
             key_type=key_type,
+            created_at=created_at,
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
+
         )
 
         provider_tasks.deliver_email.apply_async(

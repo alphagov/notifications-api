@@ -3,7 +3,6 @@ import pytest
 from datetime import datetime
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm.exc import NoResultFound
 from app import (encryption, DATETIME_FORMAT)
 from app.celery import provider_tasks
 from app.celery import tasks
@@ -189,8 +188,6 @@ def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(noti
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
-    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
-    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
 
     process_job(job.id)
 
@@ -208,8 +205,6 @@ def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, not
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.send_email.apply_async')
-    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
-    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
 
     process_job(job.id)
 
@@ -562,11 +557,12 @@ def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     notification_id = uuid.uuid4()
+    now = datetime.utcnow()
     send_sms(
         sample_job.service.id,
         notification_id,
         encryption.encrypt(notification),
-        datetime.utcnow().strftime(DATETIME_FORMAT),
+        now.strftime(DATETIME_FORMAT),
         api_key_id=str(sample_api_key.id),
         key_type=KEY_TYPE_NORMAL
     )
@@ -581,7 +577,7 @@ def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_
     assert persisted_notification.template_id == sample_job.template.id
     assert persisted_notification.status == 'created'
     assert not persisted_notification.sent_at
-    assert persisted_notification.created_at <= datetime.utcnow()
+    assert persisted_notification.created_at <= now
     assert not persisted_notification.sent_by
     assert persisted_notification.job_row_number == 2
     assert persisted_notification.api_key_id == sample_api_key.id
@@ -673,7 +669,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template_with_placeholders.id
     assert persisted_notification.template_version == sample_email_template_with_placeholders.version
-    assert persisted_notification.created_at >= now
+    assert persisted_notification.created_at == now
     assert not persisted_notification.sent_at
     assert persisted_notification.status == 'created'
     assert not persisted_notification.sent_by
@@ -711,7 +707,7 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template.id
     assert persisted_notification.template_version == version_on_notification
-    assert persisted_notification.created_at >= now
+    assert persisted_notification.created_at == now
     assert not persisted_notification.sent_at
     assert persisted_notification.status == 'created'
     assert not persisted_notification.sent_by
@@ -739,7 +735,7 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template_with_placeholders.id
     assert persisted_notification.status == 'created'
-    assert persisted_notification.created_at >= now
+    assert persisted_notification.created_at == now
     assert not persisted_notification.sent_by
     assert persisted_notification.personalisation == {"name": "Jo"}
     assert not persisted_notification.reference
@@ -766,7 +762,7 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
     persisted_notification = Notification.query.all()[0]
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template.id
-    assert persisted_notification.created_at >= now
+    assert persisted_notification.created_at == now
     assert not persisted_notification.sent_at
     assert persisted_notification.status == 'created'
     assert not persisted_notification.sent_by

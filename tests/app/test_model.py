@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 
 import pytest
@@ -12,23 +13,20 @@ from app.models import (
 def test_should_build_notification_from_minimal_set_of_api_derived_params(notify_api):
     now = datetime.utcnow()
 
-    notification = {
-        'template': 'template',
-        'template_version': '1',
-        'to': 'someone',
-        'personalisation': {}
-    }
-    notification = Notification.from_api_request(
-        created_at=now.strftime(DATETIME_FORMAT),
-        notification=notification,
-        notification_id="notification_id",
-        service_id="service_id",
+    notification = Notification.from_request(
+        template_id='template',
+        template_version='1',
+        recipient='someone',
+        service_id='service_id',
         notification_type='SMS',
+        created_at=now,
         api_key_id='api_key_id',
-        key_type='key_type'
+        key_type='key_type',
+        personalisation={},
+        job_id=None,
+        job_row_number=None
     )
     assert notification.created_at == now
-    assert notification.id == "notification_id"
     assert notification.template_id == 'template'
     assert notification.template_version == '1'
     assert not notification.job_row_number
@@ -44,28 +42,22 @@ def test_should_build_notification_from_minimal_set_of_api_derived_params(notify
 
 def test_should_build_notification_from_full_set_of_api_derived_params(notify_api):
     now = datetime.utcnow()
-
-    notification = {
-        'template': 'template',
-        'template_version': '1',
-        'to': 'someone',
-        'personalisation': {'key': 'value'},
-        'job': 'job_id',
-        'row_number': 100
-    }
-    notification = Notification.from_api_request(
-        created_at=now.strftime(DATETIME_FORMAT),
-        notification=notification,
-        notification_id="notification_id",
-        service_id="service_id",
-        notification_type='SMS',
-        api_key_id='api_key_id',
-        key_type='key_type'
-    )
+    notification = Notification.from_request(template_id='template',
+                                             template_version=1,
+                                             recipient='someone',
+                                             service_id='service_id',
+                                             personalisation={'key': 'value'},
+                                             notification_type='SMS',
+                                             api_key_id='api_key_id',
+                                             key_type='key_type',
+                                             job_id='job_id',
+                                             job_row_number=100,
+                                             created_at=now
+                                             )
     assert notification.created_at == now
-    assert notification.id == "notification_id"
+    assert notification.id is None
     assert notification.template_id == 'template'
-    assert notification.template_version == '1'
+    assert notification.template_version == 1
     assert notification.job_row_number == 100
     assert notification.job_id == 'job_id'
     assert notification.to == 'someone'
