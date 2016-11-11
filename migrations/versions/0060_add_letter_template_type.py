@@ -1,7 +1,7 @@
 """empty message
 
 Revision ID: f266fb67597a
-Revises: 0058_add_letters_flag
+Revises: 0059_set_services_to_active
 Create Date: 2016-11-07 16:13:18.961527
 
 """
@@ -10,8 +10,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = '0059_add_letter_template_type'
-down_revision = '0058_add_letters_flag'
+revision = '0060_add_letter_template_type'
+down_revision = '0059_set_services_to_active'
 
 
 name = 'template_type'
