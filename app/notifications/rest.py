@@ -37,6 +37,7 @@ from app.schemas import (
 from app.service.utils import service_allowed_to_send_to
 from app.utils import pagination_links
 from app import redis_store
+from app.clients import redis
 
 notifications = Blueprint('notifications', __name__)
 
@@ -245,7 +246,7 @@ def send_notification(notification_type):
 
     notification_id = create_uuid() if saved_notification is None else saved_notification.id
     notification.update({"template_version": template.version})
-
+    redis_store.inc(redis.cache_key(service.id))
     return jsonify(
         data=get_notification_return_data(
             notification_id,
