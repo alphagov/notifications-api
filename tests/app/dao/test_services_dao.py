@@ -58,7 +58,6 @@ def test_create_service(sample_user):
     service = Service(name="service_name",
                       email_from="email_from",
                       message_limit=1000,
-                      active=True,
                       restricted=False,
                       created_by=sample_user)
     dao_create_service(service, sample_user)
@@ -68,7 +67,8 @@ def test_create_service(sample_user):
     assert service_db.name == "service_name"
     assert service_db.id == service.id
     assert service_db.branding == BRANDING_GOVUK
-    assert not service_db.research_mode
+    assert service_db.research_mode is False
+    assert service.active is True
     assert sample_user in service_db.users
 
 
@@ -77,14 +77,12 @@ def test_cannot_create_two_services_with_same_name(sample_user):
     service1 = Service(name="service_name",
                        email_from="email_from1",
                        message_limit=1000,
-                       active=True,
                        restricted=False,
                        created_by=sample_user)
 
     service2 = Service(name="service_name",
                        email_from="email_from2",
                        message_limit=1000,
-                       active=True,
                        restricted=False,
                        created_by=sample_user)
     with pytest.raises(IntegrityError) as excinfo:
@@ -98,13 +96,11 @@ def test_cannot_create_two_services_with_same_email_from(sample_user):
     service1 = Service(name="service_name1",
                        email_from="email_from",
                        message_limit=1000,
-                       active=True,
                        restricted=False,
                        created_by=sample_user)
     service2 = Service(name="service_name2",
                        email_from="email_from",
                        message_limit=1000,
-                       active=True,
                        restricted=False,
                        created_by=sample_user)
     with pytest.raises(IntegrityError) as excinfo:
@@ -118,7 +114,6 @@ def test_cannot_create_service_with_no_user(notify_db_session, sample_user):
     service = Service(name="service_name",
                       email_from="email_from",
                       message_limit=1000,
-                      active=True,
                       restricted=False,
                       created_by=sample_user)
     with pytest.raises(FlushError) as excinfo:
@@ -130,7 +125,6 @@ def test_should_add_user_to_service(sample_user):
     service = Service(name="service_name",
                       email_from="email_from",
                       message_limit=1000,
-                      active=True,
                       restricted=False,
                       created_by=sample_user)
     dao_create_service(service, sample_user)
@@ -150,7 +144,6 @@ def test_should_remove_user_from_service(sample_user):
     service = Service(name="service_name",
                       email_from="email_from",
                       message_limit=1000,
-                      active=True,
                       restricted=False,
                       created_by=sample_user)
     dao_create_service(service, sample_user)
@@ -244,7 +237,6 @@ def test_create_service_creates_a_history_record_with_current_data(sample_user):
     service = Service(name="service_name",
                       email_from="email_from",
                       message_limit=1000,
-                      active=True,
                       restricted=False,
                       created_by=sample_user)
     dao_create_service(service, sample_user)
@@ -270,7 +262,6 @@ def test_update_service_creates_a_history_record_with_current_data(sample_user):
     service = Service(name="service_name",
                       email_from="email_from",
                       message_limit=1000,
-                      active=True,
                       restricted=False,
                       created_by=sample_user)
     dao_create_service(service, sample_user)
@@ -299,7 +290,6 @@ def test_create_service_and_history_is_transactional(sample_user):
     service = Service(name=None,
                       email_from="email_from",
                       message_limit=1000,
-                      active=True,
                       restricted=False,
                       created_by=sample_user)
 
@@ -348,7 +338,6 @@ def test_add_existing_user_to_another_service_doesnot_change_old_permissions(sam
     service_one = Service(name="service_one",
                           email_from="service_one",
                           message_limit=1000,
-                          active=True,
                           restricted=False,
                           created_by=sample_user)
 
@@ -367,7 +356,6 @@ def test_add_existing_user_to_another_service_doesnot_change_old_permissions(sam
     service_two = Service(name="service_two",
                           email_from="service_two",
                           message_limit=1000,
-                          active=True,
                           restricted=False,
                           created_by=other_user)
     dao_create_service(service_two, other_user)
@@ -397,7 +385,6 @@ def test_fetch_stats_filters_on_service(sample_notification):
     service_two = Service(name="service_two",
                           created_by=sample_notification.service.created_by,
                           email_from="hello",
-                          active=False,
                           restricted=False,
                           message_limit=1000)
     dao_create_service(service_two, sample_notification.service.created_by)

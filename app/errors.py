@@ -10,7 +10,6 @@ from app.authentication.auth import AuthError
 
 class InvalidRequest(Exception):
     code = None
-    link = None
     fields = []
 
     def __init__(self, message, status_code):
@@ -26,10 +25,13 @@ class InvalidRequest(Exception):
         Version 2 of the public api error response.
         '''
         return {
-            "code": self.code,
-            "message": self.message,
-            "link": self.link,
-            "fields": self.fields
+            "status_code": self.status_code,
+            "errors": [
+                {
+                    "error": self.__class__.__name__,
+                    "message": self.message
+                }
+            ]
         }
 
     def __str__(self):

@@ -4,7 +4,7 @@ from datetime import datetime
 from flask import (jsonify, request, Blueprint, current_app)
 from app import encryption, DATETIME_FORMAT
 from app.dao.users_dao import (
-    get_model_users,
+    get_user_by_id,
     save_model_user,
     create_user_code,
     get_user_code,
@@ -12,7 +12,8 @@ from app.dao.users_dao import (
     increment_failed_login_count,
     reset_failed_login_count,
     get_user_by_email,
-    create_secret_code
+    create_secret_code,
+    save_user_attribute
 )
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -22,8 +23,10 @@ from app.schemas import (
     email_data_request_schema,
     user_schema,
     request_verify_code_schema,
+    permission_schema,
     user_schema_load_json,
-    permission_schema)
+    user_update_schema_load_json
+)
 
 from app.celery.tasks import (
     send_sms,
@@ -53,7 +56,7 @@ def create_user():
 
 @user.route('/<uuid:user_id>', methods=['PUT'])
 def update_user(user_id):
-    user_to_update = get_model_users(user_id=user_id)
+    user_to_update = get_user_by_id(user_id=user_id)
     req_json = request.get_json()
     update_dct, errors = user_schema_load_json.load(req_json)
     pwd = req_json.get('password', None)
@@ -66,9 +69,20 @@ def update_user(user_id):
     return jsonify(data=user_schema.dump(user_to_update).data), 200
 
 
+@user.route('/<uuid:user_id>', methods=['POST'])
+def update_user_attribute(user_id):
+    user_to_update = get_user_by_id(user_id=user_id)
+    req_json = request.get_json()
+    update_dct, errors = user_update_schema_load_json.load(req_json)
+    if errors:
+        raise InvalidRequest(errors, status_code=400)
+    save_user_attribute(user_to_update, update_dict=update_dct)
+    return jsonify(data=user_schema.dump(user_to_update).data), 200
+
+
 @user.route('/<uuid:user_id>/verify/password', methods=['POST'])
 def verify_user_password(user_id):
-    user_to_verify = get_model_users(user_id=user_id)
+    user_to_verify = get_user_by_id(user_id=user_id)
 
     txt_pwd = None
     try:
@@ -92,7 +106,7 @@ def verify_user_password(user_id):
 
 @user.route('/<uuid:user_id>/verify/code', methods=['POST'])
 def verify_user_code(user_id):
-    user_to_verify = get_model_users(user_id=user_id)
+    user_to_verify = get_user_by_id(user_id=user_id)
 
     txt_code = None
     resp_json = request.get_json()
@@ -120,7 +134,7 @@ def verify_user_code(user_id):
 
 @user.route('/<uuid:user_id>/sms-code', methods=['POST'])
 def send_user_sms_code(user_id):
-    user_to_send_to = get_model_users(user_id=user_id)
+    user_to_send_to = get_user_by_id(user_id=user_id)
     verify_code, errors = request_verify_code_schema.load(request.get_json())
 
     secret_code = create_secret_code()
@@ -149,7 +163,7 @@ def send_user_sms_code(user_id):
 
 @user.route('/<uuid:user_id>/change-email-verification', methods=['POST'])
 def send_user_confirm_new_email(user_id):
-    user_to_send_to = get_model_users(user_id=user_id)
+    user_to_send_to = get_user_by_id(user_id=user_id)
     email, errors = email_data_request_schema.load(request.get_json())
     if errors:
         raise InvalidRequest(message=errors, status_code=400)
@@ -178,7 +192,7 @@ def send_user_confirm_new_email(user_id):
 
 @user.route('/<uuid:user_id>/email-verification', methods=['POST'])
 def send_user_email_verification(user_id):
-    user_to_send_to = get_model_users(user_id=user_id)
+    user_to_send_to = get_user_by_id(user_id=user_id)
     secret_code = create_secret_code()
     create_user_code(user_to_send_to, secret_code, 'email')
 
@@ -230,7 +244,7 @@ def send_already_registered_email(user_id):
 @user.route('/<uuid:user_id>', methods=['GET'])
 @user.route('', methods=['GET'])
 def get_user(user_id=None):
-    users = get_model_users(user_id=user_id)
+    users = get_user_by_id(user_id=user_id)
     result = user_schema.dump(users, many=True) if isinstance(users, list) else user_schema.dump(users)
     return jsonify(data=result.data)
 
@@ -239,7 +253,7 @@ def get_user(user_id=None):
 def set_permissions(user_id, service_id):
     # TODO fix security hole, how do we verify that the user
     # who is making this request has permission to make the request.
-    user = get_model_users(user_id=user_id)
+    user = get_user_by_id(user_id=user_id)
     service = dao_fetch_service_by_id(service_id=service_id)
     permissions, errors = permission_schema.load(request.get_json(), many=True)
 

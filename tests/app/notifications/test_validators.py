@@ -28,7 +28,6 @@ def test_check_service_message_limit_over_message_limit_fails(key_type, notify_d
     with pytest.raises(TooManyRequestsError) as e:
         check_service_message_limit(key_type, service)
     assert e.value.status_code == 429
-    assert e.value.code == '10429'
     assert e.value.message == 'Exceeded send limits (4) for today'
     assert e.value.fields == []
 
@@ -49,10 +48,9 @@ def test_check_template_is_for_notification_type_fails_when_template_type_does_n
     with pytest.raises(BadRequestError) as e:
         check_template_is_for_notification_type(notification_type=notification_type,
                                                 template_type=template_type)
-    assert e.value.code == 10400
+    assert e.value.status_code == 400
     error_message = '{0} template is not suitable for {1} notification'.format(template_type, notification_type)
     assert e.value.message == error_message
-    assert e.value.link == 'link to documentation'
     assert e.value.fields == [{'template': error_message}]
 
 
@@ -67,9 +65,7 @@ def test_check_template_is_active_fails(sample_template):
     with pytest.raises(BadRequestError) as e:
         check_template_is_active(sample_template)
     assert e.value.status_code == 400
-    assert e.value.code == 10400
     assert e.value.message == 'Template has been deleted'
-    assert e.value.link == "link to documentation"
     assert e.value.fields == [{'template': 'Template has been deleted'}]
 
 
@@ -122,9 +118,7 @@ def test_service_can_send_to_recipient_fails_when_recipient_is_not_on_team(recip
                                       key_type,
                                       trial_mode_service)
     assert exec_info.value.status_code == 400
-    assert exec_info.value.code == 10400
     assert exec_info.value.message == error_message
-    assert exec_info.value.link == 'link to documentation'
     assert exec_info.value.fields == []
 
 
@@ -135,9 +129,7 @@ def test_service_can_send_to_recipient_fails_when_mobile_number_is_not_on_team(n
                                       'team',
                                       live_service)
     assert e.value.status_code == 400
-    assert e.value.code == 10400
     assert e.value.message == 'Can’t send to this recipient using a team-only API key'
-    assert e.value.link == 'link to documentation'
     assert e.value.fields == []
 
 
@@ -151,8 +143,6 @@ def test_check_sms_content_char_count_fails(char_count, notify_api):
     with pytest.raises(BadRequestError) as e:
         check_sms_content_char_count(char_count)
     assert e.value.status_code == 400
-    assert e.value.code == 10400
     assert e.value.message == 'Content for template has a character count greater than the limit of {}'.format(
         notify_api.config['SMS_CHAR_COUNT_LIMIT'])
-    assert e.value.link == 'link to documentation'
     assert e.value.fields == []

@@ -11,8 +11,8 @@ from app.dao.services_dao import dao_remove_user_from_service
 from app.models import User, Organisation
 from tests import create_authorization_header
 from tests.app.conftest import (
-    sample_service as create_sample_service,
-    sample_service_permission as create_sample_service_permission,
+    sample_service as create_service,
+    sample_service_permission as create_service_permission,
     sample_user as create_sample_user,
     sample_notification as create_sample_notification,
     sample_notification_with_job)
@@ -22,9 +22,9 @@ from app.models import KEY_TYPE_TEST
 def test_get_service_list(notify_api, service_factory):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            service_factory.get('one', email_from='one')
-            service_factory.get('two', email_from='two')
-            service_factory.get('three', email_from='three')
+            service_factory.get('one')
+            service_factory.get('two')
+            service_factory.get('three')
             auth_header = create_authorization_header()
             response = client.get(
                 '/service',
@@ -38,50 +38,84 @@ def test_get_service_list(notify_api, service_factory):
             assert json_resp['data'][2]['name'] == 'three'
 
 
-def test_get_service_list_by_user(notify_api, sample_user, service_factory):
+def test_get_service_list_with_only_active_flag(client, service_factory):
+    inactive = service_factory.get('one')
+    active = service_factory.get('two')
 
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            service_factory.get('one', sample_user, email_from='one')
-            service_factory.get('two', sample_user, email_from='two')
-            service_factory.get('three', sample_user, email_from='three')
+    inactive.active = False
 
-            auth_header = create_authorization_header()
-            response = client.get(
-                '/service?user_id='.format(sample_user.id),
-                headers=[auth_header]
-            )
-            json_resp = json.loads(response.get_data(as_text=True))
-            assert response.status_code == 200
-            assert len(json_resp['data']) == 3
-            assert json_resp['data'][0]['name'] == 'one'
-            assert json_resp['data'][1]['name'] == 'two'
-            assert json_resp['data'][2]['name'] == 'three'
+    auth_header = create_authorization_header()
+    response = client.get(
+        '/service?only_active=True',
+        headers=[auth_header]
+    )
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert len(json_resp['data']) == 1
+    assert json_resp['data'][0]['id'] == str(active.id)
 
 
-def test_get_service_list_by_user_should_return_empty_list_if_no_services(notify_api, service_factory, sample_user):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            new_user = User(
-                name='Test User',
-                email_address='new_user@digital.cabinet-office.gov.uk',
-                password='password',
-                mobile_number='+447700900986'
-            )
-            save_model_user(new_user)
+def test_get_service_list_with_user_id_and_only_active_flag(
+    notify_db,
+    notify_db_session,
+    client,
+    sample_user,
+    service_factory
+):
+    other_user = create_sample_user(notify_db, notify_db_session, email='foo@bar.gov.uk')
 
-            service_factory.get('one', sample_user, email_from='one')
-            service_factory.get('two', sample_user, email_from='two')
-            service_factory.get('three', sample_user, email_from='three')
+    inactive = service_factory.get('one', user=sample_user)
+    active = service_factory.get('two', user=sample_user)
+    from_other_user = service_factory.get('three', user=other_user)
 
-            auth_header = create_authorization_header()
-            response = client.get(
-                '/service?user_id={}'.format(new_user.id),
-                headers=[auth_header]
-            )
-            json_resp = json.loads(response.get_data(as_text=True))
-            assert response.status_code == 200
-            assert len(json_resp['data']) == 0
+    inactive.active = False
+
+    auth_header = create_authorization_header()
+    response = client.get(
+        '/service?user_id={}&only_active=True'.format(sample_user.id),
+        headers=[auth_header]
+    )
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert len(json_resp['data']) == 1
+    assert json_resp['data'][0]['id'] == str(active.id)
+
+
+def test_get_service_list_by_user(notify_db, notify_db_session, client, sample_user, service_factory):
+    other_user = create_sample_user(notify_db, notify_db_session, email='foo@bar.gov.uk')
+    service_factory.get('one', sample_user)
+    service_factory.get('two', sample_user)
+    service_factory.get('three', other_user)
+
+    auth_header = create_authorization_header()
+    response = client.get(
+        '/service?user_id={}'.format(sample_user.id),
+        headers=[auth_header]
+    )
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 200
+    assert len(json_resp['data']) == 2
+    assert json_resp['data'][0]['name'] == 'one'
+    assert json_resp['data'][1]['name'] == 'two'
+
+
+def test_get_service_list_by_user_should_return_empty_list_if_no_services(
+    notify_db,
+    notify_db_session,
+    client,
+    sample_service
+):
+    # service is already created by sample user
+    new_user = create_sample_user(notify_db, notify_db_session, email='foo@bar.gov.uk')
+
+    auth_header = create_authorization_header()
+    response = client.get(
+        '/service?user_id={}'.format(new_user.id),
+        headers=[auth_header]
+    )
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 200
+    assert len(json_resp['data']) == 0
 
 
 def test_get_service_list_should_return_empty_list_if_no_services(notify_api, notify_db, notify_db_session):
@@ -132,7 +166,7 @@ def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
 def test_get_service_by_id_and_user(notify_api, service_factory, sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            service = service_factory.get('new service', sample_user, email_from='new.service')
+            service = service_factory.get('new.service', sample_user)
             auth_header = create_authorization_header()
             resp = client.get(
                 '/service/{}?user_id={}'.format(service.id, sample_user.id),
@@ -285,7 +319,6 @@ def test_should_not_create_service_if_missing_data(notify_api, sample_user):
             assert resp.status_code == 400
             assert json_resp['result'] == 'error'
             assert 'Missing data for required field.' in json_resp['message']['name']
-            assert 'Missing data for required field.' in json_resp['message']['active']
             assert 'Missing data for required field.' in json_resp['message']['message_limit']
             assert 'Missing data for required field.' in json_resp['message']['restricted']
 
@@ -446,7 +479,7 @@ def test_should_not_update_service_with_duplicate_name(notify_api,
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service_name = "another name"
-            service = create_sample_service(
+            service = create_service(
                 notify_db,
                 notify_db_session,
                 service_name=service_name,
@@ -479,7 +512,7 @@ def test_should_not_update_service_with_duplicate_email_from(notify_api,
         with notify_api.test_client() as client:
             email_from = "duplicate.name"
             service_name = "duplicate name"
-            service = create_sample_service(
+            service = create_service(
                 notify_db,
                 notify_db_session,
                 service_name=service_name,
@@ -915,7 +948,7 @@ def test_remove_user_from_service(notify_api, notify_db, notify_db_session, samp
                 notify_db_session,
                 email="new@digital.cabinet-office.gov.uk")
             # Simulates successfully adding a user to the service
-            second_permission = create_sample_service_permission(
+            second_permission = create_service_permission(
                 notify_db,
                 notify_db_session,
                 user=second_user)
@@ -1019,8 +1052,8 @@ def test_set_reply_to_email_for_service(notify_api, sample_service):
 
 def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context(), notify_api.test_client() as client:
-        service_1 = create_sample_service(notify_db, notify_db_session, service_name="1", email_from='1')
-        service_2 = create_sample_service(notify_db, notify_db_session, service_name="2", email_from='2')
+        service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
+        service_2 = create_service(notify_db, notify_db_session, service_name="2", email_from='2')
 
         create_sample_notification(notify_db, notify_db_session, service=service_2)
 
@@ -1240,8 +1273,8 @@ def test_get_services_with_detailed_flag(notify_api, notify_db, notify_db_sessio
 def test_get_detailed_services_groups_by_service(notify_db, notify_db_session):
     from app.service.rest import get_detailed_services
 
-    service_1 = create_sample_service(notify_db, notify_db_session, service_name="1", email_from='1')
-    service_2 = create_sample_service(notify_db, notify_db_session, service_name="2", email_from='2')
+    service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
+    service_2 = create_service(notify_db, notify_db_session, service_name="2", email_from='2')
 
     create_sample_notification(notify_db, notify_db_session, service=service_1, status='created')
     create_sample_notification(notify_db, notify_db_session, service=service_2, status='created')
@@ -1267,8 +1300,8 @@ def test_get_detailed_services_groups_by_service(notify_db, notify_db_session):
 def test_get_detailed_services_includes_services_with_no_notifications(notify_db, notify_db_session):
     from app.service.rest import get_detailed_services
 
-    service_1 = create_sample_service(notify_db, notify_db_session, service_name="1", email_from='1')
-    service_2 = create_sample_service(notify_db, notify_db_session, service_name="2", email_from='2')
+    service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
+    service_2 = create_service(notify_db, notify_db_session, service_name="2", email_from='2')
 
     create_sample_notification(notify_db, notify_db_session, service=service_1)
 
