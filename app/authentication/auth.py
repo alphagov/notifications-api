@@ -16,10 +16,15 @@ class AuthError(Exception):
         self.code = code
 
     def to_dict_v2(self):
-        return {'code': self.code,
-                'message': self.short_message,
-                'fields': self.message,
-                'link': 'link to docs'}
+        return {
+            'status_code': self.code,
+            "errors": [
+                {
+                    "error": "AuthError",
+                    "message": self.short_message
+                }
+            ]
+        }
 
 
 def get_auth_token(req):
