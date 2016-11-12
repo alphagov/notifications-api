@@ -15,7 +15,7 @@ def check_service_message_limit(key_type, service):
         if not service_stats:
             service_stats = services_dao.fetch_todays_total_message_count(service.id)
             redis_store.set(cache_key, service_stats, ex=3600)
-        if service_stats >= service.message_limit:
+        if int(service_stats) >= service.message_limit:
             raise TooManyRequestsError(service.message_limit)
 
 

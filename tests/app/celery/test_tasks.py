@@ -339,7 +339,7 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
                                           to="+447234123123", personalisation={"name": "Jo"})
 
         mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-        redis_mock = mocker.patch('app.celery.tasks.redis_store.inc')
+        redis_mock = mocker.patch('app.celery.tasks.redis_store.incr')
 
         notification_id = uuid.uuid4()
 
@@ -532,7 +532,7 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
 
 
 def test_should_not_not_increment_counter_if_not_sending_sms(notify_db, notify_db_session, mocker):
-    redis_mock = mocker.patch('app.celery.tasks.redis_store.inc')
+    redis_mock = mocker.patch('app.celery.tasks.redis_store.incr')
 
     user = sample_user(notify_db, notify_db_session)
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
@@ -553,7 +553,7 @@ def test_should_not_not_increment_counter_if_not_sending_sms(notify_db, notify_d
 
 
 def test_should_not_not_increment_counter_if_not_sending_email(notify_db, notify_db_session, mocker):
-    redis_mock = mocker.patch('app.celery.tasks.redis_store.inc')
+    redis_mock = mocker.patch('app.celery.tasks.redis_store.incr')
 
     user = sample_user(notify_db, notify_db_session)
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
@@ -701,7 +701,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
             {"name": "Jo"},
             row_number=1)
         mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-        redis_mock = mocker.patch('app.celery.tasks.redis_store.inc')
+        redis_mock = mocker.patch('app.celery.tasks.redis_store.incr')
 
         notification_id = uuid.uuid4()
 

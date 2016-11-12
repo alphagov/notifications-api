@@ -32,10 +32,10 @@ def test_should_not_raise_exception_if_raise_set_to_false(notify_api):
     redis_client.init_app(notify_api)
     redis_client.redis_store.get = Mock(side_effect=Exception())
     redis_client.redis_store.set = Mock(side_effect=Exception())
-    redis_client.redis_store.inc = Mock(side_effect=Exception())
+    redis_client.redis_store.incr = Mock(side_effect=Exception())
     assert redis_client.get('test') is None
     assert redis_client.set('test', 'test') is None
-    assert redis_client.inc('test')is None
+    assert redis_client.incr('test') is None
 
 
 def test_should_raise_exception_if_raise_set_to_true(notify_api):
@@ -44,7 +44,7 @@ def test_should_raise_exception_if_raise_set_to_true(notify_api):
     redis_client.init_app(notify_api)
     redis_client.redis_store.get = Mock(side_effect=Exception('get failed'))
     redis_client.redis_store.set = Mock(side_effect=Exception('set failed'))
-    redis_client.redis_store.inc = Mock(side_effect=Exception('inc failed'))
+    redis_client.redis_store.incr = Mock(side_effect=Exception('inc failed'))
     with pytest.raises(Exception) as e:
         redis_client.get('test', raise_exception=True)
     assert str(e.value) == 'get failed'
@@ -52,7 +52,7 @@ def test_should_raise_exception_if_raise_set_to_true(notify_api):
         redis_client.set('test', 'test', raise_exception=True)
     assert str(e.value) == 'set failed'
     with pytest.raises(Exception) as e:
-        redis_client.inc('test', raise_exception=True)
+        redis_client.incr('test', raise_exception=True)
     assert str(e.value) == 'inc failed'
 
 

@@ -21,10 +21,10 @@ class RedisClient:
                 if raise_exception:
                     raise e
 
-    def inc(self, key, raise_exception=False):
+    def incr(self, key, raise_exception=False):
         if self.active:
             try:
-                return self.redis_store.inc(key)
+                return self.redis_store.incr(key)
             except Exception as e:
                 current_app.logger.exception(e)
                 if raise_exception:

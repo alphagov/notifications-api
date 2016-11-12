@@ -35,7 +35,7 @@ def test_should_increment_redis_cache_on_successful_email(
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocked_email = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-            mocked_redis = mocker.patch('app.notifications.rest.redis_store.inc')
+            mocked_redis = mocker.patch('app.notifications.rest.redis_store.incr')
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             data = {
@@ -69,7 +69,7 @@ def test_should_increment_redis_cache_on_successful_sms(
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocked_sms = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-            mocked_redis = mocker.patch('app.notifications.rest.redis_store.inc')
+            mocked_redis = mocker.patch('app.notifications.rest.redis_store.incr')
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             data = {
@@ -108,7 +108,7 @@ def test_should_not_increment_cache_on_failure(
             'app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type),
             side_effect=Exception("failed to talk to SQS")
         )
-        mocked_redis = mocker.patch('app.notifications.rest.redis_store.inc')
+        mocked_redis = mocker.patch('app.notifications.rest.redis_store.incr')
         mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
         template = sample_template if template_type == 'sms' else sample_email_template
         to = sample_template.service.created_by.mobile_number if template_type == 'sms' \

@@ -151,7 +151,7 @@ def send_sms(self,
                 e
             )
     else:
-        redis_store.inc(cache_key(service_id))
+        redis_store.incr(cache_key(service_id))
 
 
 @notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=300)
@@ -192,4 +192,4 @@ def send_email(self, service_id,
                 e
             )
     else:
-        redis_store.inc(cache_key(service_id))
+        redis_store.incr(cache_key(service_id))
