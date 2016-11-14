@@ -86,10 +86,12 @@ def dao_deactive_service(service_id):
     service.email_from = '_archived_' + service.email_from
 
     for template in service.templates:
-        template.archived = True
+        if not template.archived:
+            template.archived = True
 
     for api_key in service.api_keys:
-        api_key.expiry_date = datetime.utcnow()
+        if not api_key.expiry_date:
+            api_key.expiry_date = datetime.utcnow()
 
 
 def dao_fetch_service_by_id_and_user(service_id, user_id):
