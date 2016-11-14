@@ -742,8 +742,7 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
         encryption.encrypt(notification),
         now.strftime(DATETIME_FORMAT)
     )
-    assert Notification.query.count() == 1
-    persisted_notification = Notification.query.all()[0]
+    persisted_notification = Notification.query.one()
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template.id
     assert persisted_notification.created_at == now
