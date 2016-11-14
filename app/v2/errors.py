@@ -1,6 +1,7 @@
 import json
 from flask import jsonify, current_app
 from jsonschema import ValidationError
+from notifications_utils.recipients import InvalidPhoneError
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 from app.authentication.auth import AuthError
@@ -46,6 +47,12 @@ def register_errors(blueprint):
     @blueprint.errorhandler(AuthError)
     def auth_error(error):
         return jsonify(error.to_dict_v2()), error.code
+
+    @blueprint.errorhandler(InvalidPhoneError)
+    def invalid_phone_error(error):
+        current_app.logger.exception(error)
+        return jsonify(status_code=400,
+                       errors=[{"error": error.__class__.__name__, "message": error.message}]), 400
 
     @blueprint.errorhandler(Exception)
     def internal_server_error(error):

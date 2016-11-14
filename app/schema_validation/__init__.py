@@ -1,10 +1,21 @@
 import json
 
-from jsonschema import Draft4Validator, ValidationError
+from jsonschema import (Draft4Validator, ValidationError, FormatChecker)
+from notifications_utils.recipients import (validate_phone_number, validate_email_address)
 
 
 def validate(json_to_validate, schema):
-    validator = Draft4Validator(schema)
+    format_checker = FormatChecker()
+
+    @format_checker.checks('phone_number')
+    def validate_schema_phone_number(instance):
+        return validate_phone_number(instance)
+
+    @format_checker.checks('email_address')
+    def validate_schema_email_address(instance):
+        return validate_email_address(instance)
+
+    validator = Draft4Validator(schema, format_checker=format_checker)
     errors = list(validator.iter_errors(json_to_validate))
     if errors.__len__() > 0:
         raise ValidationError(build_error_message(errors, schema))

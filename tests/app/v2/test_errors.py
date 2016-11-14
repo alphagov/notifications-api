@@ -1,6 +1,7 @@
 import json
 import pytest
 from flask import url_for
+from notifications_utils.recipients import InvalidPhoneError
 from sqlalchemy.exc import DataError
 
 
@@ -38,6 +39,10 @@ def app_for_test(mocker):
     @blue.route("raise_data_error", methods=["GET"])
     def raising_data_error():
         raise DataError("There was a db problem", "params", "orig")
+
+    @blue.route("raise_phone_error", methods=["GET"])
+    def raising_invalid_phone_error():
+        raise InvalidPhoneError("The phone number is wrong")
 
     @blue.route("raise_exception", methods=["GET"])
     def raising_exception():
@@ -116,3 +121,13 @@ def test_internal_server_error_handler(app_for_test):
             error = json.loads(response.get_data(as_text=True))
             assert error == {"status_code": 500,
                              "errors": [{"error": "AssertionError", "message": "Internal server error"}]}
+
+
+def test_invalid_phone_error_handler(app_for_test):
+    with app_for_test.test_request_context():
+        with app_for_test.test_client() as client:
+            response = client.get(url_for("v2_under_test.raising_invalid_phone_error"))
+            assert response.status_code == 400
+            error = json.loads(response.get_data(as_text=True))
+            assert error == {"status_code": 400,
+                             "errors": [{"error": "InvalidPhoneError", "message": "The phone number is wrong"}]}
