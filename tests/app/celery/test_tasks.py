@@ -339,8 +339,7 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
         datetime.utcnow().strftime(DATETIME_FORMAT)
     )
 
-    assert Notification.query.count() == 1
-    persisted_notification = Notification.query.all()[0]
+    persisted_notification = Notification.query.one()
     assert persisted_notification.to == '+447234123123'
     assert persisted_notification.template_id == sample_template_with_placeholders.id
     assert persisted_notification.template_version == sample_template_with_placeholders.version
@@ -377,8 +376,7 @@ def test_should_put_send_sms_task_in_research_mode_queue_if_research_mode_servic
         encryption.encrypt(notification),
         datetime.utcnow().strftime(DATETIME_FORMAT)
     )
-    assert Notification.query.count() == 1
-    persisted_notification = Notification.query.all()[0]
+    persisted_notification = Notification.query.one()
     provider_tasks.deliver_sms.apply_async.assert_called_once_with(
         [persisted_notification.id],
         queue="research-mode"
@@ -392,7 +390,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
     template = sample_template(notify_db, notify_db_session, service=service)
     notification = _notification_json(template, "+447700900890")  # The user’s own number, but in a different format
 
-    mocked_deliver_sms = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     notification_id = uuid.uuid4()
     encrypt_notification = encryption.encrypt(notification)
@@ -403,8 +401,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
         datetime.utcnow().strftime(DATETIME_FORMAT)
     )
 
-    assert Notification.query.count() == 1
-    persisted_notification = Notification.query.all()[0]
+    persisted_notification = Notification.query.one()
     assert persisted_notification.to == '+447700900890'
     assert persisted_notification.template_id == template.id
     assert persisted_notification.template_version == template.version
@@ -440,8 +437,7 @@ def test_should_send_sms_if_restricted_service_and_non_team_number_with_test_key
         key_type=KEY_TYPE_TEST
     )
 
-    assert Notification.query.count() == 1
-    persisted_notification = Notification.query.all()[0]
+    persisted_notification = Notification.query.one()
     mocked_deliver_sms.assert_called_once_with(
         [persisted_notification.id],
         queue="send-sms"
@@ -469,8 +465,7 @@ def test_should_send_email_if_restricted_service_and_non_team_email_address_with
         key_type=KEY_TYPE_TEST
     )
 
-    assert Notification.query.count() == 1
-    persisted_notification = Notification.query.all()[0]
+    persisted_notification = Notification.query.one()
     mocked_deliver_email.assert_called_once_with(
         [persisted_notification.id],
         queue="send-email"
@@ -537,8 +532,7 @@ def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_serv
         datetime.utcnow().strftime(DATETIME_FORMAT)
     )
 
-    assert Notification.query.count() == 1
-    persisted_notification = Notification.query.all()[0]
+    persisted_notification = Notification.query.one()
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
         [persisted_notification.id],
         queue="research-mode"
@@ -563,8 +557,7 @@ def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_
         api_key_id=str(sample_api_key.id),
         key_type=KEY_TYPE_NORMAL
     )
-    assert Notification.query.count() == 1
-    persisted_notification = Notification.query.all()[0]
+    persisted_notification = Notification.query.one()
     assert persisted_notification.to == '+447234123123'
     assert persisted_notification.job_id == sample_job.id
     assert persisted_notification.template_id == sample_job.template.id
@@ -660,8 +653,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
             key_type=sample_api_key.key_type
         )
 
-    assert Notification.query.count() == 1
-    persisted_notification = Notification.query.all()[0]
+    persisted_notification = Notification.query.one()
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template_with_placeholders.id
     assert persisted_notification.template_version == sample_email_template_with_placeholders.version
@@ -698,8 +690,7 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
         now.strftime(DATETIME_FORMAT)
     )
 
-    assert Notification.query.count() == 1
-    persisted_notification = Notification.query.all()[0]
+    persisted_notification = Notification.query.one()
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template.id
     assert persisted_notification.template_version == version_on_notification
@@ -724,8 +715,7 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
         encryption.encrypt(notification),
         now.strftime(DATETIME_FORMAT)
     )
-    assert Notification.query.count() == 1
-    persisted_notification = Notification.query.all()[0]
+    persisted_notification = Notification.query.one()
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template_with_placeholders.id
     assert persisted_notification.status == 'created'
@@ -742,8 +732,6 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
 def test_should_use_email_template_and_persist_without_personalisation(sample_email_template, mocker):
     notification = _notification_json(sample_email_template, "my_email@my_email.com")
     mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-
-    assert Notification.query.count() == 0
 
     notification_id = uuid.uuid4()
 

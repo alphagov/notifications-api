@@ -537,34 +537,6 @@ class Notification(db.Model):
         if personalisation:
             self._personalisation = encryption.encrypt(personalisation)
 
-    @classmethod
-    def from_request(cls,
-                     template_id,
-                     template_version,
-                     recipient,
-                     service_id,
-                     personalisation,
-                     notification_type,
-                     api_key_id,
-                     key_type,
-                     job_id,
-                     job_row_number,
-                     created_at):
-        return cls(
-            template_id=template_id,
-            template_version=template_version,
-            to=recipient,
-            service_id=service_id,
-            status='created',
-            created_at=created_at,
-            personalisation=personalisation,
-            notification_type=notification_type,
-            api_key_id=api_key_id,
-            key_type=key_type,
-            job_id=job_id,
-            job_row_number=job_row_number
-        )
-
 
 class NotificationHistory(db.Model):
     __tablename__ = 'notification_history'

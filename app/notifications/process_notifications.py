@@ -47,10 +47,10 @@ def persist_notification(template_id,
                          created_at=None,
                          job_id=None,
                          job_row_number=None):
-    notification = Notification.from_request(
+    notification = Notification(
         template_id=template_id,
         template_version=template_version,
-        recipient=recipient,
+        to=recipient,
         service_id=service_id,
         personalisation=personalisation,
         notification_type=notification_type,
