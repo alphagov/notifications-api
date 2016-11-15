@@ -117,6 +117,7 @@ def send_sms(self,
              created_at,
              api_key_id=None,
              key_type=KEY_TYPE_NORMAL):
+    # notification_id is not used, it is created by the db model object
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
@@ -150,14 +151,15 @@ def send_sms(self,
         )
 
     except SQLAlchemyError as e:
-        current_app.logger.exception("RETRY: send_sms notification", e)
+        current_app.logger.exception(
+            "RETRY: send_sms notification for job {} row number {}".format(notification.get('job', None),
+                                                                           notification.get('row_number', None)), e)
         try:
             raise self.retry(queue="retry", exc=e)
         except self.MaxRetriesExceededError:
             current_app.logger.exception(
-                "RETRY FAILED: task send_sms failed for notification",
-                e
-            )
+                "RETRY FAILED: task send_sms failed for notification".format(notification.get('job', None),
+                                                                             notification.get('row_number', None)), e)
 
 
 @notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=300)
@@ -168,6 +170,7 @@ def send_email(self, service_id,
                created_at,
                api_key_id=None,
                key_type=KEY_TYPE_NORMAL):
+    # notification_id is not used, it is created by the db model object
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
@@ -198,11 +201,11 @@ def send_email(self, service_id,
 
         current_app.logger.info("Email {} created at {}".format(saved_notification.id, created_at))
     except SQLAlchemyError as e:
-        current_app.logger.exception("RETRY: send_email notification", e)
+        current_app.logger.exception("RETRY: send_email notification".format(notification.get('job', None),
+                                                                             notification.get('row_number', None)), e)
         try:
             raise self.retry(queue="retry", exc=e)
         except self.MaxRetriesExceededError:
             current_app.logger.error(
-                "RETRY FAILED: task send_email failed for notification",
-                e
-            )
+                "RETRY FAILED: task send_email failed for notification".format(notification.get('job', None),
+                                                                               notification.get('row_number', None)), e)
