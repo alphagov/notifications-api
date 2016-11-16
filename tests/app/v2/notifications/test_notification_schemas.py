@@ -57,13 +57,24 @@ def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
 
 
 @pytest.mark.parametrize('invalid_phone_number',
-                         ['notaphoneumber', '08515111111', '07515111*11'])
+                         ['08515111111', '07515111*11', 'notaphoneumber'])
 def test_post_sms_request_invalid_phone_number(invalid_phone_number):
     j = {"phone_number": invalid_phone_number,
          "template_id": str(uuid.uuid4())
          }
-    with pytest.raises(InvalidPhoneError):
+    with pytest.raises(ValidationError):
         validate(j, post_sms_request)
+
+
+def test_post_sms_request_invalid_phone_number_and_missing_template():
+    j = {"phone_number": '08515111111',
+         }
+    with pytest.raises(ValidationError) as e:
+        validate(j, post_sms_request)
+    error = json.loads(e.value.message)
+    print(error)
+    assert len(error.get('errors')) == 2
+
 
 valid_response = {
     "id": str(uuid.uuid4()),
@@ -106,7 +117,7 @@ def test_post_sms_response_schema_missing_uri():
 valid_post_email_json = {"email_address": "test@example.gov.uk",
                          "template_id": str(uuid.uuid4())
                          }
-valid_post_emaiL_json_with_optionals = {
+valid_post_email_json_with_optionals = {
     "email_address": "test@example.gov.uk",
     "template_id": str(uuid.uuid4()),
     "reference": "reference from caller",
@@ -114,7 +125,7 @@ valid_post_emaiL_json_with_optionals = {
 }
 
 
-@pytest.mark.parametrize("input", [valid_post_email_json, valid_post_emaiL_json_with_optionals])
+@pytest.mark.parametrize("input", [valid_post_email_json, valid_post_email_json_with_optionals])
 def test_post_email_schema_is_valid(input):
     assert validate(input, post_email_request) == input
 
@@ -128,7 +139,7 @@ def test_post_email_schema_bad_uuid_and_missing_email_address():
 def test_post_email_schema_invalid_email_address():
     j = {"template_id": str(uuid.uuid4()),
          "email_address": "notavalidemail@address"}
-    with pytest.raises(InvalidEmailError):
+    with pytest.raises(ValidationError):
         validate(j, post_email_request)
 
 

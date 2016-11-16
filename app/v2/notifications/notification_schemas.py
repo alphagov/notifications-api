@@ -80,7 +80,7 @@ email_content = {
         "body": {"type": "string"},
         "subject": {"type": "string"}
     },
-    "required": ["body"]
+    "required": ["body", "from_email", "subject"]
 }
 
 post_email_response = {
