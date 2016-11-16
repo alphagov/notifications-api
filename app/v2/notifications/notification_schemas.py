@@ -101,7 +101,7 @@ post_email_response = {
 
 def create_post_sms_response_from_notification(notification, body, from_number, url_root):
     return {"id": notification.id,
-            "reference": None,  # not yet implemented
+            "reference": notification.reference,
             "content": {'body': body,
                         'from_number': from_number},
             "uri": "{}/v2/notifications/{}".format(url_root, str(notification.id)),
