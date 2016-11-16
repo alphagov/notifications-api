@@ -76,7 +76,7 @@ scripts/run_celery_beat.sh
 
 ##  To test the application
 
-First, ensure that `scripts/boostrap.sh` has been run, as it creates the test database.
+First, ensure that `scripts/bootstrap.sh` has been run, as it creates the test database.
 
 Then simply run
 
