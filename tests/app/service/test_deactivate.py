@@ -1,11 +1,14 @@
 import uuid
-from unittest import mock
+from datetime import datetime
 
 import pytest
+from freezegun import freeze_time
 
 from app import db
-from app.models import Service, TemplateHistory, ApiKey
+from app.models import Service
 from app.dao.services_dao import dao_deactive_service
+from app.dao.api_key_dao import expire_api_key
+from app.dao.templates_dao import dao_update_template
 
 from tests import create_authorization_header, unwrap_function
 from tests.app.conftest import (
@@ -77,6 +80,37 @@ def test_deactivating_service_creates_history(deactivated_service):
 
     assert history.version == 2
     assert history.active is False
+
+
+@pytest.fixture
+def deactivated_service_with_deleted_stuff(client, notify_db, notify_db_session, sample_service):
+    with freeze_time('2001-01-01'):
+        template = create_template(notify_db, notify_db_session, template_name='a')
+        api_key = create_api_key(notify_db, notify_db_session)
+
+        expire_api_key(sample_service.id, api_key.id)
+
+        template.archived = True
+        dao_update_template(template)
+
+    with freeze_time('2002-02-02'):
+        auth_header = create_authorization_header()
+        response = client.post('/service/{}/deactivate'.format(sample_service.id), headers=[auth_header])
+
+    assert response.status_code == 204
+    assert response.data == b''
+    return sample_service
+
+
+def test_deactivating_service_doesnt_affect_existing_archived_templates(deactivated_service_with_deleted_stuff):
+    assert deactivated_service_with_deleted_stuff.templates[0].archived is True
+    assert deactivated_service_with_deleted_stuff.templates[0].updated_at == datetime(2001, 1, 1, 0, 0, 0)
+    assert deactivated_service_with_deleted_stuff.templates[0].version == 2
+
+
+def test_deactivating_service_doesnt_affect_existing_revoked_api_keys(deactivated_service_with_deleted_stuff):
+    assert deactivated_service_with_deleted_stuff.api_keys[0].expiry_date == datetime(2001, 1, 1, 0, 0, 0)
+    assert deactivated_service_with_deleted_stuff.api_keys[0].version == 2
 
 
 def test_deactivating_service_rolls_back_everything_on_error(sample_service, sample_api_key, sample_template):

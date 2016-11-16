@@ -17,15 +17,14 @@ from app.dao.jobs_dao import (
     dao_update_job,
     dao_get_job_by_id
 )
-from app.dao.notifications_dao import (dao_create_notification)
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
-    Notification,
     EMAIL_TYPE,
     SMS_TYPE,
     KEY_TYPE_NORMAL
 )
+from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
 
@@ -41,16 +40,7 @@ def process_job(job_id):
 
     service = job.service
 
-    total_sent = fetch_todays_total_message_count(service.id)
-
-    if total_sent + job.notification_count > service.message_limit:
-        job.job_status = 'sending limits exceeded'
-        job.processing_finished = datetime.utcnow()
-        dao_update_job(job)
-        current_app.logger.info(
-            "Job {} size {} error. Sending limits {} exceeded".format(
-                job_id, job.notification_count, service.message_limit)
-        )
+    if __sending_limits_for_job_exceeded(service, job, job_id):
         return
 
     job.job_status = 'in progress'
@@ -103,6 +93,21 @@ def process_job(job_id):
     )
 
 
+def __sending_limits_for_job_exceeded(service, job, job_id):
+    total_sent = fetch_todays_total_message_count(service.id)
+
+    if total_sent + job.notification_count > service.message_limit:
+        job.job_status = 'sending limits exceeded'
+        job.processing_finished = datetime.utcnow()
+        dao_update_job(job)
+        current_app.logger.info(
+            "Job {} size {} error. Sending limits {} exceeded".format(
+                job_id, job.notification_count, service.message_limit)
+        )
+        return True
+    return False
+
+
 @notify_celery.task(bind=True, name="send-sms", max_retries=5, default_retry_delay=300)
 @statsd(namespace="tasks")
 def send_sms(self,
@@ -112,6 +117,7 @@ def send_sms(self,
              created_at,
              api_key_id=None,
              key_type=KEY_TYPE_NORMAL):
+    # notification_id is not used, it is created by the db model object
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
@@ -122,29 +128,38 @@ def send_sms(self,
         return
 
     try:
-        dao_create_notification(
-            Notification.from_api_request(
-                created_at, notification, notification_id, service.id, SMS_TYPE, api_key_id, key_type
-            )
-        )
+        saved_notification = persist_notification(template_id=notification['template'],
+                                                  template_version=notification['template_version'],
+                                                  recipient=notification['to'],
+                                                  service_id=service.id,
+                                                  personalisation=notification.get('personalisation'),
+                                                  notification_type=SMS_TYPE,
+                                                  api_key_id=api_key_id,
+                                                  key_type=key_type,
+                                                  created_at=created_at,
+                                                  job_id=notification.get('job', None),
+                                                  job_row_number=notification.get('row_number', None),
+                                                  )
+
         provider_tasks.deliver_sms.apply_async(
-            [notification_id],
+            [saved_notification.id],
             queue='send-sms' if not service.research_mode else 'research-mode'
         )
 
         current_app.logger.info(
-            "SMS {} created at {} for job {}".format(notification_id, created_at, notification.get('job', None))
+            "SMS {} created at {} for job {}".format(saved_notification.id, created_at, notification.get('job', None))
         )
 
     except SQLAlchemyError as e:
-        current_app.logger.exception("RETRY: send_sms notification {}".format(notification_id), e)
+        current_app.logger.exception(
+            "RETRY: send_sms notification for job {} row number {}".format(notification.get('job', None),
+                                                                           notification.get('row_number', None)), e)
         try:
             raise self.retry(queue="retry", exc=e)
         except self.MaxRetriesExceededError:
             current_app.logger.exception(
-                "RETRY FAILED: task send_sms failed for notification {}".format(notification.id),
-                e
-            )
+                "RETRY FAILED: task send_sms failed for notification".format(notification.get('job', None),
+                                                                             notification.get('row_number', None)), e)
 
 
 @notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=300)
@@ -155,6 +170,7 @@ def send_email(self, service_id,
                created_at,
                api_key_id=None,
                key_type=KEY_TYPE_NORMAL):
+    # notification_id is not used, it is created by the db model object
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
@@ -163,24 +179,33 @@ def send_email(self, service_id,
         return
 
     try:
-        dao_create_notification(
-            Notification.from_api_request(
-                created_at, notification, notification_id, service.id, EMAIL_TYPE, api_key_id, key_type
-            )
+        saved_notification = persist_notification(
+            template_id=notification['template'],
+            template_version=notification['template_version'],
+            recipient=notification['to'],
+            service_id=service.id,
+            personalisation=notification.get('personalisation'),
+            notification_type=EMAIL_TYPE,
+            api_key_id=api_key_id,
+            key_type=key_type,
+            created_at=created_at,
+            job_id=notification.get('job', None),
+            job_row_number=notification.get('row_number', None),
+
         )
 
         provider_tasks.deliver_email.apply_async(
-            [notification_id],
+            [saved_notification.id],
             queue='send-email' if not service.research_mode else 'research-mode'
         )
 
-        current_app.logger.info("Email {} created at {}".format(notification_id, created_at))
+        current_app.logger.info("Email {} created at {}".format(saved_notification.id, created_at))
     except SQLAlchemyError as e:
-        current_app.logger.exception("RETRY: send_email notification {}".format(notification_id), e)
+        current_app.logger.exception("RETRY: send_email notification".format(notification.get('job', None),
+                                                                             notification.get('row_number', None)), e)
         try:
             raise self.retry(queue="retry", exc=e)
         except self.MaxRetriesExceededError:
             current_app.logger.error(
-                "RETRY FAILED: task send_email failed for notification {}".format(notification.id),
-                e
-            )
+                "RETRY FAILED: task send_email failed for notification".format(notification.get('job', None),
+                                                                               notification.get('row_number', None)), e)

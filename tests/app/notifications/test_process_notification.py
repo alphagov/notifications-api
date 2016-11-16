@@ -1,3 +1,5 @@
+import datetime
+
 import pytest
 from boto3.exceptions import Boto3Error
 from sqlalchemy.exc import SQLAlchemyError
@@ -46,19 +48,42 @@ def test_persist_notification_creates_and_save_to_db(sample_template, sample_api
     assert NotificationHistory.query.count() == 1
 
 
-def test_persist_notification_throws_exception_when_missing_template(sample_template, sample_api_key):
+def test_persist_notification_throws_exception_when_missing_template(sample_api_key):
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
     with pytest.raises(SQLAlchemyError):
         persist_notification(template_id=None,
                              template_version=None,
                              recipient='+447111111111',
-                             service_id=sample_template.service.id,
-                             personalisation=None, notification_type='sms',
+                             service_id=sample_api_key.service_id,
+                             personalisation=None,
+                             notification_type='sms',
                              api_key_id=sample_api_key.id,
                              key_type=sample_api_key.key_type)
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
+
+
+def test_persist_notification_with_job_and_created(sample_job, sample_api_key):
+    assert Notification.query.count() == 0
+    assert NotificationHistory.query.count() == 0
+    created_at = datetime.datetime(2016, 11, 11, 16, 8, 18)
+    persist_notification(template_id=sample_job.template.id,
+                         template_version=sample_job.template.version,
+                         recipient='+447111111111',
+                         service_id=sample_job.service.id,
+                         personalisation=None, notification_type='sms',
+                         api_key_id=sample_api_key.id,
+                         key_type=sample_api_key.key_type,
+                         created_at=created_at,
+                         job_id=sample_job.id,
+                         job_row_number=10)
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 1
+    persisted_notification = Notification.query.all()[0]
+    assert persisted_notification.job_id == sample_job.id
+    assert persisted_notification.job_row_number == 10
+    assert persisted_notification.created_at == created_at
 
 
 @pytest.mark.parametrize('research_mode, queue, notification_type, key_type',

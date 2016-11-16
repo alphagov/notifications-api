@@ -212,8 +212,7 @@ class TemplateSchema(BaseTemplateSchema):
 
     @validates_schema
     def validate_type(self, data):
-        template_type = data.get('template_type')
-        if template_type and template_type == 'email':
+        if data.get('template_type') in [models.EMAIL_TYPE, models.LETTER_TYPE]:
             subject = data.get('subject')
             if not subject or subject.strip() == '':
                 raise ValidationError('Invalid template subject', 'subject')
