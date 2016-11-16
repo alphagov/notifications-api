@@ -1,7 +1,10 @@
+from datetime import datetime
+
 from flask import current_app
 from notifications_utils.renderers import PassThrough
 from notifications_utils.template import Template
 
+from app import DATETIME_FORMAT
 from app.celery import provider_tasks
 from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
 from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE
@@ -40,15 +43,23 @@ def persist_notification(template_id,
                          personalisation,
                          notification_type,
                          api_key_id,
-                         key_type):
-    notification = Notification.from_v2_api_request(template_id=template_id,
-                                                    template_version=template_version,
-                                                    recipient=recipient,
-                                                    service_id=service_id,
-                                                    personalisation=personalisation,
-                                                    notification_type=notification_type,
-                                                    api_key_id=api_key_id,
-                                                    key_type=key_type)
+                         key_type,
+                         created_at=None,
+                         job_id=None,
+                         job_row_number=None):
+    notification = Notification(
+        template_id=template_id,
+        template_version=template_version,
+        to=recipient,
+        service_id=service_id,
+        personalisation=personalisation,
+        notification_type=notification_type,
+        api_key_id=api_key_id,
+        key_type=key_type,
+        created_at=created_at if created_at else datetime.utcnow().strftime(DATETIME_FORMAT),
+        job_id=job_id,
+        job_row_number=job_row_number
+    )
     dao_create_notification(notification)
     return notification
 
@@ -66,7 +77,7 @@ def send_notification_to_queue(notification, research_mode):
                 [str(notification.id)],
                 queue='send-email' if not research_mode else 'research-mode'
             )
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("Failed to send to SQS exception")
         dao_delete_notifications_and_history_by_id(notification.id)
         raise
