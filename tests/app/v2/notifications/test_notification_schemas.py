@@ -56,14 +56,19 @@ def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
     assert len(error.keys()) == 2
 
 
-@pytest.mark.parametrize('invalid_phone_number',
-                         ['08515111111', '07515111*11', 'notaphoneumber'])
-def test_post_sms_request_invalid_phone_number(invalid_phone_number):
+@pytest.mark.parametrize('invalid_phone_number, err_msg',
+                         [('08515111111', 'phone_number Not a UK mobile number'),
+                          ('07515111*11', 'phone_number Must not contain letters or symbols'),
+                          ('notaphoneumber', 'phone_number Must not contain letters or symbols')])
+def test_post_sms_request_invalid_phone_number(invalid_phone_number, err_msg):
     j = {"phone_number": invalid_phone_number,
          "template_id": str(uuid.uuid4())
          }
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as e:
         validate(j, post_sms_request)
+    errors = json.loads(e.value.message).get('errors')
+    assert len(errors) == 1
+    assert {"error": "ValidationError", "message": err_msg} == errors[0]
 
 
 def test_post_sms_request_invalid_phone_number_and_missing_template():
@@ -71,9 +76,10 @@ def test_post_sms_request_invalid_phone_number_and_missing_template():
          }
     with pytest.raises(ValidationError) as e:
         validate(j, post_sms_request)
-    error = json.loads(e.value.message)
-    print(error)
-    assert len(error.get('errors')) == 2
+    errors = json.loads(e.value.message).get('errors')
+    assert len(errors) == 2
+    assert {"error": "ValidationError", "message": "phone_number Not a UK mobile number"} in errors
+    assert {"error": "ValidationError", "message": "template_id is a required property"} in errors
 
 
 valid_response = {

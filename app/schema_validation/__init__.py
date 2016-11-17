@@ -42,4 +42,4 @@ def build_error_message(errors):
 def __format_message(e):
     s = e.message.split("'")
     msg = "{}{}".format(s[1], s[2])
-    return msg if not e.cause else "'{}' {}".format(e.path[0], e.cause.message)
+    return msg if not e.cause else "{} {}".format(e.path[0], e.cause.message)
