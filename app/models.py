@@ -519,6 +519,7 @@ class Notification(db.Model):
         onupdate=datetime.datetime.utcnow)
     status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
     reference = db.Column(db.String, nullable=True, index=True)
+    client_reference = db.Column(db.String, index=True, nullable=True)
     _personalisation = db.Column(db.String, nullable=True)
 
     template_history = db.relationship('TemplateHistory', primaryjoin=and_(
@@ -561,6 +562,7 @@ class NotificationHistory(db.Model):
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
     status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
     reference = db.Column(db.String, nullable=True, index=True)
+    client_reference = db.Column(db.String, nullable=True)
 
     @classmethod
     def from_notification(cls, notification):

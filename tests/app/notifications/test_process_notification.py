@@ -64,7 +64,7 @@ def test_persist_notification_throws_exception_when_missing_template(sample_api_
     assert NotificationHistory.query.count() == 0
 
 
-def test_persist_notification_with_job_and_created(sample_job, sample_api_key):
+def test_persist_notification_with_optionals(sample_job, sample_api_key):
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
     created_at = datetime.datetime(2016, 11, 11, 16, 8, 18)
@@ -77,13 +77,16 @@ def test_persist_notification_with_job_and_created(sample_job, sample_api_key):
                          key_type=sample_api_key.key_type,
                          created_at=created_at,
                          job_id=sample_job.id,
-                         job_row_number=10)
+                         job_row_number=10,
+                         reference="ref from client")
     assert Notification.query.count() == 1
     assert NotificationHistory.query.count() == 1
     persisted_notification = Notification.query.all()[0]
     assert persisted_notification.job_id == sample_job.id
     assert persisted_notification.job_row_number == 10
     assert persisted_notification.created_at == created_at
+    assert persisted_notification.client_reference == "ref from client"
+    assert persisted_notification.reference is None
 
 
 @pytest.mark.parametrize('research_mode, queue, notification_type, key_type',

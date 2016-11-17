@@ -119,15 +119,14 @@ def test_post_email_notification_returns_201(client, sample_email_template, mock
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 201
     resp_json = json.loads(response.get_data(as_text=True))
-    notifications = Notification.query.all()
-    assert len(notifications) == 1
-    notification_id = notifications[0].id
-    assert resp_json['id'] is not None
+    notification = Notification.query.first()
+    assert resp_json['id'] == str(notification.id)
     assert resp_json['reference'] == "reference from caller"
+    assert notification.reference is None
     assert resp_json['content']['body'] == sample_email_template.content
     assert resp_json['content']['subject'] == sample_email_template.subject
     assert resp_json['content']['from_email'] == sample_email_template.service.email_from
-    assert 'v2/notifications/{}'.format(notification_id) in resp_json['uri']
+    assert 'v2/notifications/{}'.format(notification.id) in resp_json['uri']
     assert resp_json['template']['id'] == str(sample_email_template.id)
     assert resp_json['template']['version'] == sample_email_template.version
     assert 'v2/templates/{}'.format(sample_email_template.id) in resp_json['template']['uri']

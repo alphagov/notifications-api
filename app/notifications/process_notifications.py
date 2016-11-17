@@ -60,7 +60,7 @@ def persist_notification(template_id,
         created_at=created_at or datetime.utcnow().strftime(DATETIME_FORMAT),
         job_id=job_id,
         job_row_number=job_row_number,
-        reference=reference
+        client_reference=reference
     )
     dao_create_notification(notification)
     return notification
