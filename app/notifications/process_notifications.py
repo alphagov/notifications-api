@@ -46,7 +46,8 @@ def persist_notification(template_id,
                          key_type,
                          created_at=None,
                          job_id=None,
-                         job_row_number=None):
+                         job_row_number=None,
+                         reference=None):
     notification = Notification(
         template_id=template_id,
         template_version=template_version,
@@ -56,9 +57,10 @@ def persist_notification(template_id,
         notification_type=notification_type,
         api_key_id=api_key_id,
         key_type=key_type,
-        created_at=created_at if created_at else datetime.utcnow().strftime(DATETIME_FORMAT),
+        created_at=created_at or datetime.utcnow().strftime(DATETIME_FORMAT),
         job_id=job_id,
-        job_row_number=job_row_number
+        job_row_number=job_row_number,
+        client_reference=reference
     )
     dao_create_notification(notification)
     return notification
