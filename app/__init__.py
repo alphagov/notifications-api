@@ -96,8 +96,11 @@ def register_blueprint(application):
 
 
 def register_v2_blueprints(application):
-    from app.v2.notifications.post_notifications import notification_blueprint
-    application.register_blueprint(notification_blueprint)
+    from app.v2.notifications.post_notifications import notification_blueprint as post_notifications
+    from app.v2.notifications.get_notifications import notification_blueprint as get_notifications
+
+    application.register_blueprint(post_notifications)
+    application.register_blueprint(get_notifications)
 
 
 def init_app(app):

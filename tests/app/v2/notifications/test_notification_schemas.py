@@ -4,8 +4,9 @@ import pytest
 from flask import json
 from jsonschema import ValidationError
 
-from app.v2.notifications.notification_schemas import post_sms_request, post_sms_response, post_email_request, \
-    post_email_response
+from app.v2.notifications.notification_schemas import (
+    post_sms_request, post_sms_response, post_email_request, post_email_response
+)
 from app.schema_validation import validate
 
 valid_json = {"phone_number": "07515111111",

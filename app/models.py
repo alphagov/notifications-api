@@ -1,5 +1,6 @@
 import uuid
 import datetime
+from flask import url_for
 
 from sqlalchemy.dialects.postgresql import (
     UUID,
@@ -22,7 +23,8 @@ from app.authentication.utils import get_secret
 from app import (
     db,
     encryption,
-    DATETIME_FORMAT)
+    DATETIME_FORMAT
+)
 
 from app.history_meta import Versioned
 
@@ -280,6 +282,10 @@ class Template(db.Model):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     created_by = db.relationship('User')
     version = db.Column(db.Integer, default=1, nullable=False)
+
+    def get_link(self):
+        # TODO: use "/v2/" route once available
+        return url_for("template.get_template_by_id_and_service_id", service_id=self.service_id, template_id=self.id)
 
 
 class TemplateHistory(db.Model):
@@ -552,6 +558,49 @@ class Notification(db.Model):
         ).limit(1).one()
 
         return provider_rate.rate * self.billable_units
+
+    def completed_at(self):
+        if self.status in [
+            NOTIFICATION_DELIVERED,
+            NOTIFICATION_FAILED,
+            NOTIFICATION_TECHNICAL_FAILURE,
+            NOTIFICATION_TEMPORARY_FAILURE,
+            NOTIFICATION_PERMANENT_FAILURE
+        ]:
+            return self.updated_at.strftime(DATETIME_FORMAT)
+
+        return None
+
+    def serialize(self):
+
+        template_dict = {
+            'version': self.template.version,
+            'id': self.template.id,
+            'uri': self.template.get_link()
+        }
+
+        serialized = {
+            "id": self.id,
+            "reference": self.client_reference,
+            "email_address": self.to if self.notification_type == EMAIL_TYPE else None,
+            "phone_number": self.to if self.notification_type == SMS_TYPE else None,
+            "line_1": None,
+            "line_2": None,
+            "line_3": None,
+            "line_4": None,
+            "line_5": None,
+            "line_6": None,
+            "postcode": None,
+            "cost": self.cost(),
+            "type": self.notification_type,
+            "status": self.status,
+            "template": template_dict,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "sent_at": self.sent_at.strftime(DATETIME_FORMAT) if self.sent_at else None,
+            "completed_at": self.completed_at()
+        }
+
+        return serialized
 
 
 class NotificationHistory(db.Model):
