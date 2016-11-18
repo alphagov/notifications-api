@@ -3,7 +3,6 @@ import uuid
 import pytest
 from flask import json
 from jsonschema import ValidationError
-from notifications_utils.recipients import InvalidPhoneError, InvalidEmailError
 
 from app.v2.notifications.notification_schemas import post_sms_request, post_sms_response, post_email_request, \
     post_email_response

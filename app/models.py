@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
 )
-from sqlalchemy import UniqueConstraint, and_
+from sqlalchemy import UniqueConstraint, and_, desc
 from sqlalchemy.orm import foreign, remote
 from notifications_utils.recipients import (
     validate_email_address,
@@ -537,6 +537,21 @@ class Notification(db.Model):
     def personalisation(self, personalisation):
         if personalisation:
             self._personalisation = encryption.encrypt(personalisation)
+
+    def cost(self):
+        if not self.sent_by or self.billable_units == 0:
+            return 0
+
+        provider_rate = db.session.query(
+            ProviderRates
+        ).join(ProviderDetails).filter(
+            ProviderDetails.identifier == self.sent_by,
+            ProviderRates.provider_id == ProviderDetails.id
+        ).order_by(
+            desc(ProviderRates.valid_from)
+        ).limit(1).one()
+
+        return provider_rate.rate * self.billable_units
 
 
 class NotificationHistory(db.Model):
