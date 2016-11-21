@@ -242,7 +242,10 @@ def send_notification(notification_type):
                                                   notification_type=notification_type,
                                                   api_key_id=api_user.id,
                                                   key_type=api_user.key_type)
-        send_notification_to_queue(saved_notification, service.research_mode)
+        try:
+            send_notification_to_queue(saved_notification, service.research_mode)
+        except Exception as e:
+            return jsonify(result='error', message="Internal server error"), 500
 
     notification_id = create_uuid() if saved_notification is None else saved_notification.id
     notification.update({"template_version": template.version})

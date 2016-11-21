@@ -9,7 +9,6 @@ def transactional(func):
     @wraps(func)
     def commit_or_rollback(*args, **kwargs):
         from flask import current_app
-        from app import db
         try:
             res = func(*args, **kwargs)
             db.session.commit()
@@ -27,7 +26,6 @@ def version_class(model_class, history_cls=None):
     def versioned(func):
         @wraps(func)
         def record_version(*args, **kwargs):
-            from app import db
             func(*args, **kwargs)
             history_objects = [create_hist(obj) for obj in
                                itertools.chain(db.session.new, db.session.dirty)

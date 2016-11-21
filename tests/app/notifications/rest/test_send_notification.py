@@ -415,7 +415,7 @@ def test_should_reject_email_notification_with_bad_email(notify_api, sample_emai
             mocked.apply_async.assert_not_called()
             assert response.status_code == 400
             assert data['result'] == 'error'
-            assert data['message']['to'][0] == 'Not a valid email address'
+            assert data['message']['to'][0] == 'Not a valid email address.'
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -812,7 +812,6 @@ def test_should_delete_notification_and_return_error_if_sqs_fails(
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
         mocked.assert_called_once_with([fake_uuid], queue='send-{}'.format(template_type))
-
         assert response.status_code == 500
         assert not notifications_dao.get_notification_by_id(fake_uuid)
         assert not NotificationHistory.query.get(fake_uuid)
@@ -1021,7 +1020,7 @@ def test_create_template_raises_invalid_request_exception_with_missing_personali
     from app.notifications.rest import create_template_object_for_notification
     with pytest.raises(InvalidRequest) as e:
         create_template_object_for_notification(template, {})
-    assert {'template': ['Missing personalisation: name']} == e.value.message
+    assert {'template': ['Missing personalisation:  Name']} == e.value.message
 
 
 def test_create_template_raises_invalid_request_exception_with_too_much_personalisation_data(

@@ -115,7 +115,7 @@ class Service(db.Model, Versioned):
         unique=False,
         nullable=True,
         onupdate=datetime.datetime.utcnow)
-    active = db.Column(db.Boolean, index=False, unique=False, nullable=False)
+    active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
     message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False)
     users = db.relationship(
         'User',
@@ -188,7 +188,7 @@ class ApiKey(db.Model, Versioned):
     name = db.Column(db.String(255), nullable=False)
     secret = db.Column(db.String(255), unique=True, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
-    service = db.relationship('Service', backref=db.backref('api_keys', lazy='dynamic'))
+    service = db.relationship('Service', backref='api_keys')
     key_type = db.Column(db.String(255), db.ForeignKey('key_types.name'), index=True, nullable=False)
     expiry_date = db.Column(db.DateTime)
     created_at = db.Column(
@@ -275,7 +275,7 @@ class Template(db.Model):
     content = db.Column(db.Text, index=False, unique=False, nullable=False)
     archived = db.Column(db.Boolean, index=False, nullable=False, default=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
-    service = db.relationship('Service', backref=db.backref('templates', lazy='dynamic'))
+    service = db.relationship('Service', backref='templates')
     subject = db.Column(db.Text, index=False, unique=False, nullable=True)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     created_by = db.relationship('User')
@@ -536,55 +536,6 @@ class Notification(db.Model):
     def personalisation(self, personalisation):
         if personalisation:
             self._personalisation = encryption.encrypt(personalisation)
-
-    @classmethod
-    def from_api_request(
-            cls,
-            created_at,
-            notification,
-            notification_id,
-            service_id,
-            notification_type,
-            api_key_id,
-            key_type):
-        return cls(
-            id=notification_id,
-            template_id=notification['template'],
-            template_version=notification['template_version'],
-            to=notification['to'],
-            service_id=service_id,
-            job_id=notification.get('job', None),
-            job_row_number=notification.get('row_number', None),
-            status='created',
-            created_at=datetime.datetime.strptime(created_at, DATETIME_FORMAT),
-            personalisation=notification.get('personalisation'),
-            notification_type=notification_type,
-            api_key_id=api_key_id,
-            key_type=key_type
-        )
-
-    @classmethod
-    def from_v2_api_request(cls,
-                            template_id,
-                            template_version,
-                            recipient,
-                            service_id,
-                            personalisation,
-                            notification_type,
-                            api_key_id,
-                            key_type):
-        return cls(
-            template_id=template_id,
-            template_version=template_version,
-            to=recipient,
-            service_id=service_id,
-            status='created',
-            created_at=datetime.datetime.utcnow(),
-            personalisation=personalisation,
-            notification_type=notification_type,
-            api_key_id=api_key_id,
-            key_type=key_type
-        )
 
 
 class NotificationHistory(db.Model):

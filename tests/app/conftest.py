@@ -129,6 +129,7 @@ def sample_service(notify_db,
                    notify_db_session,
                    service_name="Sample service",
                    user=None,
+                   active=True,
                    restricted=False,
                    limit=1000,
                    email_from=None):
@@ -139,7 +140,7 @@ def sample_service(notify_db,
     data = {
         'name': service_name,
         'message_limit': limit,
-        'active': False,
+        'active': active,
         'restricted': restricted,
         'email_from': email_from,
         'created_by': user
@@ -179,7 +180,7 @@ def sample_template(notify_db,
         'created_by': created_by,
         'archived': archived
     }
-    if template_type == 'email':
+    if template_type in ['email', 'letter']:
         data.update({
             'subject': subject_line
         })
@@ -190,7 +191,8 @@ def sample_template(notify_db,
 
 @pytest.fixture(scope='function')
 def sample_template_with_placeholders(notify_db, notify_db_session):
-    return sample_template(notify_db, notify_db_session, content="Hello ((name))\nYour thing is due soon")
+    # deliberate space and title case in placeholder
+    return sample_template(notify_db, notify_db_session, content="Hello (( Name))\nYour thing is due soon")
 
 
 @pytest.fixture(scope='function')

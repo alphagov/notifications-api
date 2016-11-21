@@ -8,7 +8,6 @@ class RedisClient:
 
     def init_app(self, app):
         self.active = app.config.get('REDIS_ENABLED')
-
         if self.active:
             self.redis_store.init_app(app)
 

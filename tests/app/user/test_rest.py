@@ -1,4 +1,5 @@
 import json
+import pytest
 
 from flask import url_for, current_app
 from freezegun import freeze_time
@@ -178,6 +179,29 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_service):
             assert new_email == fetched['email_address']
             assert sample_user.state == fetched['state']
             assert sorted(expected_permissions) == sorted(fetched['permissions'][str(sample_service.id)])
+
+
+@pytest.mark.parametrize('user_attribute, user_value', [
+    ('name', 'New User'),
+    ('email_address', 'newuser@mail.com'),
+    ('mobile_number', '+4407700900460')
+])
+def test_post_user_attribute(client, sample_user, user_attribute, user_value):
+    assert getattr(sample_user, user_attribute) != user_value
+    update_dict = {
+        user_attribute: user_value
+    }
+    auth_header = create_authorization_header()
+    headers = [('Content-Type', 'application/json'), auth_header]
+
+    resp = client.post(
+        url_for('user.update_user_attribute', user_id=sample_user.id),
+        data=json.dumps(update_dict),
+        headers=headers)
+
+    assert resp.status_code == 200
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert json_resp['data'][user_attribute] == user_value
 
 
 def test_put_user_update_password(notify_api,
@@ -470,7 +494,7 @@ def test_send_user_reset_password_should_return_400_when_data_is_not_email_addre
             headers=[('Content-Type', 'application/json'), auth_header])
 
         assert resp.status_code == 400
-        assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Not a valid email address']}
+        assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Not a valid email address.']}
 
 
 @freeze_time("2016-01-01 11:09:00.061258")

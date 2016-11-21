@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import asc, func
 from sqlalchemy.orm import joinedload
@@ -28,30 +28,70 @@ from app.models import (
 from app.statsd_decorators import statsd
 
 
-def dao_fetch_all_services():
-    return Service.query.order_by(
+def dao_fetch_all_services(only_active=False):
+    query = Service.query.order_by(
         asc(Service.created_at)
     ).options(
         joinedload('users')
-    ).all()
+    )
+
+    if only_active:
+        query = query.filter(Service.active)
+
+    return query.all()
 
 
-def dao_fetch_service_by_id(service_id):
-    return Service.query.filter_by(
+def dao_fetch_service_by_id(service_id, only_active=False):
+    query = Service.query.filter_by(
         id=service_id
     ).options(
         joinedload('users')
-    ).one()
+    )
+
+    if only_active:
+        query = query.filter(Service.active)
+
+    return query.one()
 
 
-def dao_fetch_all_services_by_user(user_id):
-    return Service.query.filter(
+def dao_fetch_all_services_by_user(user_id, only_active=False):
+    query = Service.query.filter(
         Service.users.any(id=user_id)
     ).order_by(
         asc(Service.created_at)
     ).options(
         joinedload('users')
-    ).all()
+    )
+
+    if only_active:
+        query = query.filter(Service.active)
+
+    return query.all()
+
+
+@transactional
+@version_class(Service)
+@version_class(Template, TemplateHistory)
+@version_class(ApiKey)
+def dao_deactive_service(service_id):
+    # have to eager load templates and api keys so that we don't flush when we loop through them
+    # to ensure that db.session still contains the models when it comes to creating history objects
+    service = Service.query.options(
+        joinedload('templates'),
+        joinedload('api_keys'),
+    ).filter(Service.id == service_id).one()
+
+    service.active = False
+    service.name = '_archived_' + service.name
+    service.email_from = '_archived_' + service.email_from
+
+    for template in service.templates:
+        if not template.archived:
+            template.archived = True
+
+    for api_key in service.api_keys:
+        if not api_key.expiry_date:
+            api_key.expiry_date = datetime.utcnow()
 
 
 def dao_fetch_service_by_id_and_user(service_id, user_id):
@@ -70,6 +110,7 @@ def dao_create_service(service, user):
     service.users.append(user)
     permission_dao.add_default_service_permissions_for_user(user, service)
     service.id = uuid.uuid4()  # must be set now so version history model can use same id
+    service.active = True
     service.research_mode = False
     db.session.add(service)
 

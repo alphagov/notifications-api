@@ -170,6 +170,7 @@ class Test(Config):
     FROM_NUMBER = 'testing'
     NOTIFY_ENVIRONMENT = 'test'
     DEBUG = True
+    REDIS_ENABLED = True
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
     STATSD_ENABLED = True
     STATSD_HOST = "localhost"

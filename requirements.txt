@@ -20,8 +20,8 @@ statsd==3.2.1
 jsonschema==2.5.1
 Flask-Redis==0.1.0
 
-git+https://github.com/alphagov/notifications-python-client.git@1.3.0#egg=notifications-python-client==1.3.0
+git+https://github.com/alphagov/notifications-python-client.git@2.0.0#egg=notifications-python-client==2.0.0
 
-git+https://github.com/alphagov/notifications-utils.git@9.1.1#egg=notifications-utils==9.1.1
+git+https://github.com/alphagov/notifications-utils.git@9.2.1#egg=notifications-utils==9.2.1
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
