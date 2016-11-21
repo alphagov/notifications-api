@@ -5,6 +5,7 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 from app.authentication.auth import AuthError
 from app.errors import InvalidRequest
+from app.notifications import SendNotificationToQueueError
 
 
 class TooManyRequestsError(InvalidRequest):
@@ -46,6 +47,13 @@ def register_errors(blueprint):
     @blueprint.errorhandler(AuthError)
     def auth_error(error):
         return jsonify(error.to_dict_v2()), error.code
+
+    @blueprint.errorhandler(SendNotificationToQueueError)
+    def failed_to_create_notification(error):
+        current_app.logger.exception(error)
+        return jsonify(
+            status_code=500,
+            errors=[{"error": error.__class__.__name__, "message": error.message}]), 500
 
     @blueprint.errorhandler(Exception)
     def internal_server_error(error):

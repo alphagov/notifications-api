@@ -9,7 +9,7 @@ from app.celery import provider_tasks
 from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
 from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE
 from app.notifications.validators import check_sms_content_char_count
-from app.v2.errors import BadRequestError
+from app.v2.errors import BadRequestError, SendNotificationToQueueError
 
 
 def create_content_for_notification(template, personalisation):
@@ -78,9 +78,9 @@ def send_notification_to_queue(notification, research_mode):
                 queue='send-email' if not research_mode else 'research-mode'
             )
     except Exception as e:
-        current_app.logger.exception("Failed to send to SQS exception")
+        current_app.logger.exception(e)
         dao_delete_notifications_and_history_by_id(notification.id)
-        raise e
+        raise SendNotificationToQueueError()
 
     current_app.logger.info(
         "{} {} created at {}".format(notification.notification_type, notification.id, notification.created_at)
