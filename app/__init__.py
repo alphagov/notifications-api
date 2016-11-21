@@ -18,7 +18,7 @@ from app.clients.statsd.statsd_client import StatsdClient
 from app.encryption import Encryption
 
 
-DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 DATE_FORMAT = "%Y-%m-%d"
 
 db = SQLAlchemy()
