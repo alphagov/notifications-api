@@ -6,15 +6,17 @@ from app.models import Notification
 from tests import create_authorization_header
 
 
-def test_post_sms_notification_returns_201(notify_api, sample_template, mocker):
+@pytest.mark.parametrize("reference", [None, "reference_from_client"])
+def test_post_sms_notification_returns_201(notify_api, sample_template, mocker, reference):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
             data = {
                 'phone_number': '+447700900855',
-                'template_id': str(sample_template.id),
-                'reference': 'reference_from_client'
+                'template_id': str(sample_template.id)
             }
+            if reference:
+                data.update({"reference": reference})
             auth_header = create_authorization_header(service_id=sample_template.service_id)
 
             response = client.post(
@@ -27,8 +29,8 @@ def test_post_sms_notification_returns_201(notify_api, sample_template, mocker):
             notifications = Notification.query.all()
             assert len(notifications) == 1
             notification_id = notifications[0].id
-            assert resp_json['id'] is not None
-            assert resp_json['reference'] == 'reference_from_client'
+            assert resp_json['id'] == notification_id
+            assert resp_json['reference'] == reference
             assert resp_json['content']['body'] == sample_template.content
             assert resp_json['content']['from_number'] == sample_template.service.sms_sender
             assert 'v2/notifications/{}'.format(notification_id) in resp_json['uri']
@@ -105,13 +107,15 @@ def test_post_sms_notification_returns_400_and_for_schema_problems(notify_api, s
                                              }]
 
 
-def test_post_email_notification_returns_201(client, sample_email_template, mocker):
+@pytest.mark.parametrize("reference", [None, "reference_from_client"])
+def test_post_email_notification_returns_201(client, sample_email_template, mocker, reference):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     data = {
-        "reference": "reference from caller",
         "email_address": sample_email_template.service.users[0].email_address,
         "template_id": sample_email_template.id,
     }
+    if reference:
+        data.update({"reference": reference})
     auth_header = create_authorization_header(service_id=sample_email_template.service_id)
     response = client.post(
         path="v2/notifications/email",
@@ -121,7 +125,7 @@ def test_post_email_notification_returns_201(client, sample_email_template, mock
     resp_json = json.loads(response.get_data(as_text=True))
     notification = Notification.query.first()
     assert resp_json['id'] == str(notification.id)
-    assert resp_json['reference'] == "reference from caller"
+    assert resp_json['reference'] == reference
     assert notification.reference is None
     assert resp_json['content']['body'] == sample_email_template.content
     assert resp_json['content']['subject'] == sample_email_template.subject
