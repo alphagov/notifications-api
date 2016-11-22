@@ -154,7 +154,7 @@ def test_send_notification_to_queue(notify_db, notify_db_session,
 
 def test_send_notification_to_queue_throws_exception_deletes_notification(sample_notification, mocker):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async', side_effect=Boto3Error("EXPECTED"))
-    with pytest.raises(Boto3Error):
+    with pytest.raises(SendNotificationToQueueError):
         send_notification_to_queue(sample_notification, False)
         mocked.assert_called_once_with([(str(sample_notification.id))], queue='send-sms')
 
