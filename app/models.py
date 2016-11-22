@@ -557,7 +557,7 @@ class Notification(db.Model):
             desc(ProviderRates.valid_from)
         ).limit(1).one()
 
-        return provider_rate.rate * self.billable_units
+        return float(provider_rate.rate * self.billable_units)
 
     def completed_at(self):
         if self.status in [
