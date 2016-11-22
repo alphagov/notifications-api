@@ -104,7 +104,7 @@ def test_cache_is_not_incremented_on_failure_to_persist_notification(sample_api_
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_persist_notification_with_job_and_created(sample_job, sample_api_key, mocker):
+def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker):
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
     mocked_redis = mocker.patch('app.notifications.process_notifications.redis_store.incr')
@@ -119,7 +119,8 @@ def test_persist_notification_with_job_and_created(sample_job, sample_api_key, m
                          key_type=sample_api_key.key_type,
                          created_at=created_at,
                          job_id=sample_job.id,
-                         job_row_number=10)
+                         job_row_number=10,
+                         reference="ref from client")
     assert Notification.query.count() == 1
     assert NotificationHistory.query.count() == 1
     persisted_notification = Notification.query.all()[0]
@@ -127,6 +128,8 @@ def test_persist_notification_with_job_and_created(sample_job, sample_api_key, m
     assert persisted_notification.job_row_number == 10
     assert persisted_notification.created_at == created_at
     mocked_redis.assert_called_once_with(str(sample_job.service_id) + "-2016-01-01-count")
+    assert persisted_notification.client_reference == "ref from client"
+    assert persisted_notification.reference is None
 
 
 @pytest.mark.parametrize('research_mode, queue, notification_type, key_type',
@@ -151,7 +154,7 @@ def test_send_notification_to_queue(notify_db, notify_db_session,
 
 def test_send_notification_to_queue_throws_exception_deletes_notification(sample_notification, mocker):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async', side_effect=Boto3Error("EXPECTED"))
-    with pytest.raises(SendNotificationToQueueError):
+    with pytest.raises(Boto3Error):
         send_notification_to_queue(sample_notification, False)
         mocked.assert_called_once_with([(str(sample_notification.id))], queue='send-sms')
 
