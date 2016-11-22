@@ -38,7 +38,7 @@ def post_sms_notification():
                                         notification_type=SMS_TYPE,
                                         api_key_id=api_user.id,
                                         key_type=api_user.key_type,
-                                        reference=form['reference'])
+                                        reference=form.get('reference'))
     send_notification_to_queue(notification, service.research_mode)
 
     resp = create_post_sms_response_from_notification(notification,
@@ -65,7 +65,7 @@ def post_email_notification():
                                         notification_type=EMAIL_TYPE,
                                         api_key_id=api_user.id,
                                         key_type=api_user.key_type,
-                                        reference=form['reference'])
+                                        reference=form.get('reference'))
 
     send_notification_to_queue(notification, service.research_mode)
 

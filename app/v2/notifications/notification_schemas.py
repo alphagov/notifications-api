@@ -107,7 +107,7 @@ post_sms_response = {
     "title": "response v2/notifications/sms",
     "properties": {
         "id": uuid,
-        "reference": {"type": "string"},
+        "reference": {"type": ["string", "null"]},
         "content": sms_content,
         "uri": {"type": "string"},
         "template": template
@@ -150,7 +150,7 @@ post_email_response = {
     "title": "response v2/notifications/email",
     "properties": {
         "id": uuid,
-        "reference": {"type": "string"},
+        "reference": {"type": ["string", "null"]},
         "content": email_content,
         "uri": {"type": "string"},
         "template": template
