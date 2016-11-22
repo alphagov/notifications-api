@@ -29,7 +29,7 @@ def test_post_sms_notification_returns_201(notify_api, sample_template, mocker, 
             notifications = Notification.query.all()
             assert len(notifications) == 1
             notification_id = notifications[0].id
-            assert resp_json['id'] == notification_id
+            assert resp_json['id'] == str(notification_id)
             assert resp_json['reference'] == reference
             assert resp_json['content']['body'] == sample_template.content
             assert resp_json['content']['from_number'] == sample_template.service.sms_sender
