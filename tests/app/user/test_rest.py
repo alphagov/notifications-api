@@ -445,7 +445,7 @@ def test_send_user_reset_password_should_send_reset_password_link(notify_api,
                 [str(current_app.config['NOTIFY_SERVICE_ID']),
                  'some_uuid',
                  app.encryption.encrypt(message),
-                 "2016-01-01T11:09:00.061258"],
+                 "2016-01-01T11:09:00.061258Z"],
                 queue="notify")
 
 
@@ -525,7 +525,7 @@ def test_send_already_registered_email(notify_api, sample_user, already_register
                 (str(current_app.config['NOTIFY_SERVICE_ID']),
                  'some_uuid',
                  app.encryption.encrypt(message),
-                 "2016-01-01T11:09:00.061258"),
+                 "2016-01-01T11:09:00.061258Z"),
                 queue="notify")
 
 
@@ -573,7 +573,7 @@ def test_send_user_confirm_new_email_returns_204(notify_api, sample_user, change
                 str(current_app.config['NOTIFY_SERVICE_ID']),
                 "some_uuid",
                 app.encryption.encrypt(message),
-                "2016-01-01T11:09:00.061258"), queue="notify")
+                "2016-01-01T11:09:00.061258Z"), queue="notify")
 
 
 def test_send_user_confirm_new_email_returns_400_when_email_missing(notify_api, sample_user, mocker):

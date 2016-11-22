@@ -10,12 +10,14 @@ def validate(json_to_validate, schema):
 
     @format_checker.checks('phone_number', raises=InvalidPhoneError)
     def validate_schema_phone_number(instance):
-        validate_phone_number(instance)
+        if instance is not None:
+            validate_phone_number(instance)
         return True
 
     @format_checker.checks('email_address', raises=InvalidEmailError)
     def validate_schema_email_address(instance):
-        validate_email_address(instance)
+        if instance is not None:
+            validate_email_address(instance)
         return True
 
     validator = Draft4Validator(schema, format_checker=format_checker)

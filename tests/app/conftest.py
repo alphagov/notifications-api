@@ -29,6 +29,7 @@ from app.dao.api_key_dao import save_model_api_key
 from app.dao.jobs_dao import dao_create_job
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
+from app.dao.provider_rates_dao import create_provider_rates
 from app.clients.sms.firetext import FiretextClient
 
 
@@ -409,7 +410,8 @@ def sample_notification(notify_db,
                         create=True,
                         personalisation=None,
                         api_key_id=None,
-                        key_type=KEY_TYPE_NORMAL):
+                        key_type=KEY_TYPE_NORMAL,
+                        sent_by=None):
     if created_at is None:
         created_at = datetime.utcnow()
     if service is None:
@@ -441,7 +443,8 @@ def sample_notification(notify_db,
         'personalisation': personalisation,
         'notification_type': template.template_type,
         'api_key_id': api_key_id,
-        'key_type': key_type
+        'key_type': key_type,
+        'sent_by': sent_by
     }
     if job_row_number:
         data['job_row_number'] = job_row_number
@@ -841,3 +844,12 @@ def sample_service_whitelist(notify_db, notify_db_session, service=None, email_a
     notify_db.session.add(whitelisted_user)
     notify_db.session.commit()
     return whitelisted_user
+
+
+@pytest.fixture(scope='function')
+def sample_provider_rate(notify_db, notify_db_session, valid_from=None, rate=None, provider_identifier=None):
+    create_provider_rates(
+        provider_identifier=provider_identifier if provider_identifier is not None else 'mmg',
+        valid_from=valid_from if valid_from is not None else datetime.utcnow(),
+        rate=rate if rate is not None else 1,
+    )
