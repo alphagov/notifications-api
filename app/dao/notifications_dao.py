@@ -296,15 +296,20 @@ def get_notifications_for_service(
 
 def _filter_query(query, filter_dict=None):
     if filter_dict is None:
-        filter_dict = MultiDict()
-    else:
-        filter_dict = MultiDict(filter_dict)
-    statuses = filter_dict.getlist('status') if 'status' in filter_dict else None
+        return query
+
+    multidict = MultiDict(filter_dict)
+
+    # filter by status
+    statuses = multidict.getlist('status')
     if statuses:
         query = query.filter(Notification.status.in_(statuses))
-    template_types = filter_dict.getlist('template_type') if 'template_type' in filter_dict else None
+
+    # filter by template
+    template_types = multidict.getlist('template_type')
     if template_types:
         query = query.join(Template).filter(Template.template_type.in_(template_types))
+
     return query
 
 
