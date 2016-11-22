@@ -327,35 +327,34 @@ def test_should_process_all_sms_job(sample_job,
 
 
 def test_should_send_template_to_correct_sms_task_and_persist(sample_template_with_placeholders, mocker):
-    with freeze_time("2016-01-01 11:09:00.00000"):
-        notification = _notification_json(sample_template_with_placeholders,
-                                          to="+447234123123", personalisation={"name": "Jo"})
+    notification = _notification_json(sample_template_with_placeholders,
+                                      to="+447234123123", personalisation={"name": "Jo"})
 
-        mocked_deliver_sms = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    mocked_deliver_sms = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
-        send_sms(
-            sample_template_with_placeholders.service_id,
-            uuid.uuid4(),
-            encryption.encrypt(notification),
-            datetime.utcnow().strftime(DATETIME_FORMAT)
-        )
+    send_sms(
+        sample_template_with_placeholders.service_id,
+        uuid.uuid4(),
+        encryption.encrypt(notification),
+        datetime.utcnow().strftime(DATETIME_FORMAT)
+    )
 
-        persisted_notification = Notification.query.one()
-        assert persisted_notification.to == '+447234123123'
-        assert persisted_notification.template_id == sample_template_with_placeholders.id
-        assert persisted_notification.template_version == sample_template_with_placeholders.version
-        assert persisted_notification.status == 'created'
-        assert persisted_notification.created_at <= datetime.utcnow()
-        assert not persisted_notification.sent_at
-        assert not persisted_notification.sent_by
-        assert not persisted_notification.job_id
-        assert persisted_notification.personalisation == {'name': 'Jo'}
-        assert persisted_notification._personalisation == encryption.encrypt({"name": "Jo"})
-        assert persisted_notification.notification_type == 'sms'
-        mocked_deliver_sms.assert_called_once_with(
-            [str(persisted_notification.id)],
-            queue="send-sms"
-        )
+    persisted_notification = Notification.query.one()
+    assert persisted_notification.to == '+447234123123'
+    assert persisted_notification.template_id == sample_template_with_placeholders.id
+    assert persisted_notification.template_version == sample_template_with_placeholders.version
+    assert persisted_notification.status == 'created'
+    assert persisted_notification.created_at <= datetime.utcnow()
+    assert not persisted_notification.sent_at
+    assert not persisted_notification.sent_by
+    assert not persisted_notification.job_id
+    assert persisted_notification.personalisation == {'name': 'Jo'}
+    assert persisted_notification._personalisation == encryption.encrypt({"name": "Jo"})
+    assert persisted_notification.notification_type == 'sms'
+    mocked_deliver_sms.assert_called_once_with(
+        [str(persisted_notification.id)],
+        queue="send-sms"
+    )
 
 
 def test_should_put_send_sms_task_in_research_mode_queue_if_research_mode_service(notify_db, notify_db_session, mocker):
