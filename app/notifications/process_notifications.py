@@ -4,8 +4,9 @@ from flask import current_app
 from notifications_utils.renderers import PassThrough
 from notifications_utils.template import Template
 
-from app import DATETIME_FORMAT
+from app import DATETIME_FORMAT, redis_store
 from app.celery import provider_tasks
+from app.clients import redis
 from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
 from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE
 from app.notifications.validators import check_sms_content_char_count
@@ -61,6 +62,7 @@ def persist_notification(template_id,
         job_row_number=job_row_number
     )
     dao_create_notification(notification)
+    redis_store.incr(redis.daily_limit_cache_key(service_id))
     return notification
 
 

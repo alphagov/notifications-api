@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import Mock
 
 from app.clients.redis.redis_client import RedisClient
-from app.clients.redis import cache_key
+from app.clients.redis import daily_limit_cache_key
 from freezegun import freeze_time
 
 
@@ -78,4 +78,4 @@ def test_should_call_get_if_enabled(enabled_redis_client):
 
 def test_should_build_cache_key_service_and_action(sample_service):
     with freeze_time("2016-01-01 12:00:00.000000"):
-        assert cache_key(sample_service.id) == '{}-2016-01-01-count'.format(sample_service.id)
+        assert daily_limit_cache_key(sample_service.id) == '{}-2016-01-01-count'.format(sample_service.id)

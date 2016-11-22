@@ -10,7 +10,7 @@ from app.clients import redis
 
 def check_service_message_limit(key_type, service):
     if key_type != KEY_TYPE_TEST:
-        cache_key = redis.cache_key(service.id)
+        cache_key = redis.daily_limit_cache_key(service.id)
         service_stats = redis_store.get(cache_key)
         if not service_stats:
             service_stats = services_dao.fetch_todays_total_message_count(service.id)

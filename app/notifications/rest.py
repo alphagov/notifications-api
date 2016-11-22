@@ -246,7 +246,6 @@ def send_notification(notification_type):
 
     notification_id = create_uuid() if saved_notification is None else saved_notification.id
     notification.update({"template_version": template.version})
-    redis_store.incr(redis.cache_key(service.id))
     return jsonify(
         data=get_notification_return_data(
             notification_id,

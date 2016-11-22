@@ -332,7 +332,6 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
                                           to="+447234123123", personalisation={"name": "Jo"})
 
         mocked_deliver_sms = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-        redis_mock = mocker.patch('app.celery.tasks.redis_store.incr')
 
         send_sms(
             sample_template_with_placeholders.service_id,
@@ -357,7 +356,6 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
             [str(persisted_notification.id)],
             queue="send-sms"
         )
-        redis_mock.assert_called_with(str(sample_template_with_placeholders.service_id) + '-2016-01-01-count')
 
 
 def test_should_put_send_sms_task_in_research_mode_queue_if_research_mode_service(notify_db, notify_db_session, mocker):
@@ -513,48 +511,6 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
     assert Notification.query.count() == 0
 
 
-def test_should_not_not_increment_counter_if_not_sending_sms(notify_db, notify_db_session, mocker):
-    redis_mock = mocker.patch('app.celery.tasks.redis_store.incr')
-
-    user = sample_user(notify_db, notify_db_session)
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(
-        notify_db, notify_db_session, service=service, template_type='sms'
-    )
-    notification = _notification_json(template, to="+447878787878")
-
-    notification_id = uuid.uuid4()
-    send_sms(
-        service.id,
-        notification_id,
-        encryption.encrypt(notification),
-        datetime.utcnow().strftime(DATETIME_FORMAT)
-    )
-
-    redis_mock.assert_not_called()
-
-
-def test_should_not_not_increment_counter_if_not_sending_email(notify_db, notify_db_session, mocker):
-    redis_mock = mocker.patch('app.celery.tasks.redis_store.incr')
-
-    user = sample_user(notify_db, notify_db_session)
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(
-        notify_db, notify_db_session, service=service, template_type='email', subject_line='Hello'
-    )
-    notification = _notification_json(template, to="test@example.com")
-
-    notification_id = uuid.uuid4()
-    send_email(
-        service.id,
-        notification_id,
-        encryption.encrypt(notification),
-        datetime.utcnow().strftime(DATETIME_FORMAT)
-    )
-
-    redis_mock.assert_not_called()
-
-
 def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_service(
         notify_db, notify_db_session, mocker
 ):
@@ -683,7 +639,6 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
             {"name": "Jo"},
             row_number=1)
         mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-        redis_mock = mocker.patch('app.celery.tasks.redis_store.incr')
 
         notification_id = uuid.uuid4()
 
