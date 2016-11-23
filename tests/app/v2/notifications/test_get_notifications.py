@@ -1,12 +1,24 @@
 import json
+import pytest
 
 from app import DATETIME_FORMAT
 from tests import create_authorization_header
+from tests.app.conftest import sample_notification as create_sample_notification
 
 
-def test_get_notification_by_id_returns_200(client, sample_notification):
+@pytest.mark.parametrize('billable_units, provider', [
+    (1, 'mmg'),
+    (0, 'mmg'),
+    (1, None)
+])
+def test_get_notification_by_id_returns_200(
+        client, notify_db, notify_db_session, sample_provider_rate, billable_units, provider
+):
+    sample_notification = create_sample_notification(
+        notify_db, notify_db_session, billable_units=billable_units, sent_by=provider
+    )
+
     auth_header = create_authorization_header(service_id=sample_notification.service_id)
-
     response = client.get(
         path='/v2/notifications/{}'.format(sample_notification.id),
         headers=[('Content-Type', 'application/json'), auth_header])
