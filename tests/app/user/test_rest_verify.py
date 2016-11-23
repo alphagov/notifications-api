@@ -248,7 +248,7 @@ def test_send_user_sms_code(notify_api,
                 ([current_app.config['NOTIFY_SERVICE_ID'],
                   "some_uuid",
                   encrypted,
-                  "2016-01-01T11:09:00.061258"]),
+                  "2016-01-01T11:09:00.061258Z"]),
                 queue="notify"
             )
 
@@ -288,7 +288,7 @@ def test_send_user_code_for_sms_with_optional_to_field(notify_api,
                 ([current_app.config['NOTIFY_SERVICE_ID'],
                   "some_uuid",
                   encrypted,
-                  "2016-01-01T11:09:00.061258"]),
+                  "2016-01-01T11:09:00.061258Z"]),
                 queue="notify"
             )
 
@@ -343,7 +343,7 @@ def test_send_user_email_verification(notify_api,
                 (str(current_app.config['NOTIFY_SERVICE_ID']),
                  'some_uuid',
                  encryption.encrypt(message),
-                 "2016-01-01T11:09:00.061258"),
+                 "2016-01-01T11:09:00.061258Z"),
                 queue="notify")
 
 

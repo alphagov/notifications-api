@@ -55,7 +55,7 @@ def test_create_invited_user(notify_api, sample_service, mocker, invitation_emai
                 (str(current_app.config['NOTIFY_SERVICE_ID']),
                  'some_uuid',
                  encryption.encrypt(message),
-                 "2016-01-01T11:09:00.061258"),
+                 "2016-01-01T11:09:00.061258Z"),
                 queue="notify")
 
 

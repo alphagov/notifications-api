@@ -76,7 +76,7 @@ def test_should_process_sms_job(sample_job, mocker):
         (str(sample_job.service_id),
          "uuid",
          "something_encrypted",
-         "2016-01-01T11:09:00.061258"),
+         "2016-01-01T11:09:00.061258Z"),
         queue="db-sms"
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
@@ -104,7 +104,7 @@ def test_should_process_sms_job_into_research_mode_queue_if_research_mode_servic
         (str(job.service_id),
          "uuid",
          "something_encrypted",
-         "2016-01-01T11:09:00.061258"),
+         "2016-01-01T11:09:00.061258Z"),
         queue="research-mode"
     )
 
@@ -133,7 +133,7 @@ def test_should_process_email_job_into_research_mode_queue_if_research_mode_serv
         (str(job.service_id),
          "uuid",
          "something_encrypted",
-         "2016-01-01T11:09:00.061258"),
+         "2016-01-01T11:09:00.061258Z"),
         queue="research-mode"
     )
 
@@ -252,7 +252,7 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
             str(job.service_id),
             "uuid",
             "something_encrypted",
-            "2016-01-01T11:09:00.061258"
+            "2016-01-01T11:09:00.061258Z"
         ),
         queue="db-email"
     )
@@ -294,7 +294,7 @@ def test_should_process_email_job(sample_email_job, mocker):
             str(sample_email_job.service_id),
             "uuid",
             "something_encrypted",
-            "2016-01-01T11:09:00.061258"
+            "2016-01-01T11:09:00.061258Z"
         ),
         queue="db-email"
     )

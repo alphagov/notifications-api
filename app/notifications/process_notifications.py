@@ -58,7 +58,7 @@ def persist_notification(template_id,
         notification_type=notification_type,
         api_key_id=api_key_id,
         key_type=key_type,
-        created_at=created_at or datetime.utcnow().strftime(DATETIME_FORMAT),
+        created_at=created_at or datetime.utcnow(),
         job_id=job_id,
         job_row_number=job_row_number,
         client_reference=reference
