@@ -8,13 +8,13 @@ from flask_marshmallow import Marshmallow
 from monotonic import monotonic
 from werkzeug.local import LocalProxy
 from notifications_utils import logging
+from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from app.celery.celery import NotifyCelery
 from app.clients import Clients
 from app.clients.sms.mmg import MMGClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.loadtesting import LoadtestingClient
 from app.clients.email.aws_ses import AwsSesClient
-from app.clients.statsd.statsd_client import StatsdClient
 from app.encryption import Encryption
 
 
