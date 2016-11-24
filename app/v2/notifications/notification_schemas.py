@@ -57,7 +57,6 @@ get_notification_response = {
         "line_5": {"type": ["string", "null"]},
         "line_6": {"type": ["string", "null"]},
         "postcode": {"type": ["string", "null"]},
-        "cost": {"type": "number"},
         "type": {"enum": ["sms", "letter", "email"]},
         "status": {"type": "string"},
         "template": template,
@@ -69,8 +68,7 @@ get_notification_response = {
         # technically, all keys are required since we always have all of them
         "id", "reference", "email_address", "phone_number",
         "line_1", "line_2", "line_3", "line_4", "line_5", "line_6", "postcode",
-        "cost", "type", "status", "template",
-        "created_at", "sent_at", "completed_at"
+        "type", "status", "template", "created_at", "sent_at", "completed_at"
     ]
 }
 

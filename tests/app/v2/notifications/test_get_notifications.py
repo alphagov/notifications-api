@@ -46,7 +46,6 @@ def test_get_notification_by_id_returns_200(
         'line_5': None,
         'line_6': None,
         'postcode': None,
-        'cost': sample_notification.cost(),
         'type': '{}'.format(sample_notification.notification_type),
         'status': '{}'.format(sample_notification.status),
         'template': expected_template_response,
