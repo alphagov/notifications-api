@@ -550,7 +550,7 @@ class Notification(db.Model):
             NOTIFICATION_FAILED,
             NOTIFICATION_TECHNICAL_FAILURE,
             NOTIFICATION_TEMPORARY_FAILURE,
-            NOTIFICATION_PERMANENT_FAILURE
+            NOTIFICATION_PERMANENT_FAILURE,
         ]:
             return self.updated_at.strftime(DATETIME_FORMAT)
 
