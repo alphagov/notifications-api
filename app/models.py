@@ -466,6 +466,12 @@ NOTIFICATION_TECHNICAL_FAILURE = 'technical-failure'
 NOTIFICATION_TEMPORARY_FAILURE = 'temporary-failure'
 NOTIFICATION_PERMANENT_FAILURE = 'permanent-failure'
 
+NOTIFICATION_STATUS_TYPES_FAILED = [
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_TEMPORARY_FAILURE,
+    NOTIFICATION_PERMANENT_FAILURE,
+]
+
 NOTIFICATION_STATUS_TYPES_COMPLETED = [
     NOTIFICATION_DELIVERED,
     NOTIFICATION_FAILED,
@@ -480,7 +486,7 @@ NOTIFICATION_STATUS_TYPES_BILLABLE = [
     NOTIFICATION_FAILED,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_PERMANENT_FAILURE
+    NOTIFICATION_PERMANENT_FAILURE,
 ]
 
 NOTIFICATION_STATUS_TYPES = [
@@ -491,7 +497,7 @@ NOTIFICATION_STATUS_TYPES = [
     NOTIFICATION_FAILED,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_PERMANENT_FAILURE
+    NOTIFICATION_PERMANENT_FAILURE,
 ]
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
@@ -557,6 +563,46 @@ class Notification(db.Model):
             return self.updated_at.strftime(DATETIME_FORMAT)
 
         return None
+
+    @staticmethod
+    def substitute_status(status_or_statuses):
+        """
+        static function that takes a status or list of statuses and substitutes our new failure types if it finds
+        the deprecated one
+
+        > IN
+        'failed'
+
+        < OUT
+        ['technical-failure', 'temporary-failure', 'permanent-failure']
+
+        -
+
+        > IN
+        ['failed', 'created']
+
+        < OUT
+        ['technical-failure', 'temporary-failure', 'permanent-failure', 'created']
+
+
+        :param status_or_statuses: a single status or list of statuses
+        :return: a single status or list with the current failure statuses substituted for 'failure'
+        """
+
+        def _substitute_status_str(_status):
+            return NOTIFICATION_STATUS_TYPES_FAILED if _status == NOTIFICATION_FAILED else _status
+
+        def _substitute_status_seq(_statuses):
+            if NOTIFICATION_FAILED in _statuses:
+                _statuses = list(set(
+                    NOTIFICATION_STATUS_TYPES_FAILED + [_s for _s in _statuses if _s != NOTIFICATION_FAILED]
+                ))
+            return _statuses
+
+        if isinstance(status_or_statuses, str):
+            return _substitute_status_str(status_or_statuses)
+
+        return _substitute_status_seq(status_or_statuses)
 
     def serialize(self):
 
