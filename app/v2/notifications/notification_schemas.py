@@ -72,6 +72,36 @@ get_notification_response = {
     ]
 }
 
+get_notifications_response = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "GET list of notifications response schema",
+    "type": "object",
+    "properties": {
+        "notifications": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "ref": get_notification_response
+            }
+        },
+        "links": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "type": "string"
+                },
+                "next": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": False,
+            "required": ["current"]
+        }
+    },
+    "additionalProperties": False,
+    "required": ["notifications", "links"]
+}
+
 post_sms_request = {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "description": "POST sms notification schema",
