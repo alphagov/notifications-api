@@ -4,13 +4,18 @@ from app.dao import services_dao
 from app.models import KEY_TYPE_TEST, KEY_TYPE_TEAM
 from app.service.utils import service_allowed_to_send_to
 from app.v2.errors import TooManyRequestsError, BadRequestError
+from app import redis_store
+from app.clients import redis
 
 
 def check_service_message_limit(key_type, service):
-    if all((key_type != KEY_TYPE_TEST,
-            service.restricted)):
-        service_stats = services_dao.fetch_todays_total_message_count(service.id)
-        if service_stats >= service.message_limit:
+    if key_type != KEY_TYPE_TEST:
+        cache_key = redis.daily_limit_cache_key(service.id)
+        service_stats = redis_store.get(cache_key)
+        if not service_stats:
+            service_stats = services_dao.fetch_todays_total_message_count(service.id)
+            redis_store.set(cache_key, service_stats, ex=3600)
+        if int(service_stats) >= service.message_limit:
             raise TooManyRequestsError(service.message_limit)
 
 

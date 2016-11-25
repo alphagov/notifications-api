@@ -343,7 +343,7 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
 
 
 @freeze_time("2016-01-01 12:00:00.061258")
-def test_should_not_block_api_call_if_over_day_limit_for_live_service(
+def test_should_block_api_call_if_over_day_limit_for_live_service(
         notify_db,
         notify_db_session,
         notify_api,
@@ -371,8 +371,7 @@ def test_should_not_block_api_call_if_over_day_limit_for_live_service(
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
             json.loads(response.get_data(as_text=True))
-
-            assert response.status_code == 201
+            assert response.status_code == 429
 
 
 @freeze_time("2016-01-01 12:00:00.061258")
@@ -698,15 +697,13 @@ def test_should_delete_notification_and_return_error_if_sqs_fails(
         save_model_api_key(api_key)
         auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
 
-        with pytest.raises(Exception) as exc:
-            response = client.post(
-                path='/notifications/{}'.format(template_type),
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+        response = client.post(
+            path='/notifications/{}'.format(template_type),
+            data=json.dumps(data),
+            headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
         mocked.assert_called_once_with([fake_uuid], queue='send-{}'.format(template_type))
-        assert str(exc.value) == 'failed to talk to SQS'
-
+        assert response.status_code == 500
         assert not notifications_dao.get_notification_by_id(fake_uuid)
         assert not NotificationHistory.query.get(fake_uuid)
 

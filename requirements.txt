@@ -18,6 +18,7 @@ celery==3.1.23
 monotonic==1.2
 statsd==3.2.1
 jsonschema==2.5.1
+Flask-Redis==0.1.0
 
 git+https://github.com/alphagov/notifications-python-client.git@3.0.0#egg=notifications-python-client==3.0.0
 

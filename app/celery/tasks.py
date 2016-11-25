@@ -27,6 +27,8 @@ from app.models import (
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
+from app import redis_store
+from app.clients.redis import daily_limit_cache_key
 
 
 @notify_celery.task(name="process-job")
@@ -152,14 +154,16 @@ def send_sms(self,
 
     except SQLAlchemyError as e:
         current_app.logger.exception(
-            "RETRY: send_sms notification for job {} row number {}".format(notification.get('job', None),
-                                                                           notification.get('row_number', None)), e)
+            "RETRY: send_sms notification for job {} row number {}".format(
+                notification.get('job', None),
+                notification.get('row_number', None)), e)
         try:
             raise self.retry(queue="retry", exc=e)
         except self.MaxRetriesExceededError:
             current_app.logger.exception(
-                "RETRY FAILED: task send_sms failed for notification".format(notification.get('job', None),
-                                                                             notification.get('row_number', None)), e)
+                "RETRY FAILED: task send_sms failed for notification".format(
+                    notification.get('job', None),
+                    notification.get('row_number', None)), e)
 
 
 @notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=300)
@@ -207,5 +211,6 @@ def send_email(self, service_id,
             raise self.retry(queue="retry", exc=e)
         except self.MaxRetriesExceededError:
             current_app.logger.error(
-                "RETRY FAILED: task send_email failed for notification".format(notification.get('job', None),
-                                                                               notification.get('row_number', None)), e)
+                "RETRY FAILED: task send_email failed for notification".format(
+                    notification.get('job', None),
+                    notification.get('row_number', None)), e)

@@ -132,6 +132,9 @@ class Config(object):
     STATSD_HOST = "statsd.hostedgraphite.com"
     STATSD_PORT = 8125
 
+    REDIS_ENABLED = False
+    REDIS_URL = "redis://localhost:6379/0"
+
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200
 
     SIMULATED_EMAIL_ADDRESSES = ('simulate-delivered@notifications.service.gov.uk',
@@ -167,6 +170,7 @@ class Test(Config):
     FROM_NUMBER = 'testing'
     NOTIFY_ENVIRONMENT = 'test'
     DEBUG = True
+    REDIS_ENABLED = True
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
     STATSD_ENABLED = True
     STATSD_HOST = "localhost"

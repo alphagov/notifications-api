@@ -4,12 +4,13 @@ from flask import current_app
 from notifications_utils.renderers import PassThrough
 from notifications_utils.template import Template
 
-from app import DATETIME_FORMAT
+from app import DATETIME_FORMAT, redis_store
 from app.celery import provider_tasks
+from app.clients import redis
 from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
 from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE
 from app.notifications.validators import check_sms_content_char_count
-from app.v2.errors import BadRequestError
+from app.v2.errors import BadRequestError, SendNotificationToQueueError
 
 
 def create_content_for_notification(template, personalisation):
@@ -63,6 +64,7 @@ def persist_notification(template_id,
         client_reference=reference
     )
     dao_create_notification(notification)
+    redis_store.incr(redis.daily_limit_cache_key(service_id))
     return notification
 
 
@@ -79,10 +81,10 @@ def send_notification_to_queue(notification, research_mode):
                 [str(notification.id)],
                 queue='send-email' if not research_mode else 'research-mode'
             )
-    except Exception:
-        current_app.logger.exception("Failed to send to SQS exception")
+    except Exception as e:
+        current_app.logger.exception(e)
         dao_delete_notifications_and_history_by_id(notification.id)
-        raise
+        raise SendNotificationToQueueError()
 
     current_app.logger.info(
         "{} {} created at {}".format(notification.notification_type, notification.id, notification.created_at)

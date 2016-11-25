@@ -631,27 +631,28 @@ def test_should_not_send_sms_if_team_key_and_recipient_not_in_team(notify_db, no
 
 
 def test_should_use_email_template_and_persist(sample_email_template_with_placeholders, sample_api_key, mocker):
-    notification = _notification_json(
-        sample_email_template_with_placeholders,
-        'my_email@my_email.com',
-        {"name": "Jo"},
-        row_number=1)
-    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    with freeze_time("2016-01-01 12:00:00.000000"):
+        notification = _notification_json(
+            sample_email_template_with_placeholders,
+            'my_email@my_email.com',
+            {"name": "Jo"},
+            row_number=1)
+        mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
-    notification_id = uuid.uuid4()
+        notification_id = uuid.uuid4()
 
-    with freeze_time("2016-01-01 11:09:00.00000"):
-        now = datetime.utcnow()
+        with freeze_time("2016-01-01 11:09:00.00000"):
+            now = datetime.utcnow()
 
-    with freeze_time("2016-01-01 11:10:00.00000"):
-        send_email(
-            sample_email_template_with_placeholders.service_id,
-            notification_id,
-            encryption.encrypt(notification),
-            now.strftime(DATETIME_FORMAT),
-            api_key_id=str(sample_api_key.id),
-            key_type=sample_api_key.key_type
-        )
+        with freeze_time("2016-01-01 11:10:00.00000"):
+            send_email(
+                sample_email_template_with_placeholders.service_id,
+                notification_id,
+                encryption.encrypt(notification),
+                now.strftime(DATETIME_FORMAT),
+                api_key_id=str(sample_api_key.id),
+                key_type=sample_api_key.key_type
+            )
 
     persisted_notification = Notification.query.one()
     assert persisted_notification.to == 'my_email@my_email.com'
