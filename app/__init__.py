@@ -136,6 +136,12 @@ def init_app(app):
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
         return response
 
+    @app.errorhandler(Exception)
+    def exception(error):
+        app.logger.exception(error)
+        # error.code is set for our exception types.
+        return jsonify(result='error', message=error.message), error.code or 500
+
     @app.errorhandler(404)
     def page_not_found(e):
         msg = e.description or "Not found"
