@@ -309,6 +309,7 @@ def _filter_query(query, filter_dict=None):
     # filter by status
     statuses = multidict.getlist('status')
     if statuses:
+        statuses = Notification.substitute_status(statuses)
         query = query.filter(Notification.status.in_(statuses))
 
     # filter by template

@@ -184,7 +184,30 @@ def test_get_all_notifications_filter_by_multiple_statuses(client, notify_db, no
 
 
 def test_get_all_notifications_filter_by_failed_status(client, notify_db, notify_db_session):
-    pass
+    created_notification = create_sample_notification(notify_db, notify_db_session, status="created")
+    failed_notifications = [
+        create_sample_notification(notify_db, notify_db_session, status=_status)
+        for _status in ["technical-failure", "temporary-failure", "permanent-failure"]
+    ]
+
+    auth_header = create_authorization_header(service_id=created_notification.service_id)
+    response = client.get(
+        path='/v2/notifications?status=failed',
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert response.status_code == 200
+    assert response.headers['Content-type'] == "application/json"
+    assert json_response['links']['current'] == "/v2/notifications?status=failed"
+    assert 'next' in json_response['links'].keys()
+    assert len(json_response['notifications']) == 3
+
+    returned_notification_ids = [n['id'] for n in json_response['notifications']]
+    for _id in [_notification.id for _notification in failed_notifications]:
+        assert str(_id) in returned_notification_ids
+
+    assert created_notification.id not in returned_notification_ids
 
 
 def test_get_all_notifications_filter_by_id(client, notify_db, notify_db_session):
