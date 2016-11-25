@@ -466,6 +466,14 @@ NOTIFICATION_TECHNICAL_FAILURE = 'technical-failure'
 NOTIFICATION_TEMPORARY_FAILURE = 'temporary-failure'
 NOTIFICATION_PERMANENT_FAILURE = 'permanent-failure'
 
+NOTIFICATION_STATUS_TYPES_COMPLETED = [
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_FAILED,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_TEMPORARY_FAILURE,
+    NOTIFICATION_PERMANENT_FAILURE,
+]
+
 NOTIFICATION_STATUS_TYPES_BILLABLE = [
     NOTIFICATION_SENDING,
     NOTIFICATION_DELIVERED,
@@ -545,13 +553,7 @@ class Notification(db.Model):
             self._personalisation = encryption.encrypt(personalisation)
 
     def completed_at(self):
-        if self.status in [
-            NOTIFICATION_DELIVERED,
-            NOTIFICATION_FAILED,
-            NOTIFICATION_TECHNICAL_FAILURE,
-            NOTIFICATION_TEMPORARY_FAILURE,
-            NOTIFICATION_PERMANENT_FAILURE,
-        ]:
+        if self.status in NOTIFICATION_STATUS_TYPES_COMPLETED:
             return self.updated_at.strftime(DATETIME_FORMAT)
 
         return None
