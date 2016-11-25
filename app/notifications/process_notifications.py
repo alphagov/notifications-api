@@ -4,7 +4,7 @@ from flask import current_app
 from notifications_utils.renderers import PassThrough
 from notifications_utils.template import Template
 
-from app import DATETIME_FORMAT, redis_store
+from app import redis_store
 from app.celery import provider_tasks
 from app.clients import redis
 from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
@@ -48,8 +48,10 @@ def persist_notification(template_id,
                          created_at=None,
                          job_id=None,
                          job_row_number=None,
-                         reference=None):
+                         reference=None,
+                         notification_id=None):
     notification = Notification(
+        id=notification_id,
         template_id=template_id,
         template_version=template_version,
         to=recipient,

@@ -1,4 +1,5 @@
 from datetime import (datetime)
+
 from flask import current_app
 from notifications_utils.recipients import (
     RecipientCSV
@@ -17,6 +18,7 @@ from app.dao.jobs_dao import (
     dao_update_job,
     dao_get_job_by_id
 )
+from app.dao.notifications_dao import get_notification_by_id
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
@@ -27,8 +29,6 @@ from app.models import (
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
-from app import redis_store
-from app.clients.redis import daily_limit_cache_key
 
 
 @notify_celery.task(name="process-job")
@@ -119,7 +119,6 @@ def send_sms(self,
              created_at,
              api_key_id=None,
              key_type=KEY_TYPE_NORMAL):
-    # notification_id is not used, it is created by the db model object
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
@@ -141,6 +140,7 @@ def send_sms(self,
                                                   created_at=created_at,
                                                   job_id=notification.get('job', None),
                                                   job_row_number=notification.get('row_number', None),
+                                                  notification_id=notification_id
                                                   )
 
         provider_tasks.deliver_sms.apply_async(
@@ -153,17 +153,21 @@ def send_sms(self,
         )
 
     except SQLAlchemyError as e:
-        current_app.logger.exception(
-            "RETRY: send_sms notification for job {} row number {}".format(
-                notification.get('job', None),
-                notification.get('row_number', None)), e)
-        try:
-            raise self.retry(queue="retry", exc=e)
-        except self.MaxRetriesExceededError:
+        if not get_notification_by_id(notification_id):
+            # Sometimes, SQS plays the same message twice. We should be able to catch an IntegrityError, but it seems
+            # SQLAlchemy is throwing a FlushError. So we check if the notification id already exists then do not
+            # send to the retry queue.
             current_app.logger.exception(
-                "RETRY FAILED: task send_sms failed for notification".format(
+                "RETRY: send_sms notification for job {} row number {}".format(
                     notification.get('job', None),
                     notification.get('row_number', None)), e)
+            try:
+                raise self.retry(queue="retry", exc=e)
+            except self.MaxRetriesExceededError:
+                current_app.logger.exception(
+                    "RETRY FAILED: task send_sms failed for notification".format(
+                        notification.get('job', None),
+                        notification.get('row_number', None)), e)
 
 
 @notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=300)
@@ -174,7 +178,6 @@ def send_email(self, service_id,
                created_at,
                api_key_id=None,
                key_type=KEY_TYPE_NORMAL):
-    # notification_id is not used, it is created by the db model object
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
 
@@ -195,7 +198,7 @@ def send_email(self, service_id,
             created_at=created_at,
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
-
+            notification_id=notification_id
         )
 
         provider_tasks.deliver_email.apply_async(
@@ -205,12 +208,17 @@ def send_email(self, service_id,
 
         current_app.logger.info("Email {} created at {}".format(saved_notification.id, created_at))
     except SQLAlchemyError as e:
-        current_app.logger.exception("RETRY: send_email notification".format(notification.get('job', None),
-                                                                             notification.get('row_number', None)), e)
-        try:
-            raise self.retry(queue="retry", exc=e)
-        except self.MaxRetriesExceededError:
-            current_app.logger.error(
-                "RETRY FAILED: task send_email failed for notification".format(
-                    notification.get('job', None),
-                    notification.get('row_number', None)), e)
+        if not get_notification_by_id(notification_id):
+            # Sometimes, SQS plays the same message twice. We should be able to catch an IntegrityError, but it seems
+            # SQLAlchemy is throwing a FlushError. So we check if the notification id already exists then do not
+            # send to the retry queue.
+            current_app.logger.exception("RETRY: send_email notification".format(notification.get('job', None),
+                                                                                 notification.get('row_number', None)),
+                                         e)
+            try:
+                raise self.retry(queue="retry", exc=e)
+            except self.MaxRetriesExceededError:
+                current_app.logger.error(
+                    "RETRY FAILED: task send_email failed for notification".format(
+                        notification.get('job', None),
+                        notification.get('row_number', None)), e)

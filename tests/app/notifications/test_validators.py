@@ -1,3 +1,4 @@
+from datetime import datetime
 import pytest
 from freezegun import freeze_time
 
@@ -21,10 +22,9 @@ from tests.app.conftest import (
 
 
 @pytest.mark.parametrize('key_type', ['team', 'normal'])
-def test_exception_thown_by_redis_store_get_should_not_be_fatal(
+def test_exception_thrown_by_redis_store_get_should_not_be_fatal(
         notify_db,
         notify_db_session,
-        notify_api,
         key_type,
         mocker):
     mocker.patch('app.notifications.validators.redis_store.redis_store.get', side_effect=Exception("broken redis"))
@@ -39,7 +39,8 @@ def test_exception_thown_by_redis_store_get_should_not_be_fatal(
     assert e.value.status_code == 429
     assert e.value.message == 'Exceeded send limits (4) for today'
     assert e.value.fields == []
-    app.notifications.validators.redis_store.set.assert_not_called()
+    app.notifications.validators.redis_store.set\
+        .assert_called_with("{}-{}-count".format(service.id, datetime.utcnow().strftime("%Y-%m-%d")), 5, ex=3600)
 
 
 @pytest.mark.parametrize('key_type', ['test', 'team', 'normal'])
