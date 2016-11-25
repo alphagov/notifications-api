@@ -178,9 +178,8 @@ class ServiceWhitelist(db.Model):
         else:
             return instance
 
-        def __repr__(self):
-            return 'Recipient {} of type: {}'.format(self.recipient,
-                                                     self.recipient_type)
+    def __repr__(self):
+        return 'Recipient {} of type: {}'.format(self.recipient, self.recipient_type)
 
 
 class ApiKey(db.Model, Versioned):
