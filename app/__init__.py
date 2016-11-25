@@ -114,11 +114,16 @@ def init_app(app):
             url_for('status.show_delivery_status'),
             url_for('spec.get_spec')
         ]
+
         if request.path not in no_auth_req:
             from app.authentication import auth
             error = auth.requires_auth()
             if error:
                 return error
+
+    @app.before_request
+    def record_user_agent():
+        statsd_client.incr("user-agent.{}".format(process_user_agent(request.headers.get('User-Agent', None))))
 
     @app.before_request
     def record_request_details():
@@ -141,3 +146,15 @@ def init_app(app):
 
 def create_uuid():
     return str(uuid.uuid4())
+
+
+def process_user_agent(user_agent_string):
+    if user_agent_string and user_agent_string.lower().startswith("notify"):
+        components = user_agent_string.split("/")
+        client_name = components[0].lower()
+        client_version = components[1].replace(".", "-")
+        return "{}.{}".format(client_name, client_version)
+    elif user_agent_string and not user_agent_string.lower().startswith("notify"):
+        return "non-notify-user-agent"
+    else:
+        return "unknown"
