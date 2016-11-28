@@ -29,12 +29,12 @@ def get_notifications():
 
     def _build_links(notifications):
         _links = {
-            'current': url_for(".get_notifications", **request.args.to_dict(flat=False)),
+            'current': url_for(".get_notifications", _external=True, **request.args.to_dict(flat=False)),
         }
 
         if len(notifications):
             next_query_params = dict(request.args.to_dict(flat=False), older_than=notifications[-1].id)
-            _links['next'] = url_for(".get_notifications", **next_query_params)
+            _links['next'] = url_for(".get_notifications", _external=True, **next_query_params)
 
         return _links
 

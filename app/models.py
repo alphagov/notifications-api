@@ -284,7 +284,12 @@ class Template(db.Model):
 
     def get_link(self):
         # TODO: use "/v2/" route once available
-        return url_for("template.get_template_by_id_and_service_id", service_id=self.service_id, template_id=self.id)
+        return url_for(
+            "template.get_template_by_id_and_service_id",
+            service_id=self.service_id,
+            template_id=self.id,
+            _external=True
+        )
 
 
 class TemplateHistory(db.Model):

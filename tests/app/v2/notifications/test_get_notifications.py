@@ -73,7 +73,7 @@ def test_get_all_notifications_returns_200(client, notify_db, notify_db_session)
 
     assert response.status_code == 200
     assert response.headers['Content-type'] == "application/json"
-    assert json_response['links']['current'] == "/v2/notifications"
+    assert json_response['links']['current'].endswith("/v2/notifications")
     assert 'next' in json_response['links'].keys()
     assert len(json_response['notifications']) == 2
 
@@ -98,7 +98,7 @@ def test_get_all_notifications_no_notifications_if_no_notificatons(client, sampl
 
     assert response.status_code == 200
     assert response.headers['Content-type'] == "application/json"
-    assert json_response['links']['current'] == "/v2/notifications"
+    assert json_response['links']['current'].endswith("/v2/notifications")
     assert 'next' not in json_response['links'].keys()
     assert len(json_response['notifications']) == 0
 
@@ -120,7 +120,7 @@ def test_get_all_notifications_filter_by_template_type(client, notify_db, notify
 
     assert response.status_code == 200
     assert response.headers['Content-type'] == "application/json"
-    assert json_response['links']['current'] == "/v2/notifications?template_type=email"
+    assert json_response['links']['current'].endswith("/v2/notifications?template_type=email")
     assert 'next' in json_response['links'].keys()
     assert len(json_response['notifications']) == 1
 
@@ -148,7 +148,7 @@ def test_get_all_notifications_filter_by_single_status(client, notify_db, notify
 
     assert response.status_code == 200
     assert response.headers['Content-type'] == "application/json"
-    assert json_response['links']['current'] == "/v2/notifications?status=pending"
+    assert json_response['links']['current'].endswith("/v2/notifications?status=pending")
     assert 'next' in json_response['links'].keys()
     assert len(json_response['notifications']) == 1
 
@@ -172,7 +172,7 @@ def test_get_all_notifications_filter_by_multiple_statuses(client, notify_db, no
 
     assert response.status_code == 200
     assert response.headers['Content-type'] == "application/json"
-    assert json_response['links']['current'] == "/v2/notifications?status=created&status=pending&status=sending"
+    assert json_response['links']['current'].endswith("/v2/notifications?status=created&status=pending&status=sending")
     assert 'next' in json_response['links'].keys()
     assert len(json_response['notifications']) == 3
 
@@ -199,7 +199,7 @@ def test_get_all_notifications_filter_by_failed_status(client, notify_db, notify
 
     assert response.status_code == 200
     assert response.headers['Content-type'] == "application/json"
-    assert json_response['links']['current'] == "/v2/notifications?status=failed"
+    assert json_response['links']['current'].endswith("/v2/notifications?status=failed")
     assert 'next' in json_response['links'].keys()
     assert len(json_response['notifications']) == 3
 
@@ -223,7 +223,7 @@ def test_get_all_notifications_filter_by_id(client, notify_db, notify_db_session
 
     assert response.status_code == 200
     assert response.headers['Content-type'] == "application/json"
-    assert json_response['links']['current'] == "/v2/notifications?older_than={}".format(newer_notification.id)
+    assert json_response['links']['current'].endswith("/v2/notifications?older_than={}".format(newer_notification.id))
     assert 'next' in json_response['links'].keys()
     assert len(json_response['notifications']) == 1
 
@@ -242,7 +242,8 @@ def test_get_all_notifications_filter_by_id_no_notifications_if_nonexistent_id(c
 
     assert response.status_code == 200
     assert response.headers['Content-type'] == "application/json"
-    assert json_response['links']['current'] == "/v2/notifications?older_than=dd4b8b9d-d414-4a83-9256-580046bf18f9"
+    assert json_response['links']['current'].endswith(
+        "/v2/notifications?older_than=dd4b8b9d-d414-4a83-9256-580046bf18f9")
     assert 'next' not in json_response['links'].keys()
     assert len(json_response['notifications']) == 0
 
@@ -259,7 +260,7 @@ def test_get_all_notifications_filter_by_id_no_notifications_if_last_notificatio
 
     assert response.status_code == 200
     assert response.headers['Content-type'] == "application/json"
-    assert json_response['links']['current'] == "/v2/notifications?older_than={}".format(notification.id)
+    assert json_response['links']['current'].endswith("/v2/notifications?older_than={}".format(notification.id))
     assert 'next' not in json_response['links'].keys()
     assert len(json_response['notifications']) == 0
 
