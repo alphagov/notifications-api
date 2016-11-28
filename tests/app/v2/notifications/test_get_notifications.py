@@ -60,6 +60,44 @@ def test_get_notification_by_id_returns_200(
     assert json_response == expected_response
 
 
+def test_get_notification_by_id_nonexistent_id(client, sample_notification):
+    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    response = client.get(
+        path='/v2/notifications/dd4b8b9d-d414-4a83-9256-580046bf18f9',
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 404
+    assert response.headers['Content-type'] == 'application/json'
+
+    json_response = json.loads(response.get_data(as_text=True))
+    assert json_response == {
+        "errors": [
+            {
+                "error": "NoResultFound",
+                "message": "No result found"
+            }
+        ],
+        "status_code": 404
+    }
+
+
+def test_get_notification_by_id_invalid_id(client, sample_notification):
+    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    response = client.get(
+        path='/v2/notifications/1234-badly-formatted-id-7890',
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 404
+    assert response.headers['Content-type'] == 'application/json'
+
+    json_response = json.loads(response.get_data(as_text=True))
+    assert json_response == {
+        "message": "The requested URL was not found on the server.  "
+                   "If you entered the URL manually please check your spelling and try again.",
+        "result": "error"
+    }
+
+
 def test_get_all_notifications_returns_200(client, notify_db, notify_db_session):
     notifications = [create_sample_notification(notify_db, notify_db_session) for _ in range(2)]
     notification = notifications[-1]
@@ -88,7 +126,7 @@ def test_get_all_notifications_returns_200(client, notify_db, notify_db_session)
     assert json_response['notifications'][0]['type'] == "sms"
 
 
-def test_get_all_notifications_no_notifications_if_no_notificatons(client, sample_service):
+def test_get_all_notifications_no_notifications_if_no_notifications(client, sample_service):
     auth_header = create_authorization_header(service_id=sample_service.id)
     response = client.get(
         path='/v2/notifications',
@@ -135,6 +173,22 @@ def test_get_all_notifications_filter_by_template_type(client, notify_db, notify
     assert json_response['notifications'][0]['type'] == "email"
 
 
+def test_get_all_notifications_filter_by_template_type_invalid_template_type(client, sample_notification):
+    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    response = client.get(
+        path='/v2/notifications?template_type=orange',
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert response.status_code == 400
+    assert response.headers['Content-type'] == "application/json"
+
+    assert json_response['status_code'] == 400
+    assert len(json_response['errors']) == 1
+    assert json_response['errors'][0]['message'] == "orange is not one of [sms, email, letter]"
+
+
 def test_get_all_notifications_filter_by_single_status(client, notify_db, notify_db_session):
     notification = create_sample_notification(notify_db, notify_db_session, status="pending")
     create_sample_notification(notify_db, notify_db_session)
@@ -154,6 +208,23 @@ def test_get_all_notifications_filter_by_single_status(client, notify_db, notify
 
     assert json_response['notifications'][0]['id'] == str(notification.id)
     assert json_response['notifications'][0]['status'] == "pending"
+
+
+def test_get_all_notifications_filter_by_status_invalid_status(client, sample_notification):
+    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    response = client.get(
+        path='/v2/notifications?status=elephant',
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert response.status_code == 400
+    assert response.headers['Content-type'] == "application/json"
+
+    assert json_response['status_code'] == 400
+    assert len(json_response['errors']) == 1
+    assert json_response['errors'][0]['message'] == "elephant is not one of [created, sending, delivered, " \
+        "pending, failed, technical-failure, temporary-failure, permanent-failure]"
 
 
 def test_get_all_notifications_filter_by_multiple_statuses(client, notify_db, notify_db_session):
@@ -228,6 +299,19 @@ def test_get_all_notifications_filter_by_id(client, notify_db, notify_db_session
     assert len(json_response['notifications']) == 1
 
     assert json_response['notifications'][0]['id'] == str(older_notification.id)
+
+
+def test_get_all_notifications_filter_by_id_invalid_id(client, sample_notification):
+    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    response = client.get(
+        path='/v2/notifications?older_than=1234-badly-formatted-id-7890',
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert json_response['status_code'] == 400
+    assert len(json_response['errors']) == 1
+    assert json_response['errors'][0]['message'] == "older_than is not a valid UUID"
 
 
 def test_get_all_notifications_filter_by_id_no_notifications_if_nonexistent_id(client, notify_db, notify_db_session):

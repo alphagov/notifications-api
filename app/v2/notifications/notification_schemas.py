@@ -1,3 +1,4 @@
+from app.models import NOTIFICATION_STATUS_TYPES, TEMPLATE_TYPES
 from app.schema_validation.definitions import (uuid, personalisation)
 
 # this may belong in a templates module
@@ -70,6 +71,28 @@ get_notification_response = {
         "line_1", "line_2", "line_3", "line_4", "line_5", "line_6", "postcode",
         "type", "status", "template", "created_at", "sent_at", "completed_at"
     ]
+}
+
+get_notifications_request = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "schema for query parameters allowed when getting list of notifications",
+    "type": "object",
+    "properties": {
+        "status": {
+            "type": "array",
+            "items": {
+                "enum": NOTIFICATION_STATUS_TYPES
+            }
+        },
+        "template_type": {
+            "type": "array",
+            "items": {
+                "enum": TEMPLATE_TYPES
+            }
+        },
+        "older_than": uuid
+    },
+    "additionalProperties": False,
 }
 
 get_notifications_response = {
