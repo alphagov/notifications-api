@@ -262,7 +262,8 @@ def get_notifications_for_service(
     key_type=None,
     personalisation=False,
     include_jobs=False,
-    include_from_test_key=False
+    include_from_test_key=False,
+    older_than=None
 ):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
@@ -272,6 +273,11 @@ def get_notifications_for_service(
     if limit_days is not None:
         days_ago = date.today() - timedelta(days=limit_days)
         filters.append(func.date(Notification.created_at) >= days_ago)
+
+    if older_than is not None:
+        older_than_created_at = db.session.query(
+            Notification.created_at).filter(Notification.id == older_than).as_scalar()
+        filters.append(Notification.created_at < older_than_created_at)
 
     if not include_jobs or (key_type and key_type != KEY_TYPE_NORMAL):
         filters.append(Notification.job_id.is_(None))
@@ -296,15 +302,21 @@ def get_notifications_for_service(
 
 def _filter_query(query, filter_dict=None):
     if filter_dict is None:
-        filter_dict = MultiDict()
-    else:
-        filter_dict = MultiDict(filter_dict)
-    statuses = filter_dict.getlist('status') if 'status' in filter_dict else None
+        return query
+
+    multidict = MultiDict(filter_dict)
+
+    # filter by status
+    statuses = multidict.getlist('status')
     if statuses:
+        statuses = Notification.substitute_status(statuses)
         query = query.filter(Notification.status.in_(statuses))
-    template_types = filter_dict.getlist('template_type') if 'template_type' in filter_dict else None
+
+    # filter by template
+    template_types = multidict.getlist('template_type')
     if template_types:
         query = query.join(Template).filter(Template.template_type.in_(template_types))
+
     return query
 
 

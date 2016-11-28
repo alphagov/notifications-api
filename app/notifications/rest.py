@@ -170,8 +170,8 @@ def get_notification_by_id(notification_id):
 def get_all_notifications():
     data = notifications_filter_schema.load(request.args).data
     include_jobs = data.get('include_jobs', False)
-    page = data['page'] if 'page' in data else 1
-    page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
+    page = data.get('page', 1)
+    page_size = data.get('page_size', current_app.config.get('PAGE_SIZE'))
     limit_days = data.get('limit_days')
 
     pagination = notifications_dao.get_notifications_for_service(
