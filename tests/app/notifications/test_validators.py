@@ -39,7 +39,7 @@ def test_exception_thown_by_redis_store_get_should_not_be_fatal(
     assert e.value.status_code == 429
     assert e.value.message == 'Exceeded send limits (4) for today'
     assert e.value.fields == []
-    app.notifications.validators.redis_store.set.assert_not_called()
+    assert app.notifications.validators.redis_store.set.called
 
 
 @pytest.mark.parametrize('key_type', ['test', 'team', 'normal'])
@@ -61,7 +61,7 @@ def test_check_service_message_limit_in_cache_with_unrestricted_service_passes(
     mocker.patch('app.notifications.validators.redis_store.set')
     mocker.patch('app.notifications.validators.services_dao')
     assert not check_service_message_limit(key_type, sample_service)
-    app.notifications.validators.redis_store.set.assert_not_called()
+    assert not app.notifications.validators.redis_store.set.called
     assert not app.notifications.validators.services_dao.mock_calls
 
 
