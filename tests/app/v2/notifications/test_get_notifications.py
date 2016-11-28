@@ -156,38 +156,24 @@ def test_get_all_notifications_filter_by_single_status(client, notify_db, notify
     assert json_response['notifications'][0]['status'] == "pending"
 
 
-@pytest.mark.parametrize('invalid_statuses, valid_statuses', [
-    # one invalid status
-    (["elephant"], []),
-    # multiple invalid statuses
-    (["elephant", "giraffe", "cheetah"], []),
-    # one bad status and one good status
-    (["elephant"], ["created"]),
-])
-def test_get_all_notifications_filter_by_status_invalid_status(
-        client, notify_db, notify_db_session, invalid_statuses, valid_statuses
-):
+def test_get_all_notifications_filter_by_status_invalid_status(client, notify_db, notify_db_session):
     notification = create_sample_notification(notify_db, notify_db_session, status="pending")
     create_sample_notification(notify_db, notify_db_session)
 
     auth_header = create_authorization_header(service_id=notification.service_id)
     response = client.get(
-        path='/v2/notifications?{}'.format(
-            "&".join(["status={}".format(status) for status in invalid_statuses + valid_statuses])
-        ),
+        path='/v2/notifications?status=elephant',
         headers=[('Content-Type', 'application/json'), auth_header])
 
     json_response = json.loads(response.get_data(as_text=True))
-    partial_error_message = "is not one of " \
-        "[created, sending, delivered, pending, failed, technical-failure, temporary-failure, permanent-failure]"
 
     assert response.status_code == 400
     assert response.headers['Content-type'] == "application/json"
 
     assert json_response['status_code'] == 400
-    assert len(json_response['errors']) == len(invalid_statuses)
-    for index, invalid_status in enumerate(invalid_statuses):
-        assert json_response['errors'][index]['message'] == "{} {}".format(invalid_status, partial_error_message)
+    assert len(json_response['errors']) == 1
+    assert json_response['errors'][0]['message'] == "elephant is not one of [created, sending, delivered, " \
+        "pending, failed, technical-failure, temporary-failure, permanent-failure]"
 
 
 def test_get_all_notifications_filter_by_multiple_statuses(client, notify_db, notify_db_session):
