@@ -21,7 +21,7 @@ from app.models import (
     NotificationStatistics,
     ServiceWhitelist,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM,
-    MOBILE_TYPE, EMAIL_TYPE)
+    MOBILE_TYPE, EMAIL_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED)
 from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
@@ -444,7 +444,8 @@ def sample_notification(notify_db,
         'notification_type': template.template_type,
         'api_key_id': api_key_id,
         'key_type': key_type,
-        'sent_by': sent_by
+        'sent_by': sent_by,
+        'updated_at': created_at if status in NOTIFICATION_STATUS_TYPES_COMPLETED else None
     }
     if job_row_number:
         data['job_row_number'] = job_row_number

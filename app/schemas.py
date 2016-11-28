@@ -468,6 +468,7 @@ class NotificationsFilterSchema(ma.Schema):
     limit_days = fields.Int(required=False)
     include_jobs = fields.Boolean(required=False)
     include_from_test_key = fields.Boolean(required=False)
+    older_than = fields.UUID(required=False)
 
     @pre_load
     def handle_multidict(self, in_data):
