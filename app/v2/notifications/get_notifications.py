@@ -1,5 +1,4 @@
 from flask import jsonify, request, url_for
-
 from app import api_user
 from app.dao import notifications_dao
 from app.schema_validation import validate
