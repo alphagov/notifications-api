@@ -157,17 +157,21 @@ def send_sms(self,
             # Sometimes, SQS plays the same message twice. We should be able to catch an IntegrityError, but it seems
             # SQLAlchemy is throwing a FlushError. So we check if the notification id already exists then do not
             # send to the retry queue.
-            current_app.logger.exception(
-                "RETRY: send_sms notification for job {} row number {}".format(
+            current_app.logger.error(
+                "RETRY: send_sms notification for job {} row number {} and notification id {}".format(
                     notification.get('job', None),
-                    notification.get('row_number', None)), e)
+                    notification.get('row_number', None),
+                    notification_id))
+            current_app.logger.exception(e)
             try:
                 raise self.retry(queue="retry", exc=e)
             except self.MaxRetriesExceededError:
-                current_app.logger.exception(
-                    "RETRY FAILED: task send_sms failed for notification".format(
+                current_app.logger.error(
+                    "RETRY FAILED: send_sms notification for job {} row number {} and notification id {}".format(
                         notification.get('job', None),
-                        notification.get('row_number', None)), e)
+                        notification.get('row_number', None),
+                        notification_id))
+                current_app.logger.exception(e)
 
 
 @notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=300)
@@ -212,13 +216,18 @@ def send_email(self, service_id,
             # Sometimes, SQS plays the same message twice. We should be able to catch an IntegrityError, but it seems
             # SQLAlchemy is throwing a FlushError. So we check if the notification id already exists then do not
             # send to the retry queue.
-            current_app.logger.exception("RETRY: send_email notification".format(notification.get('job', None),
-                                                                                 notification.get('row_number', None)),
-                                         e)
+            current_app.logger.error(
+                "RETRY: send_sms notification for job {} row number {} and notification id {}".format(
+                    notification.get('job', None),
+                    notification.get('row_number', None),
+                    notification_id))
+            current_app.logger.exception(e)
             try:
                 raise self.retry(queue="retry", exc=e)
             except self.MaxRetriesExceededError:
                 current_app.logger.error(
-                    "RETRY FAILED: task send_email failed for notification".format(
+                    "RETRY FAILED: send_sms notification for job {} row number {} and notification id {}".format(
                         notification.get('job', None),
-                        notification.get('row_number', None)), e)
+                        notification.get('row_number', None),
+                        notification_id))
+                current_app.logger.exception(e)
