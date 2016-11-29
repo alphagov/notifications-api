@@ -21,25 +21,29 @@ from tests.app.conftest import (
 
 
 @pytest.mark.parametrize('key_type', ['team', 'normal'])
-def test_exception_thown_by_redis_store_get_should_not_be_fatal(
+def test_exception_thrown_by_redis_store_get_should_not_be_fatal(
         notify_db,
         notify_db_session,
         notify_api,
         key_type,
         mocker):
-    mocker.patch('app.notifications.validators.redis_store.redis_store.get', side_effect=Exception("broken redis"))
-    mocker.patch('app.notifications.validators.redis_store.set')
+    with freeze_time("2016-01-01 12:00:00.000000"):
 
-    service = create_service(notify_db, notify_db_session, restricted=True, limit=4)
-    for x in range(5):
-        create_notification(notify_db, notify_db_session, service=service)
+        mocker.patch('app.notifications.validators.redis_store.redis_store.get', side_effect=Exception("broken redis"))
+        mocker.patch('app.notifications.validators.redis_store.redis_store.set')
 
-    with pytest.raises(TooManyRequestsError) as e:
-        check_service_message_limit(key_type, service)
-    assert e.value.status_code == 429
-    assert e.value.message == 'Exceeded send limits (4) for today'
-    assert e.value.fields == []
-    app.notifications.validators.redis_store.set.assert_not_called()
+        service = create_service(notify_db, notify_db_session, restricted=True, limit=4)
+        for x in range(5):
+            create_notification(notify_db, notify_db_session, service=service)
+
+        with pytest.raises(TooManyRequestsError) as e:
+            check_service_message_limit(key_type, service)
+        assert e.value.status_code == 429
+        assert e.value.message == 'Exceeded send limits (4) for today'
+        assert e.value.fields == []
+        app.notifications.validators.redis_store.redis_store.set.assert_called_with(
+            "{}-2016-01-01-count".format(str(service.id)), 5, 3600, None, False, False
+        )
 
 
 @pytest.mark.parametrize('key_type', ['test', 'team', 'normal'])
@@ -53,14 +57,14 @@ def test_exception_thown_by_redis_store_set_should_not_be_fatal(
 
 
 @pytest.mark.parametrize('key_type', ['test', 'team', 'normal'])
-def test_check_service_message_limit_in_cache_with_unrestricted_service_passes(
+def test_check_service_message_limit_in_cache_with_unrestricted_service_is_allowed(
         key_type,
         sample_service,
         mocker):
     mocker.patch('app.notifications.validators.redis_store.get', return_value=1)
     mocker.patch('app.notifications.validators.redis_store.set')
     mocker.patch('app.notifications.validators.services_dao')
-    assert not check_service_message_limit(key_type, sample_service)
+    check_service_message_limit(key_type, sample_service)
     app.notifications.validators.redis_store.set.assert_not_called()
     assert not app.notifications.validators.services_dao.mock_calls
 
@@ -73,14 +77,14 @@ def test_check_service_message_limit_in_cache_under_message_limit_passes(
     mocker.patch('app.notifications.validators.redis_store.get', return_value=1)
     mocker.patch('app.notifications.validators.redis_store.set')
     mocker.patch('app.notifications.validators.services_dao')
-    assert not check_service_message_limit(key_type, sample_service)
+    check_service_message_limit(key_type, sample_service)
     app.notifications.validators.redis_store.set.assert_not_called()
     assert not app.notifications.validators.services_dao.mock_calls
 
 
 def test_should_not_interact_with_cache_for_test_key(sample_service, mocker):
     mocker.patch('app.notifications.validators.redis_store')
-    assert not check_service_message_limit('test', sample_service)
+    check_service_message_limit('test', sample_service)
     assert not app.notifications.validators.redis_store.mock_calls
 
 
@@ -97,7 +101,7 @@ def test_should_set_cache_value_as_value_from_database_if_cache_not_set(
             create_notification(notify_db, notify_db_session, service=sample_service)
         mocker.patch('app.notifications.validators.redis_store.get', return_value=None)
         mocker.patch('app.notifications.validators.redis_store.set')
-        assert not check_service_message_limit(key_type, sample_service)
+        check_service_message_limit(key_type, sample_service)
         app.notifications.validators.redis_store.set.assert_called_with(
             str(sample_service.id) + "-2016-01-01-count", 5, ex=3600
         )
