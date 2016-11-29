@@ -8,7 +8,7 @@ from itertools import groupby
 
 from flask import current_app
 from werkzeug.datastructures import MultiDict
-from sqlalchemy import (desc, func, or_, and_, asc, cast, Text)
+from sqlalchemy import (desc, func, or_, and_, asc)
 from sqlalchemy.orm import joinedload
 
 from app import db, create_uuid

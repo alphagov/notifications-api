@@ -7,23 +7,23 @@ from tests import create_authorization_header
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
-def test_post_sms_notification_returns_201(notify_api, sample_template, mocker, reference):
+def test_post_sms_notification_returns_201(notify_api, sample_template_with_placeholders, mocker, reference):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
             data = {
                 'phone_number': '+447700900855',
-                'template_id': str(sample_template.id)
+                'template_id': str(sample_template_with_placeholders.id),
+                'personalisation': {' Name': 'Jo'}
             }
             if reference:
                 data.update({"reference": reference})
-            auth_header = create_authorization_header(service_id=sample_template.service_id)
+            auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
 
             response = client.post(
                 path='/v2/notifications/sms',
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header])
-
             assert response.status_code == 201
             resp_json = json.loads(response.get_data(as_text=True))
             notifications = Notification.query.all()
@@ -31,12 +31,12 @@ def test_post_sms_notification_returns_201(notify_api, sample_template, mocker, 
             notification_id = notifications[0].id
             assert resp_json['id'] == str(notification_id)
             assert resp_json['reference'] == reference
-            assert resp_json['content']['body'] == sample_template.content
-            assert resp_json['content']['from_number'] == sample_template.service.sms_sender
+            assert resp_json['content']['body'] == sample_template_with_placeholders.content.replace("(( Name))", "Jo")
+            assert resp_json['content']['from_number'] == sample_template_with_placeholders.service.sms_sender
             assert 'v2/notifications/{}'.format(notification_id) in resp_json['uri']
-            assert resp_json['template']['id'] == str(sample_template.id)
-            assert resp_json['template']['version'] == sample_template.version
-            assert 'v2/templates/{}'.format(sample_template.id) in resp_json['template']['uri']
+            assert resp_json['template']['id'] == str(sample_template_with_placeholders.id)
+            assert resp_json['template']['version'] == sample_template_with_placeholders.version
+            assert 'v2/templates/{}'.format(sample_template_with_placeholders.id) in resp_json['template']['uri']
             assert mocked.called
 
 
@@ -108,15 +108,16 @@ def test_post_sms_notification_returns_400_and_for_schema_problems(notify_api, s
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
-def test_post_email_notification_returns_201(client, sample_email_template, mocker, reference):
+def test_post_email_notification_returns_201(client, sample_email_template_with_placeholders, mocker, reference):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     data = {
-        "email_address": sample_email_template.service.users[0].email_address,
-        "template_id": sample_email_template.id,
+        "email_address": sample_email_template_with_placeholders.service.users[0].email_address,
+        "template_id": sample_email_template_with_placeholders.id,
+        "personalisation": {"name": "Bob"}
     }
     if reference:
         data.update({"reference": reference})
-    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+    auth_header = create_authorization_header(service_id=sample_email_template_with_placeholders.service_id)
     response = client.post(
         path="v2/notifications/email",
         data=json.dumps(data),
@@ -127,13 +128,13 @@ def test_post_email_notification_returns_201(client, sample_email_template, mock
     assert resp_json['id'] == str(notification.id)
     assert resp_json['reference'] == reference
     assert notification.reference is None
-    assert resp_json['content']['body'] == sample_email_template.content
-    assert resp_json['content']['subject'] == sample_email_template.subject
-    assert resp_json['content']['from_email'] == sample_email_template.service.email_from
+    assert resp_json['content']['body'] == sample_email_template_with_placeholders.content.replace('((name))', 'Bob')
+    assert resp_json['content']['subject'] == sample_email_template_with_placeholders.subject
+    assert resp_json['content']['from_email'] == sample_email_template_with_placeholders.service.email_from
     assert 'v2/notifications/{}'.format(notification.id) in resp_json['uri']
-    assert resp_json['template']['id'] == str(sample_email_template.id)
-    assert resp_json['template']['version'] == sample_email_template.version
-    assert 'v2/templates/{}'.format(sample_email_template.id) in resp_json['template']['uri']
+    assert resp_json['template']['id'] == str(sample_email_template_with_placeholders.id)
+    assert resp_json['template']['version'] == sample_email_template_with_placeholders.version
+    assert 'v2/templates/{}'.format(sample_email_template_with_placeholders.id) in resp_json['template']['uri']
     assert mocked.called
 
 
