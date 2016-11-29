@@ -57,6 +57,8 @@ Install [Postgres.app](http://postgresapp.com/). You will need admin on your mac
 
 ##  To run the application
 
+First, run `scripts/bootstrap.sh` to install dependencies and create the databases.
+
 You need to run the api application and a local celery instance.
 
 There are two run scripts for running all the necessary parts.
@@ -68,6 +70,8 @@ scripts/run_app.sh
 ```
 scripts/run_celery.sh
 ```
+
+Optionally you can also run this script to run the scheduled tasks:
 
 ```
 scripts/run_celery_beat.sh
