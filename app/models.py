@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
 )
-from sqlalchemy import UniqueConstraint, and_, desc
+from sqlalchemy import UniqueConstraint, and_
 from sqlalchemy.orm import foreign, remote
 from notifications_utils.recipients import (
     validate_email_address,
@@ -178,9 +178,8 @@ class ServiceWhitelist(db.Model):
         else:
             return instance
 
-        def __repr__(self):
-            return 'Recipient {} of type: {}'.format(self.recipient,
-                                                     self.recipient_type)
+    def __repr__(self):
+        return 'Recipient {} of type: {}'.format(self.recipient, self.recipient_type)
 
 
 class ApiKey(db.Model, Versioned):
@@ -285,7 +284,12 @@ class Template(db.Model):
 
     def get_link(self):
         # TODO: use "/v2/" route once available
-        return url_for("template.get_template_by_id_and_service_id", service_id=self.service_id, template_id=self.id)
+        return url_for(
+            "template.get_template_by_id_and_service_id",
+            service_id=self.service_id,
+            template_id=self.id,
+            _external=True
+        )
 
 
 class TemplateHistory(db.Model):
@@ -466,13 +470,27 @@ NOTIFICATION_TECHNICAL_FAILURE = 'technical-failure'
 NOTIFICATION_TEMPORARY_FAILURE = 'temporary-failure'
 NOTIFICATION_PERMANENT_FAILURE = 'permanent-failure'
 
+NOTIFICATION_STATUS_TYPES_FAILED = [
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_TEMPORARY_FAILURE,
+    NOTIFICATION_PERMANENT_FAILURE,
+]
+
+NOTIFICATION_STATUS_TYPES_COMPLETED = [
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_FAILED,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_TEMPORARY_FAILURE,
+    NOTIFICATION_PERMANENT_FAILURE,
+]
+
 NOTIFICATION_STATUS_TYPES_BILLABLE = [
     NOTIFICATION_SENDING,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_FAILED,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_PERMANENT_FAILURE
+    NOTIFICATION_PERMANENT_FAILURE,
 ]
 
 NOTIFICATION_STATUS_TYPES = [
@@ -483,7 +501,7 @@ NOTIFICATION_STATUS_TYPES = [
     NOTIFICATION_FAILED,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_PERMANENT_FAILURE
+    NOTIFICATION_PERMANENT_FAILURE,
 ]
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
@@ -544,32 +562,51 @@ class Notification(db.Model):
         if personalisation:
             self._personalisation = encryption.encrypt(personalisation)
 
-    def cost(self):
-        if not self.sent_by or self.billable_units == 0:
-            return 0
-
-        provider_rate = db.session.query(
-            ProviderRates
-        ).join(ProviderDetails).filter(
-            ProviderDetails.identifier == self.sent_by,
-            ProviderRates.provider_id == ProviderDetails.id
-        ).order_by(
-            desc(ProviderRates.valid_from)
-        ).limit(1).one()
-
-        return float(provider_rate.rate * self.billable_units)
-
     def completed_at(self):
-        if self.status in [
-            NOTIFICATION_DELIVERED,
-            NOTIFICATION_FAILED,
-            NOTIFICATION_TECHNICAL_FAILURE,
-            NOTIFICATION_TEMPORARY_FAILURE,
-            NOTIFICATION_PERMANENT_FAILURE
-        ]:
+        if self.status in NOTIFICATION_STATUS_TYPES_COMPLETED:
             return self.updated_at.strftime(DATETIME_FORMAT)
 
         return None
+
+    @staticmethod
+    def substitute_status(status_or_statuses):
+        """
+        static function that takes a status or list of statuses and substitutes our new failure types if it finds
+        the deprecated one
+
+        > IN
+        'failed'
+
+        < OUT
+        ['technical-failure', 'temporary-failure', 'permanent-failure']
+
+        -
+
+        > IN
+        ['failed', 'created']
+
+        < OUT
+        ['technical-failure', 'temporary-failure', 'permanent-failure', 'created']
+
+
+        :param status_or_statuses: a single status or list of statuses
+        :return: a single status or list with the current failure statuses substituted for 'failure'
+        """
+
+        def _substitute_status_str(_status):
+            return NOTIFICATION_STATUS_TYPES_FAILED if _status == NOTIFICATION_FAILED else _status
+
+        def _substitute_status_seq(_statuses):
+            if NOTIFICATION_FAILED in _statuses:
+                _statuses = list(set(
+                    NOTIFICATION_STATUS_TYPES_FAILED + [_s for _s in _statuses if _s != NOTIFICATION_FAILED]
+                ))
+            return _statuses
+
+        if isinstance(status_or_statuses, str):
+            return _substitute_status_str(status_or_statuses)
+
+        return _substitute_status_seq(status_or_statuses)
 
     def serialize(self):
 
@@ -591,7 +628,6 @@ class Notification(db.Model):
             "line_5": None,
             "line_6": None,
             "postcode": None,
-            "cost": self.cost(),
             "type": self.notification_type,
             "status": self.status,
             "template": template_dict,

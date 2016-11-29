@@ -8,8 +8,6 @@ import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
-from app import db
-
 from app.models import (
     Notification,
     NotificationHistory,
@@ -17,6 +15,7 @@ from app.models import (
     NotificationStatistics,
     TemplateStatistics,
     NOTIFICATION_STATUS_TYPES,
+    NOTIFICATION_STATUS_TYPES_FAILED,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST
@@ -683,7 +682,10 @@ def test_get_all_notifications_for_job_by_status(notify_db, notify_db_session, s
     assert len(notifications().items) == len(NOTIFICATION_STATUS_TYPES)
 
     for status in NOTIFICATION_STATUS_TYPES:
-        assert len(notifications(filter_dict={'status': status}).items) == 1
+        if status == 'failed':
+            assert len(notifications(filter_dict={'status': status}).items) == len(NOTIFICATION_STATUS_TYPES_FAILED)
+        else:
+            assert len(notifications(filter_dict={'status': status}).items) == 1
 
     assert len(notifications(filter_dict={'status': NOTIFICATION_STATUS_TYPES[:3]}).items) == 3
 

@@ -1,11 +1,16 @@
 import pytest
-from datetime import datetime
 
-from sqlalchemy.orm.exc import NoResultFound
-from tests.app.conftest import sample_notification, sample_provider_rate
 from app.models import (
     ServiceWhitelist,
-    MOBILE_TYPE, EMAIL_TYPE)
+    Notification,
+    MOBILE_TYPE,
+    EMAIL_TYPE,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_PENDING,
+    NOTIFICATION_FAILED,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_STATUS_TYPES_FAILED
+)
 
 
 @pytest.mark.parametrize('mobile_number', [
@@ -37,35 +42,26 @@ def test_should_not_build_service_whitelist_from_invalid_contact(recipient_type,
         ServiceWhitelist.from_string('service_id', recipient_type, contact)
 
 
-@pytest.mark.parametrize('provider, billable_units, expected_cost', [
-    ('mmg', 1, 3.5),
-    ('firetext', 2, 0.025),
-    ('ses', 0, 0)
+@pytest.mark.parametrize('initial_statuses, expected_statuses', [
+    # passing in single statuses as strings
+    (NOTIFICATION_FAILED, NOTIFICATION_STATUS_TYPES_FAILED),
+    (NOTIFICATION_CREATED, NOTIFICATION_CREATED),
+    (NOTIFICATION_TECHNICAL_FAILURE, NOTIFICATION_TECHNICAL_FAILURE),
+    # passing in lists containing single statuses
+    ([NOTIFICATION_FAILED], NOTIFICATION_STATUS_TYPES_FAILED),
+    ([NOTIFICATION_CREATED], [NOTIFICATION_CREATED]),
+    ([NOTIFICATION_TECHNICAL_FAILURE], [NOTIFICATION_TECHNICAL_FAILURE]),
+    # passing in lists containing multiple statuses
+    ([NOTIFICATION_FAILED, NOTIFICATION_CREATED], NOTIFICATION_STATUS_TYPES_FAILED + [NOTIFICATION_CREATED]),
+    ([NOTIFICATION_CREATED, NOTIFICATION_PENDING], [NOTIFICATION_CREATED, NOTIFICATION_PENDING]),
+    ([NOTIFICATION_CREATED, NOTIFICATION_TECHNICAL_FAILURE], [NOTIFICATION_CREATED, NOTIFICATION_TECHNICAL_FAILURE]),
+    # checking we don't end up with duplicates
+    (
+        [NOTIFICATION_FAILED, NOTIFICATION_CREATED, NOTIFICATION_TECHNICAL_FAILURE],
+        NOTIFICATION_STATUS_TYPES_FAILED + [NOTIFICATION_CREATED]
+    ),
 ])
-def test_calculate_cost_from_notification_billable_units(
-        notify_db, notify_db_session, provider, billable_units, expected_cost
-):
-    provider_rates = [
-        ('mmg', datetime(2016, 7, 1), 1.5),
-        ('firetext', datetime(2016, 7, 1), 0.0125),
-        ('mmg', datetime.utcnow(), 3.5),
-    ]
-    for provider_identifier, valid_from, rate in provider_rates:
-        sample_provider_rate(
-            notify_db,
-            notify_db_session,
-            provider_identifier=provider_identifier,
-            valid_from=valid_from,
-            rate=rate
-        )
-
-    notification = sample_notification(notify_db, notify_db_session, billable_units=billable_units, sent_by=provider)
-    assert notification.cost() == expected_cost
-
-
-def test_billable_units_without_provider_rates_entry_raises_exception(
-        notify_db, notify_db_session, sample_provider_rate
-):
-    notification = sample_notification(notify_db, notify_db_session, sent_by='not_a_provider')
-    with pytest.raises(NoResultFound):
-        notification.cost()
+def test_status_conversion_handles_failed_statuses(initial_statuses, expected_statuses):
+    converted_statuses = Notification.substitute_status(initial_statuses)
+    assert len(converted_statuses) == len(expected_statuses)
+    assert set(converted_statuses) == set(expected_statuses)

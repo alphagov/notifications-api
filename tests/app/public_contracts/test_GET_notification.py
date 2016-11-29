@@ -1,7 +1,7 @@
 from . import return_json_from_response, validate_v0, validate
 from app.models import ApiKey, KEY_TYPE_NORMAL
 from app.dao.api_key_dao import save_model_api_key
-from app.v2.notifications.notification_schemas import get_notification_response
+from app.v2.notifications.notification_schemas import get_notification_response, get_notifications_response
 from tests import create_authorization_header
 
 
@@ -16,6 +16,8 @@ def _get_notification(client, notification, url):
     return client.get(url, headers=[auth_header])
 
 
+# v2
+
 def test_get_v2_sms_contract(client, sample_notification):
     response_json = return_json_from_response(_get_notification(
         client, sample_notification, '/v2/notifications/{}'.format(sample_notification.id)
@@ -29,6 +31,15 @@ def test_get_v2_email_contract(client, sample_email_notification):
     ))
     validate(response_json, get_notification_response)
 
+
+def test_get_v2_notifications_contract(client, sample_notification):
+    response_json = return_json_from_response(_get_notification(
+        client, sample_notification, '/v2/notifications'
+    ))
+    validate(response_json, get_notifications_response)
+
+
+# v0
 
 def test_get_api_sms_contract(client, sample_notification):
     response_json = return_json_from_response(_get_notification(

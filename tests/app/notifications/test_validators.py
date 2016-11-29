@@ -64,6 +64,7 @@ def test_check_service_message_limit_in_cache_with_unrestricted_service_is_allow
     mocker.patch('app.notifications.validators.redis_store.get', return_value=1)
     mocker.patch('app.notifications.validators.redis_store.set')
     mocker.patch('app.notifications.validators.services_dao')
+
     check_service_message_limit(key_type, sample_service)
     app.notifications.validators.redis_store.set.assert_not_called()
     assert not app.notifications.validators.services_dao.mock_calls

@@ -5,9 +5,79 @@ from flask import json
 from jsonschema import ValidationError
 
 from app.v2.notifications.notification_schemas import (
+    get_notifications_request,
     post_sms_request, post_sms_response, post_email_request, post_email_response
 )
 from app.schema_validation import validate
+
+
+@pytest.mark.parametrize('invalid_statuses, valid_statuses', [
+    # one invalid status
+    (["elephant"], []),
+    # multiple invalid statuses
+    (["elephant", "giraffe", "cheetah"], []),
+    # one bad status and one good status
+    (["elephant"], ["created"]),
+])
+def test_get_notifications_request_invalid_statuses(
+        invalid_statuses, valid_statuses
+):
+    partial_error_status = "is not one of " \
+        "[created, sending, delivered, pending, failed, technical-failure, temporary-failure, permanent-failure]"
+
+    with pytest.raises(ValidationError) as e:
+        validate({'status': invalid_statuses + valid_statuses}, get_notifications_request)
+
+    errors = json.loads(e.value.message).get('errors')
+    assert len(errors) == len(invalid_statuses)
+    for index, value in enumerate(invalid_statuses):
+        assert errors[index]['message'] == "{} {}".format(value, partial_error_status)
+
+
+@pytest.mark.parametrize('invalid_template_types, valid_template_types', [
+    # one invalid template_type
+    (["orange"], []),
+    # multiple invalid template_types
+    (["orange", "avocado", "banana"], []),
+    # one bad template_type and one good template_type
+    (["orange"], ["sms"]),
+])
+def test_get_notifications_request_invalid_template_types(
+        invalid_template_types, valid_template_types
+):
+    partial_error_template_type = "is not one of [sms, email, letter]"
+
+    with pytest.raises(ValidationError) as e:
+        validate({'template_type': invalid_template_types + valid_template_types}, get_notifications_request)
+
+    errors = json.loads(e.value.message).get('errors')
+    assert len(errors) == len(invalid_template_types)
+    for index, value in enumerate(invalid_template_types):
+        assert errors[index]['message'] == "{} {}".format(value, partial_error_template_type)
+
+
+def test_get_notifications_request_invalid_statuses_and_template_types():
+    with pytest.raises(ValidationError) as e:
+        validate({
+            'status': ["created", "elephant", "giraffe"],
+            'template_type': ["sms", "orange", "avocado"]
+        }, get_notifications_request)
+
+    errors = json.loads(e.value.message).get('errors')
+
+    assert len(errors) == 4
+
+    error_messages = [error['message'] for error in errors]
+
+    for invalid_status in ["elephant", "giraffe"]:
+        assert "{} is not one of [created, sending, delivered, " \
+            "pending, failed, technical-failure, temporary-failure, permanent-failure]".format(
+                invalid_status
+            ) in error_messages
+
+    for invalid_template_type in ["orange", "avocado"]:
+        assert "{} is not one of [sms, email, letter]".format(invalid_template_type) in error_messages
+
 
 valid_json = {"phone_number": "07515111111",
               "template_id": str(uuid.uuid4())
