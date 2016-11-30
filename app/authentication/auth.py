@@ -1,11 +1,10 @@
-from flask import request, _request_ctx_stack, current_app
+from flask import request, _request_ctx_stack, current_app, g
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
 from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
 from notifications_python_client.errors import TokenDecodeError, TokenExpiredError, TokenIssuerError
 
-from app.dao.api_key_dao import get_model_api_keys
 from app.dao.services_dao import dao_fetch_service_by_id
 
 
@@ -50,6 +49,7 @@ def requires_auth():
         raise AuthError("Invalid token: iss not provided", 403)
 
     if client == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
+        g.service_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
         return handle_admin_key(auth_token, current_app.config.get('ADMIN_CLIENT_SECRET'))
 
     try:
@@ -74,6 +74,7 @@ def requires_auth():
         if api_key.expiry_date:
             raise AuthError("Invalid token: API key revoked", 403)
 
+        g.service_id = api_key.service_id
         _request_ctx_stack.top.api_user = api_key
         return
     else:
