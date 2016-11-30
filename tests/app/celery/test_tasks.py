@@ -70,7 +70,7 @@ def test_should_process_sms_job(sample_job, mocker):
     assert encryption.encrypt.call_args[0][0]['to'] == '+441234123123'
     assert encryption.encrypt.call_args[0][0]['template'] == str(sample_job.template.id)
     assert encryption.encrypt.call_args[0][0]['template_version'] == sample_job.template.version
-    assert encryption.encrypt.call_args[0][0]['personalisation'] == {}
+    assert encryption.encrypt.call_args[0][0]['personalisation'] == {'phonenumber': '+441234123123'}
     assert encryption.encrypt.call_args[0][0]['row_number'] == 0
     tasks.send_sms.apply_async.assert_called_once_with(
         (str(sample_job.service_id),
@@ -288,7 +288,7 @@ def test_should_process_email_job(sample_email_job, mocker):
     assert encryption.encrypt.call_args[0][0]['to'] == 'test@test.com'
     assert encryption.encrypt.call_args[0][0]['template'] == str(sample_email_job.template.id)
     assert encryption.encrypt.call_args[0][0]['template_version'] == sample_email_job.template.version
-    assert encryption.encrypt.call_args[0][0]['personalisation'] == {}
+    assert encryption.encrypt.call_args[0][0]['personalisation'] == {'emailaddress': 'test@test.com'}
     tasks.send_email.apply_async.assert_called_once_with(
         (
             str(sample_email_job.service_id),
@@ -320,7 +320,7 @@ def test_should_process_all_sms_job(sample_job,
     assert encryption.encrypt.call_args[0][0]['template'] == str(sample_job_with_placeholdered_template.template.id)
     assert encryption.encrypt.call_args[0][0][
                'template_version'] == sample_job_with_placeholdered_template.template.version  # noqa
-    assert encryption.encrypt.call_args[0][0]['personalisation'] == {'name': 'chris'}
+    assert encryption.encrypt.call_args[0][0]['personalisation'] == {'phonenumber': '+441234123120', 'name': 'chris'}
     tasks.send_sms.apply_async.call_count == 10
     job = jobs_dao.dao_get_job_by_id(sample_job_with_placeholdered_template.id)
     assert job.job_status == 'finished'
