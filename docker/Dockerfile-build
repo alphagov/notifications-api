@@ -1,10 +1,13 @@
 FROM python:3.4-slim
 
+ARG APT_HTTP_PROXY
+
 ENV PYTHONUNBUFFERED=1 \
 	DEBIAN_FRONTEND=noninteractive
 
 RUN \
 	echo "Install base packages" \
+	&& ([ -z "$APT_HTTP_PROXY" ] || echo "Acquire::http::Proxy \"${APT_HTTP_PROXY}\";\n" > /etc/apt/apt.conf.d/99HttpProxy) \
 	&& apt-get update \
 	&& apt-get install -y --no-install-recommends \
 		make \
