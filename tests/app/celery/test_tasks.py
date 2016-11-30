@@ -806,3 +806,41 @@ def test_send_email_should_go_to_retry_queue_if_database_errors(sample_email_tem
     tasks.send_email.retry.assert_called_with(exc=expected_exception, queue='retry')
 
     assert Notification.query.count() == 0
+
+
+def test_send_email_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample_notification, mocker):
+    json = _notification_json(sample_notification.template, sample_notification.to, job_id=uuid.uuid4(), row_number=1)
+    deliver_email = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    retry = mocker.patch('app.celery.tasks.send_email.retry', side_effect=Exception())
+    now = datetime.utcnow()
+
+    notification_id = sample_notification.id
+
+    send_email(
+        sample_notification.service_id,
+        notification_id,
+        encryption.encrypt(json),
+        now.strftime(DATETIME_FORMAT)
+    )
+    assert Notification.query.count() == 1
+    assert not deliver_email.called
+    assert not retry.called
+
+
+def test_send_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample_notification, mocker):
+    json = _notification_json(sample_notification.template, sample_notification.to, job_id=uuid.uuid4(), row_number=1)
+    deliver_sms = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    retry = mocker.patch('app.celery.tasks.send_sms.retry', side_effect=Exception())
+    now = datetime.utcnow()
+
+    notification_id = sample_notification.id
+
+    send_sms(
+        sample_notification.service_id,
+        notification_id,
+        encryption.encrypt(json),
+        now.strftime(DATETIME_FORMAT)
+    )
+    assert Notification.query.count() == 1
+    assert not deliver_sms.called
+    assert not retry.called

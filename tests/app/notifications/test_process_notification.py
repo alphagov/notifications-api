@@ -1,4 +1,5 @@
 import datetime
+import uuid
 
 import pytest
 from boto3.exceptions import Boto3Error
@@ -108,7 +109,7 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
     mocked_redis = mocker.patch('app.notifications.process_notifications.redis_store.incr')
-
+    n_id = uuid.uuid4()
     created_at = datetime.datetime(2016, 11, 11, 16, 8, 18)
     persist_notification(template_id=sample_job.template.id,
                          template_version=sample_job.template.version,
@@ -120,11 +121,13 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
                          created_at=created_at,
                          job_id=sample_job.id,
                          job_row_number=10,
-                         reference="ref from client")
+                         reference="ref from client",
+                         notification_id=n_id)
     assert Notification.query.count() == 1
     assert NotificationHistory.query.count() == 1
     persisted_notification = Notification.query.all()[0]
-    assert persisted_notification.job_id == sample_job.id
+    assert persisted_notification.id == n_id
+    persisted_notification.job_id == sample_job.id
     assert persisted_notification.job_row_number == 10
     assert persisted_notification.created_at == created_at
     mocked_redis.assert_called_once_with(str(sample_job.service_id) + "-2016-01-01-count")
