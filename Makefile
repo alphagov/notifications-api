@@ -121,6 +121,11 @@ build-with-docker: prepare-docker-build-image ## Build inside a Docker container
 		-e GIT_COMMIT=${GIT_COMMIT} \
 		-e BUILD_NUMBER=${BUILD_NUMBER} \
 		-e BUILD_URL=${BUILD_URL} \
+		-e http_proxy="${HTTP_PROXY}" \
+		-e HTTP_PROXY="${HTTP_PROXY}" \
+		-e https_proxy="${HTTPS_PROXY}" \
+		-e HTTPS_PROXY="${HTTPS_PROXY}" \
+		-e NO_PROXY="${NO_PROXY}" \
 		${DOCKER_BUILDER_IMAGE_NAME} \
 		make build
 
@@ -133,6 +138,11 @@ test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests 
 		-e GIT_COMMIT=${GIT_COMMIT} \
 		-e BUILD_NUMBER=${BUILD_NUMBER} \
 		-e BUILD_URL=${BUILD_URL} \
+		-e http_proxy="${HTTP_PROXY}" \
+		-e HTTP_PROXY="${HTTP_PROXY}" \
+		-e https_proxy="${HTTPS_PROXY}" \
+		-e HTTPS_PROXY="${HTTPS_PROXY}" \
+		-e NO_PROXY="${NO_PROXY}" \
 		-v `pwd`:/var/project \
 		${DOCKER_BUILDER_IMAGE_NAME} \
 		make test
@@ -160,6 +170,11 @@ coverage-with-docker: prepare-docker-build-image ## Generates coverage report in
 		-e CI_BUILD_URL=${BUILD_URL} \
 		-e CI_BRANCH=${GIT_BRANCH} \
 		-e CI_PULL_REQUEST=${CI_PULL_REQUEST} \
+		-e http_proxy="${HTTP_PROXY}" \
+		-e HTTP_PROXY="${HTTP_PROXY}" \
+		-e https_proxy="${HTTPS_PROXY}" \
+		-e HTTPS_PROXY="${HTTPS_PROXY}" \
+		-e NO_PROXY="${NO_PROXY}" \
 		${DOCKER_BUILDER_IMAGE_NAME} \
 		make coverage
 
