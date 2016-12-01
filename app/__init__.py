@@ -6,7 +6,7 @@ from flask import request, url_for, g, jsonify
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from monotonic import monotonic
-from notifications_utils import logging
+from notifications_utils import logging, request_id
 from werkzeug.local import LocalProxy
 
 from app.celery.celery import NotifyCelery
@@ -48,6 +48,7 @@ def create_app(app_name=None):
         application.config['NOTIFY_APP_NAME'] = app_name
 
     init_app(application)
+    request_id.init_app(application)
     db.init_app(application)
     ma.init_app(application)
     statsd_client.init_app(application)
