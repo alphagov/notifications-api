@@ -5,7 +5,7 @@ from app.models import KEY_TYPE_TEST, KEY_TYPE_TEAM
 from app.service.utils import service_allowed_to_send_to
 from app.v2.errors import TooManyRequestsError, BadRequestError
 from app import redis_store
-from app.clients import redis
+from notifications_utils.clients import redis
 
 
 def check_service_message_limit(key_type, service):
