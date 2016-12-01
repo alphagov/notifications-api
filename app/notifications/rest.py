@@ -36,8 +36,6 @@ from app.schemas import (
 )
 from app.service.utils import service_allowed_to_send_to
 from app.utils import pagination_links
-from app import redis_store
-from app.clients import redis
 
 notifications = Blueprint('notifications', __name__)
 
