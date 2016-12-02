@@ -40,6 +40,9 @@ class Config(object):
     # Prefix to identify queues in SQS
     NOTIFICATION_QUEUE_PREFIX = os.getenv('NOTIFICATION_QUEUE_PREFIX')
 
+    # URL of redis instance
+    REDIS_URL = os.getenv('REDIS_URL')
+
     ###########################
     # Default config values ###
     ###########################
@@ -133,7 +136,6 @@ class Config(object):
     STATSD_PORT = 8125
 
     REDIS_ENABLED = False
-    REDIS_URL = "redis://localhost:6379/0"
 
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200
 
@@ -190,6 +192,7 @@ class Preview(Config):
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
     API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = 'preview'
+    REDIS_ENABLED = True
 
 
 class Staging(Config):
@@ -199,6 +202,7 @@ class Staging(Config):
     STATSD_ENABLED = True
     API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = 'stage'
+    REDIS_ENABLED = True
 
 
 class Live(Config):
@@ -208,6 +212,7 @@ class Live(Config):
     STATSD_ENABLED = True
     API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = '40604'
+    REDIS_ENABLED = True
 
 
 configs = {

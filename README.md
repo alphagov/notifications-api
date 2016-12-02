@@ -42,6 +42,7 @@ export LOADTESTING_API_KEY='FIRETEXT_SIMULATION_KEY'
 export FIRETEXT_API_KEY='FIRETEXT_ACTUAL_KEY'
 export STATSD_PREFIX='YOU_OWN_PREFIX'
 export NOTIFICATION_QUEUE_PREFIX='YOUR_OWN_PREFIX'
+export REDIS_URL="redis://localhost:6379/0"
 "> environment.sh
 ```
 
@@ -54,6 +55,13 @@ NOTES:
 ### Postgres
 
 Install [Postgres.app](http://postgresapp.com/). You will need admin on your machine to do this.
+
+### Redis
+
+To switch redis on you'll need to install it locally. On a OSX we've used brew for this. To use redis caching you need to switch it on by changing the config for development:
+
+        REDIS_ENABLED = True
+
 
 ##  To run the application
 

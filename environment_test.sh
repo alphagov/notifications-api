@@ -11,3 +11,4 @@ export LOADTESTING_API_KEY="loadtesting"
 export FIRETEXT_API_KEY="Firetext"
 export STATSD_PREFIX="stats-prefix"
 export NOTIFICATION_QUEUE_PREFIX='testing'
+export REDIS_URL="redis://localhost:6379/0"
