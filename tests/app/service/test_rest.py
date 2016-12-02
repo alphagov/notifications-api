@@ -16,7 +16,7 @@ from tests.app.conftest import (
     sample_user as create_sample_user,
     sample_notification as create_sample_notification,
     sample_notification_with_job)
-from app.models import KEY_TYPE_TEST
+from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 
 
 def test_get_service_list(notify_api, service_factory):
@@ -1251,7 +1251,8 @@ def test_get_weekly_notification_stats(notify_api, notify_db, notify_db_session)
 def test_get_services_with_detailed_flag(notify_api, notify_db, notify_db_session):
     notifications = [
         create_sample_notification(notify_db, notify_db_session),
-        create_sample_notification(notify_db, notify_db_session)
+        create_sample_notification(notify_db, notify_db_session),
+        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST)
     ]
     with notify_api.test_request_context(), notify_api.test_client() as client:
         resp = client.get(
@@ -1264,6 +1265,29 @@ def test_get_services_with_detailed_flag(notify_api, notify_db, notify_db_sessio
     assert len(data) == 1
     assert data[0]['name'] == 'Sample service'
     assert data[0]['id'] == str(notifications[0].service_id)
+    assert data[0]['statistics'] == {
+        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 3}
+    }
+
+
+def test_get_services_with_detailed_flag_excluding_from_test_key(notify_api, notify_db, notify_db_session):
+    notifications = [
+        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_NORMAL),
+        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEAM),
+        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST),
+        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST),
+        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST)
+    ]
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        resp = client.get(
+            '/service?detailed=True&include_from_test_key=False',
+            headers=[create_authorization_header()]
+        )
+
+    assert resp.status_code == 200
+    data = json.loads(resp.get_data(as_text=True))['data']
+    assert len(data) == 1
     assert data[0]['statistics'] == {
         'email': {'delivered': 0, 'failed': 0, 'requested': 0},
         'sms': {'delivered': 0, 'failed': 0, 'requested': 2}

@@ -62,11 +62,12 @@ def get_services():
     only_active = request.args.get('only_active') == 'True'
     detailed = request.args.get('detailed') == 'True'
     user_id = request.args.get('user_id', None)
+    include_from_test_key = request.args.get('include_from_test_key', 'True') != 'False'
 
     if user_id:
         services = dao_fetch_all_services_by_user(user_id, only_active)
     elif detailed:
-        return jsonify(data=get_detailed_services(only_active))
+        return jsonify(data=get_detailed_services(only_active, include_from_test_key=include_from_test_key))
     else:
         services = dao_fetch_all_services(only_active)
     data = service_schema.dump(services, many=True).data
@@ -268,9 +269,9 @@ def get_detailed_service(service_id, today_only=False):
     return detailed_service_schema.dump(service).data
 
 
-def get_detailed_services(only_active=False):
+def get_detailed_services(only_active=False, include_from_test_key=True):
     services = {service.id: service for service in dao_fetch_all_services(only_active)}
-    stats = dao_fetch_todays_stats_for_all_services()
+    stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key)
 
     for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
         services[service_id].statistics = statistics.format_statistics(rows)
