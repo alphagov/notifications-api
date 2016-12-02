@@ -58,7 +58,9 @@ Install [Postgres.app](http://postgresapp.com/). You will need admin on your mac
 
 ### Redis
 
-To switch redis on you'll need to install it locally. On a OSX we've used brew for this.
+To switch redis on you'll need to install it locally. On a OSX we've used brew for this. To use redis caching you need to switch it on by changing the config for development:
+
+        REDIS_ENABLED = True
 
 
 ##  To run the application
