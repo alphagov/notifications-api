@@ -628,3 +628,14 @@ def test_dao_fetch_todays_stats_for_all_services_includes_all_keys_by_default(no
 
     assert len(stats) == 1
     assert stats[0].count == 3
+
+
+def test_dao_fetch_todays_stats_for_all_services_can_exclude_from_test_key(notify_db, notify_db_session):
+    create_notification(notify_db, notify_db_session, key_type=KEY_TYPE_NORMAL)
+    create_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEAM)
+    create_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST)
+
+    stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=False).all()
+
+    assert len(stats) == 1
+    assert stats[0].count == 2

@@ -239,8 +239,8 @@ def dao_fetch_weekly_historical_stats_for_service(service_id):
 
 
 @statsd(namespace='dao')
-def dao_fetch_todays_stats_for_all_services():
-    return db.session.query(
+def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
+    query = db.session.query(
         Notification.notification_type,
         Notification.status,
         Notification.service_id,
@@ -258,3 +258,8 @@ def dao_fetch_todays_stats_for_all_services():
     ).order_by(
         Notification.service_id
     )
+
+    if not include_from_test_key:
+        query = query.filter(Notification.key_type != KEY_TYPE_TEST)
+
+    return query
