@@ -56,6 +56,11 @@ NOTES:
 
 Install [Postgres.app](http://postgresapp.com/). You will need admin on your machine to do this.
 
+### Redis
+
+To switch redis on you'll need to install it locally. On a OSX we've used brew for this.
+
+
 ##  To run the application
 
 You need to run the api application and a local celery instance.
