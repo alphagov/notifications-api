@@ -15,6 +15,7 @@ from marshmallow import (
 )
 from marshmallow_sqlalchemy import field_for
 
+from notifications_utils.field import Field
 from notifications_utils.recipients import (
     validate_email_address,
     InvalidEmailError,
@@ -395,10 +396,10 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
             in_data['personalisation'],
             renderer=PassThrough()
         )
-        in_data['body'] = template.replaced
+        in_data['body'] = template.rendered
         template_type = in_data['template']['template_type']
         if template_type == 'email':
-            in_data['subject'] = template.replaced_subject
+            in_data['subject'] = str(Field(template.subject, in_data['personalisation']))
             in_data['content_char_count'] = None
         else:
             in_data['content_char_count'] = len(in_data['body'])

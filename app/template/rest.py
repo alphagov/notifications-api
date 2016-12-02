@@ -13,6 +13,7 @@ from app.dao.templates_dao import (
     dao_get_all_templates_for_service,
     dao_get_template_versions
 )
+from notifications_utils.field import Field
 from notifications_utils.template import Template
 from notifications_utils.renderers import PassThrough
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -108,7 +109,10 @@ def preview_template_by_id_and_service_id(service_id, template_id):
             ]}, status_code=400
         )
 
-    data['subject'], data['content'] = template_object.replaced_subject, template_object.replaced
+    data['subject'], data['content'] = (
+        str(Field(template_object.subject, template_object.values)),
+        template_object.rendered
+    )
 
     return jsonify(data)
 

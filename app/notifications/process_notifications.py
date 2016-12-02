@@ -22,7 +22,7 @@ def create_content_for_notification(template, personalisation):
     check_placeholders(template_object)
 
     if template_object.template_type == SMS_TYPE:
-        check_sms_content_char_count(template_object.replaced_content_count)
+        check_sms_content_char_count(template_object.content_count)
     return template_object
 
 

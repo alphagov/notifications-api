@@ -42,7 +42,7 @@ def post_sms_notification():
     send_notification_to_queue(notification, service.research_mode)
 
     resp = create_post_sms_response_from_notification(notification,
-                                                      template_with_content.replaced,
+                                                      template_with_content.rendered,
                                                       service.sms_sender,
                                                       request.url_root)
     return jsonify(resp), 201
@@ -70,7 +70,7 @@ def post_email_notification():
     send_notification_to_queue(notification, service.research_mode)
 
     resp = create_post_email_response_from_notification(notification=notification,
-                                                        content=template_with_content.replaced,
+                                                        content=template_with_content.rendered,
                                                         subject=template_with_content.subject,
                                                         email_from=service.email_from,
                                                         url_root=request.url_root)
@@ -89,5 +89,5 @@ def __validate_template(form, service, notification_type):
     check_template_is_for_notification_type(notification_type, template.template_type)
     check_template_is_active(template)
     template_with_content = create_content_for_notification(template, form.get('personalisation', {}))
-    check_sms_content_char_count(template_with_content.replaced_content_count)
+    check_sms_content_char_count(template_with_content.content_count)
     return template, template_with_content
