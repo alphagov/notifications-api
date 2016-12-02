@@ -20,7 +20,8 @@ from app.dao.services_dao import (
     dao_fetch_stats_for_service,
     dao_fetch_todays_stats_for_service,
     dao_fetch_weekly_historical_stats_for_service,
-    fetch_todays_total_message_count
+    fetch_todays_total_message_count,
+    dao_fetch_todays_stats_for_all_services
 )
 from app.dao.users_dao import save_model_user
 from app.models import (
@@ -38,12 +39,16 @@ from app.models import (
     User,
     InvitedUser,
     Service,
-    BRANDING_GOVUK
+    BRANDING_GOVUK,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST
 )
 
 from tests.app.conftest import (
     sample_notification as create_notification,
-    sample_notification_history as create_notification_history
+    sample_notification_history as create_notification_history,
+    sample_email_template as create_email_template
 )
 
 
@@ -555,3 +560,71 @@ def test_dao_fetch_todays_total_message_count_returns_count_for_today(notify_db,
 def test_dao_fetch_todays_total_message_count_returns_0_when_no_messages_for_today(notify_db,
                                                                                    notify_db_session):
     assert fetch_todays_total_message_count(uuid.uuid4()) == 0
+
+
+def test_dao_fetch_todays_stats_for_all_services_includes_all_services(notify_db, notify_db_session, service_factory):
+    # two services, each with an email and sms notification
+    service1 = service_factory.get('service 1', email_from='service.1')
+    service2 = service_factory.get('service 2', email_from='service.2')
+    create_notification(notify_db, notify_db_session, service=service1)
+    create_notification(notify_db, notify_db_session, service=service2)
+    create_notification(
+        notify_db, notify_db_session, service=service1,
+        template=create_email_template(notify_db, notify_db_session, service=service1))
+    create_notification(
+        notify_db, notify_db_session, service=service2,
+        template=create_email_template(notify_db, notify_db_session, service=service2))
+
+    stats = dao_fetch_todays_stats_for_all_services().all()
+
+    assert len(stats) == 4
+    # services are ordered by service id; not explicit on email/sms or status
+    assert stats == sorted(stats, key=lambda x: x.service_id)
+
+
+def test_dao_fetch_todays_stats_for_all_services_only_includes_today(notify_db):
+    with freeze_time('2001-01-01T23:59:00'):
+        just_before_midnight_yesterday = create_notification(notify_db, None, to_field='1', status='delivered')
+
+    with freeze_time('2001-01-02T00:01:00'):
+        just_after_midnight_today = create_notification(notify_db, None, to_field='2', status='failed')
+
+    with freeze_time('2001-01-02T12:00:00'):
+        stats = dao_fetch_todays_stats_for_all_services().all()
+
+    stats = {row.status: row.count for row in stats}
+    assert 'delivered' not in stats
+    assert stats['failed'] == 1
+
+
+def test_dao_fetch_todays_stats_for_all_services_groups_correctly(notify_db, notify_db_session, service_factory):
+    service1 = service_factory.get('service 1', email_from='service.1')
+    service2 = service_factory.get('service 2', email_from='service.2')
+    # service1: 2 sms with status "created" and one "failed", and one email
+    create_notification(notify_db, notify_db_session, service=service1)
+    create_notification(notify_db, notify_db_session, service=service1)
+    create_notification(notify_db, notify_db_session, service=service1, status='failed')
+    create_notification(
+        notify_db, notify_db_session, service=service1,
+        template=create_email_template(notify_db, notify_db_session, service=service1))
+    # service2: 1 sms "created"
+    create_notification(notify_db, notify_db_session, service=service2)
+
+    stats = dao_fetch_todays_stats_for_all_services().all()
+
+    assert len(stats) == 4
+    assert ('sms', 'created', service1.id, 2) in stats
+    assert ('sms', 'failed', service1.id, 1) in stats
+    assert ('email', 'created', service1.id, 1) in stats
+    assert ('sms', 'created', service2.id, 1) in stats
+
+
+def test_dao_fetch_todays_stats_for_all_services_includes_all_keys_by_default(notify_db, notify_db_session):
+    create_notification(notify_db, notify_db_session, key_type=KEY_TYPE_NORMAL)
+    create_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEAM)
+    create_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST)
+
+    stats = dao_fetch_todays_stats_for_all_services().all()
+
+    assert len(stats) == 1
+    assert stats[0].count == 3
