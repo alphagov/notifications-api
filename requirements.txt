@@ -22,6 +22,6 @@ Flask-Redis==0.1.0
 
 git+https://github.com/alphagov/notifications-python-client.git@3.0.0#egg=notifications-python-client==3.0.0
 
-git+https://github.com/alphagov/notifications-utils.git@11.0.3#egg=notifications-utils==11.0.3
+git+https://github.com/alphagov/notifications-utils.git@11.1.1#egg=notifications-utils==11.1.1
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
