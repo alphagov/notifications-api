@@ -7,6 +7,7 @@ from flask import (
     current_app,
     json
 )
+from notifications_utils.field import Field
 from notifications_utils.renderers import PassThrough
 from notifications_utils.template import Template
 
@@ -254,13 +255,13 @@ def send_notification(notification_type):
 
 def get_notification_return_data(notification_id, notification, template):
     output = {
-        'body': template.replaced,
+        'body': template.rendered,
         'template_version': notification['template_version'],
         'notification': {'id': notification_id}
     }
 
     if template.template_type == 'email':
-        output.update({'subject': template.replaced_subject})
+        output.update({'subject': str(Field(template.subject, template.values))})
 
     return output
 
@@ -304,7 +305,7 @@ def create_template_object_for_notification(template, personalisation):
 
     if (
         template_object.template_type == SMS_TYPE and
-        template_object.replaced_content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+        template_object.content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
     ):
         char_count = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
         message = 'Content has a character count greater than the limit of {}'.format(char_count)

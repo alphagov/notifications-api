@@ -6,17 +6,17 @@ from flask import request, url_for, g, jsonify
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from monotonic import monotonic
+from notifications_utils.clients.statsd.statsd_client import StatsdClient
+from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils import logging, request_id
 from werkzeug.local import LocalProxy
 
 from app.celery.celery import NotifyCelery
 from app.clients import Clients
 from app.clients.email.aws_ses import AwsSesClient
-from app.clients.redis.redis_client import RedisClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.loadtesting import LoadtestingClient
 from app.clients.sms.mmg import MMGClient
-from app.clients.statsd.statsd_client import StatsdClient
 from app.encryption import Encryption
 
 

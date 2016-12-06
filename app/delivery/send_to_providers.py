@@ -1,10 +1,11 @@
 from datetime import datetime
 
 from flask import current_app
+from notifications_utils.field import Field
 from notifications_utils.recipients import (
     validate_and_format_phone_number
 )
-from notifications_utils.template import Template, get_sms_fragment_count
+from notifications_utils.template import Template
 from notifications_utils.renderers import HTMLEmail, PlainTextEmail, SMSMessage
 
 from app import clients, statsd_client, create_uuid
@@ -35,11 +36,11 @@ def send_sms_to_provider(notification):
         else:
             provider.send_sms(
                 to=validate_and_format_phone_number(notification.to),
-                content=template.replaced,
+                content=template.rendered,
                 reference=str(notification.id),
                 sender=service.sms_sender
             )
-            notification.billable_units = get_sms_fragment_count(template.replaced_content_count)
+            notification.billable_units = template.sms_fragment_count
 
         notification.sent_at = datetime.utcnow()
         notification.sent_by = provider.get_name()
@@ -83,9 +84,9 @@ def send_email_to_provider(notification):
             reference = provider.send_email(
                 from_address,
                 notification.to,
-                plain_text_email.replaced_subject,
-                body=plain_text_email.replaced,
-                html_body=html_email.replaced,
+                str(Field(plain_text_email.subject, notification.personalisation)),
+                body=plain_text_email.rendered,
+                html_body=html_email.rendered,
                 reply_to_address=service.reply_to_email_address,
             )
 

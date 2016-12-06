@@ -6,7 +6,7 @@ from notifications_utils.template import Template
 
 from app import redis_store
 from app.celery import provider_tasks
-from app.clients import redis
+from notifications_utils.clients import redis
 from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
 from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE
 from app.notifications.validators import check_sms_content_char_count
@@ -22,7 +22,7 @@ def create_content_for_notification(template, personalisation):
     check_placeholders(template_object)
 
     if template_object.template_type == SMS_TYPE:
-        check_sms_content_char_count(template_object.replaced_content_count)
+        check_sms_content_char_count(template_object.content_count)
     return template_object
 
 
