@@ -1,6 +1,5 @@
 import uuid
 
-import pytest
 from flask import json
 from freezegun import freeze_time
 from notifications_utils.url_safe_token import generate_token
@@ -20,7 +19,8 @@ def test_accept_invite_for_expired_token_returns_400(notify_api, sample_invited_
         assert response.status_code == 400
         json_resp = json.loads(response.get_data(as_text=True))
         assert json_resp['result'] == 'error'
-        assert json_resp['message'] == {'invitation': ['Invitation has expired']}
+        assert json_resp['message'] == {'invitation': [
+            'This invitation has expired please contact the person that invited you to invite you again']}
 
 
 def test_accept_invite_returns_200_when_token_valid(notify_api, sample_invited_user):
