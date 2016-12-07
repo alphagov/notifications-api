@@ -248,6 +248,15 @@ def get_notification_by_id(notification_id):
     return Notification.query.filter_by(id=notification_id).first()
 
 
+@statsd(namespace="dao")
+def get_notification_by_reference(service_id, reference, key_type):
+    filter_dict = {'service_id': service_id, 'client_reference': reference}
+    if key_type:
+        filter_dict['key_type'] = key_type
+
+    return Notification.query.filter_by(**filter_dict).options(joinedload('template_history')).one()
+
+
 def get_notifications(filter_dict=None):
     return _filter_query(Notification.query, filter_dict=filter_dict)
 
