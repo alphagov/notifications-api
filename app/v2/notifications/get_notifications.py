@@ -18,11 +18,22 @@ def get_notification_by_id(id):
 @notification_blueprint.route("", methods=['GET'])
 def get_notifications():
     _data = request.args.to_dict(flat=False)
+
+    # flat=False makes everything a list, but we only ever allow one value for "older_than"
     if 'older_than' in _data:
-        # flat=False makes everything a list, but we only ever allow one value for "older_than"
         _data['older_than'] = _data['older_than'][0]
 
+    # and client reference
+    if 'client_reference' in _data:
+        _data['client_reference'] = _data['client_reference'][0]
+
     data = validate(_data, get_notifications_request)
+
+    if data.get('client_reference'):
+        notification = notifications_dao.get_notification_by_reference(
+            str(api_user.service_id), data.get('client_reference'), key_type=None
+        )
+        return jsonify(notification.serialize()), 200
 
     paginated_notifications = notifications_dao.get_notifications_for_service(
         str(api_user.service_id),

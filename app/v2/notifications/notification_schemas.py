@@ -78,6 +78,7 @@ get_notifications_request = {
     "description": "schema for query parameters allowed when getting list of notifications",
     "type": "object",
     "properties": {
+        "client_reference": {"type": "string"},
         "status": {
             "type": "array",
             "items": {
