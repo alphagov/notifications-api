@@ -1,0 +1,7 @@
+---
+
+applications:
+  - name: notify-api
+    memory: 512M
+    buildpack: python_buildpack
+    command: python db.py db upgrade && gunicorn -w 5 -b 0.0.0.0:$PORT wsgi

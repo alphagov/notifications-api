@@ -2,6 +2,7 @@ from datetime import timedelta
 from celery.schedules import crontab
 from kombu import Exchange, Queue
 import os
+import json
 
 
 class Config(object):
@@ -20,7 +21,12 @@ class Config(object):
     DANGEROUS_SALT = os.environ['DANGEROUS_SALT']
 
     # DB conection string
-    SQLALCHEMY_DATABASE_URI = os.environ['SQLALCHEMY_DATABASE_URI']
+    if os.getenv('VCAP_APPLICATION') is None:
+        SQLALCHEMY_DATABASE_URI = os.environ['SQLALCHEMY_DATABASE_URI']
+    else:
+        vcap_services_raw = os.environ.get('VCAP_SERVICES')
+        vcap_services = json.loads(vcap_services_raw)
+        SQLALCHEMY_DATABASE_URI = vcap_services['postgres'][0]['credentials']['uri']
 
     # MMG API Url
     MMG_URL = os.environ['MMG_URL']
@@ -42,12 +48,13 @@ class Config(object):
 
     # URL of redis instance
     REDIS_URL = os.getenv('REDIS_URL')
+    REDIS_ENABLED = REDIS_URL is not None
 
     ###########################
     # Default config values ###
     ###########################
 
-    DEBUG = False
+    DEBUG = True
     NOTIFY_ENVIRONMENT = 'development'
     ADMIN_CLIENT_USER_NAME = 'notify-admin'
     AWS_REGION = 'eu-west-1'
@@ -172,7 +179,6 @@ class Test(Config):
     FROM_NUMBER = 'testing'
     NOTIFY_ENVIRONMENT = 'test'
     DEBUG = True
-    REDIS_ENABLED = True
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
     STATSD_ENABLED = True
     STATSD_HOST = "localhost"
@@ -192,7 +198,6 @@ class Preview(Config):
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
     API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = 'preview'
-    REDIS_ENABLED = True
 
 
 class Staging(Config):
@@ -202,7 +207,6 @@ class Staging(Config):
     STATSD_ENABLED = True
     API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = 'stage'
-    REDIS_ENABLED = True
 
 
 class Live(Config):
@@ -212,7 +216,6 @@ class Live(Config):
     STATSD_ENABLED = True
     API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = '40604'
-    REDIS_ENABLED = True
 
 
 configs = {

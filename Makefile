@@ -25,7 +25,7 @@ help:
 venv: venv/bin/activate ## Create virtualenv if it does not exist
 
 venv/bin/activate:
-	test -d venv || virtualenv venv
+	test -d venv || virtualenv venv -p python3
 	./venv/bin/pip install pip-accel
 
 .PHONY: check-env-vars
@@ -184,3 +184,6 @@ clean-docker-containers: ## Clean up any remaining docker containers
 
 clean:
 	rm -rf node_modules cache target venv .coverage build tests/.cache
+
+cf-push:
+	cf push
