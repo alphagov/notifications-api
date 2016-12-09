@@ -1,5 +1,6 @@
 import os
 import uuid
+import json
 
 from flask import Flask, _request_ctx_stack
 from flask import request, url_for, g, jsonify
@@ -43,7 +44,15 @@ def create_app(app_name=None):
     application = Flask(__name__)
 
     from config import configs
-    application.config.from_object(configs[os.environ['NOTIFY_ENVIRONMENT']])
+
+    if os.getenv('VCAP_APPLICATION') is not None:
+        vcap_application = json.loads(os.environ.get('VCAP_APPLICATION'))
+        notify_environment = vcap_application['space_name']
+    else:
+        notify_environment = os.environ['NOTIFY_ENVIRONMENT']
+
+    application.config.from_object(configs[notify_environment])
+
     if app_name:
         application.config['NOTIFY_APP_NAME'] = app_name
 

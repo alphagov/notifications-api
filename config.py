@@ -6,55 +6,82 @@ import json
 
 
 class Config(object):
-    ########################################
-    # Secrets that are held in credstash ###
-    ########################################
+    if os.getenv('VCAP_SERVICES') is not None:
+        vcap_services = json.loads(os.environ.get('VCAP_SERVICES'))
 
-    # URL of admin app
-    ADMIN_BASE_URL = os.environ['ADMIN_BASE_URL']
-
-    # admin app api key
-    ADMIN_CLIENT_SECRET = os.environ['ADMIN_CLIENT_SECRET']
-
-    # encyption secret/salt
-    SECRET_KEY = os.environ['SECRET_KEY']
-    DANGEROUS_SALT = os.environ['DANGEROUS_SALT']
-
-    # DB conection string
-    if os.getenv('VCAP_APPLICATION') is None:
-        SQLALCHEMY_DATABASE_URI = os.environ['SQLALCHEMY_DATABASE_URI']
-    else:
-        vcap_services_raw = os.environ.get('VCAP_SERVICES')
-        vcap_services = json.loads(vcap_services_raw)
+        # Postgres config
         SQLALCHEMY_DATABASE_URI = vcap_services['postgres'][0]['credentials']['uri']
 
-    # MMG API Url
-    MMG_URL = os.environ['MMG_URL']
+        # Notify common config
+        notify_config = next((s for s in vcap_services['user-provided'] if s["name"] == "notify-config"))
+        ADMIN_BASE_URL = notify_config['credentials']['admin_base_url']
+        ADMIN_CLIENT_SECRET = notify_config['credentials']['admin_client_secret']
+        SECRET_KEY = notify_config['credentials']['secret_key']
+        DANGEROUS_SALT = notify_config['credentials']['dangerous_salt']
 
-    # MMG API Key
-    MMG_API_KEY = os.environ['MMG_API_KEY']
+        # AWS config
+        aws_config = next((s for s in vcap_services['user-provided'] if s["name"] == "notify-aws"))
+        NOTIFICATION_QUEUE_PREFIX = aws_config['credentials']['sqs_queue_prefix']
+        os.environ["AWS_ACCESS_KEY_ID"] = aws_config['credentials']['aws_access_key_id']
+        os.environ["AWS_SECRET_ACCESS_KEY"] = aws_config['credentials']['aws_secret_access_key']
 
-    # Firetext API Key
-    FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
+        # Hosted Graphite config
+        hosted_graphite_config = next((s for s in vcap_services['user-provided'] if s["name"] == "hosted-graphite"))
+        STATSD_PREFIX = hosted_graphite_config['credentials']['statsd_prefix']
 
-    # Firetext simluation key
-    LOADTESTING_API_KEY = os.getenv("LOADTESTING_API_KEY")
+        # MMG config
+        mmg_config = next((s for s in vcap_services['user-provided'] if s["name"] == "mmg"))
+        MMG_URL = mmg_config['credentials']['api_url']
+        MMG_API_KEY = mmg_config['credentials']['api_key']
 
-    # Hosted graphite statsd prefix
-    STATSD_PREFIX = os.getenv('STATSD_PREFIX')
+        # Firetext config
+        firetext_config = next((s for s in vcap_services['user-provided'] if s["name"] == "firetext"))
+        FIRETEXT_API_KEY = firetext_config['credentials']['api_key']
+        LOADTESTING_API_KEY = firetext_config['credentials']['loadtesting_api_key']
 
-    # Prefix to identify queues in SQS
-    NOTIFICATION_QUEUE_PREFIX = os.getenv('NOTIFICATION_QUEUE_PREFIX')
+        # Redis config
+        REDIS_ENABLED = False
+    else:
+        # URL of admin app
+        ADMIN_BASE_URL = os.environ['ADMIN_BASE_URL']
 
-    # URL of redis instance
-    REDIS_URL = os.getenv('REDIS_URL')
-    REDIS_ENABLED = REDIS_URL is not None
+        # admin app api key
+        ADMIN_CLIENT_SECRET = os.environ['ADMIN_CLIENT_SECRET']
+
+        # encyption secret/salt
+        SECRET_KEY = os.environ['SECRET_KEY']
+        DANGEROUS_SALT = os.environ['DANGEROUS_SALT']
+
+        # DB conection string
+        SQLALCHEMY_DATABASE_URI = os.environ['SQLALCHEMY_DATABASE_URI']
+
+        # MMG API Url
+        MMG_URL = os.environ['MMG_URL']
+
+        # MMG API Key
+        MMG_API_KEY = os.environ['MMG_API_KEY']
+
+        # Firetext API Key
+        FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
+
+        # Firetext simluation key
+        LOADTESTING_API_KEY = os.getenv("LOADTESTING_API_KEY")
+
+        # Hosted graphite statsd prefix
+        STATSD_PREFIX = os.getenv('STATSD_PREFIX')
+
+        # Prefix to identify queues in SQS
+        NOTIFICATION_QUEUE_PREFIX = os.getenv('NOTIFICATION_QUEUE_PREFIX')
+
+        # URL of redis instance
+        REDIS_URL = os.getenv('REDIS_URL')
+        REDIS_ENABLED = os.getenv('REDIS_ENABLED') == '1'
 
     ###########################
     # Default config values ###
     ###########################
 
-    DEBUG = True
+    DEBUG = False
     NOTIFY_ENVIRONMENT = 'development'
     ADMIN_CLIENT_USER_NAME = 'notify-admin'
     AWS_REGION = 'eu-west-1'
@@ -190,6 +217,7 @@ class Test(Config):
         Queue('send-email', Exchange('default'), routing_key='send-email'),
         Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
+    REDIS_ENABLED = True
 
 
 class Preview(Config):
@@ -218,10 +246,21 @@ class Live(Config):
     FROM_NUMBER = '40604'
 
 
+# CloudFoundry sandbox
+class Sandbox(Config):
+    DEBUG = True
+    NOTIFY_EMAIL_DOMAIN = 'notify.works'
+    NOTIFY_ENVIRONMENT = 'sandbox'
+    CSV_UPLOAD_BUCKET_NAME = 'cf-sandbox-notifications-csv-upload'
+    API_HOST_NAME = 'https://notify-api.cloudapps.digital'
+    FROM_NUMBER = 'sandbox'
+
+
 configs = {
     'development': Development,
     'test': Test,
     'live': Live,
     'staging': Staging,
-    'preview': Preview
+    'preview': Preview,
+    'sandbox': Sandbox
 }

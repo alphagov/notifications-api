@@ -9,3 +9,10 @@ applications:
     no-route: true
     env:
       NOTIFY_APP_NAME: delivery-worker
+    services:
+      - notify-aws
+      - notify-config
+      - notify-db
+      - mmg
+      - firetext
+      - hosted-graphite

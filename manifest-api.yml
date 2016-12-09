@@ -7,3 +7,10 @@ applications:
     command: python db.py db upgrade && gunicorn -w 5 -b 0.0.0.0:$PORT wsgi
     env:
       NOTIFY_APP_NAME: public-api
+    services:
+      - notify-aws
+      - notify-config
+      - notify-db
+      - mmg
+      - firetext
+      - hosted-graphite
