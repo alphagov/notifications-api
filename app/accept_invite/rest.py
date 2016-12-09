@@ -34,7 +34,8 @@ def get_invited_user_by_token(token):
                                       max_age_seconds)
     except SignatureExpired:
         errors = {'invitation':
-                  ['Your invitation to GOV.UK Notify has expired. Please ask the person that invited you to send you another one']}
+                  ['Your invitation to GOV.UK Notify has expired. '
+                   'Please ask the person that invited you to send you another one']}
         raise InvalidRequest(errors, status_code=400)
 
     invited_user = get_invited_user_by_id(invited_user_id)
