@@ -129,8 +129,10 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
     assert resp_json['id'] == str(notification.id)
     assert resp_json['reference'] == reference
     assert notification.reference is None
-    assert resp_json['content']['body'] == sample_email_template_with_placeholders.content.replace('((name))', 'Bob')
-    assert resp_json['content']['subject'] == sample_email_template_with_placeholders.subject
+    assert resp_json['content']['body'] == sample_email_template_with_placeholders.content\
+        .replace('((name))', 'Bob').replace('GOV.UK', u'GOV.\u200bUK')
+    assert resp_json['content']['subject'] == sample_email_template_with_placeholders.subject\
+        .replace('((name))', 'Bob')
     assert resp_json['content']['from_email'] == sample_email_template_with_placeholders.service.email_from
     assert 'v2/notifications/{}'.format(notification.id) in resp_json['uri']
     assert resp_json['template']['id'] == str(sample_email_template_with_placeholders.id)

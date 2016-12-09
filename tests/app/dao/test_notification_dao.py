@@ -42,8 +42,6 @@ from app.dao.notifications_dao import (
     dao_timeout_notifications,
     get_financial_year)
 
-from notifications_utils.template import get_sms_fragment_count
-
 from tests.app.conftest import (sample_notification, sample_template, sample_email_template, sample_service, sample_job,
                                 sample_api_key)
 
@@ -819,22 +817,6 @@ def test_should_limit_notifications_return_by_day_limit_plus_one(notify_db, noti
 
     all_notifications = get_notifications_for_service(sample_service.id, limit_days=1).items
     assert len(all_notifications) == 2
-
-
-@pytest.mark.parametrize(
-    "char_count, expected_sms_fragment_count",
-    [
-        (159, 1),
-        (160, 1),
-        (161, 2),
-        (306, 2),
-        (307, 3),
-        (459, 3),
-        (460, 4),
-        (461, 4)
-    ])
-def test_sms_fragment_count(char_count, expected_sms_fragment_count):
-    assert get_sms_fragment_count(char_count) == expected_sms_fragment_count
 
 
 def test_creating_notification_adds_to_notification_history(sample_template):

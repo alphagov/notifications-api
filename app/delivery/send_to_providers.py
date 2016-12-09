@@ -1,12 +1,10 @@
 from datetime import datetime
 
 from flask import current_app
-from notifications_utils.field import Field
 from notifications_utils.recipients import (
     validate_and_format_phone_number
 )
-from notifications_utils.template import Template
-from notifications_utils.renderers import HTMLEmail, PlainTextEmail, SMSMessage
+from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTemplate, SMSMessageTemplate
 
 from app import clients, statsd_client, create_uuid
 from app.dao.notifications_dao import dao_update_notification
@@ -23,10 +21,11 @@ def send_sms_to_provider(notification):
     provider = provider_to_use(SMS_TYPE, notification.id)
     if notification.status == 'created':
         template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
-        template = Template(
+        template = SMSMessageTemplate(
             template_model.__dict__,
-            values={} if not notification.personalisation else notification.personalisation,
-            renderer=SMSMessage(prefix=service.name, sender=service.sms_sender)
+            values=notification.personalisation,
+            prefix=service.name,
+            sender=service.sms_sender
         )
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
             send_sms_response.apply_async(
@@ -36,11 +35,11 @@ def send_sms_to_provider(notification):
         else:
             provider.send_sms(
                 to=validate_and_format_phone_number(notification.to),
-                content=template.rendered,
+                content=str(template),
                 reference=str(notification.id),
                 sender=service.sms_sender
             )
-            notification.billable_units = template.sms_fragment_count
+            notification.billable_units = template.fragment_count
 
         notification.sent_at = datetime.utcnow()
         notification.sent_by = provider.get_name()
@@ -60,16 +59,15 @@ def send_email_to_provider(notification):
     if notification.status == 'created':
         template_dict = dao_get_template_by_id(notification.template_id, notification.template_version).__dict__
 
-        html_email = Template(
+        html_email = HTMLEmailTemplate(
             template_dict,
             values=notification.personalisation,
-            renderer=get_html_email_renderer(service)
+            **get_html_email_options(service)
         )
 
-        plain_text_email = Template(
+        plain_text_email = PlainTextEmailTemplate(
             template_dict,
-            values=notification.personalisation,
-            renderer=PlainTextEmail()
+            values=notification.personalisation
         )
 
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
@@ -84,9 +82,9 @@ def send_email_to_provider(notification):
             reference = provider.send_email(
                 from_address,
                 notification.to,
-                str(Field(plain_text_email.subject, notification.personalisation)),
-                body=plain_text_email.rendered,
-                html_body=html_email.rendered,
+                plain_text_email.subject,
+                body=str(plain_text_email),
+                html_body=str(html_email),
                 reply_to_address=service.reply_to_email_address,
             )
 
@@ -117,7 +115,7 @@ def provider_to_use(notification_type, notification_id):
     return clients.get_client_by_name_and_type(active_providers_in_order[0].identifier, notification_type)
 
 
-def get_html_email_renderer(service):
+def get_html_email_options(service):
     govuk_banner = service.branding != BRANDING_ORG
     if service.organisation:
         logo = '{}{}{}'.format(
@@ -133,4 +131,4 @@ def get_html_email_renderer(service):
     else:
         branding = {}
 
-    return HTMLEmail(govuk_banner=govuk_banner, **branding)
+    return dict(govuk_banner=govuk_banner, **branding)

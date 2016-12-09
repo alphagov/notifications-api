@@ -1,8 +1,6 @@
 from datetime import datetime
 
 from flask import current_app
-from notifications_utils.renderers import PassThrough
-from notifications_utils.template import Template
 
 from app import redis_store
 from app.celery import provider_tasks
@@ -11,14 +9,11 @@ from app.dao.notifications_dao import dao_create_notification, dao_delete_notifi
 from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE
 from app.notifications.validators import check_sms_content_char_count
 from app.v2.errors import BadRequestError, SendNotificationToQueueError
+from app.utils import get_template_instance
 
 
 def create_content_for_notification(template, personalisation):
-    template_object = Template(
-        template.__dict__,
-        personalisation,
-        renderer=PassThrough()
-    )
+    template_object = get_template_instance(template.__dict__, personalisation)
     check_placeholders(template_object)
 
     if template_object.template_type == SMS_TYPE:
