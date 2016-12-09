@@ -135,24 +135,28 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
     assert persisted_notification.reference is None
 
 
-@pytest.mark.parametrize('research_mode, queue, notification_type, key_type',
-                         [(True, 'research-mode', 'sms', 'normal'),
-                          (True, 'research-mode', 'email', 'normal'),
-                          (True, 'research-mode', 'email', 'team'),
-                          (False, 'send-sms', 'sms', 'normal'),
-                          (False, 'send-email', 'email', 'normal'),
-                          (False, 'send-sms', 'sms', 'team'),
-                          (False, 'research-mode', 'sms', 'test')])
+@pytest.mark.parametrize('research_mode, requested_queue, expected_queue, notification_type, key_type',
+                         [(True, None, 'research-mode', 'sms', 'normal'),
+                          (True, None, 'research-mode', 'email', 'normal'),
+                          (True, None, 'research-mode', 'email', 'team'),
+                          (False, None, 'send-sms', 'sms', 'normal'),
+                          (False, None, 'send-email', 'email', 'normal'),
+                          (False, None, 'send-sms', 'sms', 'team'),
+                          (False, None, 'research-mode', 'sms', 'test'),
+                          (True, 'notify', 'research-mode', 'email', 'normal'),
+                          (False, 'notify', 'notify', 'sms', 'normal'),
+                          (False, 'notify', 'notify', 'email', 'normal'),
+                          (False, 'notify', 'research-mode', 'sms', 'test')])
 def test_send_notification_to_queue(notify_db, notify_db_session,
-                                    research_mode, notification_type,
-                                    queue, key_type, mocker):
+                                    research_mode, requested_queue, expected_queue,
+                                    notification_type, key_type, mocker):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
     template = sample_template(notify_db, notify_db_session) if notification_type == 'sms' \
         else sample_email_template(notify_db, notify_db_session)
     notification = sample_notification(notify_db, notify_db_session, template=template, key_type=key_type)
-    send_notification_to_queue(notification=notification, research_mode=research_mode)
+    send_notification_to_queue(notification=notification, research_mode=research_mode, queue=requested_queue)
 
-    mocked.assert_called_once_with([str(notification.id)], queue=queue)
+    mocked.assert_called_once_with([str(notification.id)], queue=expected_queue)
 
 
 def test_send_notification_to_queue_throws_exception_deletes_notification(sample_notification, mocker):
