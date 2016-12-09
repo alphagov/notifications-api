@@ -18,7 +18,11 @@ from app.dao.users_dao import (
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import SMS_TYPE
+from app.models import SMS_TYPE, KEY_TYPE_NORMAL
+from app.notifications.process_notifications import (
+    persist_notification,
+    send_notification_to_queue
+)
 from app.schemas import (
     email_data_request_schema,
     user_schema,
@@ -143,20 +147,22 @@ def send_user_sms_code(user_id):
     mobile = user_to_send_to.mobile_number if verify_code.get('to', None) is None else verify_code.get('to')
     sms_code_template_id = current_app.config['SMS_CODE_TEMPLATE_ID']
     sms_code_template = dao_get_template_by_id(sms_code_template_id)
-    verification_message = encryption.encrypt({
-        'template': sms_code_template_id,
-        'template_version': sms_code_template.version,
-        'to': mobile,
-        'personalisation': {
-            'verify_code': secret_code
-        }
+    notify_service_id = current_app.config['NOTIFY_SERVICE_ID']
 
-    })
-    send_sms.apply_async([current_app.config['NOTIFY_SERVICE_ID'],
-                          str(uuid.uuid4()),
-                          verification_message,
-                          datetime.utcnow().strftime(DATETIME_FORMAT)
-                          ], queue='notify')
+    saved_notification = persist_notification(
+        template_id=sms_code_template_id,
+        template_version=sms_code_template.version,
+        recipient=mobile,
+        service_id=notify_service_id,
+        personalisation={'verify_code': secret_code},
+        notification_type=SMS_TYPE,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL
+    )
+    # Assume that we never want to observe the Notify service's research mode
+    # setting for this notification - we still need to be able to log into the
+    # admin even if we're doing user research using this service:
+    send_notification_to_queue(saved_notification, False, queue='notify')
 
     return jsonify({}), 204
 

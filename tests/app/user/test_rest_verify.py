@@ -1,5 +1,6 @@
 import json
 import moto
+import pytest
 
 from datetime import (
     datetime,
@@ -7,9 +8,11 @@ from datetime import (
 )
 
 from flask import url_for, current_app
+from app.dao.services_dao import dao_update_service, dao_fetch_service_by_id
 from app.models import (
     VerifyCode,
-    User
+    User,
+    Notification
 )
 
 from app import db, encryption
@@ -214,41 +217,47 @@ def test_user_verify_password_missing_password(notify_api,
             assert 'Required field missing data' in json_resp['message']['password']
 
 
+@pytest.mark.parametrize('research_mode', [True, False])
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_send_user_sms_code(notify_api,
                             sample_user,
                             sms_code_template,
-                            mocker):
+                            mocker,
+                            research_mode):
     """
     Tests POST endpoint /user/<user_id>/sms-code
     """
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            if research_mode:
+                notify_service = dao_fetch_service_by_id(current_app.config['NOTIFY_SERVICE_ID'])
+                notify_service.research_mode = True
+                dao_update_service(notify_service)
+
             data = json.dumps({})
             auth_header = create_authorization_header()
             mocked = mocker.patch('app.user.rest.create_secret_code', return_value='11111')
-            mocker.patch('app.celery.tasks.send_sms.apply_async')
-            mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
+            mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
             resp = client.post(
                 url_for('user.send_user_sms_code', user_id=sample_user.id),
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 204
+
             assert mocked.call_count == 1
-            encrypted = encryption.encrypt({
-                'template': current_app.config['SMS_CODE_TEMPLATE_ID'],
-                'template_version': 1,
-                'to': sample_user.mobile_number,
-                'personalisation': {
-                    'verify_code': '11111'
-                }
-            })
-            app.celery.tasks.send_sms.apply_async.assert_called_once_with(
-                ([current_app.config['NOTIFY_SERVICE_ID'],
-                  "some_uuid",
-                  encrypted,
-                  "2016-01-01T11:09:00.061258Z"]),
+            assert VerifyCode.query.count() == 1
+            assert VerifyCode.query.first().check_code('11111')
+
+            assert Notification.query.count() == 1
+            notification = Notification.query.first()
+            assert notification.personalisation == {'verify_code': '11111'}
+            assert notification.to == sample_user.mobile_number
+            assert str(notification.service_id) == current_app.config['NOTIFY_SERVICE_ID']
+
+            app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
+                ([str(notification.id)]),
                 queue="notify"
             )
 
@@ -257,38 +266,29 @@ def test_send_user_sms_code(notify_api,
 def test_send_user_code_for_sms_with_optional_to_field(notify_api,
                                                        sample_user,
                                                        sms_code_template,
-                                                       mock_encryption,
                                                        mocker):
     """
-    Tests POST endpoint '/<user_id>/code' successful sms with optional to field
+    Tests POST endpoint /user/<user_id>/sms-code with optional to field
     """
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            to_number = '+441119876757'
             mocked = mocker.patch('app.user.rest.create_secret_code', return_value='11111')
-            mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
-            mocker.patch('app.celery.tasks.send_sms.apply_async')
-            data = json.dumps({'to': '+441119876757'})
+            mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+            data = json.dumps({'to': to_number})
             auth_header = create_authorization_header()
+
             resp = client.post(
                 url_for('user.send_user_sms_code', user_id=sample_user.id),
                 data=data,
                 headers=[('Content-Type', 'application/json'), auth_header])
 
             assert resp.status_code == 204
-            encrypted = encryption.encrypt({
-                'template': current_app.config['SMS_CODE_TEMPLATE_ID'],
-                'template_version': 1,
-                'to': '+441119876757',
-                'personalisation': {
-                    'verify_code': '11111'
-                }
-            })
             assert mocked.call_count == 1
-            app.celery.tasks.send_sms.apply_async.assert_called_once_with(
-                ([current_app.config['NOTIFY_SERVICE_ID'],
-                  "some_uuid",
-                  encrypted,
-                  "2016-01-01T11:09:00.061258Z"]),
+            notification = Notification.query.first()
+            assert notification.to == to_number
+            app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
+                ([str(notification.id)]),
                 queue="notify"
             )
 
