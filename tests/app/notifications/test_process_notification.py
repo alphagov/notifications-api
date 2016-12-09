@@ -5,6 +5,7 @@ import pytest
 from boto3.exceptions import Boto3Error
 from sqlalchemy.exc import SQLAlchemyError
 from freezegun import freeze_time
+from collections import namedtuple
 
 from app.models import Template, Notification, NotificationHistory
 from app.notifications import SendNotificationToQueueError
@@ -151,9 +152,14 @@ def test_send_notification_to_queue(notify_db, notify_db_session,
                                     research_mode, requested_queue, expected_queue,
                                     notification_type, key_type, mocker):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
-    template = sample_template(notify_db, notify_db_session) if notification_type == 'sms' \
-        else sample_email_template(notify_db, notify_db_session)
-    notification = sample_notification(notify_db, notify_db_session, template=template, key_type=key_type)
+    Notification = namedtuple('Notification', ['id', 'key_type', 'notification_type', 'created_at'])
+    notification = Notification(
+        id=uuid.uuid4(),
+        key_type=key_type,
+        notification_type=notification_type,
+        created_at=datetime.datetime(2016, 11, 11, 16, 8, 18),
+    )
+
     send_notification_to_queue(notification=notification, research_mode=research_mode, queue=requested_queue)
 
     mocked.assert_called_once_with([str(notification.id)], queue=expected_queue)
