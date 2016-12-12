@@ -30,7 +30,6 @@ from app.dao.notifications_dao import (
     dao_update_notification,
     delete_notifications_created_more_than_a_week_ago,
     get_notification_by_id,
-    get_notification_by_reference,
     get_notification_for_job,
     get_notification_billable_unit_count_per_month,
     get_notification_with_personalisation,
@@ -626,14 +625,13 @@ def test_get_notification_by_id(sample_notification):
     assert sample_notification == notification_from_db
 
 
-def test_get_notification_by_reference(notify_db, notify_db_session):
-    notification = sample_notification(notify_db, notify_db_session, client_reference="some-client-ref")
-    notification_from_db = get_notification_by_reference(
-        notification.service.id,
-        notification.client_reference,
-        key_type=None
-    )
-    assert notification == notification_from_db
+def test_get_notification_by_reference(notify_db, notify_db_session, sample_service):
+    client_reference = 'some-client-ref'
+    assert len(Notification.query.all()) == 0
+    sample_notification(notify_db, notify_db_session, client_reference=client_reference)
+    sample_notification(notify_db, notify_db_session, client_reference=client_reference)
+    all_notifications = get_notifications_for_service(sample_service.id, client_reference=client_reference).items
+    assert len(all_notifications) == 2
 
 
 def test_save_notification_no_job_id(sample_template, mmg_provider):

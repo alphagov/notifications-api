@@ -66,32 +66,30 @@ def test_get_notification_by_reference_returns_200(client, notify_db, notify_db_
 
     auth_header = create_authorization_header(service_id=sample_notification_with_reference.service_id)
     response = client.get(
-        path='/v2/notifications?client_reference={}'.format(sample_notification_with_reference.client_reference),
+        path='/v2/notifications?reference={}'.format(sample_notification_with_reference.client_reference),
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 200
     assert response.headers['Content-type'] == 'application/json'
 
+    json_response = json.loads(response.get_data(as_text=True))
+    assert len(json_response['notifications']) == 1
 
-def test_get_notification_by_reference_nonexistent_reference_returns_400(client, sample_notification):
-    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    assert json_response['notifications'][0]['id'] == str(sample_notification_with_reference.id)
+    assert json_response['notifications'][0]['reference'] == "some-client-reference"
+
+
+def test_get_notification_by_reference_nonexistent_reference_returns_no_notifications(client, sample_service):
+    auth_header = create_authorization_header(service_id=sample_service.id)
     response = client.get(
-        path='/v2/notifications?client_reference={}'.format(sample_notification.client_reference),
+        path='/v2/notifications?reference={}'.format('nonexistent-reference'),
         headers=[('Content-Type', 'application/json'), auth_header])
 
-    assert response.status_code == 404
-    assert response.headers['Content-type'] == 'application/json'
-
     json_response = json.loads(response.get_data(as_text=True))
-    assert json_response == {
-        "errors": [
-            {
-                "error": "NoResultFound",
-                "message": "No result found"
-            }
-        ],
-        "status_code": 404
-    }
+
+    assert response.status_code == 200
+    assert response.headers['Content-type'] == "application/json"
+    assert len(json_response['notifications']) == 0
 
 
 def test_get_notification_by_id_nonexistent_id(client, sample_notification):
