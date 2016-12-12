@@ -17,6 +17,9 @@ BUILD_URL ?=
 
 DOCKER_CONTAINER_PREFIX = ${USER}-${BUILD_TAG}
 
+CF_API ?= api.cloud.service.gov.uk
+CF_ORG ?= govuk-notify
+
 .PHONY: help
 help:
 	@cat $(MAKEFILE_LIST) | grep -E '^[a-zA-Z_-]+:.*?## .*$$' | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
@@ -182,8 +185,42 @@ coverage-with-docker: prepare-docker-build-image ## Generates coverage report in
 clean-docker-containers: ## Clean up any remaining docker containers
 	docker rm -f $(shell docker ps -q -f "name=${DOCKER_CONTAINER_PREFIX}") 2> /dev/null || true
 
+.PHONY: clean
 clean:
 	rm -rf node_modules cache target venv .coverage build tests/.cache
 
-cf-push:
-	cf push
+.PHONY: cf-login
+cf-login: ## Log in to Cloud Foundry
+	$(if ${CF_USERNAME},,$(error Must specify CF_USERNAME))
+	$(if ${CF_PASSWORD},,$(error Must specify CF_PASSWORD))
+	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
+	@echo "Logging in to Cloud Foundry on ${CF_API}"
+	@cf login -a "${CF_API}" -u ${CF_USERNAME} -p "${CF_PASSWORD}"
+	cf target -o "${CF_ORG}" -s "${CF_SPACE}"
+
+.PHONY: cf-deploy
+cf-deploy: cf-login ## Deploys the app to Cloud Foundry
+	$(if ${CF_APP},,$(error Must specify CF_APP))
+	$(eval export ORIG_INSTANCES=$(shell cf curl /v2/apps/$(shell cf app --guid notify-admin) | jq -r ".entity.instances"))
+	@echo "Original instance count: ${ORIG_INSTANCES}"
+	cf zero-downtime-push ${CF_APP} -f manifest-${subst notify-,,${CF_APP}}.yml && \
+	cf scale -i ${ORIG_INSTANCES} ${CF_APP}
+
+.PHONY: cf-deploy-with-docker
+cf-deploy-with-docker: prepare-docker-build-image ## Deploys the app to Cloud Foundry from a new Docker container
+	@docker run -i --rm \
+		--name "${DOCKER_CONTAINER_PREFIX}-cf-deploy" \
+		-v `pwd`:/var/project \
+		-e http_proxy="${HTTP_PROXY}" \
+		-e HTTP_PROXY="${HTTP_PROXY}" \
+		-e https_proxy="${HTTPS_PROXY}" \
+		-e HTTPS_PROXY="${HTTPS_PROXY}" \
+		-e NO_PROXY="${NO_PROXY}" \
+		-e CF_API="${CF_API}" \
+		-e CF_USERNAME="${CF_USERNAME}" \
+		-e CF_PASSWORD="${CF_PASSWORD}" \
+		-e CF_ORG="${CF_ORG}" \
+		-e CF_SPACE="${CF_SPACE}" \
+		-e CF_APP="${CF_APP}" \
+		${DOCKER_BUILDER_IMAGE_NAME} \
+		make cf-deploy

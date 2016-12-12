@@ -12,7 +12,6 @@ build:
 		--build-arg HTTP_PROXY="${HTTP_PROXY}" \
 		--build-arg HTTPS_PROXY="${HTTP_PROXY}" \
 		--build-arg NO_PROXY="${NO_PROXY}" \
-		-f Dockerfile-build \
 		-t govuk/notify-api-builder \
 		.
 
