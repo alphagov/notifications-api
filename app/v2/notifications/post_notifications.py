@@ -1,4 +1,4 @@
-from flask import request, jsonify
+from flask import request, jsonify, current_app
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import api_user
@@ -40,10 +40,10 @@ def post_sms_notification():
                                         key_type=api_user.key_type,
                                         reference=form.get('reference'))
     send_notification_to_queue(notification, service.research_mode)
-
+    sms_sender = service.sms_sender if service.sms_sender else current_app.config.get('FROM_NUMBER')
     resp = create_post_sms_response_from_notification(notification,
                                                       template_with_content.rendered,
-                                                      service.sms_sender,
+                                                      sms_sender,
                                                       request.url_root)
     return jsonify(resp), 201
 

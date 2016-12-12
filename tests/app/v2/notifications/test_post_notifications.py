@@ -32,7 +32,8 @@ def test_post_sms_notification_returns_201(notify_api, sample_template_with_plac
             assert resp_json['id'] == str(notification_id)
             assert resp_json['reference'] == reference
             assert resp_json['content']['body'] == sample_template_with_placeholders.content.replace("(( Name))", "Jo")
-            assert resp_json['content']['from_number'] == sample_template_with_placeholders.service.sms_sender
+            # conftest fixture service does not have a sms sender, use config default
+            assert resp_json['content']['from_number'] == notify_api.config["FROM_NUMBER"]
             assert 'v2/notifications/{}'.format(notification_id) in resp_json['uri']
             assert resp_json['template']['id'] == str(sample_template_with_placeholders.id)
             assert resp_json['template']['version'] == sample_template_with_placeholders.version
