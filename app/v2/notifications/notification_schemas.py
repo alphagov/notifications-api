@@ -149,7 +149,7 @@ sms_content = {
         "body": {"type": "string"},
         "from_number": {"type": "string"}
     },
-    "required": ["body"]
+    "required": ["body", "from_number"]
 }
 
 post_sms_response = {
