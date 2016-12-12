@@ -625,7 +625,7 @@ def test_get_notification_by_id(sample_notification):
     assert sample_notification == notification_from_db
 
 
-def test_get_notification_by_reference(notify_db, notify_db_session, sample_service):
+def test_get_notifications_by_reference(notify_db, notify_db_session, sample_service):
     client_reference = 'some-client-ref'
     assert len(Notification.query.all()) == 0
     sample_notification(notify_db, notify_db_session, client_reference=client_reference)
