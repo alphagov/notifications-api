@@ -248,15 +248,6 @@ def get_notification_by_id(notification_id):
     return Notification.query.filter_by(id=notification_id).first()
 
 
-@statsd(namespace="dao")
-def get_notification_by_reference(service_id, reference, key_type):
-    filter_dict = {'service_id': service_id, 'client_reference': reference}
-    if key_type:
-        filter_dict['key_type'] = key_type
-
-    return Notification.query.filter_by(**filter_dict).options(joinedload('template_history')).one()
-
-
 def get_notifications(filter_dict=None):
     return _filter_query(Notification.query, filter_dict=filter_dict)
 
@@ -272,7 +263,8 @@ def get_notifications_for_service(
     personalisation=False,
     include_jobs=False,
     include_from_test_key=False,
-    older_than=None
+    older_than=None,
+    client_reference=None
 ):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
@@ -295,6 +287,9 @@ def get_notifications_for_service(
         filters.append(Notification.key_type == key_type)
     elif not include_from_test_key:
         filters.append(Notification.key_type != KEY_TYPE_TEST)
+
+    if client_reference is not None:
+        filters.append(Notification.client_reference == client_reference)
 
     query = Notification.query.filter(*filters)
     query = _filter_query(query, filter_dict)
