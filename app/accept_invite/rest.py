@@ -33,7 +33,9 @@ def get_invited_user_by_token(token):
                                       current_app.config['DANGEROUS_SALT'],
                                       max_age_seconds)
     except SignatureExpired:
-        errors = {'invitation': ['Invitation has expired']}
+        errors = {'invitation':
+                  ['Your invitation to GOV.UK Notify has expired. '
+                   'Please ask the person that invited you to send you another one']}
         raise InvalidRequest(errors, status_code=400)
 
     invited_user = get_invited_user_by_id(invited_user_id)
