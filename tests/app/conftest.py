@@ -411,7 +411,8 @@ def sample_notification(notify_db,
                         personalisation=None,
                         api_key_id=None,
                         key_type=KEY_TYPE_NORMAL,
-                        sent_by=None):
+                        sent_by=None,
+                        client_reference=None):
     if created_at is None:
         created_at = datetime.utcnow()
     if service is None:
@@ -445,7 +446,8 @@ def sample_notification(notify_db,
         'api_key_id': api_key_id,
         'key_type': key_type,
         'sent_by': sent_by,
-        'updated_at': created_at if status in NOTIFICATION_STATUS_TYPES_COMPLETED else None
+        'updated_at': created_at if status in NOTIFICATION_STATUS_TYPES_COMPLETED else None,
+        'client_reference': client_reference
     }
     if job_row_number:
         data['job_row_number'] = job_row_number

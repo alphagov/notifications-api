@@ -60,6 +60,40 @@ def test_get_notification_by_id_returns_200(
     assert json_response == expected_response
 
 
+def test_get_notification_by_reference_returns_200(client, notify_db, notify_db_session):
+    sample_notification_with_reference = create_sample_notification(
+        notify_db, notify_db_session, client_reference='some-client-reference')
+
+    auth_header = create_authorization_header(service_id=sample_notification_with_reference.service_id)
+    response = client.get(
+        path='/v2/notifications?client_reference={}'.format(sample_notification_with_reference.client_reference),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 200
+    assert response.headers['Content-type'] == 'application/json'
+
+
+def test_get_notification_by_reference_nonexistent_reference_returns_400(client, sample_notification):
+    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    response = client.get(
+        path='/v2/notifications?client_reference={}'.format(sample_notification.client_reference),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 404
+    assert response.headers['Content-type'] == 'application/json'
+
+    json_response = json.loads(response.get_data(as_text=True))
+    assert json_response == {
+        "errors": [
+            {
+                "error": "NoResultFound",
+                "message": "No result found"
+            }
+        ],
+        "status_code": 404
+    }
+
+
 def test_get_notification_by_id_nonexistent_id(client, sample_notification):
     auth_header = create_authorization_header(service_id=sample_notification.service_id)
     response = client.get(
