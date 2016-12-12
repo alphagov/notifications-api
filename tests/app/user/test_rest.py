@@ -5,8 +5,9 @@ from flask import url_for, current_app
 from freezegun import freeze_time
 
 import app
-from app.models import (User, Permission, MANAGE_SETTINGS, MANAGE_TEMPLATES)
+from app.models import (Notification, User, Permission, MANAGE_SETTINGS, MANAGE_TEMPLATES)
 from app.dao.permissions_dao import default_service_permissions
+from app.dao.services_dao import dao_update_service, dao_fetch_service_by_id
 from app.utils import url_with_token
 from tests import create_authorization_header
 
@@ -543,12 +544,19 @@ def test_send_already_registered_email_returns_400_when_data_is_missing(notify_a
             assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Missing data for required field.']}
 
 
+@pytest.mark.parametrize('research_mode', [True, False])
 @freeze_time("2016-01-01T11:09:00.061258")
-def test_send_user_confirm_new_email_returns_204(notify_api, sample_user, change_email_confirmation_template, mocker):
+def test_send_user_confirm_new_email_returns_204(notify_api, sample_user,
+                                                 change_email_confirmation_template,
+                                                 mocker, research_mode):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocked = mocker.patch('app.celery.tasks.send_email.apply_async')
-            mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
+            if research_mode:
+                notify_service = dao_fetch_service_by_id(current_app.config['NOTIFY_SERVICE_ID'])
+                notify_service.research_mode = True
+                dao_update_service(notify_service)
+
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
             new_email = 'new_address@dig.gov.uk'
             data = json.dumps({'email': new_email})
             auth_header = create_authorization_header()
@@ -557,29 +565,30 @@ def test_send_user_confirm_new_email_returns_204(notify_api, sample_user, change
                                data=data,
                                headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 204
+
+            assert Notification.query.count() == 1
+            notification = Notification.query.first()
+            assert str(notification.service_id) == current_app.config['NOTIFY_SERVICE_ID']
+            assert notification.to == new_email
+            assert notification.personalisation['name'] == sample_user.name
             token_data = json.dumps({'user_id': str(sample_user.id), 'email': new_email})
-            url = url_with_token(data=token_data, url='/user-profile/email/confirm/', config=current_app.config)
-            message = {
-                'template': current_app.config['CHANGE_EMAIL_CONFIRMATION_TEMPLATE_ID'],
-                'template_version': 1,
-                'to': 'new_address@dig.gov.uk',
-                'personalisation': {
-                    'name': sample_user.name,
-                    'url': url,
-                    'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/feedback'
-                }
-            }
-            mocked.assert_called_once_with((
-                str(current_app.config['NOTIFY_SERVICE_ID']),
-                "some_uuid",
-                app.encryption.encrypt(message),
-                "2016-01-01T11:09:00.061258Z"), queue="notify")
+            expected_url = url_with_token(
+                data=token_data,
+                url='/user-profile/email/confirm/',
+                config=current_app.config
+            )
+            assert notification.personalisation['url'] == expected_url
+
+            mocked.assert_called_once_with(
+                ([str(notification.id)]),
+                queue="notify"
+            )
 
 
 def test_send_user_confirm_new_email_returns_400_when_email_missing(notify_api, sample_user, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocked = mocker.patch('app.celery.tasks.send_email.apply_async')
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
             data = json.dumps({})
             auth_header = create_authorization_header()
             resp = client.post(url_for('user.send_user_confirm_new_email', user_id=str(sample_user.id)),
