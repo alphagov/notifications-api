@@ -630,6 +630,7 @@ def test_get_notifications_by_reference(notify_db, notify_db_session, sample_ser
     assert len(Notification.query.all()) == 0
     sample_notification(notify_db, notify_db_session, client_reference=client_reference)
     sample_notification(notify_db, notify_db_session, client_reference=client_reference)
+    sample_notification(notify_db, notify_db_session, client_reference='other-ref')
     all_notifications = get_notifications_for_service(sample_service.id, client_reference=client_reference).items
     assert len(all_notifications) == 2
 
