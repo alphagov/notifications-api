@@ -24,23 +24,18 @@ def get_notifications():
         _data['older_than'] = _data['older_than'][0]
 
     # and client reference
-    if 'client_reference' in _data:
-        _data['client_reference'] = _data['client_reference'][0]
+    if 'reference' in _data:
+        _data['reference'] = _data['reference'][0]
 
     data = validate(_data, get_notifications_request)
-
-    if data.get('client_reference'):
-        notification = notifications_dao.get_notification_by_reference(
-            str(api_user.service_id), data.get('client_reference'), key_type=None
-        )
-        return jsonify(notification.serialize()), 200
 
     paginated_notifications = notifications_dao.get_notifications_for_service(
         str(api_user.service_id),
         filter_dict=data,
         key_type=api_user.key_type,
         personalisation=True,
-        older_than=data.get('older_than')
+        older_than=data.get('older_than'),
+        client_reference=data.get('reference')
     )
 
     def _build_links(notifications):
