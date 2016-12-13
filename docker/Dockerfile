@@ -25,6 +25,7 @@ RUN \
 	&& dpkg -i /tmp/cloudfoundry-cli.deb \
 	&& cf install-plugin -r CF-Community -f "autopilot" \
 	&& cf install-plugin -r CF-Community -f "blue-green-deploy" \
+	&& cf install-plugin -r CF-Community -f "antifreeze" \
 
 	&& echo "Clean up" \
 	&& rm -rf /var/lib/apt/lists/* /tmp/*
