@@ -129,7 +129,7 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_email_t
                 queue="send-email"
             )
             assert response.status_code == 201
-            assert response_data['body'] == 'Hello Jo\nThis is an email from GOV.UK'
+            assert response_data['body'] == u'Hello Jo\nThis is an email from GOV.\u200BUK'
             assert response_data['subject'] == 'Jo'
 
 

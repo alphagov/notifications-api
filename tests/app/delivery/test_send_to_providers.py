@@ -355,11 +355,11 @@ def test_send_email_should_use_service_reply_to_email(
 
 
 def test_get_html_email_renderer_should_return_for_normal_service(sample_service):
-    renderer = send_to_providers.get_html_email_renderer(sample_service)
-    assert renderer.govuk_banner
-    assert renderer.brand_colour is None
-    assert renderer.brand_logo is None
-    assert renderer.brand_name is None
+    options = send_to_providers.get_html_email_options(sample_service)
+    assert options['govuk_banner']
+    assert 'brand_colour' not in options.keys()
+    assert 'brand_logo' not in options.keys()
+    assert 'brand_name' not in options.keys()
 
 
 @pytest.mark.parametrize('branding_type, govuk_banner', [
@@ -373,11 +373,11 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
     notify_db.session.add_all([sample_service, org])
     notify_db.session.commit()
 
-    renderer = send_to_providers.get_html_email_renderer(sample_service)
+    options = send_to_providers.get_html_email_options(sample_service)
 
-    assert renderer.govuk_banner == govuk_banner
-    assert renderer.brand_colour == '000000'
-    assert renderer.brand_name == 'Justice League'
+    assert options['govuk_banner'] == govuk_banner
+    assert options['brand_colour'] == '#000000'
+    assert options['brand_name'] == 'Justice League'
 
 
 def test_get_html_email_renderer_prepends_logo_path(notify_db, sample_service):
@@ -387,9 +387,9 @@ def test_get_html_email_renderer_prepends_logo_path(notify_db, sample_service):
     notify_db.session.add_all([sample_service, org])
     notify_db.session.commit()
 
-    renderer = send_to_providers.get_html_email_renderer(sample_service)
+    renderer = send_to_providers.get_html_email_options(sample_service)
 
-    assert renderer.brand_logo == 'http://localhost:6012/static/images/email-template/crests/justice-league.png'
+    assert renderer['brand_logo'] == 'http://localhost:6012/static/images/email-template/crests/justice-league.png'
 
 
 def test_should_not_set_billable_units_if_research_mode(notify_db, sample_service, sample_notification, mocker):

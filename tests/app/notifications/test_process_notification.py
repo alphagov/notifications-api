@@ -18,14 +18,14 @@ from tests.app.conftest import sample_notification, sample_template, sample_emai
 def test_create_content_for_notification_passes(sample_email_template):
     template = Template.query.get(sample_email_template.id)
     content = create_content_for_notification(template, None)
-    assert content.rendered == template.content
+    assert str(content) == template.content
 
 
 def test_create_content_for_notification_with_placeholders_passes(sample_template_with_placeholders):
     template = Template.query.get(sample_template_with_placeholders.id)
     content = create_content_for_notification(template, {'name': 'Bobby'})
     assert content.content == template.content
-    assert 'Bobby' in content.rendered
+    assert 'Bobby' in str(content)
 
 
 def test_create_content_for_notification_fails_with_missing_personalisation(sample_template_with_placeholders):

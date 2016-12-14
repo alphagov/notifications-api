@@ -7,9 +7,6 @@ from flask import (
     current_app,
     json
 )
-from notifications_utils.field import Field
-from notifications_utils.renderers import PassThrough
-from notifications_utils.template import Template
 
 from app import api_user, create_uuid, statsd_client
 from app.clients.email.aws_ses import get_aws_responses
@@ -36,7 +33,7 @@ from app.schemas import (
     day_schema
 )
 from app.service.utils import service_allowed_to_send_to
-from app.utils import pagination_links
+from app.utils import pagination_links, get_template_instance
 
 notifications = Blueprint('notifications', __name__)
 
@@ -255,13 +252,13 @@ def send_notification(notification_type):
 
 def get_notification_return_data(notification_id, notification, template):
     output = {
-        'body': template.rendered,
+        'body': str(template),
         'template_version': notification['template_version'],
         'notification': {'id': notification_id}
     }
 
     if template.template_type == 'email':
-        output.update({'subject': str(Field(template.subject, template.values))})
+        output.update({'subject': template.subject})
 
     return output
 
@@ -288,11 +285,8 @@ def _service_allowed_to_send_to(notification, service):
 
 
 def create_template_object_for_notification(template, personalisation):
-    template_object = Template(
-        template.__dict__,
-        personalisation,
-        renderer=PassThrough()
-    )
+    template_object = get_template_instance(template.__dict__, personalisation)
+
     if template_object.missing_data:
         message = 'Missing personalisation: {}'.format(", ".join(template_object.missing_data))
         errors = {'template': [message]}

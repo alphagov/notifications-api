@@ -15,7 +15,6 @@ from marshmallow import (
 )
 from marshmallow_sqlalchemy import field_for
 
-from notifications_utils.field import Field
 from notifications_utils.recipients import (
     validate_email_address,
     InvalidEmailError,
@@ -24,11 +23,10 @@ from notifications_utils.recipients import (
     validate_and_format_phone_number
 )
 
-from notifications_utils.renderers import PassThrough
-
 from app import ma
 from app import models
 from app.dao.permissions_dao import permission_dao
+from app.utils import get_template_instance
 
 
 def _validate_positive_number(value, msg="Not a positive integer"):
@@ -390,19 +388,13 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
     @post_dump
     def handle_template_merge(self, in_data):
         in_data['template'] = in_data.pop('template_history')
-        from notifications_utils.template import Template
-        template = Template(
-            in_data['template'],
-            in_data['personalisation'],
-            renderer=PassThrough()
-        )
-        in_data['body'] = template.rendered
-        template_type = in_data['template']['template_type']
-        if template_type == 'email':
-            in_data['subject'] = str(Field(template.subject, in_data['personalisation']))
+        template = get_template_instance(in_data['template'], in_data['personalisation'])
+        in_data['body'] = str(template)
+        if in_data['template']['template_type'] == models.EMAIL_TYPE:
+            in_data['subject'] = template.subject
             in_data['content_char_count'] = None
         else:
-            in_data['content_char_count'] = len(in_data['body'])
+            in_data['content_char_count'] = template.content_count
 
         in_data.pop('personalisation', None)
         in_data['template'].pop('content', None)

@@ -13,9 +13,7 @@ from app.dao.templates_dao import (
     dao_get_all_templates_for_service,
     dao_get_template_versions
 )
-from notifications_utils.field import Field
-from notifications_utils.template import Template
-from notifications_utils.renderers import PassThrough
+from notifications_utils.template import SMSMessageTemplate
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.models import SMS_TYPE
 from app.schemas import (template_schema, template_history_schema)
@@ -26,13 +24,16 @@ from app.errors import (
     register_errors,
     InvalidRequest
 )
+from app.utils import get_template_instance
 
 register_errors(template)
 
 
 def _content_count_greater_than_limit(content, template_type):
-    template = Template({'content': content, 'template_type': template_type})
-    return template_type == SMS_TYPE and template.content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+    if template_type != SMS_TYPE:
+        return False
+    template = SMSMessageTemplate({'content': content, 'template_type': template_type})
+    return template.content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
 
 
 @template.route('', methods=['POST'])
@@ -93,7 +94,8 @@ def get_template_by_id_and_service_id(service_id, template_id):
 def preview_template_by_id_and_service_id(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
     data = template_schema.dump(fetched_template).data
-    template_object = Template(data, values=request.args.to_dict(), renderer=PassThrough())
+
+    template_object = get_template_instance(data, values=request.args.to_dict())
 
     if template_object.missing_data:
         raise InvalidRequest(
@@ -109,10 +111,7 @@ def preview_template_by_id_and_service_id(service_id, template_id):
             ]}, status_code=400
         )
 
-    data['subject'], data['content'] = (
-        str(Field(template_object.subject, template_object.values)),
-        template_object.rendered
-    )
+    data['subject'], data['content'] = template_object.subject, str(template_object)
 
     return jsonify(data)
 
