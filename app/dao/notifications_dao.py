@@ -22,7 +22,8 @@ from app.models import (
     NOTIFICATION_CREATED,
     NOTIFICATION_SENDING,
     NOTIFICATION_PENDING,
-    NOTIFICATION_TEMPORARY_FAILURE, KEY_TYPE_NORMAL, KEY_TYPE_TEST)
+    NOTIFICATION_TECHNICAL_FAILURE,
+    KEY_TYPE_NORMAL, KEY_TYPE_TEST)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
@@ -353,11 +354,11 @@ def dao_timeout_notifications(timeout_period_in_seconds):
     updated = db.session.query(Notification). \
         filter(Notification.created_at < (datetime.utcnow() - timedelta(seconds=timeout_period_in_seconds))). \
         filter(Notification.status.in_([NOTIFICATION_CREATED, NOTIFICATION_SENDING, NOTIFICATION_PENDING])). \
-        update({'status': NOTIFICATION_TEMPORARY_FAILURE, 'updated_at': update_at}, synchronize_session=False)
+        update({'status': NOTIFICATION_TECHNICAL_FAILURE, 'updated_at': update_at}, synchronize_session=False)
     db.session.query(NotificationHistory). \
         filter(NotificationHistory.created_at < (datetime.utcnow() - timedelta(seconds=timeout_period_in_seconds))). \
         filter(NotificationHistory.status.in_([NOTIFICATION_CREATED, NOTIFICATION_SENDING, NOTIFICATION_PENDING])). \
-        update({'status': NOTIFICATION_TEMPORARY_FAILURE, 'updated_at': update_at}, synchronize_session=False)
+        update({'status': NOTIFICATION_TECHNICAL_FAILURE, 'updated_at': update_at}, synchronize_session=False)
     db.session.commit()
     return updated
 

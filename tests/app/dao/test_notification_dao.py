@@ -960,13 +960,13 @@ def test_dao_timeout_notifications(notify_db, notify_db_session, ):
     assert Notification.query.get(pending.id).status == 'pending'
     assert Notification.query.get(delivered.id).status == 'delivered'
     updated = dao_timeout_notifications(1)
-    assert Notification.query.get(created.id).status == 'temporary-failure'
-    assert Notification.query.get(sending.id).status == 'temporary-failure'
-    assert Notification.query.get(pending.id).status == 'temporary-failure'
+    assert Notification.query.get(created.id).status == 'technical-failure'
+    assert Notification.query.get(sending.id).status == 'technical-failure'
+    assert Notification.query.get(pending.id).status == 'technical-failure'
     assert Notification.query.get(delivered.id).status == 'delivered'
-    assert NotificationHistory.query.get(created.id).status == 'temporary-failure'
-    assert NotificationHistory.query.get(sending.id).status == 'temporary-failure'
-    assert NotificationHistory.query.get(pending.id).status == 'temporary-failure'
+    assert NotificationHistory.query.get(created.id).status == 'technical-failure'
+    assert NotificationHistory.query.get(sending.id).status == 'technical-failure'
+    assert NotificationHistory.query.get(pending.id).status == 'technical-failure'
     assert NotificationHistory.query.get(delivered.id).status == 'delivered'
     assert updated == 3
 

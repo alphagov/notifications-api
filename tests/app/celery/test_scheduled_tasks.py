@@ -67,7 +67,7 @@ def test_update_status_of_notifications_after_timeout(notify_api,
             created_at=datetime.utcnow() - timedelta(
                 seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
         timeout_notifications()
-        assert not1.status == 'temporary-failure'
+        assert not1.status == 'technical-failure'
 
 
 def test_not_update_status_of_notification_before_timeout(notify_api,
