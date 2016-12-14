@@ -195,8 +195,7 @@ cf-login: ## Log in to Cloud Foundry
 	$(if ${CF_PASSWORD},,$(error Must specify CF_PASSWORD))
 	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
 	@echo "Logging in to Cloud Foundry on ${CF_API}"
-	@cf login -a "${CF_API}" -u ${CF_USERNAME} -p "${CF_PASSWORD}"
-	cf target -o "${CF_ORG}" -s "${CF_SPACE}"
+	@cf login -a "${CF_API}" -u ${CF_USERNAME} -p "${CF_PASSWORD}" -o "${CF_ORG}" -s "${CF_SPACE}"
 
 .PHONY: cf-deploy
 cf-deploy: cf-login ## Deploys the app to Cloud Foundry
