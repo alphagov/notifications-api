@@ -63,7 +63,7 @@ def test_get_notification_by_id_returns_200(
     assert json_response == expected_response
 
 
-def test_get_notification_by_id_returns_200(
+def test_get_notification_by_id_with_placeholders_returns_200(
         client, notify_db, notify_db_session, sample_email_template_with_placeholders
 ):
     sample_notification = create_sample_notification(
