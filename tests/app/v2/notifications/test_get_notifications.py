@@ -218,7 +218,7 @@ def test_get_all_notifications_filter_by_template_type_invalid_template_type(cli
 
     assert json_response['status_code'] == 400
     assert len(json_response['errors']) == 1
-    assert json_response['errors'][0]['message'] == "orange is not one of [sms, email, letter]"
+    assert json_response['errors'][0]['message'] == "template_type orange is not one of [sms, email, letter]"
 
 
 def test_get_all_notifications_filter_by_single_status(client, notify_db, notify_db_session):
@@ -255,7 +255,7 @@ def test_get_all_notifications_filter_by_status_invalid_status(client, sample_no
 
     assert json_response['status_code'] == 400
     assert len(json_response['errors']) == 1
-    assert json_response['errors'][0]['message'] == "elephant is not one of [created, sending, delivered, " \
+    assert json_response['errors'][0]['message'] == "status elephant is not one of [created, sending, delivered, " \
         "pending, failed, technical-failure, temporary-failure, permanent-failure]"
 
 
