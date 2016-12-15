@@ -667,7 +667,6 @@ class NotificationHistory(db.Model):
     @classmethod
     def from_notification(cls, notification):
         history = cls(**{c.name: getattr(notification, c.name) for c in cls.__table__.columns})
-        history.template = notification.template
         return history
 
     def update_from_notification(self, notification):
