@@ -10,7 +10,7 @@ template = {
     "properties": {
         "id": uuid,
         "version": {"type": "integer"},
-        "uri": {"type": "string"}
+        "uri": {"type": "string", "format": "uri"}
     },
     "required": ["id", "version", "uri"]
 }
@@ -161,7 +161,7 @@ post_sms_response = {
         "id": uuid,
         "reference": {"type": ["string", "null"]},
         "content": sms_content,
-        "uri": {"type": "string"},
+        "uri": {"type": "string", "format": "uri"},
         "template": template
     },
     "required": ["id", "content", "uri", "template"]
@@ -204,7 +204,7 @@ post_email_response = {
         "id": uuid,
         "reference": {"type": ["string", "null"]},
         "content": email_content,
-        "uri": {"type": "string"},
+        "uri": {"type": "string", "format": "uri"},
         "template": template
     },
     "required": ["id", "content", "uri", "template"]
@@ -216,7 +216,7 @@ def create_post_sms_response_from_notification(notification, body, from_number, 
             "reference": notification.client_reference,
             "content": {'body': body,
                         'from_number': from_number},
-            "uri": "{}/v2/notifications/{}".format(url_root, str(notification.id)),
+            "uri": "{}v2/notifications/{}".format(url_root, str(notification.id)),
             "template": __create_template_from_notification(notification=notification, url_root=url_root)
             }
 
@@ -230,7 +230,7 @@ def create_post_email_response_from_notification(notification, content, subject,
             "body": content,
             "subject": subject
         },
-        "uri": "{}/v2/notifications/{}".format(url_root, str(notification.id)),
+        "uri": "{}v2/notifications/{}".format(url_root, str(notification.id)),
         "template": __create_template_from_notification(notification=notification, url_root=url_root)
     }
 
@@ -239,5 +239,5 @@ def __create_template_from_notification(notification, url_root):
     return {
         "id": notification.template_id,
         "version": notification.template_version,
-        "uri": "{}/v2/templates/{}".format(url_root, str(notification.template_id))
+        "uri": "{}v2/templates/{}".format(url_root, str(notification.template_id))
     }
