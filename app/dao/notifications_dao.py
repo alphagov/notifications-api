@@ -130,7 +130,7 @@ def dao_create_notification(notification):
     if not notification.status:
         notification.status = 'created'
 
-    notification_history = NotificationHistory.from_notification(notification)
+    notification_history = NotificationHistory.from_original(notification)
     db.session.add(notification)
     db.session.add(notification_history)
 
@@ -190,7 +190,7 @@ def update_notification_status_by_reference(reference, status):
 def dao_update_notification(notification):
     notification.updated_at = datetime.utcnow()
     notification_history = NotificationHistory.query.get(notification.id)
-    notification_history.update_from_notification(notification)
+    notification_history.update_from_original(notification)
     db.session.add(notification)
     db.session.commit()
 

@@ -35,6 +35,18 @@ def filter_null_value_fields(obj):
     )
 
 
+class HistoryModel:
+    @classmethod
+    def from_original(cls, original):
+        history = cls()
+        history.update_from_original(original)
+        return history
+
+    def update_from_original(self, original):
+        for c in self.__table__.columns:
+            setattr(self, c.name, getattr(original, c.name))
+
+
 class User(db.Model):
     __tablename__ = 'users'
 
@@ -354,7 +366,18 @@ class ProviderDetails(db.Model):
     identifier = db.Column(db.String, nullable=False)
     priority = db.Column(db.Integer, nullable=False)
     notification_type = db.Column(notification_types, nullable=False)
-    active = db.Column(db.Boolean, default=False)
+    active = db.Column(db.Boolean, default=False, nullable=False)
+
+
+class ProviderDetailsHistory(db.Model, HistoryModel):
+    __tablename__ = 'provider_details_history'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    display_name = db.Column(db.String, nullable=False)
+    identifier = db.Column(db.String, nullable=False)
+    priority = db.Column(db.Integer, nullable=False)
+    notification_type = db.Column(notification_types, nullable=False)
+    active = db.Column(db.Boolean, nullable=False)
 
 
 JOB_STATUS_PENDING = 'pending'
@@ -654,7 +677,7 @@ class Notification(db.Model):
         return serialized
 
 
-class NotificationHistory(db.Model):
+class NotificationHistory(db.Model, HistoryModel):
     __tablename__ = 'notification_history'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True)
@@ -680,13 +703,9 @@ class NotificationHistory(db.Model):
     client_reference = db.Column(db.String, nullable=True)
 
     @classmethod
-    def from_notification(cls, notification):
-        history = cls(**{c.name: getattr(notification, c.name) for c in cls.__table__.columns})
+    def from_original(cls, notification):
+        history = super().from_original(notification)
         return history
-
-    def update_from_notification(self, notification):
-        for c in self.__table__.columns:
-            setattr(self, c.name, getattr(notification, c.name))
 
 
 INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
