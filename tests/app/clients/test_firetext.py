@@ -98,7 +98,7 @@ def test_send_sms_raises_if_firetext_rejects(mocker, mock_firetext_client):
     assert '"code": 1' in exc.value.text
 
 
-def test_send_sms_raises_if_firetext_rejects(mocker, mock_firetext_client):
+def test_send_sms_raises_if_firetext_rejects_with_unexpected_data(mocker, mock_firetext_client):
     to = content = reference = 'foo'
     response_dict = {"something": "gone bad"}
 
