@@ -608,6 +608,19 @@ class Notification(db.Model):
 
         return _substitute_status_seq(status_or_statuses)
 
+    @property
+    def content(self):
+        from app.utils import get_template_instance
+        template_object = get_template_instance(self.template.__dict__, self.personalisation)
+        return str(template_object)
+
+    @property
+    def subject(self):
+        from app.utils import get_template_instance
+        if self.notification_type == EMAIL_TYPE:
+            template_object = get_template_instance(self.template.__dict__, self.personalisation)
+            return template_object.subject
+
     def serialize(self):
 
         template_dict = {
@@ -631,6 +644,8 @@ class Notification(db.Model):
             "type": self.notification_type,
             "status": self.status,
             "template": template_dict,
+            "body": self.content,
+            "subject": self.subject,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "sent_at": self.sent_at.strftime(DATETIME_FORMAT) if self.sent_at else None,
             "completed_at": self.completed_at()

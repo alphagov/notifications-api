@@ -61,6 +61,8 @@ get_notification_response = {
         "type": {"enum": ["sms", "letter", "email"]},
         "status": {"type": "string"},
         "template": template,
+        "body": {"type": "string"},
+        "subject": {"type": ["string", "null"]},
         "created_at": {"type": "string"},
         "sent_at": {"type": ["string", "null"]},
         "completed_at": {"type": ["string", "null"]}
@@ -69,7 +71,7 @@ get_notification_response = {
         # technically, all keys are required since we always have all of them
         "id", "reference", "email_address", "phone_number",
         "line_1", "line_2", "line_3", "line_4", "line_5", "line_6", "postcode",
-        "type", "status", "template", "created_at", "sent_at", "completed_at"
+        "type", "status", "template", "body", "created_at", "sent_at", "completed_at"
     ]
 }
 
