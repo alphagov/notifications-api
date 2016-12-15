@@ -1,5 +1,6 @@
-import json
+
 import pytest
+from flask import json
 
 from app import DATETIME_FORMAT
 from tests import create_authorization_header
@@ -53,6 +54,56 @@ def test_get_notification_by_id_returns_200(
         'status': '{}'.format(sample_notification.status),
         'template': expected_template_response,
         'created_at': sample_notification.created_at.strftime(DATETIME_FORMAT),
+        'body': sample_notification.template.content,
+        "subject": None,
+        'sent_at': sample_notification.sent_at,
+        'completed_at': sample_notification.completed_at()
+    }
+
+    assert json_response == expected_response
+
+
+def test_get_notification_by_id_with_placeholders_returns_200(
+        client, notify_db, notify_db_session, sample_email_template_with_placeholders
+):
+    sample_notification = create_sample_notification(
+        notify_db, notify_db_session, template=sample_email_template_with_placeholders, personalisation={"name": "Bob"}
+    )
+
+    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    response = client.get(
+        path='/v2/notifications/{}'.format(sample_notification.id),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 200
+    assert response.headers['Content-type'] == 'application/json'
+
+    json_response = json.loads(response.get_data(as_text=True))
+
+    expected_template_response = {
+        'id': '{}'.format(sample_notification.serialize()['template']['id']),
+        'version': sample_notification.serialize()['template']['version'],
+        'uri': sample_notification.serialize()['template']['uri']
+    }
+
+    expected_response = {
+        'id': '{}'.format(sample_notification.id),
+        'reference': None,
+        'email_address': '{}'.format(sample_notification.to),
+        'phone_number': None,
+        'line_1': None,
+        'line_2': None,
+        'line_3': None,
+        'line_4': None,
+        'line_5': None,
+        'line_6': None,
+        'postcode': None,
+        'type': '{}'.format(sample_notification.notification_type),
+        'status': '{}'.format(sample_notification.status),
+        'template': expected_template_response,
+        'created_at': sample_notification.created_at.strftime(DATETIME_FORMAT),
+        'body': "Hello Bob\nThis is an email from GOV.\u200bUK",
+        "subject": "Bob",
         'sent_at': sample_notification.sent_at,
         'completed_at': sample_notification.completed_at()
     }
