@@ -45,7 +45,9 @@ def __format_message(e):
     def get_path(e):
         error_path = None
         try:
-            error_path = e.path[0]
+            error_path = e.path.popleft()
+            # no need to catch IndexError exception explicity as
+            # error_path is None if e.path has no items
         finally:
             return error_path
 
