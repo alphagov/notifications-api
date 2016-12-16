@@ -3,8 +3,6 @@ import json
 
 from freezegun import freeze_time
 
-from app import db
-from app.models import TemplateStatistics
 from tests import create_authorization_header
 from tests.app.conftest import sample_template as create_sample_template, sample_template, sample_notification, \
     sample_email_template

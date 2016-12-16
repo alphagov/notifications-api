@@ -42,17 +42,38 @@ def test_create_content_for_notification_fails_with_additional_personalisation(s
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_persist_notification_creates_and_save_to_db(sample_template, sample_api_key, mocker):
+def test_persist_notification_creates_and_save_to_db(sample_template, sample_api_key, sample_job, mocker):
     mocked_redis = mocker.patch('app.notifications.process_notifications.redis_store.incr')
 
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
     notification = persist_notification(sample_template.id, sample_template.version, '+447111111111',
                                         sample_template.service.id, {}, 'sms', sample_api_key.id,
-                                        sample_api_key.key_type)
-    assert Notification.query.count() == 1
+                                        sample_api_key.key_type, job_id=sample_job.id,
+                                        job_row_number=100, reference="ref")
+
     assert Notification.query.get(notification.id) is not None
-    assert NotificationHistory.query.count() == 1
+    assert NotificationHistory.query.get(notification.id) is not None
+
+    notification_from_db = Notification.query.one()
+    notification_history_from_db = NotificationHistory.query.one()
+
+    assert notification_from_db.id == notification_history_from_db.id
+    assert notification_from_db.template_id == notification_history_from_db.template_id
+    assert notification_from_db.template_version == notification_history_from_db.template_version
+    assert notification_from_db.api_key_id == notification_history_from_db.api_key_id
+    assert notification_from_db.key_type == notification_history_from_db.key_type
+    assert notification_from_db.key_type == notification_history_from_db.key_type
+    assert notification_from_db.billable_units == notification_history_from_db.billable_units
+    assert notification_from_db.notification_type == notification_history_from_db.notification_type
+    assert notification_from_db.created_at == notification_history_from_db.created_at
+    assert not notification_from_db.sent_at
+    assert not notification_history_from_db.sent_at
+    assert notification_from_db.updated_at == notification_history_from_db.updated_at
+    assert notification_from_db.status == notification_history_from_db.status
+    assert notification_from_db.reference == notification_history_from_db.reference
+    assert notification_from_db.client_reference == notification_history_from_db.client_reference
+
     mocked_redis.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count")
 
 
