@@ -87,12 +87,17 @@ def process_ses_response():
 
             if not aws_response_dict['success']:
                 current_app.logger.info(
-                    "SES delivery failed: notification {} has error found. Status {}".format(
+                    "SES delivery failed: notification id {} and reference {} has error found. Status {}".format(
+                        notification.id,
                         reference,
                         aws_response_dict['message']
                     )
                 )
-
+            else:
+                current_app.logger.info('{} callback return status of {} for notification: {}'.format(
+                    client_name,
+                    notification_status,
+                    notification.id))
             statsd_client.incr('callback.ses.{}'.format(notification_status))
             if notification.sent_at:
                 statsd_client.timing_with_dates(
