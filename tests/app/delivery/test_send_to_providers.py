@@ -109,7 +109,6 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
     assert '<!DOCTYPE html' in app.aws_ses_client.send_email.call_args[1]['html_body']
 
     notification = Notification.query.filter_by(id=db_notification.id).one()
-
     assert notification.status == 'sending'
     assert notification.sent_at <= datetime.utcnow()
     assert notification.sent_by == 'ses'

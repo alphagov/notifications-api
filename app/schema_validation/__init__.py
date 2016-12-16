@@ -42,4 +42,27 @@ def build_error_message(errors):
 
 
 def __format_message(e):
-    return e.message.replace("'", "") if not e.cause else "{} {}".format(e.path[0], e.cause.message)
+    def get_path(e):
+        error_path = None
+        try:
+            error_path = e.path.popleft()
+            # no need to catch IndexError exception explicity as
+            # error_path is None if e.path has no items
+        finally:
+            return error_path
+
+    def get_error_message(e):
+        error_message = None
+        try:
+            error_message = e.cause.message
+        except AttributeError:
+            error_message = e.message
+        finally:
+            return error_message.replace("'", '')
+
+    path = get_path(e)
+    message = get_error_message(e)
+    if path:
+        return "{} {}".format(path, message)
+    else:
+        return "{}".format(message)
