@@ -931,8 +931,8 @@ def _notification_json(sample_template, job_id=None, id=None, status=None):
 
 
 def test_dao_timeout_notifications(notify_db, notify_db_session, ):
-    with freeze_time(datetime.utcnow() - timedelta(minutes=1)):
-        created = sample_notification(notify_db, notify_db_session)
+    with freeze_time(datetime.utcnow() - timedelta(minutes=2)):
+        created = sample_notification(notify_db, notify_db_session, status='created')
         sending = sample_notification(notify_db, notify_db_session, status='sending')
         pending = sample_notification(notify_db, notify_db_session, status='pending')
         delivered = sample_notification(notify_db, notify_db_session, status='delivered')
@@ -942,11 +942,11 @@ def test_dao_timeout_notifications(notify_db, notify_db_session, ):
     assert Notification.query.get(pending.id).status == 'pending'
     assert Notification.query.get(delivered.id).status == 'delivered'
     updated = dao_timeout_notifications(1)
-    assert Notification.query.get(created.id).status == 'temporary-failure'
+    assert Notification.query.get(created.id).status == 'technical-failure'
     assert Notification.query.get(sending.id).status == 'temporary-failure'
     assert Notification.query.get(pending.id).status == 'temporary-failure'
     assert Notification.query.get(delivered.id).status == 'delivered'
-    assert NotificationHistory.query.get(created.id).status == 'temporary-failure'
+    assert NotificationHistory.query.get(created.id).status == 'technical-failure'
     assert NotificationHistory.query.get(sending.id).status == 'temporary-failure'
     assert NotificationHistory.query.get(pending.id).status == 'temporary-failure'
     assert NotificationHistory.query.get(delivered.id).status == 'delivered'
@@ -955,7 +955,7 @@ def test_dao_timeout_notifications(notify_db, notify_db_session, ):
 
 def test_dao_timeout_notifications_only_updates_for_older_notifications(notify_db, notify_db_session):
     with freeze_time(datetime.utcnow() + timedelta(minutes=10)):
-        created = sample_notification(notify_db, notify_db_session)
+        created = sample_notification(notify_db, notify_db_session, status='created')
         sending = sample_notification(notify_db, notify_db_session, status='sending')
         pending = sample_notification(notify_db, notify_db_session, status='pending')
         delivered = sample_notification(notify_db, notify_db_session, status='delivered')
