@@ -1,3 +1,7 @@
+from datetime import datetime
+
+from freezegun import freeze_time
+
 from app.models import ProviderDetails, ProviderDetailsHistory
 from app import clients
 from app.dao.provider_details_dao import (
@@ -45,18 +49,21 @@ def test_should_not_error_if_any_provider_in_code_not_in_database(restore_provid
     assert clients.get_sms_client('mmg')
 
 
+@freeze_time('2000-01-01T00:00:00')
 def test_update_adds_history(restore_provider_details):
     ses = ProviderDetails.query.filter(ProviderDetails.identifier == 'ses').one()
     ses_history = ProviderDetailsHistory.query.filter(ProviderDetailsHistory.id == ses.id).one()
 
     assert ses.version == 1
     assert ses_history.version == 1
+    assert ses.updated_at is None
 
     ses.active = False
 
     dao_update_provider_details(ses)
 
     assert not ses.active
+    assert ses.updated_at == datetime(2000, 1, 1, 0, 0, 0)
 
     ses_history = ProviderDetailsHistory.query.filter(
         ProviderDetailsHistory.id == ses.id
@@ -66,6 +73,8 @@ def test_update_adds_history(restore_provider_details):
 
     assert ses_history[0].active
     assert ses_history[0].version == 1
+    assert ses_history[0].updated_at is None
 
     assert not ses_history[1].active
     assert ses_history[1].version == 2
+    assert ses_history[1].updated_at == datetime(2000, 1, 1, 0, 0, 0)

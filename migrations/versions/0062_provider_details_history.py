@@ -1,4 +1,7 @@
-"""empty message
+"""
+* add version and updated_at to provider_details
+* set active to not nullable (any existing null is set to false)
+* create provider_details_history table, mimicking provider_details
 
 Revision ID: 0062_provider_details_history
 Revises: 0061_add_client_reference
@@ -16,11 +19,12 @@ from sqlalchemy.dialects import postgresql
 
 def upgrade():
     op.get_bind()
+    op.add_column('provider_details', sa.Column('updated_at', sa.DateTime()))
 
     op.execute('UPDATE provider_details SET active = false WHERE active is null')
     op.alter_column('provider_details', 'active', nullable=False)
 
-    op.add_column('provider_details', sa.Column('version', sa.Integer()))
+    op.add_column('provider_details', sa.Column('version', sa.Integer(), nullable=True))
     op.execute('UPDATE provider_details SET version = 1')
     op.alter_column('provider_details', 'version', nullable=False)
 
@@ -32,6 +36,7 @@ def upgrade():
         sa.Column('notification_type', postgresql.ENUM('email', 'sms', 'letter', name='notification_type', create_type=False), nullable=False),
         sa.Column('active', sa.Boolean(), nullable=False),
         sa.Column('version', sa.Integer(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint('id', 'version')
     )
     op.execute(
@@ -46,3 +51,4 @@ def downgrade():
 
     op.alter_column('provider_details', 'active', existing_type=sa.BOOLEAN(), nullable=True)
     op.drop_column('provider_details', 'version')
+    op.drop_column('provider_details', 'updated_at')

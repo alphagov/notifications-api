@@ -43,7 +43,9 @@ def test_get_provider_details_contains_correct_fields(client, notify_db):
         headers=[create_authorization_header()]
     )
     json_resp = json.loads(response.get_data(as_text=True))['provider_details']
-    allowed_keys = {"id", "display_name", "identifier", "priority", 'notification_type', "active", "version"}
+    allowed_keys = {
+        "id", "display_name", "identifier", "priority", 'notification_type', "active", "version", "updated_at"
+    }
     assert allowed_keys == set(json_resp[0].keys())
 
 
@@ -81,7 +83,11 @@ def test_should_be_able_to_update_status(client, restore_provider_details):
     assert not provider.active
 
 
-@pytest.mark.parametrize('field,value', [('identifier', 'new'), ('version', 7)])
+@pytest.mark.parametrize('field,value', [
+    ('identifier', 'new'),
+    ('version', 7),
+    ('updated_at', None)
+])
 def test_should_not_be_able_to_update_disallowed_fields(client, restore_provider_details, field, value):
     provider = ProviderDetails.query.first()
 
