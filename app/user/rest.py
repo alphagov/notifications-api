@@ -18,7 +18,7 @@ from app.dao.users_dao import (
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import SMS_TYPE, KEY_TYPE_NORMAL
+from app.models import SMS_TYPE, KEY_TYPE_NORMAL, EMAIL_TYPE
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue
@@ -33,7 +33,6 @@ from app.schemas import (
 )
 
 from app.celery.tasks import (
-    send_sms,
     send_email
 )
 
@@ -175,24 +174,24 @@ def send_user_confirm_new_email(user_id):
         raise InvalidRequest(message=errors, status_code=400)
 
     template = dao_get_template_by_id(current_app.config['CHANGE_EMAIL_CONFIRMATION_TEMPLATE_ID'])
-    message = {
-        'template': str(template.id),
-        'template_version': template.version,
-        'to': email['email'],
-        'personalisation': {
+    notify_service_id = current_app.config['NOTIFY_SERVICE_ID']
+
+    saved_notification = persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient=email['email'],
+        service_id=notify_service_id,
+        personalisation={
             'name': user_to_send_to.name,
             'url': _create_confirmation_url(user=user_to_send_to, email_address=email['email']),
             'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/feedback'
-        }
-    }
+        },
+        notification_type=EMAIL_TYPE,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL
+    )
 
-    send_email.apply_async((
-        current_app.config['NOTIFY_SERVICE_ID'],
-        str(uuid.uuid4()),
-        encryption.encrypt(message),
-        datetime.utcnow().strftime(DATETIME_FORMAT)
-    ), queue='notify')
-
+    send_notification_to_queue(saved_notification, False, queue='notify')
     return jsonify({}), 204
 
 
