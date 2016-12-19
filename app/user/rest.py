@@ -87,7 +87,6 @@ def update_user_attribute(user_id):
 def verify_user_password(user_id):
     user_to_verify = get_user_by_id(user_id=user_id)
 
-    txt_pwd = None
     try:
         txt_pwd = request.get_json()['password']
     except KeyError:
@@ -227,22 +226,22 @@ def send_already_registered_email(user_id):
     to, errors = email_data_request_schema.load(request.get_json())
     template = dao_get_template_by_id(current_app.config['ALREADY_REGISTERED_EMAIL_TEMPLATE_ID'])
 
-    message = {
-        'template': str(template.id),
-        'template_version': template.version,
-        'to': to['email'],
-        'personalisation': {
+    saved_notification = persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient=to['email'],
+        service_id=current_app.config['NOTIFY_SERVICE_ID'],
+        personalisation={
             'signin_url': current_app.config['ADMIN_BASE_URL'] + '/sign-in',
             'forgot_password_url': current_app.config['ADMIN_BASE_URL'] + '/forgot-password',
             'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/feedback'
-        }
-    }
-    send_email.apply_async((
-        current_app.config['NOTIFY_SERVICE_ID'],
-        str(uuid.uuid4()),
-        encryption.encrypt(message),
-        datetime.utcnow().strftime(DATETIME_FORMAT)
-    ), queue='notify')
+        },
+        notification_type=EMAIL_TYPE,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL
+    )
+
+    send_notification_to_queue(saved_notification, False, queue="notify")
 
     return jsonify({}), 204
 
