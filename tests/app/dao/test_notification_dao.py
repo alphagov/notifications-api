@@ -148,11 +148,11 @@ def test_should_by_able_to_get_template_count_from_notifications_history(notify_
 
 
 def test_template_history_should_ignore_test_keys(
-    notify_db,
-    notify_db_session,
-    sample_team_api_key,
-    sample_test_api_key,
-    sample_api_key
+        notify_db,
+        notify_db_session,
+        sample_team_api_key,
+        sample_test_api_key,
+        sample_api_key
 ):
     sms = sample_template(notify_db, notify_db_session)
 
@@ -518,19 +518,43 @@ def test_save_notification(sample_email_template, sample_job, ses_provider):
     assert Notification.query.count() == 2
 
 
-def test_save_notification(sample_template, sample_job, mmg_provider):
+def test_save_notification_creates_history(sample_email_template, sample_job):
     assert Notification.query.count() == 0
-    data = _notification_json(sample_template, sample_job.id)
+    data = _notification_json(sample_email_template, job_id=sample_job.id)
 
     notification_1 = Notification(**data)
-    notification_2 = Notification(**data)
     dao_create_notification(notification_1)
 
     assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 1
 
-    dao_create_notification(notification_2)
 
-    assert Notification.query.count() == 2
+def test_save_notification_with_test_api_key_does_not_create_history(sample_email_template, sample_api_key):
+    assert Notification.query.count() == 0
+    data = _notification_json(sample_email_template)
+    data['key_type'] = KEY_TYPE_TEST
+    data['api_key_id'] = sample_api_key.id
+
+    notification_1 = Notification(**data)
+    dao_create_notification(notification_1)
+
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 0
+
+
+def test_save_notification_with_research_mode_service_does_not_create_history(
+        notify_db,
+        notify_db_session):
+    service = sample_service(notify_db, notify_db_session, research_mode=True)
+    template = sample_template(notify_db, notify_db_session, service=service)
+    assert Notification.query.count() == 0
+    data = _notification_json(template)
+
+    notification_1 = Notification(**data)
+    dao_create_notification(notification_1)
+
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 0
 
 
 def test_not_save_notification_and_not_create_stats_on_commit_error(sample_template, sample_job, mmg_provider):
@@ -699,16 +723,15 @@ def test_get_all_notifications_for_job_by_status(notify_db, notify_db_session, s
 
 
 def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_session, sample_service):
-
     for year, month, day in (
-        (2017, 1, 15),  # ↓ 2016 financial year
-        (2016, 8, 1),
-        (2016, 7, 15),
-        (2016, 4, 15),
-        (2016, 4, 15),
-        (2016, 4, 1),  # ↓ 2015 financial year
-        (2016, 3, 31),
-        (2016, 1, 15)
+            (2017, 1, 15),  # ↓ 2016 financial year
+            (2016, 8, 1),
+            (2016, 7, 15),
+            (2016, 4, 15),
+            (2016, 4, 15),
+            (2016, 4, 1),  # ↓ 2015 financial year
+            (2016, 3, 31),
+            (2016, 1, 15)
     ):
         sample_notification(
             notify_db, notify_db_session, service=sample_service,
@@ -718,22 +741,22 @@ def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_ses
         )
 
     for financial_year, months in (
-        (
-            2017,
-            []
-        ),
-        (
-            2016,
-            [('April', 2), ('July', 2), ('January', 1)]
-        ),
-        (
-            2015,
-            [('January', 1), ('March', 2)]
-        ),
-        (
-            2014,
-            []
-        )
+            (
+                    2017,
+                    []
+            ),
+            (
+                    2016,
+                    [('April', 2), ('July', 2), ('January', 1)]
+            ),
+            (
+                    2015,
+                    [('January', 1), ('March', 2)]
+            ),
+            (
+                    2014,
+                    []
+            )
     ):
         assert get_notification_billable_unit_count_per_month(
             sample_service.id, financial_year
@@ -841,10 +864,12 @@ def test_updating_notification_updates_notification_history(sample_notification)
 
     sample_notification.status = 'sending'
     dao_update_notification(sample_notification)
-
-    hist = NotificationHistory.query.one()
-    assert hist.id == sample_notification.id
-    assert hist.status == 'sending'
+    notification = Notification.query.one()
+    hist1 = NotificationHistory.query.one()
+    assert notification.id == sample_notification.id
+    assert notification.status == "sending"
+    assert hist1.id == sample_notification.id
+    assert hist1.status == 'sending'
 
 
 def test_should_delete_notification_and_notification_history_for_id(notify_db, notify_db_session, sample_template):
@@ -1019,7 +1044,6 @@ def test_get_notifications_created_by_api_or_csv_are_returned_correctly_excludin
         sample_team_api_key,
         sample_test_api_key
 ):
-
     sample_notification(
         notify_db, notify_db_session, created_at=datetime.utcnow(), job=sample_job
     )

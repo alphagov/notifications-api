@@ -130,9 +130,17 @@ def dao_create_notification(notification):
     if not notification.status:
         notification.status = 'created'
 
-    notification_history = NotificationHistory.from_notification(notification)
     db.session.add(notification)
-    db.session.add(notification_history)
+    if _should_record_notification_in_history_table(notification):
+        db.session.add(NotificationHistory.from_notification(notification))
+
+
+def _should_record_notification_in_history_table(notification):
+    if notification.api_key_id and notification.key_type == KEY_TYPE_TEST:
+        return False
+    if notification.service.research_mode:
+        return False
+    return True
 
 
 def _decide_permanent_temporary_failure(current_status, status):
@@ -192,6 +200,7 @@ def dao_update_notification(notification):
     notification_history = NotificationHistory.query.get(notification.id)
     notification_history.update_from_notification(notification)
     db.session.add(notification)
+    db.session.add(notification_history)
     db.session.commit()
 
 
