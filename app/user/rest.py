@@ -174,13 +174,13 @@ def send_user_confirm_new_email(user_id):
         raise InvalidRequest(message=errors, status_code=400)
 
     template = dao_get_template_by_id(current_app.config['CHANGE_EMAIL_CONFIRMATION_TEMPLATE_ID'])
-    notify_service_id = current_app.config['NOTIFY_SERVICE_ID']
+    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
 
     saved_notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
         recipient=email['email'],
-        service_id=notify_service_id,
+        service=service,
         personalisation={
             'name': user_to_send_to.name,
             'url': _create_confirmation_url(user=user_to_send_to, email_address=email['email']),
@@ -202,12 +202,13 @@ def send_user_email_verification(user_id):
     create_user_code(user_to_send_to, secret_code, 'email')
 
     template = dao_get_template_by_id(current_app.config['EMAIL_VERIFY_CODE_TEMPLATE_ID'])
+    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
 
     saved_notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
         recipient=user_to_send_to.email_address,
-        service_id=current_app.config['NOTIFY_SERVICE_ID'],
+        service=service,
         personalisation={
             'name': user_to_send_to.name,
             'url': _create_verification_url(user_to_send_to, secret_code)
