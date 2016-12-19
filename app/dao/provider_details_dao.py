@@ -1,6 +1,6 @@
 from sqlalchemy import asc
 from app.dao.dao_utils import transactional
-from app.models import ProviderDetails
+from app.models import ProviderDetails, ProviderDetailsHistory
 from app import db
 
 
@@ -20,4 +20,7 @@ def get_provider_details_by_notification_type(notification_type):
 
 @transactional
 def dao_update_provider_details(provider_details):
+    provider_details.version += 1
+    history = ProviderDetailsHistory.from_original(provider_details)
     db.session.add(provider_details)
+    db.session.add(history)

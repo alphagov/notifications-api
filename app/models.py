@@ -367,17 +367,19 @@ class ProviderDetails(db.Model):
     priority = db.Column(db.Integer, nullable=False)
     notification_type = db.Column(notification_types, nullable=False)
     active = db.Column(db.Boolean, default=False, nullable=False)
+    version = db.Column(db.Integer, default=1, nullable=False)
 
 
 class ProviderDetailsHistory(db.Model, HistoryModel):
     __tablename__ = 'provider_details_history'
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False)
     display_name = db.Column(db.String, nullable=False)
     identifier = db.Column(db.String, nullable=False)
     priority = db.Column(db.Integer, nullable=False)
     notification_type = db.Column(notification_types, nullable=False)
     active = db.Column(db.Boolean, nullable=False)
+    version = db.Column(db.Integer, primary_key=True, nullable=False)
 
 
 JOB_STATUS_PENDING = 'pending'
