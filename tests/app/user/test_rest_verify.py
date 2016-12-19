@@ -311,55 +311,35 @@ def test_send_sms_code_returns_404_for_bad_input_data(notify_api, notify_db, not
             assert json.loads(resp.get_data(as_text=True))['message'] == 'No result found'
 
 
-@freeze_time("2016-01-01 11:09:00.061258")
-def test_send_user_email_verification(notify_api,
+def test_send_user_email_verification(client,
                                       sample_user,
                                       mocker,
                                       email_verification_template):
-
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = json.dumps({})
-            mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
-            mocked = mocker.patch('app.celery.tasks.send_email.apply_async')
-            mocker.patch('notifications_utils.url_safe_token.generate_token', return_value='the-token')
-            auth_header = create_authorization_header()
-            resp = client.post(
-                url_for('user.send_user_email_verification', user_id=str(sample_user.id)),
-                data=data,
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 204
-            assert mocked.call_count == 1
-            message = {
-                'template': str(email_verification_template.id),
-                'template_version': email_verification_template.version,
-                'to': sample_user.email_address,
-                'personalisation': {
-                    'name': sample_user.name,
-                    'url': current_app.config['ADMIN_BASE_URL'] + '/verify-email/' + 'the-token'
-                }
-            }
-            app.celery.tasks.send_email.apply_async.assert_called_once_with(
-                (str(current_app.config['NOTIFY_SERVICE_ID']),
-                 'some_uuid',
-                 encryption.encrypt(message),
-                 "2016-01-01T11:09:00.061258Z"),
-                queue="notify")
+    data = json.dumps({})
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    auth_header = create_authorization_header()
+    resp = client.post(
+        url_for('user.send_user_email_verification', user_id=str(sample_user.id)),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert resp.status_code == 204
+    notification = Notification.query.first()
+    mocked.assert_called_once_with(
+        ([str(notification.id)]),
+        queue="notify")
 
 
-def test_send_email_verification_returns_404_for_bad_input_data(notify_api, notify_db, notify_db_session):
+def test_send_email_verification_returns_404_for_bad_input_data(client, notify_db, notify_db_session):
     """
     Tests POST endpoint /user/<user_id>/sms-code return 404 for bad input data
     """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = json.dumps({})
-            import uuid
-            uuid_ = uuid.uuid4()
-            auth_header = create_authorization_header()
-            resp = client.post(
-                url_for('user.send_user_email_verification', user_id=uuid_),
-                data=data,
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 404
-            assert json.loads(resp.get_data(as_text=True))['message'] == 'No result found'
+    data = json.dumps({})
+    import uuid
+    uuid_ = uuid.uuid4()
+    auth_header = create_authorization_header()
+    resp = client.post(
+        url_for('user.send_user_email_verification', user_id=uuid_),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert resp.status_code == 404
+    assert json.loads(resp.get_data(as_text=True))['message'] == 'No result found'
