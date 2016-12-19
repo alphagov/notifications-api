@@ -70,7 +70,7 @@ def notify_db_session(notify_db):
 
     notify_db.session.remove()
     for tbl in reversed(notify_db.metadata.sorted_tables):
-        if tbl.name not in ["provider_details", "key_types", "branding_type", "job_status"]:
+        if tbl.name not in ["provider_details", "key_types", "branding_type", "job_status", "provider_details_history"]:
             notify_db.engine.execute(tbl.delete())
     notify_db.session.commit()
 

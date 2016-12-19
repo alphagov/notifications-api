@@ -37,9 +37,10 @@ def update_provider_details(provider_details_id):
     current_data.update(request.get_json())
     update_dict = provider_details_schema.load(current_data).data
 
-    if "identifier" in request.get_json().keys():
+    invalid_keys = {'identifier', 'version'} & set(key for key in request.get_json().keys())
+    if invalid_keys:
         message = "Not permitted to be updated"
-        errors = {'identifier': [message]}
+        errors = {key: [message] for key in invalid_keys}
         raise InvalidRequest(errors, status_code=400)
 
     dao_update_provider_details(update_dict)
