@@ -543,28 +543,28 @@ def test_send_already_registered_email_returns_400_when_data_is_missing(notify_a
 
 
 def test_send_user_confirm_new_email_returns_204(client, sample_user, change_email_confirmation_template, mocker):
-        mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-        new_email = 'new_address@dig.gov.uk'
-        data = json.dumps({'email': new_email})
-        auth_header = create_authorization_header()
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    new_email = 'new_address@dig.gov.uk'
+    data = json.dumps({'email': new_email})
+    auth_header = create_authorization_header()
 
-        resp = client.post(url_for('user.send_user_confirm_new_email', user_id=str(sample_user.id)),
-                           data=data,
-                           headers=[('Content-Type', 'application/json'), auth_header])
-        assert resp.status_code == 204
-        notification = Notification.query.first()
-        mocked.assert_called_once_with(
-            ([str(notification.id)]),
-            queue="notify")
+    resp = client.post(url_for('user.send_user_confirm_new_email', user_id=str(sample_user.id)),
+                       data=data,
+                       headers=[('Content-Type', 'application/json'), auth_header])
+    assert resp.status_code == 204
+    notification = Notification.query.first()
+    mocked.assert_called_once_with(
+        ([str(notification.id)]),
+        queue="notify")
 
 
 def test_send_user_confirm_new_email_returns_400_when_email_missing(client, sample_user, mocker):
-        mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-        data = json.dumps({})
-        auth_header = create_authorization_header()
-        resp = client.post(url_for('user.send_user_confirm_new_email', user_id=str(sample_user.id)),
-                           data=data,
-                           headers=[('Content-Type', 'application/json'), auth_header])
-        assert resp.status_code == 400
-        assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Missing data for required field.']}
-        mocked.assert_not_called()
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    data = json.dumps({})
+    auth_header = create_authorization_header()
+    resp = client.post(url_for('user.send_user_confirm_new_email', user_id=str(sample_user.id)),
+                       data=data,
+                       headers=[('Content-Type', 'application/json'), auth_header])
+    assert resp.status_code == 400
+    assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Missing data for required field.']}
+    mocked.assert_not_called()
