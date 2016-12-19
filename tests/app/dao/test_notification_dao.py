@@ -41,6 +41,8 @@ from app.dao.notifications_dao import (
     dao_timeout_notifications,
     get_financial_year)
 
+from app.dao.services_dao import dao_update_service
+
 from tests.app.conftest import (sample_notification, sample_template, sample_email_template, sample_service, sample_job,
                                 sample_api_key)
 
@@ -545,15 +547,54 @@ def test_save_notification_with_test_api_key_does_not_create_history(sample_emai
 def test_save_notification_with_research_mode_service_does_not_create_history(
         notify_db,
         notify_db_session):
-    service = sample_service(notify_db, notify_db_session, research_mode=True)
+    service = sample_service(notify_db, notify_db_session)
+    service.research_mode = True
+    dao_update_service(service)
     template = sample_template(notify_db, notify_db_session, service=service)
+
     assert Notification.query.count() == 0
     data = _notification_json(template)
+    notification = Notification(**data)
+    dao_create_notification(notification)
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 0
 
-    notification_1 = Notification(**data)
-    dao_create_notification(notification_1)
+
+def test_update_notification_with_test_api_key_does_not_update_or_create_history(sample_email_template, sample_api_key):
+    assert Notification.query.count() == 0
+    data = _notification_json(sample_email_template)
+    data['key_type'] = KEY_TYPE_TEST
+    data['api_key_id'] = sample_api_key.id
+
+    notification = Notification(**data)
+    dao_create_notification(notification)
+
+    notification.status = 'delivered'
+    dao_update_notification(notification)
+
+    assert Notification.query.one().status == 'delivered'
+    assert NotificationHistory.query.count() == 0
+
+
+def test_update_notification_with_research_mode_service_does_not_create_or_update_history(
+        notify_db,
+        notify_db_session):
+    service = sample_service(notify_db, notify_db_session)
+    service.research_mode = True
+    dao_update_service(service)
+    template = sample_template(notify_db, notify_db_session, service=service)
+
+    data = _notification_json(template)
+    notification = Notification(**data)
+    dao_create_notification(notification)
 
     assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 0
+
+    notification.status = 'delivered'
+    dao_update_notification(notification)
+
+    assert Notification.query.one().status == 'delivered'
     assert NotificationHistory.query.count() == 0
 
 
@@ -741,22 +782,10 @@ def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_ses
         )
 
     for financial_year, months in (
-            (
-                    2017,
-                    []
-            ),
-            (
-                    2016,
-                    [('April', 2), ('July', 2), ('January', 1)]
-            ),
-            (
-                    2015,
-                    [('January', 1), ('March', 2)]
-            ),
-            (
-                    2014,
-                    []
-            )
+            (2017, []),
+            (2016, [('April', 2), ('July', 2), ('January', 1)]),
+            (2015, [('January', 1), ('March', 2)]),
+            (2014, [])
     ):
         assert get_notification_billable_unit_count_per_month(
             sample_service.id, financial_year
@@ -880,6 +909,46 @@ def test_should_delete_notification_and_notification_history_for_id(notify_db, n
 
     assert Notification.query.count() == 1
     assert NotificationHistory.query.count() == 1
+
+    dao_delete_notifications_and_history_by_id(notification.id)
+
+    assert Notification.query.count() == 0
+    assert NotificationHistory.query.count() == 0
+
+
+def test_should_delete_notification_and_ignore_history_for_test_api(
+        notify_db,
+        notify_db_session,
+        sample_email_template,
+        sample_api_key):
+    data = _notification_json(sample_email_template)
+    data['key_type'] = KEY_TYPE_TEST
+    data['api_key_id'] = sample_api_key.id
+
+    notification = Notification(**data)
+    dao_create_notification(notification)
+
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 0
+
+    dao_delete_notifications_and_history_by_id(notification.id)
+
+    assert Notification.query.count() == 0
+    assert NotificationHistory.query.count() == 0
+
+
+def test_should_delete_notification_and_ignore_history_for_research_mode(notify_db, notify_db_session):
+    service = sample_service(notify_db, notify_db_session)
+    service.research_mode = True
+    dao_update_service(service)
+    template = sample_template(notify_db, notify_db_session, service=service)
+
+    data = _notification_json(template)
+    notification = Notification(**data)
+    dao_create_notification(notification)
+
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 0
 
     dao_delete_notifications_and_history_by_id(notification.id)
 

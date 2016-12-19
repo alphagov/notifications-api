@@ -18,7 +18,7 @@ from app.dao.users_dao import (
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import SMS_TYPE, KEY_TYPE_NORMAL
+from app.models import SMS_TYPE, KEY_TYPE_NORMAL, Service
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue
@@ -147,13 +147,13 @@ def send_user_sms_code(user_id):
     mobile = user_to_send_to.mobile_number if verify_code.get('to', None) is None else verify_code.get('to')
     sms_code_template_id = current_app.config['SMS_CODE_TEMPLATE_ID']
     sms_code_template = dao_get_template_by_id(sms_code_template_id)
-    notify_service_id = current_app.config['NOTIFY_SERVICE_ID']
+    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
 
     saved_notification = persist_notification(
         template_id=sms_code_template_id,
         template_version=sms_code_template.version,
         recipient=mobile,
-        service_id=notify_service_id,
+        service=service,
         personalisation={'verify_code': secret_code},
         notification_type=SMS_TYPE,
         api_key_id=None,

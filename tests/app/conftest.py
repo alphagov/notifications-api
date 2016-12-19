@@ -133,8 +133,7 @@ def sample_service(notify_db,
                    active=True,
                    restricted=False,
                    limit=1000,
-                   email_from=None,
-                   research_mode=False):
+                   email_from=None):
     if user is None:
         user = sample_user(notify_db, notify_db_session)
     if email_from is None:
@@ -144,7 +143,6 @@ def sample_service(notify_db,
         'message_limit': limit,
         'active': active,
         'restricted': restricted,
-        'research_mode': research_mode,
         'email_from': email_from,
         'created_by': user
     }

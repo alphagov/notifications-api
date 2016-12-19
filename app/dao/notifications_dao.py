@@ -197,10 +197,11 @@ def update_notification_status_by_reference(reference, status):
 @statsd(namespace="dao")
 def dao_update_notification(notification):
     notification.updated_at = datetime.utcnow()
-    notification_history = NotificationHistory.query.get(notification.id)
-    notification_history.update_from_notification(notification)
     db.session.add(notification)
-    db.session.add(notification_history)
+    if _should_record_notification_in_history_table(notification):
+        notification_history = NotificationHistory.query.get(notification.id)
+        notification_history.update_from_notification(notification)
+        db.session.add(notification_history)
     db.session.commit()
 
 
