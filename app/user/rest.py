@@ -202,21 +202,22 @@ def send_user_email_verification(user_id):
     create_user_code(user_to_send_to, secret_code, 'email')
 
     template = dao_get_template_by_id(current_app.config['EMAIL_VERIFY_CODE_TEMPLATE_ID'])
-    message = {
-        'template': str(template.id),
-        'template_version': template.version,
-        'to': user_to_send_to.email_address,
-        'personalisation': {
+
+    saved_notification = persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient=user_to_send_to.email_address,
+        service_id=current_app.config['NOTIFY_SERVICE_ID'],
+        personalisation={
             'name': user_to_send_to.name,
             'url': _create_verification_url(user_to_send_to, secret_code)
-        }
-    }
-    send_email.apply_async((
-        current_app.config['NOTIFY_SERVICE_ID'],
-        str(uuid.uuid4()),
-        encryption.encrypt(message),
-        datetime.utcnow().strftime(DATETIME_FORMAT)
-    ), queue='notify')
+        },
+        notification_type=EMAIL_TYPE,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL
+    )
+
+    send_notification_to_queue(saved_notification, False, queue="notify")
 
     return jsonify({}), 204
 
