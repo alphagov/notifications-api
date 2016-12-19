@@ -5,6 +5,7 @@ from app.models import ProviderDetails
 
 from tests import create_authorization_header
 
+
 def test_get_provider_details_in_type_and_identifier_order(client, notify_db):
     response = client.get(
         '/provider-details',
