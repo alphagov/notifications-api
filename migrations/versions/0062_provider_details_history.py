@@ -32,7 +32,7 @@ def upgrade():
         sa.Column('notification_type', postgresql.ENUM('email', 'sms', 'letter', name='notification_type', create_type=False), nullable=False),
         sa.Column('active', sa.Boolean(), nullable=False),
         sa.Column('version', sa.Integer(), nullable=False),
-        sa.PrimaryKeyConstraint('id')
+        sa.PrimaryKeyConstraint('id', 'version')
     )
     op.execute(
         'INSERT INTO provider_details_history' +
