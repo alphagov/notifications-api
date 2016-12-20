@@ -43,6 +43,10 @@ class Config(object):
     # URL of redis instance
     REDIS_URL = os.getenv('REDIS_URL')
 
+    # Functional provider tests (auto switching on slow delivery)
+    FUNCTIONAL_TEST_SERVICE_ID = os.getenv('FUNCTIONAL_TEST_SERVICE_ID')
+    FUNCTIONAL_TEST_TEMPLATE_ID = os.getenv('FUNCTIONAL_TEST_TEMPLATE_ID')
+
     ###########################
     # Default config values ###
     ###########################
@@ -106,6 +110,11 @@ class Config(object):
         'delete-successful-notifications': {
             'task': 'delete-successful-notifications',
             'schedule': crontab(minute=0, hour='0,1,2'),
+            'options': {'queue': 'periodic'}
+        },
+        'switch-sms-providers-on-slow-delivery': {
+            'task': 'switch-sms-providers-on-slow-delivery',
+            'schedule': crontab(),  # runs every minute
             'options': {'queue': 'periodic'}
         },
         'timeout-sending-notifications': {
