@@ -1,0 +1,40 @@
+---
+
+buildpack: python_buildpack
+health-check-type: none
+no-route: true
+services:
+  - notify-aws
+  - notify-config
+  - notify-db
+  - mmg
+  - firetext
+  - hosted-graphite
+instances: 2
+
+applications:
+  - name: notify-delivery-celery-beat
+    memory: 128M
+    command: celery -A aws_run_celery.notify_celery beat --loglevel=INFO
+    env:
+      NOTIFY_APP_NAME: delivery-celery-beat
+  - name: notify-delivery-worker
+    memory: 256M
+    command: celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11
+    env:
+      NOTIFY_APP_NAME: delivery-worker
+  - name: notify-delivery-worker-database
+    memory: 256M
+    command: celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q db-sms,db-email
+    env:
+      NOTIFY_APP_NAME: delivery-worker-database
+  - name: notify-delivery-worker-research
+    memory: 256M
+    command: celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=5 -Q research-mode
+    env:
+      NOTIFY_APP_NAME: delivery-worker-research
+  - name: notify-delivery-worker-sender
+    memory: 256M
+    command: celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q send-sms,send-email
+    env:
+      NOTIFY_APP_NAME: delivery-worker-sender

@@ -41,6 +41,8 @@ class Config(object):
 
         # Redis config
         REDIS_ENABLED = False
+
+        DEBUG = True
     else:
         # URL of admin app
         ADMIN_BASE_URL = os.environ['ADMIN_BASE_URL']
@@ -77,11 +79,13 @@ class Config(object):
         REDIS_URL = os.getenv('REDIS_URL')
         REDIS_ENABLED = os.getenv('REDIS_ENABLED') == '1'
 
+        DEBUG = False
+
+
     ###########################
     # Default config values ###
     ###########################
 
-    DEBUG = False
     NOTIFY_ENVIRONMENT = 'development'
     ADMIN_CLIENT_USER_NAME = 'notify-admin'
     AWS_REGION = 'eu-west-1'
@@ -248,7 +252,6 @@ class Live(Config):
 
 # CloudFoundry sandbox
 class Sandbox(Config):
-    DEBUG = True
     NOTIFY_EMAIL_DOMAIN = 'notify.works'
     NOTIFY_ENVIRONMENT = 'sandbox'
     CSV_UPLOAD_BUCKET_NAME = 'cf-sandbox-notifications-csv-upload'

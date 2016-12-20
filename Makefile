@@ -198,7 +198,7 @@ cf-login: ## Log in to Cloud Foundry
 	@cf login -a "${CF_API}" -u ${CF_USERNAME} -p "${CF_PASSWORD}" -o "${CF_ORG}" -s "${CF_SPACE}"
 
 .PHONY: cf-deploy
-cf-deploy: cf-login ## Deploys the app to Cloud Foundry
+cf-deploy-api: cf-login ## Deploys the app to Cloud Foundry
 	$(if ${CF_APP},,$(error Must specify CF_APP))
 	$(eval export ORIG_INSTANCES=$(shell cf curl /v2/apps/$(shell cf app --guid notify-admin) | jq -r ".entity.instances"))
 	@echo "Original instance count: ${ORIG_INSTANCES}"

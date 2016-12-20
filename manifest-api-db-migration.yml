@@ -1,0 +1,10 @@
+---
+inherit: manifest-api-base.yml
+
+applications:
+  - name: notify-api-db-migration
+    memory: 128M
+    command: python db.py db upgrade && sleep infinity
+    health-check-type: none
+    no-route: true
+    instances: 1
