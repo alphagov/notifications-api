@@ -1,6 +1,7 @@
 import uuid
 from datetime import (datetime, date, timedelta)
 
+from sqlalchemy.orm.session import make_transient
 import requests_mock
 import pytest
 from flask import current_app
@@ -18,6 +19,8 @@ from app.models import (
     Permission,
     ProviderStatistics,
     ProviderDetails,
+    ProviderDetailsHistory,
+    ProviderRates,
     NotificationStatistics,
     ServiceWhitelist,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM,
@@ -857,3 +860,33 @@ def sample_provider_rate(notify_db, notify_db_session, valid_from=None, rate=Non
         valid_from=valid_from if valid_from is not None else datetime.utcnow(),
         rate=rate if rate is not None else 1,
     )
+
+
+@pytest.fixture
+def restore_provider_details(notify_db, notify_db_session):
+    """
+    We view ProviderDetails as a static in notify_db_session, since we don't modify it... except we do, we updated
+    priority. This fixture is designed to be used in tests that will knowingly touch provider details, to restore them
+    to previous state.
+
+    Note: This doesn't technically require notify_db_session (only notify_db), but kept as a requirement to encourage
+    good usage - if you're modifying ProviderDetails' state then it's good to clear down the rest of the DB too
+    """
+    existing_provider_details = ProviderDetails.query.all()
+    existing_provider_details_history = ProviderDetailsHistory.query.all()
+    # make transient removes the objects from the session - since we'll want to delete them later
+    for epd in existing_provider_details:
+        make_transient(epd)
+    for epdh in existing_provider_details_history:
+        make_transient(epdh)
+
+    yield
+
+    # also delete these as they depend on provider_details
+    ProviderRates.query.delete()
+    ProviderDetails.query.delete()
+    ProviderDetailsHistory.query.delete()
+    notify_db.session.commit()
+    notify_db.session.add_all(existing_provider_details)
+    notify_db.session.add_all(existing_provider_details_history)
+    notify_db.session.commit()

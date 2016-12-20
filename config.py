@@ -137,7 +137,7 @@ class Config(object):
 
     REDIS_ENABLED = False
 
-    SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200
+    SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200  # 3 days
 
     SIMULATED_EMAIL_ADDRESSES = ('simulate-delivered@notifications.service.gov.uk',
                                  'simulate-permanent-failure@notifications.service.gov.uk',
