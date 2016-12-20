@@ -19,6 +19,9 @@ from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE
 def send_sms_to_provider(notification):
     service = dao_fetch_service_by_id(notification.service_id)
     provider = provider_to_use(SMS_TYPE, notification.id)
+    current_app.logger.info(
+        "Starting sending SMS {} to provider at {}".format(notification.id, datetime.utcnow())
+    )
     if notification.status == 'created':
         template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
         template = SMSMessageTemplate(
@@ -47,7 +50,7 @@ def send_sms_to_provider(notification):
         dao_update_notification(notification)
 
         current_app.logger.info(
-            "SMS {} sent to provider at {}".format(notification.id, notification.sent_at)
+            "SMS {} sent to provider {} at {}".format(notification.id, provider.get_name(), notification.sent_at)
         )
         delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
         statsd_client.timing("sms.total-time", delta_milliseconds)
@@ -56,6 +59,9 @@ def send_sms_to_provider(notification):
 def send_email_to_provider(notification):
     service = dao_fetch_service_by_id(notification.service_id)
     provider = provider_to_use(EMAIL_TYPE, notification.id)
+    current_app.logger.info(
+        "Starting sending EMAIL {} to provider at {}".format(notification.id, datetime.utcnow())
+    )
     if notification.status == 'created':
         template_dict = dao_get_template_by_id(notification.template_id, notification.template_version).__dict__
 
