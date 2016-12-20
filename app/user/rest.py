@@ -1,8 +1,6 @@
 import json
-import uuid
 from datetime import datetime
 from flask import (jsonify, request, Blueprint, current_app)
-from app import encryption, DATETIME_FORMAT
 from app.dao.users_dao import (
     get_user_by_id,
     save_model_user,
@@ -30,10 +28,6 @@ from app.schemas import (
     permission_schema,
     user_schema_load_json,
     user_update_schema_load_json
-)
-
-from app.celery.tasks import (
-    send_email
 )
 
 from app.errors import (
