@@ -288,19 +288,22 @@ def send_user_reset_password():
     user_to_send_to = get_user_by_email(email['email'])
 
     template = dao_get_template_by_id(current_app.config['PASSWORD_RESET_TEMPLATE_ID'])
-    message = {
-        'template': str(template.id),
-        'template_version': template.version,
-        'to': user_to_send_to.email_address,
-        'personalisation': {
+
+    saved_notification = persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient=email['email'],
+        service_id=current_app.config['NOTIFY_SERVICE_ID'],
+        personalisation={
             'user_name': user_to_send_to.name,
             'url': _create_reset_password_url(user_to_send_to.email_address)
-        }
-    }
-    send_email.apply_async([current_app.config['NOTIFY_SERVICE_ID'],
-                            str(uuid.uuid4()),
-                            encryption.encrypt(message),
-                            datetime.utcnow().strftime(DATETIME_FORMAT)], queue='notify')
+        },
+        notification_type=EMAIL_TYPE,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL
+    )
+
+    send_notification_to_queue(saved_notification, False, queue="notify")
 
     return jsonify({}), 204
 

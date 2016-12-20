@@ -324,15 +324,14 @@ def test_send_user_email_verification(client,
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 204
     notification = Notification.query.first()
-    mocked.assert_called_once_with(
-        ([str(notification.id)]),
-        queue="notify")
+    mocked.assert_called_once_with(([str(notification.id)]), queue="notify")
 
 
-def test_send_email_verification_returns_404_for_bad_input_data(client, notify_db, notify_db_session):
+def test_send_email_verification_returns_404_for_bad_input_data(client, notify_db, notify_db_session, mocker):
     """
     Tests POST endpoint /user/<user_id>/sms-code return 404 for bad input data
     """
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     data = json.dumps({})
     import uuid
     uuid_ = uuid.uuid4()
@@ -343,3 +342,4 @@ def test_send_email_verification_returns_404_for_bad_input_data(client, notify_d
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 404
     assert json.loads(resp.get_data(as_text=True))['message'] == 'No result found'
+    assert mocked.call_count == 0
