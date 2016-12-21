@@ -131,7 +131,7 @@ def switch_providers_on_slow_delivery():
 
     if slow_delivery_notifications:
         notification = slow_delivery_notifications[0]
-        current_app.logger.info(
+        current_app.logger.warning(
             'Slow delivery notification found with id: {} created at: {} sent at: {} by: {}'.format(
                 notification.id,
                 notification.created_at,

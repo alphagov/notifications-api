@@ -43,9 +43,9 @@ class Config(object):
     # URL of redis instance
     REDIS_URL = os.getenv('REDIS_URL')
 
-    # Functional provider tests (auto switching on slow delivery)
-    FUNCTIONAL_TEST_SERVICE_ID = os.getenv('FUNCTIONAL_TEST_SERVICE_ID')
-    FUNCTIONAL_TEST_TEMPLATE_ID = os.getenv('FUNCTIONAL_TEST_TEMPLATE_ID')
+    # Functional provider tests (set below based on environment)
+    FUNCTIONAL_TEST_SERVICE_ID = None
+    FUNCTIONAL_TEST_TEMPLATE_ID = None
 
     ###########################
     # Default config values ###
@@ -193,6 +193,8 @@ class Test(Config):
         Queue('send-email', Exchange('default'), routing_key='send-email'),
         Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
+    FUNCTIONAL_TEST_SERVICE_ID = 'ca06f587-fe04-484e-a8c5-de2bd45b0d2a'  # Random uuid's for tests
+    FUNCTIONAL_TEST_TEMPLATE_ID = '2a1d0b10-45c4-4155-8cea-a7b62d5c83c6'
 
 
 class Preview(Config):
@@ -202,6 +204,8 @@ class Preview(Config):
     API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = 'preview'
     REDIS_ENABLED = True
+    FUNCTIONAL_TEST_SERVICE_ID = '64f8dff2-913d-471f-8793-57b9087b6ef3'
+    FUNCTIONAL_TEST_TEMPLATE_ID = 'fb0ac112-2438-4eac-a21b-acc6da8bc406'
 
 
 class Staging(Config):
@@ -212,6 +216,8 @@ class Staging(Config):
     API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = 'stage'
     REDIS_ENABLED = True
+    FUNCTIONAL_TEST_SERVICE_ID = '8035fcbf-f064-4dda-b8f7-3fffa3478f30'
+    FUNCTIONAL_TEST_TEMPLATE_ID = 'ea048f03-deee-4bbc-8768-6a76a4861bd4'
 
 
 class Live(Config):
@@ -222,6 +228,8 @@ class Live(Config):
     API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = '40604'
     REDIS_ENABLED = True
+    FUNCTIONAL_TEST_SERVICE_ID = '6c1d81bb-dae2-4ee9-80b0-89a4aae9f649'
+    FUNCTIONAL_TEST_TEMPLATE_ID = '285bb62d-08e7-414b-b5a3-6372ba320e06'
 
 
 configs = {

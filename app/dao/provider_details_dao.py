@@ -64,7 +64,7 @@ def dao_switch_sms_provider(identifier):
     new_provider = get_alternative_sms_provider(identifier)
 
     if not new_provider.active:
-        current_app.logger.info('Cancelling switch from {} to {} as {} is inactive'.format(
+        current_app.logger.warning('Cancelling switch from {} to {} as {} is inactive'.format(
             current_provider.identifier,
             new_provider.identifier,
             new_provider.identifier
@@ -73,7 +73,7 @@ def dao_switch_sms_provider(identifier):
         return current_provider
 
     if current_provider.identifier == new_provider.identifier:
-        current_app.logger.info('Alternative provider {} is already activated'.format(new_provider.identifier))
+        current_app.logger.warning('Alternative provider {} is already activated'.format(new_provider.identifier))
         return current_provider
 
     else:
