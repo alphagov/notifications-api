@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
@@ -7,8 +7,10 @@ from app.aws import s3
 from app import notify_celery
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
 from app.dao.jobs_dao import dao_set_scheduled_jobs_to_pending, dao_get_jobs_older_than
-from app.dao.notifications_dao import (delete_notifications_created_more_than_a_week_ago,
+from app.dao.notifications_dao import (dao_provider_notifications_where_delivery_longer_than,
+                                       delete_notifications_created_more_than_a_week_ago,
                                        dao_timeout_notifications)
+from app.dao.provider_details_dao import dao_switch_sms_provider
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.statsd_decorators import statsd
 from app.celery.tasks import process_job
@@ -109,3 +111,34 @@ def timeout_notifications():
     if updated:
         current_app.logger.info(
             "Timeout period reached for {} notifications, status has been updated.".format(updated))
+
+
+@notify_celery.task(name='switch-sms-providers-on-slow-delivery')
+@statsd(namespace="tasks")
+def switch_providers_on_slow_delivery():
+    # According to functional provider tests, any notification that
+    # took longer than 4 minutes to deliver is a failure
+    last_ten_minutes = datetime.utcnow() - timedelta(minutes=10)
+    four_minutes = timedelta(minutes=4)
+
+    slow_delivery_notifications = dao_provider_notifications_where_delivery_longer_than(
+        amount_of_time=four_minutes,
+        starting_from=last_ten_minutes,
+        service_id=current_app.config.get('FUNCTIONAL_TEST_SERVICE_ID'),
+        template_id=current_app.config.get('FUNCTIONAL_TEST_TEMPLATE_ID'),
+        providers=['firetext', 'mmg']  # Only want to switch between these two for now
+    )
+
+    if slow_delivery_notifications:
+        notification = slow_delivery_notifications[0]
+        current_app.logger.info(
+            'Slow delivery notification found with id: {} created at: {} sent at: {} by: {}'.format(
+                notification.id,
+                notification.created_at,
+                notification.sent_at,
+                notification.sent_by
+            )
+        )
+        dao_switch_sms_provider(notification.sent_by)
+    else:
+        current_app.logger.info('No slow delivery notifications')
