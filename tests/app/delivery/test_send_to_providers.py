@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from collections import namedtuple
 
 import pytest
 from unittest.mock import ANY
@@ -379,16 +380,33 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
     assert options['brand_name'] == 'Justice League'
 
 
-def test_get_html_email_renderer_prepends_logo_path(notify_db, sample_service):
-    sample_service.branding = BRANDING_ORG
-    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
-    sample_service.organisation = org
-    notify_db.session.add_all([sample_service, org])
-    notify_db.session.commit()
+def test_get_html_email_renderer_prepends_logo_path(notify_api):
+    Service = namedtuple('Service', ['branding', 'organisation'])
+    Organisation = namedtuple('Organisation', ['colour', 'name', 'logo'])
 
-    renderer = send_to_providers.get_html_email_options(sample_service)
+    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
+    service = Service(branding=BRANDING_ORG, organisation=org)
+
+    renderer = send_to_providers.get_html_email_options(service)
 
     assert renderer['brand_logo'] == 'http://localhost:6012/static/images/email-template/crests/justice-league.png'
+
+
+@pytest.mark.parametrize('base_url, expected_url', [
+    # don't change localhost to prevent errors when testing locally
+    ('http://localhost:6012', 'http://localhost:6012/static/sub-path/filename.png'),
+    # on other environments, replace www with staging
+    ('https://www.notifications.service.gov.uk', 'https://static.notifications.service.gov.uk/sub-path/filename.png'),
+    ('https://www.notify.works', 'https://static.notify.works/sub-path/filename.png'),
+    ('https://notify.works', 'https://static.notify.works/sub-path/filename.png'),
+])
+def test_get_logo_url_works_for_different_environments(base_url, expected_url):
+    branding_path = '/sub-path/'
+    logo_file = 'filename.png'
+
+    logo_url = send_to_providers.get_logo_url(base_url, branding_path, logo_file)
+
+    assert logo_url == expected_url
 
 
 def test_should_not_set_billable_units_if_research_mode(notify_db, sample_service, sample_notification, mocker):
