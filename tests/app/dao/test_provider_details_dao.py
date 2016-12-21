@@ -1,22 +1,27 @@
-from app.models import ProviderDetails
+from datetime import datetime
+
+from freezegun import freeze_time
+
+from app.models import ProviderDetails, ProviderDetailsHistory
 from app import clients
 from app.dao.provider_details_dao import (
     get_provider_details,
-    get_provider_details_by_notification_type
+    get_provider_details_by_notification_type,
+    dao_update_provider_details
 )
 
 
-def test_can_get_all_providers(notify_db, notify_db_session):
+def test_can_get_all_providers(restore_provider_details):
     assert len(get_provider_details()) == 4
 
 
-def test_can_get_sms_providers(notify_db, notify_db_session):
-    assert len(get_provider_details_by_notification_type('sms')) == 3
-    types = [provider.notification_type for provider in get_provider_details_by_notification_type('sms')]
-    assert all('sms' == notification_type for notification_type in types)
+def test_can_get_sms_providers(restore_provider_details):
+    sms_providers = get_provider_details_by_notification_type('sms')
+    assert len(sms_providers) == 3
+    assert all('sms' == prov.notification_type for prov in sms_providers)
 
 
-def test_can_get_sms_providers_in_order(notify_db, notify_db_session):
+def test_can_get_sms_providers_in_order(restore_provider_details):
     providers = get_provider_details_by_notification_type('sms')
 
     assert providers[0].identifier == "mmg"
@@ -24,35 +29,52 @@ def test_can_get_sms_providers_in_order(notify_db, notify_db_session):
     assert providers[2].identifier == "loadtesting"
 
 
-def test_can_get_email_providers_in_order(notify_db, notify_db_session):
+def test_can_get_email_providers_in_order(restore_provider_details):
     providers = get_provider_details_by_notification_type('email')
 
     assert providers[0].identifier == "ses"
 
 
-def test_can_get_email_providers(notify_db, notify_db_session):
+def test_can_get_email_providers(restore_provider_details):
     assert len(get_provider_details_by_notification_type('email')) == 1
     types = [provider.notification_type for provider in get_provider_details_by_notification_type('email')]
     assert all('email' == notification_type for notification_type in types)
 
 
-def test_should_error_if_any_provider_in_database_not_in_code(notify_db, notify_db_session, notify_api):
-    providers = ProviderDetails.query.all()
-
-    for provider in providers:
-        if provider.notification_type == 'sms':
-            assert clients.get_sms_client(provider.identifier)
-        if provider.notification_type == 'email':
-            assert clients.get_email_client(provider.identifier)
-
-
-def test_should_not_error_if_any_provider_in_code_not_in_database(notify_db, notify_db_session, notify_api):
+def test_should_not_error_if_any_provider_in_code_not_in_database(restore_provider_details):
     providers = ProviderDetails.query.all()
 
     ProviderDetails.query.filter_by(identifier='mmg').delete()
 
-    for provider in providers:
-        if provider.notification_type == 'sms':
-            assert clients.get_sms_client(provider.identifier)
-        if provider.notification_type == 'email':
-            assert clients.get_email_client(provider.identifier)
+    assert clients.get_sms_client('mmg')
+
+
+@freeze_time('2000-01-01T00:00:00')
+def test_update_adds_history(restore_provider_details):
+    ses = ProviderDetails.query.filter(ProviderDetails.identifier == 'ses').one()
+    ses_history = ProviderDetailsHistory.query.filter(ProviderDetailsHistory.id == ses.id).one()
+
+    assert ses.version == 1
+    assert ses_history.version == 1
+    assert ses.updated_at is None
+
+    ses.active = False
+
+    dao_update_provider_details(ses)
+
+    assert not ses.active
+    assert ses.updated_at == datetime(2000, 1, 1, 0, 0, 0)
+
+    ses_history = ProviderDetailsHistory.query.filter(
+        ProviderDetailsHistory.id == ses.id
+    ).order_by(
+        ProviderDetailsHistory.version
+    ).all()
+
+    assert ses_history[0].active
+    assert ses_history[0].version == 1
+    assert ses_history[0].updated_at is None
+
+    assert not ses_history[1].active
+    assert ses_history[1].version == 2
+    assert ses_history[1].updated_at == datetime(2000, 1, 1, 0, 0, 0)

@@ -132,7 +132,7 @@ def dao_create_notification(notification):
 
     db.session.add(notification)
     if _should_record_notification_in_history_table(notification):
-        db.session.add(NotificationHistory.from_notification(notification))
+        db.session.add(NotificationHistory.from_original(notification))
 
 
 def _should_record_notification_in_history_table(notification):
@@ -200,7 +200,7 @@ def dao_update_notification(notification):
     db.session.add(notification)
     if _should_record_notification_in_history_table(notification):
         notification_history = NotificationHistory.query.get(notification.id)
-        notification_history.update_from_notification(notification)
+        notification_history.update_from_original(notification)
         db.session.add(notification_history)
     db.session.commit()
 
