@@ -216,6 +216,31 @@ def test_will_remove_csv_files_for_jobs_older_than_seven_days(notify_db, notify_
     s3.remove_job_from_s3.assert_called_once_with(job_1.service_id, job_1.id)
 
 
+def test_switch_sms_providers_old_slow_delivery_notifications_does_not_switch(
+    notify_db,
+    notify_db_session,
+    restore_provider_details,
+    mocker
+):
+    set_primary_sms_provider('mmg')
+
+    # Create a notification '10 mins, 1 second ago'
+    create_sample_functional_test_slow_delivery_notification(
+        notify_db,
+        notify_db_session,
+        created_at=datetime.utcnow() - timedelta(minutes=10, seconds=1),
+        sent_at=datetime.utcnow(),
+        sent_by='mmg'
+    )
+
+    # Should not switch providers
+    switch_providers_on_slow_delivery()
+
+    current_provider = get_current_provider('sms')
+
+    assert current_provider.identifier == 'mmg'
+
+
 def test_switch_sms_providers_mmg_slow_delivery_sets_firetext_as_primary(
     notify_db,
     notify_db_session,
