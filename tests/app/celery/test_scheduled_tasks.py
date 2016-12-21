@@ -344,3 +344,32 @@ def test_switch_sms_providers_mmg_already_primary_does_not_update(
 
     assert provider_mmg_before.version == provider_mmg_after.version
     assert provider_firetext_before.version == provider_firetext_after.version
+
+
+def test_switch_sms_providers_to_firetext_inactive_does_not_switch(
+    notify_db,
+    notify_db_session,
+    restore_provider_details,
+    mocker
+):
+    set_primary_sms_provider('mmg')
+
+    current_provider = get_current_provider('sms')
+
+    create_sample_functional_test_slow_delivery_notification(
+        notify_db,
+        notify_db_session,
+        created_at=datetime.utcnow() - timedelta(minutes=5),
+        sent_at=datetime.utcnow(),
+        sent_by=current_provider.identifier
+    )
+
+    alternative_provider = get_alternative_sms_provider(current_provider.identifier)
+    alternative_provider.active = False
+    dao_update_provider_details(alternative_provider)
+
+    switch_providers_on_slow_delivery()
+
+    new_provider = get_current_provider('sms')
+
+    assert new_provider.identifier == current_provider.identifier

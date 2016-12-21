@@ -59,6 +59,16 @@ def test_should_not_error_if_any_provider_in_code_not_in_database(restore_provid
     assert clients.get_sms_client('mmg')
 
 
+def test_update_sms_provider_to_inactive_sets_inactive(restore_provider_details):
+    set_primary_sms_provider('mmg')
+    primary_provider = get_current_provider('sms')
+    primary_provider.active = False
+
+    dao_update_provider_details(primary_provider)
+
+    assert not primary_provider.active
+
+
 @freeze_time('2000-01-01T00:00:00')
 def test_update_adds_history(restore_provider_details):
     ses = ProviderDetails.query.filter(ProviderDetails.identifier == 'ses').one()
@@ -129,7 +139,7 @@ def test_switch_sms_provider_switches_on_slow_delivery(
     assert new_provider.priority < old_provider.priority
 
 
-def test_switch_sms_provider_already_activated_does_not_switch(
+def test_switch_sms_provider_to_already_activated_provider_does_not_switch(
     notify_db,
     notify_db_session,
     current_sms_provider,
@@ -137,6 +147,7 @@ def test_switch_sms_provider_already_activated_does_not_switch(
     mocker
 ):
     alternate_sms_provider = get_alternative_sms_provider(current_sms_provider.identifier)
+
     # A notification that has been in sending for 7 mins
     notification = create_sample_notification(
         notify_db,
@@ -146,6 +157,34 @@ def test_switch_sms_provider_already_activated_does_not_switch(
         status='sending',
         sent_by=alternate_sms_provider.identifier  # Must be alternate sms provider (not activated)
     )
+
+    dao_switch_sms_provider(notification.sent_by)
+
+    new_provider = get_current_provider('sms')
+
+    assert current_sms_provider.id == new_provider.id
+    assert current_sms_provider.identifier == new_provider.identifier
+
+
+def test_switch_sms_provider_to_inactive_provider_does_not_switch(
+    notify_db,
+    notify_db_session,
+    current_sms_provider,
+    restore_provider_details,
+    mocker
+):
+    notification = create_sample_notification(
+        notify_db,
+        notify_db_session,
+        created_at=datetime.utcnow() - timedelta(minutes=10),
+        sent_at=datetime.utcnow() - timedelta(minutes=3),
+        status='sending',
+        sent_by=current_sms_provider.identifier
+    )
+
+    alternate_sms_provider = get_alternative_sms_provider(current_sms_provider.identifier)
+    alternate_sms_provider.active = False
+    dao_update_provider_details(alternate_sms_provider)
 
     dao_switch_sms_provider(notification.sent_by)
 

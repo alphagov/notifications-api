@@ -63,29 +63,46 @@ def dao_switch_sms_provider(identifier):
     current_provider = get_current_provider('sms')
     new_provider = get_alternative_sms_provider(identifier)
 
-    if current_provider.identifier != new_provider.identifier:
+    if not new_provider.active:
+        current_app.logger.info('Cancelling switch from {} to {} as {} is inactive'.format(
+            current_provider.identifier,
+            new_provider.identifier,
+            new_provider.identifier
+        ))
+
+        return current_provider
+
+    if current_provider.identifier == new_provider.identifier:
+        current_app.logger.info('Alternative provider {} is already activated'.format(new_provider.identifier))
+        return current_provider
+
+    else:
+
         # Swap priority to change primary provider
         if new_provider.priority > current_provider.priority:
             new_provider.priority, current_provider.priority = current_provider.priority, new_provider.priority
+            _print_provider_switch_logs(current_provider, new_provider)
+            db.session.add_all([current_provider, new_provider])
 
-            current_app.logger.info('Switching provider from {} to {}'.format(
-                current_provider.identifier,
-                new_provider.identifier
-            ))
-
-            current_app.logger.info('Provider {} now updated with priority of {}'.format(
-                current_provider.identifier,
-                current_provider.priority
-            ))
-            current_app.logger.info('Provider {} now updated with priority of {}'.format(
-                new_provider.identifier,
-                new_provider.priority
-            ))
-
+        # Reduce other provider priority if equal
         elif new_provider.priority == current_provider.priority:
             current_provider.priority += 10
+            _print_provider_switch_logs(current_provider, new_provider)
+            db.session.add(current_provider)
 
-        db.session.add_all([current_provider, new_provider])
 
-    else:
-        current_app.logger.info('Alternative provider {} is already activated'.format(new_provider.identifier))
+def _print_provider_switch_logs(current_provider, new_provider):
+    current_app.logger.info('Switching provider from {} to {}'.format(
+        current_provider.identifier,
+        new_provider.identifier
+    ))
+
+    current_app.logger.info('Provider {} now updated with priority of {}'.format(
+        current_provider.identifier,
+        current_provider.priority
+    ))
+
+    current_app.logger.info('Provider {} now updated with priority of {}'.format(
+        new_provider.identifier,
+        new_provider.priority
+    ))
