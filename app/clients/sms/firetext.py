@@ -113,6 +113,6 @@ class FiretextClient(SmsClient):
             raise FiretextClientResponseException(response=e.response, exception=e)
         finally:
             elapsed_time = monotonic() - start_time
-            self.current_app.logger.info("Firetext request finished in {}".format(elapsed_time))
+            self.current_app.logger.info("Firetext request for {} finished in {}".format(reference, elapsed_time))
             self.statsd_client.timing("clients.firetext.request-time", elapsed_time)
         return response

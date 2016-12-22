@@ -120,6 +120,6 @@ class MMGClient(SmsClient):
         finally:
             elapsed_time = monotonic() - start_time
             self.statsd_client.timing("clients.mmg.request-time", elapsed_time)
-            self.current_app.logger.info("MMG request finished in {}".format(elapsed_time))
+            self.current_app.logger.info("MMG request for {} finished in {}".format(reference, elapsed_time))
 
         return response
