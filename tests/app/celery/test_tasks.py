@@ -272,33 +272,41 @@ def test_should_not_create_send_task_for_empty_file(sample_job, mocker):
     assert job.job_status == 'finished'
 
 
+@pytest.fixture
+def email_job_with_placeholders(notify_db, notify_db_session, sample_email_template_with_placeholders):
+    return sample_job(notify_db, notify_db_session, template=sample_email_template_with_placeholders)
+
+
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_email_job(sample_email_job, mocker):
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
+def test_should_process_email_job(email_job_with_placeholders, mocker):
+    email_csv = """email_address,name
+    test@test.com,foo
+    """
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=email_csv)
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
 
-    process_job(sample_email_job.id)
+    process_job(email_job_with_placeholders.id)
 
     s3.get_job_from_s3.assert_called_once_with(
-        str(sample_email_job.service.id),
-        str(sample_email_job.id)
+        str(email_job_with_placeholders.service.id),
+        str(email_job_with_placeholders.id)
     )
     assert encryption.encrypt.call_args[0][0]['to'] == 'test@test.com'
-    assert encryption.encrypt.call_args[0][0]['template'] == str(sample_email_job.template.id)
-    assert encryption.encrypt.call_args[0][0]['template_version'] == sample_email_job.template.version
-    assert encryption.encrypt.call_args[0][0]['personalisation'] == {'emailaddress': 'test@test.com'}
+    assert encryption.encrypt.call_args[0][0]['template'] == str(email_job_with_placeholders.template.id)
+    assert encryption.encrypt.call_args[0][0]['template_version'] == email_job_with_placeholders.template.version
+    assert encryption.encrypt.call_args[0][0]['personalisation'] == {'emailaddress': 'test@test.com', 'name': 'foo'}
     tasks.send_email.apply_async.assert_called_once_with(
         (
-            str(sample_email_job.service_id),
+            str(email_job_with_placeholders.service_id),
             "uuid",
             "something_encrypted",
             "2016-01-01T11:09:00.061258Z"
         ),
         queue="db-email"
     )
-    job = jobs_dao.dao_get_job_by_id(sample_email_job.id)
+    job = jobs_dao.dao_get_job_by_id(email_job_with_placeholders.id)
     assert job.job_status == 'finished'
 
 
