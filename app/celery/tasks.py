@@ -4,7 +4,7 @@ from flask import current_app
 from notifications_utils.recipients import (
     RecipientCSV
 )
-from notifications_utils.template import Template
+from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate
 from sqlalchemy.exc import SQLAlchemyError
 from app import (
     create_uuid,
@@ -48,9 +48,10 @@ def process_job(job_id):
     job.job_status = 'in progress'
     dao_update_job(job)
 
-    template = Template(
-        dao_get_template_by_id(job.template_id, job.template_version).__dict__
-    )
+    db_template = dao_get_template_by_id(job.template_id, job.template_version)
+
+    TemplateClass = SMSMessageTemplate if db_template.template_type == SMS_TYPE else WithSubjectTemplate
+    template = TemplateClass(db_template.__dict__)
 
     for row_number, recipient, personalisation in RecipientCSV(
             s3.get_job_from_s3(str(service.id), str(job_id)),

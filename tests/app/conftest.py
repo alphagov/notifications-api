@@ -218,12 +218,9 @@ def sample_email_template(
         'template_type': template_type,
         'content': content,
         'service': service,
-        'created_by': user
+        'created_by': user,
+        'subject': subject_line
     }
-    if subject_line:
-        data.update({
-            'subject': subject_line
-        })
     template = Template(**data)
     dao_create_template(template)
     return template
