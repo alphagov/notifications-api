@@ -414,132 +414,96 @@ def test_set_user_permissions_remove_old(notify_api,
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_send_user_reset_password_should_send_reset_password_link(notify_api,
+def test_send_user_reset_password_should_send_reset_password_link(client,
                                                                   sample_user,
                                                                   mocker,
                                                                   password_reset_email_template):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            mocker.patch('notifications_utils.url_safe_token.generate_token', return_value='the-token')
-            mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
-            mocker.patch('app.celery.tasks.send_email.apply_async')
-            data = json.dumps({'email': sample_user.email_address})
-            auth_header = create_authorization_header()
-            resp = client.post(
-                url_for('user.send_user_reset_password'),
-                data=data,
-                headers=[('Content-Type', 'application/json'), auth_header])
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    data = json.dumps({'email': sample_user.email_address})
+    auth_header = create_authorization_header()
+    resp = client.post(
+        url_for('user.send_user_reset_password'),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header])
 
-            message = {
-                'template': str(password_reset_email_template.id),
-                'template_version': password_reset_email_template.version,
-                'to': sample_user.email_address,
-                'personalisation': {
-                    'user_name': sample_user.name,
-                    'url': current_app.config['ADMIN_BASE_URL'] + '/new-password/' + 'the-token'
-                }
-            }
-            assert resp.status_code == 204
-            app.celery.tasks.send_email.apply_async.assert_called_once_with(
-                [str(current_app.config['NOTIFY_SERVICE_ID']),
-                 'some_uuid',
-                 app.encryption.encrypt(message),
-                 "2016-01-01T11:09:00.061258Z"],
-                queue="notify")
+    assert resp.status_code == 204
+    notification = Notification.query.first()
+    mocked.assert_called_once_with([str(notification.id)], queue="notify")
 
 
-def test_send_user_reset_password_should_return_400_when_email_is_missing(notify_api):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = json.dumps({})
-            auth_header = create_authorization_header()
+def test_send_user_reset_password_should_return_400_when_email_is_missing(client, mocker):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    data = json.dumps({})
+    auth_header = create_authorization_header()
 
-            resp = client.post(
-                url_for('user.send_user_reset_password'),
-                data=data,
-                headers=[('Content-Type', 'application/json'), auth_header])
+    resp = client.post(
+        url_for('user.send_user_reset_password'),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header])
 
+    assert resp.status_code == 400
+    assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Missing data for required field.']}
+    assert mocked.call_count == 0
+
+
+def test_send_user_reset_password_should_return_400_when_user_doesnot_exist(client,
+                                                                            mocker):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    bad_email_address = 'bad@email.gov.uk'
+    data = json.dumps({'email': bad_email_address})
+    auth_header = create_authorization_header()
+
+    resp = client.post(
+        url_for('user.send_user_reset_password'),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert resp.status_code == 404
+    assert json.loads(resp.get_data(as_text=True))['message'] == 'No result found'
+    assert mocked.call_count == 0
+
+
+def test_send_user_reset_password_should_return_400_when_data_is_not_email_address(client, mocker):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    bad_email_address = 'bad.email.gov.uk'
+    data = json.dumps({'email': bad_email_address})
+    auth_header = create_authorization_header()
+
+    resp = client.post(
+        url_for('user.send_user_reset_password'),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert resp.status_code == 400
+    assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Not a valid email address.']}
+    assert mocked.call_count == 0
+
+
+def test_send_already_registered_email(client, sample_user, already_registered_template, mocker):
+    data = json.dumps({'email': sample_user.email_address})
+    auth_header = create_authorization_header()
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    resp = client.post(
+        url_for('user.send_already_registered_email', user_id=str(sample_user.id)),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert resp.status_code == 204
+
+    notification = Notification.query.first()
+    mocked.assert_called_once_with(([str(notification.id)]), queue="notify")
+
+
+def test_send_already_registered_email_returns_400_when_data_is_missing(client, sample_user):
+        data = json.dumps({})
+        auth_header = create_authorization_header()
+
+        resp = client.post(
+            url_for('user.send_already_registered_email', user_id=str(sample_user.id)),
+            data=data,
+            headers=[('Content-Type', 'application/json'), auth_header])
         assert resp.status_code == 400
         assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Missing data for required field.']}
-
-
-def test_send_user_reset_password_should_return_400_when_user_doesnot_exist(notify_api,
-                                                                            mocker):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            bad_email_address = 'bad@email.gov.uk'
-            data = json.dumps({'email': bad_email_address})
-            auth_header = create_authorization_header()
-
-        resp = client.post(
-            url_for('user.send_user_reset_password'),
-            data=data,
-            headers=[('Content-Type', 'application/json'), auth_header])
-
-        assert resp.status_code == 404
-        assert json.loads(resp.get_data(as_text=True))['message'] == 'No result found'
-
-
-def test_send_user_reset_password_should_return_400_when_data_is_not_email_address(notify_api, mocker):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            bad_email_address = 'bad.email.gov.uk'
-            data = json.dumps({'email': bad_email_address})
-            auth_header = create_authorization_header()
-
-        resp = client.post(
-            url_for('user.send_user_reset_password'),
-            data=data,
-            headers=[('Content-Type', 'application/json'), auth_header])
-
-        assert resp.status_code == 400
-        assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Not a valid email address.']}
-
-
-@freeze_time("2016-01-01 11:09:00.061258")
-def test_send_already_registered_email(notify_api, sample_user, already_registered_template, mocker):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = json.dumps({'email': sample_user.email_address})
-            auth_header = create_authorization_header()
-            mocker.patch('app.celery.tasks.send_email.apply_async')
-            mocker.patch('uuid.uuid4', return_value='some_uuid')  # for the notification id
-
-            resp = client.post(
-                url_for('user.send_already_registered_email', user_id=str(sample_user.id)),
-                data=data,
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 204
-            message = {
-                'template': str(already_registered_template.id),
-                'template_version': already_registered_template.version,
-                'to': sample_user.email_address,
-                'personalisation': {
-                    'signin_url': current_app.config['ADMIN_BASE_URL'] + '/sign-in',
-                    'forgot_password_url': current_app.config['ADMIN_BASE_URL'] + '/forgot-password',
-                    'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/feedback'
-                }
-            }
-            app.celery.tasks.send_email.apply_async.assert_called_once_with(
-                (str(current_app.config['NOTIFY_SERVICE_ID']),
-                 'some_uuid',
-                 app.encryption.encrypt(message),
-                 "2016-01-01T11:09:00.061258Z"),
-                queue="notify")
-
-
-def test_send_already_registered_email_returns_400_when_data_is_missing(notify_api, sample_user):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = json.dumps({})
-            auth_header = create_authorization_header()
-
-            resp = client.post(
-                url_for('user.send_already_registered_email', user_id=str(sample_user.id)),
-                data=data,
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 400
-            assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Missing data for required field.']}
 
 
 def test_send_user_confirm_new_email_returns_204(client, sample_user, change_email_confirmation_template, mocker):

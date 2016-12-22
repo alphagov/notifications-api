@@ -1,20 +1,18 @@
-import uuid
-from datetime import datetime
 from flask import (
     Blueprint,
     request,
     jsonify,
     current_app)
 
-from app import encryption, DATETIME_FORMAT
 from app.dao.invited_user_dao import (
     save_invited_user,
     get_invited_user,
     get_invited_users_for_service
 )
 from app.dao.templates_dao import dao_get_template_by_id
+from app.models import EMAIL_TYPE, KEY_TYPE_NORMAL
+from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.schemas import invited_user_schema
-from app.celery.tasks import (send_email)
 
 invite = Blueprint('invite', __name__, url_prefix='/service/<service_id>/invite')
 
@@ -29,22 +27,23 @@ def create_invited_user(service_id):
     save_invited_user(invited_user)
 
     template = dao_get_template_by_id(current_app.config['INVITATION_EMAIL_TEMPLATE_ID'])
-    message = {
-        'template': str(template.id),
-        'template_version': template.version,
-        'to': invited_user.email_address,
-        'personalisation': {
+
+    saved_notification = persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient=invited_user.email_address,
+        service_id=current_app.config['NOTIFY_SERVICE_ID'],
+        personalisation={
             'user_name': invited_user.from_user.name,
             'service_name': invited_user.service.name,
             'url': invited_user_url(invited_user.id)
-        }
-    }
-    send_email.apply_async((
-        current_app.config['NOTIFY_SERVICE_ID'],
-        str(uuid.uuid4()),
-        encryption.encrypt(message),
-        datetime.utcnow().strftime(DATETIME_FORMAT)
-    ), queue="notify")
+        },
+        notification_type=EMAIL_TYPE,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL
+    )
+
+    send_notification_to_queue(saved_notification, False, queue="notify")
 
     return jsonify(data=invited_user_schema.dump(invited_user).data), 201
 
