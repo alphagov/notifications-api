@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
+
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
-
-from app import db
 import pytest
 
+from app import db
 from app.dao.users_dao import (
     save_model_user,
     save_user_attribute,
@@ -21,7 +21,8 @@ from app.models import User, VerifyCode
 from tests.app.db import create_user
 
 
-def test_create_user(notify_db_session):
+@pytest.mark.usefixtures('notify_db_session')
+def test_create_user():
     email = 'notify@digital.cabinet-office.gov.uk'
     data = {
         'name': 'Test User',
@@ -37,7 +38,8 @@ def test_create_user(notify_db_session):
     assert not user.platform_admin
 
 
-def test_get_all_users(notify_db_session):
+@pytest.mark.usefixtures('notify_db_session')
+def test_get_all_users():
     create_user(email='1@test.com')
     create_user(email='2@test.com')
 
@@ -45,18 +47,21 @@ def test_get_all_users(notify_db_session):
     assert len(get_user_by_id()) == 2
 
 
-def test_get_user(notify_db_session):
+@pytest.mark.usefixtures('notify_db_session')
+def test_get_user():
     email = '1@test.com'
     user = create_user(email=email)
     assert get_user_by_id(user_id=user.id).email_address == email
 
 
-def test_get_user_not_exists(notify_db_session, fake_uuid):
+@pytest.mark.usefixtures('notify_db_session')
+def test_get_user_not_exists(fake_uuid):
     with pytest.raises(NoResultFound):
         get_user_by_id(user_id=fake_uuid)
 
 
-def test_get_user_invalid_id(notify_db_session):
+@pytest.mark.usefixtures('notify_db_session')
+def test_get_user_invalid_id():
     with pytest.raises(DataError):
         get_user_by_id(user_id="blah")
 
