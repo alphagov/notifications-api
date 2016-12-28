@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import uuid
 
@@ -1356,6 +1356,25 @@ def test_get_detailed_services_only_includes_todays_notifications(notify_db, not
         data = get_detailed_services()
         data = sorted(data, key=lambda x: x['id'])
 
+    assert len(data) == 1
+    assert data[0]['statistics'] == {
+        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 2}
+    }
+
+
+def test_get_detailed_services_for_date_range(notify_db, notify_db_session):
+    from app.service.rest import get_detailed_services
+    create_sample_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=3))
+    create_sample_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=2))
+    create_sample_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=1))
+    create_sample_notification(notify_db, notify_db_session, created_at=datetime.now())
+
+    start_date = (datetime.utcnow() - timedelta(days=2)).date()
+    end_date = (datetime.utcnow() - timedelta(days=1)).date()
+
+    data = get_detailed_services(only_active=False, include_from_test_key=True,
+                                 start_date=start_date, end_date=end_date)
     assert len(data) == 1
     assert data[0]['statistics'] == {
         'email': {'delivered': 0, 'failed': 0, 'requested': 0},

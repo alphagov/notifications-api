@@ -26,7 +26,8 @@ from app.dao.services_dao import (
     dao_fetch_todays_stats_for_service,
     dao_fetch_weekly_historical_stats_for_service,
     dao_fetch_todays_stats_for_all_services,
-    dao_deactive_service
+    dao_deactive_service,
+    fetch_stats_by_date_range_for_all_services
 )
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
@@ -63,11 +64,14 @@ def get_services():
     detailed = request.args.get('detailed') == 'True'
     user_id = request.args.get('user_id', None)
     include_from_test_key = request.args.get('include_from_test_key', 'True') != 'False'
+    start_date = request.args.get('start_date', None)
+    end_date = request.args.get('end_date', None)
 
     if user_id:
         services = dao_fetch_all_services_by_user(user_id, only_active)
     elif detailed:
-        return jsonify(data=get_detailed_services(only_active, include_from_test_key=include_from_test_key))
+        return jsonify(data=get_detailed_services(only_active, include_from_test_key=include_from_test_key,
+                                                  start_date=start_date, end_date=end_date))
     else:
         services = dao_fetch_all_services(only_active)
     data = service_schema.dump(services, many=True).data
@@ -269,18 +273,22 @@ def get_detailed_service(service_id, today_only=False):
     return detailed_service_schema.dump(service).data
 
 
-def get_detailed_services(only_active=False, include_from_test_key=True):
+def get_detailed_services(only_active=False, include_from_test_key=True, start_date=None, end_date=None):
     services = {service.id: service for service in dao_fetch_all_services(only_active)}
-    stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key)
+    if start_date:
+        stats = fetch_stats_by_date_range_for_all_services(start_date=start_date,
+                                                           end_date=end_date,
+                                                           include_from_test_key=include_from_test_key)
+    else:
+        stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key)
 
     for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
-        services[service_id].statistics = statistics.format_statistics(rows)
+            services[service_id].statistics = statistics.format_statistics(rows)
 
     # if service has not sent anything, query will not have set statistics correctly
     for service in services.values():
         if not hasattr(service, 'statistics'):
             service.statistics = statistics.create_zeroed_stats_dicts()
-
     return detailed_service_schema.dump(services.values(), many=True).data
 
 
