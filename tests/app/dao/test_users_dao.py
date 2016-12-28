@@ -46,16 +46,17 @@ def test_get_all_users(notify_db_session):
 
 
 def test_get_user(notify_db_session):
-    user = create_user(email='1@test.com')
+    email = '1@test.com'
+    user = create_user(email=email)
     assert get_user_by_id(user_id=user.id).email_address == email
 
 
-def test_get_user_not_exists(notify_db, fake_uuid):
+def test_get_user_not_exists(notify_db_session, fake_uuid):
     with pytest.raises(NoResultFound):
         get_user_by_id(user_id=fake_uuid)
 
 
-def test_get_user_invalid_id(notify_db):
+def test_get_user_invalid_id(notify_db_session):
     with pytest.raises(DataError):
         get_user_by_id(user_id="blah")
 
