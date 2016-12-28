@@ -17,12 +17,12 @@ from app.models import Notification, KEY_TYPE_TEAM, KEY_TYPE_TEST, KEY_TYPE_NORM
 from tests.app import load_example_csv
 from tests.app.conftest import (
     sample_service,
-    sample_user,
     sample_template,
     sample_job,
     sample_email_template,
     sample_notification
 )
+from tests.app.db import create_user
 
 
 class AnyStringWith(str):
@@ -393,7 +393,7 @@ def test_should_put_send_sms_task_in_research_mode_queue_if_research_mode_servic
 
 
 def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notify_db_session, mocker):
-    user = sample_user(notify_db, notify_db_session, mobile_numnber="07700 900890")
+    user = create_user(mobile_number="07700 900890")
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
     template = sample_template(notify_db, notify_db_session, service=service)
     notification = _notification_json(template, "+447700900890")  # The user’s own number, but in a different format
@@ -429,7 +429,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
 def test_should_send_sms_if_restricted_service_and_non_team_number_with_test_key(notify_db,
                                                                                  notify_db_session,
                                                                                  mocker):
-    user = sample_user(notify_db, notify_db_session, mobile_numnber="07700 900205")
+    user = create_user(mobile_number="07700 900205")
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
     template = sample_template(notify_db, notify_db_session, service=service)
 
@@ -455,7 +455,7 @@ def test_should_send_sms_if_restricted_service_and_non_team_number_with_test_key
 def test_should_send_email_if_restricted_service_and_non_team_email_address_with_test_key(notify_db,
                                                                                           notify_db_session,
                                                                                           mocker):
-    user = sample_user(notify_db, notify_db_session)
+    user = create_user()
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
     template = sample_template(
         notify_db, notify_db_session, service=service, template_type='email', subject_line='Hello'
@@ -481,7 +481,7 @@ def test_should_send_email_if_restricted_service_and_non_team_email_address_with
 
 
 def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db, notify_db_session, mocker):
-    user = sample_user(notify_db, notify_db_session, mobile_numnber="07700 900205")
+    user = create_user(mobile_number="07700 900205")
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
     template = sample_template(notify_db, notify_db_session, service=service)
 
@@ -500,7 +500,7 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
 
 
 def test_should_not_send_email_if_restricted_service_and_invalid_email_address(notify_db, notify_db_session, mocker):
-    user = sample_user(notify_db, notify_db_session)
+    user = create_user()
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
     template = sample_template(
         notify_db, notify_db_session, service=service, template_type='email', subject_line='Hello'
@@ -617,7 +617,7 @@ def test_should_not_send_email_if_team_key_and_recipient_not_in_team(sample_emai
 
 def test_should_not_send_sms_if_team_key_and_recipient_not_in_team(notify_db, notify_db_session, mocker):
     assert Notification.query.count() == 0
-    user = sample_user(notify_db, notify_db_session, mobile_numnber="07700 900205")
+    user = create_user(mobile_number="07700 900205")
     service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
     template = sample_template(notify_db, notify_db_session, service=service)
 
