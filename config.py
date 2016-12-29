@@ -59,7 +59,7 @@ class Config(object):
     SQLALCHEMY_TRACK_MODIFICATIONS = True
     PAGE_SIZE = 50
     SMS_CHAR_COUNT_LIMIT = 495
-    BRANDING_PATH = '/static/images/email-template/crests/'
+    BRANDING_PATH = '/images/email-template/crests/'
     TEST_MESSAGE_FILENAME = 'Test message'
 
     NOTIFY_SERVICE_ID = 'd6aa2c68-a2d9-4437-ab19-3ae8eb202553'
