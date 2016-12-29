@@ -135,8 +135,11 @@ def get_logo_url(base_url, branding_path, logo_file):
     base_url = parse.urlparse(base_url)
     netloc = base_url.netloc
 
-    if base_url.netloc.startswith('localhost'):
-        netloc = 'localhost:6012'
+    if (
+        base_url.netloc.startswith('localhost') or
+        # covers both preview and staging
+        'notify.works' in base_url.netloc
+    ):
         path = '/static' + branding_path + logo_file
     else:
         if base_url.netloc.startswith('www'):

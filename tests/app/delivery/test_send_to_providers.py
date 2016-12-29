@@ -397,8 +397,15 @@ def test_get_html_email_renderer_prepends_logo_path(notify_api):
     ('http://localhost:6012', 'http://localhost:6012/static/sub-path/filename.png'),
     # on other environments, replace www with staging
     ('https://www.notifications.service.gov.uk', 'https://static.notifications.service.gov.uk/sub-path/filename.png'),
-    ('https://www.notify.works', 'https://static.notify.works/sub-path/filename.png'),
-    ('https://notify.works', 'https://static.notify.works/sub-path/filename.png'),
+
+    # staging and preview do not have cloudfront running, so should act as localhost
+    pytest.mark.xfail(('https://www.notify.works', 'https://static.notify.works/sub-path/filename.png')),
+    pytest.mark.xfail(('https://www.staging-notify.works', 'https://static.notify.works/sub-path/filename.png')),
+    pytest.mark.xfail(('https://notify.works', 'https://static.notify.works/sub-path/filename.png')),
+    pytest.mark.xfail(('https://staging-notify.works', 'https://static.notify.works/sub-path/filename.png')),
+    # these tests should be removed when cloudfront works on staging/preview
+    ('https://www.notify.works', 'https://www.notify.works/static/sub-path/filename.png'),
+    ('https://www.staging-notify.works', 'https://www.staging-notify.works/static/sub-path/filename.png'),
 ])
 def test_get_logo_url_works_for_different_environments(base_url, expected_url):
     branding_path = '/sub-path/'
