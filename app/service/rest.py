@@ -64,6 +64,7 @@ def get_services():
     detailed = request.args.get('detailed') == 'True'
     user_id = request.args.get('user_id', None)
     include_from_test_key = request.args.get('include_from_test_key', 'True') != 'False'
+    # If start and end date are not set in the request.args, we are expecting today's stats.
     start_date = request.args.get('start_date', None)
     end_date = request.args.get('end_date', None)
 
@@ -283,7 +284,7 @@ def get_detailed_services(only_active=False, include_from_test_key=True, start_d
         stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key)
 
     for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
-            services[service_id].statistics = statistics.format_statistics(rows)
+        services[service_id].statistics = statistics.format_statistics(rows)
 
     # if service has not sent anything, query will not have set statistics correctly
     for service in services.values():

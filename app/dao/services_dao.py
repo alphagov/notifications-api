@@ -262,7 +262,7 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
     if not include_from_test_key:
         query = query.filter(Notification.key_type != KEY_TYPE_TEST)
 
-    return query
+    return query.all()
 
 
 @statsd(namespace='dao')
@@ -290,4 +290,4 @@ def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_fro
     if not include_from_test_key:
         query = query.filter(NotificationHistory.key_type != KEY_TYPE_TEST)
 
-    return query
+    return query.all()

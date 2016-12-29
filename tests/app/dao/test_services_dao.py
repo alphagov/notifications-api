@@ -576,7 +576,7 @@ def test_dao_fetch_todays_stats_for_all_services_includes_all_services(notify_db
         notify_db, notify_db_session, service=service2,
         template=create_email_template(notify_db, notify_db_session, service=service2))
 
-    stats = dao_fetch_todays_stats_for_all_services().all()
+    stats = dao_fetch_todays_stats_for_all_services()
 
     assert len(stats) == 4
     # services are ordered by service id; not explicit on email/sms or status
@@ -591,7 +591,7 @@ def test_dao_fetch_todays_stats_for_all_services_only_includes_today(notify_db):
         just_after_midnight_today = create_notification(notify_db, None, to_field='2', status='failed')
 
     with freeze_time('2001-01-02T12:00:00'):
-        stats = dao_fetch_todays_stats_for_all_services().all()
+        stats = dao_fetch_todays_stats_for_all_services()
 
     stats = {row.status: row.count for row in stats}
     assert 'delivered' not in stats
@@ -611,7 +611,7 @@ def test_dao_fetch_todays_stats_for_all_services_groups_correctly(notify_db, not
     # service2: 1 sms "created"
     create_notification(notify_db, notify_db_session, service=service2)
 
-    stats = dao_fetch_todays_stats_for_all_services().all()
+    stats = dao_fetch_todays_stats_for_all_services()
 
     assert len(stats) == 4
     assert ('sms', 'created', service1.id, 2) in stats
@@ -625,7 +625,7 @@ def test_dao_fetch_todays_stats_for_all_services_includes_all_keys_by_default(no
     create_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEAM)
     create_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST)
 
-    stats = dao_fetch_todays_stats_for_all_services().all()
+    stats = dao_fetch_todays_stats_for_all_services()
 
     assert len(stats) == 1
     assert stats[0].count == 3
@@ -636,7 +636,7 @@ def test_dao_fetch_todays_stats_for_all_services_can_exclude_from_test_key(notif
     create_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEAM)
     create_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST)
 
-    stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=False).all()
+    stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=False)
 
     assert len(stats) == 1
     assert stats[0].count == 2
@@ -652,7 +652,7 @@ def test_fetch_stats_by_date_range_for_all_services(notify_db, notify_db_session
     start_date = (datetime.utcnow() - timedelta(days=2)).date()
     end_date = (datetime.utcnow() - timedelta(days=1)).date()
 
-    results = fetch_stats_by_date_range_for_all_services(start_date, end_date).all()
+    results = fetch_stats_by_date_range_for_all_services(start_date, end_date)
 
     assert len(results) == 1
     assert results[0] == ('sms', 'created', result_one.service_id, 2)
