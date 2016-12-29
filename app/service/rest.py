@@ -1,4 +1,5 @@
 import itertools
+from datetime import datetime
 
 from flask import (
     jsonify,
@@ -64,15 +65,16 @@ def get_services():
     detailed = request.args.get('detailed') == 'True'
     user_id = request.args.get('user_id', None)
     include_from_test_key = request.args.get('include_from_test_key', 'True') != 'False'
-    # If start and end date are not set in the request.args, we are expecting today's stats.
-    start_date = request.args.get('start_date', None)
-    end_date = request.args.get('end_date', None)
+    # If start and end date are not set, we are expecting today's stats.
+    start_date = request.args.get('start_date', datetime.utcnow().date())
+    end_date = request.args.get('end_date', datetime.utcnow().date())
 
     if user_id:
         services = dao_fetch_all_services_by_user(user_id, only_active)
     elif detailed:
-        return jsonify(data=get_detailed_services(only_active, include_from_test_key=include_from_test_key,
-                                                  start_date=start_date, end_date=end_date))
+        return jsonify(data=get_detailed_services(start_date=start_date, end_date=end_date,
+                                                  only_active=only_active, include_from_test_key=include_from_test_key
+                                                  ))
     else:
         services = dao_fetch_all_services(only_active)
     data = service_schema.dump(services, many=True).data
@@ -274,14 +276,14 @@ def get_detailed_service(service_id, today_only=False):
     return detailed_service_schema.dump(service).data
 
 
-def get_detailed_services(only_active=False, include_from_test_key=True, start_date=None, end_date=None):
+def get_detailed_services(start_date, end_date, only_active=False, include_from_test_key=True):
     services = {service.id: service for service in dao_fetch_all_services(only_active)}
-    if start_date:
+    if start_date == datetime.utcnow().date():
+        stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key)
+    else:
         stats = fetch_stats_by_date_range_for_all_services(start_date=start_date,
                                                            end_date=end_date,
                                                            include_from_test_key=include_from_test_key)
-    else:
-        stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key)
 
     for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
         services[service_id].statistics = statistics.format_statistics(rows)

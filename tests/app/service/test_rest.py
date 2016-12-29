@@ -1305,7 +1305,7 @@ def test_get_detailed_services_groups_by_service(notify_db, notify_db_session):
     create_sample_notification(notify_db, notify_db_session, service=service_1, status='delivered')
     create_sample_notification(notify_db, notify_db_session, service=service_1, status='created')
 
-    data = get_detailed_services()
+    data = get_detailed_services(start_date=datetime.utcnow().date(), end_date=datetime.utcnow().date())
     data = sorted(data, key=lambda x: x['name'])
 
     assert len(data) == 2
@@ -1329,7 +1329,8 @@ def test_get_detailed_services_includes_services_with_no_notifications(notify_db
 
     create_sample_notification(notify_db, notify_db_session, service=service_1)
 
-    data = get_detailed_services()
+    data = get_detailed_services(start_date=datetime.utcnow().date(),
+                                 end_date=datetime.utcnow().date())
     data = sorted(data, key=lambda x: x['name'])
 
     assert len(data) == 2
@@ -1353,7 +1354,7 @@ def test_get_detailed_services_only_includes_todays_notifications(notify_db, not
     create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 10, 12, 0))
 
     with freeze_time('2015-10-10T12:00:00'):
-        data = get_detailed_services()
+        data = get_detailed_services(start_date=datetime.utcnow().date(), end_date=datetime.utcnow().date())
         data = sorted(data, key=lambda x: x['id'])
 
     assert len(data) == 1
