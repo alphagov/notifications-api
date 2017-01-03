@@ -262,4 +262,32 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
     if not include_from_test_key:
         query = query.filter(Notification.key_type != KEY_TYPE_TEST)
 
-    return query
+    return query.all()
+
+
+@statsd(namespace='dao')
+def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True):
+    query = db.session.query(
+        NotificationHistory.notification_type,
+        NotificationHistory.status,
+        NotificationHistory.service_id,
+        func.count(NotificationHistory.id).label('count')
+    ).select_from(
+        Service
+    ).join(
+        NotificationHistory
+    ).filter(
+        func.date(NotificationHistory.created_at) >= start_date,
+        func.date(NotificationHistory.created_at) <= end_date
+    ).group_by(
+        NotificationHistory.notification_type,
+        NotificationHistory.status,
+        NotificationHistory.service_id
+    ).order_by(
+        NotificationHistory.service_id
+    )
+
+    if not include_from_test_key:
+        query = query.filter(NotificationHistory.key_type != KEY_TYPE_TEST)
+
+    return query.all()
