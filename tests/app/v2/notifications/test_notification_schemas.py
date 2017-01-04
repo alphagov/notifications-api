@@ -6,6 +6,7 @@ from jsonschema import ValidationError
 
 from app.v2.notifications.notification_schemas import (
     get_notifications_request,
+    get_notification_response,
     post_sms_request as post_sms_request_schema,
     post_sms_response as post_sms_response_schema,
     post_email_request as post_email_request_schema,
@@ -309,3 +310,28 @@ def test_post_sms_response_schema_invalid_template_uri_raises_validation_error(r
     assert error['status_code'] == 400
     assert error['errors'] == [{'error': 'ValidationError',
                                'message': "template invalid-uri is not a uri"}]
+
+
+def test_get_notifications_response_with_email_and_phone_number():
+    response = {"id": str(uuid.uuid4()),
+                "reference": "something",
+                "email_address": None,
+                "phone_number": "+447115411111",
+                "line_1": None,
+                "line_2": None,
+                "line_3": None,
+                "line_4": None,
+                "line_5": None,
+                "line_6": None,
+                "postcode": None,
+                "type": "email",
+                "status": "delivered",
+                "template": {"id": str(uuid.uuid4()), "version": 1, "uri": "http://template/id"},
+                "body": "some body",
+                "subject": "some subject",
+                "created_at": "2016-01-01",
+                "sent_at": "2016-01-01",
+                "completed_at": "2016-01-01"
+                }
+
+    assert validate(response, get_notification_response) == response

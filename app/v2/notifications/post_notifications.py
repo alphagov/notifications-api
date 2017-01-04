@@ -41,10 +41,11 @@ def post_sms_notification():
                                         reference=form.get('reference'))
     send_notification_to_queue(notification, service.research_mode)
     sms_sender = service.sms_sender if service.sms_sender else current_app.config.get('FROM_NUMBER')
-    resp = create_post_sms_response_from_notification(notification,
-                                                      str(template_with_content),
-                                                      sms_sender,
-                                                      request.url_root)
+    resp = create_post_sms_response_from_notification(notification=notification,
+                                                      body=str(template_with_content),
+                                                      from_number=sms_sender,
+                                                      url_root=request.url_root,
+                                                      service_id=service.id)
     return jsonify(resp), 201
 
 
@@ -73,7 +74,8 @@ def post_email_notification():
                                                         content=str(template_with_content),
                                                         subject=template_with_content.subject,
                                                         email_from=service.email_from,
-                                                        url_root=request.url_root)
+                                                        url_root=request.url_root,
+                                                        service_id=service.id)
     return jsonify(resp), 201
 
 

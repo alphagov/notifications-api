@@ -20,32 +20,6 @@ get_notification_response = {
     "description": "GET notification response schema",
     "type": "object",
     "title": "response v2/notification",
-    "oneOf": [
-        {"properties": {
-            "email_address": {"type": "string", "format": "email_address"},
-            "type": {"enum": ["email"]},
-
-            "phone_number": {"type": "null"},
-            "line_1": {"type": "null"},
-            "postcode": {"type": "null"}
-        }},
-        {"properties": {
-            "phone_number": {"type": "string", "format": "phone_number"},
-            "type": {"enum": ["sms"]},
-
-            "email_address": {"type": "null"},
-            "line_1": {"type": "null"},
-            "postcode": {"type": "null"}
-        }},
-        {"properties": {
-            "line_1": {"type": "string", "minLength": 1},
-            "postcode": {"type": "string", "minLength": 1},
-            "type": {"enum": ["letter"]},
-
-            "email_address": {"type": "null"},
-            "phone_number": {"type": "null"}
-        }}
-    ],
     "properties": {
         "id": uuid,
         "reference": {"type": ["string", "null"]},
@@ -213,17 +187,19 @@ post_email_response = {
 }
 
 
-def create_post_sms_response_from_notification(notification, body, from_number, url_root):
+def create_post_sms_response_from_notification(notification, body, from_number, url_root, service_id):
     return {"id": notification.id,
             "reference": notification.client_reference,
             "content": {'body': body,
                         'from_number': from_number},
             "uri": "{}v2/notifications/{}".format(url_root, str(notification.id)),
-            "template": __create_template_from_notification(notification=notification, url_root=url_root)
+            "template": __create_template_from_notification(notification=notification,
+                                                            url_root=url_root,
+                                                            service_id=service_id)
             }
 
 
-def create_post_email_response_from_notification(notification, content, subject, email_from, url_root):
+def create_post_email_response_from_notification(notification, content, subject, email_from, url_root, service_id):
     return {
         "id": notification.id,
         "reference": notification.client_reference,
@@ -233,13 +209,15 @@ def create_post_email_response_from_notification(notification, content, subject,
             "subject": subject
         },
         "uri": "{}v2/notifications/{}".format(url_root, str(notification.id)),
-        "template": __create_template_from_notification(notification=notification, url_root=url_root)
+        "template": __create_template_from_notification(notification=notification,
+                                                        url_root=url_root,
+                                                        service_id=service_id)
     }
 
 
-def __create_template_from_notification(notification, url_root):
+def __create_template_from_notification(notification, url_root, service_id):
     return {
         "id": notification.template_id,
         "version": notification.template_version,
-        "uri": "{}v2/templates/{}".format(url_root, str(notification.template_id))
+        "uri": "{}services/{}/templates/{}".format(url_root, str(service_id), str(notification.template_id))
     }
