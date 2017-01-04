@@ -20,32 +20,6 @@ get_notification_response = {
     "description": "GET notification response schema",
     "type": "object",
     "title": "response v2/notification",
-    "oneOf": [
-        {"properties": {
-            "email_address": {"type": "string", "format": "email_address"},
-            "type": {"enum": ["email"]},
-
-            "phone_number": {"type": "null"},
-            "line_1": {"type": "null"},
-            "postcode": {"type": "null"}
-        }},
-        {"properties": {
-            "phone_number": {"type": "string", "format": "phone_number"},
-            "type": {"enum": ["sms"]},
-
-            "email_address": {"type": "null"},
-            "line_1": {"type": "null"},
-            "postcode": {"type": "null"}
-        }},
-        {"properties": {
-            "line_1": {"type": "string", "minLength": 1},
-            "postcode": {"type": "string", "minLength": 1},
-            "type": {"enum": ["letter"]},
-
-            "email_address": {"type": "null"},
-            "phone_number": {"type": "null"}
-        }}
-    ],
     "properties": {
         "id": uuid,
         "reference": {"type": ["string", "null"]},
