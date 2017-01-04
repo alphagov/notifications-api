@@ -37,7 +37,9 @@ def test_post_sms_notification_returns_201(notify_api, sample_template_with_plac
             assert 'v2/notifications/{}'.format(notification_id) in resp_json['uri']
             assert resp_json['template']['id'] == str(sample_template_with_placeholders.id)
             assert resp_json['template']['version'] == sample_template_with_placeholders.version
-            assert 'v2/templates/{}'.format(sample_template_with_placeholders.id) in resp_json['template']['uri']
+            assert 'services/{}/templates/{}'.format(sample_template_with_placeholders.service_id,
+                                                     sample_template_with_placeholders.id) \
+                   in resp_json['template']['uri']
             assert mocked.called
 
 
@@ -137,7 +139,9 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
     assert 'v2/notifications/{}'.format(notification.id) in resp_json['uri']
     assert resp_json['template']['id'] == str(sample_email_template_with_placeholders.id)
     assert resp_json['template']['version'] == sample_email_template_with_placeholders.version
-    assert 'v2/templates/{}'.format(sample_email_template_with_placeholders.id) in resp_json['template']['uri']
+    assert 'services/{}/templates/{}'.format(str(sample_email_template_with_placeholders.service_id),
+                                             str(sample_email_template_with_placeholders.id)) \
+           in resp_json['template']['uri']
     assert mocked.called
 
 
