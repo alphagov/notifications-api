@@ -33,7 +33,7 @@ def test_get_notifications_request_invalid_statuses(
     with pytest.raises(ValidationError) as e:
         validate({'status': invalid_statuses + valid_statuses}, get_notifications_request)
 
-    errors = json.loads(e.value.message).get('errors')
+    errors = json.loads(str(e.value)).get('errors')
     assert len(errors) == len(invalid_statuses)
     for index, value in enumerate(invalid_statuses):
         assert errors[index]['message'] == "status {} {}".format(value, partial_error_status)
@@ -55,7 +55,7 @@ def test_get_notifications_request_invalid_template_types(
     with pytest.raises(ValidationError) as e:
         validate({'template_type': invalid_template_types + valid_template_types}, get_notifications_request)
 
-    errors = json.loads(e.value.message).get('errors')
+    errors = json.loads(str(e.value)).get('errors')
     assert len(errors) == len(invalid_template_types)
     for index, value in enumerate(invalid_template_types):
         assert errors[index]['message'] == "template_type {} {}".format(value, partial_error_template_type)
@@ -68,7 +68,7 @@ def test_get_notifications_request_invalid_statuses_and_template_types():
             'template_type': ["sms", "orange", "avocado"]
         }, get_notifications_request)
 
-    errors = json.loads(e.value.message).get('errors')
+    errors = json.loads(str(e.value)).get('errors')
 
     assert len(errors) == 4
 
@@ -104,7 +104,7 @@ def test_post_sms_json_schema_bad_uuid_and_missing_phone_number():
     j = {"template_id": "notUUID"}
     with pytest.raises(ValidationError) as e:
         validate(j, post_sms_request_schema)
-    error = json.loads(e.value.message)
+    error = json.loads(str(e.value))
     assert len(error.keys()) == 2
     assert error.get('status_code') == 400
     assert len(error.get('errors')) == 2
@@ -123,7 +123,7 @@ def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
     }
     with pytest.raises(ValidationError) as e:
         validate(j, post_sms_request_schema)
-    error = json.loads(e.value.message)
+    error = json.loads(str(e.value))
     assert len(error.get('errors')) == 1
     assert error['errors'] == [{'error': 'ValidationError',
                                 'message': "personalisation should contain key value pairs"}]
@@ -141,7 +141,7 @@ def test_post_sms_request_schema_invalid_phone_number(invalid_phone_number, err_
          }
     with pytest.raises(ValidationError) as e:
         validate(j, post_sms_request_schema)
-    errors = json.loads(e.value.message).get('errors')
+    errors = json.loads(str(e.value)).get('errors')
     assert len(errors) == 1
     assert {"error": "ValidationError", "message": err_msg} == errors[0]
 
@@ -151,7 +151,7 @@ def test_post_sms_request_schema_invalid_phone_number_and_missing_template():
          }
     with pytest.raises(ValidationError) as e:
         validate(j, post_sms_request_schema)
-    errors = json.loads(e.value.message).get('errors')
+    errors = json.loads(str(e.value)).get('errors')
     assert len(errors) == 2
     assert {"error": "ValidationError", "message": "phone_number Not a UK mobile number"} in errors
     assert {"error": "ValidationError", "message": "template_id is a required property"} in errors
@@ -264,7 +264,7 @@ def test_post_sms_response_schema_missing_uri_raises_validation_error(response, 
     del response['uri']
     with pytest.raises(ValidationError) as e:
         validate(response, schema)
-    error = json.loads(e.value.message)
+    error = json.loads(str(e.value))
     assert error['status_code'] == 400
     assert error['errors'] == [{'error': 'ValidationError',
                                'message': "uri is a required property"}]
@@ -278,10 +278,10 @@ def test_post_sms_response_schema_invalid_uri_raises_validation_error(response, 
     response['uri'] = 'invalid-uri'
     with pytest.raises(ValidationError) as e:
         validate(response, schema)
-    error = json.loads(e.value.message)
+    error = json.loads(str(e.value))
     assert error['status_code'] == 400
     assert error['errors'] == [{'error': 'ValidationError',
-                               'message': "uri invalid-uri is not a uri"}]
+                               'message': "uri invalid-uri is not a valid URI."}]
 
 
 @pytest.mark.parametrize('response, schema', [
@@ -292,7 +292,7 @@ def test_post_sms_response_schema_missing_template_uri_raises_validation_error(r
     del response['template']['uri']
     with pytest.raises(ValidationError) as e:
         validate(response, schema)
-    error = json.loads(e.value.message)
+    error = json.loads(str(e.value))
     assert error['status_code'] == 400
     assert error['errors'] == [{'error': 'ValidationError',
                                'message': "template uri is a required property"}]
@@ -306,10 +306,10 @@ def test_post_sms_response_schema_invalid_template_uri_raises_validation_error(r
     response['template']['uri'] = 'invalid-uri'
     with pytest.raises(ValidationError) as e:
         validate(response, schema)
-    error = json.loads(e.value.message)
+    error = json.loads(str(e.value))
     assert error['status_code'] == 400
     assert error['errors'] == [{'error': 'ValidationError',
-                               'message': "template invalid-uri is not a uri"}]
+                               'message': "template invalid-uri is not a valid URI."}]
 
 
 def test_get_notifications_response_with_email_and_phone_number():

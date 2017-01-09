@@ -306,7 +306,7 @@ def test_should_reject_email_notification_with_bad_email(notify_api, sample_emai
             mocked.apply_async.assert_not_called()
             assert response.status_code == 400
             assert data['result'] == 'error'
-            assert data['message']['to'][0] == 'Not a valid email address.'
+            assert data['message']['to'][0] == 'Not a valid email address'
 
 
 @freeze_time("2016-01-01 11:09:00.061258")

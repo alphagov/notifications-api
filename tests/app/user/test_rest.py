@@ -475,7 +475,7 @@ def test_send_user_reset_password_should_return_400_when_data_is_not_email_addre
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert resp.status_code == 400
-    assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Not a valid email address.']}
+    assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Not a valid email address']}
     assert mocked.call_count == 0
 
 
