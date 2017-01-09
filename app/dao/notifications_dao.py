@@ -216,14 +216,27 @@ def get_notification_billable_unit_count_per_month(service_id, year):
     start, end = get_financial_year(year)
 
     notifications = db.session.query(
-        func.date_trunc("month", (NotificationHistory.created_at + extract("timezone", func.timezone("Europe/London", NotificationHistory.created_at)) * timedelta(seconds=1))),
+        func.date_trunc("month",
+                        (NotificationHistory.created_at +
+                         extract("timezone", func.timezone("Europe/London",
+                                                           NotificationHistory.created_at)) * timedelta(seconds=1))),
         func.sum(NotificationHistory.billable_units)
     ).filter(
         NotificationHistory.billable_units != 0,
         NotificationHistory.service_id == service_id,
         NotificationHistory.created_at >= start,
         NotificationHistory.created_at < end
-    ).group_by(func.date_trunc("month", (NotificationHistory.created_at + extract("timezone", func.timezone("Europe/London", NotificationHistory.created_at)) * timedelta(seconds=1)))).all()
+    ).group_by(func.date_trunc("month",
+                               (NotificationHistory.created_at +
+                                extract("timezone",
+                                        func.timezone("Europe/London",
+                                                      NotificationHistory.created_at)) * timedelta(seconds=1)))
+               ).order_by(func.date_trunc("month",
+                                          (NotificationHistory.created_at +
+                                           extract("timezone",
+                                                   func.timezone("Europe/London",
+                                                                 NotificationHistory.created_at)) * timedelta(
+                                               seconds=1)))).all()
 
     return [(datetime.strftime(x[0], "%B"), x[1]) for x in notifications]
 
@@ -376,13 +389,5 @@ def get_financial_year(year):
 
 
 def get_april_fools(year):
-    return datetime(
-        year, 4, 1, 0, 0, 0, 0,
-        pytz.timezone("Europe/London")
-    ).astimezone(pytz.utc)
-
-
-def get_bst_month(datetime):
-    return pytz.utc.localize(datetime).astimezone(
-        pytz.timezone("Europe/London")
-    ).strftime('%B')
+    return pytz.timezone('Europe/London').localize(datetime(year, 4, 1, 0, 0, 0)).astimezone(pytz.UTC).replace(
+        tzinfo=None)

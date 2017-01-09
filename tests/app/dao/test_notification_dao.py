@@ -39,7 +39,8 @@ from app.dao.notifications_dao import (
     update_notification_status_by_reference,
     dao_delete_notifications_and_history_by_id,
     dao_timeout_notifications,
-    get_financial_year)
+    get_financial_year,
+    get_april_fools)
 
 from tests.app.conftest import (sample_notification, sample_template, sample_email_template, sample_service, sample_job,
                                 sample_api_key)
@@ -702,15 +703,15 @@ def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_ses
 
     for year, month, day, hour, minute, second in (
         (2017, 1, 15, 23, 59, 59),  # ↓ 2016 financial year
-        (2016, 9, 30, 23, 59, 59),  # counts in October (BST conversion)
+        (2016, 9, 30, 23, 59, 59),  # counts in October with BST conversion
         (2016, 6, 30, 23, 50, 20),
         (2016, 7, 15, 9, 20, 25),
-        (2016, 4, 15, 12, 30, 00),
         (2016, 4, 1, 1, 1, 00),
-        (2016, 4, 1, 0, 0, 00),  # ↓ 2015 financial year
-        (2016, 3, 20, 22, 40, 45),
+        (2016, 4, 1, 0, 0, 00),
+        (2016, 3, 31, 23, 00, 1),  # counts in April with BST conversion
+        (2015, 4, 1, 13, 8, 59),  # ↓ 2015 financial year
         (2015, 11, 20, 22, 40, 45),
-        (2016, 1, 15, 2, 30, 40)
+        (2016, 1, 31, 23, 30, 40)  # counts in January no BST conversion in winter
     ):
         sample_notification(
             notify_db, notify_db_session, service=sample_service,
@@ -726,11 +727,11 @@ def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_ses
         ),
         (
             2016,
-            [('April', 2), ('July', 2), ('October', 1), ('January', 1)]
+            [('April', 3), ('July', 2), ('October', 1), ('January', 1)]
         ),
         (
             2015,
-            [('November', 1), ('January', 1), ('March', 1), ('April', 1)]
+            [('April', 1), ('November', 1), ('January', 1)]
         ),
         (
             2014,
@@ -1203,7 +1204,9 @@ def test_should_exclude_test_key_notifications_by_default(
 
 def test_get_financial_year():
     start, end = get_financial_year(2000)
-    assert start.tzinfo == pytz.utc
-    assert start.isoformat() == '2000-04-01T00:01:00+00:00'
-    assert end.tzinfo == pytz.utc
-    assert end.isoformat() == '2001-04-01T00:01:00+00:00'
+    assert str(start) == '2000-03-31 23:00:00'
+    assert str(end) == '2001-03-31 23:00:00'
+
+
+def test_get_april_fools():
+    assert str(get_april_fools(2016)) == '2016-03-31 23:00:00'
