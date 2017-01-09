@@ -700,21 +700,23 @@ def test_get_all_notifications_for_job_by_status(notify_db, notify_db_session, s
 
 def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_session, sample_service):
 
-    for year, month, day in (
-        (2017, 1, 15),  # ↓ 2016 financial year
-        (2016, 8, 1),
-        (2016, 7, 15),
-        (2016, 4, 15),
-        (2016, 4, 15),
-        (2016, 4, 1),  # ↓ 2015 financial year
-        (2016, 3, 31),
-        (2016, 1, 15)
+    for year, month, day, hour, minute, second in (
+        (2017, 1, 15, 23, 59, 59),  # ↓ 2016 financial year
+        (2016, 9, 30, 23, 59, 59),  # counts in October (BST conversion)
+        (2016, 6, 30, 23, 50, 20),
+        (2016, 7, 15, 9, 20, 25),
+        (2016, 4, 15, 12, 30, 00),
+        (2016, 4, 1, 1, 1, 00),
+        (2016, 4, 1, 0, 0, 00),  # ↓ 2015 financial year
+        (2016, 3, 20, 22, 40, 45),
+        (2015, 11, 20, 22, 40, 45),
+        (2016, 1, 15, 2, 30, 40)
     ):
         sample_notification(
             notify_db, notify_db_session, service=sample_service,
             created_at=datetime(
-                year, month, day, 0, 0, 0, 0
-            ) - timedelta(hours=1, seconds=1)  # one second before midnight
+                year, month, day, hour, minute, second, 0
+            )
         )
 
     for financial_year, months in (
@@ -724,11 +726,11 @@ def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_ses
         ),
         (
             2016,
-            [('April', 2), ('July', 2), ('January', 1)]
+            [('April', 2), ('July', 2), ('October', 1), ('January', 1)]
         ),
         (
             2015,
-            [('January', 1), ('March', 2)]
+            [('November', 1), ('January', 1), ('March', 1), ('April', 1)]
         ),
         (
             2014,
