@@ -1,14 +1,13 @@
+
 import pytz
 from datetime import (
     datetime,
     timedelta,
-    date
-)
-from itertools import groupby
+    date)
 
 from flask import current_app
 from werkzeug.datastructures import MultiDict
-from sqlalchemy import (desc, func, or_, and_, asc)
+from sqlalchemy import (desc, func, or_, and_, asc, extract)
 from sqlalchemy.orm import joinedload
 
 from app import db, create_uuid
@@ -217,23 +216,16 @@ def get_notification_billable_unit_count_per_month(service_id, year):
     start, end = get_financial_year(year)
 
     notifications = db.session.query(
-        NotificationHistory.created_at,
-        NotificationHistory.billable_units
-    ).order_by(
-        NotificationHistory.created_at
+        func.date_trunc("month", (NotificationHistory.created_at + extract("timezone", func.timezone("Europe/London", NotificationHistory.created_at)) * timedelta(seconds=1))),
+        func.sum(NotificationHistory.billable_units)
     ).filter(
         NotificationHistory.billable_units != 0,
         NotificationHistory.service_id == service_id,
         NotificationHistory.created_at >= start,
         NotificationHistory.created_at < end
-    )
+    ).group_by(func.date_trunc("month", (NotificationHistory.created_at + extract("timezone", func.timezone("Europe/London", NotificationHistory.created_at)) * timedelta(seconds=1)))).all()
 
-    return [
-        (month, sum(count for _, count in row))
-        for month, row in groupby(
-            notifications, lambda row: get_bst_month(row[0])
-        )
-    ]
+    return [(datetime.strftime(x[0], "%B"), x[1]) for x in notifications]
 
 
 @statsd(namespace="dao")
