@@ -215,28 +215,28 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
 def get_notification_billable_unit_count_per_month(service_id, year):
     start, end = get_financial_year(year)
 
+    """
+     The query needs to sum the billable_units per month, but this needs to be the month in BST (Britsh Standard Time).
+     The database stores all timestamps as UTC without the timezone.
+      - First get the created_at as Europe/London or BST
+      - then extract the timezone portion of the datetime
+      - then add the timezone portion to the created_at datetime
+      - lastly truncate the datetime to month to group the sum of the billable_units
+    """
+    month = func.date_trunc("month", (NotificationHistory.created_at +
+                                      extract("timezone",
+                                              func.timezone("Europe/London",
+                                                            NotificationHistory.created_at)) * timedelta(seconds=1)))
     notifications = db.session.query(
-        func.date_trunc("month",
-                        (NotificationHistory.created_at +
-                         extract("timezone", func.timezone("Europe/London",
-                                                           NotificationHistory.created_at)) * timedelta(seconds=1))),
+        month,
         func.sum(NotificationHistory.billable_units)
     ).filter(
         NotificationHistory.billable_units != 0,
         NotificationHistory.service_id == service_id,
         NotificationHistory.created_at >= start,
         NotificationHistory.created_at < end
-    ).group_by(func.date_trunc("month",
-                               (NotificationHistory.created_at +
-                                extract("timezone",
-                                        func.timezone("Europe/London",
-                                                      NotificationHistory.created_at)) * timedelta(seconds=1)))
-               ).order_by(func.date_trunc("month",
-                                          (NotificationHistory.created_at +
-                                           extract("timezone",
-                                                   func.timezone("Europe/London",
-                                                                 NotificationHistory.created_at)) * timedelta(
-                                               seconds=1)))).all()
+    ).group_by(month
+               ).order_by(month).all()
 
     return [(datetime.strftime(x[0], "%B"), x[1]) for x in notifications]
 
@@ -389,5 +389,11 @@ def get_financial_year(year):
 
 
 def get_april_fools(year):
+    """
+     This function converts the start of the financial year April 1, 00:00 as BST (British Standard Time) to UTC,
+     the tzinfo is lastly removed from the datetime becasue the database stores the timestamps without timezone.
+     :param year: the year to calculate the April 1, 00:00 BST for
+     :return: the datetime of April 1 for the given year, for example 2016 = 2016-03-31 23:00:00
+    """
     return pytz.timezone('Europe/London').localize(datetime(year, 4, 1, 0, 0, 0)).astimezone(pytz.UTC).replace(
         tzinfo=None)

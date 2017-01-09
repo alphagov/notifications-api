@@ -1209,4 +1209,6 @@ def test_get_financial_year():
 
 
 def test_get_april_fools():
-    assert str(get_april_fools(2016)) == '2016-03-31 23:00:00'
+    april_fools = get_april_fools(2016)
+    assert str(april_fools) == '2016-03-31 23:00:00'
+    assert april_fools.tzinfo is None
