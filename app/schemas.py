@@ -124,7 +124,7 @@ class UserUpdateAttributeSchema(BaseSchema):
         try:
             validate_email_address(value)
         except InvalidEmailError as e:
-            raise ValidationError(e.message)
+            raise ValidationError(str(e))
 
     @validates('mobile_number')
     def validate_mobile_number(self, value):
@@ -314,7 +314,7 @@ class EmailNotificationSchema(NotificationSchema):
         try:
             validate_email_address(value)
         except InvalidEmailError as e:
-            raise ValidationError(e.message)
+            raise ValidationError(str(e))
 
 
 class SmsTemplateNotificationSchema(SmsNotificationSchema):
@@ -413,7 +413,7 @@ class InvitedUserSchema(BaseSchema):
         try:
             validate_email_address(value)
         except InvalidEmailError as e:
-            raise ValidationError(e.message)
+            raise ValidationError(str(e))
 
 
 class PermissionSchema(BaseSchema):
@@ -446,7 +446,7 @@ class EmailDataSchema(ma.Schema):
         try:
             validate_email_address(value)
         except InvalidEmailError as e:
-            raise ValidationError(e.message)
+            raise ValidationError(str(e))
 
 
 class NotificationsFilterSchema(ma.Schema):
