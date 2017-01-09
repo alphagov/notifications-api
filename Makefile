@@ -130,8 +130,8 @@ prepare-docker-build-image: ## Prepare the Docker builder image
 build-with-docker: prepare-docker-build-image ## Build inside a Docker container
 	@docker run -i --rm \
 		--name "${DOCKER_CONTAINER_PREFIX}-build" \
-		-v `pwd`:/var/project \
-		-v ${PIP_ACCEL_CACHE}:/var/project/cache/pip-accel \
+		-v "`pwd`:/var/project" \
+		-v "${PIP_ACCEL_CACHE}:/var/project/cache/pip-accel" \
 		-e GIT_COMMIT=${GIT_COMMIT} \
 		-e BUILD_NUMBER=${BUILD_NUMBER} \
 		-e BUILD_URL=${BUILD_URL} \
@@ -174,7 +174,7 @@ test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests 
 		-e https_proxy="${HTTPS_PROXY}" \
 		-e HTTPS_PROXY="${HTTPS_PROXY}" \
 		-e NO_PROXY="${NO_PROXY}" \
-		-v `pwd`:/var/project \
+		-v "`pwd`:/var/project" \
 		${DOCKER_BUILDER_IMAGE_NAME} \
 		make test
 
@@ -193,7 +193,7 @@ create-docker-test-db: ## Start the test database in a Docker container
 coverage-with-docker: prepare-docker-build-image ## Generates coverage report inside a Docker container
 	@docker run -i --rm \
 		--name "${DOCKER_CONTAINER_PREFIX}-coverage" \
-		-v `pwd`:/var/project \
+		-v "`pwd`:/var/project" \
 		-e COVERALLS_REPO_TOKEN=${COVERALLS_REPO_TOKEN} \
 		-e CIRCLECI=1 \
 		-e CI_NAME=${CI_NAME} \
@@ -261,7 +261,7 @@ cf-push-delivery: ## Deploys a delivery app to Cloud Foundry
 define cf_deploy_with_docker
 	@docker run -i --rm \
 		--name "${DOCKER_CONTAINER_PREFIX}-${1}" \
-		-v `pwd`:/var/project \
+		-v "`pwd`:/var/project" \
 		-e http_proxy="${HTTP_PROXY}" \
 		-e HTTP_PROXY="${HTTP_PROXY}" \
 		-e https_proxy="${HTTPS_PROXY}" \
