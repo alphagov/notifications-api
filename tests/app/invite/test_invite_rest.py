@@ -60,7 +60,7 @@ def test_create_invited_user_invalid_email(client, sample_service, mocker):
     assert response.status_code == 400
     json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp['result'] == 'error'
-    assert json_resp['message'] == {'email_address': ['Not a valid email address.']}
+    assert json_resp['message'] == {'email_address': ['Not a valid email address']}
     assert mocked.call_count == 0
 
 

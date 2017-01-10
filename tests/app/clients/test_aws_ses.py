@@ -92,8 +92,8 @@ def test_send_email_raises_bad_email_as_InvalidEmailError(mocker):
             body=Mock()
         )
 
-    assert 'some error message from amazon' in excinfo.value.message
-    assert 'clearly@invalid@email.com' in excinfo.value.message
+    assert 'some error message from amazon' in str(excinfo.value)
+    assert 'clearly@invalid@email.com' in str(excinfo.value)
 
 
 def test_send_email_raises_other_errs_as_AwsSesClientException(mocker):

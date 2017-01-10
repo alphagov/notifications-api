@@ -30,8 +30,10 @@ def validate(json_to_validate, schema):
 def build_error_message(errors):
     fields = []
     for e in errors:
-        field = "{} {}".format(e.path[0], e.schema.get('validationMessage')) if e.schema.get(
-            'validationMessage') else __format_message(e)
+        field = (
+            "{} {}".format(e.path[0], e.schema['validationMessage'])
+            if 'validationMessage' in e.schema else __format_message(e)
+        )
         fields.append({"error": "ValidationError", "message": field})
     message = {
         "status_code": 400,
@@ -52,13 +54,10 @@ def __format_message(e):
             return error_path
 
     def get_error_message(e):
-        error_message = None
-        try:
-            error_message = e.cause.message
-        except AttributeError:
-            error_message = e.message
-        finally:
-            return error_message.replace("'", '')
+        # e.cause is an exception (such as InvalidPhoneError). if it's not present it was a standard jsonschema error
+        # such as a required field not being present
+        error_message = str(e.cause) if e.cause else e.message
+        return error_message.replace("'", '')
 
     path = get_path(e)
     message = get_error_message(e)
