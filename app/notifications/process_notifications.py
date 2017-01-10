@@ -32,7 +32,7 @@ def check_placeholders(template_object):
 def persist_notification(template_id,
                          template_version,
                          recipient,
-                         service_id,
+                         service,
                          personalisation,
                          notification_type,
                          api_key_id,
@@ -47,7 +47,8 @@ def persist_notification(template_id,
         template_id=template_id,
         template_version=template_version,
         to=recipient,
-        service_id=service_id,
+        service_id=service.id,
+        service=service,
         personalisation=personalisation,
         notification_type=notification_type,
         api_key_id=api_key_id,
@@ -58,7 +59,7 @@ def persist_notification(template_id,
         client_reference=reference
     )
     dao_create_notification(notification)
-    redis_store.incr(redis.daily_limit_cache_key(service_id))
+    redis_store.incr(redis.daily_limit_cache_key(service.id))
     return notification
 
 
