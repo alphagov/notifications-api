@@ -1,14 +1,13 @@
+
 import pytz
 from datetime import (
     datetime,
     timedelta,
-    date
-)
-from itertools import groupby
+    date)
 
 from flask import current_app
 from werkzeug.datastructures import MultiDict
-from sqlalchemy import (desc, func, or_, and_, asc)
+from sqlalchemy import (desc, func, or_, and_, asc, extract)
 from sqlalchemy.orm import joinedload
 
 from app import db, create_uuid
@@ -226,24 +225,31 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
 def get_notification_billable_unit_count_per_month(service_id, year):
     start, end = get_financial_year(year)
 
+    """
+     The query needs to sum the billable_units per month, but this needs to be the month in BST (British Standard Time).
+     The database stores all timestamps as UTC without the timezone.
+      - First set the timezone on created_at to UTC
+      - then convert the timezone to BST (or Europe/London)
+      - lastly truncate the datetime to month to group the sum of the billable_units
+    """
+    month = func.date_trunc("month",
+                            func.timezone("Europe/London", func.timezone("UTC",
+                                                                         NotificationHistory.created_at)))
     notifications = db.session.query(
-        NotificationHistory.created_at,
-        NotificationHistory.billable_units
-    ).order_by(
-        NotificationHistory.created_at
+        month,
+        func.sum(NotificationHistory.billable_units)
     ).filter(
         NotificationHistory.billable_units != 0,
         NotificationHistory.service_id == service_id,
         NotificationHistory.created_at >= start,
         NotificationHistory.created_at < end
-    )
+    ).group_by(
+        month
+    ).order_by(
+        month
+    ).all()
 
-    return [
-        (month, sum(count for _, count in row))
-        for month, row in groupby(
-            notifications, lambda row: get_bst_month(row[0])
-        )
-    ]
+    return [(datetime.strftime(x[0], "%B"), x[1]) for x in notifications]
 
 
 @statsd(namespace="dao")
@@ -394,13 +400,11 @@ def get_financial_year(year):
 
 
 def get_april_fools(year):
-    return datetime(
-        year, 4, 1, 0, 0, 0, 0,
-        pytz.timezone("Europe/London")
-    ).astimezone(pytz.utc)
-
-
-def get_bst_month(datetime):
-    return pytz.utc.localize(datetime).astimezone(
-        pytz.timezone("Europe/London")
-    ).strftime('%B')
+    """
+     This function converts the start of the financial year April 1, 00:00 as BST (British Standard Time) to UTC,
+     the tzinfo is lastly removed from the datetime becasue the database stores the timestamps without timezone.
+     :param year: the year to calculate the April 1, 00:00 BST for
+     :return: the datetime of April 1 for the given year, for example 2016 = 2016-03-31 23:00:00
+    """
+    return pytz.timezone('Europe/London').localize(datetime(year, 4, 1, 0, 0, 0)).astimezone(pytz.UTC).replace(
+        tzinfo=None)

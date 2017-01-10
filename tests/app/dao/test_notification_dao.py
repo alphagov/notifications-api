@@ -39,7 +39,8 @@ from app.dao.notifications_dao import (
     update_notification_status_by_reference,
     dao_delete_notifications_and_history_by_id,
     dao_timeout_notifications,
-    get_financial_year)
+    get_financial_year,
+    get_april_fools)
 
 from app.dao.services_dao import dao_update_service
 
@@ -150,11 +151,11 @@ def test_should_by_able_to_get_template_count_from_notifications_history(notify_
 
 
 def test_template_history_should_ignore_test_keys(
-        notify_db,
-        notify_db_session,
-        sample_team_api_key,
-        sample_test_api_key,
-        sample_api_key
+    notify_db,
+    notify_db_session,
+    sample_team_api_key,
+    sample_test_api_key,
+    sample_api_key
 ):
     sms = sample_template(notify_db, notify_db_session)
 
@@ -764,28 +765,31 @@ def test_get_all_notifications_for_job_by_status(notify_db, notify_db_session, s
 
 
 def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_session, sample_service):
-    for year, month, day in (
-            (2017, 1, 15),  # ↓ 2016 financial year
-            (2016, 8, 1),
-            (2016, 7, 15),
-            (2016, 4, 15),
-            (2016, 4, 15),
-            (2016, 4, 1),  # ↓ 2015 financial year
-            (2016, 3, 31),
-            (2016, 1, 15)
+
+    for year, month, day, hour, minute, second in (
+        (2017, 1, 15, 23, 59, 59),  # ↓ 2016 financial year
+        (2016, 9, 30, 23, 59, 59),  # counts in October with BST conversion
+        (2016, 6, 30, 23, 50, 20),
+        (2016, 7, 15, 9, 20, 25),
+        (2016, 4, 1, 1, 1, 00),
+        (2016, 4, 1, 0, 0, 00),
+        (2016, 3, 31, 23, 00, 1),  # counts in April with BST conversion
+        (2015, 4, 1, 13, 8, 59),  # ↓ 2015 financial year
+        (2015, 11, 20, 22, 40, 45),
+        (2016, 1, 31, 23, 30, 40)  # counts in January no BST conversion in winter
     ):
         sample_notification(
             notify_db, notify_db_session, service=sample_service,
             created_at=datetime(
-                year, month, day, 0, 0, 0, 0
-            ) - timedelta(hours=1, seconds=1)  # one second before midnight
+                year, month, day, hour, minute, second, 0
+            )
         )
 
     for financial_year, months in (
-            (2017, []),
-            (2016, [('April', 2), ('July', 2), ('January', 1)]),
-            (2015, [('January', 1), ('March', 2)]),
-            (2014, [])
+        (2017, []),
+        (2016, [('April', 3), ('July', 2), ('October', 1), ('January', 1)]),
+        (2015, [('April', 1), ('November', 1), ('January', 1)]),
+        (2014, [])
     ):
         assert get_notification_billable_unit_count_per_month(
             sample_service.id, financial_year
@@ -1294,7 +1298,11 @@ def test_should_exclude_test_key_notifications_by_default(
 
 def test_get_financial_year():
     start, end = get_financial_year(2000)
-    assert start.tzinfo == pytz.utc
-    assert start.isoformat() == '2000-04-01T00:01:00+00:00'
-    assert end.tzinfo == pytz.utc
-    assert end.isoformat() == '2001-04-01T00:01:00+00:00'
+    assert str(start) == '2000-03-31 23:00:00'
+    assert str(end) == '2001-03-31 23:00:00'
+
+
+def test_get_april_fools():
+    april_fools = get_april_fools(2016)
+    assert str(april_fools) == '2016-03-31 23:00:00'
+    assert april_fools.tzinfo is None
