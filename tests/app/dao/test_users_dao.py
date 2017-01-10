@@ -21,8 +21,7 @@ from app.models import User, VerifyCode
 from tests.app.db import create_user
 
 
-@pytest.mark.usefixtures('notify_db_session')
-def test_create_user():
+def test_create_user(notify_db_session):
     email = 'notify@digital.cabinet-office.gov.uk'
     data = {
         'name': 'Test User',
@@ -38,8 +37,7 @@ def test_create_user():
     assert not user.platform_admin
 
 
-@pytest.mark.usefixtures('notify_db_session')
-def test_get_all_users():
+def test_get_all_users(notify_db_session):
     create_user(email='1@test.com')
     create_user(email='2@test.com')
 
@@ -47,21 +45,18 @@ def test_get_all_users():
     assert len(get_user_by_id()) == 2
 
 
-@pytest.mark.usefixtures('notify_db_session')
-def test_get_user():
+def test_get_user(notify_db_session):
     email = '1@test.com'
     user = create_user(email=email)
     assert get_user_by_id(user_id=user.id).email_address == email
 
 
-@pytest.mark.usefixtures('notify_db_session')
-def test_get_user_not_exists(fake_uuid):
+def test_get_user_not_exists(notify_db_session, fake_uuid):
     with pytest.raises(NoResultFound):
         get_user_by_id(user_id=fake_uuid)
 
 
-@pytest.mark.usefixtures('notify_db_session')
-def test_get_user_invalid_id():
+def test_get_user_invalid_id(notify_db_session):
     with pytest.raises(DataError):
         get_user_by_id(user_id="blah")
 

@@ -10,8 +10,8 @@ def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-off
         'mobile_number': mobile_number,
         'state': 'active'
     }
-    usr = User.query.filter_by(email_address=email).first()
-    if not usr:
-        usr = User(**data)
-    save_model_user(usr)
-    return usr
+    user = User.query.filter_by(email_address=email).first()
+    if not user:
+        user = User(**data)
+    save_model_user(user)
+    return user
