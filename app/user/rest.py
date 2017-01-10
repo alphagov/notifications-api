@@ -220,12 +220,13 @@ def send_user_email_verification(user_id):
 def send_already_registered_email(user_id):
     to, errors = email_data_request_schema.load(request.get_json())
     template = dao_get_template_by_id(current_app.config['ALREADY_REGISTERED_EMAIL_TEMPLATE_ID'])
+    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
 
     saved_notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
         recipient=to['email'],
-        service_id=current_app.config['NOTIFY_SERVICE_ID'],
+        service=service,
         personalisation={
             'signin_url': current_app.config['ADMIN_BASE_URL'] + '/sign-in',
             'forgot_password_url': current_app.config['ADMIN_BASE_URL'] + '/forgot-password',
@@ -283,12 +284,12 @@ def send_user_reset_password():
     user_to_send_to = get_user_by_email(email['email'])
 
     template = dao_get_template_by_id(current_app.config['PASSWORD_RESET_TEMPLATE_ID'])
-
+    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
     saved_notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
         recipient=email['email'],
-        service_id=current_app.config['NOTIFY_SERVICE_ID'],
+        service=service,
         personalisation={
             'user_name': user_to_send_to.name,
             'url': _create_reset_password_url(user_to_send_to.email_address)

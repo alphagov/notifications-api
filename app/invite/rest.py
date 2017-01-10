@@ -10,7 +10,7 @@ from app.dao.invited_user_dao import (
     get_invited_users_for_service
 )
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import EMAIL_TYPE, KEY_TYPE_NORMAL
+from app.models import EMAIL_TYPE, KEY_TYPE_NORMAL, Service
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.schemas import invited_user_schema
 
@@ -27,12 +27,13 @@ def create_invited_user(service_id):
     save_invited_user(invited_user)
 
     template = dao_get_template_by_id(current_app.config['INVITATION_EMAIL_TEMPLATE_ID'])
+    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
 
     saved_notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
         recipient=invited_user.email_address,
-        service_id=current_app.config['NOTIFY_SERVICE_ID'],
+        service=service,
         personalisation={
             'user_name': invited_user.from_user.name,
             'service_name': invited_user.service.name,
