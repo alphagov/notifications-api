@@ -238,7 +238,7 @@ def send_notification(notification_type):
         saved_notification = persist_notification(template_id=template.id,
                                                   template_version=template.version,
                                                   recipient=notification['to'],
-                                                  service_id=service.id,
+                                                  service=service,
                                                   personalisation=notification.get('personalisation', None),
                                                   notification_type=notification_type,
                                                   api_key_id=api_user.id,

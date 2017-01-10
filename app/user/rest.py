@@ -16,7 +16,7 @@ from app.dao.users_dao import (
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import SMS_TYPE, KEY_TYPE_NORMAL, EMAIL_TYPE
+from app.models import SMS_TYPE, KEY_TYPE_NORMAL, EMAIL_TYPE, Service
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue
@@ -139,13 +139,13 @@ def send_user_sms_code(user_id):
     mobile = user_to_send_to.mobile_number if verify_code.get('to', None) is None else verify_code.get('to')
     sms_code_template_id = current_app.config['SMS_CODE_TEMPLATE_ID']
     sms_code_template = dao_get_template_by_id(sms_code_template_id)
-    notify_service_id = current_app.config['NOTIFY_SERVICE_ID']
+    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
 
     saved_notification = persist_notification(
         template_id=sms_code_template_id,
         template_version=sms_code_template.version,
         recipient=mobile,
-        service_id=notify_service_id,
+        service=service,
         personalisation={'verify_code': secret_code},
         notification_type=SMS_TYPE,
         api_key_id=None,
@@ -167,13 +167,13 @@ def send_user_confirm_new_email(user_id):
         raise InvalidRequest(message=errors, status_code=400)
 
     template = dao_get_template_by_id(current_app.config['CHANGE_EMAIL_CONFIRMATION_TEMPLATE_ID'])
-    notify_service_id = current_app.config['NOTIFY_SERVICE_ID']
+    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
 
     saved_notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
         recipient=email['email'],
-        service_id=notify_service_id,
+        service=service,
         personalisation={
             'name': user_to_send_to.name,
             'url': _create_confirmation_url(user=user_to_send_to, email_address=email['email']),
@@ -195,12 +195,13 @@ def send_user_email_verification(user_id):
     create_user_code(user_to_send_to, secret_code, 'email')
 
     template = dao_get_template_by_id(current_app.config['EMAIL_VERIFY_CODE_TEMPLATE_ID'])
+    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
 
     saved_notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
         recipient=user_to_send_to.email_address,
-        service_id=current_app.config['NOTIFY_SERVICE_ID'],
+        service=service,
         personalisation={
             'name': user_to_send_to.name,
             'url': _create_verification_url(user_to_send_to, secret_code)
@@ -219,12 +220,13 @@ def send_user_email_verification(user_id):
 def send_already_registered_email(user_id):
     to, errors = email_data_request_schema.load(request.get_json())
     template = dao_get_template_by_id(current_app.config['ALREADY_REGISTERED_EMAIL_TEMPLATE_ID'])
+    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
 
     saved_notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
         recipient=to['email'],
-        service_id=current_app.config['NOTIFY_SERVICE_ID'],
+        service=service,
         personalisation={
             'signin_url': current_app.config['ADMIN_BASE_URL'] + '/sign-in',
             'forgot_password_url': current_app.config['ADMIN_BASE_URL'] + '/forgot-password',
@@ -282,12 +284,12 @@ def send_user_reset_password():
     user_to_send_to = get_user_by_email(email['email'])
 
     template = dao_get_template_by_id(current_app.config['PASSWORD_RESET_TEMPLATE_ID'])
-
+    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
     saved_notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
         recipient=email['email'],
-        service_id=current_app.config['NOTIFY_SERVICE_ID'],
+        service=service,
         personalisation={
             'user_name': user_to_send_to.name,
             'url': _create_reset_password_url(user_to_send_to.email_address)
