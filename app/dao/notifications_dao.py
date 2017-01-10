@@ -216,17 +216,15 @@ def get_notification_billable_unit_count_per_month(service_id, year):
     start, end = get_financial_year(year)
 
     """
-     The query needs to sum the billable_units per month, but this needs to be the month in BST (Britsh Standard Time).
+     The query needs to sum the billable_units per month, but this needs to be the month in BST (British Standard Time).
      The database stores all timestamps as UTC without the timezone.
-      - First get the created_at as Europe/London or BST
-      - then extract the timezone portion of the datetime
-      - then add the timezone portion to the created_at datetime
+      - First set the timezone on created_at to UTC
+      - then convert the timezone to BST (or Europe/London)
       - lastly truncate the datetime to month to group the sum of the billable_units
     """
-    month = func.date_trunc("month", (NotificationHistory.created_at +
-                                      extract("timezone",
-                                              func.timezone("Europe/London",
-                                                            NotificationHistory.created_at)) * timedelta(seconds=1)))
+    month = func.date_trunc("month",
+                            func.timezone("Europe/London", func.timezone("UTC",
+                                                                         NotificationHistory.created_at)))
     notifications = db.session.query(
         month,
         func.sum(NotificationHistory.billable_units)
@@ -235,8 +233,11 @@ def get_notification_billable_unit_count_per_month(service_id, year):
         NotificationHistory.service_id == service_id,
         NotificationHistory.created_at >= start,
         NotificationHistory.created_at < end
-    ).group_by(month
-               ).order_by(month).all()
+    ).group_by(
+        month
+    ).order_by(
+        month
+    ).all()
 
     return [(datetime.strftime(x[0], "%B"), x[1]) for x in notifications]
 
