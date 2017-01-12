@@ -10,6 +10,7 @@ GIT_COMMIT ?= $(shell git rev-parse HEAD)
 
 DOCKER_IMAGE_TAG := $(shell cat docker/VERSION)
 DOCKER_BUILDER_IMAGE_NAME = govuk/notify-api-builder:${DOCKER_IMAGE_TAG}
+DOCKER_TTY ?= $(if ${JENKINS_HOME},,t)
 
 BUILD_TAG ?= notifications-api-manual
 BUILD_NUMBER ?= 0
@@ -128,10 +129,12 @@ prepare-docker-build-image: ## Prepare the Docker builder image
 
 .PHONY: build-with-docker
 build-with-docker: prepare-docker-build-image ## Build inside a Docker container
-	@docker run -i --rm \
+	@docker run -i${DOCKER_TTY} --rm \
 		--name "${DOCKER_CONTAINER_PREFIX}-build" \
 		-v "`pwd`:/var/project" \
 		-v "${PIP_ACCEL_CACHE}:/var/project/cache/pip-accel" \
+		-e UID=$(shell id -u) \
+		-e GID=$(shell id -g) \
 		-e GIT_COMMIT=${GIT_COMMIT} \
 		-e BUILD_NUMBER=${BUILD_NUMBER} \
 		-e BUILD_URL=${BUILD_URL} \
@@ -141,14 +144,16 @@ build-with-docker: prepare-docker-build-image ## Build inside a Docker container
 		-e HTTPS_PROXY="${HTTPS_PROXY}" \
 		-e NO_PROXY="${NO_PROXY}" \
 		${DOCKER_BUILDER_IMAGE_NAME} \
-		make build
+		gosu hostuser make build
 
 .PHONY: cf-build-with-docker
 cf-build-with-docker: prepare-docker-build-image ## Build inside a Docker container
-	@docker run -i --rm \
+	@docker run -i${DOCKER_TTY} --rm \
 		--name "${DOCKER_CONTAINER_PREFIX}-build" \
 		-v "`pwd`:/var/project" \
 		-v "${PIP_ACCEL_CACHE}:/var/project/cache/pip-accel" \
+		-e UID=$(shell id -u) \
+		-e GID=$(shell id -g) \
 		-e GIT_COMMIT=${GIT_COMMIT} \
 		-e BUILD_NUMBER=${BUILD_NUMBER} \
 		-e BUILD_URL=${BUILD_URL} \
@@ -158,13 +163,15 @@ cf-build-with-docker: prepare-docker-build-image ## Build inside a Docker contai
 		-e HTTPS_PROXY="${HTTPS_PROXY}" \
 		-e NO_PROXY="${NO_PROXY}" \
 		${DOCKER_BUILDER_IMAGE_NAME} \
-		make cf-build
+		gosu hostuser make cf-build
 
 .PHONY: test-with-docker
 test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests inside a Docker container
-	@docker run -i --rm \
+	@docker run -i${DOCKER_TTY} --rm \
 		--name "${DOCKER_CONTAINER_PREFIX}-test" \
 		--link "${DOCKER_CONTAINER_PREFIX}-db:postgres" \
+		-e UID=$(shell id -u) \
+		-e GID=$(shell id -g) \
 		-e TEST_DATABASE=postgresql://postgres:postgres@postgres/test_notification_api \
 		-e GIT_COMMIT=${GIT_COMMIT} \
 		-e BUILD_NUMBER=${BUILD_NUMBER} \
@@ -176,7 +183,7 @@ test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests 
 		-e NO_PROXY="${NO_PROXY}" \
 		-v "`pwd`:/var/project" \
 		${DOCKER_BUILDER_IMAGE_NAME} \
-		make test
+		gosu hostuser make test
 
 .PHONY: test-with-docker
 create-docker-test-db: ## Start the test database in a Docker container
@@ -191,9 +198,11 @@ create-docker-test-db: ## Start the test database in a Docker container
 # FIXME: CIRCLECI=1 is an ugly hack because the coveralls-python library sends the PR link only this way
 .PHONY: coverage-with-docker
 coverage-with-docker: prepare-docker-build-image ## Generates coverage report inside a Docker container
-	@docker run -i --rm \
+	@docker run -i${DOCKER_TTY} --rm \
 		--name "${DOCKER_CONTAINER_PREFIX}-coverage" \
 		-v "`pwd`:/var/project" \
+		-e UID=$(shell id -u) \
+		-e GID=$(shell id -g) \
 		-e COVERALLS_REPO_TOKEN=${COVERALLS_REPO_TOKEN} \
 		-e CIRCLECI=1 \
 		-e CI_NAME=${CI_NAME} \
@@ -207,7 +216,7 @@ coverage-with-docker: prepare-docker-build-image ## Generates coverage report in
 		-e HTTPS_PROXY="${HTTPS_PROXY}" \
 		-e NO_PROXY="${NO_PROXY}" \
 		${DOCKER_BUILDER_IMAGE_NAME} \
-		make coverage
+		gosu hostuser make coverage
 
 .PHONY: clean-docker-containers
 clean-docker-containers: ## Clean up any remaining docker containers
@@ -259,9 +268,11 @@ cf-push-delivery: ## Deploys a delivery app to Cloud Foundry
 	cf push ${CF_APP} -f manifest-$(subst notify-,,${CF_APP}).yml
 
 define cf_deploy_with_docker
-	@docker run -i --rm \
+	@docker run -i${DOCKER_TTY} --rm \
 		--name "${DOCKER_CONTAINER_PREFIX}-${1}" \
 		-v "`pwd`:/var/project" \
+		-e UID=$(shell id -u) \
+		-e GID=$(shell id -g) \
 		-e http_proxy="${HTTP_PROXY}" \
 		-e HTTP_PROXY="${HTTP_PROXY}" \
 		-e https_proxy="${HTTPS_PROXY}" \

@@ -19,5 +19,15 @@ build:
 .PHONY: bash
 bash:
 	docker run -it --rm \
-		govuk/notify-api-builder \
+		-e UID=$(shell id -u) \
+		-e GID=$(shell id -g) \
+		govuk/notify-api-builder:${DOCKER_IMAGE_TAG} \
 		bash
+
+.PHONY: bash
+bash-hostuser:
+	docker run -it --rm \
+		-e UID=$(shell id -u) \
+		-e GID=$(shell id -g) \
+		govuk/notify-api-builder:${DOCKER_IMAGE_TAG} \
+		gosu hostuser bash
