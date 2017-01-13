@@ -258,6 +258,11 @@ class NotificationStatistics(db.Model):
     )
 
 
+class TemplateProcessTypes(db.Model):
+    __tablename__ = 'template_process_type'
+    name = db.Column(db.String(255), primary_key=True)
+
+
 SMS_TYPE = 'sms'
 EMAIL_TYPE = 'email'
 LETTER_TYPE = 'letter'
@@ -265,6 +270,10 @@ LETTER_TYPE = 'letter'
 TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
 
 template_types = db.Enum(*TEMPLATE_TYPES, name='template_type')
+
+NORMAL = 'normal'
+PRIORITY = 'priority'
+TEMPLATE_PROCESS_TYPE = [NORMAL, PRIORITY]
 
 
 class Template(db.Model):
@@ -293,6 +302,11 @@ class Template(db.Model):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     created_by = db.relationship('User')
     version = db.Column(db.Integer, default=1, nullable=False)
+    process_type = db.Column(db.String(255),
+                             db.ForeignKey('template_process_type.name'),
+                             index=True,
+                             nullable=True,
+                             default=NORMAL)
 
     def get_link(self):
         # TODO: use "/v2/" route once available
@@ -320,7 +334,11 @@ class TemplateHistory(db.Model):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     created_by = db.relationship('User')
     version = db.Column(db.Integer, primary_key=True, nullable=False)
-
+    process_type = db.Column(db.String(255),
+                             db.ForeignKey('template_process_type.name'),
+                             index=True,
+                             nullable=True,
+                             default=NORMAL)
 
 MMG_PROVIDER = "mmg"
 FIRETEXT_PROVIDER = "firetext"
