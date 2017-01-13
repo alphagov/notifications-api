@@ -22,10 +22,10 @@ def upgrade():
     op.execute("INSERT INTO template_process_type VALUES ('normal'), ('priority')")
     op.add_column('templates', sa.Column('process_type', sa.String(length=255), nullable=True))
     op.create_index(op.f('ix_templates_process_type'), 'templates', ['process_type'], unique=False)
-    op.create_foreign_key('templates_history_process_type_fkey', 'templates', 'template_process_type', ['process_type'], ['name'])
+    op.create_foreign_key('templates_process_type_fkey', 'templates', 'template_process_type', ['process_type'], ['name'])
     op.add_column('templates_history', sa.Column('process_type', sa.String(length=255), nullable=True))
     op.create_index(op.f('ix_templates_history_process_type'), 'templates_history', ['process_type'], unique=False)
-    op.create_foreign_key('templates_process_type_fkey', 'templates_history', 'template_process_type', ['process_type'], ['name'])
+    op.create_foreign_key('templates_history_process_type_fkey', 'templates_history', 'template_process_type', ['process_type'], ['name'])
 
 
 def downgrade():
