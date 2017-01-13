@@ -25,7 +25,7 @@ from app.models import (
     ServiceWhitelist,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM,
     MOBILE_TYPE, EMAIL_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED)
-from app.dao.users_dao import (save_model_user, create_user_code, create_secret_code)
+from app.dao.users_dao import (create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
 from app.dao.api_key_dao import save_model_api_key
@@ -34,6 +34,8 @@ from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
 from app.dao.provider_rates_dao import create_provider_rates
 from app.clients.sms.firetext import FiretextClient
+
+from tests.app.db import create_user
 
 
 @pytest.yield_fixture
@@ -47,7 +49,7 @@ def service_factory(notify_db, notify_db_session):
     class ServiceFactory(object):
         def get(self, service_name, user=None, template_type=None, email_from=None):
             if not user:
-                user = sample_user(notify_db, notify_db_session)
+                user = create_user()
             if not email_from:
                 email_from = service_name
             service = sample_service(notify_db, notify_db_session, service_name, user, email_from=email_from)
@@ -71,30 +73,15 @@ def service_factory(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def sample_user(notify_db,
-                notify_db_session,
-                mobile_numnber="+447700900986",
-                email="notify@digital.cabinet-office.gov.uk"):
-    data = {
-        'name': 'Test User',
-        'email_address': email,
-        'password': 'password',
-        'mobile_number': mobile_numnber,
-        'state': 'active'
-    }
-    usr = User.query.filter_by(email_address=email).first()
-    if not usr:
-        usr = User(**data)
-        save_model_user(usr)
-
-    return usr
+def sample_user(notify_db_session):
+    return create_user()
 
 
 def create_code(notify_db, notify_db_session, code_type, usr=None, code=None):
     if code is None:
         code = create_secret_code()
     if usr is None:
-        usr = sample_user(notify_db, notify_db_session)
+        usr = create_user()
     return create_user_code(usr, code, code_type), code
 
 
@@ -138,7 +125,7 @@ def sample_service(notify_db,
                    limit=1000,
                    email_from=None):
     if user is None:
-        user = sample_user(notify_db, notify_db_session)
+        user = create_user()
     if email_from is None:
         email_from = service_name.lower().replace(' ', '.')
     data = {
@@ -171,11 +158,11 @@ def sample_template(notify_db,
                     service=None,
                     created_by=None):
     if user is None:
-        user = sample_user(notify_db, notify_db_session)
+        user = create_user()
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if created_by is None:
-        created_by = sample_user(notify_db, notify_db_session)
+        created_by = create_user()
     data = {
         'name': template_name,
         'template_type': template_type,
@@ -210,7 +197,7 @@ def sample_email_template(
         subject_line='Email Subject',
         service=None):
     if user is None:
-        user = sample_user(notify_db, notify_db_session)
+        user = create_user()
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     data = {
@@ -590,7 +577,7 @@ def sample_permission(notify_db,
                       user=None,
                       permission="manage_settings"):
     if user is None:
-        user = sample_user(notify_db, notify_db_session)
+        user = create_user()
     data = {
         'user': user,
         'permission': permission
@@ -617,7 +604,7 @@ def sample_service_permission(notify_db,
                               user=None,
                               permission="manage_settings"):
     if user is None:
-        user = sample_user(notify_db, notify_db_session)
+        user = create_user()
     if service is None:
         service = sample_service(notify_db, notify_db_session, user=user)
     data = {
@@ -816,7 +803,7 @@ def create_notify_template(service, user, template_config_name, content, templat
 
 
 def notify_service(notify_db, notify_db_session):
-    user = sample_user(notify_db, notify_db_session)
+    user = create_user()
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
     if not service:
         data = {

@@ -7,7 +7,7 @@ from app.dao.api_key_dao import expire_api_key
 from tests import create_authorization_header
 from tests.app.conftest import sample_api_key as create_sample_api_key
 from tests.app.conftest import sample_service as create_sample_service
-from tests.app.conftest import sample_user as create_user
+from tests.app.db import create_user
 
 
 def test_api_key_should_create_new_api_key_for_service(notify_api, sample_service):
@@ -101,7 +101,7 @@ def test_get_api_keys_should_return_all_keys_for_service(notify_api, notify_db,
                                                          sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            another_user = create_user(notify_db, notify_db_session, email='another@it.gov.uk')
+            another_user = create_user(email='another@it.gov.uk')
 
             another_service = create_sample_service(
                 notify_db,

@@ -445,7 +445,7 @@ def test_should_not_return_html_in_body(notify_api, notify_db, notify_db_session
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-            email_template = create_sample_email_template(notify_db, notify_db.session, content='hello\nthere')
+            email_template = create_sample_email_template(notify_db, notify_db_session, content='hello\nthere')
 
             data = {
                 'to': 'ok@ok.com',
