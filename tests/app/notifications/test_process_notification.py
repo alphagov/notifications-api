@@ -12,7 +12,6 @@ from app.notifications import SendNotificationToQueueError
 from app.notifications.process_notifications import (create_content_for_notification,
                                                      persist_notification, send_notification_to_queue)
 from app.v2.errors import BadRequestError
-from tests.app.conftest import sample_notification, sample_template, sample_email_template
 
 
 def test_create_content_for_notification_passes(sample_email_template):
