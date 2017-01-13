@@ -20,7 +20,7 @@ from tests.app.conftest import sample_notification as create_notification
 from tests.app.conftest import sample_job as create_job
 from tests.app.conftest import sample_service as create_service
 from tests.app.conftest import sample_template as create_template
-from tests.app.conftest import sample_user as create_user
+from tests.app.db import create_user
 
 
 def test_should_have_decorated_notifications_dao_functions():
@@ -140,7 +140,7 @@ def test_get_job_by_id(sample_job):
 def test_get_jobs_for_service(notify_db, notify_db_session, sample_template):
     one_job = create_job(notify_db, notify_db_session, sample_template.service, sample_template)
 
-    other_user = create_user(notify_db, notify_db_session, email="test@digital.cabinet-office.gov.uk")
+    other_user = create_user(email="test@digital.cabinet-office.gov.uk")
     other_service = create_service(notify_db, notify_db_session, user=other_user, service_name="other service",
                                    email_from='other.service')
     other_template = create_template(notify_db, notify_db_session, service=other_service)

@@ -13,10 +13,11 @@ from tests import create_authorization_header
 from tests.app.conftest import (
     sample_service as create_service,
     sample_service_permission as create_service_permission,
-    sample_user as create_sample_user,
     sample_notification as create_sample_notification,
     sample_notification_with_job)
 from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
+
+from tests.app.db import create_user
 
 
 def test_get_service_list(notify_api, service_factory):
@@ -56,13 +57,11 @@ def test_get_service_list_with_only_active_flag(client, service_factory):
 
 
 def test_get_service_list_with_user_id_and_only_active_flag(
-    notify_db,
-    notify_db_session,
     client,
     sample_user,
     service_factory
 ):
-    other_user = create_sample_user(notify_db, notify_db_session, email='foo@bar.gov.uk')
+    other_user = create_user(email='foo@bar.gov.uk')
 
     inactive = service_factory.get('one', user=sample_user)
     active = service_factory.get('two', user=sample_user)
@@ -81,8 +80,8 @@ def test_get_service_list_with_user_id_and_only_active_flag(
     assert json_resp['data'][0]['id'] == str(active.id)
 
 
-def test_get_service_list_by_user(notify_db, notify_db_session, client, sample_user, service_factory):
-    other_user = create_sample_user(notify_db, notify_db_session, email='foo@bar.gov.uk')
+def test_get_service_list_by_user(client, sample_user, service_factory):
+    other_user = create_user(email='foo@bar.gov.uk')
     service_factory.get('one', sample_user)
     service_factory.get('two', sample_user)
     service_factory.get('three', other_user)
@@ -99,14 +98,9 @@ def test_get_service_list_by_user(notify_db, notify_db_session, client, sample_u
     assert json_resp['data'][1]['name'] == 'two'
 
 
-def test_get_service_list_by_user_should_return_empty_list_if_no_services(
-    notify_db,
-    notify_db_session,
-    client,
-    sample_service
-):
+def test_get_service_list_by_user_should_return_empty_list_if_no_services(client, sample_service):
     # service is already created by sample user
-    new_user = create_sample_user(notify_db, notify_db_session, email='foo@bar.gov.uk')
+    new_user = create_user(email='foo@bar.gov.uk')
 
     auth_header = create_authorization_header()
     response = client.get(
@@ -943,10 +937,7 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db
 def test_remove_user_from_service(notify_api, notify_db, notify_db_session, sample_service_permission):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            second_user = create_sample_user(
-                notify_db,
-                notify_db_session,
-                email="new@digital.cabinet-office.gov.uk")
+            second_user = create_user(email="new@digital.cabinet-office.gov.uk")
             # Simulates successfully adding a user to the service
             second_permission = create_service_permission(
                 notify_db,
@@ -966,10 +957,7 @@ def test_remove_user_from_service(notify_api, notify_db, notify_db_session, samp
 def test_remove_user_from_service(notify_api, notify_db, notify_db_session, sample_service_permission):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            second_user = create_sample_user(
-                notify_db,
-                notify_db_session,
-                email="new@digital.cabinet-office.gov.uk")
+            second_user = create_user(email="new@digital.cabinet-office.gov.uk")
             endpoint = url_for(
                 'service.remove_user_from_service',
                 service_id=str(sample_service_permission.service.id),
