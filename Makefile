@@ -103,6 +103,26 @@ deploy-admin-api: check-env-vars ## Trigger CodeDeploy for the admin api
 deploy-delivery: check-env-vars ## Trigger CodeDeploy for the delivery app
 	aws deploy create-deployment --application-name notify-delivery --deployment-config-name CodeDeployDefault.OneAtATime --deployment-group-name notify-delivery --s3-location bucket=${DNS_NAME}-codedeploy,key=notifications-api-${DEPLOY_BUILD_NUMBER}.zip,bundleType=zip --region eu-west-1
 
+.PHONY: check-aws-vars
+check-aws-vars: ## Check if AWS access keys are set
+	$(if ${AWS_ACCESS_KEY_ID},,$(error Must specify AWS_ACCESS_KEY_ID))
+	$(if ${AWS_SECRET_ACCESS_KEY},,$(error Must specify AWS_SECRET_ACCESS_KEY))
+
+.PHONY: deploy-suspend-autoscaling-processes
+deploy-suspend-autoscaling-processes: check-aws-vars ## Suspend launch and terminate processes for the auto-scaling group
+	$(if ${CODEDEPLOY_APP_NAME},,$(error Must specify CODEDEPLOY_APP_NAME))
+	aws autoscaling suspend-processes --region eu-west-1 --auto-scaling-group-name ${CODEDEPLOY_APP_NAME} --scaling-processes "Launch" "Terminate"
+
+.PHONY: deploy-resume-autoscaling-processes
+deploy-resume-autoscaling-processes: check-aws-vars ## Resume launch and terminate processes for the auto-scaling group
+	$(if ${CODEDEPLOY_APP_NAME},,$(error Must specify CODEDEPLOY_APP_NAME))
+	aws autoscaling resume-processes --region eu-west-1 --auto-scaling-group-name ${CODEDEPLOY_APP_NAME} --scaling-processes "Launch" "Terminate"
+
+.PHONY: deploy-check-autoscaling-processes
+deploy-check-autoscaling-processes: check-aws-vars ## Returns with the number of instances with active autoscaling events
+	$(if ${CODEDEPLOY_APP_NAME},,$(error Must specify CODEDEPLOY_APP_NAME))
+	@aws autoscaling describe-auto-scaling-groups --region eu-west-1 --auto-scaling-group-names ${CODEDEPLOY_APP_NAME} | jq '.AutoScalingGroups[0].Instances|map(select(.LifecycleState != "InService"))|length'
+
 .PHONY: coverage
 coverage: venv ## Create coverage report
 	./venv/bin/coveralls
