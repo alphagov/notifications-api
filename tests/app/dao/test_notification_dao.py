@@ -26,6 +26,7 @@ from app.dao.notifications_dao import (
     dao_get_last_template_usage,
     dao_get_notification_statistics_for_service_and_day,
     dao_get_potential_notification_statistics_for_day,
+    dao_provider_notifications_where_delivery_longer_than,
     dao_get_template_usage,
     dao_update_notification,
     delete_notifications_created_more_than_a_week_ago,
@@ -872,6 +873,30 @@ def test_should_limit_notifications_return_by_day_limit_plus_one(notify_db, noti
 
     all_notifications = get_notifications_for_service(sample_service.id, limit_days=1).items
     assert len(all_notifications) == 2
+
+
+@freeze_time("2016-01-10 12:00:00.000000")
+def test_get_notifications_with_slow_delivery_time_returns_notifications(notify_db, notify_db_session):
+    # create a notification with a slow delivery time (7 mins)
+    notification = sample_notification(
+        notify_db,
+        notify_db_session,
+        created_at=datetime.utcnow() - timedelta(minutes=7),
+        sent_at=datetime.utcnow(),
+        status='sending',
+        sent_by='mmg'
+    )
+
+    # get notifications that took longer than 5 minutes to deliver
+    slow_delivery_notifications = dao_provider_notifications_where_delivery_longer_than(
+        amount_of_time=timedelta(minutes=4),
+        starting_from=datetime.utcnow() - timedelta(minutes=10),
+        service_id=notification.service_id,
+        template_id=notification.template.id,
+        providers=['firetext', 'mmg']
+    )
+
+    assert len(slow_delivery_notifications) == 1
 
 
 def test_creating_notification_adds_to_notification_history(sample_template):

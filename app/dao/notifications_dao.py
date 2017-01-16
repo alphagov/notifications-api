@@ -19,6 +19,7 @@ from app.models import (
     NotificationStatistics,
     Template,
     NOTIFICATION_CREATED,
+    NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
     NOTIFICATION_PENDING,
     NOTIFICATION_TECHNICAL_FAILURE,
@@ -340,6 +341,26 @@ def _filter_query(query, filter_dict=None):
         query = query.join(Template).filter(Template.template_type.in_(template_types))
 
     return query
+
+
+@statsd(namespace="dao")
+def dao_provider_notifications_where_delivery_longer_than(
+    starting_from,
+    amount_of_time,
+    service_id,
+    template_id,
+    providers
+):
+    notifications = db.session.query(Notification).filter(
+        Notification.created_at >= starting_from,
+        Notification.service_id == service_id,
+        Notification.template_id == template_id,
+        Notification.status.in_([NOTIFICATION_SENDING, NOTIFICATION_DELIVERED]),
+        Notification.sent_by.in_(providers),
+        (Notification.sent_at - Notification.created_at) >= amount_of_time,
+    ).order_by(desc(Notification.created_at)).all()
+
+    return notifications
 
 
 @statsd(namespace="dao")

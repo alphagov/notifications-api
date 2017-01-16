@@ -1,6 +1,7 @@
 import uuid
 from datetime import (datetime, date, timedelta)
 
+from sqlalchemy import asc
 from sqlalchemy.orm.session import make_transient
 import requests_mock
 import pytest
@@ -33,6 +34,11 @@ from app.dao.jobs_dao import dao_create_job
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
 from app.dao.provider_rates_dao import create_provider_rates
+from app.dao.provider_details_dao import (
+    dao_update_provider_details,
+    get_provider_details_by_identifier,
+    get_alternative_sms_provider
+)
 from app.clients.sms.firetext import FiretextClient
 
 from tests.app.db import create_user
@@ -123,7 +129,8 @@ def sample_service(notify_db,
                    active=True,
                    restricted=False,
                    limit=1000,
-                   email_from=None):
+                   email_from=None,
+                   service_id=None):
     if user is None:
         user = create_user()
     if email_from is None:
@@ -139,7 +146,7 @@ def sample_service(notify_db,
     service = Service.query.filter_by(name=service_name).first()
     if not service:
         service = Service(**data)
-        dao_create_service(service, user)
+        dao_create_service(service, user, service_id)
     else:
         if user not in service.users:
             dao_add_user_to_service(service, user)
@@ -149,6 +156,7 @@ def sample_service(notify_db,
 @pytest.fixture(scope='function')
 def sample_template(notify_db,
                     notify_db_session,
+                    template_id=None,
                     template_name="Template Name",
                     template_type="sms",
                     content="This is a template:\nwith a newline",
@@ -176,7 +184,7 @@ def sample_template(notify_db,
             'subject': subject_line
         })
     template = Template(**data)
-    dao_create_template(template)
+    dao_create_template(template, template_id)
     return template
 
 
@@ -629,13 +637,34 @@ def fake_uuid():
 
 
 @pytest.fixture(scope='function')
+def current_sms_provider():
+    return ProviderDetails.query.filter_by(
+        notification_type='sms'
+    ).order_by(
+        asc(ProviderDetails.priority)
+    ).first()
+
+
+@pytest.fixture(scope='function')
+def set_primary_sms_provider(identifier='mmg'):
+    primary_provider = get_provider_details_by_identifier(identifier)
+    secondary_provider = get_alternative_sms_provider(identifier)
+
+    primary_provider.priority = 10
+    secondary_provider.priority = 20
+
+    dao_update_provider_details(primary_provider)
+    dao_update_provider_details(secondary_provider)
+
+
+@pytest.fixture(scope='function')
 def ses_provider():
     return ProviderDetails.query.filter_by(identifier='ses').one()
 
 
 @pytest.fixture(scope='function')
-def firetext_provider():
-    return ProviderDetails.query.filter_by(identifier='mmg').one()
+def firetext_provider(notify_db, notify_db_session):
+    return ProviderDetails.query.filter_by(identifier='firetext').one()
 
 
 @pytest.fixture(scope='function')
