@@ -24,6 +24,7 @@ from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
     EMAIL_TYPE,
     SMS_TYPE,
+    LETTER_TYPE,
     KEY_TYPE_NORMAL
 )
 from app.notifications.process_notifications import persist_notification
@@ -58,33 +59,7 @@ def process_job(job_id):
             template_type=template.template_type,
             placeholders=template.placeholders
     ).enumerated_recipients_and_personalisation:
-
-        encrypted = encryption.encrypt({
-            'template': str(template.id),
-            'template_version': job.template_version,
-            'job': str(job.id),
-            'to': recipient,
-            'row_number': row_number,
-            'personalisation': dict(personalisation)
-        })
-
-        if template.template_type == SMS_TYPE:
-            send_sms.apply_async((
-                str(job.service_id),
-                create_uuid(),
-                encrypted,
-                datetime.utcnow().strftime(DATETIME_FORMAT)),
-                queue='db-sms' if not service.research_mode else 'research-mode'
-            )
-
-        if template.template_type == EMAIL_TYPE:
-            send_email.apply_async((
-                str(job.service_id),
-                create_uuid(),
-                encrypted,
-                datetime.utcnow().strftime(DATETIME_FORMAT)),
-                queue='db-email' if not service.research_mode else 'research-mode'
-            )
+        process_row(row_number, recipient, personalisation, template, job, service)
 
     finished = datetime.utcnow()
     job.job_status = 'finished'
@@ -93,6 +68,39 @@ def process_job(job_id):
     dao_update_job(job)
     current_app.logger.info(
         "Job {} created at {} started at {} finished at {}".format(job_id, job.created_at, start, finished)
+    )
+
+
+def process_row(row_number, recipient, personalisation, template, job, service):
+    template_type = template.template_type
+
+    encrypted = encryption.encrypt({
+        'template': str(template.id),
+        'template_version': job.template_version,
+        'job': str(job.id),
+        'to': recipient,
+        'row_number': row_number,
+        'personalisation': dict(personalisation)
+    })
+
+    send_fns = {
+        SMS_TYPE: send_sms,
+        EMAIL_TYPE: send_email,
+    }
+
+    queues = {
+        SMS_TYPE: 'db-sms',
+        EMAIL_TYPE: 'db-email',
+    }
+
+    send_fn = send_fns[template_type]
+
+    send_fn.apply_async((
+        str(job.service_id),
+        create_uuid(),
+        encrypted,
+        datetime.utcnow().strftime(DATETIME_FORMAT)),
+        queue=queues[template_type] if not service.research_mode else 'research-mode'
     )
 
 
@@ -177,7 +185,8 @@ def send_sms(self,
 
 @notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=300)
 @statsd(namespace="tasks")
-def send_email(self, service_id,
+def send_email(self,
+               service_id,
                notification_id,
                encrypted_notification,
                created_at,
