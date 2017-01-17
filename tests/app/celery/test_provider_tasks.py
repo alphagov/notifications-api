@@ -121,3 +121,13 @@ def test_should_technical_error_and_not_retry_if_invalid_email(sample_notificati
 
     assert provider_tasks.deliver_email.retry.called is False
     assert sample_notification.status == 'technical-failure'
+
+
+def test_send_sms_should_switch_providers_on_provider_failure(sample_notification, mocker):
+    mocker.patch('app.delivery.send_to_providers.send_sms_to_provider', side_effect=Exception("Provider Exception"))
+    switch_provider_mock = mocker.patch('app.celery.provider_tasks.dao_toggle_sms_provider')
+    mocker.patch('app.celery.provider_tasks.deliver_sms.retry')
+
+    deliver_sms(sample_notification.service_id)
+
+    assert switch_provider_mock.called is True
