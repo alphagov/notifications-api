@@ -1,7 +1,8 @@
 from flask import current_app
+from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
 
 from app.dao import services_dao
-from app.models import KEY_TYPE_TEST, KEY_TYPE_TEAM
+from app.models import KEY_TYPE_TEST, KEY_TYPE_TEAM, SMS_TYPE
 from app.service.utils import service_allowed_to_send_to
 from app.v2.errors import TooManyRequestsError, BadRequestError
 from app import redis_store
@@ -42,6 +43,14 @@ def service_can_send_to_recipient(send_to, key_type, service):
                 '– see https://www.notifications.service.gov.uk/trial-mode'
             )
         raise BadRequestError(message=message)
+
+
+def validate_and_format_recipient(send_to, key_type, service, notification_type):
+    service_can_send_to_recipient(send_to, key_type, service)
+    if notification_type == SMS_TYPE:
+        return validate_and_format_phone_number(number=send_to)
+    else:
+        return validate_and_format_email_address(email_address=send_to)
 
 
 def check_sms_content_char_count(content_count):

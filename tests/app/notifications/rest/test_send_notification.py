@@ -710,8 +710,8 @@ def test_should_delete_notification_and_return_error_if_sqs_fails(
 
 @pytest.mark.parametrize('to_email', [
     'simulate-delivered@notifications.service.gov.uk',
-    'simulate-permanent-failure@notifications.service.gov.uk',
-    'simulate-temporary-failure@notifications.service.gov.uk'
+    'simulate-delivered-2@notifications.service.gov.uk',
+    'simulate-delivered-3@notifications.service.gov.uk'
 ])
 def test_should_not_persist_notification_or_send_email_if_simulated_email(
         client,

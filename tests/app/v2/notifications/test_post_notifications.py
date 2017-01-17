@@ -166,3 +166,43 @@ def test_post_email_notification_returns_404_and_missing_template(notify_api, sa
             assert error_json['status_code'] == 400
             assert error_json['errors'] == [{"error": "BadRequestError",
                                              "message": 'Template not found'}]
+
+
+@pytest.mark.parametrize('recipient, notification_type', [
+    ('simulate-delivered@notifications.service.gov.uk', 'email'),
+    ('simulate-delivered-2@notifications.service.gov.uk', 'email'),
+    ('simulate-delivered-3@notifications.service.gov.uk', 'email'),
+    ('07700 900000', 'sms'),
+    ('07700 900111', 'sms'),
+    ('07700 900222', 'sms')
+])
+def test_should_not_persist_notification_or_send_notification_if_simulated_recipient(
+        client,
+        recipient,
+        notification_type,
+        sample_email_template,
+        sample_template,
+        mocker):
+    apply_async = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
+
+    if notification_type == 'sms':
+        data = {
+            'phone_number': recipient,
+            'template_id': str(sample_template.id)
+        }
+    else:
+        data = {
+            'email_address': recipient,
+            'template_id': str(sample_email_template.id)
+        }
+
+    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+
+    response = client.post(
+        path='/v2/notifications/{}'.format(notification_type),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 201
+    apply_async.assert_not_called()
+    assert Notification.query.count() == 0
