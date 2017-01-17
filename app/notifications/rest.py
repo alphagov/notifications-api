@@ -15,7 +15,7 @@ from app.dao import (
     services_dao,
     notifications_dao
 )
-from app.models import KEY_TYPE_TEAM
+from app.models import KEY_TYPE_TEAM, PRIORITY
 from app.models import SMS_TYPE
 from app.notifications.process_client_response import (
     validate_callback_data,
@@ -215,8 +215,7 @@ def send_notification(notification_type):
     if notification_type not in ['sms', 'email']:
         assert False
 
-    service_id = str(api_user.service_id)
-    service = services_dao.dao_fetch_service_by_id(service_id)
+    service = services_dao.dao_fetch_service_by_id(api_user.service_id)
 
     notification, errors = (
         sms_template_notification_schema if notification_type == SMS_TYPE else email_notification_schema
@@ -227,7 +226,7 @@ def send_notification(notification_type):
     check_service_message_limit(api_user.key_type, service)
 
     template = templates_dao.dao_get_template_by_id_and_service_id(template_id=notification['template'],
-                                                                   service_id=service_id)
+                                                                   service_id=service.id)
 
     check_template_is_for_notification_type(notification_type, template.template_type)
     check_template_is_active(template)
@@ -248,7 +247,10 @@ def send_notification(notification_type):
                                               key_type=api_user.key_type,
                                               simulated=simulated)
     if not simulated:
-        send_notification_to_queue(saved_notification, service.research_mode)
+        queue_name = 'notify' if template.process_type == PRIORITY else None
+        send_notification_to_queue(notification=saved_notification,
+                                   research_mode=service.research_mode,
+                                   queue=queue_name)
     else:
         current_app.logger.info("POST simulated notification for id: {}".format(saved_notification.id))
     notification.update({"template_version": template.version})

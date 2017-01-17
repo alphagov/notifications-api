@@ -1,9 +1,9 @@
 import uuid
-
 import pytest
 from flask import json
 from app.models import Notification
 from tests import create_authorization_header
+from tests.app.conftest import sample_template as create_sample_template
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -43,71 +43,77 @@ def test_post_sms_notification_returns_201(notify_api, sample_template_with_plac
             assert mocked.called
 
 
-def test_post_sms_notification_returns_404_and_missing_template(notify_api, sample_service):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = {
-                'phone_number': '+447700900855',
-                'template_id': str(uuid.uuid4())
-            }
-            auth_header = create_authorization_header(service_id=sample_service.id)
+@pytest.mark.parametrize("notification_type, key_send_to, send_to",
+                         [("sms", "phone_number", "+447700900855"),
+                          ("email", "email_address", "sample@email.com")])
+def test_post_sms_notification_returns_404_and_missing_template(client, sample_service,
+                                                                notification_type, key_send_to, send_to):
+    data = {
+        key_send_to: send_to,
+        'template_id': str(uuid.uuid4())
+    }
+    auth_header = create_authorization_header(service_id=sample_service.id)
 
-            response = client.post(
-                path='/v2/notifications/sms',
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
+    response = client.post(
+        path='/v2/notifications/{}'.format(notification_type),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
 
-            assert response.status_code == 400
-            assert response.headers['Content-type'] == 'application/json'
+    assert response.status_code == 400
+    assert response.headers['Content-type'] == 'application/json'
 
-            error_json = json.loads(response.get_data(as_text=True))
-            assert error_json['status_code'] == 400
-            assert error_json['errors'] == [{"error": "BadRequestError",
-                                             "message": 'Template not found'}]
-
-
-def test_post_sms_notification_returns_403_and_well_formed_auth_error(notify_api, sample_template):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = {
-                'phone_number': '+447700900855',
-                'template_id': str(sample_template.id)
-            }
-
-            response = client.post(
-                path='/v2/notifications/sms',
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json')])
-
-            assert response.status_code == 401
-            assert response.headers['Content-type'] == 'application/json'
-            error_resp = json.loads(response.get_data(as_text=True))
-            assert error_resp['status_code'] == 401
-            assert error_resp['errors'] == [{'error': "AuthError",
-                                             'message': 'Unauthorized, authentication token must be provided'}]
+    error_json = json.loads(response.get_data(as_text=True))
+    assert error_json['status_code'] == 400
+    assert error_json['errors'] == [{"error": "BadRequestError",
+                                     "message": 'Template not found'}]
 
 
-def test_post_sms_notification_returns_400_and_for_schema_problems(notify_api, sample_template):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = {
-                'phone_number': '+447700900855',
-                'template': str(sample_template.id)
-            }
-            auth_header = create_authorization_header(service_id=sample_template.service_id)
+@pytest.mark.parametrize("notification_type, key_send_to, send_to",
+                         [("sms", "phone_number", "+447700900855"),
+                          ("email", "email_address", "sample@email.com")])
+def test_post_notification_returns_403_and_well_formed_auth_error(client, sample_template,
+                                                                  notification_type, key_send_to, send_to):
+    data = {
+        key_send_to: send_to,
+        'template_id': str(sample_template.id)
+    }
 
-            response = client.post(
-                path='/v2/notifications/sms',
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
+    response = client.post(
+        path='/v2/notifications/{}'.format(notification_type),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json')])
 
-            assert response.status_code == 400
-            assert response.headers['Content-type'] == 'application/json'
-            error_resp = json.loads(response.get_data(as_text=True))
-            assert error_resp['status_code'] == 400
-            assert error_resp['errors'] == [{'error': 'ValidationError',
-                                             'message': "template_id is a required property"
-                                             }]
+    assert response.status_code == 401
+    assert response.headers['Content-type'] == 'application/json'
+    error_resp = json.loads(response.get_data(as_text=True))
+    assert error_resp['status_code'] == 401
+    assert error_resp['errors'] == [{'error': "AuthError",
+                                     'message': 'Unauthorized, authentication token must be provided'}]
+
+
+@pytest.mark.parametrize("notification_type, key_send_to, send_to",
+                         [("sms", "phone_number", "+447700900855"),
+                          ("email", "email_address", "sample@email.com")])
+def test_notification_returns_400_and_for_schema_problems(client, sample_template, notification_type, key_send_to,
+                                                          send_to):
+    data = {
+        key_send_to: send_to,
+        'template': str(sample_template.id)
+    }
+    auth_header = create_authorization_header(service_id=sample_template.service_id)
+
+    response = client.post(
+        path='/v2/notifications/{}'.format(notification_type),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 400
+    assert response.headers['Content-type'] == 'application/json'
+    error_resp = json.loads(response.get_data(as_text=True))
+    assert error_resp['status_code'] == 400
+    assert error_resp['errors'] == [{'error': 'ValidationError',
+                                     'message': "template_id is a required property"
+                                     }]
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -131,9 +137,9 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
     assert resp_json['id'] == str(notification.id)
     assert resp_json['reference'] == reference
     assert notification.reference is None
-    assert resp_json['content']['body'] == sample_email_template_with_placeholders.content\
+    assert resp_json['content']['body'] == sample_email_template_with_placeholders.content \
         .replace('((name))', 'Bob').replace('GOV.UK', u'GOV.\u200bUK')
-    assert resp_json['content']['subject'] == sample_email_template_with_placeholders.subject\
+    assert resp_json['content']['subject'] == sample_email_template_with_placeholders.subject \
         .replace('((name))', 'Bob')
     assert resp_json['content']['from_email'] == sample_email_template_with_placeholders.service.email_from
     assert 'v2/notifications/{}'.format(notification.id) in resp_json['uri']
@@ -143,29 +149,6 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
                                              str(sample_email_template_with_placeholders.id)) \
            in resp_json['template']['uri']
     assert mocked.called
-
-
-def test_post_email_notification_returns_404_and_missing_template(notify_api, sample_service):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = {
-                "email_address": sample_service.users[0].email_address,
-                'template_id': str(uuid.uuid4())
-            }
-            auth_header = create_authorization_header(service_id=sample_service.id)
-
-            response = client.post(
-                path='/v2/notifications/email',
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
-
-            assert response.status_code == 400
-            assert response.headers['Content-type'] == 'application/json'
-
-            error_json = json.loads(response.get_data(as_text=True))
-            assert error_json['status_code'] == 400
-            assert error_json['errors'] == [{"error": "BadRequestError",
-                                             "message": 'Template not found'}]
 
 
 @pytest.mark.parametrize('recipient, notification_type', [
@@ -206,3 +189,38 @@ def test_should_not_persist_notification_or_send_notification_if_simulated_recip
     assert response.status_code == 201
     apply_async.assert_not_called()
     assert Notification.query.count() == 0
+
+
+@pytest.mark.parametrize("notification_type, key_send_to, send_to",
+                         [("sms", "phone_number", "07700 900 855"),
+                          ("email", "email_address", "sample@email.com")])
+def test_send_notification_uses_priority_queue_when_template_is_marked_as_priority(client, notify_db,
+                                                                                   notify_db_session,
+                                                                                   mocker,
+                                                                                   notification_type,
+                                                                                   key_send_to,
+                                                                                   send_to):
+    sample = create_sample_template(
+        notify_db,
+        notify_db_session,
+        template_type=notification_type,
+        process_type='priority'
+    )
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
+
+    data = {
+        key_send_to: send_to,
+        'template_id': str(sample.id)
+    }
+
+    auth_header = create_authorization_header(service_id=sample.service_id)
+
+    response = client.post(
+        path='/v2/notifications/{}'.format(notification_type),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    notification_id = json.loads(response.data)['id']
+
+    assert response.status_code == 201
+    mocked.assert_called_once_with([notification_id], queue='notify')

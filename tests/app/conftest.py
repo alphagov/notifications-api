@@ -156,7 +156,8 @@ def sample_template(notify_db,
                     subject_line='Subject',
                     user=None,
                     service=None,
-                    created_by=None):
+                    created_by=None,
+                    process_type='normal'):
     if user is None:
         user = create_user()
     if service is None:
@@ -169,7 +170,8 @@ def sample_template(notify_db,
         'content': content,
         'service': service,
         'created_by': created_by,
-        'archived': archived
+        'archived': archived,
+        'process_type': process_type
     }
     if template_type in ['email', 'letter']:
         data.update({

@@ -957,3 +957,36 @@ def test_create_template_raises_invalid_request_when_content_too_large(
         if not should_error:
             pytest.fail("do not expect an InvalidRequest")
         assert e.message == {'content': ['Content has a character count greater than the limit of {}'.format(limit)]}
+
+
+@pytest.mark.parametrize("notification_type, send_to",
+                         [("sms", "07700 900 855"),
+                          ("email", "sample@email.com")])
+def test_send_notification_uses_priority_queue_when_template_is_marked_as_priority(client, notify_db,
+                                                                                   notify_db_session, mocker,
+                                                                                   notification_type, send_to):
+    sample = create_sample_template(
+        notify_db,
+        notify_db_session,
+        template_type=notification_type,
+        process_type='priority'
+    )
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
+
+    data = {
+        'to': send_to,
+        'template': str(sample.id)
+    }
+
+    auth_header = create_authorization_header(service_id=sample.service_id)
+
+    response = client.post(
+        path='/notifications/{}'.format(notification_type),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    response_data = json.loads(response.data)['data']
+    notification_id = response_data['notification']['id']
+
+    assert response.status_code == 201
+    mocked.assert_called_once_with([notification_id], queue='notify')

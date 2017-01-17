@@ -3,7 +3,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app import api_user
 from app.dao import services_dao, templates_dao
-from app.models import SMS_TYPE, EMAIL_TYPE
+from app.models import SMS_TYPE, EMAIL_TYPE, PRIORITY
 from app.notifications.process_notifications import (create_content_for_notification,
                                                      persist_notification,
                                                      send_notification_to_queue,
@@ -50,7 +50,8 @@ def post_notification(notification_type):
                                         reference=form.get('reference', None),
                                         simulated=simulated)
     if not simulated:
-        send_notification_to_queue(notification, service.research_mode)
+        queue_name = 'notify' if template.process_type == PRIORITY else None
+        send_notification_to_queue(notification=notification, research_mode=service.research_mode, queue=queue_name)
     else:
         current_app.logger.info("POST simulated notification for id: {}".format(notification.id))
     if notification_type == SMS_TYPE:
