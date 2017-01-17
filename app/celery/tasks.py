@@ -51,7 +51,7 @@ def process_job(job_id):
 
     db_template = dao_get_template_by_id(job.template_id, job.template_version)
 
-    TemplateClass = SMSMessageTemplate if db_template.template_type == SMS_TYPE else WithSubjectTemplate
+    TemplateClass = get_template_class(db_template)
     template = TemplateClass(db_template.__dict__)
 
     for row_number, recipient, personalisation in RecipientCSV(
@@ -162,25 +162,7 @@ def send_sms(self,
         )
 
     except SQLAlchemyError as e:
-        if not get_notification_by_id(notification_id):
-            # Sometimes, SQS plays the same message twice. We should be able to catch an IntegrityError, but it seems
-            # SQLAlchemy is throwing a FlushError. So we check if the notification id already exists then do not
-            # send to the retry queue.
-            current_app.logger.error(
-                "RETRY: send_sms notification for job {} row number {} and notification id {}".format(
-                    notification.get('job', None),
-                    notification.get('row_number', None),
-                    notification_id))
-            current_app.logger.exception(e)
-            try:
-                raise self.retry(queue="retry", exc=e)
-            except self.MaxRetriesExceededError:
-                current_app.logger.error(
-                    "RETRY FAILED: send_sms notification for job {} row number {} and notification id {}".format(
-                        notification.get('job', None),
-                        notification.get('row_number', None),
-                        notification_id))
-                current_app.logger.exception(e)
+        handle_exception(self, notification, notification_id, e)
 
 
 @notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=300)
@@ -222,22 +204,31 @@ def send_email(self,
 
         current_app.logger.info("Email {} created at {}".format(saved_notification.id, created_at))
     except SQLAlchemyError as e:
-        if not get_notification_by_id(notification_id):
-            # Sometimes, SQS plays the same message twice. We should be able to catch an IntegrityError, but it seems
-            # SQLAlchemy is throwing a FlushError. So we check if the notification id already exists then do not
-            # send to the retry queue.
-            current_app.logger.error(
-                "RETRY: send_sms notification for job {} row number {} and notification id {}".format(
-                    notification.get('job', None),
-                    notification.get('row_number', None),
-                    notification_id))
-            current_app.logger.exception(e)
-            try:
-                raise self.retry(queue="retry", exc=e)
-            except self.MaxRetriesExceededError:
-                current_app.logger.error(
-                    "RETRY FAILED: send_sms notification for job {} row number {} and notification id {}".format(
-                        notification.get('job', None),
-                        notification.get('row_number', None),
-                        notification_id))
-                current_app.logger.exception(e)
+        handle_exception(self, notification, notification_id, e)
+
+
+def handle_exception(task, notification, notification_id, exc):
+    if not get_notification_by_id(notification_id):
+        retry_msg = '{task} notification for job {job} row number {row} and notification id {noti}'.format(
+            task=task.__name__,
+            job=notification.get('job', None),
+            row=notification.get('row_number', None),
+            noti=notification_id
+        )
+        # Sometimes, SQS plays the same message twice. We should be able to catch an IntegrityError, but it seems
+        # SQLAlchemy is throwing a FlushError. So we check if the notification id already exists then do not
+        # send to the retry queue.
+        current_app.logger.exception('Retry' + retry_msg)
+        try:
+            task.retry(queue="retry", exc=exc)
+        except task.MaxRetriesExceededError:
+            current_app.logger.exception('Retry' + retry_msg)
+
+
+def get_template_class(template):
+    if template.template_type == SMS_TYPE:
+        return SMSMessageTemplate
+    elif template.template_type in (EMAIL_TYPE, LETTER_TYPE):
+        # since we don't need rendering capabilities (we only need to extract placeholders) both email and letter can
+        # use the same base template
+        return WithSubjectTemplate

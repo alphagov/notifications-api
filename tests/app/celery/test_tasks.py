@@ -1,19 +1,27 @@
 import uuid
-import pytest
 from datetime import datetime
+from unittest.mock import Mock
+
+import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
+from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate
+from celery.exceptions import Retry
+
 from app import (encryption, DATETIME_FORMAT)
 from app.celery import provider_tasks
 from app.celery import tasks
 from app.celery.tasks import s3
 from app.celery.tasks import (
-    send_sms,
     process_job,
-    send_email
+    process_row,
+    send_sms,
+    send_email,
+    get_template_class
 )
 from app.dao import jobs_dao, services_dao
-from app.models import Notification, KEY_TYPE_TEAM, KEY_TYPE_TEST, KEY_TYPE_NORMAL
+from app.models import Notification, KEY_TYPE_TEAM, KEY_TYPE_TEST, KEY_TYPE_NORMAL, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
+
 from tests.app import load_example_csv
 from tests.app.conftest import (
     sample_service,
@@ -715,19 +723,23 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
                                                                      queue='send-email')
 
 
+class MyException(Exception):
+    pass
+
+
 def test_send_sms_should_go_to_retry_queue_if_database_errors(sample_template, mocker):
     notification = _notification_json(sample_template, "+447234123123")
 
     expected_exception = SQLAlchemyError()
 
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-    mocker.patch('app.celery.tasks.send_sms.retry', side_effect=Exception())
+    mocker.patch('app.celery.tasks.send_sms.retry', side_effect=Retry)
     mocker.patch('app.notifications.process_notifications.dao_create_notification', side_effect=expected_exception)
     now = datetime.utcnow()
 
     notification_id = uuid.uuid4()
 
-    with pytest.raises(Exception):
+    with pytest.raises(Retry):
         send_sms(
             sample_template.service_id,
             notification_id,
@@ -746,13 +758,13 @@ def test_send_email_should_go_to_retry_queue_if_database_errors(sample_email_tem
     expected_exception = SQLAlchemyError()
 
     mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-    mocker.patch('app.celery.tasks.send_email.retry', side_effect=Exception())
+    mocker.patch('app.celery.tasks.send_email.retry', side_effect=Retry)
     mocker.patch('app.notifications.process_notifications.dao_create_notification', side_effect=expected_exception)
     now = datetime.utcnow()
 
     notification_id = uuid.uuid4()
 
-    with pytest.raises(Exception):
+    with pytest.raises(Retry):
         send_email(
             sample_email_template.service_id,
             notification_id,
@@ -801,3 +813,13 @@ def test_send_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample
     assert Notification.query.count() == 1
     assert not deliver_sms.called
     assert not retry.called
+
+
+@pytest.mark.parametrize('template_type, expected_class', [
+    (SMS_TYPE, SMSMessageTemplate),
+    (EMAIL_TYPE, WithSubjectTemplate),
+    (LETTER_TYPE, WithSubjectTemplate),
+])
+def test_get_template_class(template_type, expected_class):
+    template = Mock(template_type=template_type)
+    assert get_template_class(template) == expected_class
