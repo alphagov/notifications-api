@@ -1,4 +1,3 @@
-import pytest
 import json
 import random
 import string
@@ -42,10 +41,16 @@ def test_should_create_a_new_template_for_a_service(
     assert json_resp['data']['service'] == str(sample_service.id)
     assert json_resp['data']['id']
     assert json_resp['data']['version'] == 1
+    assert json_resp['data']['process_type'] == 'normal'
+    assert json_resp['data']['created_by'] == str(sample_user.id)
     if subject:
         assert json_resp['data']['subject'] == 'subject'
     else:
         assert not json_resp['data']['subject']
+
+    template = Template.query.get(json_resp['data']['id'])
+    from app.schemas import template_schema
+    assert sorted(json_resp['data']) == sorted(template_schema.dump(template).data)
 
 
 def test_should_be_error_if_service_does_not_exist_on_create(client, sample_user, fake_uuid):
@@ -335,6 +340,7 @@ def test_should_get_a_single_template(
     assert response.status_code == 200
     assert data['content'] == content
     assert data['subject'] == subject
+    assert data['process_type'] == 'normal'
 
 
 @pytest.mark.parametrize(
@@ -516,3 +522,17 @@ def test_update_does_not_create_new_version_when_there_is_no_change(client, samp
 
     template = dao_get_template_by_id(sample_template.id)
     assert template.version == 1
+
+
+def test_update_set_process_type_on_template(client, sample_template):
+    auth_header = create_authorization_header()
+    data = {
+        'process_type': 'priority'
+    }
+    resp = client.post('/service/{}/template/{}'.format(sample_template.service_id, sample_template.id),
+                       data=json.dumps(data),
+                       headers=[('Content-Type', 'application/json'), auth_header])
+    assert resp.status_code == 200
+
+    template = dao_get_template_by_id(sample_template.id)
+    assert template.process_type == 'priority'

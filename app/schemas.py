@@ -208,6 +208,7 @@ class BaseTemplateSchema(BaseSchema):
 class TemplateSchema(BaseTemplateSchema):
 
     created_by = field_for(models.Template, 'created_by', required=True)
+    process_type = field_for(models.Template, 'process_type')
 
     @validates_schema
     def validate_type(self, data):

@@ -144,5 +144,5 @@ def _strip_html(content):
 def _template_has_not_changed(current_data, updated_template):
     return all(
         current_data[key] == updated_template[key]
-        for key in ('name', 'content', 'subject', 'archived')
+        for key in ('name', 'content', 'subject', 'archived', 'process_type')
     )
