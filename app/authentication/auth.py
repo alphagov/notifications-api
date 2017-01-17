@@ -94,4 +94,4 @@ def get_decode_errors(auth_token, unsigned_secret):
     try:
         decode_jwt_token(auth_token, unsigned_secret)
     except TokenExpiredError:
-        raise AuthError("Invalid token: expired", 403)
+        raise AuthError("Invalid token: expired, check that your system clock is accurate", 403)
