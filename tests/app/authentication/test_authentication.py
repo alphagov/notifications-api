@@ -320,7 +320,9 @@ def test_should_return_403_when_token_is_expired(notify_api,
                     headers={'Authorization': 'Bearer {}'.format(token)})
             assert response.status_code == 403
             error_message = json.loads(response.get_data())
-            assert error_message['message'] == {'token': ['Invalid token: expired']}
+            assert error_message['message'] == {'token': [
+                'Invalid token: expired, check that your system clock is accurate'
+            ]}
 
 
 def __create_get_token(service_id):
