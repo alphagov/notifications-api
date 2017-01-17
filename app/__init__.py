@@ -1,5 +1,6 @@
 import os
 import uuid
+import json
 
 from flask import Flask, _request_ctx_stack
 from flask import request, url_for, g, jsonify
@@ -42,8 +43,12 @@ api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 def create_app(app_name=None):
     application = Flask(__name__)
 
-    from config import configs
-    application.config.from_object(configs[os.environ['NOTIFY_ENVIRONMENT']])
+    from app.config import configs
+
+    notify_environment = os.environ['NOTIFY_ENVIRONMENT']
+
+    application.config.from_object(configs[notify_environment])
+
     if app_name:
         application.config['NOTIFY_APP_NAME'] = app_name
 
