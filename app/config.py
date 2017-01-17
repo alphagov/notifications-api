@@ -4,13 +4,19 @@ from kombu import Exchange, Queue
 import os
 
 
-class Config(object):
-    ########################################
-    # Secrets that are held in credstash ###
-    ########################################
+if os.environ.get('VCAP_SERVICES'):
+    # on cloudfoundry, config is a json blob in VCAP_SERVICES - unpack it, and populate
+    # standard environment variables from it
+    from app.cloudfoundry_config import extract_cloudfoundry_config
+    extract_cloudfoundry_config()
 
+
+class Config(object):
     # URL of admin app
     ADMIN_BASE_URL = os.environ['ADMIN_BASE_URL']
+
+    # URL of api app (on AWS this is the internal api endpoint)
+    API_HOST_NAME = os.getenv('API_HOST_NAME')
 
     # admin app api key
     ADMIN_CLIENT_SECRET = os.environ['ADMIN_CLIENT_SECRET']
@@ -42,12 +48,16 @@ class Config(object):
 
     # URL of redis instance
     REDIS_URL = os.getenv('REDIS_URL')
+    REDIS_ENABLED = os.getenv('REDIS_ENABLED') == '1'
+
+    # Logging
+    DEBUG = False
+    LOGGING_STDOUT_JSON = os.getenv('LOGGING_STDOUT_JSON') == '1'
 
     ###########################
     # Default config values ###
     ###########################
 
-    DEBUG = False
     NOTIFY_ENVIRONMENT = 'development'
     ADMIN_CLIENT_USER_NAME = 'notify-admin'
     AWS_REGION = 'eu-west-1'
@@ -126,16 +136,12 @@ class Config(object):
         Queue('notify', Exchange('default'), routing_key='notify')
     ]
 
-    API_HOST_NAME = "http://localhost:6011"
-
     NOTIFICATIONS_ALERT = 5  # five mins
     FROM_NUMBER = 'development'
 
     STATSD_ENABLED = False
     STATSD_HOST = "statsd.hostedgraphite.com"
     STATSD_PORT = 8125
-
-    REDIS_ENABLED = False
 
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200  # 3 days
 
@@ -165,6 +171,7 @@ class Development(Config):
         Queue('send-email', Exchange('default'), routing_key='send-email'),
         Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
+    API_HOST_NAME = "http://localhost:6011"
 
 
 class Test(Config):
@@ -172,7 +179,6 @@ class Test(Config):
     FROM_NUMBER = 'testing'
     NOTIFY_ENVIRONMENT = 'test'
     DEBUG = True
-    REDIS_ENABLED = True
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
     STATSD_ENABLED = True
     STATSD_HOST = "localhost"
@@ -184,6 +190,8 @@ class Test(Config):
         Queue('send-email', Exchange('default'), routing_key='send-email'),
         Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
+    REDIS_ENABLED = True
+    API_HOST_NAME = "http://localhost:6011"
 
 
 class Preview(Config):
@@ -192,7 +200,6 @@ class Preview(Config):
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
     API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = 'preview'
-    REDIS_ENABLED = True
 
 
 class Staging(Config):
@@ -202,7 +209,6 @@ class Staging(Config):
     STATSD_ENABLED = True
     API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = 'stage'
-    REDIS_ENABLED = True
 
 
 class Live(Config):
@@ -212,7 +218,18 @@ class Live(Config):
     STATSD_ENABLED = True
     API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = '40604'
-    REDIS_ENABLED = True
+
+
+class CloudFoundryConfig(Config):
+    pass
+
+
+# CloudFoundry sandbox
+class Sandbox(CloudFoundryConfig):
+    NOTIFY_EMAIL_DOMAIN = 'notify.works'
+    NOTIFY_ENVIRONMENT = 'sandbox'
+    CSV_UPLOAD_BUCKET_NAME = 'cf-sandbox-notifications-csv-upload'
+    FROM_NUMBER = 'sandbox'
 
 
 configs = {
@@ -220,5 +237,6 @@ configs = {
     'test': Test,
     'live': Live,
     'staging': Staging,
-    'preview': Preview
+    'preview': Preview,
+    'sandbox': Sandbox
 }

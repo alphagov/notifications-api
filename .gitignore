@@ -67,6 +67,4 @@ environment.sh
 
 celerybeat-schedule
 
-app/version.py
-
 wheelhouse/

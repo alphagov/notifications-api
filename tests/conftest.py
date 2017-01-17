@@ -80,9 +80,16 @@ def notify_db_session(notify_db):
     notify_db.session.commit()
 
 
-@pytest.fixture(scope='function')
-def os_environ(mocker):
-    mocker.patch('os.environ', {})
+@pytest.fixture
+def os_environ():
+    """
+    clear os.environ, and restore it after the test runs
+    """
+    # for use whenever you expect code to edit environment variables
+    old_env = os.environ.copy()
+    os.environ = {}
+    yield
+    os.environ = old_env
 
 
 @pytest.fixture(scope='function')
