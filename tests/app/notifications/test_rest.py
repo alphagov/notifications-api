@@ -35,11 +35,12 @@ def test_get_sms_notification_by_id(client, sample_notification):
         assert not notification.get('subject')
 
 
-def test_get_sms_notification_by_invalid_id(client, sample_notification):
+@pytest.mark.parametrize("id", ["1234-badly-formatted-id-7890", "0"])
+def test_get_sms_notification_by_invalid_id(client, sample_notification, id):
         auth_header = create_authorization_header(service_id=sample_notification.service_id)
 
         response = client.get(
-            '/notifications/{}'.format("not_a_valid_id"),
+            '/notifications/{}'.format(id),
             headers=[auth_header])
 
         assert response.status_code == 405

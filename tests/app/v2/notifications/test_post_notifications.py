@@ -159,7 +159,7 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
     ('07700 900111', 'sms'),
     ('07700 900222', 'sms')
 ])
-def test_should_not_persist_notification_or_send_notification_if_simulated_recipient(
+def test_should_not_persist_or_send_notification_if_simulated_recipient(
         client,
         recipient,
         notification_type,
