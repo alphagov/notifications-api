@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from unittest.mock import Mock
+from unittest.mock import Mock, ANY
 
 import pytest
 from freezegun import freeze_time
@@ -289,6 +289,44 @@ def test_should_process_all_sms_job(sample_job,
 
 # -------------- process_row tests -------------- #
 
+
+@freeze_time('2001-01-01T12:00:00')
+@pytest.mark.parametrize('template_type, research_mode, expected_function, expected_queue', [
+    (SMS_TYPE, False, 'send_sms', 'db-sms'),
+    (SMS_TYPE, True, 'send_sms', 'research-mode'),
+    (EMAIL_TYPE, False, 'send_email', 'db-email'),
+    (EMAIL_TYPE, True, 'send_email', 'research-mode'),
+    (LETTER_TYPE, False, 'persist_letter', 'db-letter'),
+    (LETTER_TYPE, True, 'persist_letter', 'research-mode'),
+])
+def test_process_row_sends_letter_task(template_type, research_mode, expected_function, expected_queue, mocker):
+    mocker.patch('app.celery.tasks.create_uuid', return_value='noti_uuid')
+    task_mock = mocker.patch('app.celery.tasks.{}.apply_async'.format(expected_function))
+    encrypt_mock = mocker.patch('app.celery.tasks.encryption.encrypt')
+    template = Mock(id='template_id', template_type=template_type)
+    job = Mock(id='job_id', template_version='temp_vers')
+    service = Mock(id='service_id', research_mode=research_mode)
+
+    process_row('row_num', 'recip', {'foo': 'bar'}, template, job, service)
+
+    encrypt_mock.assert_called_once_with({
+        'template': 'template_id',
+        'template_version': 'temp_vers',
+        'job': 'job_id',
+        'to': 'recip',
+        'row_number': 'row_num',
+        'personalisation': {'foo': 'bar'}
+    })
+    task_mock.assert_called_once_with(
+        (
+            'service_id',
+            'noti_uuid',
+            # encrypted data
+            encrypt_mock.return_value,
+            '2001-01-01T12:00:00.000000Z'
+        ),
+        queue=expected_queue
+    )
 # -------- send_sms and send_email tests -------- #
 
 

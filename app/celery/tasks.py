@@ -73,7 +73,6 @@ def process_job(job_id):
 
 def process_row(row_number, recipient, personalisation, template, job, service):
     template_type = template.template_type
-
     encrypted = encryption.encrypt({
         'template': str(template.id),
         'template_version': job.template_version,
@@ -86,20 +85,24 @@ def process_row(row_number, recipient, personalisation, template, job, service):
     send_fns = {
         SMS_TYPE: send_sms,
         EMAIL_TYPE: send_email,
+        LETTER_TYPE: persist_letter
     }
 
     queues = {
         SMS_TYPE: 'db-sms',
         EMAIL_TYPE: 'db-email',
+        LETTER_TYPE: 'db-letter',
     }
 
     send_fn = send_fns[template_type]
 
-    send_fn.apply_async((
-        str(job.service_id),
-        create_uuid(),
-        encrypted,
-        datetime.utcnow().strftime(DATETIME_FORMAT)),
+    send_fn.apply_async(
+        (
+            str(service.id),
+            create_uuid(),
+            encrypted,
+            datetime.utcnow().strftime(DATETIME_FORMAT)
+        ),
         queue=queues[template_type] if not service.research_mode else 'research-mode'
     )
 
@@ -203,6 +206,40 @@ def send_email(self,
         )
 
         current_app.logger.info("Email {} created at {}".format(saved_notification.id, created_at))
+    except SQLAlchemyError as e:
+        handle_exception(self, notification, notification_id, e)
+
+
+@notify_celery.task(bind=True, name="persist-letter", max_retries=5, default_retry_delay=300)
+@statsd(namespace="tasks")
+def persist_letter(
+    self,
+    service_id,
+    notification_id,
+    encrypted_notification,
+    created_at
+):
+    notification = encryption.decrypt(encrypted_notification)
+    service = dao_fetch_service_by_id(service_id)
+    try:
+        saved_notification = persist_notification(
+            template_id=notification['template'],
+            template_version=notification['template_version'],
+            recipient=notification['to'],
+            service=service,
+            personalisation=notification.get('personalisation'),
+            notification_type=EMAIL_TYPE,
+            api_key_id=None,
+            key_type=KEY_TYPE_NORMAL,
+            created_at=created_at,
+            job_id=notification.get('job', None),
+            job_row_number=notification.get('row_number', None),
+            notification_id=notification_id
+        )
+
+        # TODO: deliver letters
+
+        current_app.logger.info("Letter {} created at {}".format(saved_notification.id, created_at))
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
 
