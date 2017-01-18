@@ -3,7 +3,6 @@
 *app/assets*
 *bower_components*
 *cache*
-*docker*
 *node_modules*
 *target*
 *venv*
