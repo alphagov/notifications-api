@@ -13,34 +13,44 @@ from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
 
 
-def test_get_sms_notification_by_id(notify_api, sample_notification):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            auth_header = create_authorization_header(service_id=sample_notification.service_id)
+def test_get_sms_notification_by_id(client, sample_notification):
+        auth_header = create_authorization_header(service_id=sample_notification.service_id)
 
-            response = client.get(
-                '/notifications/{}'.format(sample_notification.id),
-                headers=[auth_header])
+        response = client.get(
+            '/notifications/{}'.format(sample_notification.id),
+            headers=[auth_header])
 
-            assert response.status_code == 200
-            notification = json.loads(response.get_data(as_text=True))['data']['notification']
-            assert notification['status'] == 'created'
-            assert notification['template'] == {
-                'id': str(sample_notification.template.id),
-                'name': sample_notification.template.name,
-                'template_type': sample_notification.template.template_type,
-                'version': 1
-            }
-            assert notification['to'] == '+447700900855'
-            assert notification['service'] == str(sample_notification.service_id)
-            assert notification['body'] == "This is a template:\nwith a newline"
-            assert not notification.get('subject')
+        assert response.status_code == 200
+        notification = json.loads(response.get_data(as_text=True))['data']['notification']
+        assert notification['status'] == 'created'
+        assert notification['template'] == {
+            'id': str(sample_notification.template.id),
+            'name': sample_notification.template.name,
+            'template_type': sample_notification.template.template_type,
+            'version': 1
+        }
+        assert notification['to'] == '+447700900855'
+        assert notification['service'] == str(sample_notification.service_id)
+        assert notification['body'] == "This is a template:\nwith a newline"
+        assert not notification.get('subject')
+
+
+@pytest.mark.parametrize("id", ["1234-badly-formatted-id-7890", "0"])
+def test_get_sms_notification_by_invalid_id(client, sample_notification, id):
+        auth_header = create_authorization_header(service_id=sample_notification.service_id)
+
+        response = client.get(
+            '/notifications/{}'.format(id),
+            headers=[auth_header])
+
+        assert response.status_code == 405
 
 
 def test_get_email_notification_by_id(notify_api, notify_db, notify_db_session, sample_email_template):
 
     email_notification = create_sample_notification(notify_db,
                                                     notify_db_session,
+                                                    to_field="sample_email@example.com",
                                                     service=sample_email_template.service,
                                                     template=sample_email_template,
                                                     status='sending')
@@ -62,7 +72,7 @@ def test_get_email_notification_by_id(notify_api, notify_db, notify_db_session, 
                 'template_type': email_notification.template.template_type,
                 'version': 1
             }
-            assert notification['to'] == '+447700900855'
+            assert notification['to'] == 'sample_email@example.com'
             assert notification['service'] == str(email_notification.service_id)
             assert response.status_code == 200
             assert notification['body'] == sample_email_template.content

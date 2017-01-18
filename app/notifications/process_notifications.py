@@ -41,7 +41,9 @@ def persist_notification(template_id,
                          job_id=None,
                          job_row_number=None,
                          reference=None,
-                         notification_id=None):
+                         notification_id=None,
+                         simulated=False):
+    # if simulated create a Notification model to return but do not persist the Notification to the dB
     notification = Notification(
         id=notification_id,
         template_id=template_id,
@@ -58,8 +60,12 @@ def persist_notification(template_id,
         job_row_number=job_row_number,
         client_reference=reference
     )
-    dao_create_notification(notification)
-    redis_store.incr(redis.daily_limit_cache_key(service.id))
+    if not simulated:
+        dao_create_notification(notification)
+        redis_store.incr(redis.daily_limit_cache_key(service.id))
+        current_app.logger.info(
+            "{} {} created at {}".format(notification.notification_type, notification.id, notification.created_at)
+        )
     return notification
 
 
@@ -85,5 +91,12 @@ def send_notification_to_queue(notification, research_mode, queue=None):
         raise SendNotificationToQueueError()
 
     current_app.logger.info(
-        "{} {} created at {}".format(notification.notification_type, notification.id, notification.created_at)
-    )
+        "{} {} sent to the {} queue for delivery".format(notification.notification_type,
+                                                         notification.id,
+                                                         queue))
+
+
+def simulated_recipient(to_address, notification_type):
+    return (to_address in current_app.config['SIMULATED_SMS_NUMBERS']
+            if notification_type == SMS_TYPE
+            else to_address in current_app.config['SIMULATED_EMAIL_ADDRESSES'])

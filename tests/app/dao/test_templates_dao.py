@@ -31,6 +31,7 @@ def test_create_template(sample_service, sample_user, template_type, subject):
     assert Template.query.count() == 1
     assert len(dao_get_all_templates_for_service(sample_service.id)) == 1
     assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'Sample Template'
+    assert dao_get_all_templates_for_service(sample_service.id)[0].process_type == 'normal'
 
 
 def test_update_template(sample_service, sample_user):

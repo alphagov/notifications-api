@@ -305,7 +305,7 @@ class Template(db.Model):
     process_type = db.Column(db.String(255),
                              db.ForeignKey('template_process_type.name'),
                              index=True,
-                             nullable=True,
+                             nullable=False,
                              default=NORMAL)
 
     def get_link(self):
@@ -337,7 +337,7 @@ class TemplateHistory(db.Model):
     process_type = db.Column(db.String(255),
                              db.ForeignKey('template_process_type.name'),
                              index=True,
-                             nullable=True,
+                             nullable=False,
                              default=NORMAL)
 
 MMG_PROVIDER = "mmg"

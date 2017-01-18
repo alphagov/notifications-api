@@ -164,10 +164,11 @@ def test_get_notification_by_id_nonexistent_id(client, sample_notification):
     }
 
 
-def test_get_notification_by_id_invalid_id(client, sample_notification):
+@pytest.mark.parametrize("id", ["1234-badly-formatted-id-7890", "0"])
+def test_get_notification_by_id_invalid_id(client, sample_notification, id):
     auth_header = create_authorization_header(service_id=sample_notification.service_id)
     response = client.get(
-        path='/v2/notifications/1234-badly-formatted-id-7890',
+        path='/v2/notifications/{}'.format(id),
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 404

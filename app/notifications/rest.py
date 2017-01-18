@@ -8,22 +8,25 @@ from flask import (
     json
 )
 
-from app import api_user, create_uuid, statsd_client
+from app import api_user, statsd_client
 from app.clients.email.aws_ses import get_aws_responses
 from app.dao import (
     templates_dao,
     services_dao,
     notifications_dao
 )
-from app.models import KEY_TYPE_TEAM
+from app.models import KEY_TYPE_TEAM, PRIORITY
 from app.models import SMS_TYPE
 from app.notifications.process_client_response import (
     validate_callback_data,
     process_sms_client_response
 )
-from app.notifications.process_notifications import persist_notification, send_notification_to_queue
-from app.notifications.validators import check_service_message_limit, check_template_is_for_notification_type, \
-    check_template_is_active
+from app.notifications.process_notifications import (persist_notification,
+                                                     send_notification_to_queue,
+                                                     simulated_recipient)
+from app.notifications.validators import (check_service_message_limit,
+                                          check_template_is_for_notification_type,
+                                          check_template_is_active)
 from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
@@ -212,10 +215,9 @@ def send_notification(notification_type):
     if notification_type not in ['sms', 'email']:
         assert False
 
-    service_id = str(api_user.service_id)
-    service = services_dao.dao_fetch_service_by_id(service_id)
+    service = services_dao.dao_fetch_service_by_id(api_user.service_id)
 
-    notification, errors = (
+    notification_form, errors = (
         sms_template_notification_schema if notification_type == SMS_TYPE else email_notification_schema
     ).load(request.get_json())
     if errors:
@@ -223,34 +225,40 @@ def send_notification(notification_type):
 
     check_service_message_limit(api_user.key_type, service)
 
-    template = templates_dao.dao_get_template_by_id_and_service_id(template_id=notification['template'],
-                                                                   service_id=service_id)
+    template = templates_dao.dao_get_template_by_id_and_service_id(template_id=notification_form['template'],
+                                                                   service_id=service.id)
 
     check_template_is_for_notification_type(notification_type, template.template_type)
     check_template_is_active(template)
 
-    template_object = create_template_object_for_notification(template, notification.get('personalisation', {}))
+    template_object = create_template_object_for_notification(template, notification_form.get('personalisation', {}))
 
-    _service_allowed_to_send_to(notification, service)
+    _service_allowed_to_send_to(notification_form, service)
 
-    saved_notification = None
-    if not _simulated_recipient(notification['to'], notification_type):
-        saved_notification = persist_notification(template_id=template.id,
-                                                  template_version=template.version,
-                                                  recipient=notification['to'],
-                                                  service=service,
-                                                  personalisation=notification.get('personalisation', None),
-                                                  notification_type=notification_type,
-                                                  api_key_id=api_user.id,
-                                                  key_type=api_user.key_type)
-        send_notification_to_queue(saved_notification, service.research_mode)
+    # Do not persist or send notification to the queue if it is a simulated recipient
+    simulated = simulated_recipient(notification_form['to'], notification_type)
+    notification_model = persist_notification(template_id=template.id,
+                                              template_version=template.version,
+                                              recipient=notification_form['to'],
+                                              service=service,
+                                              personalisation=notification_form.get('personalisation', None),
+                                              notification_type=notification_type,
+                                              api_key_id=api_user.id,
+                                              key_type=api_user.key_type,
+                                              simulated=simulated)
+    if not simulated:
+        queue_name = 'notify' if template.process_type == PRIORITY else None
+        send_notification_to_queue(notification=notification_model,
+                                   research_mode=service.research_mode,
+                                   queue=queue_name)
+    else:
+        current_app.logger.info("POST simulated notification for id: {}".format(notification_model.id))
+    notification_form.update({"template_version": template.version})
 
-    notification_id = create_uuid() if saved_notification is None else saved_notification.id
-    notification.update({"template_version": template.version})
     return jsonify(
         data=get_notification_return_data(
-            notification_id,
-            notification,
+            notification_model.id,
+            notification_form,
             template_object)
     ), 201
 
@@ -266,12 +274,6 @@ def get_notification_return_data(notification_id, notification, template):
         output.update({'subject': template.subject})
 
     return output
-
-
-def _simulated_recipient(to_address, notification_type):
-    return (to_address in current_app.config['SIMULATED_SMS_NUMBERS']
-            if notification_type == SMS_TYPE
-            else to_address in current_app.config['SIMULATED_EMAIL_ADDRESSES'])
 
 
 def _service_allowed_to_send_to(notification, service):
