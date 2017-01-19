@@ -6,9 +6,9 @@ from requests import request, RequestException, HTTPError
 
 from app.models import SMS_TYPE
 
-temp_fail = "07833333333"
-perm_fail = "07822222222"
-delivered = "07811111111"
+temp_fail = "07700900003"
+perm_fail = "07700900002"
+delivered = "07700900001"
 
 delivered_email = "delivered@simulator.notify"
 perm_fail_email = "perm-fail@simulator.notify"
