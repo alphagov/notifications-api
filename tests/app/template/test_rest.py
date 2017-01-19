@@ -37,7 +37,7 @@ def test_should_create_a_new_template_for_a_service(
     json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp['data']['name'] == 'my template'
     assert json_resp['data']['template_type'] == template_type
-    assert json_resp['data']['content'] == 'template content'
+    assert json_resp['data']['content'] == 'template <b>content</b>'
     assert json_resp['data']['service'] == str(sample_service.id)
     assert json_resp['data']['id']
     assert json_resp['data']['version'] == 1
@@ -153,7 +153,9 @@ def test_update_should_update_a_template(client, sample_user, sample_template):
 
     assert update_response.status_code == 200
     update_json_resp = json.loads(update_response.get_data(as_text=True))
-    assert update_json_resp['data']['content'] == 'my template has new content alert("foo")'
+    assert update_json_resp['data']['content'] == (
+        'my template has new content <script type="text/javascript">alert("foo")</script>'
+    )
     assert update_json_resp['data']['name'] == sample_template.name
     assert update_json_resp['data']['template_type'] == sample_template.template_type
     assert update_json_resp['data']['version'] == 2
