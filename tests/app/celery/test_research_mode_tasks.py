@@ -17,11 +17,11 @@ def test_make_mmg_callback(notify_api, rmock):
         endpoint,
         json={"status": "success"},
         status_code=200)
-    send_sms_response("mmg", "1234", "07811111111")
+    send_sms_response("mmg", "1234", "07700900001")
 
     assert rmock.called
     assert rmock.request_history[0].url == endpoint
-    assert json.loads(rmock.request_history[0].text)['MSISDN'] == '07811111111'
+    assert json.loads(rmock.request_history[0].text)['MSISDN'] == '07700900001'
 
 
 def test_make_firetext_callback(notify_api, rmock):
@@ -31,11 +31,11 @@ def test_make_firetext_callback(notify_api, rmock):
         endpoint,
         json="some data",
         status_code=200)
-    send_sms_response("firetext", "1234", "07811111111")
+    send_sms_response("firetext", "1234", "07700900001")
 
     assert rmock.called
     assert rmock.request_history[0].url == endpoint
-    assert 'mobile=07811111111' in rmock.request_history[0].text
+    assert 'mobile=07700900001' in rmock.request_history[0].text
 
 
 def test_make_ses_callback(notify_api, rmock):
@@ -51,32 +51,32 @@ def test_make_ses_callback(notify_api, rmock):
 
 
 def test_delivered_mmg_callback():
-    data = json.loads(mmg_callback("1234", "07811111111"))
-    assert data['MSISDN'] == "07811111111"
+    data = json.loads(mmg_callback("1234", "07700900001"))
+    assert data['MSISDN'] == "07700900001"
     assert data['status'] == "3"
     assert data['reference'] == "mmg_reference"
     assert data['CID'] == "1234"
 
 
 def test_perm_failure_mmg_callback():
-    data = json.loads(mmg_callback("1234", "07822222222"))
-    assert data['MSISDN'] == "07822222222"
+    data = json.loads(mmg_callback("1234", "07700900002"))
+    assert data['MSISDN'] == "07700900002"
     assert data['status'] == "5"
     assert data['reference'] == "mmg_reference"
     assert data['CID'] == "1234"
 
 
 def test_temp_failure_mmg_callback():
-    data = json.loads(mmg_callback("1234", "07833333333"))
-    assert data['MSISDN'] == "07833333333"
+    data = json.loads(mmg_callback("1234", "07700900003"))
+    assert data['MSISDN'] == "07700900003"
     assert data['status'] == "4"
     assert data['reference'] == "mmg_reference"
     assert data['CID'] == "1234"
 
 
 def test_delivered_firetext_callback():
-    assert firetext_callback('1234', '07811111111') == {
-        'mobile': '07811111111',
+    assert firetext_callback('1234', '07700900001') == {
+        'mobile': '07700900001',
         'status': '0',
         'time': '2016-03-10 14:17:00',
         'reference': '1234'
@@ -84,8 +84,8 @@ def test_delivered_firetext_callback():
 
 
 def test_failure_firetext_callback():
-    assert firetext_callback('1234', '07822222222') == {
-        'mobile': '07822222222',
+    assert firetext_callback('1234', '07700900002') == {
+        'mobile': '07700900002',
         'status': '1',
         'time': '2016-03-10 14:17:00',
         'reference': '1234'
