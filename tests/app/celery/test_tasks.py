@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from unittest.mock import Mock, ANY
+from unittest.mock import Mock, ANY, call
 
 import pytest
 from freezegun import freeze_time
@@ -17,6 +17,7 @@ from app.celery.tasks import (
     process_row,
     send_sms,
     send_email,
+    persist_letter,
     get_template_class
 )
 from app.dao import jobs_dao, services_dao
@@ -41,20 +42,16 @@ class AnyStringWith(str):
 mmg_error = {'Error': '40', 'Description': 'error'}
 
 
-def _notification_json(template, to, personalisation=None, job_id=None, row_number=None):
-    notification = {
+def _notification_json(template, to, personalisation=None, job_id=None, row_number=0):
+    return {
         "template": str(template.id),
         "template_version": template.version,
         "to": to,
-        "notification_type": template.template_type
+        "notification_type": template.template_type,
+        "personalisation": personalisation or {},
+        "job": job_id and str(job_id),
+        "row_number": row_number
     }
-    if personalisation:
-        notification.update({"personalisation": personalisation})
-    if job_id:
-        notification.update({"job": str(job_id)})
-    if row_number:
-        notification['row_number'] = row_number
-    return notification
 
 
 def test_should_have_decorated_tasks_functions():
@@ -261,6 +258,42 @@ def test_should_process_email_job(email_job_with_placeholders, mocker):
     )
     job = jobs_dao.dao_get_job_by_id(email_job_with_placeholders.id)
     assert job.job_status == 'finished'
+
+
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_should_process_letter_job(sample_letter_job, mocker):
+    csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
+    A1,A2,A3,A4,A_POST,Alice
+    """
+    s3_mock = mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=csv)
+    mocker.patch('app.celery.tasks.send_email.apply_async')
+    process_row_mock = mocker.patch('app.celery.tasks.process_row')
+    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+
+    process_job(sample_letter_job.id)
+
+    s3_mock.assert_called_once_with(
+        str(sample_letter_job.service.id),
+        str(sample_letter_job.id)
+    )
+
+    row_call = process_row_mock.mock_calls[0][1]
+
+    assert row_call[0] == 0
+    assert row_call[1] == ['A1', 'A2', 'A3', 'A4', None, None, 'A_POST']
+    assert dict(row_call[2]) == {
+        'addressline1': 'A1',
+        'addressline2': 'A2',
+        'addressline3': 'A3',
+        'addressline4': 'A4',
+        'postcode': 'A_POST'
+    }
+    assert row_call[4] == sample_letter_job
+    assert row_call[5] == sample_letter_job.service
+
+    assert process_row_mock.call_count == 1
+
+    assert sample_letter_job.job_status == 'finished'
 
 
 def test_should_process_all_sms_job(sample_job,
@@ -851,6 +884,47 @@ def test_send_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample
     assert Notification.query.count() == 1
     assert not deliver_sms.called
     assert not retry.called
+
+
+def test_persist_letter_saves_letter_to_database(sample_letter_job, mocker):
+    personalisation = {
+        'addressline1': 'Foo',
+        'addressline2': 'Bar',
+        'addressline3': 'Baz',
+        'addressline4': 'Wibble',
+        'addressline5': 'Wobble',
+        'addressline6': 'Wubble',
+        'postcode': 'Flob',
+    }
+    notification_json = _notification_json(
+        template=sample_letter_job.template,
+        to='Foo',
+        personalisation=personalisation,
+        job_id=sample_letter_job.id,
+        row_number=1
+    )
+    notification_id = uuid.uuid4()
+    created_at = datetime.utcnow()
+
+    persist_letter(
+        sample_letter_job.service_id,
+        notification_id,
+        encryption.encrypt(notification_json),
+        created_at
+    )
+
+    notification_db = Notification.query.one()
+    assert notification_db.id == notification_id
+    assert notification_db.to == 'Foo'
+    assert notification_db.job_id == sample_letter_job.id
+    assert notification_db.template_id == sample_letter_job.template.id
+    assert notification_db.template_version == sample_letter_job.template.version
+    assert notification_db.status == 'created'
+    assert notification_db.created_at == created_at
+    assert notification_db.notification_type == 'letter'
+    assert notification_db.sent_at is None
+    assert notification_db.sent_by is None
+    assert notification_db.personalisation == personalisation
 
 
 @pytest.mark.parametrize('template_type, expected_class', [

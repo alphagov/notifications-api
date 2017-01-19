@@ -220,20 +220,24 @@ def persist_letter(
     created_at
 ):
     notification = encryption.decrypt(encrypted_notification)
+
+    # we store the recipient as just the first item of the person's address
+    recipient = notification['personalisation']['addressline1']
+
     service = dao_fetch_service_by_id(service_id)
     try:
         saved_notification = persist_notification(
             template_id=notification['template'],
             template_version=notification['template_version'],
-            recipient=notification['to'],
+            recipient=recipient,
             service=service,
-            personalisation=notification.get('personalisation'),
-            notification_type=EMAIL_TYPE,
+            personalisation=notification['personalisation'],
+            notification_type=LETTER_TYPE,
             api_key_id=None,
             key_type=KEY_TYPE_NORMAL,
             created_at=created_at,
-            job_id=notification.get('job', None),
-            job_row_number=notification.get('row_number', None),
+            job_id=notification['job'],
+            job_row_number=notification['row_number'],
             notification_id=notification_id
         )
 
