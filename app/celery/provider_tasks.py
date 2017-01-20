@@ -5,7 +5,6 @@ from sqlalchemy.orm.exc import NoResultFound
 from app import notify_celery
 from app.dao import notifications_dao
 from app.dao.notifications_dao import update_notification_status_by_id
-from app.dao.provider_details_dao import dao_toggle_sms_provider
 from app.statsd_decorators import statsd
 from app.delivery import send_to_providers
 
@@ -44,7 +43,6 @@ def deliver_sms(self, notification_id):
         send_to_providers.send_sms_to_provider(notification)
     except Exception as e:
         try:
-            dao_toggle_sms_provider()
             current_app.logger.exception(
                 "RETRY: SMS notification {} failed".format(notification_id)
             )
