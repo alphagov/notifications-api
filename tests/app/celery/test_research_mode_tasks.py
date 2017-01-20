@@ -1,3 +1,4 @@
+import pytest
 from flask import json
 from app.celery.research_mode_tasks import (
     send_sms_response,
@@ -50,42 +51,49 @@ def test_make_ses_callback(notify_api, rmock):
     assert rmock.called
 
 
-def test_delivered_mmg_callback():
-    data = json.loads(mmg_callback("1234", "07700900001"))
-    assert data['MSISDN'] == "07700900001"
+@pytest.mark.parametrize("phone_number", ["07700900001", "+447700900001", "7700900001", "+44 7700900001",
+                                          "+4407513453456"])
+def test_delivered_mmg_callback(phone_number):
+    data = json.loads(mmg_callback("1234", phone_number))
+    assert data['MSISDN'] == phone_number
     assert data['status'] == "3"
     assert data['reference'] == "mmg_reference"
     assert data['CID'] == "1234"
 
 
-def test_perm_failure_mmg_callback():
-    data = json.loads(mmg_callback("1234", "07700900002"))
-    assert data['MSISDN'] == "07700900002"
+@pytest.mark.parametrize("phone_number", ["07700900002", "+447700900002", "7700900002", "+44 7700900002"])
+def test_perm_failure_mmg_callback(phone_number):
+    data = json.loads(mmg_callback("1234", phone_number))
+    assert data['MSISDN'] == phone_number
     assert data['status'] == "5"
     assert data['reference'] == "mmg_reference"
     assert data['CID'] == "1234"
 
 
-def test_temp_failure_mmg_callback():
-    data = json.loads(mmg_callback("1234", "07700900003"))
-    assert data['MSISDN'] == "07700900003"
+@pytest.mark.parametrize("phone_number", ["07700900003", "+447700900003", "7700900003", "+44 7700900003"])
+def test_temp_failure_mmg_callback(phone_number):
+    data = json.loads(mmg_callback("1234", phone_number))
+    assert data['MSISDN'] == phone_number
     assert data['status'] == "4"
     assert data['reference'] == "mmg_reference"
     assert data['CID'] == "1234"
 
 
-def test_delivered_firetext_callback():
-    assert firetext_callback('1234', '07700900001') == {
-        'mobile': '07700900001',
+@pytest.mark.parametrize("phone_number", ["07700900001", "+447700900001", "7700900001", "+44 7700900001",
+                                          "+4407513453456"])
+def test_delivered_firetext_callback(phone_number):
+    assert firetext_callback('1234', phone_number) == {
+        'mobile': phone_number,
         'status': '0',
         'time': '2016-03-10 14:17:00',
         'reference': '1234'
     }
 
 
-def test_failure_firetext_callback():
-    assert firetext_callback('1234', '07700900002') == {
-        'mobile': '07700900002',
+@pytest.mark.parametrize("phone_number", ["07700900002", "+447700900002", "7700900002", "+44 7700900002"])
+def test_failure_firetext_callback(phone_number):
+    assert firetext_callback('1234', phone_number) == {
+        'mobile': phone_number,
         'status': '1',
         'time': '2016-03-10 14:17:00',
         'reference': '1234'
