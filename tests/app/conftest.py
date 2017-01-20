@@ -189,6 +189,14 @@ def sample_template_with_placeholders(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
+def sample_sms_template_with_html(notify_db, notify_db_session):
+    # deliberate space and title case in placeholder
+    return sample_template(notify_db, notify_db_session, content=(
+        "Hello (( Name))\nHere is <em>some HTML</em> & entities"
+    ))
+
+
+@pytest.fixture(scope='function')
 def sample_email_template(
         notify_db,
         notify_db_session,
@@ -222,6 +230,15 @@ def sample_email_template_with_placeholders(notify_db, notify_db_session):
         notify_db_session,
         content="Hello ((name))\nThis is an email from GOV.UK",
         subject_line="((name))")
+
+
+@pytest.fixture(scope='function')
+def sample_email_template_with_html(notify_db, notify_db_session):
+    return sample_email_template(
+        notify_db,
+        notify_db_session,
+        content="Hello ((name))\nThis is an email from GOV.UK with <em>some HTML</em>",
+        subject_line="((name)) <em>some HTML</em>")
 
 
 @pytest.fixture(scope='function')
