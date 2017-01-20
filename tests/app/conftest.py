@@ -643,18 +643,6 @@ def current_sms_provider():
 
 
 @pytest.fixture(scope='function')
-def set_primary_sms_provider(identifier='mmg'):
-    primary_provider = get_provider_details_by_identifier(identifier)
-    secondary_provider = get_alternative_sms_provider(identifier)
-
-    primary_provider.priority = 10
-    secondary_provider.priority = 20
-
-    dao_update_provider_details(primary_provider)
-    dao_update_provider_details(secondary_provider)
-
-
-@pytest.fixture(scope='function')
 def ses_provider():
     return ProviderDetails.query.filter_by(identifier='ses').one()
 

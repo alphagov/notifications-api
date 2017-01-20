@@ -10,12 +10,23 @@ from app.dao.provider_details_dao import (
     get_alternative_sms_provider,
     get_current_provider,
     get_provider_details,
+    get_provider_details_by_identifier,
     get_provider_details_by_notification_type,
     dao_switch_sms_provider_to_provider_with_identifier,
     dao_toggle_sms_provider,
     dao_update_provider_details
 )
-from tests.app.conftest import set_primary_sms_provider
+
+
+def set_primary_sms_provider(identifier='mmg'):
+    primary_provider = get_provider_details_by_identifier(identifier)
+    secondary_provider = get_alternative_sms_provider(identifier)
+
+    primary_provider.priority = 10
+    secondary_provider.priority = 20
+
+    dao_update_provider_details(primary_provider)
+    dao_update_provider_details(secondary_provider)
 
 
 def test_can_get_all_providers(restore_provider_details):
@@ -110,8 +121,6 @@ def test_get_alternative_sms_provider_returns_expected_provider(notify_db, provi
 
 
 def test_switch_sms_provider_to_current_provider_does_not_switch(
-    notify_db,
-    notify_db_session,
     restore_provider_details,
     current_sms_provider,
     mocker
