@@ -1,5 +1,4 @@
 apispec==0.14.0
-bleach==1.4.3
 Flask==0.10.1
 Flask-Script==2.0.5
 Flask-Migrate==1.3.1
@@ -24,6 +23,6 @@ gunicorn==19.6.0
 # pin to minor version 3.1.x
 notifications-python-client>=3.1,<3.2
 
-git+https://github.com/alphagov/notifications-utils.git@13.1.0#egg=notifications-utils==13.1.0
+git+https://github.com/alphagov/notifications-utils.git@13.2.0#egg=notifications-utils==13.2.0
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3

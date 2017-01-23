@@ -4,7 +4,6 @@ from flask import (
     request,
     current_app
 )
-import bleach
 
 from app.dao.templates_dao import (
     dao_update_template,
@@ -41,7 +40,6 @@ def create_template(service_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
     new_template = template_schema.load(request.get_json()).data
     new_template.service = fetched_service
-    new_template.content = _strip_html(new_template.content)
     over_limit = _content_count_greater_than_limit(new_template.content, new_template.template_type)
     if over_limit:
         char_count_limit = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
@@ -60,7 +58,6 @@ def update_template(service_id, template_id):
     current_data = dict(template_schema.dump(fetched_template).data.items())
     updated_template = dict(template_schema.dump(fetched_template).data.items())
     updated_template.update(request.get_json())
-    updated_template['content'] = _strip_html(updated_template['content'])
     # Check if there is a change to make.
     if _template_has_not_changed(current_data, updated_template):
         return jsonify(data=updated_template), 200
@@ -135,10 +132,6 @@ def get_template_versions(service_id, template_id):
         many=True
     ).data
     return jsonify(data=data)
-
-
-def _strip_html(content):
-    return bleach.clean(content, tags=[], strip=True)
 
 
 def _template_has_not_changed(current_data, updated_template):

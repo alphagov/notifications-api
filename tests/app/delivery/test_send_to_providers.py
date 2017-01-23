@@ -50,10 +50,10 @@ def test_should_return_highest_priority_active_provider(notify_db, notify_db_ses
 def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     notify_db,
     notify_db_session,
-    sample_template_with_placeholders,
+    sample_sms_template_with_html,
     mocker
 ):
-    db_notification = sample_notification(notify_db, notify_db_session, template=sample_template_with_placeholders,
+    db_notification = sample_notification(notify_db, notify_db_session, template=sample_sms_template_with_html,
                                           to_field="+447234123123", personalisation={"name": "Jo"},
                                           status='created')
 
@@ -66,7 +66,7 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
 
     mmg_client.send_sms.assert_called_once_with(
         to=format_phone_number(validate_phone_number("+447234123123")),
-        content="Sample service: Hello Jo\nYour thing is due soon",
+        content="Sample service: Hello Jo\nHere is <em>some HTML</em> & entities",
         reference=str(db_notification.id),
         sender=None
     )
@@ -82,12 +82,12 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
 def test_should_send_personalised_template_to_correct_email_provider_and_persist(
     notify_db,
     notify_db_session,
-    sample_email_template_with_placeholders,
+    sample_email_template_with_html,
     mocker
 ):
     db_notification = sample_notification(
         notify_db=notify_db, notify_db_session=notify_db_session,
-        template=sample_email_template_with_placeholders,
+        template=sample_email_template_with_html,
         to_field="jo.smith@example.com",
         personalisation={'name': 'Jo'}
     )
@@ -102,12 +102,13 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
     app.aws_ses_client.send_email.assert_called_once_with(
         '"Sample service" <sample.service@test.notify.com>',
         'jo.smith@example.com',
-        'Jo',
-        body='Hello Jo\nThis is an email from GOV.\u200bUK',
+        'Jo <em>some HTML</em>',
+        body='Hello Jo\nThis is an email from GOV.\u200bUK with <em>some HTML</em>',
         html_body=ANY,
         reply_to_address=None
     )
     assert '<!DOCTYPE html' in app.aws_ses_client.send_email.call_args[1]['html_body']
+    assert '&lt;em&gt;some HTML&lt;/em&gt;' in app.aws_ses_client.send_email.call_args[1]['html_body']
 
     notification = Notification.query.filter_by(id=db_notification.id).one()
     assert notification.status == 'sending'
