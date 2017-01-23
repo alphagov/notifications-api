@@ -1,6 +1,6 @@
 import uuid
 
-from flask import jsonify, request, url_for
+from flask import jsonify, request, url_for, current_app
 from werkzeug.exceptions import abort
 
 from app import api_user
@@ -43,7 +43,8 @@ def get_notifications():
         key_type=api_user.key_type,
         personalisation=True,
         older_than=data.get('older_than'),
-        client_reference=data.get('reference')
+        client_reference=data.get('reference'),
+        page_size=current_app.config.get('API_PAGE_SIZE')
     )
 
     def _build_links(notifications):
