@@ -21,14 +21,12 @@ def update_provider_priorities(current_provider, new_provider):
     # Swap priority to change primary provider
     if new_provider.priority > current_provider.priority:
         new_provider.priority, current_provider.priority = current_provider.priority, new_provider.priority
-        _print_provider_switch_logs(current_provider, new_provider)
-        return [current_provider, new_provider]
 
     # Incease other provider priority if equal
     elif new_provider.priority == current_provider.priority:
         current_provider.priority += 10
-        _print_provider_switch_logs(current_provider, new_provider)
-        return [current_provider]
+
+    _print_provider_switch_logs(current_provider, new_provider)
 
 
 def _print_provider_switch_logs(current_provider, new_provider):

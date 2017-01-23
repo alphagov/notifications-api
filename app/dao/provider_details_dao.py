@@ -42,9 +42,8 @@ def get_current_provider(notification_type):
 
 
 @transactional
-def dao_toggle_sms_provider():
-    current_provider = get_current_provider('sms')
-    alternate_provider = get_alternative_sms_provider(current_provider.identifier)
+def dao_toggle_sms_provider(identifier):
+    alternate_provider = get_alternative_sms_provider(identifier)
     dao_switch_sms_provider_to_provider_with_identifier(alternate_provider.identifier)
 
 
@@ -53,12 +52,14 @@ def dao_switch_sms_provider_to_provider_with_identifier(identifier):
     current_provider = get_current_provider('sms')
     new_provider = get_provider_details_by_identifier(identifier)
 
-    if provider_is_already_primary_or_inactive(current_provider, new_provider, identifier):
-        return current_provider
-    else:
-        updated_providers = update_provider_priorities(current_provider, new_provider)
-        for provider in updated_providers:
-            db.session.add(provider)
+    if current_provider.priority == new_provider.priority:
+        # Since both priorities are equal, set the current provider
+        # to the one that we want to switch from
+        current_provider = get_alternative_sms_provider(identifier)
+
+    if not provider_is_already_primary_or_inactive(current_provider, new_provider, identifier):
+        update_provider_priorities(current_provider, new_provider)
+        db.session.add_all([current_provider, new_provider])
 
 
 def get_provider_details_by_notification_type(notification_type):

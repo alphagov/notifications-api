@@ -47,7 +47,7 @@ def send_sms_to_provider(notification):
                     sender=service.sms_sender
                 )
             except Exception as e:
-                dao_toggle_sms_provider()
+                dao_toggle_sms_provider(provider.name)
                 raise e
             else:
                 notification.billable_units = template.fragment_count

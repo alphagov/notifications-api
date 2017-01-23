@@ -133,8 +133,6 @@ def test_switch_sms_provider_to_current_provider_does_not_switch(
 
 
 def test_switch_sms_provider_to_inactive_provider_does_not_switch(
-    notify_db,
-    notify_db_session,
     restore_provider_details,
     current_sms_provider,
     mocker
@@ -151,13 +149,26 @@ def test_switch_sms_provider_to_inactive_provider_does_not_switch(
 
 
 def test_toggle_sms_provider_switches_provider(
-    notify_db,
-    notify_db_session,
     restore_provider_details,
     current_sms_provider,
     mocker
 ):
-    dao_toggle_sms_provider()
+    dao_toggle_sms_provider(current_sms_provider.identifier)
     new_provider = get_current_provider('sms')
+    assert new_provider.identifier != current_sms_provider.identifier
+    assert new_provider.priority < current_sms_provider.priority
+
+
+def test_toggle_sms_provider_switches_when_provider_priorities_are_equal(
+    restore_provider_details,
+    current_sms_provider,
+    mocker
+):
+    new_provider = get_alternative_sms_provider(current_sms_provider.identifier)
+    current_sms_provider.priority = new_provider.priority
+    dao_update_provider_details(current_sms_provider)
+
+    dao_toggle_sms_provider(current_sms_provider.identifier)
 
     assert new_provider.identifier != current_sms_provider.identifier
+    assert new_provider.priority < current_sms_provider.priority
