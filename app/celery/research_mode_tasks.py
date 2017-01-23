@@ -6,9 +6,9 @@ from requests import request, RequestException, HTTPError
 
 from app.models import SMS_TYPE
 
-temp_fail = "07700900003"
-perm_fail = "07700900002"
-delivered = "07700900001"
+temp_fail = "7700900003"
+perm_fail = "7700900002"
+delivered = "7700900001"
 
 delivered_email = "delivered@simulator.notify"
 perm_fail_email = "perm-fail@simulator.notify"
@@ -23,6 +23,17 @@ def send_sms_response(provider, reference, to):
     else:
         headers = {"Content-type": "application/x-www-form-urlencoded"}
         body = firetext_callback(reference, to)
+        # to simulate getting a temporary_failure from firetext
+        # we need to send a pending status updated then a permanent-failure
+        if body['status'] == '2':  # pending status
+            make_request(SMS_TYPE, provider, body, headers)
+            # 1 is a declined status for firetext, will result in a temp-failure
+            body = {'mobile': to,
+                    'status': "1",
+                    'time': '2016-03-10 14:17:00',
+                    'reference': reference
+                    }
+
     make_request(SMS_TYPE, provider, body, headers)
 
 
@@ -71,9 +82,9 @@ def mmg_callback(notification_id, to):
         status: 5 - rejected (perm failure)
     """
 
-    if to == temp_fail:
+    if to.strip().endswith(temp_fail):
         status = "4"
-    elif to == perm_fail:
+    elif to.strip().endswith(perm_fail):
         status = "5"
     else:
         status = "3"
@@ -90,8 +101,10 @@ def firetext_callback(notification_id, to):
         status: 0 - delivered
         status: 1 - perm failure
     """
-    if to == perm_fail:
+    if to.strip().endswith(perm_fail):
         status = "1"
+    elif to.strip().endswith(temp_fail):
+        status = "2"
     else:
         status = "0"
     return {
