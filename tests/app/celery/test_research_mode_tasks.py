@@ -25,18 +25,21 @@ def test_make_mmg_callback(notify_api, rmock):
     assert json.loads(rmock.request_history[0].text)['MSISDN'] == '07700900001'
 
 
-def test_make_firetext_callback(notify_api, rmock):
+@pytest.mark.parametrize("phone_number",
+                         ["07700900001", "07700900002", "07700900003",
+                          "07700900236"])
+def test_make_firetext_callback(notify_api, rmock, phone_number):
     endpoint = "http://localhost:6011/notifications/sms/firetext"
     rmock.request(
         "POST",
         endpoint,
         json="some data",
         status_code=200)
-    send_sms_response("firetext", "1234", "07700900001")
+    send_sms_response("firetext", "1234", phone_number)
 
     assert rmock.called
     assert rmock.request_history[0].url == endpoint
-    assert 'mobile=07700900001' in rmock.request_history[0].text
+    assert 'mobile={}'.format(phone_number) in rmock.request_history[0].text
 
 
 def test_make_ses_callback(notify_api, rmock):
@@ -52,7 +55,7 @@ def test_make_ses_callback(notify_api, rmock):
 
 
 @pytest.mark.parametrize("phone_number", ["07700900001", "+447700900001", "7700900001", "+44 7700900001",
-                                          "+4407513453456"])
+                                          "+447700900236"])
 def test_delivered_mmg_callback(phone_number):
     data = json.loads(mmg_callback("1234", phone_number))
     assert data['MSISDN'] == phone_number
@@ -80,7 +83,7 @@ def test_temp_failure_mmg_callback(phone_number):
 
 
 @pytest.mark.parametrize("phone_number", ["07700900001", "+447700900001", "7700900001", "+44 7700900001",
-                                          "+4407513453456"])
+                                          "+447700900256"])
 def test_delivered_firetext_callback(phone_number):
     assert firetext_callback('1234', phone_number) == {
         'mobile': phone_number,

@@ -27,7 +27,12 @@ def send_sms_response(provider, reference, to):
         # we need to send a pending status updated then a permanent-failure
         if body['status'] == '2':  # pending status
             make_request(SMS_TYPE, provider, body, headers)
-            body = firetext_callback(reference, perm_fail)
+            # 1 is a declined status for firetext, will result in a temp-failure
+            body = {'mobile': to,
+                    'status': "1",
+                    'time': '2016-03-10 14:17:00',
+                    'reference': reference
+                    }
 
     make_request(SMS_TYPE, provider, body, headers)
 
