@@ -51,7 +51,7 @@ def process_job(job_id):
 
     db_template = dao_get_template_by_id(job.template_id, job.template_version)
 
-    TemplateClass = get_template_class(db_template)
+    TemplateClass = get_template_class(db_template.template_type)
     template = TemplateClass(db_template.__dict__)
 
     for row_number, recipient, personalisation in RecipientCSV(
@@ -266,10 +266,10 @@ def handle_exception(task, notification, notification_id, exc):
             current_app.logger.exception('Retry' + retry_msg)
 
 
-def get_template_class(template):
-    if template.template_type == SMS_TYPE:
+def get_template_class(template_type):
+    if template_type == SMS_TYPE:
         return SMSMessageTemplate
-    elif template.template_type in (EMAIL_TYPE, LETTER_TYPE):
+    elif template_type in (EMAIL_TYPE, LETTER_TYPE):
         # since we don't need rendering capabilities (we only need to extract placeholders) both email and letter can
         # use the same base template
         return WithSubjectTemplate

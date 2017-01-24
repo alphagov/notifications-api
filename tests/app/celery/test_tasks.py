@@ -794,10 +794,6 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
                                                                      queue='send-email')
 
 
-class MyException(Exception):
-    pass
-
-
 def test_send_sms_should_go_to_retry_queue_if_database_errors(sample_template, mocker):
     notification = _notification_json(sample_template, "+447234123123")
 
@@ -933,5 +929,4 @@ def test_persist_letter_saves_letter_to_database(sample_letter_job, mocker):
     (LETTER_TYPE, WithSubjectTemplate),
 ])
 def test_get_template_class(template_type, expected_class):
-    template = Mock(template_type=template_type)
-    assert get_template_class(template) == expected_class
+    assert get_template_class(template_type) == expected_class

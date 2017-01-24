@@ -167,8 +167,9 @@ class Development(Config):
     SQLALCHEMY_ECHO = False
     CELERY_QUEUES = Config.CELERY_QUEUES + [
         Queue('db-sms', Exchange('default'), routing_key='db-sms'),
-        Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('db-email', Exchange('default'), routing_key='db-email'),
+        Queue('db-letter', Exchange('default'), routing_key='db-letter'),
+        Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('send-email', Exchange('default'), routing_key='send-email'),
         Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
@@ -186,8 +187,9 @@ class Test(Config):
     STATSD_PORT = 1000
     CELERY_QUEUES = Config.CELERY_QUEUES + [
         Queue('db-sms', Exchange('default'), routing_key='db-sms'),
-        Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('db-email', Exchange('default'), routing_key='db-email'),
+        Queue('db-letter', Exchange('default'), routing_key='db-letter'),
+        Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('send-email', Exchange('default'), routing_key='send-email'),
         Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
