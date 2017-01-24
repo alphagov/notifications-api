@@ -9,11 +9,13 @@ from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTempla
 
 from app import clients, statsd_client, create_uuid
 from app.dao.notifications_dao import dao_update_notification
-from app.dao.provider_details_dao import get_provider_details_by_notification_type
+from app.dao.provider_details_dao import (
+    get_provider_details_by_notification_type,
+    dao_toggle_sms_provider
+)
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.dao.templates_dao import dao_get_template_by_id
-
 from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE
 
 
@@ -37,13 +39,18 @@ def send_sms_to_provider(notification):
             )
             notification.billable_units = 0
         else:
-            provider.send_sms(
-                to=validate_and_format_phone_number(notification.to),
-                content=str(template),
-                reference=str(notification.id),
-                sender=service.sms_sender
-            )
-            notification.billable_units = template.fragment_count
+            try:
+                provider.send_sms(
+                    to=validate_and_format_phone_number(notification.to),
+                    content=str(template),
+                    reference=str(notification.id),
+                    sender=service.sms_sender
+                )
+            except Exception as e:
+                dao_toggle_sms_provider(provider.name)
+                raise e
+            else:
+                notification.billable_units = template.fragment_count
 
         notification.sent_at = datetime.utcnow()
         notification.sent_by = provider.get_name()

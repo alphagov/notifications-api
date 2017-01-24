@@ -1,9 +1,10 @@
+import requests_mock
+import pytest
 import uuid
 from datetime import (datetime, date, timedelta)
 
+from sqlalchemy import asc
 from sqlalchemy.orm.session import make_transient
-import requests_mock
-import pytest
 from flask import current_app
 
 from app import db
@@ -34,7 +35,11 @@ from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
 from app.dao.provider_rates_dao import create_provider_rates
 from app.clients.sms.firetext import FiretextClient
-
+from app.dao.provider_details_dao import (
+    dao_update_provider_details,
+    get_provider_details_by_identifier,
+    get_alternative_sms_provider
+)
 from tests.app.db import create_user
 
 
@@ -648,13 +653,22 @@ def fake_uuid():
 
 
 @pytest.fixture(scope='function')
+def current_sms_provider():
+    return ProviderDetails.query.filter_by(
+        notification_type='sms'
+    ).order_by(
+        asc(ProviderDetails.priority)
+    ).first()
+
+
+@pytest.fixture(scope='function')
 def ses_provider():
     return ProviderDetails.query.filter_by(identifier='ses').one()
 
 
 @pytest.fixture(scope='function')
 def firetext_provider():
-    return ProviderDetails.query.filter_by(identifier='mmg').one()
+    return ProviderDetails.query.filter_by(identifier='firetext').one()
 
 
 @pytest.fixture(scope='function')
