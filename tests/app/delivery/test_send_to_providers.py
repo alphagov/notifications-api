@@ -165,7 +165,7 @@ def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_s
                                                              research_mode, key_type):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
-    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
+    mocker.patch('app.delivery.send_to_providers.send_sms_response')
 
     if research_mode:
         sample_service.research_mode = True
@@ -178,8 +178,8 @@ def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_s
         sample_notification
     )
     assert not mmg_client.send_sms.called
-    send_to_providers.send_sms_response.apply_async.assert_called_once_with(
-        ('mmg', str(sample_notification.id), sample_notification.to), queue='research-mode'
+    app.delivery.send_to_providers.send_sms_response.assert_called_once_with(
+        'mmg', str(sample_notification.id), sample_notification.to
     )
 
     persisted_notification = notifications_dao.get_notification_by_id(sample_notification.id)
@@ -200,7 +200,7 @@ def test_should_set_billable_units_to_zero_in_research_mode_or_test_key(
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
-    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
+    mocker.patch('app.delivery.send_to_providers.send_sms_response')
     if research_mode:
         sample_service.research_mode = True
         notify_db.session.add(sample_service)
@@ -222,14 +222,14 @@ def test_should_not_send_to_provider_when_status_is_not_created(notify_db, notif
                                        status='sending')
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
-    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
+    mocker.patch('app.delivery.send_to_providers.send_sms_response')
 
     send_to_providers.send_sms_to_provider(
         notification
     )
 
     app.mmg_client.send_sms.assert_not_called()
-    app.celery.research_mode_tasks.send_sms_response.apply_async.assert_not_called()
+    app.delivery.send_to_providers.send_sms_response.assert_not_called()
 
 
 def test_should_send_sms_sender_from_service_if_present(
@@ -284,7 +284,7 @@ def test_send_email_to_provider_should_call_research_mode_task_response_task_if_
     mocker.patch('app.uuid.uuid4', return_value=reference)
     mocker.patch('app.aws_ses_client.send_email')
     mocker.patch('app.aws_ses_client.get_name', return_value="ses")
-    mocker.patch('app.celery.research_mode_tasks.send_email_response.apply_async')
+    mocker.patch('app.delivery.send_to_providers.send_email_response')
 
     if research_mode:
         sample_service.research_mode = True
@@ -295,9 +295,7 @@ def test_send_email_to_provider_should_call_research_mode_task_response_task_if_
         notification
     )
     assert not app.aws_ses_client.send_email.called
-    send_to_providers.send_email_response.apply_async.assert_called_once_with(
-        ('ses', str(reference), 'john@smith.com'), queue="research-mode"
-    )
+    app.delivery.send_to_providers.send_email_response.assert_called_once_with('ses', str(reference), 'john@smith.com')
     persisted_notification = Notification.query.filter_by(id=notification.id).one()
 
     assert persisted_notification.to == 'john@smith.com'
@@ -320,14 +318,14 @@ def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_c
                                        status='sending')
     mocker.patch('app.aws_ses_client.send_email')
     mocker.patch('app.aws_ses_client.get_name', return_value="ses")
-    mocker.patch('app.celery.research_mode_tasks.send_email_response.apply_async')
+    mocker.patch('app.delivery.send_to_providers.send_email_response')
 
     send_to_providers.send_sms_to_provider(
         notification
     )
 
     app.aws_ses_client.send_email.assert_not_called()
-    app.celery.research_mode_tasks.send_email_response.apply_async.assert_not_called()
+    app.delivery.send_to_providers.send_email_response.assert_not_called()
 
 
 def test_send_email_should_use_service_reply_to_email(
@@ -420,7 +418,7 @@ def test_get_logo_url_works_for_different_environments(base_url, expected_url):
 def test_should_not_set_billable_units_if_research_mode(notify_db, sample_service, sample_notification, mocker):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
-    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
+    mocker.patch('app.delivery.send_to_providers.send_sms_response')
 
     sample_service.research_mode = True
     notify_db.session.add(sample_service)
@@ -454,7 +452,7 @@ def test_should_update_billable_units_according_to_research_mode_and_key_type(no
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.mmg_client.get_name', return_value="mmg")
-    mocker.patch('app.celery.research_mode_tasks.send_sms_response.apply_async')
+    mocker.patch('app.delivery.send_to_providers.send_sms_response')
     if research_mode:
         sample_service.research_mode = True
         notify_db.session.add(sample_service)

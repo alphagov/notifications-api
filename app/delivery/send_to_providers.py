@@ -33,11 +33,11 @@ def send_sms_to_provider(notification):
             prefix=service.name,
             sender=service.sms_sender
         )
+
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
-            send_sms_response.apply_async(
-                (provider.get_name(), str(notification.id), notification.to), queue='research-mode'
-            )
             notification.billable_units = 0
+            update_notification(notification, provider)
+            send_sms_response(provider.get_name(), str(notification.id), notification.to)
         else:
             try:
                 provider.send_sms(
@@ -51,11 +51,7 @@ def send_sms_to_provider(notification):
                 raise e
             else:
                 notification.billable_units = template.fragment_count
-
-        notification.sent_at = datetime.utcnow()
-        notification.sent_by = provider.get_name()
-        notification.status = 'sending'
-        dao_update_notification(notification)
+                update_notification(notification, provider)
 
         current_app.logger.info(
             "SMS {} sent to provider {} at {}".format(notification.id, provider.get_name(), notification.sent_at)
@@ -86,10 +82,10 @@ def send_email_to_provider(notification):
 
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
             reference = str(create_uuid())
-            send_email_response.apply_async(
-                (provider.get_name(), reference, notification.to), queue='research-mode'
-            )
             notification.billable_units = 0
+            notification.reference = reference
+            update_notification(notification, provider)
+            send_email_response(provider.get_name(), reference, notification.to)
         else:
             from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
                                                  current_app.config['NOTIFY_EMAIL_DOMAIN'])
@@ -101,18 +97,21 @@ def send_email_to_provider(notification):
                 html_body=str(html_email),
                 reply_to_address=service.reply_to_email_address,
             )
-
-        notification.reference = reference
-        notification.sent_at = datetime.utcnow()
-        notification.sent_by = provider.get_name(),
-        notification.status = 'sending'
-        dao_update_notification(notification)
+            notification.reference = reference
+            update_notification(notification, provider)
 
         current_app.logger.info(
             "Email {} sent to provider at {}".format(notification.id, notification.sent_at)
         )
         delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
         statsd_client.timing("email.total-time", delta_milliseconds)
+
+
+def update_notification(notification, provider):
+    notification.sent_at = datetime.utcnow()
+    notification.sent_by = provider.get_name()
+    notification.status = 'sending'
+    dao_update_notification(notification)
 
 
 def provider_to_use(notification_type, notification_id):
