@@ -149,10 +149,7 @@ def process_firetext_response():
     if errors:
         raise InvalidRequest(errors, status_code=400)
 
-    response_code = request.form.get('code')
     status = request.form.get('status')
-    current_app.logger.info('Firetext status: {}, extended error code: {}'.format(status, response_code))
-
     success, errors = process_sms_client_response(status=status,
                                                   reference=request.form.get('reference'),
                                                   client_name=client_name)
