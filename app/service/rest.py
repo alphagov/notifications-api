@@ -190,7 +190,13 @@ def remove_user_from_service(service_id, user_id):
 
 @service_blueprint.route('/<uuid:service_id>/fragment/aggregate_statistics')
 def get_service_provider_aggregate_statistics(service_id):
-    return jsonify(data=get_fragment_count(service_id))
+    year = request.args.get('year')
+    if year is not None:
+        try:
+            year = int(year)
+        except ValueError:
+            raise InvalidRequest('Year must be a number', status_code=400)
+    return jsonify(data=get_fragment_count(service_id, year=year))
 
 
 # This is placeholder get method until more thought
