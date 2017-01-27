@@ -1393,3 +1393,23 @@ def test_get_notification_billable_unit_count_missing_year(client, sample_servic
     assert json.loads(response.get_data(as_text=True)) == {
         'message': 'No valid year provided', 'result': 'error'
     }
+
+
+@pytest.mark.parametrize('query_string, expected_status, expected_json', [
+    ('', 200, {'data': {'email_count': 0, 'sms_count': 0}}),
+    ('?year=2000', 200, {'data': {'email_count': 0, 'sms_count': 0}}),
+    ('?year=abcd', 400, {'message': 'Year must be a number', 'result': 'error'}),
+])
+def test_get_service_provider_aggregate_statistics(
+    client,
+    sample_service,
+    query_string,
+    expected_status,
+    expected_json,
+):
+    response = client.get(
+        '/service/{}/fragment/aggregate_statistics{}'.format(sample_service.id, query_string),
+        headers=[create_authorization_header(service_id=sample_service.id)]
+    )
+    assert response.status_code == expected_status
+    assert json.loads(response.get_data(as_text=True)) == expected_json
