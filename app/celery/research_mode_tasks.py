@@ -15,7 +15,6 @@ perm_fail_email = "perm-fail@simulator.notify"
 temp_fail_email = "temp-fail@simulator.notify"
 
 
-@notify_celery.task(name="send-mmg-response")
 def send_sms_response(provider, reference, to):
     if provider == "mmg":
         body = mmg_callback(reference, to)
@@ -37,7 +36,6 @@ def send_sms_response(provider, reference, to):
     make_request(SMS_TYPE, provider, body, headers)
 
 
-@notify_celery.task(name="send-ses-response")
 def send_email_response(provider, reference, to):
     if to == perm_fail_email:
         body = ses_hard_bounce_callback(reference)
