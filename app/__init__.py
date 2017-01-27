@@ -1,6 +1,5 @@
 import os
 import uuid
-import json
 
 from flask import Flask, _request_ctx_stack
 from flask import request, url_for, g, jsonify
@@ -18,6 +17,7 @@ from app.clients.email.aws_ses import AwsSesClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.loadtesting import LoadtestingClient
 from app.clients.sms.mmg import MMGClient
+from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.encryption import Encryption
 
 
@@ -34,6 +34,7 @@ aws_ses_client = AwsSesClient()
 encryption = Encryption()
 statsd_client = StatsdClient()
 redis_store = RedisClient()
+performance_platform_client = PerformancePlatformClient()
 
 clients = Clients()
 

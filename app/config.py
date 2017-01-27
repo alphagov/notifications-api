@@ -50,6 +50,11 @@ class Config(object):
     REDIS_URL = os.getenv('REDIS_URL')
     REDIS_ENABLED = os.getenv('REDIS_ENABLED') == '1'
 
+    # Performance platform
+    PERFORMANCE_PLATFORM_ENABLED = os.getenv('PERFORMANCE_PLATFORM_ENABLED') == '1'
+    PERFORMANCE_PLATFORM_URL = os.getenv('PERFORMANCE_PLATFORM_URL')
+    PERFORMANCE_PLATFORM_TOKEN = os.getenv('PERFORMANCE_PLATFORM_TOKEN')
+
     # Logging
     DEBUG = False
     LOGGING_STDOUT_JSON = os.getenv('LOGGING_STDOUT_JSON') == '1'
