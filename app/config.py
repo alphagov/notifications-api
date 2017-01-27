@@ -52,7 +52,7 @@ class Config(object):
 
     # Performance platform
     PERFORMANCE_PLATFORM_ENABLED = os.getenv('PERFORMANCE_PLATFORM_ENABLED') == '1'
-    PERFORMANCE_PLATFORM_URL = os.getenv('PERFORMANCE_PLATFORM_URL')
+    PERFORMANCE_PLATFORM_URL = 'https://www.performance.service.gov.uk/data/govuk-notify/notifications'
     PERFORMANCE_PLATFORM_TOKEN = os.getenv('PERFORMANCE_PLATFORM_TOKEN')
 
     # Logging
