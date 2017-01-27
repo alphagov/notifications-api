@@ -1,4 +1,3 @@
-
 import pytz
 from datetime import (
     datetime,
@@ -23,10 +22,16 @@ from app.models import (
     NOTIFICATION_PENDING,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEST)
+    NOTIFICATION_STATUS_TYPES_COMPLETED,
+    KEY_TYPE_NORMAL, KEY_TYPE_TEST
+)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
+from app.utils import (
+    get_midnight_for_date,
+    get_midnight_for_day_before
+)
 
 
 def dao_get_notification_statistics_for_service_and_day(service_id, day):
@@ -408,3 +413,34 @@ def get_april_fools(year):
     """
     return pytz.timezone('Europe/London').localize(datetime(year, 4, 1, 0, 0, 0)).astimezone(pytz.UTC).replace(
         tzinfo=None)
+
+
+def get_total_sent_notifications_in_date_range(start_date, end_date, notification_type):
+    result = db.session.query(
+        func.count(NotificationHistory.id).label('count')
+    ).filter(
+        NotificationHistory.key_type != KEY_TYPE_TEST,
+        NotificationHistory.status.in_(NOTIFICATION_STATUS_TYPES_COMPLETED),
+        NotificationHistory.created_at >= start_date,
+        NotificationHistory.created_at <= end_date,
+        NotificationHistory.notification_type == notification_type
+    ).first()
+
+    return 0 if result is None else result.count
+
+
+def get_total_sent_notifications_yesterday():
+    today = datetime.utcnow()
+    start_date = get_midnight_for_day_before(today)
+    end_date = get_midnight_for_date(today)
+
+    return {
+        "start_date": start_date,
+        "end_date": end_date,
+        "email": {
+            "count": get_total_sent_notifications_in_date_range(start_date, end_date, 'email')
+        },
+        "sms": {
+            "count": get_total_sent_notifications_in_date_range(start_date, end_date, 'sms')
+        }
+    }
