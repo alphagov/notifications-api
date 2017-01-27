@@ -2,6 +2,7 @@ from datetime import datetime
 import uuid
 
 import pytest
+from freezegun import freeze_time
 
 from app.models import NotificationHistory, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, NOTIFICATION_STATUS_TYPES
 from app.dao.provider_statistics_dao import get_fragment_count
@@ -33,6 +34,20 @@ def test_get_fragment_count_filters_on_service_id(notify_db, sample_template, se
     service_2 = service_factory.get('service 2', email_from='service.2')
     noti_hist(notify_db, sample_template)
     assert get_fragment_count(service_2.id)['sms_count'] == 0
+
+
+@pytest.mark.parametrize('creation_time, expected_count', [
+    ('2000-03-31 22:59:59', 0),  # before the start of the year
+    ('2000-04-01 00:00:00', 1),  # after the start of the year
+    ('2001-03-31 22:59:59', 1),  # before the end of the year
+    ('2001-04-01 00:00:00', 0),  # after the end of the year
+])
+def test_get_fragment_count_filters_on_year(
+    notify_db, sample_template, creation_time, expected_count
+):
+    with freeze_time(creation_time):
+        noti_hist(notify_db, sample_template)
+    assert get_fragment_count(sample_template.service_id, year=2000)['sms_count'] == expected_count
 
 
 def test_get_fragment_count_sums_billable_units_for_sms(notify_db, sample_template):
