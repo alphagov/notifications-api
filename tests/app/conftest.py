@@ -526,13 +526,20 @@ def mock_statsd_timing(mocker):
 
 
 @pytest.fixture(scope='function')
-def sample_notification_history(notify_db,
-                                notify_db_session,
-                                sample_template,
-                                status='created',
-                                created_at=None):
+def sample_notification_history(
+    notify_db,
+    notify_db_session,
+    sample_template,
+    status='created',
+    created_at=None,
+    notification_type=None,
+    key_type=KEY_TYPE_NORMAL
+):
     if created_at is None:
         created_at = datetime.utcnow()
+
+    if notification_type is None:
+        notification_type = sample_template.template_type
 
     notification_history = NotificationHistory(
         id=uuid.uuid4(),
@@ -541,8 +548,8 @@ def sample_notification_history(notify_db,
         template_version=sample_template.version,
         status=status,
         created_at=created_at,
-        notification_type=sample_template.template_type,
-        key_type=KEY_TYPE_NORMAL
+        notification_type=notification_type,
+        key_type=key_type
     )
     notify_db.session.add(notification_history)
     notify_db.session.commit()

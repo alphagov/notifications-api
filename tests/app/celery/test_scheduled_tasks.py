@@ -1,18 +1,27 @@
 from datetime import datetime, timedelta
+from functools import partial
 
 from flask import current_app
 from freezegun import freeze_time
 from app.celery.scheduled_tasks import s3
 from app.celery import scheduled_tasks
-from app.celery.scheduled_tasks import (delete_verify_codes,
-                                        remove_csv_files,
-                                        delete_successful_notifications,
-                                        delete_failed_notifications,
-                                        delete_invitations,
-                                        timeout_notifications,
-                                        run_scheduled_jobs)
+from app.celery.scheduled_tasks import (
+    delete_verify_codes,
+    remove_csv_files,
+    delete_successful_notifications,
+    delete_failed_notifications,
+    delete_invitations,
+    timeout_notifications,
+    run_scheduled_jobs,
+    send_daily_performance_stats
+)
 from app.dao.jobs_dao import dao_get_job_by_id
-from tests.app.conftest import sample_notification, sample_job
+from app.utils import get_london_midnight_in_utc
+from tests.app.conftest import (
+    sample_notification as create_sample_notification,
+    sample_job as create_sample_job,
+    sample_notification_history as create_notification_history
+)
 from unittest.mock import call
 
 
@@ -24,6 +33,7 @@ def test_should_have_decorated_tasks_functions():
     assert delete_invitations.__wrapped__.__name__ == 'delete_invitations'
     assert run_scheduled_jobs.__wrapped__.__name__ == 'run_scheduled_jobs'
     assert remove_csv_files.__wrapped__.__name__ == 'remove_csv_files'
+    assert send_daily_performance_stats.__wrapped__.__name__ == 'send_daily_performance_stats'
 
 
 def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
@@ -58,7 +68,7 @@ def test_update_status_of_notifications_after_timeout(notify_api,
                                                       sample_template,
                                                       mmg_provider):
     with notify_api.test_request_context():
-        not1 = sample_notification(
+        not1 = create_sample_notification(
             notify_db,
             notify_db_session,
             service=sample_service,
@@ -66,7 +76,7 @@ def test_update_status_of_notifications_after_timeout(notify_api,
             status='sending',
             created_at=datetime.utcnow() - timedelta(
                 seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-        not2 = sample_notification(
+        not2 = create_sample_notification(
             notify_db,
             notify_db_session,
             service=sample_service,
@@ -74,7 +84,7 @@ def test_update_status_of_notifications_after_timeout(notify_api,
             status='created',
             created_at=datetime.utcnow() - timedelta(
                 seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-        not3 = sample_notification(
+        not3 = create_sample_notification(
             notify_db,
             notify_db_session,
             service=sample_service,
@@ -95,7 +105,7 @@ def test_not_update_status_of_notification_before_timeout(notify_api,
                                                           sample_template,
                                                           mmg_provider):
     with notify_api.test_request_context():
-        not1 = sample_notification(
+        not1 = create_sample_notification(
             notify_db,
             notify_db_session,
             service=sample_service,
@@ -111,7 +121,7 @@ def test_should_update_scheduled_jobs_and_put_on_queue(notify_db, notify_db_sess
     mocked = mocker.patch('app.celery.tasks.process_job.apply_async')
 
     one_minute_in_the_past = datetime.utcnow() - timedelta(minutes=1)
-    job = sample_job(notify_db, notify_db_session, scheduled_for=one_minute_in_the_past, job_status='scheduled')
+    job = create_sample_job(notify_db, notify_db_session, scheduled_for=one_minute_in_the_past, job_status='scheduled')
 
     run_scheduled_jobs()
 
@@ -126,9 +136,24 @@ def test_should_update_all_scheduled_jobs_and_put_on_queue(notify_db, notify_db_
     one_minute_in_the_past = datetime.utcnow() - timedelta(minutes=1)
     ten_minutes_in_the_past = datetime.utcnow() - timedelta(minutes=10)
     twenty_minutes_in_the_past = datetime.utcnow() - timedelta(minutes=20)
-    job_1 = sample_job(notify_db, notify_db_session, scheduled_for=one_minute_in_the_past, job_status='scheduled')
-    job_2 = sample_job(notify_db, notify_db_session, scheduled_for=ten_minutes_in_the_past, job_status='scheduled')
-    job_3 = sample_job(notify_db, notify_db_session, scheduled_for=twenty_minutes_in_the_past, job_status='scheduled')
+    job_1 = create_sample_job(
+        notify_db,
+        notify_db_session,
+        scheduled_for=one_minute_in_the_past,
+        job_status='scheduled'
+    )
+    job_2 = create_sample_job(
+        notify_db,
+        notify_db_session,
+        scheduled_for=ten_minutes_in_the_past,
+        job_status='scheduled'
+    )
+    job_3 = create_sample_job(
+        notify_db,
+        notify_db_session,
+        scheduled_for=twenty_minutes_in_the_past,
+        job_status='scheduled'
+    )
 
     run_scheduled_jobs()
 
@@ -150,10 +175,42 @@ def test_will_remove_csv_files_for_jobs_older_than_seven_days(notify_db, notify_
     midnight = datetime(2016, 10, 10, 0, 0, 0, 0)
     one_millisecond_past_midnight = datetime(2016, 10, 10, 0, 0, 0, 1)
 
-    job_1 = sample_job(notify_db, notify_db_session, created_at=one_millisecond_before_midnight)
-    sample_job(notify_db, notify_db_session, created_at=midnight)
-    sample_job(notify_db, notify_db_session, created_at=one_millisecond_past_midnight)
+    job_1 = create_sample_job(notify_db, notify_db_session, created_at=one_millisecond_before_midnight)
+    create_sample_job(notify_db, notify_db_session, created_at=midnight)
+    create_sample_job(notify_db, notify_db_session, created_at=one_millisecond_past_midnight)
 
     with freeze_time('2016-10-17T00:00:00'):
         remove_csv_files()
     s3.remove_job_from_s3.assert_called_once_with(job_1.service_id, job_1.id)
+
+
+@freeze_time("2016-01-11 12:30:00")
+def test_send_daily_performance_stats_calls_with_correct_totals(notify_db, notify_db_session, sample_template, mocker):
+    perf_mock = mocker.patch('app.celery.scheduled_tasks.performance_platform_client.send_performance_stats')
+
+    notification_history = partial(
+        create_notification_history,
+        notify_db,
+        notify_db_session,
+        sample_template,
+        status='delivered'
+    )
+
+    notification_history(notification_type='email')
+    notification_history(notification_type='sms')
+
+    # Create some notifications for the day before
+    yesterday = datetime(2016, 1, 10, 15, 30, 0, 0)
+    with freeze_time(yesterday):
+        notification_history(notification_type='sms')
+        notification_history(notification_type='sms')
+        notification_history(notification_type='email')
+        notification_history(notification_type='email')
+        notification_history(notification_type='email')
+
+    send_daily_performance_stats()
+
+    perf_mock.assert_has_calls([
+        call(get_london_midnight_in_utc(yesterday), 'sms', 2, 'day'),
+        call(get_london_midnight_in_utc(yesterday), 'email', 3, 'day')
+    ])

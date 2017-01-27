@@ -50,6 +50,11 @@ class Config(object):
     REDIS_URL = os.getenv('REDIS_URL')
     REDIS_ENABLED = os.getenv('REDIS_ENABLED') == '1'
 
+    # Performance platform
+    PERFORMANCE_PLATFORM_ENABLED = os.getenv('PERFORMANCE_PLATFORM_ENABLED') == '1'
+    PERFORMANCE_PLATFORM_URL = 'https://www.performance.service.gov.uk/data/govuk-notify/notifications'
+    PERFORMANCE_PLATFORM_TOKEN = os.getenv('PERFORMANCE_PLATFORM_TOKEN')
+
     # Logging
     DEBUG = False
     LOGGING_STDOUT_JSON = os.getenv('LOGGING_STDOUT_JSON') == '1'
@@ -117,6 +122,11 @@ class Config(object):
         'delete-successful-notifications': {
             'task': 'delete-successful-notifications',
             'schedule': crontab(minute=0, hour='0,1,2'),
+            'options': {'queue': 'periodic'}
+        },
+        'send-daily-performance-platform-stats': {
+            'task': 'send-daily-performance-platform-stats',
+            'schedule': crontab(minute=30, hour=0),  # 00:30
             'options': {'queue': 'periodic'}
         },
         'timeout-sending-notifications': {

@@ -1,5 +1,7 @@
+from datetime import datetime, timedelta
+
+import pytz
 from flask import url_for
-from app.models import SMS_TYPE, EMAIL_TYPE
 from notifications_utils.template import SMSMessageTemplate, PlainTextEmailTemplate
 
 
@@ -23,6 +25,24 @@ def url_with_token(data, url, config):
 
 
 def get_template_instance(template, values):
+    from app.models import SMS_TYPE, EMAIL_TYPE
     return {
         SMS_TYPE: SMSMessageTemplate, EMAIL_TYPE: PlainTextEmailTemplate
     }[template['template_type']](template, values)
+
+
+def get_london_midnight_in_utc(date):
+    """
+     This function converts date to midnight as BST (British Standard Time) to UTC,
+     the tzinfo is lastly removed from the datetime because the database stores the timestamps without timezone.
+     :param date: the day to calculate the London midnight in UTC for
+     :return: the datetime of London midnight in UTC, for example 2016-06-17 = 2016-06-17 23:00:00
+    """
+    return pytz.timezone('Europe/London').localize(datetime.combine(date, datetime.min.time())).astimezone(
+        pytz.UTC).replace(
+        tzinfo=None)
+
+
+def get_midnight_for_day_before(date):
+    day_before = date - timedelta(1)
+    return get_london_midnight_in_utc(day_before)

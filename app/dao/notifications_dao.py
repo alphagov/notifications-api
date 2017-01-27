@@ -1,4 +1,3 @@
-
 import pytz
 from datetime import (
     datetime,
@@ -7,7 +6,7 @@ from datetime import (
 
 from flask import current_app
 from werkzeug.datastructures import MultiDict
-from sqlalchemy import (desc, func, or_, and_, asc, extract)
+from sqlalchemy import (desc, func, or_, and_, asc)
 from sqlalchemy.orm import joinedload
 
 from app import db, create_uuid
@@ -23,7 +22,8 @@ from app.models import (
     NOTIFICATION_PENDING,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEST)
+    KEY_TYPE_NORMAL, KEY_TYPE_TEST
+)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
@@ -408,3 +408,16 @@ def get_april_fools(year):
     """
     return pytz.timezone('Europe/London').localize(datetime(year, 4, 1, 0, 0, 0)).astimezone(pytz.UTC).replace(
         tzinfo=None)
+
+
+def get_total_sent_notifications_in_date_range(start_date, end_date, notification_type):
+    result = db.session.query(
+        func.count(NotificationHistory.id).label('count')
+    ).filter(
+        NotificationHistory.key_type != KEY_TYPE_TEST,
+        NotificationHistory.created_at >= start_date,
+        NotificationHistory.created_at <= end_date,
+        NotificationHistory.notification_type == notification_type
+    ).scalar()
+
+    return result or 0
