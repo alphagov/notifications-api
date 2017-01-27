@@ -58,10 +58,10 @@ def process_sms_client_response(status, reference, client_name):
     # record stats
     notification = notifications_dao.update_notification_status_by_id(reference, notification_status)
     if not notification:
-        current_app.logger.info("{} callback failed: notification {} either not found or already updated "
-                                "from sending. Status {}".format(client_name,
-                                                                 reference,
-                                                                 notification_status_message))
+        current_app.logger.warning("{} callback failed: notification {} either not found or already updated "
+                                   "from sending. Status {}".format(client_name,
+                                                                    reference,
+                                                                    notification_status_message))
         return success, errors
 
     if not notification_success:

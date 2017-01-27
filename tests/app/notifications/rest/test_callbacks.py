@@ -389,15 +389,6 @@ def test_process_mmg_response_returns_400_for_malformed_data(client):
     assert "{} callback failed: {} missing".format('MMG', 'CID') in json_data['message']
 
 
-def test_ses_callback_should_not_need_auth(client):
-    response = client.post(
-        path='/notifications/email/ses',
-        data=ses_notification_callback(),
-        headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-    )
-    assert response.status_code == 404
-
-
 def test_mmg_callback_returns_200_when_notification_id_not_found_or_already_updated(client):
     data = '{"reference": "10100164", "CID": "send-sms-code", "MSISDN": "447775349060", "status": "3", \
              "deliverytime": "2016-04-05 16:01:07"}'
