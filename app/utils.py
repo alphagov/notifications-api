@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 from flask import url_for
 from app.models import SMS_TYPE, EMAIL_TYPE
 from notifications_utils.template import SMSMessageTemplate, PlainTextEmailTemplate
@@ -26,3 +28,13 @@ def get_template_instance(template, values):
     return {
         SMS_TYPE: SMSMessageTemplate, EMAIL_TYPE: PlainTextEmailTemplate
     }[template['template_type']](template, values)
+
+
+def get_midnight_for_date(date):
+    midnight = datetime.combine(date, datetime.min.time())
+    return midnight
+
+
+def get_midnight_for_day_before(date):
+    day_before = date - timedelta(1)
+    return get_midnight_for_date(day_before)
