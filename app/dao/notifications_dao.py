@@ -6,7 +6,7 @@ from datetime import (
 
 from flask import current_app
 from werkzeug.datastructures import MultiDict
-from sqlalchemy import (desc, func, or_, and_, asc, extract)
+from sqlalchemy import (desc, func, or_, and_, asc)
 from sqlalchemy.orm import joinedload
 
 from app import db, create_uuid
@@ -29,9 +29,8 @@ from app.models import (
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
 from app.utils import (
-    get_midnight_for_date,
-    get_midnight_for_day_before
-)
+    get_midnight_for_day_before,
+    get_london_midnight_in_utc)
 
 
 def dao_get_notification_statistics_for_service_and_day(service_id, day):
@@ -432,7 +431,7 @@ def get_total_sent_notifications_in_date_range(start_date, end_date, notificatio
 def get_total_sent_notifications_yesterday():
     today = datetime.utcnow()
     start_date = get_midnight_for_day_before(today)
-    end_date = get_midnight_for_date(today)
+    end_date = get_london_midnight_in_utc(today)
 
     return {
         "start_date": start_date,

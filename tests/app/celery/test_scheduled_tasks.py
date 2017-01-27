@@ -16,7 +16,7 @@ from app.celery.scheduled_tasks import (
     send_daily_performance_stats
 )
 from app.dao.jobs_dao import dao_get_job_by_id
-from app.utils import get_midnight_for_date
+from app.utils import get_london_midnight_in_utc
 from tests.app.conftest import (
     sample_notification as create_sample_notification,
     sample_job as create_sample_job,
@@ -211,6 +211,6 @@ def test_send_daily_performance_stats_calls_with_correct_totals(notify_db, notif
     send_daily_performance_stats()
 
     perf_mock.assert_has_calls([
-        call(get_midnight_for_date(yesterday), 'sms', 2, 'day'),
-        call(get_midnight_for_date(yesterday), 'email', 3, 'day')
+        call(get_london_midnight_in_utc(yesterday), 'sms', 2, 'day'),
+        call(get_london_midnight_in_utc(yesterday), 'email', 3, 'day')
     ])

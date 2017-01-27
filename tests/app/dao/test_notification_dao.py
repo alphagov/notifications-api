@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, date
-import pytz
 import uuid
 from functools import partial
 
@@ -47,7 +46,7 @@ from app.dao.notifications_dao import (
 from app.dao.services_dao import dao_update_service
 
 from app.utils import (
-    get_midnight_for_date,
+    get_london_midnight_in_utc,
     get_midnight_for_day_before
 )
 
@@ -1489,7 +1488,7 @@ def test_get_total_sent_notifications_yesterday_returns_expected_totals_dict(
 
     assert total_count_dict == {
         "start_date": get_midnight_for_day_before(datetime.utcnow()),
-        "end_date": get_midnight_for_date(datetime.utcnow()),
+        "end_date": get_london_midnight_in_utc(datetime.utcnow()),
         "email": {
             "count": 3
         },
