@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import datetime
 
 from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
@@ -10,8 +10,7 @@ from app.dao.invited_user_dao import delete_invitations_created_more_than_two_da
 from app.dao.jobs_dao import dao_set_scheduled_jobs_to_pending, dao_get_jobs_older_than
 from app.dao.notifications_dao import (
     delete_notifications_created_more_than_a_week_ago,
-    dao_timeout_notifications,
-    get_total_sent_notifications_yesterday
+    dao_timeout_notifications
 )
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.statsd_decorators import statsd
@@ -118,7 +117,7 @@ def timeout_notifications():
 @notify_celery.task(name='send-daily-performance-platform-stats')
 @statsd(namespace="tasks")
 def send_daily_performance_stats():
-    count_dict = get_total_sent_notifications_yesterday()
+    count_dict = performance_platform_client.get_total_sent_notifications_yesterday()
     start_date = count_dict.get('start_date')
 
     performance_platform_client.send_performance_stats(

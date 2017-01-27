@@ -35,7 +35,6 @@ from app.dao.notifications_dao import (
     get_notifications_for_job,
     get_notifications_for_service,
     get_total_sent_notifications_in_date_range,
-    get_total_sent_notifications_yesterday,
     update_notification_status_by_id,
     update_notification_status_by_reference,
     dao_delete_notifications_and_history_by_id,
@@ -44,12 +43,6 @@ from app.dao.notifications_dao import (
     get_april_fools)
 
 from app.dao.services_dao import dao_update_service
-
-from app.utils import (
-    get_london_midnight_in_utc,
-    get_midnight_for_day_before
-)
-
 from tests.app.conftest import (
     sample_notification,
     sample_template,
@@ -1352,33 +1345,6 @@ def test_get_total_sent_notifications_in_date_range_returns_only_in_date_range(
 
 
 @pytest.mark.parametrize('notification_type', ['sms', 'email'])
-def test_get_total_sent_notifications_in_date_range_excludes_created_and_sending(
-    notify_db,
-    notify_db_session,
-    sample_template,
-    notification_type
-):
-    notification_history = partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        sample_template,
-        notification_type=notification_type
-    )
-
-    start_date = datetime(2000, 3, 30, 0, 0, 0, 0)
-    end_date = datetime(2000, 3, 31, 0, 0, 0, 0)
-    with freeze_time(start_date):
-        notification_history(status='sending')
-        notification_history(status='created')
-        notification_history(status='failed')
-        notification_history(status='delivered')
-
-        total_count = get_total_sent_notifications_in_date_range(start_date, end_date, notification_type)
-        assert total_count == 2
-
-
-@pytest.mark.parametrize('notification_type', ['sms', 'email'])
 def test_get_total_sent_notifications_in_date_range_excludes_test_key_notifications(
     notify_db,
     notify_db_session,
@@ -1432,7 +1398,7 @@ def test_get_total_sent_notifications_for_sms_excludes_email_counts(
     assert total_count == 3
 
 
-def test_get_total_sent_notifications_for_sms_excludes_sms_counts(
+def test_get_total_sent_notifications_for_email_excludes_sms_counts(
     notify_db,
     notify_db_session,
     sample_template
@@ -1456,43 +1422,3 @@ def test_get_total_sent_notifications_for_sms_excludes_sms_counts(
 
     total_count = get_total_sent_notifications_in_date_range(start_date, end_date, 'email')
     assert total_count == 2
-
-
-@freeze_time("2016-01-11 12:30:00")
-def test_get_total_sent_notifications_yesterday_returns_expected_totals_dict(
-    notify_db,
-    notify_db_session,
-    sample_template
-):
-    notification_history = partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        sample_template,
-        status='delivered'
-    )
-
-    notification_history(notification_type='email')
-    notification_history(notification_type='sms')
-
-    # Create some notifications for the day before
-    yesterday = datetime(2016, 1, 10, 15, 30, 0, 0)
-    with freeze_time(yesterday):
-        notification_history(notification_type='sms')
-        notification_history(notification_type='sms')
-        notification_history(notification_type='email')
-        notification_history(notification_type='email')
-        notification_history(notification_type='email')
-
-    total_count_dict = get_total_sent_notifications_yesterday()
-
-    assert total_count_dict == {
-        "start_date": get_midnight_for_day_before(datetime.utcnow()),
-        "end_date": get_london_midnight_in_utc(datetime.utcnow()),
-        "email": {
-            "count": 3
-        },
-        "sms": {
-            "count": 2
-        }
-    }

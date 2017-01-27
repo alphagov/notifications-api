@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 
 import pytz
 from flask import url_for
-from app.models import SMS_TYPE, EMAIL_TYPE
 from notifications_utils.template import SMSMessageTemplate, PlainTextEmailTemplate
 
 
@@ -26,6 +25,7 @@ def url_with_token(data, url, config):
 
 
 def get_template_instance(template, values):
+    from app.models import SMS_TYPE, EMAIL_TYPE
     return {
         SMS_TYPE: SMSMessageTemplate, EMAIL_TYPE: PlainTextEmailTemplate
     }[template['template_type']](template, values)

@@ -1,8 +1,14 @@
 import base64
 import json
+from datetime import datetime
 from requests import request
 
 from flask import current_app
+
+from app.utils import (
+    get_midnight_for_day_before,
+    get_london_midnight_in_utc
+)
 
 
 class PerformancePlatformClient:
@@ -25,6 +31,23 @@ class PerformancePlatformClient:
             }
             self._add_id_for_payload(payload)
             self._send_stats_to_performance_platform(payload)
+
+    def get_total_sent_notifications_yesterday(self):
+        today = datetime.utcnow()
+        start_date = get_midnight_for_day_before(today)
+        end_date = get_london_midnight_in_utc(today)
+
+        from app.dao.notifications_dao import get_total_sent_notifications_in_date_range
+        return {
+            "start_date": start_date,
+            "end_date": end_date,
+            "email": {
+                "count": get_total_sent_notifications_in_date_range(start_date, end_date, 'email')
+            },
+            "sms": {
+                "count": get_total_sent_notifications_in_date_range(start_date, end_date, 'sms')
+            }
+        }
 
     def _send_stats_to_performance_platform(self, payload):
         headers = {
