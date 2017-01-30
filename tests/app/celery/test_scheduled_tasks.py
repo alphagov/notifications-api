@@ -36,14 +36,13 @@ def test_should_have_decorated_tasks_functions():
     assert send_daily_performance_stats.__wrapped__.__name__ == 'send_daily_performance_stats'
 
 
-def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
+def test_should_call_delete_successful_notifications_more_than_week_in_task(notify_api, mocker):
     mocked = mocker.patch('app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago')
     delete_successful_notifications()
-    assert mocked.assert_called_with('delivered')
-    assert scheduled_tasks.delete_notifications_created_more_than_a_week_ago.call_count == 1
+    mocked.assert_called_once_with('delivered')
 
 
-def test_should_call_delete_notifications_more_than_week_in_task(notify_api, mocker):
+def test_should_call_delete_failed_notifications_more_than_week_in_task(notify_api, mocker):
     mocker.patch('app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago')
     delete_failed_notifications()
     assert scheduled_tasks.delete_notifications_created_more_than_a_week_ago.call_count == 4
