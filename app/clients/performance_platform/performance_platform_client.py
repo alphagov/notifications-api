@@ -13,16 +13,24 @@ from app.utils import (
 
 class PerformancePlatformClient:
 
+    @property
+    def active(self):
+        return self._active
+
+    @active.setter
+    def active(self, value):
+        self._active = value
+
     def init_app(self, app):
-        self.active = app.config.get('PERFORMANCE_PLATFORM_ENABLED')
+        self._active = app.config.get('PERFORMANCE_PLATFORM_ENABLED')
         if self.active:
             self.bearer_token = app.config.get('PERFORMANCE_PLATFORM_TOKEN')
-            self.performance_platform_url = current_app.config.get('PERFORMANCE_PLATFORM_URL')
+            self.performance_platform_url = app.config.get('PERFORMANCE_PLATFORM_URL')
 
     def send_performance_stats(self, date, channel, count, period):
         if self.active:
             payload = {
-                '_timestamp': date,
+                '_timestamp': str(date),
                 'service': 'govuk-notify',
                 'channel': channel,
                 'count': count,
@@ -61,9 +69,14 @@ class PerformancePlatformClient:
             headers=headers
         )
 
-        if resp.status_code != 200:
+        if resp.status_code == 200:
+            current_app.logger.info(
+                "Updated performance platform successfully with payload {}".format(json.dumps(payload))
+            )
+        else:
             current_app.logger.error(
-                "Performance platform update request failed with {} '{}'".format(
+                "Performance platform update request failed for payload with response details: {} '{}'".format(
+                    json.dumps(payload),
                     resp.status_code,
                     resp.json())
             )
