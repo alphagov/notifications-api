@@ -27,9 +27,10 @@ from app.dao.services_dao import (
     dao_fetch_todays_stats_for_service,
     dao_fetch_weekly_historical_stats_for_service,
     dao_fetch_todays_stats_for_all_services,
-    dao_deactive_service,
-    fetch_stats_by_date_range_for_all_services
-)
+    dao_archive_service,
+    fetch_stats_by_date_range_for_all_services,
+    dao_suspend_service,
+    dao_resume_service)
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
     dao_add_and_commit_whitelisted_contacts,
@@ -335,6 +336,7 @@ def update_whitelist(service_id):
         return '', 204
 
 
+# Renaming this endpoint to archive
 @service_blueprint.route('/<uuid:service_id>/deactivate', methods=['POST'])
 def deactivate_service(service_id):
     service = dao_fetch_service_by_id(service_id)
@@ -343,7 +345,63 @@ def deactivate_service(service_id):
         # assume already inactive, don't change service name
         return '', 204
 
-    dao_deactive_service(service.id)
+    dao_archive_service(service.id)
+
+    return '', 204
+
+
+@service_blueprint.route('/<uuid:service_id>/archive', methods=['POST'])
+def archive_service(service_id):
+    """
+    When a service is archived the service is made inactive, templates are archived and api keys are revoked.
+    There is no coming back from this operation.
+    :param service_id:
+    :return:
+    """
+    service = dao_fetch_service_by_id(service_id)
+
+    if not service.active:
+        # assume already inactive, don't change service name
+        return '', 204
+
+    dao_archive_service(service.id)
+
+    return '', 204
+
+
+@service_blueprint.route('/<uuid:service_id>/suspend', methods=['POST'])
+def suspend_service(service_id):
+    """
+    Suspending a service will mark the service as inactive and revoke API keys.
+    :param service_id:
+    :return:
+    """
+    service = dao_fetch_service_by_id(service_id)
+
+    if not service.active:
+        # assume already inactive, don't change service name
+        return '', 204
+
+    dao_suspend_service(service.id)
+
+    return '', 204
+
+
+@service_blueprint.route('/<uuid:service_id>/resume', methods=['POST'])
+def resume_service(service_id):
+    """
+    Resuming a service that has been suspended will mark the service as active.
+    The service will need to re-create API keys
+    :param service_id:
+    :return:
+    """
+    service = dao_fetch_service_by_id(service_id)
+
+    if service.active:
+        # assume already inactive, don't change service name
+        return '', 204
+
+    dao_resume_service(service.id)
 
     return '', 204
 

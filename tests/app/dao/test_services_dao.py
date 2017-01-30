@@ -22,8 +22,9 @@ from app.dao.services_dao import (
     dao_fetch_weekly_historical_stats_for_service,
     fetch_todays_total_message_count,
     dao_fetch_todays_stats_for_all_services,
-    fetch_stats_by_date_range_for_all_services
-)
+    fetch_stats_by_date_range_for_all_services,
+    dao_suspend_service,
+    dao_resume_service)
 from app.dao.users_dao import save_model_user
 from app.models import (
     NotificationStatistics,
@@ -656,3 +657,25 @@ def test_fetch_stats_by_date_range_for_all_services(notify_db, notify_db_session
 
     assert len(results) == 1
     assert results[0] == ('sms', 'created', result_one.service_id, 2)
+
+
+def test_dao_suspend_service_marks_service_as_inactive_and_expires_api_keys(sample_service, sample_api_key):
+    dao_suspend_service(sample_service.id)
+    service = Service.query.get(sample_service.id)
+    assert not service.active
+    assert service.name == sample_service.name
+
+    api_key = ApiKey.query.get(sample_api_key.id)
+    assert api_key.expiry_date.date() == datetime.utcnow().date()
+
+
+def test_dao_resume_service_marks_service_as_active_and_api_keys_are_still_revoked(sample_service, sample_api_key):
+    dao_suspend_service(sample_service.id)
+    service = Service.query.get(sample_service.id)
+    assert not service.active
+
+    dao_resume_service(service.id)
+    assert Service.query.get(service.id).active
+
+    api_key = ApiKey.query.get(sample_api_key.id)
+    assert api_key.expiry_date.date() == datetime.utcnow().date()
