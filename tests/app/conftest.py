@@ -25,7 +25,7 @@ from app.models import (
     NotificationStatistics,
     ServiceWhitelist,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM,
-    MOBILE_TYPE, EMAIL_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED)
+    MOBILE_TYPE, EMAIL_TYPE, LETTER_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED)
 from app.dao.users_dao import (create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
@@ -35,12 +35,8 @@ from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
 from app.dao.provider_rates_dao import create_provider_rates
 from app.clients.sms.firetext import FiretextClient
-from app.dao.provider_details_dao import (
-    dao_update_provider_details,
-    get_provider_details_by_identifier,
-    get_alternative_sms_provider
-)
-from tests.app.db import create_user
+
+from tests.app.db import create_user, create_template, create_notification
 
 
 @pytest.yield_fixture
@@ -228,6 +224,11 @@ def sample_email_template(
     return template
 
 
+@pytest.fixture
+def sample_letter_template(sample_service):
+    return create_template(sample_service, template_type=LETTER_TYPE)
+
+
 @pytest.fixture(scope='function')
 def sample_email_template_with_placeholders(notify_db, notify_db_session):
     return sample_email_template(
@@ -363,6 +364,24 @@ def sample_email_job(notify_db,
     return job
 
 
+@pytest.fixture
+def sample_letter_job(sample_service, sample_letter_template):
+    data = {
+        'id': uuid.uuid4(),
+        'service_id': sample_service.id,
+        'service': sample_service,
+        'template_id': sample_letter_template.id,
+        'template_version': sample_letter_template.version,
+        'original_file_name': 'some.csv',
+        'notification_count': 1,
+        'created_at': datetime.utcnow(),
+        'created_by': sample_service.created_by,
+    }
+    job = Job(**data)
+    dao_create_job(job)
+    return job
+
+
 @pytest.fixture(scope='function')
 def sample_notification_with_job(
         notify_db,
@@ -377,7 +396,6 @@ def sample_notification_with_job(
         created_at=None,
         sent_at=None,
         billable_units=1,
-        create=True,
         personalisation=None,
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL
@@ -398,7 +416,6 @@ def sample_notification_with_job(
         created_at=created_at,
         sent_at=sent_at,
         billable_units=billable_units,
-        create=create,
         personalisation=personalisation,
         api_key_id=api_key_id,
         key_type=key_type
@@ -418,7 +435,6 @@ def sample_notification(notify_db,
                         created_at=None,
                         sent_at=None,
                         billable_units=1,
-                        create=True,
                         personalisation=None,
                         api_key_id=None,
                         key_type=KEY_TYPE_NORMAL,
@@ -464,9 +480,20 @@ def sample_notification(notify_db,
     if job_row_number:
         data['job_row_number'] = job_row_number
     notification = Notification(**data)
-    if create:
-        dao_create_notification(notification)
+    dao_create_notification(notification)
     return notification
+
+
+@pytest.fixture
+def sample_letter_notification(sample_letter_template):
+    address = {
+        'addressline1': 'A1',
+        'addressline2': 'A2',
+        'addressline3': 'A3',
+        'addressline4': 'A4',
+        'postcode': 'A_POST'
+    }
+    return create_notification(sample_letter_template, personalisation=address)
 
 
 @pytest.fixture(scope='function')

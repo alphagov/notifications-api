@@ -14,6 +14,6 @@ applications:
       - hosted-graphite
     instances: 2
     memory: 256M
-    command: celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q db-sms,db-email
+    command: celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q db-sms,db-email,db-letter
     env:
       NOTIFY_APP_NAME: delivery-worker-database

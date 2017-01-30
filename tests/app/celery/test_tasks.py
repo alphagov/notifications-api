@@ -1,19 +1,28 @@
 import uuid
-import pytest
 from datetime import datetime
+from unittest.mock import Mock, ANY, call
+
+import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
+from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate
+from celery.exceptions import Retry
+
 from app import (encryption, DATETIME_FORMAT)
 from app.celery import provider_tasks
 from app.celery import tasks
 from app.celery.tasks import s3
 from app.celery.tasks import (
-    send_sms,
     process_job,
-    send_email
+    process_row,
+    send_sms,
+    send_email,
+    persist_letter,
+    get_template_class
 )
 from app.dao import jobs_dao, services_dao
-from app.models import Notification, KEY_TYPE_TEAM, KEY_TYPE_TEST, KEY_TYPE_NORMAL
+from app.models import Notification, KEY_TYPE_TEAM, KEY_TYPE_TEST, KEY_TYPE_NORMAL, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
+
 from tests.app import load_example_csv
 from tests.app.conftest import (
     sample_service,
@@ -33,26 +42,30 @@ class AnyStringWith(str):
 mmg_error = {'Error': '40', 'Description': 'error'}
 
 
-def _notification_json(template, to, personalisation=None, job_id=None, row_number=None):
-    notification = {
+def _notification_json(template, to, personalisation=None, job_id=None, row_number=0):
+    return {
         "template": str(template.id),
         "template_version": template.version,
         "to": to,
-        "notification_type": template.template_type
+        "notification_type": template.template_type,
+        "personalisation": personalisation or {},
+        "job": job_id and str(job_id),
+        "row_number": row_number
     }
-    if personalisation:
-        notification.update({"personalisation": personalisation})
-    if job_id:
-        notification.update({"job": str(job_id)})
-    if row_number:
-        notification['row_number'] = row_number
-    return notification
 
 
 def test_should_have_decorated_tasks_functions():
     assert process_job.__wrapped__.__name__ == 'process_job'
     assert send_sms.__wrapped__.__name__ == 'send_sms'
     assert send_email.__wrapped__.__name__ == 'send_email'
+
+
+@pytest.fixture
+def email_job_with_placeholders(notify_db, notify_db_session, sample_email_template_with_placeholders):
+    return sample_job(notify_db, notify_db_session, template=sample_email_template_with_placeholders)
+
+
+# -------------- process_job tests -------------- #
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -84,61 +97,6 @@ def test_should_process_sms_job(sample_job, mocker):
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_sms_job_into_research_mode_queue_if_research_mode_service(notify_db, notify_db_session, mocker):
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
-    mocker.patch('app.celery.tasks.send_sms.apply_async')
-    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
-    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
-
-    service = sample_service(notify_db, notify_db_session)
-    service.research_mode = True
-    services_dao.dao_update_service(service)
-    job = sample_job(notify_db, notify_db_session, service=service)
-
-    process_job(job.id)
-    s3.get_job_from_s3.assert_called_once_with(
-        str(job.service.id),
-        str(job.id)
-    )
-    tasks.send_sms.apply_async.assert_called_once_with(
-        (str(job.service_id),
-         "uuid",
-         "something_encrypted",
-         "2016-01-01T11:09:00.061258Z"),
-        queue="research-mode"
-    )
-
-
-@freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_email_job_into_research_mode_queue_if_research_mode_service(
-        notify_db, notify_db_session, mocker
-):
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
-    mocker.patch('app.celery.tasks.send_email.apply_async')
-    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
-    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
-
-    service = sample_service(notify_db, notify_db_session)
-    service.research_mode = True
-    services_dao.dao_update_service(service)
-    template = sample_email_template(notify_db, notify_db_session, service=service)
-    job = sample_job(notify_db, notify_db_session, template=template, service=service)
-
-    process_job(job.id)
-    s3.get_job_from_s3.assert_called_once_with(
-        str(job.service.id),
-        str(job.id)
-    )
-    tasks.send_email.apply_async.assert_called_once_with(
-        (str(job.service_id),
-         "uuid",
-         "something_encrypted",
-         "2016-01-01T11:09:00.061258Z"),
-        queue="research-mode"
-    )
-
-
-@freeze_time("2016-01-01 11:09:00.061258")
 def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db,
                                                                 notify_db_session,
                                                                 mocker):
@@ -146,16 +104,14 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db,
     job = sample_job(notify_db, notify_db_session, service=service, notification_count=10)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
-    mocker.patch('app.celery.tasks.send_sms.apply_async')
-    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
-    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+    mocker.patch('app.celery.tasks.process_row')
 
     process_job(job.id)
 
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.job_status == 'sending limits exceeded'
     assert s3.get_job_from_s3.called is False
-    assert tasks.send_sms.apply_async.called is False
+    assert tasks.process_row.called is False
 
 
 def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify_db,
@@ -167,16 +123,14 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify
     sample_notification(notify_db, notify_db_session, service=service, job=job)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
-    mocker.patch('app.celery.tasks.send_sms.apply_async')
-    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
-    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+    mocker.patch('app.celery.tasks.process_row')
 
     process_job(job.id)
 
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.job_status == 'sending limits exceeded'
     assert s3.get_job_from_s3.called is False
-    assert tasks.send_sms.apply_async.called is False
+    assert tasks.process_row.called is False
 
 
 def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(notify_db, notify_db_session, mocker):
@@ -186,15 +140,15 @@ def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(noti
 
     sample_notification(notify_db, notify_db_session, service=service, job=job)
 
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('email'))
-    mocker.patch('app.celery.tasks.send_email.apply_async')
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3')
+    mocker.patch('app.celery.tasks.process_row')
 
     process_job(job.id)
 
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.job_status == 'sending limits exceeded'
     assert s3.get_job_from_s3.called is False
-    assert tasks.send_email.apply_async.called is False
+    assert tasks.process_row.called is False
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -204,26 +158,26 @@ def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, not
     job = sample_job(notify_db, notify_db_session, service=service, template=template)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
-    mocker.patch('app.celery.tasks.send_email.apply_async')
+    mocker.patch('app.celery.tasks.process_row')
 
     process_job(job.id)
 
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.job_status == 'sending limits exceeded'
     assert s3.get_job_from_s3.called is False
-    assert tasks.send_email.apply_async.called is False
+    assert tasks.process_row.called is False
 
 
 def test_should_not_process_job_if_already_pending(notify_db, notify_db_session, mocker):
     job = sample_job(notify_db, notify_db_session, job_status='scheduled')
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
-    mocker.patch('app.celery.tasks.send_sms.apply_async')
+    mocker.patch('app.celery.tasks.process_row')
 
     process_job(job.id)
 
     assert s3.get_job_from_s3.called is False
-    assert tasks.send_sms.apply_async.called is False
+    assert tasks.process_row.called is False
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -270,11 +224,7 @@ def test_should_not_create_send_task_for_empty_file(sample_job, mocker):
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
     assert job.job_status == 'finished'
-
-
-@pytest.fixture
-def email_job_with_placeholders(notify_db, notify_db_session, sample_email_template_with_placeholders):
-    return sample_job(notify_db, notify_db_session, template=sample_email_template_with_placeholders)
+    assert tasks.send_sms.apply_async.called is False
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -310,6 +260,42 @@ def test_should_process_email_job(email_job_with_placeholders, mocker):
     assert job.job_status == 'finished'
 
 
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_should_process_letter_job(sample_letter_job, mocker):
+    csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
+    A1,A2,A3,A4,A_POST,Alice
+    """
+    s3_mock = mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=csv)
+    mocker.patch('app.celery.tasks.send_email.apply_async')
+    process_row_mock = mocker.patch('app.celery.tasks.process_row')
+    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+
+    process_job(sample_letter_job.id)
+
+    s3_mock.assert_called_once_with(
+        str(sample_letter_job.service.id),
+        str(sample_letter_job.id)
+    )
+
+    row_call = process_row_mock.mock_calls[0][1]
+
+    assert row_call[0] == 0
+    assert row_call[1] == ['A1', 'A2', 'A3', 'A4', None, None, 'A_POST']
+    assert dict(row_call[2]) == {
+        'addressline1': 'A1',
+        'addressline2': 'A2',
+        'addressline3': 'A3',
+        'addressline4': 'A4',
+        'postcode': 'A_POST'
+    }
+    assert row_call[4] == sample_letter_job
+    assert row_call[5] == sample_letter_job.service
+
+    assert process_row_mock.call_count == 1
+
+    assert sample_letter_job.job_status == 'finished'
+
+
 def test_should_process_all_sms_job(sample_job,
                                     sample_job_with_placeholdered_template,
                                     mocker):
@@ -329,9 +315,52 @@ def test_should_process_all_sms_job(sample_job,
     assert encryption.encrypt.call_args[0][0][
                'template_version'] == sample_job_with_placeholdered_template.template.version  # noqa
     assert encryption.encrypt.call_args[0][0]['personalisation'] == {'phonenumber': '+441234123120', 'name': 'chris'}
-    tasks.send_sms.apply_async.call_count == 10
+    assert tasks.send_sms.apply_async.call_count == 10
     job = jobs_dao.dao_get_job_by_id(sample_job_with_placeholdered_template.id)
     assert job.job_status == 'finished'
+
+
+# -------------- process_row tests -------------- #
+
+
+@freeze_time('2001-01-01T12:00:00')
+@pytest.mark.parametrize('template_type, research_mode, expected_function, expected_queue', [
+    (SMS_TYPE, False, 'send_sms', 'db-sms'),
+    (SMS_TYPE, True, 'send_sms', 'research-mode'),
+    (EMAIL_TYPE, False, 'send_email', 'db-email'),
+    (EMAIL_TYPE, True, 'send_email', 'research-mode'),
+    (LETTER_TYPE, False, 'persist_letter', 'db-letter'),
+    (LETTER_TYPE, True, 'persist_letter', 'research-mode'),
+])
+def test_process_row_sends_letter_task(template_type, research_mode, expected_function, expected_queue, mocker):
+    mocker.patch('app.celery.tasks.create_uuid', return_value='noti_uuid')
+    task_mock = mocker.patch('app.celery.tasks.{}.apply_async'.format(expected_function))
+    encrypt_mock = mocker.patch('app.celery.tasks.encryption.encrypt')
+    template = Mock(id='template_id', template_type=template_type)
+    job = Mock(id='job_id', template_version='temp_vers')
+    service = Mock(id='service_id', research_mode=research_mode)
+
+    process_row('row_num', 'recip', {'foo': 'bar'}, template, job, service)
+
+    encrypt_mock.assert_called_once_with({
+        'template': 'template_id',
+        'template_version': 'temp_vers',
+        'job': 'job_id',
+        'to': 'recip',
+        'row_number': 'row_num',
+        'personalisation': {'foo': 'bar'}
+    })
+    task_mock.assert_called_once_with(
+        (
+            'service_id',
+            'noti_uuid',
+            # encrypted data
+            encrypt_mock.return_value,
+            '2001-01-01T12:00:00.000000Z'
+        ),
+        queue=expected_queue
+    )
+# -------- send_sms and send_email tests -------- #
 
 
 def test_should_send_template_to_correct_sms_task_and_persist(sample_template_with_placeholders, mocker):
@@ -639,28 +668,27 @@ def test_should_not_send_sms_if_team_key_and_recipient_not_in_team(notify_db, no
 
 
 def test_should_use_email_template_and_persist(sample_email_template_with_placeholders, sample_api_key, mocker):
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    now = datetime(2016, 1, 1, 11, 9, 0)
+    notification_id = uuid.uuid4()
+
     with freeze_time("2016-01-01 12:00:00.000000"):
         notification = _notification_json(
             sample_email_template_with_placeholders,
             'my_email@my_email.com',
             {"name": "Jo"},
             row_number=1)
-        mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
-        notification_id = uuid.uuid4()
-
-        with freeze_time("2016-01-01 11:09:00.00000"):
-            now = datetime.utcnow()
-
-        with freeze_time("2016-01-01 11:10:00.00000"):
-            send_email(
-                sample_email_template_with_placeholders.service_id,
-                notification_id,
-                encryption.encrypt(notification),
-                now.strftime(DATETIME_FORMAT),
-                api_key_id=str(sample_api_key.id),
-                key_type=sample_api_key.key_type
-            )
+    with freeze_time("2016-01-01 11:10:00.00000"):
+        send_email(
+            sample_email_template_with_placeholders.service_id,
+            notification_id,
+            encryption.encrypt(notification),
+            now.strftime(DATETIME_FORMAT),
+            api_key_id=str(sample_api_key.id),
+            key_type=sample_api_key.key_type
+        )
 
     persisted_notification = Notification.query.one()
     assert persisted_notification.to == 'my_email@my_email.com'
@@ -772,13 +800,13 @@ def test_send_sms_should_go_to_retry_queue_if_database_errors(sample_template, m
     expected_exception = SQLAlchemyError()
 
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-    mocker.patch('app.celery.tasks.send_sms.retry', side_effect=Exception())
+    mocker.patch('app.celery.tasks.send_sms.retry', side_effect=Retry)
     mocker.patch('app.notifications.process_notifications.dao_create_notification', side_effect=expected_exception)
     now = datetime.utcnow()
 
     notification_id = uuid.uuid4()
 
-    with pytest.raises(Exception):
+    with pytest.raises(Retry):
         send_sms(
             sample_template.service_id,
             notification_id,
@@ -797,13 +825,13 @@ def test_send_email_should_go_to_retry_queue_if_database_errors(sample_email_tem
     expected_exception = SQLAlchemyError()
 
     mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-    mocker.patch('app.celery.tasks.send_email.retry', side_effect=Exception())
+    mocker.patch('app.celery.tasks.send_email.retry', side_effect=Retry)
     mocker.patch('app.notifications.process_notifications.dao_create_notification', side_effect=expected_exception)
     now = datetime.utcnow()
 
     notification_id = uuid.uuid4()
 
-    with pytest.raises(Exception):
+    with pytest.raises(Retry):
         send_email(
             sample_email_template.service_id,
             notification_id,
@@ -852,3 +880,53 @@ def test_send_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample
     assert Notification.query.count() == 1
     assert not deliver_sms.called
     assert not retry.called
+
+
+def test_persist_letter_saves_letter_to_database(sample_letter_job, mocker):
+    personalisation = {
+        'addressline1': 'Foo',
+        'addressline2': 'Bar',
+        'addressline3': 'Baz',
+        'addressline4': 'Wibble',
+        'addressline5': 'Wobble',
+        'addressline6': 'Wubble',
+        'postcode': 'Flob',
+    }
+    notification_json = _notification_json(
+        template=sample_letter_job.template,
+        to='Foo',
+        personalisation=personalisation,
+        job_id=sample_letter_job.id,
+        row_number=1
+    )
+    notification_id = uuid.uuid4()
+    created_at = datetime.utcnow()
+
+    persist_letter(
+        sample_letter_job.service_id,
+        notification_id,
+        encryption.encrypt(notification_json),
+        created_at
+    )
+
+    notification_db = Notification.query.one()
+    assert notification_db.id == notification_id
+    assert notification_db.to == 'Foo'
+    assert notification_db.job_id == sample_letter_job.id
+    assert notification_db.template_id == sample_letter_job.template.id
+    assert notification_db.template_version == sample_letter_job.template.version
+    assert notification_db.status == 'created'
+    assert notification_db.created_at == created_at
+    assert notification_db.notification_type == 'letter'
+    assert notification_db.sent_at is None
+    assert notification_db.sent_by is None
+    assert notification_db.personalisation == personalisation
+
+
+@pytest.mark.parametrize('template_type, expected_class', [
+    (SMS_TYPE, SMSMessageTemplate),
+    (EMAIL_TYPE, WithSubjectTemplate),
+    (LETTER_TYPE, WithSubjectTemplate),
+])
+def test_get_template_class(template_type, expected_class):
+    assert get_template_class(template_type) == expected_class
