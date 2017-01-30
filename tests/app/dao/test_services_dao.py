@@ -518,11 +518,11 @@ def test_fetch_monthly_historical_stats_separates_weeks(notify_db, notify_db_ses
     _before_start_of_financial_year = notification_history(created_at=datetime(2016, 3, 31))
     start_of_financial_year = notification_history(created_at=datetime(2016, 4, 1))
     start_of_summer = notification_history(created_at=datetime(2016, 6, 20))
-    start_of_autumn = notification_history(created_at=datetime(2016, 9, 22))
+    start_of_autumn = notification_history(created_at=datetime(2016, 9, 30, 23, 30, 0))  # October because BST
     start_of_winter = notification_history(created_at=datetime(2016, 12, 1), status='delivered')
     start_of_spring = notification_history(created_at=datetime(2017, 3, 11))
     end_of_financial_year = notification_history(created_at=datetime(2017, 3, 31))
-    _after_end_of_financial_year = notification_history(created_at=datetime(2017, 4, 1))
+    _after_end_of_financial_year = notification_history(created_at=datetime(2017, 3, 31, 23, 30))  # after because BST
 
     result = dao_fetch_monthly_historical_stats_for_service(sample_template.service_id, 2016)
 
@@ -537,7 +537,7 @@ def test_fetch_monthly_historical_stats_separates_weeks(notify_db, notify_db_ses
 
     assert result['2016-06']['sms']['created'] == 1
 
-    assert result['2016-09']['sms']['created'] == 1
+    assert result['2016-10']['sms']['created'] == 1
 
     assert result['2016-12']['sms']['created'] == 0
     assert result['2016-12']['sms']['delivered'] == 1
