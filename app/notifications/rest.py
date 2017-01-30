@@ -85,7 +85,7 @@ def process_ses_response():
             )
             if not notification:
                 error = "SES callback failed: notification either not found or already updated " \
-                        "from sending. Status {}".format(notification_status)
+                        "from sending. Status {} for notification reference {}".format(notification_status, reference)
                 raise InvalidRequest(error, status_code=404)
 
             if not aws_response_dict['success']:

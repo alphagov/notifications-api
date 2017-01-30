@@ -453,7 +453,7 @@ def test_ses_callback_should_fail_if_notification_cannot_be_found(notify_db, not
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 404
     assert json_resp['result'] == 'error'
-    assert json_resp['message'] == 'SES callback failed: notification either not found or already updated from sending. Status delivered'  # noqa
+    assert json_resp['message'] == 'SES callback failed: notification either not found or already updated from sending. Status delivered for notification reference missing'  # noqa
 
 
 def test_ses_callback_should_update_notification_status(
@@ -592,7 +592,7 @@ def test_ses_callback_should_not_set_status_once_status_is_delivered(client,
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 404
     assert json_resp['result'] == 'error'
-    assert json_resp['message'] == 'SES callback failed: notification either not found or already updated from sending. Status temporary-failure'  # noqa
+    assert json_resp['message'] == 'SES callback failed: notification either not found or already updated from sending. Status temporary-failure for notification reference ref'  # noqa
     assert get_notification_by_id(notification.id).status == 'delivered'
 
 
