@@ -30,6 +30,7 @@ from app.models import (
     TEMPLATE_TYPES,
 )
 from app.statsd_decorators import statsd
+from app.utils import get_london_month_from_utc_column
 
 
 def dao_fetch_all_services(only_active=False):
@@ -247,13 +248,7 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
     monday_of_notification_week = func.date_trunc('week', NotificationHistory.created_at).label('week_start')
     start, end = get_financial_year(year)
 
-    month = func.date_trunc(
-        "month",
-        func.timezone(
-            "Europe/London",
-            func.timezone("UTC", NotificationHistory.created_at)
-        )
-    )
+    month = get_london_month_from_utc_column(NotificationHistory.created_at)
 
     rows = db.session.query(
         NotificationHistory.notification_type,
