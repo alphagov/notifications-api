@@ -30,7 +30,9 @@ from app.dao.services_dao import (
     dao_archive_service,
     fetch_stats_by_date_range_for_all_services,
     dao_suspend_service,
-    dao_resume_service)
+    dao_resume_service,
+    dao_fetch_monthly_historical_stats_for_service,
+)
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
     dao_add_and_commit_whitelisted_contacts,
@@ -271,6 +273,18 @@ def get_weekly_notification_stats(service_id):
     stats = dao_fetch_weekly_historical_stats_for_service(service_id)
     stats = statistics.format_weekly_notification_stats(stats, service.created_at)
     return jsonify(data={week.date().isoformat(): statistics for week, statistics in stats.items()})
+
+
+@service_blueprint.route('/<uuid:service_id>/notifications/monthly', methods=['GET'])
+def get_monthly_notification_stats(service_id):
+    service = dao_fetch_service_by_id(service_id)
+    try:
+        return jsonify(data=dao_fetch_monthly_historical_stats_for_service(
+            service.id,
+            int(request.args.get('year', 'NaN'))
+        ))
+    except ValueError:
+        raise InvalidRequest('Year must be a number', status_code=400)
 
 
 def get_detailed_service(service_id, today_only=False):
