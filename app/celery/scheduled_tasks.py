@@ -116,20 +116,28 @@ def timeout_notifications():
 
 @notify_celery.task(name='send-daily-performance-platform-stats')
 @statsd(namespace="tasks")
-def send_daily_performance_stats():
-    count_dict = performance_platform_client.get_total_sent_notifications_yesterday()
-    start_date = count_dict.get('start_date')
+def send_daily_performance_platform_stats():
+    if performance_platform_client.active:
+        count_dict = performance_platform_client.get_total_sent_notifications_yesterday()
+        email_sent_count = count_dict.get('email').get('count')
+        sms_sent_count = count_dict.get('sms').get('count')
+        start_date = count_dict.get('start_date')
 
-    performance_platform_client.send_performance_stats(
-        start_date,
-        'sms',
-        count_dict.get('sms').get('count'),
-        'day'
-    )
+        current_app.logger.info(
+            "Attempting to update performance platform for date {} with email count {} and sms count {}"
+            .format(start_date, email_sent_count, sms_sent_count)
+        )
 
-    performance_platform_client.send_performance_stats(
-        start_date,
-        'email',
-        count_dict.get('email').get('count'),
-        'day'
-    )
+        performance_platform_client.send_performance_stats(
+            start_date,
+            'sms',
+            sms_sent_count,
+            'day'
+        )
+
+        performance_platform_client.send_performance_stats(
+            start_date,
+            'email',
+            email_sent_count,
+            'day'
+        )

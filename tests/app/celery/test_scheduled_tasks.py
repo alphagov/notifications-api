@@ -13,8 +13,9 @@ from app.celery.scheduled_tasks import (
     delete_invitations,
     timeout_notifications,
     run_scheduled_jobs,
-    send_daily_performance_stats
+    send_daily_performance_platform_stats
 )
+from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.utils import get_london_midnight_in_utc
 from tests.app.conftest import (
@@ -22,7 +23,7 @@ from tests.app.conftest import (
     sample_job as create_sample_job,
     sample_notification_history as create_notification_history
 )
-from unittest.mock import call
+from unittest.mock import call, patch, PropertyMock
 
 
 def test_should_have_decorated_tasks_functions():
@@ -33,7 +34,7 @@ def test_should_have_decorated_tasks_functions():
     assert delete_invitations.__wrapped__.__name__ == 'delete_invitations'
     assert run_scheduled_jobs.__wrapped__.__name__ == 'run_scheduled_jobs'
     assert remove_csv_files.__wrapped__.__name__ == 'remove_csv_files'
-    assert send_daily_performance_stats.__wrapped__.__name__ == 'send_daily_performance_stats'
+    assert send_daily_performance_platform_stats.__wrapped__.__name__ == 'send_daily_performance_platform_stats'
 
 
 def test_should_call_delete_successful_notifications_more_than_week_in_task(notify_api, mocker):
@@ -183,8 +184,32 @@ def test_will_remove_csv_files_for_jobs_older_than_seven_days(notify_db, notify_
     s3.remove_job_from_s3.assert_called_once_with(job_1.service_id, job_1.id)
 
 
+def test_send_daily_performance_stats_calls_does_not_send_if_inactive(
+    notify_db,
+    notify_db_session,
+    sample_template,
+    mocker
+):
+    send_mock = mocker.patch('app.celery.scheduled_tasks.performance_platform_client.send_performance_stats')
+
+    with patch.object(
+        PerformancePlatformClient,
+        'active',
+        new_callable=PropertyMock
+    ) as mock_active:
+        mock_active.return_value = False
+        send_daily_performance_platform_stats()
+
+    assert send_mock.call_count == 0
+
+
 @freeze_time("2016-01-11 12:30:00")
-def test_send_daily_performance_stats_calls_with_correct_totals(notify_db, notify_db_session, sample_template, mocker):
+def test_send_daily_performance_stats_calls_with_correct_totals(
+    notify_db,
+    notify_db_session,
+    sample_template,
+    mocker
+):
     perf_mock = mocker.patch('app.celery.scheduled_tasks.performance_platform_client.send_performance_stats')
 
     notification_history = partial(
@@ -207,9 +232,15 @@ def test_send_daily_performance_stats_calls_with_correct_totals(notify_db, notif
         notification_history(notification_type='email')
         notification_history(notification_type='email')
 
-    send_daily_performance_stats()
+    with patch.object(
+        PerformancePlatformClient,
+        'active',
+        new_callable=PropertyMock
+    ) as mock_active:
+        mock_active.return_value = True
+        send_daily_performance_platform_stats()
 
-    perf_mock.assert_has_calls([
-        call(get_london_midnight_in_utc(yesterday), 'sms', 2, 'day'),
-        call(get_london_midnight_in_utc(yesterday), 'email', 3, 'day')
-    ])
+        perf_mock.assert_has_calls([
+            call(get_london_midnight_in_utc(yesterday), 'sms', 2, 'day'),
+            call(get_london_midnight_in_utc(yesterday), 'email', 3, 'day')
+        ])
