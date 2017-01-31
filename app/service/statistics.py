@@ -1,7 +1,7 @@
 import itertools
 from datetime import datetime, timedelta
 
-from app.models import EMAIL_TYPE, SMS_TYPE
+from app.models import TEMPLATE_TYPES
 
 
 def format_statistics(statistics):
@@ -33,7 +33,7 @@ def create_zeroed_stats_dicts():
     return {
         template_type: {
             status: 0 for status in ('requested', 'delivered', 'failed')
-        } for template_type in (EMAIL_TYPE, SMS_TYPE)
+        } for template_type in TEMPLATE_TYPES
     }
 
 
