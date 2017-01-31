@@ -27,6 +27,7 @@ from app.models import (
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
+from app.utils import get_london_month_from_utc_column
 
 
 def dao_get_notification_statistics_for_service_and_day(service_id, day):
@@ -225,24 +226,15 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
 def get_notification_billable_unit_count_per_month(service_id, year):
     start, end = get_financial_year(year)
 
-    """
-     The query needs to sum the billable_units per month, but this needs to be the month in BST (British Standard Time).
-     The database stores all timestamps as UTC without the timezone.
-      - First set the timezone on created_at to UTC
-      - then convert the timezone to BST (or Europe/London)
-      - lastly truncate the datetime to month to group the sum of the billable_units
-    """
-    month = func.date_trunc("month",
-                            func.timezone("Europe/London", func.timezone("UTC",
-                                                                         NotificationHistory.created_at)))
+    month = get_london_month_from_utc_column(NotificationHistory.created_at)
+
     notifications = db.session.query(
         month,
         func.sum(NotificationHistory.billable_units)
     ).filter(
         NotificationHistory.billable_units != 0,
         NotificationHistory.service_id == service_id,
-        NotificationHistory.created_at >= start,
-        NotificationHistory.created_at < end
+        NotificationHistory.created_at.between(*get_financial_year(year)),
     ).group_by(
         month
     ).order_by(

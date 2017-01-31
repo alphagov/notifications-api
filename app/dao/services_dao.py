@@ -9,6 +9,7 @@ from app.dao.dao_utils import (
     transactional,
     version_class
 )
+from app.dao.notifications_dao import get_financial_year
 from app.models import (
     NotificationStatistics,
     TemplateStatistics,
@@ -24,8 +25,12 @@ from app.models import (
     User,
     InvitedUser,
     Service,
-    KEY_TYPE_TEST)
+    KEY_TYPE_TEST,
+    NOTIFICATION_STATUS_TYPES,
+    TEMPLATE_TYPES,
+)
 from app.statsd_decorators import statsd
+from app.utils import get_london_month_from_utc_column
 
 
 def dao_fetch_all_services(only_active=False):
@@ -236,6 +241,50 @@ def dao_fetch_weekly_historical_stats_for_service(service_id):
     ).order_by(
         asc(monday_of_notification_week), NotificationHistory.status
     ).all()
+
+
+@statsd(namespace="dao")
+def dao_fetch_monthly_historical_stats_for_service(service_id, year):
+    monday_of_notification_week = func.date_trunc('week', NotificationHistory.created_at).label('week_start')
+    start, end = get_financial_year(year)
+
+    month = get_london_month_from_utc_column(NotificationHistory.created_at)
+
+    rows = db.session.query(
+        NotificationHistory.notification_type,
+        NotificationHistory.status,
+        month,
+        func.count(NotificationHistory.id).label('count')
+    ).filter(
+        NotificationHistory.service_id == service_id,
+        NotificationHistory.created_at.between(*get_financial_year(year)),
+    ).group_by(
+        NotificationHistory.notification_type,
+        NotificationHistory.status,
+        month
+    ).order_by(
+        month
+    )
+
+    months = {
+        datetime.strftime(date, '%Y-%m'): dict.fromkeys(
+            TEMPLATE_TYPES,
+            dict.fromkeys(
+                NOTIFICATION_STATUS_TYPES,
+                0
+            )
+        )
+        for date in [
+            datetime(year, month, 1) for month in range(4, 13)
+        ] + [
+            datetime(year + 1, month, 1) for month in range(1, 4)
+        ]
+    }
+
+    for notification_type, status, date, count in rows:
+        months[datetime.strftime(date, "%Y-%m")][notification_type][status] = count
+
+    return months
 
 
 @statsd(namespace='dao')
