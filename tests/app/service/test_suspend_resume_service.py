@@ -49,10 +49,8 @@ def test_suspending_service_revokes_api_keys(client, sample_service, sample_api_
 
 def test_resume_service_leaves_api_keys_revokes(client, sample_service, sample_api_key):
     with freeze_time('2001-10-22T11:59:00'):
-        sample_api_key.expiry_date = datetime.utcnow()
-        sample_service.active = False
         auth_header = create_authorization_header()
-        client.post("/service/{}/resume".format(sample_service.id),
+        client.post("/service/{}/suspend".format(sample_service.id),
                     headers=[auth_header])
     with freeze_time('2001-10-22T13:59:00'):
         auth_header = create_authorization_header()
