@@ -659,6 +659,7 @@ def test_fetch_stats_by_date_range_for_all_services(notify_db, notify_db_session
     assert results[0] == ('sms', 'created', result_one.service_id, 2)
 
 
+@freeze_time('2001-01-01T23:59:00')
 def test_dao_suspend_service_marks_service_as_inactive_and_expires_api_keys(sample_service, sample_api_key):
     dao_suspend_service(sample_service.id)
     service = Service.query.get(sample_service.id)
@@ -666,9 +667,10 @@ def test_dao_suspend_service_marks_service_as_inactive_and_expires_api_keys(samp
     assert service.name == sample_service.name
 
     api_key = ApiKey.query.get(sample_api_key.id)
-    assert api_key.expiry_date.date() == datetime.utcnow().date()
+    assert api_key.expiry_date == datetime(2001, 1, 1, 23, 59, 00)
 
 
+@freeze_time('2001-01-01T23:59:00')
 def test_dao_resume_service_marks_service_as_active_and_api_keys_are_still_revoked(sample_service, sample_api_key):
     dao_suspend_service(sample_service.id)
     service = Service.query.get(sample_service.id)
@@ -678,4 +680,4 @@ def test_dao_resume_service_marks_service_as_active_and_api_keys_are_still_revok
     assert Service.query.get(service.id).active
 
     api_key = ApiKey.query.get(sample_api_key.id)
-    assert api_key.expiry_date.date() == datetime.utcnow().date()
+    assert api_key.expiry_date == datetime(2001, 1, 1, 23, 59, 00)

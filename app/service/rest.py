@@ -205,7 +205,7 @@ def get_service_provider_aggregate_statistics(service_id):
 # tables. This is so product owner can pass stories as done
 @service_blueprint.route('/<uuid:service_id>/history', methods=['GET'])
 def get_service_history(service_id):
-    from app.models import (Service, ApiKey, Template, TemplateHistory, Event)
+    from app.models import (Service, ApiKey, TemplateHistory, Event)
     from app.schemas import (
         service_history_schema,
         api_key_history_schema,
@@ -330,7 +330,7 @@ def update_whitelist(service_id):
         current_app.logger.exception(e)
         dao_rollback()
         msg = '{} is not a valid email address or phone number'.format(str(e))
-        return jsonify(result='error', message=msg), 400
+        raise InvalidRequest(msg, 400)
     else:
         dao_add_and_commit_whitelisted_contacts(whitelist_objs)
         return '', 204
@@ -360,11 +360,8 @@ def archive_service(service_id):
     """
     service = dao_fetch_service_by_id(service_id)
 
-    if not service.active:
-        # assume already inactive, don't change service name
-        return '', 204
-
-    dao_archive_service(service.id)
+    if service.active:
+        dao_archive_service(service.id)
 
     return '', 204
 
@@ -378,11 +375,8 @@ def suspend_service(service_id):
     """
     service = dao_fetch_service_by_id(service_id)
 
-    if not service.active:
-        # assume already inactive, don't change service name
-        return '', 204
-
-    dao_suspend_service(service.id)
+    if service.active:
+        dao_suspend_service(service.id)
 
     return '', 204
 
@@ -397,11 +391,8 @@ def resume_service(service_id):
     """
     service = dao_fetch_service_by_id(service_id)
 
-    if service.active:
-        # assume already inactive, don't change service name
-        return '', 204
-
-    dao_resume_service(service.id)
+    if not service.active:
+        dao_resume_service(service.id)
 
     return '', 204
 
