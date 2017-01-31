@@ -73,7 +73,7 @@ def dao_fetch_all_services_by_user(user_id, only_active=False):
 @version_class(Service)
 @version_class(Template, TemplateHistory)
 @version_class(ApiKey)
-def dao_deactive_service(service_id):
+def dao_archive_service(service_id):
     # have to eager load templates and api keys so that we don't flush when we loop through them
     # to ensure that db.session still contains the models when it comes to creating history objects
     service = Service.query.options(
@@ -291,3 +291,27 @@ def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_fro
         query = query.filter(NotificationHistory.key_type != KEY_TYPE_TEST)
 
     return query.all()
+
+
+@transactional
+@version_class(Service)
+@version_class(ApiKey)
+def dao_suspend_service(service_id):
+    # have to eager load api keys so that we don't flush when we loop through them
+    # to ensure that db.session still contains the models when it comes to creating history objects
+    service = Service.query.options(
+        joinedload('api_keys'),
+    ).filter(Service.id == service_id).one()
+
+    service.active = False
+
+    for api_key in service.api_keys:
+        if not api_key.expiry_date:
+            api_key.expiry_date = datetime.utcnow()
+
+
+@transactional
+@version_class(Service)
+def dao_resume_service(service_id):
+    service = Service.query.get(service_id)
+    service.active = True
