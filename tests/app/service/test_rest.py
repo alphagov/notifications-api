@@ -1179,16 +1179,8 @@ def test_set_sms_sender_for_service_rejects_invalid_characters(notify_api, sampl
 
 
 @pytest.mark.parametrize('today_only,stats', [
-    ('False', {
-        'requested': 2,
-        'delivered': 1,
-        'failed': 0
-    }),
-    ('True', {
-        'requested': 1,
-        'delivered': 0,
-        'failed': 0
-    })
+    ('False', {'requested': 2, 'delivered': 1, 'failed': 0}),
+    ('True', {'requested': 1, 'delivered': 0, 'failed': 0})
 ], ids=['seven_days', 'today'])
 def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_service, today_only, stats):
     with notify_api.test_request_context(), notify_api.test_client() as client:
@@ -1205,7 +1197,7 @@ def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_s
     service = json.loads(resp.get_data(as_text=True))['data']
     assert service['id'] == str(sample_service.id)
     assert 'statistics' in service.keys()
-    assert set(service['statistics'].keys()) == set(['sms', 'email'])
+    assert set(service['statistics'].keys()) == {'sms', 'email', 'letter'}
     assert service['statistics']['sms'] == stats
 
 
@@ -1222,16 +1214,9 @@ def test_get_weekly_notification_stats(notify_api, notify_db, notify_db_session)
     data = json.loads(resp.get_data(as_text=True))['data']
     assert data == {
         '1999-12-27': {
-            'sms': {
-                'requested': 1,
-                'delivered': 0,
-                'failed': 0
-            },
-            'email': {
-                'requested': 0,
-                'delivered': 0,
-                'failed': 0
-            }
+            'sms': {'requested': 1, 'delivered': 0, 'failed': 0},
+            'email': {'requested': 0, 'delivered': 0, 'failed': 0},
+            'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
         }
     }
 
@@ -1255,7 +1240,8 @@ def test_get_services_with_detailed_flag(notify_api, notify_db, notify_db_sessio
     assert data[0]['id'] == str(notifications[0].service_id)
     assert data[0]['statistics'] == {
         'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 3}
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 3},
+        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
     }
 
 
@@ -1278,7 +1264,8 @@ def test_get_services_with_detailed_flag_excluding_from_test_key(notify_api, not
     assert len(data) == 1
     assert data[0]['statistics'] == {
         'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 2}
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 2},
+        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
     }
 
 
@@ -1300,12 +1287,14 @@ def test_get_detailed_services_groups_by_service(notify_db, notify_db_session):
     assert data[0]['id'] == str(service_1.id)
     assert data[0]['statistics'] == {
         'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 1, 'failed': 0, 'requested': 3}
+        'sms': {'delivered': 1, 'failed': 0, 'requested': 3},
+        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
     }
     assert data[1]['id'] == str(service_2.id)
     assert data[1]['statistics'] == {
         'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 1}
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 1},
+        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
     }
 
 
@@ -1325,12 +1314,14 @@ def test_get_detailed_services_includes_services_with_no_notifications(notify_db
     assert data[0]['id'] == str(service_1.id)
     assert data[0]['statistics'] == {
         'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 1}
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 1},
+        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
     }
     assert data[1]['id'] == str(service_2.id)
     assert data[1]['statistics'] == {
         'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 0}
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 0},
+        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
     }
 
 
@@ -1348,7 +1339,8 @@ def test_get_detailed_services_only_includes_todays_notifications(notify_db, not
     assert len(data) == 1
     assert data[0]['statistics'] == {
         'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 2}
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 2},
+        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
     }
 
 
@@ -1367,7 +1359,8 @@ def test_get_detailed_services_for_date_range(notify_db, notify_db_session):
     assert len(data) == 1
     assert data[0]['statistics'] == {
         'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 2}
+        'sms': {'delivered': 0, 'failed': 0, 'requested': 2},
+        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
     }
 
 
