@@ -66,6 +66,7 @@ def create_app(app_name=None):
     notify_celery.init_app(application)
     encryption.init_app(application)
     redis_store.init_app(application)
+    performance_platform_client.init_app(application)
     clients.init_app(sms_clients=[firetext_client, mmg_client, loadtest_client], email_clients=[aws_ses_client])
 
     register_blueprint(application)

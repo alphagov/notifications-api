@@ -17,7 +17,7 @@ def client(mocker):
     client = PerformancePlatformClient()
     current_app = mocker.Mock(config={
         'PERFORMANCE_PLATFORM_ENABLED': True,
-        'PERFORMANCE_PLATFORM_URL': 'performance-platform-url',
+        'PERFORMANCE_PLATFORM_URL': 'https://performance-platform-url/',
         'PERFORMANCE_PLATFORM_TOKEN': 'token'
     })
     client.init_app(current_app)
