@@ -15,12 +15,14 @@ from app.dao.provider_details_dao import (
 )
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE
+from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE, NOTIFICATION_TECHNICAL_FAILURE
 
 
 def send_sms_to_provider(notification):
     service = notification.service
-    if not notification.service.active:
+    if not service.active:
+        notification.status = NOTIFICATION_TECHNICAL_FAILURE
+        dao_update_notification(notification)
         current_app.logger.warn(
             "Send sms for notification id {} to provider is not allowed: service {} is inactive".format(notification.id,
                                                                                                         service.id))
@@ -67,7 +69,9 @@ def send_sms_to_provider(notification):
 
 def send_email_to_provider(notification):
     service = notification.service
-    if not notification.service.active:
+    if not service.active:
+        notification.status = NOTIFICATION_TECHNICAL_FAILURE
+        dao_update_notification(notification)
         current_app.logger.warn(
             "Send email for notification id {} to provider is not allowed: service {} is inactive".format(
                 notification.id,

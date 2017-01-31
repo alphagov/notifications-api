@@ -336,20 +336,6 @@ def update_whitelist(service_id):
         return '', 204
 
 
-# Renaming this endpoint to archive
-@service_blueprint.route('/<uuid:service_id>/deactivate', methods=['POST'])
-def deactivate_service(service_id):
-    service = dao_fetch_service_by_id(service_id)
-
-    if not service.active:
-        # assume already inactive, don't change service name
-        return '', 204
-
-    dao_archive_service(service.id)
-
-    return '', 204
-
-
 @service_blueprint.route('/<uuid:service_id>/archive', methods=['POST'])
 def archive_service(service_id):
     """
