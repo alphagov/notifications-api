@@ -66,9 +66,12 @@ def get_services():
     detailed = request.args.get('detailed') == 'True'
     user_id = request.args.get('user_id', None)
     include_from_test_key = request.args.get('include_from_test_key', 'True') != 'False'
+
     # If start and end date are not set, we are expecting today's stats.
-    start_date = request.args.get('start_date', datetime.utcnow().date())
-    end_date = request.args.get('end_date', datetime.utcnow().date())
+    today = str(datetime.utcnow().date())
+
+    start_date = datetime.strptime(request.args.get('start_date', today), '%Y-%m-%d').date()
+    end_date = datetime.strptime(request.args.get('end_date', today), '%Y-%m-%d').date()
 
     if user_id:
         services = dao_fetch_all_services_by_user(user_id, only_active)

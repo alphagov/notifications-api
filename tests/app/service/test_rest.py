@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import json
 import uuid
+from unittest.mock import ANY
 
 import pytest
 from flask import url_for
@@ -1267,6 +1268,39 @@ def test_get_services_with_detailed_flag_excluding_from_test_key(notify_api, not
         'sms': {'delivered': 0, 'failed': 0, 'requested': 2},
         'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
     }
+
+
+def test_get_services_with_detailed_flag_accepts_date_range(client, mocker):
+    mock_get_detailed_services = mocker.patch('app.service.rest.get_detailed_services', return_value={})
+    resp = client.get(
+        url_for('service.get_services', detailed=True, start_date='2001-01-01', end_date='2002-02-02'),
+        headers=[create_authorization_header()]
+    )
+
+    mock_get_detailed_services.assert_called_once_with(
+        start_date=date(2001, 1, 1),
+        end_date=date(2002, 2, 2),
+        only_active=ANY,
+        include_from_test_key=ANY
+    )
+    assert resp.status_code == 200
+
+
+@freeze_time('2002-02-02')
+def test_get_services_with_detailed_flag_defaults_to_today(client, mocker):
+    mock_get_detailed_services = mocker.patch('app.service.rest.get_detailed_services', return_value={})
+    resp = client.get(
+        url_for('service.get_services', detailed=True),
+        headers=[create_authorization_header()]
+    )
+
+    mock_get_detailed_services.assert_called_once_with(
+        start_date=date(2002, 2, 2),
+        end_date=date(2002, 2, 2),
+        only_active=ANY,
+        include_from_test_key=ANY
+    )
+    assert resp.status_code == 200
 
 
 def test_get_detailed_services_groups_by_service(notify_db, notify_db_session):
