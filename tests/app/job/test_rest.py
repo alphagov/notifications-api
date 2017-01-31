@@ -170,6 +170,18 @@ def test_create_scheduled_job(notify_api, sample_template, mocker, fake_uuid):
                 assert resp_json['data']['original_file_name'] == 'thisisatest.csv'
 
 
+def test_create_job_returns_400_if_service_is_not_active(client, fake_uuid, sample_service, mocker):
+    sample_service.active = False
+    mock_job_dao = mocker.patch("app.dao.jobs_dao.dao_create_job")
+    auth_header = create_authorization_header()
+    response = client.post('/service/{}/job'.format(sample_service.id),
+                           data="",
+                           headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 400
+    mock_job_dao.assert_not_called()
+
+
 def test_should_not_create_scheduled_job_more_then_24_hours_hence(notify_api, sample_template, mocker, fake_uuid):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
