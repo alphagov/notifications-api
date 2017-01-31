@@ -203,7 +203,7 @@ class Test(Config):
         Queue('send-email', Exchange('default'), routing_key='send-email'),
         Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
-    REDIS_ENABLED = False
+    REDIS_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"
 
 

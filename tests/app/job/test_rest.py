@@ -170,7 +170,7 @@ def test_create_scheduled_job(notify_api, sample_template, mocker, fake_uuid):
                 assert resp_json['data']['original_file_name'] == 'thisisatest.csv'
 
 
-def test_create_job_returns_400_if_service_is_not_active(client, fake_uuid, sample_service, mocker):
+def test_create_job_returns_403_if_service_is_not_active(client, fake_uuid, sample_service, mocker):
     sample_service.active = False
     mock_job_dao = mocker.patch("app.dao.jobs_dao.dao_create_job")
     auth_header = create_authorization_header()
@@ -178,7 +178,10 @@ def test_create_job_returns_400_if_service_is_not_active(client, fake_uuid, samp
                            data="",
                            headers=[('Content-Type', 'application/json'), auth_header])
 
-    assert response.status_code == 400
+    assert response.status_code == 403
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert resp_json['result'] == 'error'
+    assert resp_json['message'] == "Create job is not allowed: service is inactive "
     mock_job_dao.assert_not_called()
 
 

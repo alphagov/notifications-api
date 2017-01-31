@@ -112,7 +112,7 @@ def get_jobs_by_service(service_id):
 def create_job(service_id):
     service = dao_fetch_service_by_id(service_id)
     if not service.active:
-        raise InvalidRequest("Unable to create job to inactive service", 400)
+        raise InvalidRequest("Create job is not allowed: service is inactive ", 403)
 
     data = request.get_json()
 

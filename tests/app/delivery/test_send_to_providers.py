@@ -117,6 +117,19 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
     assert notification.personalisation == {"name": "Jo"}
 
 
+@pytest.mark.parametrize("client_send",
+                         ["app.aws_ses_client.send_email",
+                          "app.mmg_client.send_sms",
+                          "app.firetext_client.send_sms"])
+def test_should_not_send_message_when_service_is_inactive(sample_service, sample_notification, mocker,
+                                                          client_send):
+    sample_service.active = False
+    send_to_providers.send_email_to_provider(sample_notification)
+    send_mock = mocker.patch(client_send, return_value='reference')
+
+    send_mock.assert_not_called()
+
+
 def test_send_sms_should_use_template_version_from_notification_not_latest(
         notify_db,
         notify_db_session,
