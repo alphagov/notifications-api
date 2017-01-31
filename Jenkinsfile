@@ -175,8 +175,8 @@ try {
 
   stage('Staging') {
     if (deployToStaging == "true") {
-      input 'Approve?'
       milestone 40
+      input 'Approve?'
       node {
         unstash 'source'
         deployDatabaseMigrations 'staging'
@@ -199,8 +199,8 @@ try {
 
   stage('Prod') {
     if (deployToProduction == "true") {
-      input 'Approve?'
       milestone 50
+      input 'Approve?'
       node {
         unstash 'source'
         deployDatabaseMigrations 'production'
