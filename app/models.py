@@ -153,6 +153,7 @@ class Service(db.Model, Versioned):
         default=BRANDING_GOVUK
     )
 
+
 MOBILE_TYPE = 'mobile'
 EMAIL_TYPE = 'email'
 
@@ -339,6 +340,7 @@ class TemplateHistory(db.Model):
                              index=True,
                              nullable=False,
                              default=NORMAL)
+
 
 MMG_PROVIDER = "mmg"
 FIRETEXT_PROVIDER = "firetext"
