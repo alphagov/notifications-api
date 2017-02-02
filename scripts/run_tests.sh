@@ -27,7 +27,7 @@ function display_result {
 if [[ -z "$VIRTUAL_ENV" ]] && [[ -d venv ]]; then
   source ./venv/bin/activate
 fi
-pep8 .
+pycodestyle .
 display_result $? 1 "Code style check"
 
 py.test --cov=app --cov-report=term-missing tests/ --junitxml=test_results.xml

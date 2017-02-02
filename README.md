@@ -96,7 +96,7 @@ Then simply run
 make test
 ```
 
-That will run pep8 for code analysis and our unit test suite. If you wish to run our functional tests, instructions can be found in the
+That will run pycodestyle for code analysis and our unit test suite. If you wish to run our functional tests, instructions can be found in the
 [notifications-functional-tests](https://github.com/alphagov/notifications-functional-tests) repository.
 
 
