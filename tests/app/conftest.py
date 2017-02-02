@@ -121,7 +121,6 @@ def sample_service(notify_db,
                    notify_db_session,
                    service_name="Sample service",
                    user=None,
-                   active=True,
                    restricted=False,
                    limit=1000,
                    email_from=None):
@@ -132,7 +131,6 @@ def sample_service(notify_db,
     data = {
         'name': service_name,
         'message_limit': limit,
-        'active': active,
         'restricted': restricted,
         'email_from': email_from,
         'created_by': user

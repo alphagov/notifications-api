@@ -13,19 +13,26 @@ from app.dao.provider_details_dao import (
     get_provider_details_by_notification_type,
     dao_toggle_sms_provider
 )
-from app.dao.services_dao import dao_fetch_service_by_id
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE
+from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE, NOTIFICATION_TECHNICAL_FAILURE
 
 
 def send_sms_to_provider(notification):
-    service = dao_fetch_service_by_id(notification.service_id)
-    provider = provider_to_use(SMS_TYPE, notification.id)
-    current_app.logger.info(
-        "Starting sending SMS {} to provider at {}".format(notification.id, datetime.utcnow())
-    )
+    service = notification.service
+    if not service.active:
+        notification.status = NOTIFICATION_TECHNICAL_FAILURE
+        dao_update_notification(notification)
+        current_app.logger.warn(
+            "Send sms for notification id {} to provider is not allowed: service {} is inactive".format(notification.id,
+                                                                                                        service.id))
+        return
+
     if notification.status == 'created':
+        provider = provider_to_use(SMS_TYPE, notification.id)
+        current_app.logger.info(
+            "Starting sending SMS {} to provider at {}".format(notification.id, datetime.utcnow())
+        )
         template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
         template = SMSMessageTemplate(
             template_model.__dict__,
@@ -61,12 +68,20 @@ def send_sms_to_provider(notification):
 
 
 def send_email_to_provider(notification):
-    service = dao_fetch_service_by_id(notification.service_id)
-    provider = provider_to_use(EMAIL_TYPE, notification.id)
-    current_app.logger.info(
-        "Starting sending EMAIL {} to provider at {}".format(notification.id, datetime.utcnow())
-    )
+    service = notification.service
+    if not service.active:
+        notification.status = NOTIFICATION_TECHNICAL_FAILURE
+        dao_update_notification(notification)
+        current_app.logger.warn(
+            "Send email for notification id {} to provider is not allowed: service {} is inactive".format(
+                notification.id,
+                service.id))
+        return
     if notification.status == 'created':
+        provider = provider_to_use(EMAIL_TYPE, notification.id)
+        current_app.logger.info(
+            "Starting sending EMAIL {} to provider at {}".format(notification.id, datetime.utcnow())
+        )
         template_dict = dao_get_template_by_id(notification.template_id, notification.template_version).__dict__
 
         html_email = HTMLEmailTemplate(

@@ -59,7 +59,8 @@ class PermissionDAO(DAOClass):
                 db.session.commit()
 
     def get_permissions_by_user_id(self, user_id):
-        return self.Meta.model.query.filter_by(user_id=user_id).all()
+        return self.Meta.model.query.filter_by(user_id=user_id)\
+                                    .join(Permission.service).filter_by(active=True).all()
 
 
 permission_dao = PermissionDAO()
