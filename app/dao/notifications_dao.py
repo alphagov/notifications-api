@@ -93,22 +93,30 @@ def dao_get_template_usage(service_id, limit_days=None):
     if limit_days and limit_days <= 7:  # can get this data from notifications table
         table = Notification
 
-    query = db.session.query(
-        func.count(table.template_id).label('count'),
-        table.template_id,
-        Template.name,
-        Template.template_type
-    )
-
     query_filter = [table.service_id == service_id, table.key_type != KEY_TYPE_TEST]
     if limit_days is not None:
         query_filter.append(table.created_at >= days_ago(limit_days))
 
-    return query.filter(*query_filter) \
-        .join(Template) \
-        .group_by(table.template_id, Template.name, Template.template_type) \
-        .order_by(asc(Template.name)) \
-        .all()
+    notifications_aggregate_query = db.session.query(
+        func.count().label('count'),
+        table.template_id
+    ).filter(
+        *query_filter
+    ).group_by(
+        table.template_id
+    ).subquery()
+
+    query = db.session.query(
+        Template.id.label('template_id'),
+        Template.name,
+        Template.template_type,
+        notifications_aggregate_query.c.count
+    ).join(
+        notifications_aggregate_query,
+        notifications_aggregate_query.c.template_id == Template.id
+    ).order_by(Template.name)
+
+    return query.all()
 
 
 @statsd(namespace="dao")
