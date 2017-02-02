@@ -25,8 +25,8 @@ from app.models import (
     EMAIL_TYPE,
     SMS_TYPE,
     LETTER_TYPE,
-    KEY_TYPE_NORMAL
-)
+    KEY_TYPE_NORMAL,
+    JOB_STATUS_CANCELLED, JOB_STATUS_PENDING, JOB_STATUS_IN_PROGRESS, JOB_STATUS_FINISHED)
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
@@ -38,15 +38,22 @@ def process_job(job_id):
     start = datetime.utcnow()
     job = dao_get_job_by_id(job_id)
 
-    if job.job_status != 'pending':
+    if job.job_status != JOB_STATUS_PENDING:
         return
 
     service = job.service
 
+    if not service.active:
+        job.job_status = JOB_STATUS_CANCELLED
+        dao_update_job(job)
+        current_app.logger.warn(
+            "Job {} has been cancelled, service {} is inactive".format(job_id, service.id))
+        return
+
     if __sending_limits_for_job_exceeded(service, job, job_id):
         return
 
-    job.job_status = 'in progress'
+    job.job_status = JOB_STATUS_IN_PROGRESS
     dao_update_job(job)
 
     db_template = dao_get_template_by_id(job.template_id, job.template_version)
@@ -62,7 +69,7 @@ def process_job(job_id):
         process_row(row_number, recipient, personalisation, template, job, service)
 
     finished = datetime.utcnow()
-    job.job_status = 'finished'
+    job.job_status = JOB_STATUS_FINISHED
     job.processing_started = start
     job.processing_finished = finished
     dao_update_job(job)

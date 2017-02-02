@@ -923,6 +923,22 @@ def test_persist_letter_saves_letter_to_database(sample_letter_job, mocker):
     assert notification_db.personalisation == personalisation
 
 
+def test_should_cancel_job_if_service_is_inactive(sample_service,
+                                                  sample_job,
+                                                  mocker):
+    sample_service.active = False
+
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3')
+    mocker.patch('app.celery.tasks.process_row')
+
+    process_job(sample_job.id)
+
+    job = jobs_dao.dao_get_job_by_id(sample_job.id)
+    assert job.job_status == 'cancelled'
+    s3.get_job_from_s3.assert_not_called()
+    tasks.process_row.assert_not_called()
+
+
 @pytest.mark.parametrize('template_type, expected_class', [
     (SMS_TYPE, SMSMessageTemplate),
     (EMAIL_TYPE, WithSubjectTemplate),
