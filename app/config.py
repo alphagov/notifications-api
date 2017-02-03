@@ -126,7 +126,7 @@ class Config(object):
         },
         'send-daily-performance-platform-stats': {
             'task': 'send-daily-performance-platform-stats',
-            'schedule': crontab(minute=30, hour=0),  # 00:30
+            'schedule': crontab(minute='*/10'),  # Every 10 minutes
             'options': {'queue': 'periodic'}
         },
         'timeout-sending-notifications': {
@@ -156,10 +156,11 @@ class Config(object):
 
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200  # 3 days
 
-    SIMULATED_EMAIL_ADDRESSES = ('simulate-delivered@notifications.service.gov.uk',
-                                 'simulate-delivered-2@notifications.service.gov.uk',
-                                 'simulate-delivered-3@notifications.service.gov.uk',
-                                 )
+    SIMULATED_EMAIL_ADDRESSES = (
+        'simulate-delivered@notifications.service.gov.uk',
+        'simulate-delivered-2@notifications.service.gov.uk',
+        'simulate-delivered-3@notifications.service.gov.uk',
+    )
 
     SIMULATED_SMS_NUMBERS = ('+447700900000', '+447700900111', '+447700900222')
 
