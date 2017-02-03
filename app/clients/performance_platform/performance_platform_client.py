@@ -1,8 +1,7 @@
 import base64
 import json
+import requests
 from datetime import datetime
-from requests import request
-
 from flask import current_app
 
 from app.utils import (
@@ -30,7 +29,7 @@ class PerformancePlatformClient:
     def send_performance_stats(self, date, channel, count, period):
         if self.active:
             payload = {
-                '_timestamp': str(date),
+                '_timestamp': date.isoformat(),
                 'service': 'govuk-notify',
                 'channel': channel,
                 'count': count,
@@ -62,10 +61,9 @@ class PerformancePlatformClient:
             'Content-Type': "application/json",
             'Authorization': 'Bearer {}'.format(self.bearer_token)
         }
-        resp = request(
-            "POST",
+        resp = requests.post(
             self.performance_platform_url,
-            data=json.dumps(payload),
+            json=payload,
             headers=headers
         )
 

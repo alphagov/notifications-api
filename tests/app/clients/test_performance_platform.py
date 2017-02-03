@@ -40,7 +40,7 @@ def test_should_not_call_if_not_enabled(notify_api, client, mocker):
 def test_should_call_if_enabled(notify_api, client, mocker):
     mocker.patch.object(client, '_send_stats_to_performance_platform')
     client.send_performance_stats(
-        date='2016-10-16T00:00:00+00:00',
+        date=datetime(2016, 10, 16, 0, 0, 0),
         channel='sms',
         count=142,
         period='day'
@@ -57,7 +57,7 @@ def test_send_platform_stats_creates_correct_call(notify_api, client):
             status_code=200
         )
         client.send_performance_stats(
-            date='2016-10-16T00:00:00+00:00',
+            date=datetime(2016, 10, 16, 0, 0, 0),
             channel='sms',
             count=142,
             period='day'
@@ -73,9 +73,9 @@ def test_send_platform_stats_creates_correct_call(notify_api, client):
     assert request_args['service'] == 'govuk-notify'
     assert request_args['period'] == 'day'
     assert request_args['channel'] == 'sms'
-    assert request_args['_timestamp'] == '2016-10-16T00:00:00+00:00'
+    assert request_args['_timestamp'] == '2016-10-16T00:00:00'
     assert request_args['count'] == 142
-    expected_base64_id = 'MjAxNi0xMC0xNlQwMDowMDowMCswMDowMGdvdnVrLW5vdGlmeXNtc25vdGlmaWNhdGlvbnNkYXk='
+    expected_base64_id = 'MjAxNi0xMC0xNlQwMDowMDowMGdvdnVrLW5vdGlmeXNtc25vdGlmaWNhdGlvbnNkYXk='
     assert request_args['_id'] == expected_base64_id
 
 
