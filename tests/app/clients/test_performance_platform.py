@@ -28,7 +28,7 @@ def test_should_not_call_if_not_enabled(notify_api, client, mocker):
     mocker.patch.object(client, '_send_stats_to_performance_platform')
     client.active = False
     client.send_performance_stats(
-        date='2016-10-16T00:00:00+00:00',
+        date=datetime(2016, 10, 16, 0, 0, 0),
         channel='sms',
         count=142,
         period='day'
