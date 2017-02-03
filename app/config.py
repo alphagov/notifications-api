@@ -126,7 +126,7 @@ class Config(object):
         },
         'send-daily-performance-platform-stats': {
             'task': 'send-daily-performance-platform-stats',
-            'schedule': crontab(minute='*/10'),  # Every 10 minutes
+            'schedule': crontab(minute=30, hour=0),  # 00:30
             'options': {'queue': 'periodic'}
         },
         'timeout-sending-notifications': {
