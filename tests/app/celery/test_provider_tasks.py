@@ -4,10 +4,6 @@ from notifications_utils.recipients import InvalidEmailError
 import app
 from app.celery import provider_tasks
 from app.celery.provider_tasks import deliver_sms, deliver_email
-from app.clients.email import EmailClientException
-from app.models import Notification
-
-from tests.app.conftest import sample_notification
 
 
 def test_should_have_decorated_tasks_functions():
