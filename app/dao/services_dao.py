@@ -267,13 +267,13 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
     )
 
     months = {
-        datetime.strftime(date, '%Y-%m'): dict.fromkeys(
-            TEMPLATE_TYPES,
-            dict.fromkeys(
+        datetime.strftime(date, '%Y-%m'): {
+            template_type: dict.fromkeys(
                 NOTIFICATION_STATUS_TYPES,
                 0
             )
-        )
+            for template_type in TEMPLATE_TYPES
+        }
         for date in [
             datetime(year, month, 1) for month in range(4, 13)
         ] + [

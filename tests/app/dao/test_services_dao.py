@@ -545,8 +545,8 @@ def test_fetch_monthly_historical_stats_separates_weeks(notify_db, notify_db_ses
         ('2017-03', 'created', 2),
     ):
         assert result[date]['sms'][status] == count
-        assert result[date]['email'][status] == count
-        assert result[date]['letter'][status] == count
+        assert result[date]['email'][status] == 0
+        assert result[date]['letter'][status] == 0
 
     assert result.keys() == {
         '2016-04', '2016-05', '2016-06',
