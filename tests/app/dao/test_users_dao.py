@@ -14,6 +14,7 @@ from app.dao.users_dao import (
     reset_failed_login_count,
     get_user_by_email,
     delete_codes_older_created_more_than_a_day_ago,
+    update_user_password
 )
 
 from app.models import User, VerifyCode
@@ -132,3 +133,10 @@ def test_update_user_attribute(client, sample_user, user_attribute, user_value):
     }
     save_user_attribute(sample_user, update_dict)
     assert getattr(sample_user, user_attribute) == user_value
+
+
+def test_update_user_password(notify_api, notify_db, notify_db_session, sample_user):
+    password = 'newpassword'
+    assert not sample_user.check_password(password)
+    update_user_password(sample_user, password)
+    assert sample_user.check_password(password)
