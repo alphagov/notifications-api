@@ -21,11 +21,7 @@ from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE, NOTIFI
 def send_sms_to_provider(notification):
     service = notification.service
     if not service.active:
-        notification.status = NOTIFICATION_TECHNICAL_FAILURE
-        dao_update_notification(notification)
-        current_app.logger.warn(
-            "Send sms for notification id {} to provider is not allowed: service {} is inactive".format(notification.id,
-                                                                                                        service.id))
+        technical_failure(notification=notification)
         return
 
     if notification.status == 'created':
@@ -70,12 +66,7 @@ def send_sms_to_provider(notification):
 def send_email_to_provider(notification):
     service = notification.service
     if not service.active:
-        notification.status = NOTIFICATION_TECHNICAL_FAILURE
-        dao_update_notification(notification)
-        current_app.logger.warn(
-            "Send email for notification id {} to provider is not allowed: service {} is inactive".format(
-                notification.id,
-                service.id))
+        technical_failure(notification=notification)
         return
     if notification.status == 'created':
         provider = provider_to_use(EMAIL_TYPE, notification.id)
@@ -199,3 +190,13 @@ def get_html_email_options(service):
         branding = {}
 
     return dict(govuk_banner=govuk_banner, **branding)
+
+
+def technical_failure(notification):
+    notification.status = NOTIFICATION_TECHNICAL_FAILURE
+    dao_update_notification(notification)
+    current_app.logger.warn(
+        "Send {} for notification id {} to provider is not allowed: service {} is inactive".format(
+            notification.notification_type,
+            notification.id,
+            notification.service_id))
