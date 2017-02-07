@@ -534,7 +534,7 @@ def test_send_user_confirm_new_email_returns_400_when_email_missing(client, samp
     mocked.assert_not_called()
 
 
-def test_post_user_update_password(client, sample_service):
+def test_update_user_password_saves_correctly(client, sample_service):
     assert User.query.count() == 1
     sample_user = sample_service.users[0]
     new_password = '1234567890'
