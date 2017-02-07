@@ -11,7 +11,8 @@ from app.dao.users_dao import (
     reset_failed_login_count,
     get_user_by_email,
     create_secret_code,
-    save_user_attribute
+    save_user_attribute,
+    update_user_password
 )
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -27,7 +28,8 @@ from app.schemas import (
     request_verify_code_schema,
     permission_schema,
     user_schema_load_json,
-    user_update_schema_load_json
+    user_update_schema_load_json,
+    user_update_password_schema_load_json
 )
 
 from app.errors import (
@@ -302,6 +304,19 @@ def send_user_reset_password():
     send_notification_to_queue(saved_notification, False, queue="notify")
 
     return jsonify({}), 204
+
+
+@user.route('/<uuid:user_id>/update-password', methods=['POST'])
+def update_password(user_id):
+    user = get_user_by_id(user_id=user_id)
+    req_json = request.get_json()
+    pwd = req_json.get('_password')
+    update_dct, errors = user_update_password_schema_load_json.load(req_json)
+    if errors:
+        raise InvalidRequest(errors, status_code=400)
+
+    update_user_password(user, pwd)
+    return jsonify(data=user_schema.dump(user).data), 200
 
 
 def _create_reset_password_url(email):
