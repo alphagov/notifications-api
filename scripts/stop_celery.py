@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
 
-Scipt used to stop celery in AWS environments. This is used from upstart to issue a TERM signal to the master celery process.
+Scipt used to stop celery in AWS environments.
+This is used from upstart to issue a TERM signal to the master celery process.
 
-This will then allow the worker threads to stop, after completing whatever tasks that are in flight.
+This will then allow the worker threads to stop, after completing
+whatever tasks that are in flight.
 
-Note the script blocks for up to 15minutes, which is long enough to allow our longest possible task to complete. If it can return
-quicker it will.
+Note the script blocks for up to 15minutes, which is long enough to allow our
+longest possible task to complete. If it can return quicker it will.
 
 Usage:
     ./stop_celery.py <celery_pid_file>
@@ -21,8 +23,10 @@ import re
 import subprocess
 from time import sleep
 
+
 def strip_white_space(from_this):
     return re.sub(r'\s+', '', from_this)
+
 
 def get_pid_from_file(filename):
     """
@@ -32,6 +36,7 @@ def get_pid_from_file(filename):
     with open(filename) as f:
         celery_pid = f.read()
     return strip_white_space(celery_pid)
+
 
 def issue_term_signal_to_pid(pid):
     """
@@ -45,6 +50,7 @@ def issue_term_signal_to_pid(pid):
     for line in result.stderr.readlines():
         print(line.rstrip())
 
+
 def pid_still_running(pid):
     """
     uses the proc filesystem to identify if the celery master pid is still around.
@@ -54,6 +60,7 @@ def pid_still_running(pid):
     if os.path.exists("/proc/" + pid):
         return True
     return False
+
 
 if __name__ == "__main__":
     arguments = docopt(__doc__)
