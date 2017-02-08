@@ -526,23 +526,27 @@ def test_fetch_monthly_historical_stats_separates_weeks(notify_db, notify_db_ses
 
     result = dao_fetch_monthly_historical_stats_for_service(sample_template.service_id, 2016)
 
-    assert result['2016-04']['sms']['created'] == 1
-    assert result['2016-04']['sms']['sending'] == 0
-    assert result['2016-04']['sms']['delivered'] == 0
-    assert result['2016-04']['sms']['pending'] == 0
-    assert result['2016-04']['sms']['failed'] == 0
-    assert result['2016-04']['sms']['technical-failure'] == 0
-    assert result['2016-04']['sms']['temporary-failure'] == 0
-    assert result['2016-04']['sms']['permanent-failure'] == 0
+    for date, status, count in (
+        ('2016-04', 'sending', 0),
+        ('2016-04', 'delivered', 0),
+        ('2016-04', 'pending', 0),
+        ('2016-04', 'failed', 0),
+        ('2016-04', 'technical-failure', 0),
+        ('2016-04', 'temporary-failure', 0),
+        ('2016-04', 'permanent-failure', 0),
 
-    assert result['2016-06']['sms']['created'] == 1
+        ('2016-06', 'created', 1),
 
-    assert result['2016-10']['sms']['created'] == 1
+        ('2016-10', 'created', 1),
 
-    assert result['2016-12']['sms']['created'] == 0
-    assert result['2016-12']['sms']['delivered'] == 1
+        ('2016-12', 'created', 0),
+        ('2016-12', 'delivered', 1),
 
-    assert result['2017-03']['sms']['created'] == 2
+        ('2017-03', 'created', 2),
+    ):
+        assert result[date]['sms'][status] == count
+        assert result[date]['email'][status] == 0
+        assert result[date]['letter'][status] == 0
 
     assert result.keys() == {
         '2016-04', '2016-05', '2016-06',
