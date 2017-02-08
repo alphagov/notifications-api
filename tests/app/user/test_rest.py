@@ -117,7 +117,7 @@ def test_post_user_missing_attribute_email(notify_api, notify_db, notify_db_sess
             assert {'email_address': ['Missing data for required field.']} == json_resp['message']
 
 
-def test_post_user_missing_attribute_password(notify_api, notify_db, notify_db_session):
+def test_create_user_missing_attribute_password(notify_api, notify_db, notify_db_session):
     """
     Tests POST endpoint '/' missing attribute password.
     """
@@ -532,3 +532,30 @@ def test_send_user_confirm_new_email_returns_400_when_email_missing(client, samp
     assert resp.status_code == 400
     assert json.loads(resp.get_data(as_text=True))['message'] == {'email': ['Missing data for required field.']}
     mocked.assert_not_called()
+
+
+def test_update_user_password_saves_correctly(client, sample_service):
+    assert User.query.count() == 1
+    sample_user = sample_service.users[0]
+    new_password = '1234567890'
+    data = {
+        '_password': new_password
+    }
+    auth_header = create_authorization_header()
+    headers = [('Content-Type', 'application/json'), auth_header]
+    resp = client.post(
+        url_for('user.update_password', user_id=sample_user.id),
+        data=json.dumps(data),
+        headers=headers)
+    assert resp.status_code == 200
+    assert User.query.count() == 1
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert json_resp['data']['password_changed_at'] is not None
+    data = {'password': new_password}
+    auth_header = create_authorization_header()
+    headers = [('Content-Type', 'application/json'), auth_header]
+    resp = client.post(
+        url_for('user.verify_user_password', user_id=str(sample_user.id)),
+        data=json.dumps(data),
+        headers=headers)
+    assert resp.status_code == 204

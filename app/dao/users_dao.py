@@ -103,3 +103,10 @@ def reset_failed_login_count(user):
         user.failed_login_count = 0
         db.session.add(user)
         db.session.commit()
+
+
+def update_user_password(user, password):
+    user.password = password
+    user.password_changed_at = datetime.utcnow()
+    db.session.add(user)
+    db.session.commit()

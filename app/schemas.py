@@ -140,6 +140,20 @@ class UserUpdateAttributeSchema(BaseSchema):
                 raise ValidationError('Unknown field name {}'.format(key))
 
 
+class UserUpdatePasswordSchema(BaseSchema):
+
+    class Meta:
+        model = models.User
+        only = ('password')
+        strict = True
+
+    @validates_schema(pass_original=True)
+    def check_unknown_fields(self, data, original_data):
+        for key in original_data:
+            if key not in self.fields:
+                raise ValidationError('Unknown field name {}'.format(key))
+
+
 class ProviderDetailsSchema(BaseSchema):
     class Meta:
         model = models.ProviderDetails
@@ -560,6 +574,7 @@ class UnarchivedTemplateSchema(BaseSchema):
 user_schema = UserSchema()
 user_schema_load_json = UserSchema(load_json=True)
 user_update_schema_load_json = UserUpdateAttributeSchema(load_json=True, partial=True)
+user_update_password_schema_load_json = UserUpdatePasswordSchema(load_json=True, partial=True)
 service_schema = ServiceSchema()
 service_schema_load_json = ServiceSchema(load_json=True)
 detailed_service_schema = DetailedServiceSchema()
