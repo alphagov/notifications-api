@@ -38,12 +38,13 @@ def get_pid_from_file(filename):
     return strip_white_space(celery_pid)
 
 
-def issue_term_signal_to_pid(pid):
+def issue_term_signal_to_pid(pid, celery_pid_file):
     """
     Issues a TERM signal (15) to the master celery process.
 
     This method attempts to print out any response from this subprocess call. However this call is generally silent.
     """
+    print("Trying to stop ", celery_pid_file)
     result = subprocess.Popen(['kill', '-15', pid], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     for line in result.stdout.readlines():
         print(line.rstrip())
@@ -66,7 +67,7 @@ if __name__ == "__main__":
 
     celery_pid = get_pid_from_file(celery_pid_file)
 
-    issue_term_signal_to_pid(celery_pid)
+    issue_term_signal_to_pid(celery_pid, celery_pid_file)
 
     """
     Blocking loop to check for the still running process.
