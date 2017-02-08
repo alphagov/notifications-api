@@ -3,6 +3,7 @@ import pytest
 from datetime import datetime
 
 from freezegun import freeze_time
+from sqlalchemy import desc
 
 from app.models import ProviderDetails, ProviderDetailsHistory
 from app import clients
@@ -170,12 +171,23 @@ def test_toggle_sms_provider_switches_when_provider_priorities_are_equal(
     assert new_provider.priority < current_sms_provider.priority
 
 
-def test_toggle_sms_provider_updates_version(
+def test_toggle_sms_provider_updates_provider_history(
     restore_provider_details,
     current_sms_provider
 ):
-    version_before = current_sms_provider.version
-    dao_toggle_sms_provider(current_sms_provider.identifier)
-    version_after = current_sms_provider.version
+    provider_history_rows = ProviderDetailsHistory.query.filter(
+        ProviderDetailsHistory.id == current_sms_provider.id
+    ).order_by(
+        desc(ProviderDetailsHistory.version)
+    ).all()
 
-    assert version_after - version_before == 1
+    dao_toggle_sms_provider(current_sms_provider.identifier)
+
+    updated_provider_history_rows = ProviderDetailsHistory.query.filter(
+        ProviderDetailsHistory.id == current_sms_provider.id
+    ).order_by(
+        desc(ProviderDetailsHistory.version)
+    ).all()
+
+    assert len(updated_provider_history_rows) - len(provider_history_rows) == 1
+    assert updated_provider_history_rows[0].version - provider_history_rows[0].version == 1
