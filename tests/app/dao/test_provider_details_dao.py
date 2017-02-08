@@ -168,3 +168,14 @@ def test_toggle_sms_provider_switches_when_provider_priorities_are_equal(
 
     assert new_provider.identifier != current_sms_provider.identifier
     assert new_provider.priority < current_sms_provider.priority
+
+
+def test_toggle_sms_provider_updates_version(
+    restore_provider_details,
+    current_sms_provider
+):
+    version_before = current_sms_provider.version
+    dao_toggle_sms_provider(current_sms_provider.identifier)
+    version_after = current_sms_provider.version
+
+    assert version_after - version_before == 1
