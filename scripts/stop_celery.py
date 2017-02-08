@@ -57,9 +57,7 @@ def pid_still_running(pid):
 
     Once the process stops this file no longer exists. Slim possibilty of a race condition here.
     """
-    if os.path.exists("/proc/" + pid):
-        return True
-    return False
+    return os.path.exists("/proc/" + pid)
 
 
 if __name__ == "__main__":
@@ -78,6 +76,6 @@ if __name__ == "__main__":
     """
     iteration = 0
     while pid_still_running(celery_pid) and iteration < 180:
-        print("waited for ", iteration * 5, " secs")
+        print("[", celery_pid_file, "] waited for ", iteration * 5, " secs")
         sleep(5)
         iteration += 1
