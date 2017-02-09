@@ -1,6 +1,7 @@
 import uuid
 
-from sqlalchemy import (asc, desc)
+import sqlalchemy
+from sqlalchemy import (asc, desc, text)
 
 from app import db
 from app.models import (Template, TemplateHistory)
@@ -56,3 +57,25 @@ def dao_get_template_versions(service_id, template_id):
     ).order_by(
         desc(TemplateHistory.version)
     ).all()
+
+
+def dao_get_templates_by_for_cache(cache):
+    if not cache or len(cache) == 0:
+        return []
+
+    # First create a subquery that is a union select of the cache values
+    # Then join templates to the subquery
+    cache_queries = [
+        db.session.query(sqlalchemy.sql.expression.bindparam("template_id" + str(i), template_id).label('template_id'),
+                         sqlalchemy.sql.expression.bindparam("count" + str(i), count).label('count'))
+        for i, (template_id, count) in enumerate(cache)]
+    cache_subq = cache_queries[0].union(*cache_queries[1:]).subquery()
+    query = db.session.query(Template.id.label('template_id'),
+                             Template.template_type,
+                             Template.name,
+                             cache_subq.c.count.label('count')
+                             ).join(cache_subq,
+                                    Template.id == cache_subq.c.template_id
+                                    ).order_by(Template.name)
+
+    return query.all()
