@@ -23,15 +23,11 @@ def test_get_all_template_statistics_with_bad_arg_returns_400(client, sample_ser
     assert json_resp['message'] == {'limit_days': ['blurk is not an integer']}
 
 
-@pytest.mark.parametrize("cache_values", [True])
 @freeze_time('2016-08-18')
-def test_get_template_statistics_for_service(notify_db, notify_db_session, client, mocker, cache_values):
+def test_get_template_statistics_for_service(notify_db, notify_db_session, client, mocker):
     email, sms = set_up_notifications(notify_db, notify_db_session)
 
-    mock_cache_values = {sms.id: 3, email.id: 3} if cache_values else None
-    mocker.patch(
-        'app.redis_store.get_all_from_hash',
-        return_value=mock_cache_values)
+    mocked_redis = mocker.patch('app.redis_store.get_all_from_hash')
 
     auth_header = create_authorization_header()
 
@@ -52,18 +48,14 @@ def test_get_template_statistics_for_service(notify_db, notify_db_session, clien
     assert json_resp['data'][1]['template_name'] == sms.name
     assert json_resp['data'][1]['template_type'] == sms.template_type
 
+    mocked_redis.assert_not_called()
 
-@pytest.mark.parametrize("cache_values", [True])
+
 @freeze_time('2016-08-18')
 def test_get_template_statistics_for_service_limited_1_day(notify_db, notify_db_session, client,
-                                                           mocker,
-                                                           cache_values):
+                                                           mocker):
     email, sms = set_up_notifications(notify_db, notify_db_session)
-
-    mock_cache_values = {sms.id: 1, email.id: 1} if cache_values else None
-    mocker.patch(
-        'app.redis_store.get_all_from_hash',
-        return_value=mock_cache_values)
+    mock_redis = mocker.patch('app.redis_store.get_all_from_hash')
 
     auth_header = create_authorization_header()
 
@@ -86,17 +78,19 @@ def test_get_template_statistics_for_service_limited_1_day(notify_db, notify_db_
     assert json_resp[1]['template_name'] == sms.name
     assert json_resp[1]['template_type'] == sms.template_type
 
+    mock_redis.assert_not_called()
 
-@pytest.mark.parametrize("cache_values", [True])
+
+@pytest.mark.parametrize("cache_values", [False, True])
 @freeze_time('2016-08-18')
 def test_get_template_statistics_for_service_limit_7_days(notify_db, notify_db_session, client,
                                                           mocker,
                                                           cache_values):
     email, sms = set_up_notifications(notify_db, notify_db_session)
     mock_cache_values = {sms.id: 2, email.id: 2} if cache_values else None
-    mocker.patch(
-        'app.redis_store.get_all_from_hash',
-        return_value=mock_cache_values)
+    mocked_redis_get = mocker.patch('app.redis_store.get_all_from_hash', return_value=mock_cache_values)
+    mocked_redis_set = mocker.patch('app.redis_store.set_hash_and_expire')
+
     auth_header = create_authorization_header()
     response_for_a_week = client.get(
         '/service/{}/template-statistics'.format(email.service_id),
@@ -112,22 +106,22 @@ def test_get_template_statistics_for_service_limit_7_days(notify_db, notify_db_s
     assert json_resp['data'][1]['count'] == 2
     assert json_resp['data'][1]['template_name'] == 'Template Name'
 
+    mocked_redis_get.assert_called_once_with("{}-template-counter-limit-7-days".format(email.service_id))
+    if cache_values:
+        mocked_redis_set.assert_not_called()
+    else:
+        mocked_redis_set.assert_called_once_with("{}-template-counter-limit-7-days".format(email.service_id),
+                                                 {sms.id: 2, email.id: 2}, 600)
 
-@pytest.mark.parametrize("cache_values", [True])
+
 @freeze_time('2016-08-18')
 def test_get_template_statistics_for_service_limit_30_days(notify_db, notify_db_session, client,
-                                                           mocker,
-                                                           cache_values):
+                                                           mocker):
     email, sms = set_up_notifications(notify_db, notify_db_session)
-    mock_cache_values = {sms.id: 2, email.id: 2} if cache_values else None
-    mocker.patch(
-        'app.redis_store.get_all_from_hash',
-        return_value=mock_cache_values)
+    mock_redis = mocker.patch('app.redis_store.get_all_from_hash')
+
     auth_header = create_authorization_header()
-    mock_cache_values = {sms.id: 3, email.id: 3} if cache_values else None
-    mocker.patch(
-        'app.redis_store.get_all_from_hash',
-        return_value=mock_cache_values)
+    mocked_redis = mocker.patch('app.redis_store.get_all_from_hash')
 
     response_for_a_month = client.get(
         '/service/{}/template-statistics'.format(email.service_id),
@@ -143,17 +137,14 @@ def test_get_template_statistics_for_service_limit_30_days(notify_db, notify_db_
     assert json_resp['data'][1]['count'] == 3
     assert json_resp['data'][1]['template_name'] == 'Template Name'
 
+    mock_redis.assert_not_called()
 
-@pytest.mark.parametrize("cache_values", [True])
+
 @freeze_time('2016-08-18')
 def test_get_template_statistics_for_service_no_limit(notify_db, notify_db_session, client,
-                                                      mocker,
-                                                      cache_values):
+                                                      mocker):
     email, sms = set_up_notifications(notify_db, notify_db_session)
-    mock_cache_values = {sms.id: 3, email.id: 3} if cache_values else None
-    mocker.patch(
-        'app.redis_store.get_all_from_hash',
-        return_value=mock_cache_values)
+    mock_redis = mocker.patch('app.redis_store.get_all_from_hash')
     auth_header = create_authorization_header()
     response_for_all = client.get(
         '/service/{}/template-statistics'.format(email.service_id),
@@ -166,6 +157,8 @@ def test_get_template_statistics_for_service_no_limit(notify_db, notify_db_sessi
     assert json_resp['data'][0]['template_name'] == 'Email Template Name'
     assert json_resp['data'][1]['count'] == 3
     assert json_resp['data'][1]['template_name'] == 'Template Name'
+
+    mock_redis.assert_not_called()
 
 
 def set_up_notifications(notify_db, notify_db_session):
@@ -184,10 +177,7 @@ def set_up_notifications(notify_db, notify_db_session):
 
 
 @freeze_time('2016-08-18')
-def test_returns_empty_list_if_no_templates_used(client, sample_service, mocker):
-    mocker.patch(
-        'app.redis_store.get_all_from_hash',
-        return_value=None)
+def test_returns_empty_list_if_no_templates_used(client, sample_service):
     auth_header = create_authorization_header()
 
     response = client.get(
@@ -203,12 +193,7 @@ def test_returns_empty_list_if_no_templates_used(client, sample_service, mocker)
 def test_get_template_statistics_by_id_returns_last_notification(
         notify_db,
         notify_db_session,
-        client,
-        mocker):
-    mocker.patch(
-        'app.redis_store.get_all_from_hash',
-        return_value=None)
-
+        client):
     sample_notification(notify_db, notify_db_session)
     sample_notification(notify_db, notify_db_session)
     notification_3 = sample_notification(notify_db, notify_db_session)
@@ -228,12 +213,7 @@ def test_get_template_statistics_by_id_returns_last_notification(
 def test_get_template_statistics_for_template_returns_empty_if_no_statistics(
         client,
         sample_template,
-        mocker
 ):
-    mocker.patch(
-        'app.redis_store.get_all_from_hash',
-        return_value=None)
-
     auth_header = create_authorization_header()
 
     response = client.get(
