@@ -59,7 +59,8 @@ def dao_switch_sms_provider_to_provider_with_identifier(identifier):
 
     if not provider_is_already_primary_or_inactive(current_provider, new_provider, identifier):
         update_provider_priorities(current_provider, new_provider)
-        db.session.add_all([current_provider, new_provider])
+        dao_update_provider_details(current_provider)
+        dao_update_provider_details(new_provider)
 
 
 def get_provider_details_by_notification_type(notification_type):
