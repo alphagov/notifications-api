@@ -1,0 +1,26 @@
+---
+
+buildpack: python_buildpack
+command: scripts/run_app_paas.sh gunicorn -w 5 -b 0.0.0.0:$PORT wsgi
+services:
+  - notify-aws
+  - notify-config
+  - notify-db
+  - mmg
+  - firetext
+  - hosted-graphite
+env:
+  NOTIFY_APP_NAME: public-api
+  CW_APP_NAME: api
+instances: 1
+memory: 512M
+
+applications:
+  - name: notify-api
+
+  - name: notify-api-db-migration
+    command: sleep infinity
+    no-route: true
+    health-check-type: none
+    instances: 1
+    memory: 128M

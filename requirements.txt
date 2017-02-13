@@ -25,6 +25,10 @@ docopt==0.6.2
 # pin to minor version 3.1.x
 notifications-python-client>=3.1,<3.2
 
+# PaaS
+awscli>=1.11,<1.12
+awscli-cwlogs>=1.4,<1.5
+
 git+https://github.com/alphagov/notifications-utils.git@13.5.0#egg=notifications-utils==13.5.0
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
