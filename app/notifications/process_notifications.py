@@ -2,7 +2,7 @@ from datetime import datetime
 
 from flask import current_app
 
-from app import redis_store
+from app import redis_store, cache_key_for_service_template_counter
 from app.celery import provider_tasks
 from notifications_utils.clients import redis
 from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
@@ -63,6 +63,7 @@ def persist_notification(template_id,
     if not simulated:
         dao_create_notification(notification)
         redis_store.incr(redis.daily_limit_cache_key(service.id))
+        redis_store.increment_hash_value(cache_key_for_service_template_counter(service.id), template_id)
         current_app.logger.info(
             "{} {} created at {}".format(notification.notification_type, notification.id, notification.created_at)
         )

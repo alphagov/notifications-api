@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from freezegun import freeze_time
 from collections import namedtuple
 
+from app import cache_key_for_service_template_counter
 from app.models import Template, Notification, NotificationHistory
 from app.notifications import SendNotificationToQueueError
 from app.notifications.process_notifications import (create_content_for_notification,
@@ -114,7 +115,8 @@ def test_exception_thown_by_redis_store_get_should_not_be_fatal(sample_template,
 
 
 def test_cache_is_not_incremented_on_failure_to_persist_notification(sample_api_key, mocker):
-    mocked_redis = mocker.patch('app.notifications.process_notifications.redis_store.incr')
+    mocked_redis = mocker.patch('app.redis_store.incr')
+    mocked_redis_hash = mocker.patch('app.redis_store.increment_hash_value')
     with pytest.raises(SQLAlchemyError):
         persist_notification(template_id=None,
                              template_version=None,
@@ -125,6 +127,7 @@ def test_cache_is_not_incremented_on_failure_to_persist_notification(sample_api_
                              api_key_id=sample_api_key.id,
                              key_type=sample_api_key.key_type)
     mocked_redis.assert_not_called()
+    mocked_redis_hash.assert_not_called()
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -132,6 +135,7 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
     mocked_redis = mocker.patch('app.notifications.process_notifications.redis_store.incr')
+    mocked_redis_hash = mocker.patch('app.notifications.process_notifications.redis_store.increment_hash_value')
     n_id = uuid.uuid4()
     created_at = datetime.datetime(2016, 11, 11, 16, 8, 18)
     persist_notification(template_id=sample_job.template.id,
@@ -154,6 +158,8 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
     assert persisted_notification.job_row_number == 10
     assert persisted_notification.created_at == created_at
     mocked_redis.assert_called_once_with(str(sample_job.service_id) + "-2016-01-01-count")
+    mocked_redis_hash.assert_called_once_with(cache_key_for_service_template_counter(sample_job.service_id),
+                                              sample_job.template.id)
     assert persisted_notification.client_reference == "ref from client"
     assert persisted_notification.reference is None
 

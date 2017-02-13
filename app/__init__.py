@@ -65,6 +65,8 @@ def create_app(app_name=None):
     aws_ses_client.init_app(application.config['AWS_REGION'], statsd_client=statsd_client)
     notify_celery.init_app(application)
     encryption.init_app(application)
+    print(os.environ['REDIS_URL'])
+    print(application.config['REDIS_ENABLED'])
     redis_store.init_app(application)
     performance_platform_client.init_app(application)
     clients.init_app(sms_clients=[firetext_client, mmg_client, loadtest_client], email_clients=[aws_ses_client])
@@ -176,3 +178,7 @@ def process_user_agent(user_agent_string):
         return "non-notify-user-agent"
     else:
         return "unknown"
+
+
+def cache_key_for_service_template_counter(service_id, limit_days=7):
+    return "{}-template-counter-limit-{}-days".format(service_id, limit_days)

@@ -49,6 +49,7 @@ class Config(object):
     # URL of redis instance
     REDIS_URL = os.getenv('REDIS_URL')
     REDIS_ENABLED = os.getenv('REDIS_ENABLED') == '1'
+    EXPIRE_CACHE_IN_SECONDS = 600
 
     # Performance platform
     PERFORMANCE_PLATFORM_ENABLED = os.getenv('PERFORMANCE_PLATFORM_ENABLED') == '1'
@@ -185,6 +186,7 @@ class Development(Config):
         Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
     API_HOST_NAME = "http://localhost:6011"
+    REDIS_ENABLED = True
 
 
 class Test(Config):

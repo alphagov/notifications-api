@@ -4,7 +4,8 @@ from app.dao.templates_dao import (
     dao_get_template_by_id_and_service_id,
     dao_get_all_templates_for_service,
     dao_update_template,
-    dao_get_template_versions)
+    dao_get_template_versions,
+    dao_get_templates_by_for_cache)
 from tests.app.conftest import sample_template as create_sample_template
 from app.models import Template, TemplateHistory
 import pytest
@@ -265,3 +266,54 @@ def test_get_template_versions(sample_template):
     from app.schemas import template_history_schema
     v = template_history_schema.load(versions, many=True)
     assert len(v) == 2
+
+
+def test_get_templates_by_ids_successful(notify_db, notify_db_session):
+    template_1 = create_sample_template(
+        notify_db,
+        notify_db_session,
+        template_name='Sample Template 1',
+        template_type="sms",
+        content="Template content"
+    )
+    template_2 = create_sample_template(
+        notify_db,
+        notify_db_session,
+        template_name='Sample Template 2',
+        template_type="sms",
+        content="Template content"
+    )
+    create_sample_template(
+        notify_db,
+        notify_db_session,
+        template_name='Sample Template 3',
+        template_type="email",
+        content="Template content"
+    )
+    sample_cache_dict = {str.encode(str(template_1.id)): str.encode('2'),
+                         str.encode(str(template_2.id)): str.encode('3')}
+    cache = [[k, v] for k, v in sample_cache_dict.items()]
+    templates = dao_get_templates_by_for_cache(cache)
+    assert len(templates) == 2
+    assert [(template_1.id, template_1.template_type, template_1.name, 2),
+            (template_2.id, template_2.template_type, template_2.name, 3)] == templates
+
+
+def test_get_templates_by_ids_successful_for_one_cache_item(notify_db, notify_db_session):
+    template_1 = create_sample_template(
+        notify_db,
+        notify_db_session,
+        template_name='Sample Template 1',
+        template_type="sms",
+        content="Template content"
+    )
+    sample_cache_dict = {str.encode(str(template_1.id)): str.encode('2')}
+    cache = [[k, v] for k, v in sample_cache_dict.items()]
+    templates = dao_get_templates_by_for_cache(cache)
+    assert len(templates) == 1
+    assert [(template_1.id, template_1.template_type, template_1.name, 2)] == templates
+
+
+def test_get_templates_by_ids_returns_empty_list():
+        assert dao_get_templates_by_for_cache({}) == []
+        assert dao_get_templates_by_for_cache(None) == []
