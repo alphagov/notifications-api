@@ -171,6 +171,9 @@ class Config(object):
 
     SIMULATED_SMS_NUMBERS = ('+447700900000', '+447700900111', '+447700900222')
 
+    FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = None
+    FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID = None
+
 
 ######################
 # Config overrides ###
@@ -236,6 +239,8 @@ class Live(Config):
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
     STATSD_ENABLED = True
     FROM_NUMBER = '40604'
+    FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = '6c1d81bb-dae2-4ee9-80b0-89a4aae9f649'
+    FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID = '285bb62d-08e7-414b-b5a3-6372ba320e06'
 
 
 class CloudFoundryConfig(Config):
