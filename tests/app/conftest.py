@@ -117,13 +117,16 @@ def sample_sms_code(notify_db,
 
 
 @pytest.fixture(scope='function')
-def sample_service(notify_db,
-                   notify_db_session,
-                   service_name="Sample service",
-                   user=None,
-                   restricted=False,
-                   limit=1000,
-                   email_from=None):
+def sample_service(
+    notify_db,
+    notify_db_session,
+    service_name="Sample service",
+    user=None,
+    restricted=False,
+    limit=1000,
+    email_from=None,
+    service_id=None
+):
     if user is None:
         user = create_user()
     if email_from is None:
@@ -138,7 +141,7 @@ def sample_service(notify_db,
     service = Service.query.filter_by(name=service_name).first()
     if not service:
         service = Service(**data)
-        dao_create_service(service, user)
+        dao_create_service(service, user, service_id)
     else:
         if user not in service.users:
             dao_add_user_to_service(service, user)
@@ -146,38 +149,44 @@ def sample_service(notify_db,
 
 
 @pytest.fixture(scope='function')
-def sample_template(notify_db,
-                    notify_db_session,
-                    template_name="Template Name",
-                    template_type="sms",
-                    content="This is a template:\nwith a newline",
-                    archived=False,
-                    subject_line='Subject',
-                    user=None,
-                    service=None,
-                    created_by=None,
-                    process_type='normal'):
+def sample_template(
+    notify_db,
+    notify_db_session,
+    template_name="Template Name",
+    template_type="sms",
+    content="This is a template:\nwith a newline",
+    archived=False,
+    subject_line='Subject',
+    user=None,
+    service=None,
+    created_by=None,
+    process_type='normal',
+    template_id=None
+):
     if user is None:
         user = create_user()
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if created_by is None:
         created_by = create_user()
-    data = {
-        'name': template_name,
-        'template_type': template_type,
-        'content': content,
-        'service': service,
-        'created_by': created_by,
-        'archived': archived,
-        'process_type': process_type
-    }
-    if template_type in ['email', 'letter']:
-        data.update({
-            'subject': subject_line
-        })
-    template = Template(**data)
-    dao_create_template(template)
+
+    template = Template.query.filter_by(id=template_id).first()
+    if not template:
+        data = {
+            'name': template_name,
+            'template_type': template_type,
+            'content': content,
+            'service': service,
+            'created_by': created_by,
+            'archived': archived,
+            'process_type': process_type
+        }
+        if template_type in ['email', 'letter']:
+            data.update({
+                'subject': subject_line
+            })
+        template = Template(**data)
+        dao_create_template(template, template_id)
     return template
 
 

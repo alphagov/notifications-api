@@ -13,8 +13,8 @@ from app.dao.dao_utils import (
 
 @transactional
 @version_class(Template, TemplateHistory)
-def dao_create_template(template):
-    template.id = uuid.uuid4()  # must be set now so version history model can use same id
+def dao_create_template(template, template_id=None):
+    template.id = template_id or uuid.uuid4()  # must be set now so version history model can use same id
     template.archived = False
     db.session.add(template)
 

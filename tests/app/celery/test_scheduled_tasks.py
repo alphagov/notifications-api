@@ -1,3 +1,5 @@
+import pytest
+
 from datetime import datetime, timedelta
 from functools import partial
 
@@ -13,17 +15,61 @@ from app.celery.scheduled_tasks import (
     delete_invitations,
     timeout_notifications,
     run_scheduled_jobs,
-    send_daily_performance_platform_stats
+    send_daily_performance_platform_stats,
+    switch_current_sms_provider_on_slow_delivery
 )
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.dao.jobs_dao import dao_get_job_by_id
+from app.dao.provider_details_dao import (
+    dao_update_provider_details,
+    get_current_provider
+)
 from app.utils import get_london_midnight_in_utc
 from tests.app.conftest import (
     sample_notification as create_sample_notification,
     sample_job as create_sample_job,
-    sample_notification_history as create_notification_history
+    sample_notification_history as create_notification_history,
+    sample_service as create_sample_service,
+    sample_template as create_sample_template
 )
+from tests.conftest import set_config_values
 from unittest.mock import call, patch, PropertyMock
+
+
+def _create_slow_delivery_notification(notify_db, notify_db_session, provider='mmg'):
+    now = datetime.utcnow()
+    five_minutes_from_now = now + timedelta(minutes=5)
+
+    service = create_sample_service(
+        notify_db,
+        notify_db_session,
+        service_id=current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SERVICE_ID')
+    )
+
+    template = create_sample_template(
+        notify_db,
+        notify_db_session,
+        template_id=current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID'),
+        service=service
+    )
+
+    create_sample_notification(
+        notify_db,
+        notify_db_session,
+        service=service,
+        template=template,
+        status='delivered',
+        created_at=now,
+        sent_at=now,
+        sent_by=provider,
+        updated_at=five_minutes_from_now
+    )
+
+
+@pytest.fixture(scope='function')
+def set_provider_updated_at(current_sms_provider):
+    current_sms_provider.updated_at = datetime.utcnow() - timedelta(minutes=30)
+    dao_update_provider_details(current_sms_provider)
 
 
 def test_should_have_decorated_tasks_functions():
@@ -35,6 +81,8 @@ def test_should_have_decorated_tasks_functions():
     assert run_scheduled_jobs.__wrapped__.__name__ == 'run_scheduled_jobs'
     assert remove_csv_files.__wrapped__.__name__ == 'remove_csv_files'
     assert send_daily_performance_platform_stats.__wrapped__.__name__ == 'send_daily_performance_platform_stats'
+    assert switch_current_sms_provider_on_slow_delivery.__wrapped__.__name__ == \
+        'switch_current_sms_provider_on_slow_delivery'
 
 
 def test_should_call_delete_successful_notifications_more_than_week_in_task(notify_api, mocker):
@@ -244,3 +292,124 @@ def test_send_daily_performance_stats_calls_with_correct_totals(
             call(get_london_midnight_in_utc(yesterday), 'sms', 2, 'day'),
             call(get_london_midnight_in_utc(yesterday), 'email', 3, 'day')
         ])
+
+
+def test_switch_current_sms_provider_on_slow_delivery_does_not_run_if_config_unset(client, mocker):
+    get_notifications_mock = mocker.patch(
+        'app.celery.scheduled_tasks.get_count_of_slow_delivery_sms_notifications_for_provider'
+    )
+    toggle_sms_mock = mocker.patch('app.celery.scheduled_tasks.dao_toggle_sms_provider')
+
+    with set_config_values(client.application, {
+        'FUNCTIONAL_TEST_PROVIDER_SERVICE_ID': None,
+        'FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID': None
+    }):
+        switch_current_sms_provider_on_slow_delivery()
+
+    assert get_notifications_mock.called is False
+    assert toggle_sms_mock.called is False
+
+
+def test_switch_providers_on_slow_delivery_runs_if_config_set(
+    notify_db,
+    notify_db_session,
+    notify_api,
+    mocker
+):
+    get_notifications_mock = mocker.patch(
+        'app.celery.scheduled_tasks.get_count_of_slow_delivery_sms_notifications_for_provider',
+        return_value=[]
+    )
+
+    with set_config_values(notify_api, {
+        'FUNCTIONAL_TEST_PROVIDER_SERVICE_ID': '7954469d-8c6d-43dc-b8f7-86be2d69f5f3',
+        'FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID': '331a63e6-f1aa-4588-ad3f-96c268788ae7'
+    }):
+        switch_current_sms_provider_on_slow_delivery()
+
+    assert get_notifications_mock.called is True
+
+
+def test_switch_providers_on_slow_delivery_triggers_switch_on_slow_notification_delivery(
+    notify_db,
+    notify_db_session,
+    notify_api,
+    restore_provider_details,
+    current_sms_provider,
+    set_provider_updated_at
+):
+    with set_config_values(notify_api, {
+        'FUNCTIONAL_TEST_PROVIDER_SERVICE_ID': '7954469d-8c6d-43dc-b8f7-86be2d69f5f3',
+        'FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID': '331a63e6-f1aa-4588-ad3f-96c268788ae7'
+    }):
+        _create_slow_delivery_notification(notify_db, notify_db_session, current_sms_provider.identifier)
+        _create_slow_delivery_notification(notify_db, notify_db_session, current_sms_provider.identifier)
+
+        switch_current_sms_provider_on_slow_delivery()
+
+    new_provider = get_current_provider('sms')
+    assert new_provider.identifier != current_sms_provider.identifier
+    assert new_provider.priority < current_sms_provider.priority
+
+
+def test_switch_providers_on_slow_delivery_does_not_switch_if_already_switched(
+    notify_db,
+    notify_db_session,
+    notify_api,
+    restore_provider_details,
+    current_sms_provider,
+    set_provider_updated_at
+):
+    with set_config_values(notify_api, {
+        'FUNCTIONAL_TEST_PROVIDER_SERVICE_ID': '7954469d-8c6d-43dc-b8f7-86be2d69f5f3',
+        'FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID': '331a63e6-f1aa-4588-ad3f-96c268788ae7'
+    }):
+        _create_slow_delivery_notification(notify_db, notify_db_session)
+        _create_slow_delivery_notification(notify_db, notify_db_session)
+
+        switch_current_sms_provider_on_slow_delivery()
+        switch_current_sms_provider_on_slow_delivery()
+
+    new_provider = get_current_provider('sms')
+    assert new_provider.identifier != current_sms_provider.identifier
+    assert new_provider.priority < current_sms_provider.priority
+
+
+def test_switch_providers_on_slow_delivery_does_not_switch_based_on_older_notifications(
+    notify_db,
+    notify_db_session,
+    notify_api,
+    restore_provider_details,
+    current_sms_provider,
+    set_provider_updated_at
+):
+    """
+    Assume we have three slow delivery notifications for the current provider x. This triggers
+    a switch to provider y. If we experience some slow delivery notifications on this provider,
+    we switch back to provider x.
+
+    Provider x had three slow deliveries initially, but we do not want to trigger another switch
+    based on these as they are old. We only want to look for slow notifications after the point at
+    which we switched back to provider x.
+    """
+    with set_config_values(notify_api, {
+        'FUNCTIONAL_TEST_PROVIDER_SERVICE_ID': '7954469d-8c6d-43dc-b8f7-86be2d69f5f3',
+        'FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID': '331a63e6-f1aa-4588-ad3f-96c268788ae7'
+    }):
+        # Provider x -> y
+        _create_slow_delivery_notification(notify_db, notify_db_session, current_sms_provider.identifier)
+        _create_slow_delivery_notification(notify_db, notify_db_session, current_sms_provider.identifier)
+        _create_slow_delivery_notification(notify_db, notify_db_session, current_sms_provider.identifier)
+        switch_current_sms_provider_on_slow_delivery()
+
+        current_provider = get_current_provider('sms')
+
+        # Provider y -> x
+        _create_slow_delivery_notification(notify_db, notify_db_session, current_provider.identifier)
+        _create_slow_delivery_notification(notify_db, notify_db_session, current_provider.identifier)
+        switch_current_sms_provider_on_slow_delivery()
+
+        # Expect to stay on provider x
+        switch_current_sms_provider_on_slow_delivery()
+        current_provider = get_current_provider('sms')
+        assert current_sms_provider.identifier == current_provider.identifier
