@@ -5,6 +5,10 @@ files:
   - destination: /home/notify-app/notifications-api
     source: /
 hooks:
+  BeforeInstall:
+    - location: scripts/aws_clear_instance.sh
+      runas: root
+      timeout: 1000
   AfterInstall:
     - location: scripts/aws_install_dependencies.sh
       runas: root
