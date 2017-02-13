@@ -131,6 +131,11 @@ class Config(object):
             'schedule': crontab(minute=30, hour=0),  # 00:30
             'options': {'queue': 'periodic'}
         },
+        'switch-current-sms-provider-on-slow-delivery': {
+            'task': 'switch-current-sms-provider-on-slow-delivery',
+            'schedule': crontab(),  # Every minute
+            'options': {'queue': 'periodic'}
+        },
         'timeout-sending-notifications': {
             'task': 'timeout-sending-notifications',
             'schedule': crontab(minute=0, hour='0,1,2'),

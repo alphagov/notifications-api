@@ -1,4 +1,7 @@
-from datetime import datetime
+from datetime import (
+    datetime,
+    timedelta
+)
 
 from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
@@ -10,7 +13,12 @@ from app.dao.invited_user_dao import delete_invitations_created_more_than_two_da
 from app.dao.jobs_dao import dao_set_scheduled_jobs_to_pending, dao_get_jobs_older_than
 from app.dao.notifications_dao import (
     delete_notifications_created_more_than_a_week_ago,
-    dao_timeout_notifications
+    dao_timeout_notifications,
+    get_count_of_slow_delivery_sms_notifications_for_provider
+)
+from app.dao.provider_details_dao import (
+    get_current_provider,
+    dao_toggle_sms_provider
 )
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.statsd_decorators import statsd
@@ -141,3 +149,36 @@ def send_daily_performance_platform_stats():
             email_sent_count,
             'day'
         )
+
+
+@notify_celery.task(name='switch-current-sms-provider-on-slow-delivery')
+@statsd(namespace="tasks")
+def switch_current_sms_provider_on_slow_delivery():
+    """
+    Switch providers if there are at least two slow delivery notifications (more than four minutes)
+    in the last ten minutes. Search from the time we last switched to the current provider.
+    """
+    functional_test_provider_service_id = current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SERVICE_ID')
+    functional_test_provider_template_id = current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID')
+
+    if functional_test_provider_service_id and functional_test_provider_template_id:
+        current_provider = get_current_provider('sms')
+        slow_delivery_notifications = get_count_of_slow_delivery_sms_notifications_for_provider(
+            provider=current_provider.identifier,
+            threshold=2,
+            created_at=current_provider.updated_at,
+            sent_at=datetime.utcnow() - timedelta(minutes=10),
+            delivery_time=timedelta(minutes=4),
+            service_id=functional_test_provider_service_id,
+            template_id=functional_test_provider_template_id
+        )
+
+        if slow_delivery_notifications:
+            current_app.logger.warning(
+                '{} slow delivery notifications detected for provider {}'.format(
+                    slow_delivery_notifications.total,
+                    slow_delivery_notifications.sent_by
+                )
+            )
+
+            dao_toggle_sms_provider(current_provider.identifier)
