@@ -421,29 +421,34 @@ def sample_notification_with_job(
 
 
 @pytest.fixture(scope='function')
-def sample_notification(notify_db,
-                        notify_db_session,
-                        service=None,
-                        template=None,
-                        job=None,
-                        job_row_number=None,
-                        to_field=None,
-                        status='created',
-                        reference=None,
-                        created_at=None,
-                        sent_at=None,
-                        billable_units=1,
-                        personalisation=None,
-                        api_key_id=None,
-                        key_type=KEY_TYPE_NORMAL,
-                        sent_by=None,
-                        client_reference=None):
+def sample_notification(
+    notify_db,
+    notify_db_session,
+    service=None,
+    template=None,
+    job=None,
+    job_row_number=None,
+    to_field=None,
+    status='created',
+    reference=None,
+    created_at=None,
+    sent_at=None,
+    billable_units=1,
+    personalisation=None,
+    api_key_id=None,
+    key_type=KEY_TYPE_NORMAL,
+    sent_by=None,
+    client_reference=None,
+    updated_at=None
+):
     if created_at is None:
         created_at = datetime.utcnow()
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:
         template = sample_template(notify_db, notify_db_session, service=service)
+    if not updated_at and status in NOTIFICATION_STATUS_TYPES_COMPLETED:
+        updated_at = created_at
 
     notification_id = uuid.uuid4()
 
@@ -472,7 +477,7 @@ def sample_notification(notify_db,
         'api_key_id': api_key_id,
         'key_type': key_type,
         'sent_by': sent_by,
-        'updated_at': created_at if status in NOTIFICATION_STATUS_TYPES_COMPLETED else None,
+        'updated_at': updated_at,
         'client_reference': client_reference
     }
     if job_row_number:
