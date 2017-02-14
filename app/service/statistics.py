@@ -1,7 +1,7 @@
 import itertools
 from datetime import datetime, timedelta
 
-from app.models import TEMPLATE_TYPES
+from app.models import NOTIFICATION_STATUS_TYPES, TEMPLATE_TYPES
 
 
 def format_statistics(statistics):
@@ -13,6 +13,28 @@ def format_statistics(statistics):
         _update_statuses_from_row(counts[row.notification_type], row)
 
     return counts
+
+
+def format_monthly_template_notification_stats(year, rows):
+    dict = {
+        datetime.strftime(date, '%Y-%m'): {}
+        for date in [
+            datetime(year, month, 1) for month in range(4, 13)
+        ] + [
+            datetime(year + 1, month, 1) for month in range(1, 4)
+        ]
+    }
+
+    for row in rows:
+        formatted_month = row.month.strftime('%Y-%m')
+        if str(row.template_id) not in dict[formatted_month]:
+            dict[formatted_month][str(row.template_id)] = {
+                "name": row.name,
+                "counts": dict.fromkeys(NOTIFICATION_STATUS_TYPES, 0)
+            }
+        dict[formatted_month][str(row.template_id)]["counts"][row.status] += row.count
+
+    return dict
 
 
 def create_zeroed_stats_dicts():

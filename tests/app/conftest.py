@@ -167,6 +167,7 @@ def sample_template(
         service = sample_service(notify_db, notify_db_session)
     if created_by is None:
         created_by = create_user()
+
     data = {
         'name': template_name,
         'template_type': template_type,
@@ -870,6 +871,7 @@ def create_notify_template(service, user, template_config_name, content, templat
         }
         template = Template(**data)
         db.session.add(template)
+        db.session.commit()
     return template
 
 

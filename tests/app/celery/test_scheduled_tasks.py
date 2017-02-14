@@ -29,7 +29,8 @@ from app.utils import get_london_midnight_in_utc
 from tests.app.db import create_notification, create_service, create_template
 from tests.app.conftest import (
     sample_job as create_sample_job,
-    sample_notification_history as create_notification_history
+    sample_notification_history as create_notification_history,
+    create_notify_template
 )
 from tests.conftest import set_config_values
 from unittest.mock import call, patch, PropertyMock
@@ -43,13 +44,19 @@ def _create_slow_delivery_notification(provider='mmg'):
         service = create_service(
             service_id=current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SERVICE_ID')
         )
-
     template = Template.query.get(current_app.config['FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID'])
     if not template:
-        template = create_template(
-            template_id=current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID'),
-            service=service
+        template = create_notify_template(
+            service=service,
+            user=service.users[0],
+            template_config_name='FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID',
+            content='',
+            template_type='sms'
         )
+        # template = create_template(
+        #     template_id=current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID'),
+        #     service=service
+        # )
 
     create_notification(
         template=template,
