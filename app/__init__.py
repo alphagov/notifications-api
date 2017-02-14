@@ -65,8 +65,6 @@ def create_app(app_name=None):
     aws_ses_client.init_app(application.config['AWS_REGION'], statsd_client=statsd_client)
     notify_celery.init_app(application)
     encryption.init_app(application)
-    print(os.environ['REDIS_URL'])
-    print(application.config['REDIS_ENABLED'])
     redis_store.init_app(application)
     performance_platform_client.init_app(application)
     clients.init_app(sms_clients=[firetext_client, mmg_client, loadtest_client], email_clients=[aws_ses_client])

@@ -67,7 +67,6 @@ def get_template_statistics_for_7_days(limit_days, service_id):
         stats = dao_get_template_usage(service_id, limit_days=limit_days)
         cache_values = dict([(x.template_id, x.count) for x in stats])
         redis_store.set_hash_and_expire(cache_key, cache_values, current_app.config.get('EXPIRE_CACHE_IN_SECONDS', 600))
-        current_app.logger.info('use redis-client: {}'.format(cache_key))
     else:
         stats = dao_get_templates_by_for_cache(template_stats_by_id.items())
     return stats

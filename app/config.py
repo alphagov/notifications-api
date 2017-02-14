@@ -186,7 +186,6 @@ class Development(Config):
         Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
     API_HOST_NAME = "http://localhost:6011"
-    REDIS_ENABLED = True
 
 
 class Test(Config):

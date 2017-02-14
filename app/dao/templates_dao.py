@@ -1,7 +1,6 @@
 import uuid
 
-import sqlalchemy
-from sqlalchemy import (desc, cast, String, text)
+from sqlalchemy import (desc, text)
 
 from app import db
 from app.models import (Template, TemplateHistory)
