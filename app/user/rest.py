@@ -123,10 +123,13 @@ def verify_user_code(user_id):
 
     code = get_user_code(user_to_verify, txt_code, txt_type)
     if not code:
+        increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code not found", status_code=404)
     if datetime.utcnow() > code.expiry_datetime or code.code_used:
+        increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code has expired", status_code=400)
     use_user_code(code.id)
+    reset_failed_login_count(user_to_verify)
     return jsonify({}), 204
 
 

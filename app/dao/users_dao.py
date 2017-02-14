@@ -35,7 +35,7 @@ def save_model_user(usr, update_dict={}, pwd=None):
 
 def create_user_code(user, code, code_type):
     verify_code = VerifyCode(code_type=code_type,
-                             expiry_datetime=datetime.utcnow() + timedelta(hours=1),
+                             expiry_datetime=datetime.utcnow() + timedelta(minutes=30),
                              user=user)
     verify_code.code = code
     db.session.add(verify_code)
