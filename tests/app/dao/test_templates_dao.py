@@ -5,7 +5,7 @@ from app.dao.templates_dao import (
     dao_get_all_templates_for_service,
     dao_update_template,
     dao_get_template_versions,
-    dao_get_templates_by_for_cache)
+    dao_get_templates_for_cache)
 from tests.app.conftest import sample_template as create_sample_template
 from app.models import Template, TemplateHistory
 import pytest
@@ -293,7 +293,7 @@ def test_get_templates_by_ids_successful(notify_db, notify_db_session):
     sample_cache_dict = {str.encode(str(template_1.id)): str.encode('2'),
                          str.encode(str(template_2.id)): str.encode('3')}
     cache = [[k, v] for k, v in sample_cache_dict.items()]
-    templates = dao_get_templates_by_for_cache(cache)
+    templates = dao_get_templates_for_cache(cache)
     assert len(templates) == 2
     assert [(template_1.id, template_1.template_type, template_1.name, 2),
             (template_2.id, template_2.template_type, template_2.name, 3)] == templates
@@ -309,11 +309,11 @@ def test_get_templates_by_ids_successful_for_one_cache_item(notify_db, notify_db
     )
     sample_cache_dict = {str.encode(str(template_1.id)): str.encode('2')}
     cache = [[k, v] for k, v in sample_cache_dict.items()]
-    templates = dao_get_templates_by_for_cache(cache)
+    templates = dao_get_templates_for_cache(cache)
     assert len(templates) == 1
     assert [(template_1.id, template_1.template_type, template_1.name, 2)] == templates
 
 
 def test_get_templates_by_ids_returns_empty_list():
-        assert dao_get_templates_by_for_cache({}) == []
-        assert dao_get_templates_by_for_cache(None) == []
+        assert dao_get_templates_for_cache({}) == []
+        assert dao_get_templates_for_cache(None) == []

@@ -2,13 +2,13 @@ from datetime import datetime
 
 from flask import current_app
 
-from app import redis_store, cache_key_for_service_template_counter
+from app import redis_store
 from app.celery import provider_tasks
 from notifications_utils.clients import redis
 from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
 from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE
 from app.v2.errors import BadRequestError, SendNotificationToQueueError
-from app.utils import get_template_instance
+from app.utils import get_template_instance, cache_key_for_service_template_counter
 
 
 def create_content_for_notification(template, personalisation):

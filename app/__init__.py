@@ -176,7 +176,3 @@ def process_user_agent(user_agent_string):
         return "non-notify-user-agent"
     else:
         return "unknown"
-
-
-def cache_key_for_service_template_counter(service_id, limit_days=7):
-    return "{}-template-counter-limit-{}-days".format(service_id, limit_days)
