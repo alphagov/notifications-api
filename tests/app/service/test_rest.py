@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, date
+from functools import partial
 import json
 import uuid
 from unittest.mock import ANY
@@ -15,7 +16,9 @@ from tests.app.conftest import (
     sample_service as create_service,
     sample_service_permission as create_service_permission,
     sample_notification as create_sample_notification,
-    sample_notification_with_job)
+    sample_notification_history as create_notification_history,
+    sample_notification_with_job
+)
 from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 
 from tests.app.db import create_user
@@ -1448,6 +1451,49 @@ def test_get_service_provider_aggregate_statistics(
 ):
     response = client.get(
         '/service/{}/fragment/aggregate_statistics{}'.format(sample_service.id, query_string),
+        headers=[create_authorization_header(service_id=sample_service.id)]
+    )
+    assert response.status_code == expected_status
+    assert json.loads(response.get_data(as_text=True)) == expected_json
+
+
+def test_get_template_stats_by_month_returns_correct_data(notify_db, notify_db_session, client, sample_template):
+    notification_history = partial(
+        create_notification_history,
+        notify_db,
+        notify_db_session,
+        sample_template
+    )
+    with freeze_time('2016-05-01T12:00:00'):
+        not1 = notification_history(status='sending')
+        notification_history(status='sending')
+        notification_history(status='permanent-failure')
+        notification_history(status='temporary-failure')
+
+        resp = client.get(
+            '/service/{}/notifications/templates/monthly?year=2016'.format(not1.service_id),
+            headers=[create_authorization_header()]
+        )
+        resp_json = json.loads(resp.get_data(as_text=True)).get('data')
+
+    assert resp.status_code == 200
+    assert resp_json["2016-05"][str(sample_template.id)]["counts"]["sending"] == 2
+    assert resp_json["2016-05"][str(sample_template.id)]["counts"]["temporary-failure"] == 1
+    assert resp_json["2016-05"][str(sample_template.id)]["counts"]["permanent-failure"] == 1
+
+
+@pytest.mark.parametrize('query_string, expected_status, expected_json', [
+    ('?year=abcd', 400, {'message': 'Year must be a number', 'result': 'error'}),
+])
+def test_get_template_stats_by_month_returns_error_for_incorrect_year(
+    client,
+    sample_service,
+    query_string,
+    expected_status,
+    expected_json
+):
+    response = client.get(
+        '/service/{}/notifications/templates/monthly{}'.format(sample_service.id, query_string),
         headers=[create_authorization_header(service_id=sample_service.id)]
     )
     assert response.status_code == expected_status
