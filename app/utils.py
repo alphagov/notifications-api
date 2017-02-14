@@ -63,3 +63,7 @@ def get_london_month_from_utc_column(column):
         "month",
         func.timezone("Europe/London", func.timezone("UTC", column))
     )
+
+
+def cache_key_for_service_template_counter(service_id, limit_days=7):
+    return "{}-template-counter-limit-{}-days".format(service_id, limit_days)
