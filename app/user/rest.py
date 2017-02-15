@@ -140,6 +140,7 @@ def send_user_sms_code(user_id):
 
     if count_user_verify_codes(user_to_send_to) >= current_app.config.get('MAX_VERIFY_CODE_COUNT'):
         # Prevent more than `MAX_VERIFY_CODE_COUNT` active verify codes at a time
+        current_app.logger.warn('Max verify code has exceeded for user {}'.format(user_to_send_to.id))
         return jsonify({}), 204
 
     secret_code = create_secret_code()
