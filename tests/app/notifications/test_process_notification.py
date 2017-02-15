@@ -45,7 +45,7 @@ def test_create_content_for_notification_fails_with_additional_personalisation(s
 
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_persist_notification_creates_and_save_to_db(sample_template, sample_api_key, sample_job, mocker):
-    mocked_redis = mocker.patch('app.notifications.process_notifications.redis_store.incr')
+    mocked_redis = mocker.patch('app.notifications.process_notifications.redis_store.get')
 
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
@@ -115,8 +115,8 @@ def test_exception_thown_by_redis_store_get_should_not_be_fatal(sample_template,
 
 
 def test_cache_is_not_incremented_on_failure_to_persist_notification(sample_api_key, mocker):
-    mocked_redis = mocker.patch('app.redis_store.incr')
-    mock_service_template_cache = mocker.patch('app.redis_store.increment_hash_value')
+    mocked_redis = mocker.patch('app.redis_store.get')
+    mock_service_template_cache = mocker.patch('app.redis_store.get_all_from_hash')
     with pytest.raises(SQLAlchemyError):
         persist_notification(template_id=None,
                              template_version=None,
@@ -134,9 +134,9 @@ def test_cache_is_not_incremented_on_failure_to_persist_notification(sample_api_
 def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker):
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
-    mocked_redis = mocker.patch('app.notifications.process_notifications.redis_store.incr')
+    mocked_redis = mocker.patch('app.notifications.process_notifications.redis_store.get')
     mock_service_template_cache = mocker.patch(
-        'app.notifications.process_notifications.redis_store.increment_hash_value')
+        'app.notifications.process_notifications.redis_store.get_all_from_hash')
     n_id = uuid.uuid4()
     created_at = datetime.datetime(2016, 11, 11, 16, 8, 18)
     persist_notification(template_id=sample_job.template.id,
@@ -159,10 +159,31 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
     assert persisted_notification.job_row_number == 10
     assert persisted_notification.created_at == created_at
     mocked_redis.assert_called_once_with(str(sample_job.service_id) + "-2016-01-01-count")
-    mock_service_template_cache.assert_called_once_with(cache_key_for_service_template_counter(sample_job.service_id),
-                                                        sample_job.template.id)
+    mock_service_template_cache.assert_called_once_with(cache_key_for_service_template_counter(sample_job.service_id))
     assert persisted_notification.client_reference == "ref from client"
     assert persisted_notification.reference is None
+
+
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_persist_notification_increments_cache_if_key_exists(sample_template, sample_api_key, mocker):
+    mock_incr = mocker.patch('app.notifications.process_notifications.redis_store.incr')
+    mock_incr_hash_value = mocker.patch('app.notifications.process_notifications.redis_store.increment_hash_value')
+
+    persist_notification(sample_template.id, sample_template.version, '+447111111111',
+                         sample_template.service, {}, 'sms', sample_api_key.id,
+                         sample_api_key.key_type, reference="ref")
+    mock_incr.assert_not_called()
+    mock_incr_hash_value.assert_not_called()
+
+    mocker.patch('app.notifications.process_notifications.redis_store.get', return_value=1)
+    mocker.patch('app.notifications.process_notifications.redis_store.get_all_from_hash',
+                 return_value={sample_template.id, 1})
+    persist_notification(sample_template.id, sample_template.version, '+447111111122',
+                         sample_template.service, {}, 'sms', sample_api_key.id,
+                         sample_api_key.key_type, reference="ref2")
+    mock_incr.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count", )
+    mock_incr_hash_value.assert_called_once_with(cache_key_for_service_template_counter(sample_template.service_id),
+                                                 sample_template.id)
 
 
 @pytest.mark.parametrize('research_mode, requested_queue, expected_queue, notification_type, key_type',
