@@ -67,31 +67,6 @@ def test_user_verify_code_bad_code_and_increments_failed_login_count(client,
     assert User.query.get(sample_sms_code.user.id).failed_login_count == 1
 
 
-def test_user_verify_code_resets_failed_login_count_when_successful(client, sample_sms_code):
-    assert not VerifyCode.query.first().code_used
-    data = json.dumps({
-        'code_type': sample_sms_code.code_type,
-        'code': "blah"})
-    auth_header = create_authorization_header()
-    resp = client.post(
-        url_for('user.verify_user_code', user_id=sample_sms_code.user.id),
-        data=data,
-        headers=[('Content-Type', 'application/json'), auth_header])
-    assert resp.status_code == 404
-    assert not VerifyCode.query.first().code_used
-    assert User.query.get(sample_sms_code.user.id).failed_login_count == 1
-    correct_data = json.dumps({
-        'code_type': sample_sms_code.code_type,
-        'code': sample_sms_code.txt_code})
-    success_response = client.post(
-        url_for('user.verify_user_code', user_id=sample_sms_code.user.id),
-        data=correct_data,
-        headers=[('Content-Type', 'application/json'), auth_header])
-    assert success_response.status_code == 204
-    assert VerifyCode.query.first().code_used
-    assert User.query.get(sample_sms_code.user.id).failed_login_count == 0
-
-
 def test_user_verify_code_expired_code_and_increments_failed_login_count(
         client,
         sample_sms_code):
