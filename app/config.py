@@ -78,6 +78,7 @@ class Config(object):
     SMS_CHAR_COUNT_LIMIT = 495
     BRANDING_PATH = '/images/email-template/crests/'
     TEST_MESSAGE_FILENAME = 'Test message'
+    MAX_VERIFY_CODE_COUNT = 10
 
     NOTIFY_SERVICE_ID = 'd6aa2c68-a2d9-4437-ab19-3ae8eb202553'
     INVITATION_EMAIL_TEMPLATE_ID = '4f46df42-f795-4cc4-83bb-65ca312f49cc'

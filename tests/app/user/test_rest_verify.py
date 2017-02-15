@@ -249,6 +249,28 @@ def test_send_sms_code_returns_404_for_bad_input_data(client):
     assert json.loads(resp.get_data(as_text=True))['message'] == 'No result found'
 
 
+def test_send_sms_code_returns_204_when_too_many_codes_already_created(client, sample_user):
+    for i in range(10):
+        verify_code = VerifyCode(
+            code_type='sms',
+            _code=12345,
+            created_at=datetime.utcnow() - timedelta(minutes=10),
+            expiry_datetime=datetime.utcnow(),
+            user=sample_user
+        )
+        db.session.add(verify_code)
+        db.session.commit()
+    assert VerifyCode.query.count() == 10
+    data = json.dumps({})
+    auth_header = create_authorization_header()
+    resp = client.post(
+        url_for('user.send_user_sms_code', user_id=sample_user.id),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert resp.status_code == 204
+    assert VerifyCode.query.count() == 10
+
+
 def test_send_user_email_verification(client,
                                       sample_user,
                                       mocker,

@@ -14,8 +14,8 @@ from app.dao.users_dao import (
     reset_failed_login_count,
     get_user_by_email,
     delete_codes_older_created_more_than_a_day_ago,
-    update_user_password
-)
+    update_user_password,
+    count_user_verify_codes)
 
 from app.models import User, VerifyCode
 
@@ -140,3 +140,8 @@ def test_update_user_password(notify_api, notify_db, notify_db_session, sample_u
     assert not sample_user.check_password(password)
     update_user_password(sample_user, password)
     assert sample_user.check_password(password)
+
+
+def test_count_user_verify_codes(sample_user):
+    [make_verify_code(sample_user) for i in range(5)]
+    assert count_user_verify_codes(sample_user) == 5
