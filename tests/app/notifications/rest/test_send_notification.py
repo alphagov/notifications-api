@@ -670,42 +670,41 @@ def test_should_persist_notification(notify_api, sample_template,
 @pytest.mark.parametrize('template_type',
                          ['sms', 'email'])
 def test_should_delete_notification_and_return_error_if_sqs_fails(
-        notify_api,
+        client,
         sample_email_template,
         sample_template,
         fake_uuid,
         mocker,
         template_type):
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        mocked = mocker.patch(
-            'app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type),
-            side_effect=Exception("failed to talk to SQS")
-        )
-        m1 = mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
-        template = sample_template if template_type == 'sms' else sample_email_template
-        to = sample_template.service.created_by.mobile_number if template_type == 'sms' \
-            else sample_email_template.service.created_by.email_address
-        data = {
-            'to': to,
-            'template': template.id
-        }
-        api_key = ApiKey(
-            service=template.service,
-            name='team_key',
-            created_by=template.created_by,
-            key_type=KEY_TYPE_TEAM)
-        save_model_api_key(api_key)
-        auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
+    mocked = mocker.patch(
+        'app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type),
+        side_effect=Exception("failed to talk to SQS")
+    )
+    mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
+    template = sample_template if template_type == 'sms' else sample_email_template
+    to = sample_template.service.created_by.mobile_number if template_type == 'sms' \
+        else sample_email_template.service.created_by.email_address
+    data = {
+        'to': to,
+        'template': template.id
+    }
+    api_key = ApiKey(
+        service=template.service,
+        name='team_key',
+        created_by=template.created_by,
+        key_type=KEY_TYPE_TEAM)
+    save_model_api_key(api_key)
+    auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
 
-        response = client.post(
-            path='/notifications/{}'.format(template_type),
-            data=json.dumps(data),
-            headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+    response = client.post(
+        path='/notifications/{}'.format(template_type),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
-        mocked.assert_called_once_with([fake_uuid], queue='send-{}'.format(template_type))
-        assert response.status_code == 500
-        assert not notifications_dao.get_notification_by_id(fake_uuid)
-        assert not NotificationHistory.query.get(fake_uuid)
+    mocked.assert_called_once_with([fake_uuid], queue='send-{}'.format(template_type))
+    assert response.status_code == 500
+    assert not notifications_dao.get_notification_by_id(fake_uuid)
+    assert not NotificationHistory.query.get(fake_uuid)
 
 
 @pytest.mark.parametrize('to_email', [
