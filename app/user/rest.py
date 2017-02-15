@@ -129,7 +129,6 @@ def verify_user_code(user_id):
         increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code has expired", status_code=400)
     use_user_code(code.id)
-    reset_failed_login_count(user_to_verify)
     return jsonify({}), 204
 
 
