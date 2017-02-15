@@ -170,8 +170,8 @@ def test_persist_notification_increments_cache_if_key_exists(sample_template, sa
     mock_incr_hash_value = mocker.patch('app.notifications.process_notifications.redis_store.increment_hash_value')
 
     persist_notification(sample_template.id, sample_template.version, '+447111111111',
-                                        sample_template.service, {}, 'sms', sample_api_key.id,
-                                        sample_api_key.key_type, reference="ref")
+                         sample_template.service, {}, 'sms', sample_api_key.id,
+                         sample_api_key.key_type, reference="ref")
     mock_incr.assert_not_called()
     mock_incr_hash_value.assert_not_called()
 
@@ -179,8 +179,8 @@ def test_persist_notification_increments_cache_if_key_exists(sample_template, sa
     mocker.patch('app.notifications.process_notifications.redis_store.get_all_from_hash',
                  return_value={sample_template.id, 1})
     persist_notification(sample_template.id, sample_template.version, '+447111111122',
-                                        sample_template.service, {}, 'sms', sample_api_key.id,
-                                        sample_api_key.key_type, reference="ref2")
+                         sample_template.service, {}, 'sms', sample_api_key.id,
+                         sample_api_key.key_type, reference="ref2")
     mock_incr.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count", )
     mock_incr_hash_value.assert_called_once_with(cache_key_for_service_template_counter(sample_template.service_id),
                                                  sample_template.id)
