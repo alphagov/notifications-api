@@ -81,12 +81,12 @@ def delete_user_verify_codes(user):
 
 
 def count_user_verify_codes(user):
-    query = db.session.query(
-        func.count().label('count')
-    ).filter(VerifyCode.user == user,
-             VerifyCode.expiry_datetime > datetime.utcnow(),
-             VerifyCode.code_used.is_(False)).one()
-    return query.count
+    query = VerifyCode.query.filter(
+        VerifyCode.user == user,
+        VerifyCode.expiry_datetime > datetime.utcnow(),
+        VerifyCode.code_used.is_(False)
+    )
+    return query.count()
 
 
 def get_user_by_id(user_id=None):
