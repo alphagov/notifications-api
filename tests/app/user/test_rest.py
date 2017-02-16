@@ -153,6 +153,7 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_service):
         with notify_api.test_client() as client:
             assert User.query.count() == 1
             sample_user = sample_service.users[0]
+            sample_user.failed_login_count = 1
             new_email = 'new@digital.cabinet-office.gov.uk'
             data = {
                 'name': sample_user.name,
@@ -178,6 +179,8 @@ def test_put_user(notify_api, notify_db, notify_db_session, sample_service):
             assert new_email == fetched['email_address']
             assert sample_user.state == fetched['state']
             assert sorted(expected_permissions) == sorted(fetched['permissions'][str(sample_service.id)])
+            # password wasn't updated, so failed_login_count stays the same
+            assert sample_user.failed_login_count == 1
 
 
 @pytest.mark.parametrize('user_attribute, user_value', [
@@ -567,6 +570,25 @@ def test_update_user_password_resets_failed_login_count(client, sample_service):
     resp = client.post(
         url_for('user.update_password', user_id=user.id),
         data=json.dumps({'_password': 'foo'}),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+
+    assert resp.status_code == 200
+    assert user.failed_login_count == 0
+
+
+def test_update_user_resets_failed_login_count_if_updating_password(client, sample_service):
+    user = sample_service.users[0]
+    user.failed_login_count = 1
+
+    resp = client.put(
+        url_for('user.update_user', user_id=user.id),
+        data=json.dumps({
+            'name': user.name,
+            'email_address': user.email_address,
+            'mobile_number': user.mobile_number,
+            'password': 'foo'
+        }),
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
 
