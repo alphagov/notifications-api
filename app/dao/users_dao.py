@@ -1,8 +1,6 @@
 import random
 from datetime import (datetime, timedelta)
-
 from sqlalchemy import func
-
 from app import db
 from app.models import (User, VerifyCode)
 
@@ -35,7 +33,7 @@ def save_model_user(usr, update_dict={}, pwd=None):
 
 def create_user_code(user, code, code_type):
     verify_code = VerifyCode(code_type=code_type,
-                             expiry_datetime=datetime.utcnow() + timedelta(hours=1),
+                             expiry_datetime=datetime.utcnow() + timedelta(minutes=30),
                              user=user)
     verify_code.code = code
     db.session.add(verify_code)
@@ -48,7 +46,7 @@ def get_user_code(user, code, code_type):
     # time searching for the correct code.
     codes = VerifyCode.query.filter_by(
         user=user, code_type=code_type).order_by(
-            VerifyCode.created_at.desc())
+        VerifyCode.created_at.desc())
     retval = None
     for x in codes:
         if x.check_code(code):
@@ -80,6 +78,15 @@ def delete_model_user(user):
 def delete_user_verify_codes(user):
     VerifyCode.query.filter_by(user=user).delete()
     db.session.commit()
+
+
+def count_user_verify_codes(user):
+    query = VerifyCode.query.filter(
+        VerifyCode.user == user,
+        VerifyCode.expiry_datetime > datetime.utcnow(),
+        VerifyCode.code_used.is_(False)
+    )
+    return query.count()
 
 
 def get_user_by_id(user_id=None):

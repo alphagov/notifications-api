@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from freezegun import freeze_time
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 import pytest
@@ -14,8 +15,8 @@ from app.dao.users_dao import (
     reset_failed_login_count,
     get_user_by_email,
     delete_codes_older_created_more_than_a_day_ago,
-    update_user_password
-)
+    update_user_password,
+    count_user_verify_codes)
 
 from app.models import User, VerifyCode
 
@@ -109,13 +110,14 @@ def test_should_not_delete_verification_codes_less_than_one_day_old(sample_user)
     assert VerifyCode.query.one()._code == "12345"
 
 
-def make_verify_code(user, age=timedelta(hours=0), code="12335"):
+def make_verify_code(user, age=timedelta(hours=0), expiry_age=timedelta(0), code="12335", code_used=False):
     verify_code = VerifyCode(
         code_type='sms',
         _code=code,
         created_at=datetime.utcnow() - age,
-        expiry_datetime=datetime.utcnow(),
-        user=user
+        expiry_datetime=datetime.utcnow() - expiry_age,
+        user=user,
+        code_used=code_used
     )
     db.session.add(verify_code)
     db.session.commit()
@@ -140,3 +142,12 @@ def test_update_user_password(notify_api, notify_db, notify_db_session, sample_u
     assert not sample_user.check_password(password)
     update_user_password(sample_user, password)
     assert sample_user.check_password(password)
+
+
+def test_count_user_verify_codes(sample_user):
+    with freeze_time(datetime.utcnow() + timedelta(hours=1)):
+        make_verify_code(sample_user, code_used=True)
+        make_verify_code(sample_user, expiry_age=timedelta(hours=2))
+        [make_verify_code(sample_user) for i in range(5)]
+
+    assert count_user_verify_codes(sample_user) == 5

@@ -12,7 +12,8 @@ from app.dao.users_dao import (
     get_user_by_email,
     create_secret_code,
     save_user_attribute,
-    update_user_password
+    update_user_password,
+    count_user_verify_codes
 )
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -123,8 +124,10 @@ def verify_user_code(user_id):
 
     code = get_user_code(user_to_verify, txt_code, txt_type)
     if not code:
+        increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code not found", status_code=404)
     if datetime.utcnow() > code.expiry_datetime or code.code_used:
+        increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code has expired", status_code=400)
     use_user_code(code.id)
     return jsonify({}), 204
@@ -134,6 +137,11 @@ def verify_user_code(user_id):
 def send_user_sms_code(user_id):
     user_to_send_to = get_user_by_id(user_id=user_id)
     verify_code, errors = request_verify_code_schema.load(request.get_json())
+
+    if count_user_verify_codes(user_to_send_to) >= current_app.config.get('MAX_VERIFY_CODE_COUNT'):
+        # Prevent more than `MAX_VERIFY_CODE_COUNT` active verify codes at a time
+        current_app.logger.warn('Max verify code has exceeded for user {}'.format(user_to_send_to.id))
+        return jsonify({}), 204
 
     secret_code = create_secret_code()
     create_user_code(user_to_send_to, secret_code, SMS_TYPE)
