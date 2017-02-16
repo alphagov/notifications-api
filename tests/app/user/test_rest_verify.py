@@ -291,7 +291,7 @@ def test_send_email_verification_returns_404_for_bad_input_data(client, notify_d
 
 
 def test_user_verify_user_code_valid_code_resets_failed_login_count(client, sample_sms_code):
-    sample_sms_code.failed_login_count = 1
+    sample_sms_code.user.failed_login_count = 1
     data = json.dumps({
         'code_type': sample_sms_code.code_type,
         'code': sample_sms_code.txt_code})
