@@ -535,7 +535,6 @@ def test_send_user_confirm_new_email_returns_400_when_email_missing(client, samp
 
 
 def test_update_user_password_saves_correctly(client, sample_service):
-    assert User.query.count() == 1
     sample_user = sample_service.users[0]
     new_password = '1234567890'
     data = {
@@ -548,7 +547,7 @@ def test_update_user_password_saves_correctly(client, sample_service):
         data=json.dumps(data),
         headers=headers)
     assert resp.status_code == 200
-    assert User.query.count() == 1
+
     json_resp = json.loads(resp.get_data(as_text=True))
     assert json_resp['data']['password_changed_at'] is not None
     data = {'password': new_password}
@@ -559,3 +558,17 @@ def test_update_user_password_saves_correctly(client, sample_service):
         data=json.dumps(data),
         headers=headers)
     assert resp.status_code == 204
+
+
+def test_update_user_password_resets_failed_login_count(client, sample_service):
+    user = sample_service.users[0]
+    user.failed_login_count = 1
+
+    resp = client.post(
+        url_for('user.update_password', user_id=user.id),
+        data=json.dumps({'_password': 'foo'}),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+
+    assert resp.status_code == 200
+    assert user.failed_login_count == 0
