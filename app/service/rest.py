@@ -25,7 +25,6 @@ from app.dao.services_dao import (
     dao_remove_user_from_service,
     dao_fetch_stats_for_service,
     dao_fetch_todays_stats_for_service,
-    dao_fetch_weekly_historical_stats_for_service,
     dao_fetch_todays_stats_for_all_services,
     dao_archive_service,
     fetch_stats_by_date_range_for_all_services,
@@ -268,14 +267,6 @@ def get_all_notifications_for_service(service_id):
             **kwargs
         )
     ), 200
-
-
-@service_blueprint.route('/<uuid:service_id>/notifications/weekly', methods=['GET'])
-def get_weekly_notification_stats(service_id):
-    service = dao_fetch_service_by_id(service_id)
-    stats = dao_fetch_weekly_historical_stats_for_service(service_id)
-    stats = statistics.format_weekly_notification_stats(stats, service.created_at)
-    return jsonify(data={week.date().isoformat(): statistics for week, statistics in stats.items()})
 
 
 @service_blueprint.route('/<uuid:service_id>/notifications/monthly', methods=['GET'])

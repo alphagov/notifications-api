@@ -19,7 +19,6 @@ from app.dao.services_dao import (
     delete_service_and_all_associated_db_objects,
     dao_fetch_stats_for_service,
     dao_fetch_todays_stats_for_service,
-    dao_fetch_weekly_historical_stats_for_service,
     dao_fetch_monthly_historical_stats_for_service,
     fetch_todays_total_message_count,
     dao_fetch_todays_stats_for_all_services,
@@ -56,7 +55,7 @@ from tests.app.conftest import (
 
 
 def test_should_have_decorated_services_dao_functions():
-    assert dao_fetch_weekly_historical_stats_for_service.__wrapped__.__name__ == 'dao_fetch_weekly_historical_stats_for_service'  # noqa
+    assert dao_fetch_monthly_historical_stats_for_service.__wrapped__.__name__ == 'dao_fetch_monthly_historical_stats_for_service'  # noqa
     assert dao_fetch_todays_stats_for_service.__wrapped__.__name__ == 'dao_fetch_todays_stats_for_service'  # noqa
     assert dao_fetch_stats_for_service.__wrapped__.__name__ == 'dao_fetch_stats_for_service'  # noqa
 
@@ -480,35 +479,7 @@ def test_fetch_stats_for_today_only_includes_today(notify_db, notify_db_session,
     assert stats['created'] == 1
 
 
-def test_fetch_weekly_historical_stats_separates_weeks(notify_db, notify_db_session, sample_template):
-    notification_history = functools.partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        sample_template
-    )
-    week_53_last_yr = notification_history(created_at=datetime(2016, 1, 1))
-    week_1_last_yr = notification_history(created_at=datetime(2016, 1, 5))
-    last_sunday = notification_history(created_at=datetime(2016, 7, 24, 23, 59))
-    last_monday_morning = notification_history(created_at=datetime(2016, 7, 25, 0, 0))
-    last_monday_evening = notification_history(created_at=datetime(2016, 7, 25, 23, 59))
-
-    with freeze_time('Wed 27th July 2016'):
-        today = notification_history(created_at=datetime.now(), status='delivered')
-        ret = dao_fetch_weekly_historical_stats_for_service(sample_template.service_id)
-
-    assert [(row.week_start, row.status) for row in ret] == [
-        (datetime(2015, 12, 28), 'created'),
-        (datetime(2016, 1, 4), 'created'),
-        (datetime(2016, 7, 18), 'created'),
-        (datetime(2016, 7, 25), 'created'),
-        (datetime(2016, 7, 25), 'delivered')
-    ]
-    assert ret[-2].count == 2
-    assert ret[-1].count == 1
-
-
-def test_fetch_monthly_historical_stats_separates_weeks(notify_db, notify_db_session, sample_template):
+def test_fetch_monthly_historical_stats_separates_months(notify_db, notify_db_session, sample_template):
     notification_history = functools.partial(
         create_notification_history,
         notify_db,
@@ -554,52 +525,6 @@ def test_fetch_monthly_historical_stats_separates_weeks(notify_db, notify_db_ses
         '2016-10', '2016-11', '2016-12',
         '2017-01', '2017-02', '2017-03',
     }
-
-
-def test_fetch_weekly_historical_stats_ignores_second_service(notify_db, notify_db_session, service_factory):
-    template_1 = service_factory.get('1').templates[0]
-    template_2 = service_factory.get('2').templates[0]
-
-    notification_history = functools.partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session
-    )
-    last_sunday = notification_history(template_1, created_at=datetime(2016, 7, 24, 23, 59))
-    last_monday_morning = notification_history(template_2, created_at=datetime(2016, 7, 25, 0, 0))
-
-    with freeze_time('Wed 27th July 2016'):
-        ret = dao_fetch_weekly_historical_stats_for_service(template_1.service_id)
-
-    assert len(ret) == 1
-    assert ret[0].week_start == datetime(2016, 7, 18)
-    assert ret[0].count == 1
-
-
-def test_fetch_weekly_historical_stats_separates_types(notify_db,
-                                                       notify_db_session,
-                                                       sample_template,
-                                                       sample_email_template):
-    notification_history = functools.partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        created_at=datetime(2016, 7, 25)
-    )
-
-    notification_history(sample_template)
-    notification_history(sample_email_template)
-
-    with freeze_time('Wed 27th July 2016'):
-        ret = dao_fetch_weekly_historical_stats_for_service(sample_template.service_id)
-
-    assert len(ret) == 2
-    assert ret[0].week_start == datetime(2016, 7, 25)
-    assert ret[0].count == 1
-    assert ret[0].notification_type == 'email'
-    assert ret[1].week_start == datetime(2016, 7, 25)
-    assert ret[1].count == 1
-    assert ret[1].notification_type == 'sms'
 
 
 def test_dao_fetch_todays_total_message_count_returns_count_for_today(notify_db,
