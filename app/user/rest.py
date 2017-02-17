@@ -59,12 +59,14 @@ def update_user(user_id):
     user_to_update = get_user_by_id(user_id=user_id)
     req_json = request.get_json()
     update_dct, errors = user_schema_load_json.load(req_json)
+    # TODO don't let password be updated in this PUT method (currently used by the forgot password flow)
     pwd = req_json.get('password', None)
-    # TODO password validation, it is already done on the admin app
-    # but would be good to have the same validation here.
-    if pwd is not None and not pwd:
-        errors.update({'password': ['Invalid data for field']})
-        raise InvalidRequest(errors, status_code=400)
+    if pwd is not None:
+        if not pwd:
+            errors.update({'password': ['Invalid data for field']})
+            raise InvalidRequest(errors, status_code=400)
+        else:
+            reset_failed_login_count(user_to_update)
     save_model_user(user_to_update, update_dict=update_dct, pwd=pwd)
     return jsonify(data=user_schema.dump(user_to_update).data), 200
 
@@ -130,6 +132,7 @@ def verify_user_code(user_id):
         increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code has expired", status_code=400)
     use_user_code(code.id)
+    reset_failed_login_count(user_to_verify)
     return jsonify({}), 204
 
 
@@ -323,6 +326,7 @@ def update_password(user_id):
     if errors:
         raise InvalidRequest(errors, status_code=400)
 
+    reset_failed_login_count(user)
     update_user_password(user, pwd)
     return jsonify(data=user_schema.dump(user).data), 200
 
