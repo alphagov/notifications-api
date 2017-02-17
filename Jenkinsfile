@@ -37,42 +37,44 @@ def deploy(cfEnv) {
         ]) {
           withEnv(["CF_SPACE=${cfEnv}"]) {
             parallel deployApi: {
-              retry(3) {
-                sh 'make cf-deploy-api-with-docker'
+              withEnv(["CF_APP=notify-api"]) {
+                retry(3) {
+                  sh 'make cf-deploy'
+                }
               }
             }, deployDeliveryCeleryBeat: {
               sleep(10)
               withEnv(["CF_APP=notify-delivery-celery-beat"]) {
                 retry(3) {
-                  sh 'make cf-deploy-delivery-with-docker'
+                  sh 'make cf-deploy'
                 }
               }
             }, deployDeliveryWorker: {
               sleep(20)
               withEnv(["CF_APP=notify-delivery-worker"]) {
                 retry(3) {
-                  sh 'make cf-deploy-delivery-with-docker'
+                  sh 'make cf-deploy'
                 }
               }
             }, deployDeliveryWorkerSender: {
               sleep(30)
               withEnv(["CF_APP=notify-delivery-worker-sender"]) {
                 retry(3) {
-                  sh 'make cf-deploy-delivery-with-docker'
+                  sh 'make cf-deploy'
                 }
               }
             }, deployDeliveryWorkerDatabase: {
               sleep(40)
               withEnv(["CF_APP=notify-delivery-worker-database"]) {
                 retry(3) {
-                  sh 'make cf-deploy-delivery-with-docker'
+                  sh 'make cf-deploy'
                 }
               }
             }, deployDeliveryWorkerResearch: {
               sleep(50)
               withEnv(["CF_APP=notify-delivery-worker-research"]) {
                 retry(3) {
-                  sh 'make cf-deploy-delivery-with-docker'
+                  sh 'make cf-deploy'
                 }
               }
             }

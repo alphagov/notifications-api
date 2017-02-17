@@ -33,10 +33,7 @@ RUN \
 RUN \
 	echo "Install Cloud Foundry CLI" \
 	&& curl -sSL "https://cli.run.pivotal.io/stable?release=debian64&source=github" -o /tmp/cloudfoundry-cli.deb \
-	&& dpkg -i /tmp/cloudfoundry-cli.deb \
-	&& cf install-plugin -r CF-Community -f "autopilot" \
-	&& cf install-plugin -r CF-Community -f "blue-green-deploy" \
-	&& cf install-plugin -r CF-Community -f "antifreeze"
+	&& dpkg -i /tmp/cloudfoundry-cli.deb
 
 COPY tianon.gpg /tmp/tianon.gpg
 

@@ -1,19 +1,6 @@
 ---
 
-applications:
-  - name: notify-api
-    buildpack: python_buildpack
-    command: gunicorn -w 5 -b 0.0.0.0:$PORT wsgi
-    services:
-      - notify-aws
-      - notify-config
-      - notify-db
-      - mmg
-      - firetext
-      - hosted-graphite
-    env:
-      NOTIFY_APP_NAME: public-api
-    routes:
-      - route: notify-api-sandbox.cloudapps.digital
-    instances: 1
-    memory: 512M
+inherit: manifest-api-base.yml
+
+routes:
+  - route: notify-api-sandbox.cloudapps.digital

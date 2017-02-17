@@ -23,6 +23,8 @@ CF_API ?= api.cloud.service.gov.uk
 CF_ORG ?= govuk-notify
 CF_SPACE ?= ${DEPLOY_ENV}
 
+CF_MANIFEST_FILE = manifest-$(firstword $(subst -, ,$(subst notify-,,${CF_APP})))-${CF_SPACE}.yml
+
 .PHONY: help
 help:
 	@cat $(MAKEFILE_LIST) | grep -E '^[a-zA-Z_-]+:.*?## .*$$' | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
@@ -254,38 +256,33 @@ cf-login: ## Log in to Cloud Foundry
 	@echo "Logging in to Cloud Foundry on ${CF_API}"
 	@cf login -a "${CF_API}" -u ${CF_USERNAME} -p "${CF_PASSWORD}" -o "${CF_ORG}" -s "${CF_SPACE}"
 
-.PHONY: cf-deploy-api
-cf-deploy-api: ## Deploys the API to Cloud Foundry
-	$(eval export ORIG_INSTANCES=$(shell cf curl /v2/apps/$(shell cf app --guid notify-api) | jq -r ".entity.instances"))
-	@echo "Original instance count: ${ORIG_INSTANCES}"
-	cf check-manifest notify-api -f manifest-api-${CF_SPACE}.yml
-	cf zero-downtime-push notify-api -f manifest-api-${CF_SPACE}.yml
-	cf scale -i ${ORIG_INSTANCES} notify-api
-
-.PHONY: cf-push-api
-cf-push-api: ##
-	cf push notify-api -f manifest-api-${CF_SPACE}.yml
+.PHONY: cf-deploy
+cf-deploy: ## Deploys the app to Cloud Foundry
+	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
+	$(if ${CF_APP},,$(error Must specify CF_APP))
+	@cf app --guid ${CF_APP} || exit 1
+	cf rename ${CF_APP} ${CF_APP}-rollback
+	cf push ${CF_APP} -f ${CF_MANIFEST_FILE}
+	cf scale -i $$(cf curl /v2/apps/$$(cf app --guid ${CF_APP}-rollback) | jq -r ".entity.instances" 2>/dev/null || echo "1") ${CF_APP}
+	cf stop ${CF_APP}-rollback
+	cf delete -f ${CF_APP}-rollback
 
 .PHONY: cf-deploy-api-db-migration
-cf-deploy-api-db-migration: ## Deploys the API db migration to Cloud Foundry
-	cf check-manifest notify-api-db-migration -f manifest-api-db-migration.yml
-	cf push notify-api-db-migration -f manifest-api-db-migration.yml
+cf-deploy-api-db-migration:
+	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
+	cf push notify-api-db-migration -f manifest-api-${CF_SPACE}.yml
+	cf run-task notify-api-db-migration "scripts/run_app_paas.sh python db.py db upgrade" --name api_db_migration
 
-cf-push-api-db-migration: cf-deploy-api-db-migration ## Deploys the API db migration to Cloud Foundry
-
-.PHONY: cf-deploy-delivery
-cf-deploy-delivery: ## Deploys a delivery app to Cloud Foundry
+.PHONY: cf-rollback
+cf-rollback: ## Rollbacks the app to the previous release
 	$(if ${CF_APP},,$(error Must specify CF_APP))
-	$(eval export ORIG_INSTANCES=$(shell cf curl /v2/apps/$(shell cf app --guid ${CF_APP}) | jq -r ".entity.instances"))
-	@echo "Original instance count: ${ORIG_INSTANCES}"
-	cf check-manifest ${CF_APP} -f manifest-$(subst notify-,,${CF_APP}).yml
-	cf zero-downtime-push ${CF_APP} -f manifest-$(subst notify-,,${CF_APP}).yml
-	cf scale -i ${ORIG_INSTANCES} ${CF_APP}
+	@cf app --guid ${CF_APP}-rollback || exit 1
+	cf delete -f ${CF_APP} || true
+	cf rename ${CF_APP}-rollback ${CF_APP}
 
-.PHONY: cf-push-delivery
-cf-push-delivery: ## Deploys a delivery app to Cloud Foundry
-	$(if ${CF_APP},,$(error Must specify CF_APP))
-	cf push ${CF_APP} -f manifest-$(subst notify-,,${CF_APP}).yml
+.PHONY: cf-push
+cf-push:
+	cf push ${CF_APP} -f ${CF_MANIFEST_FILE}
 
 define cf_deploy_with_docker
 	@docker run -i${DOCKER_TTY} --rm \
@@ -308,15 +305,14 @@ define cf_deploy_with_docker
 		${2}
 endef
 
-.PHONY: cf-deploy-api-with-docker
-cf-deploy-api-with-docker: prepare-docker-build-image ## Deploys the API to Cloud Foundry from a Docker container
-	$(call cf_deploy_with_docker,cf-deploy-api,make cf-login cf-deploy-api)
+.PHONY: cf-deploy-with-docker
+cf-deploy-with-docker: prepare-docker-build-image ## Deploys the API to Cloud Foundry from a Docker container
+	$(call cf_deploy_with_docker,cf-deploy,make cf-login cf-deploy)
 
 .PHONY: cf-deploy-api-db-migration-with-docker
 cf-deploy-api-db-migration-with-docker: prepare-docker-build-image ## Deploys the API db migration to Cloud Foundry from a Docker container
 	$(call cf_deploy_with_docker,cf-deploy-api-db-migration,make cf-login cf-deploy-api-db-migration)
 
-.PHONY: cf-deploy-delivery-with-docker
-cf-deploy-delivery-with-docker: prepare-docker-build-image ## Deploys a delivery app to Cloud Foundry from a Docker container
-	$(if ${CF_APP},,$(error Must specify CF_APP))
-	$(call cf_deploy_with_docker,cf-deploy-delivery-${CF_APP},make cf-login cf-deploy-delivery)
+.PHONY: cf-rollback-with-docker
+cf-rollback-with-docker: prepare-docker-build-image ## Deploys the API to Cloud Foundry from a Docker container
+	$(call cf_deploy_with_docker,cf-rollback,make cf-login cf-rollback)
