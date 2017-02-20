@@ -1,10 +1,11 @@
 from datetime import datetime
 import uuid
 
-from app.models import User, Template, Notification, SMS_TYPE, KEY_TYPE_NORMAL
+from app.models import Service, User, Template, Notification, SMS_TYPE, KEY_TYPE_NORMAL
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.templates_dao import dao_create_template
+from app.dao.services_dao import dao_create_service
 
 
 def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk"):
@@ -22,11 +23,27 @@ def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-off
     return user
 
 
-def create_template(service, user=None, template_type=SMS_TYPE):
+def create_service(user=None, service_name="Sample service"):
+    service = Service(
+        name=service_name,
+        message_limit=1000,
+        restricted=False,
+        email_from=service_name.lower().replace(' ', '.'),
+        created_by=user or create_user()
+    )
+    dao_create_service(service, service.created_by)
+    return service
+
+
+def create_template(
+    service,
+    template_type=SMS_TYPE,
+    content='Dear Sir/Madam, Hello. Yours Truly, The Government.'
+):
     data = {
         'name': '{} Template Name'.format(template_type),
         'template_type': template_type,
-        'content': 'Dear Sir/Madam, Hello. Yours Truly, The Government.',
+        'content': content,
         'service': service,
         'created_by': service.created_by,
     }
@@ -60,7 +77,7 @@ def create_notification(
         'to': to_field,
         'job_id': job.id if job else None,
         'job': job,
-        'service_id': template.service_id,
+        'service': template.service,
         'template_id': template.id if template else None,
         'template': template,
         'template_version': template.version,
@@ -76,7 +93,7 @@ def create_notification(
         'sent_by': sent_by,
         'updated_at': None,
         'client_reference': client_reference,
-        'job_row_number': None
+        'job_row_number': job_row_number
     }
     notification = Notification(**data)
     dao_create_notification(notification)

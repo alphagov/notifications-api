@@ -1,22 +1,29 @@
 import uuid
 from datetime import datetime
 from collections import namedtuple
+from unittest.mock import ANY
 
 import pytest
-from unittest.mock import ANY
+from notifications_utils.recipients import validate_phone_number, format_phone_number
 
 import app
 from app import mmg_client
 from app.dao import (provider_details_dao, notifications_dao)
 from app.delivery import send_to_providers
-from app.models import Notification, KEY_TYPE_NORMAL, KEY_TYPE_TEST, BRANDING_ORG, BRANDING_BOTH, Organisation, \
-    KEY_TYPE_TEAM
-from tests.app.conftest import sample_notification
+from app.models import (
+    Notification,
+    Organisation,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEST,
+    KEY_TYPE_TEAM,
+    BRANDING_ORG,
+    BRANDING_BOTH,
+)
 
-from notifications_utils.recipients import validate_phone_number, format_phone_number
+from tests.app.db import create_service, create_template, create_notification
 
 
-def test_should_return_highest_priority_active_provider(notify_db, notify_db_session):
+def test_should_return_highest_priority_active_provider(notify_db_session):
     providers = provider_details_dao.get_provider_details_by_notification_type('sms')
 
     first = providers[0]
@@ -48,17 +55,14 @@ def test_should_return_highest_priority_active_provider(notify_db, notify_db_ses
 
 
 def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
-    notify_db,
-    notify_db_session,
     sample_sms_template_with_html,
     mocker
 ):
-    db_notification = sample_notification(notify_db, notify_db_session, template=sample_sms_template_with_html,
+    db_notification = create_notification(template=sample_sms_template_with_html,
                                           to_field="+447234123123", personalisation={"name": "Jo"},
                                           status='created')
 
     mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
 
     send_to_providers.send_sms_to_provider(
         db_notification
@@ -80,20 +84,16 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
 
 
 def test_should_send_personalised_template_to_correct_email_provider_and_persist(
-    notify_db,
-    notify_db_session,
     sample_email_template_with_html,
     mocker
 ):
-    db_notification = sample_notification(
-        notify_db=notify_db, notify_db_session=notify_db_session,
+    db_notification = create_notification(
         template=sample_email_template_with_html,
         to_field="jo.smith@example.com",
         personalisation={'name': 'Jo'}
     )
 
     mocker.patch('app.aws_ses_client.send_email', return_value='reference')
-    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
 
     send_to_providers.send_email_to_provider(
         db_notification
@@ -132,16 +132,11 @@ def test_should_not_send_message_when_service_is_inactive_notiifcation_is_in_tec
 
 
 def test_send_sms_should_use_template_version_from_notification_not_latest(
-        notify_db,
-        notify_db_session,
         sample_template,
         mocker):
-    db_notification = sample_notification(notify_db, notify_db_session,
-                                          template=sample_template, to_field='+447234123123',
-                                          status='created')
+    db_notification = create_notification(template=sample_template, to_field='+447234123123', status='created')
 
     mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
     version_on_notification = sample_template.version
 
     # Change the template
@@ -178,7 +173,6 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
 def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_service, sample_notification, mocker,
                                                              research_mode, key_type):
     mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
 
     if research_mode:
@@ -213,7 +207,6 @@ def test_should_set_billable_units_to_zero_in_research_mode_or_test_key(
         notify_db, sample_service, sample_notification, mocker, research_mode, key_type):
 
     mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
     if research_mode:
         sample_service.research_mode = True
@@ -228,14 +221,12 @@ def test_should_set_billable_units_to_zero_in_research_mode_or_test_key(
     assert notifications_dao.get_notification_by_id(sample_notification.id).billable_units == 0
 
 
-def test_should_not_send_to_provider_when_status_is_not_created(notify_db, notify_db_session,
-                                                                sample_service,
-                                                                mocker):
-    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                                       service=sample_service,
-                                       status='sending')
+def test_should_not_send_to_provider_when_status_is_not_created(
+    sample_template,
+    mocker
+):
+    notification = create_notification(template=sample_template, status='sending')
     mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
 
     send_to_providers.send_sms_to_provider(
@@ -247,21 +238,16 @@ def test_should_not_send_to_provider_when_status_is_not_created(notify_db, notif
 
 
 def test_should_send_sms_sender_from_service_if_present(
-        notify_db,
-        notify_db_session,
         sample_service,
         sample_template,
         mocker):
-    db_notification = sample_notification(notify_db, notify_db_session, template=sample_template,
+    db_notification = create_notification(template=sample_template,
                                           to_field="+447234123123",
                                           status='created')
 
     sample_service.sms_sender = 'elevenchars'
-    notify_db.session.add(sample_service)
-    notify_db.session.commit()
 
     mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
 
     send_to_providers.send_sms_to_provider(
         db_notification
@@ -275,35 +261,52 @@ def test_should_send_sms_sender_from_service_if_present(
     )
 
 
+def test_should_send_sms_with_downgraded_content(notify_db_session, mocker):
+    # é, o, and u are in GSM.
+    # á, ï, grapes, tabs, zero width space and ellipsis are not
+    msg = "á é ï o u 🍇 foo\tbar\u200bbaz((misc))…"
+    placeholder = '∆∆∆abc'
+    gsm_message = "?odz Housing Service: a é i o u ? foo barbaz???abc..."
+    service = create_service(service_name='Łódź Housing Service')
+    template = create_template(service, content=msg)
+    db_notification = create_notification(
+        template=template,
+        personalisation={'misc': placeholder}
+    )
+
+    mocker.patch('app.mmg_client.send_sms')
+
+    send_to_providers.send_sms_to_provider(db_notification)
+
+    mmg_client.send_sms.assert_called_once_with(
+        to=ANY,
+        content=gsm_message,
+        reference=ANY,
+        sender=ANY
+    )
+
+
 @pytest.mark.parametrize('research_mode,key_type', [
     (True, KEY_TYPE_NORMAL),
     (False, KEY_TYPE_TEST)
 ])
 def test_send_email_to_provider_should_call_research_mode_task_response_task_if_research_mode(
-        notify_db,
-        notify_db_session,
         sample_service,
         sample_email_template,
-        ses_provider,
         mocker,
         research_mode,
         key_type):
-    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                                       template=sample_email_template,
-                                       to_field="john@smith.com",
-                                       key_type=key_type
-                                       )
+    notification = create_notification(
+        template=sample_email_template,
+        to_field="john@smith.com",
+        key_type=key_type
+    )
+    sample_service.research_mode = research_mode
 
     reference = uuid.uuid4()
     mocker.patch('app.uuid.uuid4', return_value=reference)
     mocker.patch('app.aws_ses_client.send_email')
-    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
     mocker.patch('app.delivery.send_to_providers.send_email_response')
-
-    if research_mode:
-        sample_service.research_mode = True
-        notify_db.session.add(sample_service)
-        notify_db.session.commit()
 
     send_to_providers.send_email_to_provider(
         notification
@@ -322,16 +325,12 @@ def test_send_email_to_provider_should_call_research_mode_task_response_task_if_
     assert persisted_notification.billable_units == 0
 
 
-def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_created(notify_db, notify_db_session,
-                                                                                       sample_service,
-                                                                                       sample_email_template,
-                                                                                       mocker):
-    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                                       template=sample_email_template,
-                                       service=sample_service,
-                                       status='sending')
+def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_created(
+    sample_email_template,
+    mocker
+):
+    notification = create_notification(template=sample_email_template, status='sending')
     mocker.patch('app.aws_ses_client.send_email')
-    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
     mocker.patch('app.delivery.send_to_providers.send_email_response')
 
     send_to_providers.send_sms_to_provider(
@@ -343,14 +342,12 @@ def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_c
 
 
 def test_send_email_should_use_service_reply_to_email(
-        notify_db, notify_db_session,
         sample_service,
         sample_email_template,
         mocker):
     mocker.patch('app.aws_ses_client.send_email', return_value='reference')
-    mocker.patch('app.aws_ses_client.get_name', return_value="ses")
 
-    db_notification = sample_notification(notify_db, notify_db_session, template=sample_email_template)
+    db_notification = create_notification(template=sample_email_template)
     sample_service.reply_to_email_address = 'foo@bar.com'
 
     send_to_providers.send_email_to_provider(
@@ -431,7 +428,6 @@ def test_get_logo_url_works_for_different_environments(base_url, expected_url):
 
 def test_should_not_set_billable_units_if_research_mode(notify_db, sample_service, sample_notification, mocker):
     mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
 
     sample_service.research_mode = True
@@ -461,11 +457,7 @@ def test_should_update_billable_units_according_to_research_mode_and_key_type(no
                                                                               research_mode,
                                                                               key_type,
                                                                               billable_units):
-
-    assert Notification.query.count() == 1
-
     mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.mmg_client.get_name', return_value="mmg")
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
     if research_mode:
         sample_service.research_mode = True
@@ -478,5 +470,4 @@ def test_should_update_billable_units_according_to_research_mode_and_key_type(no
         sample_notification
     )
 
-    assert Notification.query.get(sample_notification.id).billable_units == billable_units, \
-        "Research mode: {0}, key type: {1}, billable_units: {2}".format(research_mode, key_type, billable_units)
+    assert sample_notification.billable_units == billable_units
