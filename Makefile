@@ -308,12 +308,17 @@ endef
 
 .PHONY: cf-deploy-with-docker
 cf-deploy-with-docker: prepare-docker-build-image ## Deploys the API to Cloud Foundry from a Docker container
-	$(call cf_deploy_with_docker,cf-deploy,make cf-login cf-deploy)
+	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
+	$(if ${CF_APP},,$(error Must specify CF_APP))
+	$(call cf_deploy_with_docker,cf-deploy-${$CF_SPACE}-${CF_APP},make cf-login cf-deploy)
 
 .PHONY: cf-deploy-api-db-migration-with-docker
 cf-deploy-api-db-migration-with-docker: prepare-docker-build-image ## Deploys the API db migration to Cloud Foundry from a Docker container
-	$(call cf_deploy_with_docker,cf-deploy-api-db-migration,make cf-login cf-deploy-api-db-migration)
+	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
+	$(call cf_deploy_with_docker,cf-deploy-${$CF_SPACE}-api-db-migration,make cf-login cf-deploy-api-db-migration)
 
 .PHONY: cf-rollback-with-docker
 cf-rollback-with-docker: prepare-docker-build-image ## Deploys the API to Cloud Foundry from a Docker container
-	$(call cf_deploy_with_docker,cf-rollback,make cf-login cf-rollback)
+	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
+	$(if ${CF_APP},,$(error Must specify CF_APP))
+	$(call cf_deploy_with_docker,cf-rollback-${$CF_SPACE}-${CF_APP},make cf-login cf-rollback)
