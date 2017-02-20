@@ -113,6 +113,7 @@ def reset_failed_login_count(user):
 
 
 def update_user_password(user, password):
+    # reset failed login count - they've just reset their password so should be fine
     user.password = password
     user.password_changed_at = datetime.utcnow()
     db.session.add(user)

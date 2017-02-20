@@ -1,27 +1,24 @@
 import json
 import uuid
-
-import pytest
-
 from datetime import (
     datetime,
     timedelta
 )
 
+import pytest
 from flask import url_for, current_app
+from freezegun import freeze_time
+
 from app.dao.services_dao import dao_update_service, dao_fetch_service_by_id
 from app.models import (
     VerifyCode,
     User,
     Notification
 )
-
 from app import db
+import app.celery.tasks
 
 from tests import create_authorization_header
-from freezegun import freeze_time
-
-import app.celery.tasks
 
 
 def test_user_verify_code(client,
@@ -163,7 +160,7 @@ def test_user_verify_password_missing_password(client,
 
 @pytest.mark.parametrize('research_mode', [True, False])
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_send_user_sms_code(notify_api,
+def test_send_user_sms_code(client,
                             sample_user,
                             sms_code_template,
                             mocker,
@@ -171,68 +168,63 @@ def test_send_user_sms_code(notify_api,
     """
     Tests POST endpoint /user/<user_id>/sms-code
     """
+    if research_mode:
+        notify_service = dao_fetch_service_by_id(current_app.config['NOTIFY_SERVICE_ID'])
+        notify_service.research_mode = True
+        dao_update_service(notify_service)
 
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            if research_mode:
-                notify_service = dao_fetch_service_by_id(current_app.config['NOTIFY_SERVICE_ID'])
-                notify_service.research_mode = True
-                dao_update_service(notify_service)
+    auth_header = create_authorization_header()
+    mocked = mocker.patch('app.user.rest.create_secret_code', return_value='11111')
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
-            auth_header = create_authorization_header()
-            mocked = mocker.patch('app.user.rest.create_secret_code', return_value='11111')
-            mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    resp = client.post(
+        url_for('user.send_user_sms_code', user_id=sample_user.id),
+        data=json.dumps({}),
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert resp.status_code == 204
 
-            resp = client.post(
-                url_for('user.send_user_sms_code', user_id=sample_user.id),
-                data=json.dumps({}),
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 204
+    assert mocked.call_count == 1
+    assert VerifyCode.query.count() == 1
+    assert VerifyCode.query.first().check_code('11111')
 
-            assert mocked.call_count == 1
-            assert VerifyCode.query.count() == 1
-            assert VerifyCode.query.first().check_code('11111')
+    assert Notification.query.count() == 1
+    notification = Notification.query.first()
+    assert notification.personalisation == {'verify_code': '11111'}
+    assert notification.to == sample_user.mobile_number
+    assert str(notification.service_id) == current_app.config['NOTIFY_SERVICE_ID']
 
-            assert Notification.query.count() == 1
-            notification = Notification.query.first()
-            assert notification.personalisation == {'verify_code': '11111'}
-            assert notification.to == sample_user.mobile_number
-            assert str(notification.service_id) == current_app.config['NOTIFY_SERVICE_ID']
-
-            app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-                ([str(notification.id)]),
-                queue="notify"
-            )
+    app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
+        ([str(notification.id)]),
+        queue="notify"
+    )
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_send_user_code_for_sms_with_optional_to_field(notify_api,
+def test_send_user_code_for_sms_with_optional_to_field(client,
                                                        sample_user,
                                                        sms_code_template,
                                                        mocker):
     """
     Tests POST endpoint /user/<user_id>/sms-code with optional to field
     """
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            to_number = '+441119876757'
-            mocked = mocker.patch('app.user.rest.create_secret_code', return_value='11111')
-            mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-            auth_header = create_authorization_header()
+    to_number = '+441119876757'
+    mocked = mocker.patch('app.user.rest.create_secret_code', return_value='11111')
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    auth_header = create_authorization_header()
 
-            resp = client.post(
-                url_for('user.send_user_sms_code', user_id=sample_user.id),
-                data=json.dumps({'to': to_number}),
-                headers=[('Content-Type', 'application/json'), auth_header])
+    resp = client.post(
+        url_for('user.send_user_sms_code', user_id=sample_user.id),
+        data=json.dumps({'to': to_number}),
+        headers=[('Content-Type', 'application/json'), auth_header])
 
-            assert resp.status_code == 204
-            assert mocked.call_count == 1
-            notification = Notification.query.first()
-            assert notification.to == to_number
-            app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-                ([str(notification.id)]),
-                queue="notify"
-            )
+    assert resp.status_code == 204
+    assert mocked.call_count == 1
+    notification = Notification.query.first()
+    assert notification.to == to_number
+    app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
+        ([str(notification.id)]),
+        queue="notify"
+    )
 
 
 def test_send_sms_code_returns_404_for_bad_input_data(client):
@@ -282,12 +274,11 @@ def test_send_user_email_verification(client,
     mocked.assert_called_once_with(([str(notification.id)]), queue="notify")
 
 
-def test_send_email_verification_returns_404_for_bad_input_data(client, notify_db, notify_db_session, mocker):
+def test_send_email_verification_returns_404_for_bad_input_data(client, notify_db_session, mocker):
     """
     Tests POST endpoint /user/<user_id>/sms-code return 404 for bad input data
     """
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-    import uuid
     uuid_ = uuid.uuid4()
     auth_header = create_authorization_header()
     resp = client.post(
@@ -297,3 +288,17 @@ def test_send_email_verification_returns_404_for_bad_input_data(client, notify_d
     assert resp.status_code == 404
     assert json.loads(resp.get_data(as_text=True))['message'] == 'No result found'
     assert mocked.call_count == 0
+
+
+def test_user_verify_user_code_valid_code_resets_failed_login_count(client, sample_sms_code):
+    sample_sms_code.user.failed_login_count = 1
+    data = json.dumps({
+        'code_type': sample_sms_code.code_type,
+        'code': sample_sms_code.txt_code})
+    resp = client.post(
+        url_for('user.verify_user_code', user_id=sample_sms_code.user.id),
+        data=data,
+        headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    assert resp.status_code == 204
+    assert sample_sms_code.user.failed_login_count == 0
+    assert sample_sms_code.code_used
