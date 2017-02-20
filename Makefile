@@ -78,6 +78,7 @@ generate-version-file: ## Generates the app version file
 
 .PHONY: build
 build: dependencies generate-version-file ## Build project
+	rm -rf wheelhouse
 	. venv/bin/activate && PIP_ACCEL_CACHE=${PIP_ACCEL_CACHE} pip-accel wheel --wheel-dir=wheelhouse -r requirements.txt
 
 .PHONY: cf-build
