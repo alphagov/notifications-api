@@ -246,6 +246,7 @@ def dao_fetch_monthly_historical_stats_by_template_for_service(service_id, year)
     rows = db.session.query(
         Template.id.label('template_id'),
         Template.name,
+        Template.template_type,
         sq.c.status,
         sq.c.count.label('count'),
         sq.c.month

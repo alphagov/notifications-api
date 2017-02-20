@@ -1477,6 +1477,8 @@ def test_get_template_stats_by_month_returns_correct_data(notify_db, notify_db_s
         resp_json = json.loads(resp.get_data(as_text=True)).get('data')
 
     assert resp.status_code == 200
+    assert resp_json["2016-05"][str(sample_template.id)]["name"] == "Template Name"
+    assert resp_json["2016-05"][str(sample_template.id)]["type"] == "sms"
     assert resp_json["2016-05"][str(sample_template.id)]["counts"]["sending"] == 2
     assert resp_json["2016-05"][str(sample_template.id)]["counts"]["temporary-failure"] == 1
     assert resp_json["2016-05"][str(sample_template.id)]["counts"]["permanent-failure"] == 1

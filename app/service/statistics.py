@@ -16,7 +16,7 @@ def format_statistics(statistics):
 
 
 def format_monthly_template_notification_stats(year, rows):
-    dict = {
+    stats = {
         datetime.strftime(date, '%Y-%m'): {}
         for date in [
             datetime(year, month, 1) for month in range(4, 13)
@@ -27,14 +27,15 @@ def format_monthly_template_notification_stats(year, rows):
 
     for row in rows:
         formatted_month = row.month.strftime('%Y-%m')
-        if str(row.template_id) not in dict[formatted_month]:
-            dict[formatted_month][str(row.template_id)] = {
+        if str(row.template_id) not in stats[formatted_month]:
+            stats[formatted_month][str(row.template_id)] = {
                 "name": row.name,
+                "type": row.template_type,
                 "counts": dict.fromkeys(NOTIFICATION_STATUS_TYPES, 0)
             }
-        dict[formatted_month][str(row.template_id)]["counts"][row.status] += row.count
+        stats[formatted_month][str(row.template_id)]["counts"][row.status] += row.count
 
-    return dict
+    return stats
 
 
 def create_zeroed_stats_dicts():

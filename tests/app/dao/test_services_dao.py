@@ -57,6 +57,7 @@ from tests.app.conftest import (
 
 
 def test_should_have_decorated_services_dao_functions():
+    assert dao_fetch_monthly_historical_stats_by_template_for_service.__wrapped__.__name__ == 'dao_fetch_monthly_historical_stats_by_template_for_service'  # noqa
     assert dao_fetch_monthly_historical_stats_for_service.__wrapped__.__name__ == 'dao_fetch_monthly_historical_stats_for_service'  # noqa
     assert dao_fetch_todays_stats_for_service.__wrapped__.__name__ == 'dao_fetch_todays_stats_for_service'  # noqa
     assert dao_fetch_stats_for_service.__wrapped__.__name__ == 'dao_fetch_stats_for_service'  # noqa
