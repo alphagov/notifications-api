@@ -37,44 +37,44 @@ def deploy(cfEnv) {
         ]) {
           withEnv(["CF_SPACE=${cfEnv}"]) {
             parallel deployApi: {
-              withEnv(["CF_APP=notify-api"]) {
-                retry(3) {
-                  sh 'make cf-deploy'
+              retry(3) {
+                withEnv(["CF_APP=notify-api"]) {
+                  sh 'make cf-deploy-with-docker'
                 }
               }
             }, deployDeliveryCeleryBeat: {
               sleep(10)
-              withEnv(["CF_APP=notify-delivery-celery-beat"]) {
-                retry(3) {
-                  sh 'make cf-deploy'
+              retry(3) {
+                withEnv(["CF_APP=notify-delivery-celery-beat"]) {
+                  sh 'make cf-deploy-with-docker'
                 }
               }
             }, deployDeliveryWorker: {
               sleep(20)
-              withEnv(["CF_APP=notify-delivery-worker"]) {
-                retry(3) {
-                  sh 'make cf-deploy'
+              retry(3) {
+                withEnv(["CF_APP=notify-delivery-worker"]) {
+                  sh 'make cf-deploy-with-docker'
                 }
               }
             }, deployDeliveryWorkerSender: {
               sleep(30)
-              withEnv(["CF_APP=notify-delivery-worker-sender"]) {
-                retry(3) {
-                  sh 'make cf-deploy'
+              retry(3) {
+                withEnv(["CF_APP=notify-delivery-worker-sender"]) {
+                  sh 'make cf-deploy-with-docker'
                 }
               }
             }, deployDeliveryWorkerDatabase: {
               sleep(40)
-              withEnv(["CF_APP=notify-delivery-worker-database"]) {
-                retry(3) {
-                  sh 'make cf-deploy'
+              retry(3) {
+                withEnv(["CF_APP=notify-delivery-worker-database"]) {
+                  sh 'make cf-deploy-with-docker'
                 }
               }
             }, deployDeliveryWorkerResearch: {
               sleep(50)
-              withEnv(["CF_APP=notify-delivery-worker-research"]) {
-                retry(3) {
-                  sh 'make cf-deploy'
+              retry(3) {
+                withEnv(["CF_APP=notify-delivery-worker-research"]) {
+                  sh 'make cf-deploy-with-docker'
                 }
               }
             }
