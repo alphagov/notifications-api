@@ -85,15 +85,16 @@ cf-build: dependencies generate-version-file ## Build project for PAAS
 
 .PHONY: build-codedeploy-artifact
 build-codedeploy-artifact: ## Build the deploy artifact for CodeDeploy
+	rm -rf target
 	mkdir -p target
-	zip -r -x@deploy-exclude.lst target/notifications-api.zip *
+	zip -y -q -r -x@deploy-exclude.lst target/notifications-api.zip ./
 
 	rm -rf build/db-migration-codedeploy
 	mkdir -p build/db-migration-codedeploy
 	unzip target/notifications-api.zip -d build/db-migration-codedeploy
 	cd build/db-migration-codedeploy && \
 		mv -f appspec-db-migration.yml appspec.yml && \
-		zip -r -x@deploy-exclude.lst ../../target/notifications-api-db-migration.zip *
+		zip -y -q -r -x@deploy-exclude.lst ../../target/notifications-api-db-migration.zip ./
 
 .PHONY: upload-codedeploy-artifact ## Upload the deploy artifact for CodeDeploy
 upload-codedeploy-artifact: check-env-vars
