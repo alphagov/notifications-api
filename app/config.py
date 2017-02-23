@@ -214,7 +214,6 @@ class Preview(Config):
     NOTIFY_EMAIL_DOMAIN = 'notify.works'
     NOTIFY_ENVIRONMENT = 'preview'
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
-    API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = 'preview'
 
 
@@ -223,7 +222,6 @@ class Staging(Config):
     NOTIFY_ENVIRONMENT = 'staging'
     CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
     STATSD_ENABLED = True
-    API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = 'stage'
 
 
@@ -232,7 +230,6 @@ class Live(Config):
     NOTIFY_ENVIRONMENT = 'live'
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
     STATSD_ENABLED = True
-    API_HOST_NAME = 'http://admin-api.internal'
     FROM_NUMBER = '40604'
 
 

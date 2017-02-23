@@ -284,6 +284,7 @@ cf-rollback: ## Rollbacks the app to the previous release
 
 .PHONY: cf-push
 cf-push:
+	$(if ${CF_APP},,$(error Must specify CF_APP))
 	cf push ${CF_APP} -f ${CF_MANIFEST_FILE}
 
 define cf_deploy_with_docker
