@@ -43,6 +43,7 @@ def register_errors(blueprint):
 
     @blueprint.errorhandler(AuthError)
     def authentication_error(error):
+        current_app.logger.exception(error)
         return jsonify(result='error', message=error.message), error.code
 
     @blueprint.errorhandler(ValidationError)
