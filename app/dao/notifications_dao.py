@@ -11,13 +11,11 @@ from sqlalchemy.orm import joinedload
 
 from app import db, create_uuid
 from app.dao import days_ago
-from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.models import (
     Service,
     Notification,
     NotificationHistory,
     NotificationStatistics,
-    ProviderDetails,
     Template,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
@@ -426,8 +424,7 @@ def get_total_sent_notifications_in_date_range(start_date, end_date, notificatio
     return result or 0
 
 
-def get_count_of_slow_delivery_sms_notifications_for_provider(
-    created_at,
+def is_delivery_slow_for_provider(
     sent_at,
     provider,
     threshold,
@@ -435,21 +432,12 @@ def get_count_of_slow_delivery_sms_notifications_for_provider(
     service_id,
     template_id
 ):
-    count = db.session.query(
-        func.count().label('total'),
-        Notification.sent_by
-    ).filter(
+    count = db.session.query(Notification).filter(
         Notification.service_id == service_id,
         Notification.template_id == template_id,
-        Notification.created_at >= created_at,
         Notification.sent_at >= sent_at,
         Notification.status == NOTIFICATION_DELIVERED,
         Notification.sent_by == provider,
         (Notification.updated_at - Notification.sent_at) >= delivery_time,
-    ).group_by(
-        Notification.sent_by
-    ).having(
-        func.count().label('total') >= threshold,
-    ).first()
-
-    return count
+    ).count()
+    return count >= threshold

@@ -124,8 +124,7 @@ def sample_service(
     user=None,
     restricted=False,
     limit=1000,
-    email_from=None,
-    service_id=None
+    email_from=None
 ):
     if user is None:
         user = create_user()
@@ -141,7 +140,7 @@ def sample_service(
     service = Service.query.filter_by(name=service_name).first()
     if not service:
         service = Service(**data)
-        dao_create_service(service, user, service_id)
+        dao_create_service(service, user)
     else:
         if user not in service.users:
             dao_add_user_to_service(service, user)
@@ -160,8 +159,7 @@ def sample_template(
     user=None,
     service=None,
     created_by=None,
-    process_type='normal',
-    template_id=None
+    process_type='normal'
 ):
     if user is None:
         user = create_user()
@@ -169,24 +167,21 @@ def sample_template(
         service = sample_service(notify_db, notify_db_session)
     if created_by is None:
         created_by = create_user()
-
-    template = Template.query.filter_by(id=template_id).first()
-    if not template:
-        data = {
-            'name': template_name,
-            'template_type': template_type,
-            'content': content,
-            'service': service,
-            'created_by': created_by,
-            'archived': archived,
-            'process_type': process_type
-        }
-        if template_type in ['email', 'letter']:
-            data.update({
-                'subject': subject_line
-            })
-        template = Template(**data)
-        dao_create_template(template, template_id)
+    data = {
+        'name': template_name,
+        'template_type': template_type,
+        'content': content,
+        'service': service,
+        'created_by': created_by,
+        'archived': archived,
+        'process_type': process_type
+    }
+    if template_type in ['email', 'letter']:
+        data.update({
+            'subject': subject_line
+        })
+    template = Template(**data)
+    dao_create_template(template)
     return template
 
 
@@ -447,8 +442,7 @@ def sample_notification(
     api_key_id=None,
     key_type=KEY_TYPE_NORMAL,
     sent_by=None,
-    client_reference=None,
-    updated_at=None
+    client_reference=None
 ):
     if created_at is None:
         created_at = datetime.utcnow()
@@ -456,8 +450,6 @@ def sample_notification(
         service = sample_service(notify_db, notify_db_session)
     if template is None:
         template = sample_template(notify_db, notify_db_session, service=service)
-    if not updated_at and status in NOTIFICATION_STATUS_TYPES_COMPLETED:
-        updated_at = created_at
 
     notification_id = uuid.uuid4()
 
@@ -486,7 +478,7 @@ def sample_notification(
         'api_key_id': api_key_id,
         'key_type': key_type,
         'sent_by': sent_by,
-        'updated_at': updated_at,
+        'updated_at': created_at if status in NOTIFICATION_STATUS_TYPES_COMPLETED else None,
         'client_reference': client_reference
     }
     if job_row_number:

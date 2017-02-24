@@ -41,10 +41,11 @@ from app.dao.notifications_dao import (
     dao_timeout_notifications,
     get_financial_year,
     get_april_fools,
-    get_count_of_slow_delivery_sms_notifications_for_provider
+    is_delivery_slow_for_provider
 )
 
 from app.dao.services_dao import dao_update_service
+from tests.app.db import create_notification
 from tests.app.conftest import (
     sample_notification,
     sample_template,
@@ -1427,47 +1428,7 @@ def test_get_total_sent_notifications_for_email_excludes_sms_counts(
 
 
 @freeze_time("2016-01-10 12:00:00.000000")
-def test_get_count_of_slow_delivery_sms_notifications_returns_after_created_time(
-    notify_db,
-    notify_db_session,
-    sample_template
-):
-    now = datetime.utcnow()
-    a_second_ago = now - timedelta(seconds=1)
-    five_minutes_from_now = now + timedelta(minutes=5)
-
-    notification_five_minutes_to_deliver = partial(
-        sample_notification,
-        notify_db,
-        notify_db_session,
-        template=sample_template,
-        status='delivered',
-        sent_at=now,
-        sent_by='mmg',
-        updated_at=five_minutes_from_now
-    )
-
-    noti1 = notification_five_minutes_to_deliver(created_at=a_second_ago)
-    notification_five_minutes_to_deliver(created_at=a_second_ago)
-    notification_five_minutes_to_deliver(created_at=now)
-
-    count = get_count_of_slow_delivery_sms_notifications_for_provider(
-        created_at=now,
-        sent_at=now,
-        provider='mmg',
-        threshold=1,
-        delivery_time=timedelta(minutes=5),
-        service_id=noti1.service_id,
-        template_id=noti1.template_id
-    )
-
-    assert count.total == 1
-
-
-@freeze_time("2016-01-10 12:00:00.000000")
-def test_get_count_of_slow_delivery_sms_notifications_returns_after_sent_time(
-    notify_db,
-    notify_db_session,
+def test_slow_provider_delivery_returns_for_sent_notifications(
     sample_template
 ):
     now = datetime.utcnow()
@@ -1475,45 +1436,38 @@ def test_get_count_of_slow_delivery_sms_notifications_returns_after_sent_time(
     five_minutes_from_now = now + timedelta(minutes=5)
 
     notification_five_minutes_to_deliver = partial(
-        sample_notification,
-        notify_db,
-        notify_db_session,
+        create_notification,
         template=sample_template,
         status='delivered',
         sent_by='mmg',
         updated_at=five_minutes_from_now
     )
 
-    noti1 = notification_five_minutes_to_deliver(created_at=now, sent_at=now)
-    notification_five_minutes_to_deliver(created_at=now, sent_at=one_minute_from_now)
-    notification_five_minutes_to_deliver(created_at=now, sent_at=one_minute_from_now)
+    notification_five_minutes_to_deliver(sent_at=now)
+    notification_five_minutes_to_deliver(sent_at=one_minute_from_now)
+    notification_five_minutes_to_deliver(sent_at=one_minute_from_now)
 
-    count = get_count_of_slow_delivery_sms_notifications_for_provider(
-        created_at=now,
+    slow_delivery = is_delivery_slow_for_provider(
         sent_at=one_minute_from_now,
         provider='mmg',
         threshold=2,
         delivery_time=timedelta(minutes=3),
-        service_id=noti1.service_id,
-        template_id=noti1.template_id
+        service_id=sample_template.service.id,
+        template_id=sample_template.id
     )
 
-    assert count.total == 2
+    assert slow_delivery
 
 
 @freeze_time("2016-01-10 12:00:00.000000")
-def test_get_count_of_slow_delivery_sms_notifications_observes_threshold(
-    notify_db,
-    notify_db_session,
+def test_slow_provider_delivery_observes_threshold(
     sample_template
 ):
     now = datetime.utcnow()
     five_minutes_from_now = now + timedelta(minutes=5)
 
     notification_five_minutes_to_deliver = partial(
-        sample_notification,
-        notify_db,
-        notify_db_session,
+        create_notification,
         template=sample_template,
         status='delivered',
         sent_at=now,
@@ -1521,35 +1475,30 @@ def test_get_count_of_slow_delivery_sms_notifications_observes_threshold(
         updated_at=five_minutes_from_now
     )
 
-    noti1 = notification_five_minutes_to_deliver(created_at=now)
-    notification_five_minutes_to_deliver(created_at=now)
+    notification_five_minutes_to_deliver()
+    notification_five_minutes_to_deliver()
 
-    count = get_count_of_slow_delivery_sms_notifications_for_provider(
-        created_at=now,
+    slow_delivery = is_delivery_slow_for_provider(
         sent_at=now,
         provider='mmg',
         threshold=3,
         delivery_time=timedelta(minutes=5),
-        service_id=noti1.service_id,
-        template_id=noti1.template_id
+        service_id=sample_template.service.id,
+        template_id=sample_template.id
     )
 
-    assert not count
+    assert not slow_delivery
 
 
 @freeze_time("2016-01-10 12:00:00.000000")
-def test_get_count_of_slow_delivery_sms_notifications_returns_status_delivered_only(
-    notify_db,
-    notify_db_session,
+def test_slow_provider_delivery_returns_for_delivered_notifications_only(
     sample_template
 ):
     now = datetime.utcnow()
     five_minutes_from_now = now + timedelta(minutes=5)
 
     notification_five_minutes_to_deliver = partial(
-        sample_notification,
-        notify_db,
-        notify_db_session,
+        create_notification,
         template=sample_template,
         sent_at=now,
         sent_by='firetext',
@@ -1557,37 +1506,32 @@ def test_get_count_of_slow_delivery_sms_notifications_returns_status_delivered_o
         updated_at=five_minutes_from_now
     )
 
-    noti1 = notification_five_minutes_to_deliver(status='created')
+    notification_five_minutes_to_deliver(status='created')
     notification_five_minutes_to_deliver(status='sending')
     notification_five_minutes_to_deliver(status='delivered')
     notification_five_minutes_to_deliver(status='delivered')
 
-    count = get_count_of_slow_delivery_sms_notifications_for_provider(
-        created_at=now,
+    slow_delivery = is_delivery_slow_for_provider(
         sent_at=now,
         provider='firetext',
         threshold=1,
         delivery_time=timedelta(minutes=5),
-        service_id=noti1.service_id,
-        template_id=noti1.template_id
+        service_id=sample_template.service.id,
+        template_id=sample_template.id
     )
 
-    assert count.total == 2
+    assert slow_delivery
 
 
 @freeze_time("2016-01-10 12:00:00.000000")
-def test_get_count_of_slow_delivery_sms_notifications_returns_slow_delivery_time_only(
-    notify_db,
-    notify_db_session,
+def test_slow_provider_delivery_does_not_return_for_standard_delivery_time(
     sample_template
 ):
     now = datetime.utcnow()
     five_minutes_from_now = now + timedelta(minutes=5)
 
     notification = partial(
-        sample_notification,
-        notify_db,
-        notify_db_session,
+        create_notification,
         template=sample_template,
         created_at=now,
         sent_at=now,
@@ -1595,58 +1539,17 @@ def test_get_count_of_slow_delivery_sms_notifications_returns_slow_delivery_time
         status='delivered'
     )
 
-    noti1 = notification(updated_at=five_minutes_from_now - timedelta(seconds=1))
-    noti1 = notification(updated_at=five_minutes_from_now - timedelta(seconds=1))
-    notification(updated_at=five_minutes_from_now)
-    notification(updated_at=five_minutes_from_now)
+    notification(updated_at=five_minutes_from_now - timedelta(seconds=1))
+    notification(updated_at=five_minutes_from_now - timedelta(seconds=1))
     notification(updated_at=five_minutes_from_now)
 
-    count = get_count_of_slow_delivery_sms_notifications_for_provider(
-        created_at=now,
+    slow_delivery = is_delivery_slow_for_provider(
         sent_at=now,
         provider='mmg',
-        threshold=1,
+        threshold=2,
         delivery_time=timedelta(minutes=5),
-        service_id=noti1.service_id,
-        template_id=noti1.template_id
+        service_id=sample_template.service.id,
+        template_id=sample_template.id
     )
 
-    assert count.total == 3
-
-
-@freeze_time("2016-01-10 12:00:00.000000")
-def test_get_count_of_slow_delivery_sms_notifications_returns_provider_only(
-    notify_db,
-    notify_db_session,
-    sample_template
-):
-    now = datetime.utcnow()
-    five_minutes_from_now = now + timedelta(minutes=5)
-
-    notification = partial(
-        sample_notification,
-        notify_db,
-        notify_db_session,
-        template=sample_template,
-        created_at=now,
-        sent_at=now,
-        updated_at=five_minutes_from_now,
-        status='delivered'
-    )
-
-    noti1 = notification(sent_by='mmg')
-    notification(sent_by='firetext')
-    notification(sent_by='loadtesting')
-    notification(sent_by='loadtesting')
-
-    count = get_count_of_slow_delivery_sms_notifications_for_provider(
-        created_at=now,
-        sent_at=now,
-        provider='mmg',
-        threshold=1,
-        delivery_time=timedelta(minutes=5),
-        service_id=noti1.service_id,
-        template_id=noti1.template_id
-    )
-
-    assert count.sent_by == 'mmg'
+    assert not slow_delivery
