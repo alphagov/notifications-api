@@ -1,4 +1,5 @@
 [![Requirements Status](https://requires.io/github/alphagov/notifications-api/requirements.svg?branch=master)](https://requires.io/github/alphagov/notifications-api/requirements/?branch=master)
+[![Coverage Status](https://coveralls.io/repos/alphagov/notifications-api/badge.svg?branch=master&service=github)](https://coveralls.io/github/alphagov/notifications-api?branch=master)
 
 # notifications-api
 Notifications api
