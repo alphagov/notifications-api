@@ -1,6 +1,9 @@
 import json
+import uuid
 from datetime import datetime
+
 from flask import (jsonify, request, Blueprint, current_app)
+
 from app.dao.users_dao import (
     get_user_by_id,
     save_model_user,
@@ -32,7 +35,6 @@ from app.schemas import (
     user_update_schema_load_json,
     user_update_password_schema_load_json
 )
-
 from app.errors import (
     register_errors,
     InvalidRequest
@@ -94,8 +96,6 @@ def verify_user_password(user_id):
         raise InvalidRequest(errors, status_code=400)
 
     if user_to_verify.check_password(txt_pwd):
-        user_to_verify.logged_in_at = datetime.utcnow()
-        save_model_user(user_to_verify)
         reset_failed_login_count(user_to_verify)
         return jsonify({}), 204
     else:
@@ -109,16 +109,16 @@ def verify_user_password(user_id):
 def verify_user_code(user_id):
     user_to_verify = get_user_by_id(user_id=user_id)
 
+    req_json = request.get_json()
     txt_code = None
-    resp_json = request.get_json()
     txt_type = None
     errors = {}
     try:
-        txt_code = resp_json['code']
+        txt_code = req_json['code']
     except KeyError:
         errors.update({'code': ['Required field missing data']})
     try:
-        txt_type = resp_json['code_type']
+        txt_type = req_json['code_type']
     except KeyError:
         errors.update({'code_type': ['Required field missing data']})
     if errors:
@@ -131,6 +131,11 @@ def verify_user_code(user_id):
     if datetime.utcnow() > code.expiry_datetime or code.code_used:
         increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code has expired", status_code=400)
+
+    user_to_verify.current_session_id = str(uuid.uuid4())
+    user_to_verify.logged_in_at = datetime.utcnow()
+    save_model_user(user_to_verify)
+
     use_user_code(code.id)
     reset_failed_login_count(user_to_verify)
     return jsonify({}), 204

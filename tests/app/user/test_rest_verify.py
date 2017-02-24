@@ -21,9 +21,11 @@ import app.celery.tasks
 from tests import create_authorization_header
 
 
-def test_user_verify_code(client,
-                          sample_sms_code):
+@freeze_time('2016-01-01T12:00:00')
+def test_user_verify_code(client, sample_sms_code):
+    sample_sms_code.user.logged_in_at = datetime.utcnow() - timedelta(days=1)
     assert not VerifyCode.query.first().code_used
+    assert sample_sms_code.user.current_session_id is None
     data = json.dumps({
         'code_type': sample_sms_code.code_type,
         'code': sample_sms_code.txt_code})
@@ -34,6 +36,8 @@ def test_user_verify_code(client,
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 204
     assert VerifyCode.query.first().code_used
+    assert sample_sms_code.user.logged_in_at == datetime.utcnow()
+    assert sample_sms_code.user.current_session_id is not None
 
 
 def test_user_verify_code_missing_code(client,
@@ -88,9 +92,9 @@ def test_user_verify_code_expired_code_and_increments_failed_login_count(
 
 
 @freeze_time("2016-01-01 10:00:00.000000")
-def test_user_verify_password(client,
-                              notify_db_session,
-                              sample_user):
+def test_user_verify_password(client, sample_user):
+    yesterday = datetime.utcnow() - timedelta(days=1)
+    sample_user.logged_in_at = yesterday
     data = json.dumps({'password': 'password'})
     auth_header = create_authorization_header()
     resp = client.post(
@@ -98,7 +102,7 @@ def test_user_verify_password(client,
         data=data,
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 204
-    assert User.query.get(sample_user.id).logged_in_at == datetime.utcnow()
+    assert User.query.get(sample_user.id).logged_in_at == yesterday
 
 
 def test_user_verify_password_invalid_password(client,

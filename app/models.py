@@ -73,6 +73,7 @@ class User(db.Model):
     failed_login_count = db.Column(db.Integer, nullable=False, default=0)
     state = db.Column(db.String, nullable=False, default='pending')
     platform_admin = db.Column(db.Boolean, nullable=False, default=False)
+    current_session_id = db.Column(UUID(as_uuid=True), nullable=True)
 
     @property
     def password(self):
