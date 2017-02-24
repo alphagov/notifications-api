@@ -22,7 +22,7 @@ from tests import create_authorization_header
 
 
 @freeze_time('2016-01-01T12:00:00')
-def test_user_verify_code(client, sample_sms_code):
+def test_user_verify_sms_code(client, sample_sms_code):
     sample_sms_code.user.logged_in_at = datetime.utcnow() - timedelta(days=1)
     assert not VerifyCode.query.first().code_used
     assert sample_sms_code.user.current_session_id is None
@@ -38,6 +38,25 @@ def test_user_verify_code(client, sample_sms_code):
     assert VerifyCode.query.first().code_used
     assert sample_sms_code.user.logged_in_at == datetime.utcnow()
     assert sample_sms_code.user.current_session_id is not None
+
+
+@freeze_time('2016-01-01T12:00:00')
+def test_user_verify_email_code(client, sample_email_code):
+    sample_email_code.user.logged_in_at = datetime.utcnow() - timedelta(days=1)
+    assert not VerifyCode.query.first().code_used
+    assert sample_email_code.user.current_session_id is None
+    data = json.dumps({
+        'code_type': sample_email_code.code_type,
+        'code': sample_email_code.txt_code})
+    auth_header = create_authorization_header()
+    resp = client.post(
+        url_for('user.verify_user_code', user_id=sample_email_code.user.id),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert resp.status_code == 204
+    assert VerifyCode.query.first().code_used
+    assert sample_email_code.user.logged_in_at == datetime.utcnow() - timedelta(days=1)
+    assert sample_email_code.user.current_session_id is None
 
 
 def test_user_verify_code_missing_code(client,

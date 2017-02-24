@@ -110,21 +110,21 @@ def verify_user_code(user_id):
     user_to_verify = get_user_by_id(user_id=user_id)
 
     req_json = request.get_json()
-    txt_code = None
-    txt_type = None
+    verify_code = None
+    code_type = None
     errors = {}
     try:
-        txt_code = req_json['code']
+        verify_code = req_json['code']
     except KeyError:
         errors.update({'code': ['Required field missing data']})
     try:
-        txt_type = req_json['code_type']
+        code_type = req_json['code_type']
     except KeyError:
         errors.update({'code_type': ['Required field missing data']})
     if errors:
         raise InvalidRequest(errors, status_code=400)
 
-    code = get_user_code(user_to_verify, txt_code, txt_type)
+    code = get_user_code(user_to_verify, verify_code, code_type)
     if not code:
         increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code not found", status_code=404)
@@ -132,9 +132,10 @@ def verify_user_code(user_id):
         increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code has expired", status_code=400)
 
-    user_to_verify.current_session_id = str(uuid.uuid4())
-    user_to_verify.logged_in_at = datetime.utcnow()
-    save_model_user(user_to_verify)
+    if code_type == 'sms':
+        user_to_verify.current_session_id = str(uuid.uuid4())
+        user_to_verify.logged_in_at = datetime.utcnow()
+        save_model_user(user_to_verify)
 
     use_user_code(code.id)
     reset_failed_login_count(user_to_verify)
