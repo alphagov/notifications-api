@@ -14,7 +14,7 @@ from app.dao.jobs_dao import dao_set_scheduled_jobs_to_pending, dao_get_jobs_old
 from app.dao.notifications_dao import (
     delete_notifications_created_more_than_a_week_ago,
     dao_timeout_notifications,
-    get_count_of_slow_delivery_sms_notifications_for_provider
+    is_delivery_slow_for_provider
 )
 from app.dao.provider_details_dao import (
     get_current_provider,
@@ -163,11 +163,10 @@ def switch_current_sms_provider_on_slow_delivery():
 
     if functional_test_provider_service_id and functional_test_provider_template_id:
         current_provider = get_current_provider('sms')
-        slow_delivery_notifications = get_count_of_slow_delivery_sms_notifications_for_provider(
+        slow_delivery_notifications = is_delivery_slow_for_provider(
             provider=current_provider.identifier,
             threshold=2,
-            created_at=current_provider.updated_at,
-            sent_at=datetime.utcnow() - timedelta(minutes=10),
+            sent_at=max(datetime.utcnow() - timedelta(minutes=10), current_provider.updated_at),
             delivery_time=timedelta(minutes=4),
             service_id=functional_test_provider_service_id,
             template_id=functional_test_provider_template_id
@@ -175,9 +174,8 @@ def switch_current_sms_provider_on_slow_delivery():
 
         if slow_delivery_notifications:
             current_app.logger.warning(
-                '{} slow delivery notifications detected for provider {}'.format(
-                    slow_delivery_notifications.total,
-                    slow_delivery_notifications.sent_by
+                'Slow delivery notifications detected for provider {}'.format(
+                    current_provider.identifier
                 )
             )
 

@@ -24,43 +24,36 @@ from app.dao.provider_details_dao import (
     dao_update_provider_details,
     get_current_provider
 )
+from app.models import Service, Template
 from app.utils import get_london_midnight_in_utc
+from tests.app.db import create_notification, create_service, create_template
 from tests.app.conftest import (
-    sample_notification as create_sample_notification,
     sample_job as create_sample_job,
-    sample_notification_history as create_notification_history,
-    sample_service as create_sample_service,
-    sample_template as create_sample_template
+    sample_notification_history as create_notification_history
 )
 from tests.conftest import set_config_values
 from unittest.mock import call, patch, PropertyMock
 
 
-def _create_slow_delivery_notification(notify_db, notify_db_session, provider='mmg'):
+def _create_slow_delivery_notification(provider='mmg'):
     now = datetime.utcnow()
     five_minutes_from_now = now + timedelta(minutes=5)
+    service = Service.query.get(current_app.config['FUNCTIONAL_TEST_PROVIDER_SERVICE_ID'])
+    if not service:
+        service = create_service(
+            service_id=current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SERVICE_ID')
+        )
 
-    service = create_sample_service(
-        notify_db,
-        notify_db_session,
-        service_id=current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SERVICE_ID')
-    )
+    template = Template.query.get(current_app.config['FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID'])
+    if not template:
+        template = create_template(
+            template_id=current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID'),
+            service=service
+        )
 
-    template = create_sample_template(
-        notify_db,
-        notify_db_session,
-        template_id=current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID'),
-        service=service
-    )
-
-    create_sample_notification(
-        notify_db,
-        notify_db_session,
-        service=service,
+    create_notification(
         template=template,
         status='delivered',
-        created_at=now,
-        sent_at=now,
         sent_by=provider,
         updated_at=five_minutes_from_now
     )
@@ -116,26 +109,17 @@ def test_update_status_of_notifications_after_timeout(notify_api,
                                                       sample_template,
                                                       mmg_provider):
     with notify_api.test_request_context():
-        not1 = create_sample_notification(
-            notify_db,
-            notify_db_session,
-            service=sample_service,
+        not1 = create_notification(
             template=sample_template,
             status='sending',
             created_at=datetime.utcnow() - timedelta(
                 seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-        not2 = create_sample_notification(
-            notify_db,
-            notify_db_session,
-            service=sample_service,
+        not2 = create_notification(
             template=sample_template,
             status='created',
             created_at=datetime.utcnow() - timedelta(
                 seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-        not3 = create_sample_notification(
-            notify_db,
-            notify_db_session,
-            service=sample_service,
+        not3 = create_notification(
             template=sample_template,
             status='pending',
             created_at=datetime.utcnow() - timedelta(
@@ -153,10 +137,7 @@ def test_not_update_status_of_notification_before_timeout(notify_api,
                                                           sample_template,
                                                           mmg_provider):
     with notify_api.test_request_context():
-        not1 = create_sample_notification(
-            notify_db,
-            notify_db_session,
-            service=sample_service,
+        not1 = create_notification(
             template=sample_template,
             status='sending',
             created_at=datetime.utcnow() - timedelta(
@@ -294,13 +275,16 @@ def test_send_daily_performance_stats_calls_with_correct_totals(
         ])
 
 
-def test_switch_current_sms_provider_on_slow_delivery_does_not_run_if_config_unset(client, mocker):
+def test_switch_current_sms_provider_on_slow_delivery_does_not_run_if_config_unset(
+    notify_api,
+    mocker
+):
     get_notifications_mock = mocker.patch(
-        'app.celery.scheduled_tasks.get_count_of_slow_delivery_sms_notifications_for_provider'
+        'app.celery.scheduled_tasks.is_delivery_slow_for_provider'
     )
     toggle_sms_mock = mocker.patch('app.celery.scheduled_tasks.dao_toggle_sms_provider')
 
-    with set_config_values(client.application, {
+    with set_config_values(notify_api, {
         'FUNCTIONAL_TEST_PROVIDER_SERVICE_ID': None,
         'FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID': None
     }):
@@ -311,13 +295,12 @@ def test_switch_current_sms_provider_on_slow_delivery_does_not_run_if_config_uns
 
 
 def test_switch_providers_on_slow_delivery_runs_if_config_set(
-    notify_db,
-    notify_db_session,
     notify_api,
-    mocker
+    mocker,
+    set_provider_updated_at
 ):
     get_notifications_mock = mocker.patch(
-        'app.celery.scheduled_tasks.get_count_of_slow_delivery_sms_notifications_for_provider',
+        'app.celery.scheduled_tasks.is_delivery_slow_for_provider',
         return_value=[]
     )
 
@@ -330,9 +313,7 @@ def test_switch_providers_on_slow_delivery_runs_if_config_set(
     assert get_notifications_mock.called is True
 
 
-def test_switch_providers_on_slow_delivery_triggers_switch_on_slow_notification_delivery(
-    notify_db,
-    notify_db_session,
+def test_switch_providers_triggers_on_slow_notification_delivery(
     notify_api,
     restore_provider_details,
     current_sms_provider,
@@ -342,9 +323,8 @@ def test_switch_providers_on_slow_delivery_triggers_switch_on_slow_notification_
         'FUNCTIONAL_TEST_PROVIDER_SERVICE_ID': '7954469d-8c6d-43dc-b8f7-86be2d69f5f3',
         'FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID': '331a63e6-f1aa-4588-ad3f-96c268788ae7'
     }):
-        _create_slow_delivery_notification(notify_db, notify_db_session, current_sms_provider.identifier)
-        _create_slow_delivery_notification(notify_db, notify_db_session, current_sms_provider.identifier)
-
+        _create_slow_delivery_notification(current_sms_provider.identifier)
+        _create_slow_delivery_notification(current_sms_provider.identifier)
         switch_current_sms_provider_on_slow_delivery()
 
     new_provider = get_current_provider('sms')
@@ -353,8 +333,6 @@ def test_switch_providers_on_slow_delivery_triggers_switch_on_slow_notification_
 
 
 def test_switch_providers_on_slow_delivery_does_not_switch_if_already_switched(
-    notify_db,
-    notify_db_session,
     notify_api,
     restore_provider_details,
     current_sms_provider,
@@ -364,8 +342,8 @@ def test_switch_providers_on_slow_delivery_does_not_switch_if_already_switched(
         'FUNCTIONAL_TEST_PROVIDER_SERVICE_ID': '7954469d-8c6d-43dc-b8f7-86be2d69f5f3',
         'FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID': '331a63e6-f1aa-4588-ad3f-96c268788ae7'
     }):
-        _create_slow_delivery_notification(notify_db, notify_db_session)
-        _create_slow_delivery_notification(notify_db, notify_db_session)
+        _create_slow_delivery_notification()
+        _create_slow_delivery_notification()
 
         switch_current_sms_provider_on_slow_delivery()
         switch_current_sms_provider_on_slow_delivery()
@@ -376,8 +354,6 @@ def test_switch_providers_on_slow_delivery_does_not_switch_if_already_switched(
 
 
 def test_switch_providers_on_slow_delivery_does_not_switch_based_on_older_notifications(
-    notify_db,
-    notify_db_session,
     notify_api,
     restore_provider_details,
     current_sms_provider,
@@ -397,16 +373,16 @@ def test_switch_providers_on_slow_delivery_does_not_switch_based_on_older_notifi
         'FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID': '331a63e6-f1aa-4588-ad3f-96c268788ae7'
     }):
         # Provider x -> y
-        _create_slow_delivery_notification(notify_db, notify_db_session, current_sms_provider.identifier)
-        _create_slow_delivery_notification(notify_db, notify_db_session, current_sms_provider.identifier)
-        _create_slow_delivery_notification(notify_db, notify_db_session, current_sms_provider.identifier)
+        _create_slow_delivery_notification(current_sms_provider.identifier)
+        _create_slow_delivery_notification(current_sms_provider.identifier)
+        _create_slow_delivery_notification(current_sms_provider.identifier)
         switch_current_sms_provider_on_slow_delivery()
 
         current_provider = get_current_provider('sms')
 
         # Provider y -> x
-        _create_slow_delivery_notification(notify_db, notify_db_session, current_provider.identifier)
-        _create_slow_delivery_notification(notify_db, notify_db_session, current_provider.identifier)
+        _create_slow_delivery_notification(current_provider.identifier)
+        _create_slow_delivery_notification(current_provider.identifier)
         switch_current_sms_provider_on_slow_delivery()
 
         # Expect to stay on provider x
