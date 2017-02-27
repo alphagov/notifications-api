@@ -19,7 +19,7 @@ from app.dao.provider_details_dao import (
 )
 
 
-def set_primary_sms_provider(restore_provider_details, identifier='mmg'):
+def set_primary_sms_provider(identifier):
     primary_provider = get_provider_details_by_identifier(identifier)
     secondary_provider = get_alternative_sms_provider(identifier)
 
