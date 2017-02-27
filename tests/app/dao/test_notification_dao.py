@@ -1506,7 +1506,6 @@ def test_slow_provider_delivery_returns_for_delivered_notifications_only(
         updated_at=five_minutes_from_now
     )
 
-    notification_five_minutes_to_deliver(status='created')
     notification_five_minutes_to_deliver(status='sending')
     notification_five_minutes_to_deliver(status='delivered')
     notification_five_minutes_to_deliver(status='delivered')
