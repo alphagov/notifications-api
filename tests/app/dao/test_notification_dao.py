@@ -1514,7 +1514,7 @@ def test_slow_provider_delivery_returns_for_delivered_notifications_only(
     slow_delivery = is_delivery_slow_for_provider(
         sent_at=now,
         provider='firetext',
-        threshold=1,
+        threshold=2,
         delivery_time=timedelta(minutes=5),
         service_id=sample_template.service.id,
         template_id=sample_template.id

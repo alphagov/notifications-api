@@ -75,11 +75,9 @@ def create_notification(
     if created_at is None:
         created_at = datetime.utcnow()
 
-    if sent_at is None:
-        sent_at = datetime.utcnow()
-
-    if updated_at is None:
-        updated_at = datetime.utcnow()
+    if status != 'created':
+        sent_at = sent_at or datetime.utcnow()
+        updated_at = updated_at or datetime.utcnow()
 
     data = {
         'id': uuid.uuid4(),
