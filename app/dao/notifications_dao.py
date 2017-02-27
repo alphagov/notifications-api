@@ -18,6 +18,7 @@ from app.models import (
     NotificationStatistics,
     Template,
     NOTIFICATION_CREATED,
+    NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
     NOTIFICATION_PENDING,
     NOTIFICATION_TECHNICAL_FAILURE,
@@ -421,3 +422,22 @@ def get_total_sent_notifications_in_date_range(start_date, end_date, notificatio
     ).scalar()
 
     return result or 0
+
+
+def is_delivery_slow_for_provider(
+    sent_at,
+    provider,
+    threshold,
+    delivery_time,
+    service_id,
+    template_id
+):
+    count = db.session.query(Notification).filter(
+        Notification.service_id == service_id,
+        Notification.template_id == template_id,
+        Notification.sent_at >= sent_at,
+        Notification.status == NOTIFICATION_DELIVERED,
+        Notification.sent_by == provider,
+        (Notification.updated_at - Notification.sent_at) >= delivery_time,
+    ).count()
+    return count >= threshold

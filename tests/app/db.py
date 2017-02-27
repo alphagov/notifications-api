@@ -23,7 +23,7 @@ def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-off
     return user
 
 
-def create_service(user=None, service_name="Sample service"):
+def create_service(user=None, service_name="Sample service", service_id=None):
     service = Service(
         name=service_name,
         message_limit=1000,
@@ -31,14 +31,15 @@ def create_service(user=None, service_name="Sample service"):
         email_from=service_name.lower().replace(' ', '.'),
         created_by=user or create_user()
     )
-    dao_create_service(service, service.created_by)
+    dao_create_service(service, service.created_by, service_id)
     return service
 
 
 def create_template(
     service,
     template_type=SMS_TYPE,
-    content='Dear Sir/Madam, Hello. Yours Truly, The Government.'
+    content='Dear Sir/Madam, Hello. Yours Truly, The Government.',
+    template_id=None
 ):
     data = {
         'name': '{} Template Name'.format(template_type),
@@ -50,7 +51,7 @@ def create_template(
     if template_type != SMS_TYPE:
         data['subject'] = 'Template subject'
     template = Template(**data)
-    dao_create_template(template)
+    dao_create_template(template, template_id)
     return template
 
 
@@ -63,6 +64,7 @@ def create_notification(
     reference=None,
     created_at=None,
     sent_at=None,
+    updated_at=None,
     billable_units=1,
     personalisation=None,
     api_key_id=None,
@@ -72,6 +74,11 @@ def create_notification(
 ):
     if created_at is None:
         created_at = datetime.utcnow()
+
+    if status != 'created':
+        sent_at = sent_at or datetime.utcnow()
+        updated_at = updated_at or datetime.utcnow()
+
     data = {
         'id': uuid.uuid4(),
         'to': to_field,
@@ -91,7 +98,7 @@ def create_notification(
         'api_key_id': api_key_id,
         'key_type': key_type,
         'sent_by': sent_by,
-        'updated_at': None,
+        'updated_at': updated_at,
         'client_reference': client_reference,
         'job_row_number': job_row_number
     }

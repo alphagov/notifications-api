@@ -110,11 +110,11 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
 
 @transactional
 @version_class(Service)
-def dao_create_service(service, user):
+def dao_create_service(service, user, service_id=None):
     from app.dao.permissions_dao import permission_dao
     service.users.append(user)
     permission_dao.add_default_service_permissions_for_user(user, service)
-    service.id = uuid.uuid4()  # must be set now so version history model can use same id
+    service.id = service_id or uuid.uuid4()  # must be set now so version history model can use same id
     service.active = True
     service.research_mode = False
     db.session.add(service)

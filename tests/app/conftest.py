@@ -117,13 +117,15 @@ def sample_sms_code(notify_db,
 
 
 @pytest.fixture(scope='function')
-def sample_service(notify_db,
-                   notify_db_session,
-                   service_name="Sample service",
-                   user=None,
-                   restricted=False,
-                   limit=1000,
-                   email_from=None):
+def sample_service(
+    notify_db,
+    notify_db_session,
+    service_name="Sample service",
+    user=None,
+    restricted=False,
+    limit=1000,
+    email_from=None
+):
     if user is None:
         user = create_user()
     if email_from is None:
@@ -146,17 +148,19 @@ def sample_service(notify_db,
 
 
 @pytest.fixture(scope='function')
-def sample_template(notify_db,
-                    notify_db_session,
-                    template_name="Template Name",
-                    template_type="sms",
-                    content="This is a template:\nwith a newline",
-                    archived=False,
-                    subject_line='Subject',
-                    user=None,
-                    service=None,
-                    created_by=None,
-                    process_type='normal'):
+def sample_template(
+    notify_db,
+    notify_db_session,
+    template_name="Template Name",
+    template_type="sms",
+    content="This is a template:\nwith a newline",
+    archived=False,
+    subject_line='Subject',
+    user=None,
+    service=None,
+    created_by=None,
+    process_type='normal'
+):
     if user is None:
         user = create_user()
     if service is None:
@@ -421,23 +425,25 @@ def sample_notification_with_job(
 
 
 @pytest.fixture(scope='function')
-def sample_notification(notify_db,
-                        notify_db_session,
-                        service=None,
-                        template=None,
-                        job=None,
-                        job_row_number=None,
-                        to_field=None,
-                        status='created',
-                        reference=None,
-                        created_at=None,
-                        sent_at=None,
-                        billable_units=1,
-                        personalisation=None,
-                        api_key_id=None,
-                        key_type=KEY_TYPE_NORMAL,
-                        sent_by=None,
-                        client_reference=None):
+def sample_notification(
+    notify_db,
+    notify_db_session,
+    service=None,
+    template=None,
+    job=None,
+    job_row_number=None,
+    to_field=None,
+    status='created',
+    reference=None,
+    created_at=None,
+    sent_at=None,
+    billable_units=1,
+    personalisation=None,
+    api_key_id=None,
+    key_type=KEY_TYPE_NORMAL,
+    sent_by=None,
+    client_reference=None
+):
     if created_at is None:
         created_at = datetime.utcnow()
     if service is None:
