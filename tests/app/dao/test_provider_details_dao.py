@@ -19,7 +19,7 @@ from app.dao.provider_details_dao import (
 )
 
 
-def set_primary_sms_provider(identifier='mmg'):
+def set_primary_sms_provider(restore_provider_details, identifier='mmg'):
     primary_provider = get_provider_details_by_identifier(identifier)
     secondary_provider = get_alternative_sms_provider(identifier)
 
@@ -153,22 +153,28 @@ def test_toggle_sms_provider_switches_provider(
 ):
     dao_toggle_sms_provider(current_sms_provider.identifier)
     new_provider = get_current_provider('sms')
-    assert new_provider.identifier != current_sms_provider.identifier
-    assert new_provider.priority < current_sms_provider.priority
+
+    old_starting_provider = get_provider_details_by_identifier(current_sms_provider.identifier)
+
+    assert new_provider.identifier != old_starting_provider.identifier
+    assert new_provider.priority < old_starting_provider.priority
 
 
 def test_toggle_sms_provider_switches_when_provider_priorities_are_equal(
-    restore_provider_details,
-    current_sms_provider
+    restore_provider_details
 ):
-    new_provider = get_alternative_sms_provider(current_sms_provider.identifier)
-    current_sms_provider.priority = new_provider.priority
-    dao_update_provider_details(current_sms_provider)
+    current_provider = get_current_provider('sms')
+    new_provider = get_alternative_sms_provider(current_provider.identifier)
 
-    dao_toggle_sms_provider(current_sms_provider.identifier)
+    current_provider.priority = new_provider.priority
+    dao_update_provider_details(current_provider)
 
-    assert new_provider.identifier != current_sms_provider.identifier
-    assert new_provider.priority < current_sms_provider.priority
+    dao_toggle_sms_provider(current_provider.identifier)
+
+    old_starting_provider = get_provider_details_by_identifier(current_provider.identifier)
+
+    assert new_provider.identifier != old_starting_provider.identifier
+    assert new_provider.priority < old_starting_provider.priority
 
 
 def test_toggle_sms_provider_updates_provider_history(

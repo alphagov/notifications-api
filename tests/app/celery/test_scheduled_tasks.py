@@ -60,9 +60,10 @@ def _create_slow_delivery_notification(provider='mmg'):
 
 
 @pytest.fixture(scope='function')
-def set_provider_updated_at(current_sms_provider):
-    current_sms_provider.updated_at = datetime.utcnow() - timedelta(minutes=30)
-    dao_update_provider_details(current_sms_provider)
+def prepare_current_provider(restore_provider_details):
+    initial_provider = get_current_provider('sms')
+    initial_provider.updated_at = datetime.utcnow() - timedelta(minutes=30)
+    dao_update_provider_details(initial_provider)
 
 
 def test_should_have_decorated_tasks_functions():
@@ -297,7 +298,7 @@ def test_switch_current_sms_provider_on_slow_delivery_does_not_run_if_config_uns
 def test_switch_providers_on_slow_delivery_runs_if_config_set(
     notify_api,
     mocker,
-    set_provider_updated_at
+    prepare_current_provider
 ):
     get_notifications_mock = mocker.patch(
         'app.celery.scheduled_tasks.is_delivery_slow_for_provider',
@@ -315,29 +316,29 @@ def test_switch_providers_on_slow_delivery_runs_if_config_set(
 
 def test_switch_providers_triggers_on_slow_notification_delivery(
     notify_api,
-    restore_provider_details,
-    current_sms_provider,
-    set_provider_updated_at
+    prepare_current_provider
 ):
+    starting_provider = get_current_provider('sms')
+
     with set_config_values(notify_api, {
         'FUNCTIONAL_TEST_PROVIDER_SERVICE_ID': '7954469d-8c6d-43dc-b8f7-86be2d69f5f3',
         'FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID': '331a63e6-f1aa-4588-ad3f-96c268788ae7'
     }):
-        _create_slow_delivery_notification(current_sms_provider.identifier)
-        _create_slow_delivery_notification(current_sms_provider.identifier)
+        _create_slow_delivery_notification(starting_provider.identifier)
+        _create_slow_delivery_notification(starting_provider.identifier)
         switch_current_sms_provider_on_slow_delivery()
 
     new_provider = get_current_provider('sms')
-    assert new_provider.identifier != current_sms_provider.identifier
-    assert new_provider.priority < current_sms_provider.priority
+    assert new_provider.identifier != starting_provider.identifier
+    assert new_provider.priority < starting_provider.priority
 
 
 def test_switch_providers_on_slow_delivery_does_not_switch_if_already_switched(
     notify_api,
-    restore_provider_details,
-    current_sms_provider,
-    set_provider_updated_at
+    prepare_current_provider
 ):
+    starting_provider = get_current_provider('sms')
+
     with set_config_values(notify_api, {
         'FUNCTIONAL_TEST_PROVIDER_SERVICE_ID': '7954469d-8c6d-43dc-b8f7-86be2d69f5f3',
         'FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID': '331a63e6-f1aa-4588-ad3f-96c268788ae7'
@@ -349,15 +350,13 @@ def test_switch_providers_on_slow_delivery_does_not_switch_if_already_switched(
         switch_current_sms_provider_on_slow_delivery()
 
     new_provider = get_current_provider('sms')
-    assert new_provider.identifier != current_sms_provider.identifier
-    assert new_provider.priority < current_sms_provider.priority
+    assert new_provider.identifier != starting_provider.identifier
+    assert new_provider.priority < starting_provider.priority
 
 
 def test_switch_providers_on_slow_delivery_does_not_switch_based_on_older_notifications(
     notify_api,
-    restore_provider_details,
-    current_sms_provider,
-    set_provider_updated_at
+    prepare_current_provider
 ):
     """
     Assume we have three slow delivery notifications for the current provider x. This triggers
@@ -368,24 +367,29 @@ def test_switch_providers_on_slow_delivery_does_not_switch_based_on_older_notifi
     based on these as they are old. We only want to look for slow notifications after the point at
     which we switched back to provider x.
     """
+    starting_provider = get_current_provider('sms')
     with set_config_values(notify_api, {
         'FUNCTIONAL_TEST_PROVIDER_SERVICE_ID': '7954469d-8c6d-43dc-b8f7-86be2d69f5f3',
         'FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID': '331a63e6-f1aa-4588-ad3f-96c268788ae7'
     }):
         # Provider x -> y
-        _create_slow_delivery_notification(current_sms_provider.identifier)
-        _create_slow_delivery_notification(current_sms_provider.identifier)
-        _create_slow_delivery_notification(current_sms_provider.identifier)
+        _create_slow_delivery_notification(starting_provider.identifier)
+        _create_slow_delivery_notification(starting_provider.identifier)
+        _create_slow_delivery_notification(starting_provider.identifier)
         switch_current_sms_provider_on_slow_delivery()
 
         current_provider = get_current_provider('sms')
+        assert current_provider.identifier != starting_provider.identifier
 
         # Provider y -> x
         _create_slow_delivery_notification(current_provider.identifier)
         _create_slow_delivery_notification(current_provider.identifier)
         switch_current_sms_provider_on_slow_delivery()
 
+        new_provider = get_current_provider('sms')
+        assert new_provider.identifier != current_provider.identifier
+
         # Expect to stay on provider x
         switch_current_sms_provider_on_slow_delivery()
         current_provider = get_current_provider('sms')
-        assert current_sms_provider.identifier == current_provider.identifier
+        assert starting_provider.identifier == current_provider.identifier
