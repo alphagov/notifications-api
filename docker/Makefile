@@ -8,8 +8,8 @@ help:
 
 .PHONY: build
 build:
+	docker pull `grep "FROM " Dockerfile | cut -d ' ' -f 2` || true
 	docker build \
-		--pull \
 		--build-arg HTTP_PROXY="${HTTP_PROXY}" \
 		--build-arg HTTPS_PROXY="${HTTP_PROXY}" \
 		--build-arg NO_PROXY="${NO_PROXY}" \
