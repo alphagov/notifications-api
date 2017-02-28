@@ -99,8 +99,18 @@ build-codedeploy-artifact: ## Build the deploy artifact for CodeDeploy
 
 .PHONY: upload-codedeploy-artifact ## Upload the deploy artifact for CodeDeploy
 upload-codedeploy-artifact: check-env-vars
+	$(if ${DEPLOY_BUILD_NUMBER},,$(error Must specify DEPLOY_BUILD_NUMBER))
 	aws s3 cp --region eu-west-1 --sse AES256 target/notifications-api.zip s3://${DNS_NAME}-codedeploy/notifications-api-${DEPLOY_BUILD_NUMBER}.zip
 	aws s3 cp --region eu-west-1 --sse AES256 target/notifications-api-db-migration.zip s3://${DNS_NAME}-codedeploy/notifications-api-db-migration-${DEPLOY_BUILD_NUMBER}.zip
+
+.PHONY: build-paas-artifact
+build-paas-artifact: build-codedeploy-artifact ## Build the deploy artifact for PaaS
+
+.PHONY: upload-paas-artifact ## Upload the deploy artifact for PaaS
+upload-paas-artifact:
+	$(if ${DEPLOY_BUILD_NUMBER},,$(error Must specify DEPLOY_BUILD_NUMBER))
+	$(if ${JENKINS_S3_BUCKET},,$(error Must specify JENKINS_S3_BUCKET))
+	aws s3 cp --region eu-west-1 --sse AES256 target/notifications-api.zip s3://${JENKINS_S3_BUCKET}/build/notifications-api/${DEPLOY_BUILD_NUMBER}.zip
 
 .PHONY: test
 test: venv generate-version-file ## Run tests
