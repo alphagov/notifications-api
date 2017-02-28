@@ -505,20 +505,6 @@ def test_update_user_password_saves_correctly(client, sample_service):
     assert resp.status_code == 204
 
 
-def test_update_user_password_resets_failed_login_count(client, sample_service):
-    user = sample_service.users[0]
-    user.failed_login_count = 1
-
-    resp = client.post(
-        url_for('user.update_password', user_id=user.id),
-        data=json.dumps({'_password': 'foo'}),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()]
-    )
-
-    assert resp.status_code == 200
-    assert user.failed_login_count == 0
-
-
 def test_update_user_resets_failed_login_count_if_updating_password(client, sample_service):
     user = sample_service.users[0]
     user.failed_login_count = 1

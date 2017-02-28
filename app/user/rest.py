@@ -84,6 +84,13 @@ def update_user_attribute(user_id):
     return jsonify(data=user_schema.dump(user_to_update).data), 200
 
 
+@user.route('/<uuid:user_id>/reset-failed-login-count', methods=['POST'])
+def user_reset_failed_login_count(user_id):
+    user_to_update = get_user_by_id(user_id=user_id)
+    reset_failed_login_count(user_to_update)
+    return jsonify(data=user_schema.dump(user_to_update).data), 200
+
+
 @user.route('/<uuid:user_id>/verify/password', methods=['POST'])
 def verify_user_password(user_id):
     user_to_verify = get_user_by_id(user_id=user_id)
@@ -125,6 +132,8 @@ def verify_user_code(user_id):
         raise InvalidRequest(errors, status_code=400)
 
     code = get_user_code(user_to_verify, verify_code, code_type)
+    if user_to_verify.failed_login_count >= current_app.config.get('MAX_VERIFY_CODE_COUNT'):
+        raise InvalidRequest("Code not found", status_code=404)
     if not code:
         increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code not found", status_code=404)
@@ -135,6 +144,7 @@ def verify_user_code(user_id):
     if code_type == 'sms':
         user_to_verify.current_session_id = str(uuid.uuid4())
         user_to_verify.logged_in_at = datetime.utcnow()
+        user_to_verify.failed_login_count = 0
         save_model_user(user_to_verify)
 
     use_user_code(code.id)
@@ -330,8 +340,6 @@ def update_password(user_id):
     update_dct, errors = user_update_password_schema_load_json.load(req_json)
     if errors:
         raise InvalidRequest(errors, status_code=400)
-    print("reset login count")
-    reset_failed_login_count(user)
     update_user_password(user, pwd)
     return jsonify(data=user_schema.dump(user).data), 200
 
