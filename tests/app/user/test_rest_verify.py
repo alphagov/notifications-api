@@ -313,7 +313,7 @@ def test_send_email_verification_returns_404_for_bad_input_data(client, notify_d
     assert mocked.call_count == 0
 
 
-def test_user_verify_user_code_valid_code_resets_failed_login_count(client, sample_sms_code):
+def test_user_verify_user_code_valid_code_does_not_reset_failed_login_count(client, sample_sms_code):
     sample_sms_code.user.failed_login_count = 1
     data = json.dumps({
         'code_type': sample_sms_code.code_type,
@@ -323,5 +323,5 @@ def test_user_verify_user_code_valid_code_resets_failed_login_count(client, samp
         data=data,
         headers=[('Content-Type', 'application/json'), create_authorization_header()])
     assert resp.status_code == 204
-    assert sample_sms_code.user.failed_login_count == 0
+    assert sample_sms_code.user.failed_login_count == 1
     assert sample_sms_code.code_used

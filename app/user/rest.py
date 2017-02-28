@@ -138,7 +138,6 @@ def verify_user_code(user_id):
         save_model_user(user_to_verify)
 
     use_user_code(code.id)
-    reset_failed_login_count(user_to_verify)
     return jsonify({}), 204
 
 
@@ -331,7 +330,7 @@ def update_password(user_id):
     update_dct, errors = user_update_password_schema_load_json.load(req_json)
     if errors:
         raise InvalidRequest(errors, status_code=400)
-
+    print("reset login count")
     reset_failed_login_count(user)
     update_user_password(user, pwd)
     return jsonify(data=user_schema.dump(user).data), 200
