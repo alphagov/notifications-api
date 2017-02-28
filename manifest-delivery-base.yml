@@ -11,7 +11,7 @@ services:
   - firetext
   - hosted-graphite
 instances: 1
-memory: 256M
+memory: 512M
 
 applications:
   - name: notify-delivery-celery-beat
