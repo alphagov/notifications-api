@@ -2,6 +2,8 @@
 
 set -e -o pipefail
 
+TERMINATE_TIMEOUT=30
+
 function check_params {
   if [ -z "${NOTIFY_APP_NAME}" ]; then
     echo "You must set NOTIFY_APP_NAME"
@@ -38,11 +40,18 @@ EOF
 function on_exit {
   echo "Terminating application process with pid ${APP_PID}"
   kill ${APP_PID} || true
+  n=0
   while (kill -0 ${APP_PID} 2&>/dev/null); do
     echo "Application is still running.."
     sleep 1
+    let n=n+1
+    if [ "$n" -ge "$TERMINATE_TIMEOUT" ]; then
+      echo "Timeout reached, killing process with pid ${APP_PID}"
+      kill -9 ${APP_PID} || true
+      break
+    fi
   done
-  echo "Application process exited, waiting 10 seconds"
+  echo "Application process terminated, waiting 10 seconds"
   sleep 10
   echo "Terminating remaining subprocesses.."
   kill 0
