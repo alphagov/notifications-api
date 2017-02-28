@@ -313,6 +313,20 @@ def test_send_email_verification_returns_404_for_bad_input_data(client, notify_d
     assert mocked.call_count == 0
 
 
+def test_user_verify_user_code_returns_404_when_code_is_right_but_user_account_is_locked(client, sample_sms_code):
+    sample_sms_code.user.failed_login_count = 10
+    data = json.dumps({
+        'code_type': sample_sms_code.code_type,
+        'code': sample_sms_code.txt_code})
+    resp = client.post(
+        url_for('user.verify_user_code', user_id=sample_sms_code.user.id),
+        data=data,
+        headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    assert resp.status_code == 404
+    assert sample_sms_code.user.failed_login_count == 10
+    assert not sample_sms_code.code_used
+
+
 def test_user_verify_user_code_valid_code_resets_failed_login_count(client, sample_sms_code):
     sample_sms_code.user.failed_login_count = 1
     data = json.dumps({
@@ -325,3 +339,19 @@ def test_user_verify_user_code_valid_code_resets_failed_login_count(client, samp
     assert resp.status_code == 204
     assert sample_sms_code.user.failed_login_count == 0
     assert sample_sms_code.code_used
+
+
+def test_user_reset_failed_login_count_returns_200(client, sample_user):
+    sample_user.failed_login_count = 1
+    resp = client.post(url_for("user.user_reset_failed_login_count", user_id=sample_user.id),
+                       data={},
+                       headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    assert resp.status_code == 200
+    assert sample_user.failed_login_count == 0
+
+
+def test_reset_failed_login_count_returns_404_when_user_does_not_exist(client):
+    resp = client.post(url_for("user.user_reset_failed_login_count", user_id=uuid.uuid4()),
+                       data={},
+                       headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    assert resp.status_code == 404
