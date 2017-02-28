@@ -22,6 +22,8 @@ DOCKER_CONTAINER_PREFIX = ${USER}-${BUILD_TAG}
 CF_API ?= api.cloud.service.gov.uk
 CF_ORG ?= govuk-notify
 CF_SPACE ?= ${DEPLOY_ENV}
+CF_HOME ?= ${HOME}
+$(eval export CF_HOME)
 
 CF_MANIFEST_FILE = manifest-$(firstword $(subst -, ,$(subst notify-,,${CF_APP})))-${CF_SPACE}.yml
 
@@ -285,6 +287,10 @@ cf-deploy-api-db-migration:
 	cf push notify-api-db-migration -f manifest-api-${CF_SPACE}.yml
 	cf run-task notify-api-db-migration "scripts/run_app_paas.sh python db.py db upgrade" --name api_db_migration
 
+.PHONY: cf-check-api-db-migration-task
+cf-check-api-db-migration-task: ## Get the status for the last notify-api-db-migration task
+	@cf curl /v3/apps/`cf app --guid notify-api-db-migration`/tasks?order_by=-created_at | jq -r ".resources[0].state"
+
 .PHONY: cf-rollback
 cf-rollback: ## Rollbacks the app to the previous release
 	$(if ${CF_APP},,$(error Must specify CF_APP))
@@ -296,41 +302,3 @@ cf-rollback: ## Rollbacks the app to the previous release
 cf-push:
 	$(if ${CF_APP},,$(error Must specify CF_APP))
 	cf push ${CF_APP} -f ${CF_MANIFEST_FILE}
-
-define cf_deploy_with_docker
-	@docker run -i${DOCKER_TTY} --rm \
-		--name "${DOCKER_CONTAINER_PREFIX}-${1}" \
-		-v "`pwd`:/var/project" \
-		-e UID=$(shell id -u) \
-		-e GID=$(shell id -g) \
-		-e http_proxy="${HTTP_PROXY}" \
-		-e HTTP_PROXY="${HTTP_PROXY}" \
-		-e https_proxy="${HTTPS_PROXY}" \
-		-e HTTPS_PROXY="${HTTPS_PROXY}" \
-		-e NO_PROXY="${NO_PROXY}" \
-		-e CF_API="${CF_API}" \
-		-e CF_USERNAME="${CF_USERNAME}" \
-		-e CF_PASSWORD="${CF_PASSWORD}" \
-		-e CF_ORG="${CF_ORG}" \
-		-e CF_SPACE="${CF_SPACE}" \
-		-e CF_APP="${CF_APP}" \
-		${DOCKER_BUILDER_IMAGE_NAME} \
-		${2}
-endef
-
-.PHONY: cf-deploy-with-docker
-cf-deploy-with-docker: prepare-docker-build-image ## Deploys the API to Cloud Foundry from a Docker container
-	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
-	$(if ${CF_APP},,$(error Must specify CF_APP))
-	$(call cf_deploy_with_docker,cf-deploy-${$CF_SPACE}-${CF_APP},make cf-login cf-deploy)
-
-.PHONY: cf-deploy-api-db-migration-with-docker
-cf-deploy-api-db-migration-with-docker: prepare-docker-build-image ## Deploys the API db migration to Cloud Foundry from a Docker container
-	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
-	$(call cf_deploy_with_docker,cf-deploy-${$CF_SPACE}-api-db-migration,make cf-login cf-deploy-api-db-migration)
-
-.PHONY: cf-rollback-with-docker
-cf-rollback-with-docker: prepare-docker-build-image ## Deploys the API to Cloud Foundry from a Docker container
-	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
-	$(if ${CF_APP},,$(error Must specify CF_APP))
-	$(call cf_deploy_with_docker,cf-rollback-${$CF_SPACE}-${CF_APP},make cf-login cf-rollback)
