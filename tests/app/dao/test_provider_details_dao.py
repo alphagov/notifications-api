@@ -31,7 +31,7 @@ def set_primary_sms_provider(identifier):
 
 
 def test_can_get_all_providers(restore_provider_details):
-    assert len(get_provider_details()) == 4
+    assert len(get_provider_details()) == 5
 
 
 def test_can_get_sms_providers(restore_provider_details):

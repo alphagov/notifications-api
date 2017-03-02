@@ -17,10 +17,10 @@ from alembic import op
 def upgrade():
     provider_id = str(uuid.uuid4())
     op.execute(
-        "INSERT INTO provider_details (id, display_name, identifier, priority, notification_type, active, version) values ('{}', 'DVLA', 'dvla', 10, 'letter', true, 1)".format(provider_id)
+        "INSERT INTO provider_details (id, display_name, identifier, priority, notification_type, active, version) values ('{}', 'DVLA', 'dvla', 50, 'letter', true, 1)".format(provider_id)
     )
     op.execute(
-        "INSERT INTO provider_details_history (id, display_name, identifier, priority, notification_type, active, version) values ('{}', 'DVLA', 'mmg', 10, 'sms', true, 1)".format(provider_id)
+        "INSERT INTO provider_details_history (id, display_name, identifier, priority, notification_type, active, version) values ('{}', 'DVLA', 'dvla', 50, 'letter', true, 1)".format(provider_id)
     )
     op.execute("INSERT INTO provider_rates (id, valid_from, rate, provider_id) VALUES ('{}', '{}', 1.0, '{}')".format(uuid.uuid4(), datetime.utcnow(), provider_id))
 
