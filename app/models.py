@@ -391,6 +391,8 @@ class ProviderDetails(db.Model):
     active = db.Column(db.Boolean, default=False, nullable=False)
     version = db.Column(db.Integer, default=1, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=True)
+    created_by = db.relationship('User')
 
 
 class ProviderDetailsHistory(db.Model, HistoryModel):
@@ -404,6 +406,8 @@ class ProviderDetailsHistory(db.Model, HistoryModel):
     active = db.Column(db.Boolean, nullable=False)
     version = db.Column(db.Integer, primary_key=True, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=True)
+    created_by = db.relationship('User')
 
 
 JOB_STATUS_PENDING = 'pending'
