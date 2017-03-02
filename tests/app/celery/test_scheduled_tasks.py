@@ -316,8 +316,11 @@ def test_switch_providers_on_slow_delivery_runs_if_config_set(
 
 def test_switch_providers_triggers_on_slow_notification_delivery(
     notify_api,
-    prepare_current_provider
+    mocker,
+    prepare_current_provider,
+    sample_user
 ):
+    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
     starting_provider = get_current_provider('sms')
 
     with set_config_values(notify_api, {
@@ -335,8 +338,11 @@ def test_switch_providers_triggers_on_slow_notification_delivery(
 
 def test_switch_providers_on_slow_delivery_does_not_switch_if_already_switched(
     notify_api,
-    prepare_current_provider
+    mocker,
+    prepare_current_provider,
+    sample_user
 ):
+    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
     starting_provider = get_current_provider('sms')
 
     with set_config_values(notify_api, {
@@ -356,7 +362,10 @@ def test_switch_providers_on_slow_delivery_does_not_switch_if_already_switched(
 
 def test_switch_providers_on_slow_delivery_does_not_switch_based_on_older_notifications(
     notify_api,
-    prepare_current_provider
+    mocker,
+    prepare_current_provider,
+    sample_user,
+
 ):
     """
     Assume we have three slow delivery notifications for the current provider x. This triggers
@@ -367,7 +376,9 @@ def test_switch_providers_on_slow_delivery_does_not_switch_based_on_older_notifi
     based on these as they are old. We only want to look for slow notifications after the point at
     which we switched back to provider x.
     """
+    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
     starting_provider = get_current_provider('sms')
+
     with set_config_values(notify_api, {
         'FUNCTIONAL_TEST_PROVIDER_SERVICE_ID': '7954469d-8c6d-43dc-b8f7-86be2d69f5f3',
         'FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID': '331a63e6-f1aa-4588-ad3f-96c268788ae7'

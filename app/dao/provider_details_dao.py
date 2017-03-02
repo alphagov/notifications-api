@@ -1,11 +1,12 @@
 from datetime import datetime
 
-from sqlalchemy import asc
+from sqlalchemy import asc, desc
 
 from app.dao.dao_utils import transactional
 from app.provider_details.switch_providers import (
-    provider_is_already_primary_or_inactive,
-    update_provider_priorities
+    provider_is_inactive,
+    provider_is_primary,
+    switch_providers
 )
 from app.models import ProviderDetails, ProviderDetailsHistory
 from app import db
@@ -41,6 +42,14 @@ def get_current_provider(notification_type):
     ).first()
 
 
+def dao_get_provider_versions(provider_id):
+    return ProviderDetailsHistory.query.filter_by(
+        id=provider_id
+    ).order_by(
+        desc(ProviderDetailsHistory.version)
+    ).all()
+
+
 @transactional
 def dao_toggle_sms_provider(identifier):
     alternate_provider = get_alternative_sms_provider(identifier)
@@ -49,18 +58,24 @@ def dao_toggle_sms_provider(identifier):
 
 @transactional
 def dao_switch_sms_provider_to_provider_with_identifier(identifier):
-    current_provider = get_current_provider('sms')
     new_provider = get_provider_details_by_identifier(identifier)
+    if provider_is_inactive(new_provider):
+        return
 
-    if current_provider.priority == new_provider.priority:
-        # Since both priorities are equal, set the current provider
-        # to the one that we want to switch from
-        current_provider = get_alternative_sms_provider(identifier)
+    # Check first to see if there is another provider with the same priority
+    # as this needs to be updated differently
+    conflicting_provider = dao_get_sms_provider_with_equal_priority(new_provider.identifier, new_provider.priority)
+    providers_to_update = []
 
-    if not provider_is_already_primary_or_inactive(current_provider, new_provider, identifier):
-        update_provider_priorities(current_provider, new_provider)
-        dao_update_provider_details(current_provider)
-        dao_update_provider_details(new_provider)
+    if conflicting_provider:
+        providers_to_update = switch_providers(conflicting_provider, new_provider)
+    else:
+        current_provider = get_current_provider('sms')
+        if not provider_is_primary(current_provider, new_provider, identifier):
+            providers_to_update = switch_providers(current_provider, new_provider)
+
+        for provider in providers_to_update:
+            dao_update_provider_details(provider)
 
 
 def get_provider_details_by_notification_type(notification_type):
@@ -76,3 +91,16 @@ def dao_update_provider_details(provider_details):
     history = ProviderDetailsHistory.from_original(provider_details)
     db.session.add(provider_details)
     db.session.add(history)
+
+
+def dao_get_sms_provider_with_equal_priority(identifier, priority):
+    provider = db.session.query(ProviderDetails).filter(
+        ProviderDetails.identifier != identifier,
+        ProviderDetails.notification_type == 'sms',
+        ProviderDetails.priority == priority,
+        ProviderDetails.active
+    ).order_by(
+        asc(ProviderDetails.priority)
+    ).first()
+
+    return provider
