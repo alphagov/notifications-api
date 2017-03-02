@@ -155,10 +155,23 @@ class UserUpdatePasswordSchema(BaseSchema):
 
 
 class ProviderDetailsSchema(BaseSchema):
+    created_by_user = fields.Nested(
+        UserSchema,
+        attribute='created_by',
+        dump_to='created_by',
+        only=['id', 'name', 'email_address'],
+        dump_only=True
+    )
+
     class Meta:
         model = models.ProviderDetails
         exclude = ("provider_rates", "provider_stats")
         strict = True
+
+
+class ProviderDetailsHistorySchema(ProviderDetailsSchema):
+    class Meta:
+        model = models.ProviderDetailsHistory
 
 
 class ServiceSchema(BaseSchema):
@@ -605,5 +618,6 @@ template_history_schema = TemplateHistorySchema()
 event_schema = EventSchema()
 organisation_schema = OrganisationSchema()
 provider_details_schema = ProviderDetailsSchema()
+provider_details_history_schema = ProviderDetailsHistorySchema()
 day_schema = DaySchema()
 unarchived_template_schema = UnarchivedTemplateSchema()
