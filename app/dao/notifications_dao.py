@@ -233,8 +233,6 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
 
 @statsd(namespace="dao")
 def get_notification_billable_unit_count_per_month(service_id, year):
-    start, end = get_financial_year(year)
-
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
 
     notifications = db.session.query(

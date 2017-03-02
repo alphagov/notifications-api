@@ -226,9 +226,6 @@ def _stats_for_service_query(service_id):
 
 @statsd(namespace="dao")
 def dao_fetch_monthly_historical_stats_for_service(service_id, year):
-    monday_of_notification_week = func.date_trunc('week', NotificationHistory.created_at).label('week_start')
-    start, end = get_financial_year(year)
-
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
 
     rows = db.session.query(
@@ -275,10 +272,6 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
         Notification.status,
         Notification.service_id,
         func.count(Notification.id).label('count')
-    ).select_from(
-        Service
-    ).join(
-        Notification
     ).filter(
         func.date(Notification.created_at) == date.today()
     ).group_by(
@@ -302,10 +295,6 @@ def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_fro
         NotificationHistory.status,
         NotificationHistory.service_id,
         func.count(NotificationHistory.id).label('count')
-    ).select_from(
-        Service
-    ).join(
-        NotificationHistory
     ).filter(
         func.date(NotificationHistory.created_at) >= start_date,
         func.date(NotificationHistory.created_at) <= end_date
