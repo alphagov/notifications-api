@@ -10,6 +10,7 @@ services:
   - mmg
   - firetext
   - hosted-graphite
+  - redis
 instances: 1
 memory: 512M
 

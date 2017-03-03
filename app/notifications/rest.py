@@ -54,6 +54,10 @@ def process_ses_response():
     client_name = 'SES'
     try:
         ses_request = json.loads(request.data)
+
+        if 'Type' in ses_request and ses_request['Type'] == 'SubscriptionConfirmation':
+            current_app.logger.info("SNS subscription confirmation url: {}".format(ses_request['SubscribeURL']))
+
         errors = validate_callback_data(data=ses_request, fields=['Message'], client_name=client_name)
         if errors:
             raise InvalidRequest(errors, status_code=400)

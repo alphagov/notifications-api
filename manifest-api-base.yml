@@ -9,6 +9,7 @@ services:
   - mmg
   - firetext
   - hosted-graphite
+  - redis
 env:
   NOTIFY_APP_NAME: public-api
   CW_APP_NAME: api
