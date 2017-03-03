@@ -143,6 +143,7 @@ class Service(db.Model, Versioned):
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     reply_to_email_address = db.Column(db.Text, index=False, unique=False, nullable=True)
+    letter_contact_block = db.Column(db.Text, index=False, unique=False, nullable=True)
     sms_sender = db.Column(db.String(11), nullable=True)
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
     organisation = db.relationship('Organisation')
