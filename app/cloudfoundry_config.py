@@ -32,6 +32,8 @@ def set_config_env_vars(vcap_services):
             extract_mmg_config(s)
         elif s['name'] == 'firetext':
             extract_firetext_config(s)
+        elif s['name'] == 'redis':
+            extract_redis_config(s)
 
 
 def extract_notify_config(notify_config):
@@ -60,3 +62,8 @@ def extract_mmg_config(mmg_config):
 def extract_firetext_config(firetext_config):
     os.environ['FIRETEXT_API_KEY'] = firetext_config['credentials']['api_key']
     os.environ['LOADTESTING_API_KEY'] = firetext_config['credentials']['loadtesting_api_key']
+
+
+def extract_redis_config(redis_config):
+    os.environ['REDIS_ENABLED'] = redis_config['credentials']['redis_enabled']
+    os.environ['REDIS_URL'] = redis_config['credentials']['redis_url']

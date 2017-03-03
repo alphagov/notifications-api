@@ -76,13 +76,25 @@ def postgres_config():
 
 
 @pytest.fixture
+def redis_config():
+    return {
+        'name': 'redis',
+        'credentials': {
+            'redis_enabled': '1',
+            'redis_url': 'redis url'
+        }
+    }
+
+
+@pytest.fixture
 def cloudfoundry_config(
         postgres_config,
         notify_config,
         aws_config,
         hosted_graphite_config,
         mmg_config,
-        firetext_config
+        firetext_config,
+        redis_config
 ):
     return {
         'postgres': postgres_config,
@@ -91,7 +103,8 @@ def cloudfoundry_config(
             aws_config,
             hosted_graphite_config,
             mmg_config,
-            firetext_config
+            firetext_config,
+            redis_config
         ]
     }
 
@@ -165,3 +178,11 @@ def test_firetext_config():
 
     assert os.environ['FIRETEXT_API_KEY'] == 'firetext api key'
     assert os.environ['LOADTESTING_API_KEY'] == 'loadtesting api key'
+
+
+@pytest.mark.usefixtures('os_environ', 'cloudfoundry_environ')
+def test_redis_config():
+    extract_cloudfoundry_config()
+
+    assert os.environ['REDIS_ENABLED'] == '1'
+    assert os.environ['REDIS_URL'] == 'redis url'
