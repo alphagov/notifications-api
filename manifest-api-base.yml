@@ -14,7 +14,7 @@ env:
   NOTIFY_APP_NAME: public-api
   CW_APP_NAME: api
 instances: 1
-memory: 512M
+memory: 1G
 
 applications:
   - name: notify-api

@@ -12,7 +12,7 @@ services:
   - hosted-graphite
   - redis
 instances: 1
-memory: 512M
+memory: 1G
 
 applications:
   - name: notify-delivery-celery-beat
