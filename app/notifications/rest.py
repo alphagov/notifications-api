@@ -49,6 +49,15 @@ from app.errors import (
 register_errors(notifications)
 
 
+@notifications.route('/notifications/sms/receive/mmg', methods=['POST'])
+def receive_mmg_sms():
+    post_data = request.get_json()
+    post_data.pop('MSISDN', None)
+    current_app.logger.info("POST form data: {}".format(post_data))
+
+    return "RECEIVED"
+
+
 @notifications.route('/notifications/email/ses', methods=['POST'])
 def process_ses_response():
     client_name = 'SES'
