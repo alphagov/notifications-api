@@ -913,14 +913,12 @@ def test_create_template_raises_invalid_request_exception_with_missing_personali
     assert {'template': ['Missing personalisation:  Name']} == e.value.message
 
 
-def test_create_template_raises_invalid_request_exception_with_too_much_personalisation_data(
+def test_create_template_doesnt_raise_with_too_much_personalisation(
         sample_template_with_placeholders
 ):
     from app.notifications.rest import create_template_object_for_notification
     template = Template.query.get(sample_template_with_placeholders.id)
-    with pytest.raises(InvalidRequest) as e:
-        create_template_object_for_notification(template, {'name': 'Jo', 'extra': 'stuff'})
-        assert {'template': ['Personalisation not needed for template: foo']} in e.value.message
+    create_template_object_for_notification(template, {'name': 'Jo', 'extra': 'stuff'})
 
 
 @pytest.mark.parametrize(

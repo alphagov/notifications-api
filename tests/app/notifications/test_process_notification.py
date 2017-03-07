@@ -36,11 +36,9 @@ def test_create_content_for_notification_fails_with_missing_personalisation(samp
         create_content_for_notification(template, None)
 
 
-def test_create_content_for_notification_fails_with_additional_personalisation(sample_template_with_placeholders):
+def test_create_content_for_notification_allows_additional_personalisation(sample_template_with_placeholders):
     template = Template.query.get(sample_template_with_placeholders.id)
-    with pytest.raises(BadRequestError) as e:
-        create_content_for_notification(template, {'name': 'Bobby', 'Additional placeholder': 'Data'})
-    assert e.value.message == 'Template personalisation not needed for template: Additional placeholder'
+    create_content_for_notification(template, {'name': 'Bobby', 'Additional placeholder': 'Data'})
 
 
 @freeze_time("2016-01-01 11:09:00.061258")

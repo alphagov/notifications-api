@@ -101,13 +101,6 @@ def preview_template_by_id_and_service_id(service_id, template_id):
             ]}, status_code=400
         )
 
-    if template_object.additional_data:
-        raise InvalidRequest(
-            {'template': [
-                'Personalisation not needed for template: {}'.format(", ".join(template_object.additional_data))
-            ]}, status_code=400
-        )
-
     data['subject'], data['content'] = template_object.subject, str(template_object)
 
     return jsonify(data)
