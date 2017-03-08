@@ -51,7 +51,7 @@ def create_template(
     if template_type != SMS_TYPE:
         data['subject'] = 'Template subject'
     template = Template(**data)
-    dao_create_template(template, template_id)
+    dao_create_template(template)
     return template
 
 
