@@ -53,7 +53,7 @@ register_errors(notifications)
 def receive_mmg_sms():
     post_data = request.get_json()
     post_data.pop('MSISDN', None)
-    current_app.logger.info("POST form data: {}".format(post_data))
+    current_app.logger.info("Recieve notification form data: {}".format(post_data))
 
     return "RECEIVED"
 
