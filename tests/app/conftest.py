@@ -9,7 +9,6 @@ from flask import current_app
 
 from app import db
 from app.models import (
-    User,
     Service,
     Template,
     ApiKey,
