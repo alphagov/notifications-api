@@ -42,15 +42,15 @@ def get_provider_versions(provider_details_id):
 @provider_details.route('/<uuid:provider_details_id>', methods=['POST'])
 def update_provider_details(provider_details_id):
     valid_keys = {'priority', 'created_by', 'active'}
-    invalid_keys = request.get_json().keys() - valid_keys
+    req_json = request.get_json()
 
+    invalid_keys = req_json.keys() - valid_keys
     if invalid_keys:
         message = "Not permitted to be updated"
         errors = {key: [message] for key in invalid_keys}
         raise InvalidRequest(errors, status_code=400)
 
     provider = get_provider_details_by_id(provider_details_id)
-    req_json = request.get_json()
 
     # Handle created_by differently due to how history entry is created
     if 'created_by' in req_json:
