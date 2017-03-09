@@ -31,6 +31,7 @@ from app.dao.services_dao import (
     dao_suspend_service,
     dao_resume_service,
     dao_fetch_monthly_historical_stats_for_service,
+    dao_fetch_monthly_historical_stats_by_template_for_service
 )
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
@@ -399,3 +400,15 @@ def get_billable_unit_count(service_id):
         ))
     except TypeError:
         return jsonify(result='error', message='No valid year provided'), 400
+
+
+@service_blueprint.route('/<uuid:service_id>/notifications/templates/monthly', methods=['GET'])
+def get_monthly_template_stats(service_id):
+    service = dao_fetch_service_by_id(service_id)
+    try:
+        return jsonify(data=dao_fetch_monthly_historical_stats_by_template_for_service(
+            service.id,
+            int(request.args.get('year', 'NaN'))
+        ))
+    except ValueError:
+        raise InvalidRequest('Year must be a number', status_code=400)
