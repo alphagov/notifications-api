@@ -155,13 +155,7 @@ class UserUpdatePasswordSchema(BaseSchema):
 
 
 class ProviderDetailsSchema(BaseSchema):
-    created_by_user = fields.Nested(
-        UserSchema,
-        attribute='created_by',
-        dump_to='created_by',
-        only=['id', 'name', 'email_address'],
-        dump_only=True
-    )
+    created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
 
     class Meta:
         model = models.ProviderDetails
@@ -169,9 +163,13 @@ class ProviderDetailsSchema(BaseSchema):
         strict = True
 
 
-class ProviderDetailsHistorySchema(ProviderDetailsSchema):
+class ProviderDetailsHistorySchema(BaseSchema):
+    created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
+
     class Meta:
         model = models.ProviderDetailsHistory
+        exclude = ("provider_rates", "provider_stats")
+        strict = True
 
 
 class ServiceSchema(BaseSchema):

@@ -1,6 +1,10 @@
 import pytest
 
 from marshmallow import ValidationError
+from sqlalchemy import desc
+
+from app.dao.provider_details_dao import dao_update_provider_details
+from app.models import ProviderDetailsHistory
 
 
 def test_job_schema_doesnt_return_notifications(sample_notification_with_job):
@@ -75,3 +79,39 @@ def test_user_update_schema_rejects_disallowed_attribute_keys(user_attribute):
         data, errors = user_update_schema_load_json.load(update_dict)
 
     assert excinfo.value.messages['_schema'][0] == 'Unknown field name {}'.format(user_attribute)
+
+
+def test_provider_details_schema_returns_user_details(
+    mocker,
+    sample_user,
+    current_sms_provider
+):
+    from app.schemas import provider_details_schema
+    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
+    current_sms_provider.created_by = sample_user
+    data = provider_details_schema.dump(current_sms_provider).data
+
+    assert sorted(data['created_by'].keys()) == sorted(['id', 'email_address', 'name'])
+
+
+def test_provider_details_history_schema_returns_user_details(
+    mocker,
+    sample_user,
+    restore_provider_details,
+    current_sms_provider
+):
+    from app.schemas import provider_details_schema
+    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
+    current_sms_provider.created_by_id = sample_user.id
+    data = provider_details_schema.dump(current_sms_provider).data
+
+    dao_update_provider_details(current_sms_provider)
+
+    current_sms_provider_in_history = ProviderDetailsHistory.query.filter(
+        ProviderDetailsHistory.id == current_sms_provider.id
+    ).order_by(
+        desc(ProviderDetailsHistory.version)
+    ).first()
+    data = provider_details_schema.dump(current_sms_provider_in_history).data
+
+    assert sorted(data['created_by'].keys()) == sorted(['id', 'email_address', 'name'])
