@@ -374,8 +374,9 @@ def test_should_get_a_single_template(
             'about your ((thing))',
             'hello ((name)) we’ve received your ((thing))',
             '/service/{}/template/{}/preview?name=Amala&thing=document&foo=bar',
-            None, None,
-            'Personalisation not needed for template: foo'
+            'about your document',
+            'hello Amala we’ve received your document',
+            None,
         )
     ]
 )

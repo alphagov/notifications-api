@@ -309,11 +309,6 @@ def create_template_object_for_notification(template, personalisation):
         errors = {'template': [message]}
         raise InvalidRequest(errors, status_code=400)
 
-    if template_object.additional_data:
-        message = 'Personalisation not needed for template: {}'.format(", ".join(template_object.additional_data))
-        errors = {'template': [message]}
-        raise InvalidRequest(errors, status_code=400)
-
     if (
         template_object.template_type == SMS_TYPE and
         template_object.content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
