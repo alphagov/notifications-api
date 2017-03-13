@@ -6,4 +6,4 @@ routes:
   - route: notify-api-production.cloudapps.digital
   - route: api-paas.notifications.service.gov.uk
 instances: 2
-memory: 2G
+memory: 1G

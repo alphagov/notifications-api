@@ -6,4 +6,4 @@ routes:
   - route: notify-api-staging.cloudapps.digital
   - route: api-paas.staging-notify.works
 instances: 2
-memory: 2G
+memory: 1G

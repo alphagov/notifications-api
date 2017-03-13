@@ -3,4 +3,4 @@
 inherit: manifest-delivery-base.yml
 
 instances: 2
-memory: 2G
+memory: 1G
