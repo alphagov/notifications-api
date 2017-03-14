@@ -12,8 +12,8 @@ from app.dao.jobs_dao import (
     dao_set_scheduled_jobs_to_pending,
     dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job,
-    dao_get_jobs_older_than
-)
+    dao_get_jobs_older_than,
+    are_all_notifications_created_for_job)
 from app.models import Job
 
 from tests.app.conftest import sample_notification as create_notification
@@ -314,3 +314,20 @@ def test_get_jobs_for_service_doesnt_return_test_messages(notify_db, notify_db_s
     jobs = dao_get_jobs_by_service_id(sample_job.service_id).items
 
     assert jobs == [sample_job]
+
+
+def test_are_all_notifications_created_for_job_returns_true(notify_db, notify_db_session, sample_job):
+    create_notification(notify_db=notify_db, notify_db_session=notify_db_session, job=sample_job)
+    job_is_complete = are_all_notifications_created_for_job(sample_job.id)
+    assert job_is_complete
+
+
+def test_are_all_notifications_created_for_job_returns_false(notify_db, notify_db_session):
+    job = create_job(notify_db=notify_db, notify_db_session=notify_db_session, notification_count=2)
+    job_is_complete = are_all_notifications_created_for_job(job.id)
+    assert not job_is_complete
+
+
+def test_are_all_notifications_created_for_job_returns_false_when_job_does_not_exist(notify_db, notify_db_session):
+    job_is_complete = are_all_notifications_created_for_job(uuid.uuid4())
+    assert not job_is_complete
