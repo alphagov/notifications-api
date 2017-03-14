@@ -40,13 +40,12 @@ invalid_request_args = [
     ({"id": str(uuid.uuid4()), "version": 0}, ["version 0 is less than the minimum of 1"]),
     ({"version": 1}, ["id is a required property"]),
     ({"id": "invalid_uuid"}, ["id is not a valid UUID"]),
-    ({"id": "invalid_uuid", "version": 0}, ["version 0 is less than the minimum of 1",
-                                            "id is not a valid UUID"])
+    ({"id": "invalid_uuid", "version": 0}, ["version 0 is less than the minimum of 1", "id is not a valid UUID"])
 ]
 
 
 @pytest.mark.parametrize("args", valid_request_args)
-def test_get_template_request_schema__against_valid_args_is_valid(args):
+def test_get_template_request_schema_against_valid_args_is_valid(args):
     assert validate(args, get_template_by_id_request) == args
 
 

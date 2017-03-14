@@ -4,7 +4,7 @@ from app.schema_validation.definitions import uuid
 
 get_template_by_id_request = {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "schema for query parameters allowed when getting list of notifications",
+    "description": "schema for parameters allowed when getting template by id",
     "type": "object",
     "properties": {
         "id": uuid,
