@@ -76,7 +76,16 @@ def get_all_notifications_for_service_job(service_id, job_id):
         filter_dict=data,
         page=page,
         page_size=page_size)
+
     kwargs = request.args.to_dict()
+
+    if page_size > 50:
+        current_app.logger.info('Current page: {}'.format(page))
+        current_app.logger.info('Page size: {}'.format(page_size))
+        current_app.logger.info('Total pages in pagination: {}'.format(pagination.pages))
+        current_app.logger.info('Total notifications in pagination query: {}'.format(pagination.total))
+        current_app.logger.info('Arguments for next query: {}'.format(kwargs))
+
     kwargs['service_id'] = service_id
     kwargs['job_id'] = job_id
     return jsonify(
