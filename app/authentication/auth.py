@@ -39,6 +39,22 @@ def get_auth_token(req):
     return auth_header[7:]
 
 
+def requires_admin_auth():
+    auth_token = get_auth_token(request)
+    try:
+        client = get_token_issuer(auth_token)
+    except TokenDecodeError as e:
+        raise AuthError(e.message, 403)
+    except TokenIssuerError:
+        raise AuthError("Invalid token: iss not provided", 403)
+
+    if client == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
+        g.service_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
+        return handle_admin_key(auth_token, current_app.config.get('ADMIN_CLIENT_SECRET'))
+    else:
+        raise AuthError('Unauthorized, admin authentication token required', 401)
+
+
 def requires_auth():
     auth_token = get_auth_token(request)
     try:
