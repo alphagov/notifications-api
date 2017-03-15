@@ -271,7 +271,6 @@ def build_dvla_file(self, job_id):
             # This unique id is a 7 digits requested by DVLA, not known if this number needs to be sequential.
             unique_id = int(''.join(map(str, random.sample(range(9), 7))))
             template = LetterDVLATemplate(t, n.personalisation, unique_id)
-            # print(str(template))
             file = file + str(template) + "\n"
         s3upload(filedata=file,
                  region=current_app.config['AWS_REGION'],
