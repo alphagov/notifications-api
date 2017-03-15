@@ -320,6 +320,21 @@ class Template(db.Model):
             _external=True
         )
 
+    def serialize(self):
+
+        serialized = {
+            "id": self.id,
+            "type": self.template_type,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+            "created_by": self.created_by.email_address,
+            "version": self.version,
+            "body": self.content,
+            "subject": self.subject if self.template_type == EMAIL_TYPE else None
+        }
+
+        return serialized
+
 
 class TemplateHistory(db.Model):
     __tablename__ = 'templates_history'
@@ -342,6 +357,21 @@ class TemplateHistory(db.Model):
                              index=True,
                              nullable=False,
                              default=NORMAL)
+
+    def serialize(self):
+
+        serialized = {
+            "id": self.id,
+            "type": self.template_type,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+            "created_by": self.created_by.email_address,
+            "version": self.version,
+            "body": self.content,
+            "subject": self.subject if self.template_type == EMAIL_TYPE else None
+        }
+
+        return serialized
 
 
 MMG_PROVIDER = "mmg"
