@@ -15,7 +15,7 @@ valid_json = {
     'id': str(uuid.uuid4()),
     'type': 'email',
     'created_at': '2017-01-10T18:25:43.511Z',
-    'updated_at': '2017-04-23T18:25:43.511Z',
+    'updated_at': None,
     'version': 1,
     'created_by': 'someone@test.com',
     'body': "some body"
@@ -25,7 +25,7 @@ valid_json_with_optionals = {
     'id': str(uuid.uuid4()),
     'type': 'email',
     'created_at': '2017-01-10T18:25:43.511Z',
-    'updated_at': '2017-04-23T18:25:43.511Z',
+    'updated_at': None,
     'version': 1,
     'created_by': 'someone',
     'body': "some body",
@@ -62,5 +62,9 @@ def test_get_template_request_schema_against_invalid_args_is_invalid(args, error
 
 
 @pytest.mark.parametrize("response", [valid_json, valid_json_with_optionals])
-def test_get_template_response_schema_is_valid(response):
+@pytest.mark.parametrize("updated_datetime", [None, '2017-01-11T18:25:43.511Z'])
+def test_get_template_response_schema_is_valid(response, updated_datetime):
+    if updated_datetime:
+        response['updated_at'] = updated_datetime
+
     assert validate(response, get_template_by_id_response) == response

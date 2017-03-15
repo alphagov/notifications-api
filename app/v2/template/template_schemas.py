@@ -29,7 +29,7 @@ get_template_by_id_response = {
         },
         "updated_at": {
             "format": "date-time",
-            "type": "string",
+            "type": ["string", "null"],
             "description": "Date+time updated"
         },
         "created_by": {"type": "string"},
