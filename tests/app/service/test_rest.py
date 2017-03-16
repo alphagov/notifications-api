@@ -1418,7 +1418,7 @@ def test_get_notification_billable_unit_count(client, notify_db, notify_db_sessi
     notification = create_sample_notification(notify_db, notify_db_session)
     response = client.get(
         '/service/{}/billable-units?year=2012'.format(notification.service_id),
-        headers=[create_authorization_header(service_id=notification.service_id)]
+        headers=[create_authorization_header()]
     )
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == {
@@ -1429,7 +1429,7 @@ def test_get_notification_billable_unit_count(client, notify_db, notify_db_sessi
 def test_get_notification_billable_unit_count_missing_year(client, sample_service):
     response = client.get(
         '/service/{}/billable-units'.format(sample_service.id),
-        headers=[create_authorization_header(service_id=sample_service.id)]
+        headers=[create_authorization_header()]
     )
     assert response.status_code == 400
     assert json.loads(response.get_data(as_text=True)) == {
@@ -1451,7 +1451,7 @@ def test_get_service_provider_aggregate_statistics(
 ):
     response = client.get(
         '/service/{}/fragment/aggregate_statistics{}'.format(sample_service.id, query_string),
-        headers=[create_authorization_header(service_id=sample_service.id)]
+        headers=[create_authorization_header()]
     )
     assert response.status_code == expected_status
     assert json.loads(response.get_data(as_text=True)) == expected_json
@@ -1496,7 +1496,7 @@ def test_get_template_stats_by_month_returns_error_for_incorrect_year(
 ):
     response = client.get(
         '/service/{}/notifications/templates/monthly{}'.format(sample_service.id, query_string),
-        headers=[create_authorization_header(service_id=sample_service.id)]
+        headers=[create_authorization_header()]
     )
     assert response.status_code == expected_status
     assert json.loads(response.get_data(as_text=True)) == expected_json
