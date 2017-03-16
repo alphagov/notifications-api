@@ -1,6 +1,5 @@
 import uuid
 
-from app.models import NotificationStatistics
 from app.notifications.process_client_response import (
     validate_callback_data,
     process_sms_client_response

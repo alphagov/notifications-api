@@ -41,8 +41,7 @@ from app.dao import notifications_dao
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_user_by_id
 from app.errors import (
-    InvalidRequest,
-    register_errors)
+    InvalidRequest, register_errors)
 from app.service import statistics
 from app.service.utils import get_whitelist_objects
 from app.schemas import (
@@ -57,11 +56,8 @@ from app.schemas import (
 from app.utils import pagination_links, get_london_midnight_in_utc
 from flask import Blueprint
 
-from app.authentication.auth import requires_admin_auth
-
 service_blueprint = Blueprint('service', __name__)
 
-service_blueprint.before_request(requires_admin_auth)
 register_errors(service_blueprint)
 
 

@@ -6,11 +6,11 @@ from werkzeug.exceptions import abort
 from app import api_user
 from app.dao import notifications_dao
 from app.schema_validation import validate
-from app.v2.notifications import notification_blueprint
+from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import get_notifications_request
 
 
-@notification_blueprint.route("/<id>", methods=['GET'])
+@v2_notification_blueprint.route("/<id>", methods=['GET'])
 def get_notification_by_id(id):
     try:
         casted_id = uuid.UUID(id)
@@ -23,7 +23,7 @@ def get_notification_by_id(id):
     return jsonify(notification.serialize()), 200
 
 
-@notification_blueprint.route("", methods=['GET'])
+@v2_notification_blueprint.route("", methods=['GET'])
 def get_notifications():
     _data = request.args.to_dict(flat=False)
 

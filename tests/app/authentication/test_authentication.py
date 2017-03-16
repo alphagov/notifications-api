@@ -35,7 +35,7 @@ def test_should_not_allow_request_with_incorrect_token(client, url):
     response = client.get(url, headers={'Authorization': 'Bearer 1234'})
     assert response.status_code == 403
     data = json.loads(response.get_data())
-    assert data['message'] == {"token": ['Invalid token: signature']}
+    assert data['message'] == {"token": ['Invalid token: signature, api token is not valid']}
 
 
 @pytest.mark.parametrize('url', ['/service', '/notifications'])
@@ -59,8 +59,14 @@ def test_should_not_allow_request_with_no_iss(client, url):
     assert data['message'] == {"token": ['Invalid token: iss field not provided']}
 
 
-@pytest.mark.parametrize('url', ['/service', '/notifications'])
-def test_should_not_allow_request_with_no_iat(client, sample_api_key, url):
+@pytest.mark.parametrize('url, auth_method',
+                         [('/service', 'requires_admin_auth'),
+                          ('/notifications', 'requires_auth')])
+def test_should_not_allow_request_with_no_iat(client, sample_api_key, url, auth_method):
+    if auth_method == 'requires_admin_auth':
+        iss = current_app.config['ADMIN_CLIENT_USER_NAME']
+    if auth_method == 'requires_auth':
+        iss = str(sample_api_key.service_id)
     # code copied from notifications_python_client.authentication.py::create_jwt_token
     headers = {
         "typ": 'JWT',
@@ -68,7 +74,7 @@ def test_should_not_allow_request_with_no_iat(client, sample_api_key, url):
     }
 
     claims = {
-        'iss': str(sample_api_key.service_id)
+        'iss': iss
         # 'iat': not provided
     }
 
@@ -80,13 +86,12 @@ def test_should_not_allow_request_with_no_iat(client, sample_api_key, url):
     assert data['message'] == {"token": ['Invalid token: signature, api token is not valid']}
 
 
-@pytest.mark.parametrize('url', ['/service', '/notifications'])
-def test_should_not_allow_invalid_secret(client, sample_api_key, url):
+def test_should_not_allow_invalid_secret(client, sample_api_key):
     token = create_jwt_token(
         secret="not-so-secret",
         client_id=str(sample_api_key.service_id))
     response = client.get(
-        url,
+        '/notifications',
         headers={'Authorization': "Bearer {}".format(token)}
     )
     assert response.status_code == 403
@@ -101,12 +106,11 @@ def test_should_allow_valid_token(client, sample_api_key, scheme):
     assert response.status_code == 200
 
 
-@pytest.mark.parametrize('url', ['/service', '/notifications'])
-def test_should_not_allow_service_id_that_is_not_the_wrong_data_type(client, sample_api_key, url):
+def test_should_not_allow_service_id_that_is_not_the_wrong_data_type(client, sample_api_key):
     token = create_jwt_token(secret=get_unsigned_secrets(sample_api_key.service_id)[0],
                              client_id=str('not-a-valid-id'))
     response = client.get(
-        url,
+        '/notifications',
         headers={'Authorization': "Bearer {}".format(token)}
     )
     assert response.status_code == 403
@@ -208,7 +212,23 @@ def test_authentication_returns_error_when_admin_client_has_no_secrets(client):
         headers={'Authorization': 'Bearer {}'.format(token)})
     assert response.status_code == 403
     error_message = json.loads(response.get_data())
-    assert error_message['message'] == {"token": ['Invalid token: signature']}
+    assert error_message['message'] == {"token": ["Invalid token: signature, api token is not valid"]}
+    current_app.config['ADMIN_CLIENT_SECRET'] = api_secret
+
+
+def test_authentication_returns_error_when_admin_client_secret_is_invalid(client):
+    api_secret = current_app.config.get('ADMIN_CLIENT_SECRET')
+    token = create_jwt_token(
+        secret=api_secret,
+        client_id=current_app.config.get('ADMIN_CLIENT_USER_NAME')
+    )
+    current_app.config['ADMIN_CLIENT_SECRET'] = 'something-wrong'
+    response = client.get(
+        '/service',
+        headers={'Authorization': 'Bearer {}'.format(token)})
+    assert response.status_code == 403
+    error_message = json.loads(response.get_data())
+    assert error_message['message'] == {"token": ["Invalid token: signature, api token is not valid"]}
     current_app.config['ADMIN_CLIENT_SECRET'] = api_secret
 
 
