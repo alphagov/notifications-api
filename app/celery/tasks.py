@@ -83,6 +83,8 @@ def process_job(job_id):
     )
     if template.template_type == LETTER_TYPE:
         build_dvla_file.apply_async([str(job.id)], queue='process-job')
+        # temporary logging
+        current_app.logger.info("send job {} to build-dvla-file in the process-job queue".format(job_id))
 
 
 def process_row(row_number, recipient, personalisation, template, job, service):
@@ -277,6 +279,7 @@ def build_dvla_file(self, job_id):
                  bucket_name=current_app.config['DVLA_UPLOAD_BUCKET_NAME'],
                  file_location="{}-dvla-job.text".format(job_id))
     else:
+        current_app.logger.info("All notifications for job {} are not persisted".format(job_id))
         self.retry(queue="retry", exc="All notifications for job {} are not persisted".format(job_id))
 
 
