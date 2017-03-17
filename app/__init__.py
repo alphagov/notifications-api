@@ -92,7 +92,6 @@ def register_blueprint(application):
     from app.notifications.receive_notifications import receive_notifications_blueprint
     from app.notifications.notifications_ses_callback import ses_callback_blueprint
     from app.notifications.notifications_sms_callback import sms_callback_blueprint
-    from app.status.healthcheck import status
     from app.authentication.auth import requires_admin_auth, requires_auth, requires_no_auth
 
     service_blueprint.before_request(requires_admin_auth)
@@ -106,9 +105,6 @@ def register_blueprint(application):
 
     status_blueprint.before_request(requires_no_auth)
     application.register_blueprint(status_blueprint)
-
-    notifications_blueprint.before_request(requires_auth)
-    receive_notifications_blueprint.before_request(requires_no_auth)
 
     ses_callback_blueprint.before_request(requires_no_auth)
     application.register_blueprint(ses_callback_blueprint)
@@ -149,13 +145,11 @@ def register_blueprint(application):
     organisation_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(organisation_blueprint, url_prefix='/organisation')
 
-    status.before_request(requires_no_auth)
-    application.register_blueprint(status)
-
 
 def register_v2_blueprints(application):
     from app.v2.notifications.post_notifications import v2_notification_blueprint as post_notifications
     from app.v2.notifications.get_notifications import v2_notification_blueprint as get_notifications
+    from app.v2.template.get_template import template_blueprint
     from app.authentication.auth import requires_auth
 
     post_notifications.before_request(requires_auth)
@@ -164,26 +158,11 @@ def register_v2_blueprints(application):
     get_notifications.before_request(requires_auth)
     application.register_blueprint(get_notifications)
 
+    template_blueprint.before_request(requires_auth)
+    application.register_blueprint(template_blueprint)
+
 
 def init_app(app):
-    # @app.before_request
-    # def required_authentication():
-    #     no_auth_req = [
-    #         url_for('status.show_status'),
-    #         url_for('notifications.process_ses_response'),
-    #         url_for('notifications.process_firetext_response'),
-    #         url_for('notifications.process_mmg_response'),
-    #         url_for('notifications.receive_mmg_sms'),
-    #         url_for('status.show_delivery_status'),
-    #         url_for('spec.get_spec')
-    #     ]
-    #
-    #     if request.path not in no_auth_req:
-    #         from app.authentication import auth
-    #         error = auth.requires_auth()
-    #         if error:
-    #             return error
-
     @app.before_request
     def record_user_agent():
         statsd_client.incr("user-agent.{}".format(process_user_agent(request.headers.get('User-Agent', None))))

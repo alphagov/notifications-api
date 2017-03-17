@@ -16,7 +16,7 @@ from app.dao import (
 
 from app.notifications.process_client_response import validate_callback_data
 
-ses_callback_blueprint = Blueprint('notifications_ses_callback_', __name__)
+ses_callback_blueprint = Blueprint('notifications_ses_callback', __name__)
 
 from app.errors import (
     register_errors,
