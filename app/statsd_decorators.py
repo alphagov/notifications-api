@@ -13,6 +13,12 @@ def statsd(namespace):
             try:
                 res = func(*args, **kwargs)
                 elapsed_time = monotonic() - start_time
+                statsd_client.incr('{namespace}.{func}'.format(
+                    namespace=namespace, func=func.__name__)
+                )
+                statsd_client.timing('{namespace}.{func}'.format(
+                    namespace=namespace, func=func.__name__), elapsed_time
+                )
 
             except Exception as e:
                 current_app.logger.error(
@@ -26,12 +32,6 @@ def statsd(namespace):
                     "{namespace} call {func} took {time}".format(
                         namespace=namespace, func=func.__name__, time="{0:.4f}".format(elapsed_time)
                     )
-                )
-                statsd_client.incr('{namespace}.{func}'.format(
-                    namespace=namespace, func=func.__name__)
-                )
-                statsd_client.timing('{namespace}.{func}'.format(
-                    namespace=namespace, func=func.__name__), elapsed_time
                 )
                 return res
         wrapper.__wrapped__.__name__ = func.__name__
