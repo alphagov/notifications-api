@@ -175,6 +175,8 @@ class Config(object):
     FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = None
     FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID = None
 
+    DVLA_UPLOAD_BUCKET_NAME = "{}-dvla-file-per-job".format(os.getenv('NOTIFY_ENVIRONMENT'))
+
 
 ######################
 # Config overrides ###

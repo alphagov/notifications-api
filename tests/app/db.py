@@ -1,7 +1,8 @@
 from datetime import datetime
 import uuid
 
-from app.models import Service, User, Template, Notification, SMS_TYPE, KEY_TYPE_NORMAL
+from app.dao.jobs_dao import dao_create_job
+from app.models import Service, User, Template, Notification, SMS_TYPE, KEY_TYPE_NORMAL, Job
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.templates_dao import dao_create_template
@@ -105,3 +106,30 @@ def create_notification(
     notification = Notification(**data)
     dao_create_notification(notification)
     return notification
+
+
+def create_job(template,
+               notification_count=1,
+               created_at=None,
+               job_status='pending',
+               scheduled_for=None,
+               processing_started=None,
+               original_file_name='some.csv'):
+
+    data = {
+        'id': uuid.uuid4(),
+        'service_id': template.service_id,
+        'service': template.service,
+        'template_id': template.id,
+        'template_version': template.version,
+        'original_file_name': original_file_name,
+        'notification_count': notification_count,
+        'created_at': created_at or datetime.utcnow(),
+        'created_by': template.created_by,
+        'job_status': job_status,
+        'scheduled_for': scheduled_for,
+        'processing_started': processing_started
+    }
+    job = Job(**data)
+    dao_create_job(job)
+    return job

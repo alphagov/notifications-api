@@ -5,7 +5,11 @@ from sqlalchemy import func, desc, asc, cast, Date as sql_date
 
 from app import db
 from app.dao import days_ago
-from app.models import Job, NotificationHistory, JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING
+from app.models import (Job,
+                        Notification,
+                        NotificationHistory,
+                        JOB_STATUS_SCHEDULED,
+                        JOB_STATUS_PENDING)
 from app.statsd_decorators import statsd
 
 
@@ -22,6 +26,22 @@ def dao_get_notification_outcomes_for_job(service_id, job_id):
         .group_by(NotificationHistory.status) \
         .order_by(asc(NotificationHistory.status)) \
         .all()
+
+
+@statsd(namespace="dao")
+def all_notifications_are_created_for_job(job_id):
+    query = db.session.query(func.count(Notification.id), Job.id)\
+        .join(Job)\
+        .filter(Job.id == job_id)\
+        .group_by(Job.id)\
+        .having(func.count(Notification.id) == Job.notification_count).all()
+
+    return query
+
+
+@statsd(namespace="dao")
+def dao_get_all_notifications_for_job(job_id):
+    return db.session.query(Notification).filter(Notification.job_id == job_id).all()
 
 
 def dao_get_job_by_service_id_and_job_id(service_id, job_id):

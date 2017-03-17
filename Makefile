@@ -295,6 +295,7 @@ cf-check-api-db-migration-task: ## Get the status for the last notify-api-db-mig
 cf-rollback: ## Rollbacks the app to the previous release
 	$(if ${CF_APP},,$(error Must specify CF_APP))
 	@cf app --guid ${CF_APP}-rollback || exit 1
+	@[ $$(cf curl /v2/apps/`cf app --guid ${CF_APP}-rollback` | jq -r ".entity.state") = "STARTED" ] || (echo "Error: rollback is not possible because ${CF_APP}-rollback is not in a started state" && exit 1)
 	cf delete -f ${CF_APP} || true
 	cf rename ${CF_APP}-rollback ${CF_APP}
 

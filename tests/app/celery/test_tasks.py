@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime
-from unittest.mock import Mock, ANY, call
+from unittest.mock import Mock
 
 import pytest
+from flask import current_app
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
 from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate
@@ -11,7 +12,7 @@ from celery.exceptions import Retry
 from app import (encryption, DATETIME_FORMAT)
 from app.celery import provider_tasks
 from app.celery import tasks
-from app.celery.tasks import s3
+from app.celery.tasks import s3, build_dvla_file
 from app.celery.tasks import (
     process_job,
     process_row,
@@ -31,7 +32,7 @@ from tests.app.conftest import (
     sample_email_template,
     sample_notification
 )
-from tests.app.db import create_user
+from tests.app.db import create_user, create_notification, create_job
 
 
 class AnyStringWith(str):
@@ -73,7 +74,9 @@ def test_should_process_sms_job(sample_job, mocker):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    mocker.patch('app.celery.tasks.build_dvla_file')
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+    mocker.patch('app.celery.tasks.build_dvla_file')
 
     process_job(sample_job.id)
     s3.get_job_from_s3.assert_called_once_with(
@@ -94,6 +97,7 @@ def test_should_process_sms_job(sample_job, mocker):
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
     assert job.job_status == 'finished'
+    tasks.build_dvla_file.assert_not_called()
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -105,6 +109,7 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db,
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mocker.patch('app.celery.tasks.process_row')
+    mocker.patch('app.celery.tasks.build_dvla_file')
 
     process_job(job.id)
 
@@ -112,6 +117,7 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db,
     assert job.job_status == 'sending limits exceeded'
     assert s3.get_job_from_s3.called is False
     assert tasks.process_row.called is False
+    tasks.build_dvla_file.assert_not_called()
 
 
 def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify_db,
@@ -124,6 +130,7 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
     mocker.patch('app.celery.tasks.process_row')
+    mocker.patch('app.celery.tasks.build_dvla_file')
 
     process_job(job.id)
 
@@ -131,6 +138,7 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify
     assert job.job_status == 'sending limits exceeded'
     assert s3.get_job_from_s3.called is False
     assert tasks.process_row.called is False
+    tasks.build_dvla_file.assert_not_called()
 
 
 def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(notify_db, notify_db_session, mocker):
@@ -142,6 +150,7 @@ def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(noti
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.process_row')
+    mocker.patch('app.celery.tasks.build_dvla_file')
 
     process_job(job.id)
 
@@ -149,6 +158,7 @@ def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(noti
     assert job.job_status == 'sending limits exceeded'
     assert s3.get_job_from_s3.called is False
     assert tasks.process_row.called is False
+    tasks.build_dvla_file.assert_not_called()
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -159,6 +169,7 @@ def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, not
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.process_row')
+    mocker.patch('app.celery.tasks.build_dvla_file')
 
     process_job(job.id)
 
@@ -166,6 +177,7 @@ def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, not
     assert job.job_status == 'sending limits exceeded'
     assert s3.get_job_from_s3.called is False
     assert tasks.process_row.called is False
+    tasks.build_dvla_file.assert_not_called()
 
 
 def test_should_not_process_job_if_already_pending(notify_db, notify_db_session, mocker):
@@ -173,11 +185,13 @@ def test_should_not_process_job_if_already_pending(notify_db, notify_db_session,
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.process_row')
+    mocker.patch('app.celery.tasks.build_dvla_file')
 
     process_job(job.id)
 
     assert s3.get_job_from_s3.called is False
     assert tasks.process_row.called is False
+    tasks.build_dvla_file.assert_not_called()
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -269,6 +283,7 @@ def test_should_process_letter_job(sample_letter_job, mocker):
     mocker.patch('app.celery.tasks.send_email.apply_async')
     process_row_mock = mocker.patch('app.celery.tasks.process_row')
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+    mocker.patch('app.celery.tasks.build_dvla_file')
 
     process_job(sample_letter_job.id)
 
@@ -294,6 +309,7 @@ def test_should_process_letter_job(sample_letter_job, mocker):
     assert process_row_mock.call_count == 1
 
     assert sample_letter_job.job_status == 'finished'
+    tasks.build_dvla_file.apply_async.assert_called_once_with([str(sample_letter_job.id)], queue="process-job")
 
 
 def test_should_process_all_sms_job(sample_job,
@@ -930,6 +946,7 @@ def test_should_cancel_job_if_service_is_inactive(sample_service,
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.process_row')
+    mock_dvla_file_task = mocker.patch('app.celery.tasks.build_dvla_file')
 
     process_job(sample_job.id)
 
@@ -937,6 +954,7 @@ def test_should_cancel_job_if_service_is_inactive(sample_service,
     assert job.job_status == 'cancelled'
     s3.get_job_from_s3.assert_not_called()
     tasks.process_row.assert_not_called()
+    mock_dvla_file_task.assert_not_called()
 
 
 @pytest.mark.parametrize('template_type, expected_class', [
@@ -946,3 +964,35 @@ def test_should_cancel_job_if_service_is_inactive(sample_service,
 ])
 def test_get_template_class(template_type, expected_class):
     assert get_template_class(template_type) == expected_class
+
+
+def test_build_dvla_file(sample_letter_template, mocker):
+    job = create_job(template=sample_letter_template, notification_count=2)
+    create_notification(template=job.template, job=job)
+    create_notification(template=job.template, job=job)
+
+    mocked = mocker.patch("app.celery.tasks.s3upload")
+    mocker.patch("app.celery.tasks.LetterDVLATemplate.__str__", return_value="dvla|string")
+    build_dvla_file(job.id)
+
+    file = "dvla|string\ndvla|string\n"
+
+    assert mocked.called
+    mocked.assert_called_once_with(filedata=file,
+                                   region=current_app.config['AWS_REGION'],
+                                   bucket_name=current_app.config['DVLA_UPLOAD_BUCKET_NAME'],
+                                   file_location="{}-dvla-job.text".format(job.id))
+
+
+def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_letter_template, mocker):
+    job = create_job(template=sample_letter_template, notification_count=2)
+    create_notification(template=job.template, job=job)
+
+    mocked = mocker.patch("app.celery.tasks.s3upload")
+    mocker.patch('app.celery.tasks.build_dvla_file.retry', side_effect=Retry)
+    with pytest.raises(Retry):
+        build_dvla_file(job.id)
+    mocked.assert_not_called()
+
+    tasks.build_dvla_file.retry.assert_called_with(queue='retry',
+                                                   exc="All notifications for job {} are not persisted".format(job.id))
