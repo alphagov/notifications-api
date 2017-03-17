@@ -284,6 +284,7 @@ def build_dvla_file(self, job_id):
             self.retry(queue="retry", exc="All notifications for job {} are not persisted".format(job_id))
     except Exception as e:
         current_app.logger.exception("build_dvla_file threw exception: {}", e)
+        raise e
 
 
 def s3upload(filedata, region, bucket_name, file_location):
