@@ -36,10 +36,7 @@ def all_notifications_are_created_for_job(job_id):
         .group_by(Job.id)\
         .having(func.count(Notification.id) == Job.notification_count).all()
 
-    if query:
-        return True
-    else:
-        return False
+    return query
 
 
 @statsd(namespace="dao")
