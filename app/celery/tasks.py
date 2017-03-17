@@ -283,7 +283,7 @@ def build_dvla_file(self, job_id):
             current_app.logger.info("All notifications for job {} are not persisted".format(job_id))
             self.retry(queue="retry", exc="All notifications for job {} are not persisted".format(job_id))
     except Exception as e:
-        current_app.logger.exception("build_dvla_file threw exception: {}", e)
+        current_app.logger.exception("build_dvla_file threw exception")
         raise e
 
 
