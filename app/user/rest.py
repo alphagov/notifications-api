@@ -41,11 +41,11 @@ from app.errors import (
 )
 from app.utils import url_with_token
 
-user = Blueprint('user', __name__)
-register_errors(user)
+user_blueprint = Blueprint('user', __name__)
+register_errors(user_blueprint)
 
 
-@user.route('', methods=['POST'])
+@user_blueprint.route('', methods=['POST'])
 def create_user():
     user_to_create, errors = user_schema.load(request.get_json())
     req_json = request.get_json()
@@ -56,7 +56,7 @@ def create_user():
     return jsonify(data=user_schema.dump(user_to_create).data), 201
 
 
-@user.route('/<uuid:user_id>', methods=['PUT'])
+@user_blueprint.route('/<uuid:user_id>', methods=['PUT'])
 def update_user(user_id):
     user_to_update = get_user_by_id(user_id=user_id)
     req_json = request.get_json()
@@ -73,7 +73,7 @@ def update_user(user_id):
     return jsonify(data=user_schema.dump(user_to_update).data), 200
 
 
-@user.route('/<uuid:user_id>', methods=['POST'])
+@user_blueprint.route('/<uuid:user_id>', methods=['POST'])
 def update_user_attribute(user_id):
     user_to_update = get_user_by_id(user_id=user_id)
     req_json = request.get_json()
@@ -84,14 +84,14 @@ def update_user_attribute(user_id):
     return jsonify(data=user_schema.dump(user_to_update).data), 200
 
 
-@user.route('/<uuid:user_id>/reset-failed-login-count', methods=['POST'])
+@user_blueprint.route('/<uuid:user_id>/reset-failed-login-count', methods=['POST'])
 def user_reset_failed_login_count(user_id):
     user_to_update = get_user_by_id(user_id=user_id)
     reset_failed_login_count(user_to_update)
     return jsonify(data=user_schema.dump(user_to_update).data), 200
 
 
-@user.route('/<uuid:user_id>/verify/password', methods=['POST'])
+@user_blueprint.route('/<uuid:user_id>/verify/password', methods=['POST'])
 def verify_user_password(user_id):
     user_to_verify = get_user_by_id(user_id=user_id)
 
@@ -112,7 +112,7 @@ def verify_user_password(user_id):
         raise InvalidRequest(errors, status_code=400)
 
 
-@user.route('/<uuid:user_id>/verify/code', methods=['POST'])
+@user_blueprint.route('/<uuid:user_id>/verify/code', methods=['POST'])
 def verify_user_code(user_id):
     user_to_verify = get_user_by_id(user_id=user_id)
 
@@ -151,7 +151,7 @@ def verify_user_code(user_id):
     return jsonify({}), 204
 
 
-@user.route('/<uuid:user_id>/sms-code', methods=['POST'])
+@user_blueprint.route('/<uuid:user_id>/sms-code', methods=['POST'])
 def send_user_sms_code(user_id):
     user_to_send_to = get_user_by_id(user_id=user_id)
     verify_code, errors = request_verify_code_schema.load(request.get_json())
@@ -187,7 +187,7 @@ def send_user_sms_code(user_id):
     return jsonify({}), 204
 
 
-@user.route('/<uuid:user_id>/change-email-verification', methods=['POST'])
+@user_blueprint.route('/<uuid:user_id>/change-email-verification', methods=['POST'])
 def send_user_confirm_new_email(user_id):
     user_to_send_to = get_user_by_id(user_id=user_id)
     email, errors = email_data_request_schema.load(request.get_json())
@@ -216,7 +216,7 @@ def send_user_confirm_new_email(user_id):
     return jsonify({}), 204
 
 
-@user.route('/<uuid:user_id>/email-verification', methods=['POST'])
+@user_blueprint.route('/<uuid:user_id>/email-verification', methods=['POST'])
 def send_user_email_verification(user_id):
     user_to_send_to = get_user_by_id(user_id=user_id)
     secret_code = create_secret_code()
@@ -244,7 +244,7 @@ def send_user_email_verification(user_id):
     return jsonify({}), 204
 
 
-@user.route('/<uuid:user_id>/email-already-registered', methods=['POST'])
+@user_blueprint.route('/<uuid:user_id>/email-already-registered', methods=['POST'])
 def send_already_registered_email(user_id):
     to, errors = email_data_request_schema.load(request.get_json())
     template = dao_get_template_by_id(current_app.config['ALREADY_REGISTERED_EMAIL_TEMPLATE_ID'])
@@ -270,15 +270,15 @@ def send_already_registered_email(user_id):
     return jsonify({}), 204
 
 
-@user.route('/<uuid:user_id>', methods=['GET'])
-@user.route('', methods=['GET'])
+@user_blueprint.route('/<uuid:user_id>', methods=['GET'])
+@user_blueprint.route('', methods=['GET'])
 def get_user(user_id=None):
     users = get_user_by_id(user_id=user_id)
     result = user_schema.dump(users, many=True) if isinstance(users, list) else user_schema.dump(users)
     return jsonify(data=result.data)
 
 
-@user.route('/<uuid:user_id>/service/<uuid:service_id>/permission', methods=['POST'])
+@user_blueprint.route('/<uuid:user_id>/service/<uuid:service_id>/permission', methods=['POST'])
 def set_permissions(user_id, service_id):
     # TODO fix security hole, how do we verify that the user
     # who is making this request has permission to make the request.
@@ -293,7 +293,7 @@ def set_permissions(user_id, service_id):
     return jsonify({}), 204
 
 
-@user.route('/email', methods=['GET'])
+@user_blueprint.route('/email', methods=['GET'])
 def get_by_email():
     email = request.args.get('email')
     if not email:
@@ -305,7 +305,7 @@ def get_by_email():
     return jsonify(data=result.data)
 
 
-@user.route('/reset-password', methods=['POST'])
+@user_blueprint.route('/reset-password', methods=['POST'])
 def send_user_reset_password():
     email, errors = email_data_request_schema.load(request.get_json())
 
@@ -332,7 +332,7 @@ def send_user_reset_password():
     return jsonify({}), 204
 
 
-@user.route('/<uuid:user_id>/update-password', methods=['POST'])
+@user_blueprint.route('/<uuid:user_id>/update-password', methods=['POST'])
 def update_password(user_id):
     user = get_user_by_id(user_id=user_id)
     req_json = request.get_json()

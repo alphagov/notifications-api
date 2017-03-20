@@ -34,17 +34,17 @@ from app.models import JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING, JOB_STATUS_CANC
 
 from app.utils import pagination_links
 
-job = Blueprint('job', __name__, url_prefix='/service/<uuid:service_id>/job')
+job_blueprint = Blueprint('job', __name__, url_prefix='/service/<uuid:service_id>/job')
 
 from app.errors import (
     register_errors,
     InvalidRequest
 )
 
-register_errors(job)
+register_errors(job_blueprint)
 
 
-@job.route('/<job_id>', methods=['GET'])
+@job_blueprint.route('/<job_id>', methods=['GET'])
 def get_job_by_service_and_job_id(service_id, job_id):
     job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
     statistics = dao_get_notification_outcomes_for_job(service_id, job_id)
@@ -55,7 +55,7 @@ def get_job_by_service_and_job_id(service_id, job_id):
     return jsonify(data=data)
 
 
-@job.route('/<job_id>/cancel', methods=['POST'])
+@job_blueprint.route('/<job_id>/cancel', methods=['POST'])
 def cancel_job(service_id, job_id):
     job = dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id)
     job.job_status = JOB_STATUS_CANCELLED
@@ -64,7 +64,7 @@ def cancel_job(service_id, job_id):
     return get_job_by_service_and_job_id(service_id, job_id)
 
 
-@job.route('/<job_id>/notifications', methods=['GET'])
+@job_blueprint.route('/<job_id>/notifications', methods=['GET'])
 def get_all_notifications_for_service_job(service_id, job_id):
     data = notifications_filter_schema.load(request.args).data
     page = data['page'] if 'page' in data else 1
@@ -100,7 +100,7 @@ def get_all_notifications_for_service_job(service_id, job_id):
     ), 200
 
 
-@job.route('', methods=['GET'])
+@job_blueprint.route('', methods=['GET'])
 def get_jobs_by_service(service_id):
     if request.args.get('limit_days'):
         try:
@@ -117,7 +117,7 @@ def get_jobs_by_service(service_id):
     return jsonify(**get_paginated_jobs(service_id, limit_days, statuses, page))
 
 
-@job.route('', methods=['POST'])
+@job_blueprint.route('', methods=['POST'])
 def create_job(service_id):
     service = dao_fetch_service_by_id(service_id)
     if not service.active:

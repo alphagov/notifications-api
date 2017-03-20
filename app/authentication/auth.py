@@ -39,18 +39,24 @@ def get_auth_token(req):
     return auth_header[7:]
 
 
-def requires_auth():
+def requires_no_auth():
+    pass
+
+
+def requires_admin_auth():
     auth_token = get_auth_token(request)
-    try:
-        client = get_token_issuer(auth_token)
-    except TokenDecodeError as e:
-        raise AuthError(e.message, 403)
-    except TokenIssuerError:
-        raise AuthError("Invalid token: iss not provided", 403)
+    client = __get_token_issuer(auth_token)
 
     if client == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
         g.service_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
         return handle_admin_key(auth_token, current_app.config.get('ADMIN_CLIENT_SECRET'))
+    else:
+        raise AuthError('Unauthorized, admin authentication token required', 401)
+
+
+def requires_auth():
+    auth_token = get_auth_token(request)
+    client = __get_token_issuer(auth_token)
 
     try:
         service = dao_fetch_service_by_id(client)
@@ -82,12 +88,22 @@ def requires_auth():
         raise AuthError("Invalid token: signature, api token is not valid", 403)
 
 
+def __get_token_issuer(auth_token):
+    try:
+        client = get_token_issuer(auth_token)
+    except TokenIssuerError:
+        raise AuthError("Invalid token: iss field not provided", 403)
+    except TokenDecodeError as e:
+        raise AuthError("Invalid token: signature, api token is not valid", 403)
+    return client
+
+
 def handle_admin_key(auth_token, secret):
     try:
         get_decode_errors(auth_token, secret)
         return
     except TokenDecodeError as e:
-        raise AuthError(e.message, 403)
+        raise AuthError("Invalid token: signature, api token is not valid", 403)
 
 
 def get_decode_errors(auth_token, unsigned_secret):

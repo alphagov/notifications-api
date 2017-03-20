@@ -15,13 +15,13 @@ from app.notifications.validators import (check_service_message_limit,
                                           validate_and_format_recipient)
 from app.schema_validation import validate
 from app.v2.errors import BadRequestError
-from app.v2.notifications import notification_blueprint
+from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import (post_sms_request,
                                                        create_post_sms_response_from_notification, post_email_request,
                                                        create_post_email_response_from_notification)
 
 
-@notification_blueprint.route('/<notification_type>', methods=['POST'])
+@v2_notification_blueprint.route('/<notification_type>', methods=['POST'])
 def post_notification(notification_type):
     if notification_type == EMAIL_TYPE:
         form = validate(request.get_json(), post_email_request)

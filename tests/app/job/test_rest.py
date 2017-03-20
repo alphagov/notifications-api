@@ -17,11 +17,11 @@ from app.dao.templates_dao import dao_update_template
 from app.models import NOTIFICATION_STATUS_TYPES, JOB_STATUS_TYPES, JOB_STATUS_PENDING
 
 
-def test_get_job_with_invalid_service_id_returns404(notify_api, sample_api_key, sample_service):
+def test_get_job_with_invalid_service_id_returns404(notify_api, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             path = '/service/{}/job'.format(sample_service.id)
-            auth_header = create_authorization_header(service_id=sample_service.id)
+            auth_header = create_authorization_header()
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
@@ -33,7 +33,7 @@ def test_get_job_with_invalid_job_id_returns404(notify_api, sample_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             path = '/service/{}/job/{}'.format(service_id, "bad-id")
-            auth_header = create_authorization_header(service_id=sample_template.service.id)
+            auth_header = create_authorization_header()
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 404
             resp_json = json.loads(response.get_data(as_text=True))
@@ -46,7 +46,7 @@ def test_get_job_with_unknown_id_returns404(notify_api, sample_template, fake_uu
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             path = '/service/{}/job/{}'.format(service_id, fake_uuid)
-            auth_header = create_authorization_header(service_id=sample_template.service.id)
+            auth_header = create_authorization_header()
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 404
             resp_json = json.loads(response.get_data(as_text=True))
@@ -62,7 +62,7 @@ def test_get_job_by_id(notify_api, sample_job):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             path = '/service/{}/job/{}'.format(service_id, job_id)
-            auth_header = create_authorization_header(service_id=sample_job.service.id)
+            auth_header = create_authorization_header()
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
@@ -75,7 +75,7 @@ def test_cancel_job(notify_api, sample_scheduled_job):
     service_id = sample_scheduled_job.service.id
     with notify_api.test_request_context(), notify_api.test_client() as client:
         path = '/service/{}/job/{}/cancel'.format(service_id, job_id)
-        auth_header = create_authorization_header(service_id=service_id)
+        auth_header = create_authorization_header()
         response = client.post(path, headers=[auth_header])
         assert response.status_code == 200
         resp_json = json.loads(response.get_data(as_text=True))
@@ -89,7 +89,7 @@ def test_cant_cancel_normal_job(notify_api, sample_job, mocker):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         mock_update = mocker.patch('app.dao.jobs_dao.dao_update_job')
         path = '/service/{}/job/{}/cancel'.format(service_id, job_id)
-        auth_header = create_authorization_header(service_id=service_id)
+        auth_header = create_authorization_header()
         response = client.post(path, headers=[auth_header])
         assert response.status_code == 404
         assert mock_update.call_count == 0
@@ -108,7 +108,7 @@ def test_create_unscheduled_job(notify_api, sample_template, mocker, fake_uuid):
                 'created_by': str(sample_template.created_by.id)
             }
             path = '/service/{}/job'.format(sample_template.service.id)
-            auth_header = create_authorization_header(service_id=sample_template.service.id)
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
 
             response = client.post(
@@ -149,7 +149,7 @@ def test_create_scheduled_job(notify_api, sample_template, mocker, fake_uuid):
                     'scheduled_for': scheduled_date
                 }
                 path = '/service/{}/job'.format(sample_template.service.id)
-                auth_header = create_authorization_header(service_id=sample_template.service.id)
+                auth_header = create_authorization_header()
                 headers = [('Content-Type', 'application/json'), auth_header]
 
                 response = client.post(
@@ -202,7 +202,7 @@ def test_should_not_create_scheduled_job_more_then_24_hours_hence(notify_api, sa
                     'scheduled_for': scheduled_date
                 }
                 path = '/service/{}/job'.format(sample_template.service.id)
-                auth_header = create_authorization_header(service_id=sample_template.service.id)
+                auth_header = create_authorization_header()
                 headers = [('Content-Type', 'application/json'), auth_header]
 
                 print(json.dumps(data))
@@ -237,7 +237,7 @@ def test_should_not_create_scheduled_job_in_the_past(notify_api, sample_template
                     'scheduled_for': scheduled_date
                 }
                 path = '/service/{}/job'.format(sample_template.service.id)
-                auth_header = create_authorization_header(service_id=sample_template.service.id)
+                auth_header = create_authorization_header()
                 headers = [('Content-Type', 'application/json'), auth_header]
 
                 print(json.dumps(data))
@@ -263,7 +263,7 @@ def test_create_job_returns_400_if_missing_data(notify_api, sample_template, moc
                 'template': str(sample_template.id)
             }
             path = '/service/{}/job'.format(sample_template.service.id)
-            auth_header = create_authorization_header(service_id=sample_template.service.id)
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             response = client.post(
                 path,
@@ -288,7 +288,7 @@ def test_create_job_returns_404_if_template_does_not_exist(notify_api, sample_se
                 'template': str(sample_service.id)
             }
             path = '/service/{}/job'.format(sample_service.id)
-            auth_header = create_authorization_header(service_id=sample_service.id)
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             response = client.post(
                 path,
@@ -310,7 +310,7 @@ def test_create_job_returns_404_if_missing_service(notify_api, sample_template, 
             random_id = str(uuid.uuid4())
             data = {'template': str(sample_template.id)}
             path = '/service/{}/job'.format(random_id)
-            auth_header = create_authorization_header(service_id=sample_template.service.id)
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             response = client.post(
                 path,
@@ -335,7 +335,7 @@ def test_create_job_returns_400_if_archived_template(notify_api, sample_template
                 'template': str(sample_template.id)
             }
             path = '/service/{}/job'.format(sample_template.service.id)
-            auth_header = create_authorization_header(service_id=sample_template.service.id)
+            auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             response = client.post(
                 path,
@@ -455,7 +455,7 @@ def test_get_job_by_id(notify_api, sample_job):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             path = '/service/{}/job/{}'.format(service_id, job_id)
-            auth_header = create_authorization_header(service_id=sample_job.service.id)
+            auth_header = create_authorization_header()
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
@@ -480,7 +480,7 @@ def test_get_job_by_id_should_return_statistics(notify_db, notify_db_session, no
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             path = '/service/{}/job/{}'.format(service_id, job_id)
-            auth_header = create_authorization_header(service_id=sample_job.service.id)
+            auth_header = create_authorization_header()
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
@@ -514,7 +514,7 @@ def test_get_job_by_id_should_return_summed_statistics(notify_db, notify_db_sess
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             path = '/service/{}/job/{}'.format(service_id, job_id)
-            auth_header = create_authorization_header(service_id=sample_job.service.id)
+            auth_header = create_authorization_header()
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
@@ -535,7 +535,7 @@ def test_get_jobs(notify_api, notify_db, notify_db_session, sample_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             path = '/service/{}/job'.format(service_id)
-            auth_header = create_authorization_header(service_id=service_id)
+            auth_header = create_authorization_header()
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
@@ -561,7 +561,7 @@ def test_get_jobs_with_limit_days(notify_api, notify_db, notify_db_session, samp
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             path = '/service/{}/job'.format(service_id)
-            auth_header = create_authorization_header(service_id=service_id)
+            auth_header = create_authorization_header()
             response = client.get(path, headers=[auth_header], query_string={'limit_days': 5})
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
@@ -584,7 +584,7 @@ def test_get_jobs_should_return_statistics(notify_db, notify_db_session, notify_
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             path = '/service/{}/job'.format(sample_service.id)
-            auth_header = create_authorization_header(service_id=str(sample_service.id))
+            auth_header = create_authorization_header()
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
@@ -609,7 +609,7 @@ def test_get_jobs_should_return_no_stats_if_no_rows_in_notifications(
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             path = '/service/{}/job'.format(sample_service.id)
-            auth_header = create_authorization_header(service_id=str(sample_service.id))
+            auth_header = create_authorization_header()
             response = client.get(path, headers=[auth_header])
             assert response.status_code == 200
             resp_json = json.loads(response.get_data(as_text=True))
@@ -629,7 +629,7 @@ def test_get_jobs_should_paginate(
     create_10_jobs(notify_db, notify_db_session, sample_template.service, sample_template)
 
     path = '/service/{}/job'.format(sample_template.service_id)
-    auth_header = create_authorization_header(service_id=str(sample_template.service_id))
+    auth_header = create_authorization_header()
 
     with set_config(client.application, 'PAGE_SIZE', 2):
         response = client.get(path, headers=[auth_header])
@@ -654,7 +654,7 @@ def test_get_jobs_accepts_page_parameter(
     create_10_jobs(notify_db, notify_db_session, sample_template.service, sample_template)
 
     path = '/service/{}/job'.format(sample_template.service_id)
-    auth_header = create_authorization_header(service_id=str(sample_template.service_id))
+    auth_header = create_authorization_header()
 
     with set_config(client.application, 'PAGE_SIZE', 2):
         response = client.get(path, headers=[auth_header], query_string={'page': 2})

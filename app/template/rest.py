@@ -17,7 +17,7 @@ from app.dao.services_dao import dao_fetch_service_by_id
 from app.models import SMS_TYPE
 from app.schemas import (template_schema, template_history_schema)
 
-template = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
+template_blueprint = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
 
 from app.errors import (
     register_errors,
@@ -25,7 +25,7 @@ from app.errors import (
 )
 from app.utils import get_template_instance
 
-register_errors(template)
+register_errors(template_blueprint)
 
 
 def _content_count_greater_than_limit(content, template_type):
@@ -35,7 +35,7 @@ def _content_count_greater_than_limit(content, template_type):
     return template.content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
 
 
-@template.route('', methods=['POST'])
+@template_blueprint.route('', methods=['POST'])
 def create_template(service_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
     new_template = template_schema.load(request.get_json()).data
@@ -51,7 +51,7 @@ def create_template(service_id):
     return jsonify(data=template_schema.dump(new_template).data), 201
 
 
-@template.route('/<uuid:template_id>', methods=['POST'])
+@template_blueprint.route('/<uuid:template_id>', methods=['POST'])
 def update_template(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
 
@@ -73,21 +73,21 @@ def update_template(service_id, template_id):
     return jsonify(data=template_schema.dump(update_dict).data), 200
 
 
-@template.route('', methods=['GET'])
+@template_blueprint.route('', methods=['GET'])
 def get_all_templates_for_service(service_id):
     templates = dao_get_all_templates_for_service(service_id=service_id)
     data = template_schema.dump(templates, many=True).data
     return jsonify(data=data)
 
 
-@template.route('/<uuid:template_id>', methods=['GET'])
+@template_blueprint.route('/<uuid:template_id>', methods=['GET'])
 def get_template_by_id_and_service_id(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
     data = template_schema.dump(fetched_template).data
     return jsonify(data=data)
 
 
-@template.route('/<uuid:template_id>/preview', methods=['GET'])
+@template_blueprint.route('/<uuid:template_id>/preview', methods=['GET'])
 def preview_template_by_id_and_service_id(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
     data = template_schema.dump(fetched_template).data
@@ -106,7 +106,7 @@ def preview_template_by_id_and_service_id(service_id, template_id):
     return jsonify(data)
 
 
-@template.route('/<uuid:template_id>/version/<int:version>')
+@template_blueprint.route('/<uuid:template_id>/version/<int:version>')
 def get_template_version(service_id, template_id, version):
     data = template_history_schema.dump(
         dao_get_template_by_id_and_service_id(
@@ -118,7 +118,7 @@ def get_template_version(service_id, template_id, version):
     return jsonify(data=data)
 
 
-@template.route('/<uuid:template_id>/versions')
+@template_blueprint.route('/<uuid:template_id>/versions')
 def get_template_versions(service_id, template_id):
     data = template_history_schema.dump(
         dao_get_template_versions(service_id=service_id, template_id=template_id),

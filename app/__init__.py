@@ -2,7 +2,7 @@ import os
 import uuid
 
 from flask import Flask, _request_ctx_stack
-from flask import request, url_for, g, jsonify
+from flask import request, g, jsonify
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from monotonic import monotonic
@@ -19,7 +19,6 @@ from app.clients.sms.loadtesting import LoadtestingClient
 from app.clients.sms.mmg import MMGClient
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.encryption import Encryption
-
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 DATE_FORMAT = "%Y-%m-%d"
@@ -77,10 +76,10 @@ def create_app(app_name=None):
 
 def register_blueprint(application):
     from app.service.rest import service_blueprint
-    from app.user.rest import user as user_blueprint
-    from app.template.rest import template as template_blueprint
+    from app.user.rest import user_blueprint
+    from app.template.rest import template_blueprint
     from app.status.healthcheck import status as status_blueprint
-    from app.job.rest import job as job_blueprint
+    from app.job.rest import job_blueprint
     from app.notifications.rest import notifications as notifications_blueprint
     from app.invite.rest import invite as invite_blueprint
     from app.accept_invite.rest import accept_invite
@@ -90,52 +89,80 @@ def register_blueprint(application):
     from app.spec.rest import spec as spec_blueprint
     from app.organisation.rest import organisation_blueprint
     from app.delivery.rest import delivery_blueprint
+    from app.notifications.receive_notifications import receive_notifications_blueprint
+    from app.notifications.notifications_ses_callback import ses_callback_blueprint
+    from app.notifications.notifications_sms_callback import sms_callback_blueprint
+    from app.authentication.auth import requires_admin_auth, requires_auth, requires_no_auth
 
+    service_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(service_blueprint, url_prefix='/service')
+
+    user_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(user_blueprint, url_prefix='/user')
+
+    template_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(template_blueprint)
+
+    status_blueprint.before_request(requires_no_auth)
     application.register_blueprint(status_blueprint)
+
+    ses_callback_blueprint.before_request(requires_no_auth)
+    application.register_blueprint(ses_callback_blueprint)
+
+    sms_callback_blueprint.before_request(requires_no_auth)
+    application.register_blueprint(sms_callback_blueprint)
+
+    receive_notifications_blueprint.before_request(requires_no_auth)
+    application.register_blueprint(receive_notifications_blueprint)
+
+    notifications_blueprint.before_request(requires_auth)
     application.register_blueprint(notifications_blueprint)
+
+    job_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(job_blueprint)
+
+    invite_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(invite_blueprint)
+
+    delivery_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(delivery_blueprint)
+
+    accept_invite.before_request(requires_admin_auth)
     application.register_blueprint(accept_invite, url_prefix='/invite')
+
+    template_statistics_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(template_statistics_blueprint)
+
+    events_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(events_blueprint)
+
+    provider_details_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(provider_details_blueprint, url_prefix='/provider-details')
+
+    spec_blueprint.before_request(requires_no_auth)
     application.register_blueprint(spec_blueprint, url_prefix='/spec')
+
+    organisation_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(organisation_blueprint, url_prefix='/organisation')
 
 
 def register_v2_blueprints(application):
-    from app.v2.notifications.post_notifications import notification_blueprint as post_notifications
-    from app.v2.notifications.get_notifications import notification_blueprint as get_notifications
+    from app.v2.notifications.post_notifications import v2_notification_blueprint as post_notifications
+    from app.v2.notifications.get_notifications import v2_notification_blueprint as get_notifications
     from app.v2.template.get_template import template_blueprint
+    from app.authentication.auth import requires_auth
 
+    post_notifications.before_request(requires_auth)
     application.register_blueprint(post_notifications)
+
+    get_notifications.before_request(requires_auth)
     application.register_blueprint(get_notifications)
+
+    template_blueprint.before_request(requires_auth)
     application.register_blueprint(template_blueprint)
 
 
 def init_app(app):
-    @app.before_request
-    def required_authentication():
-        no_auth_req = [
-            url_for('status.show_status'),
-            url_for('notifications.process_ses_response'),
-            url_for('notifications.process_firetext_response'),
-            url_for('notifications.process_mmg_response'),
-            url_for('notifications.receive_mmg_sms'),
-            url_for('status.show_delivery_status'),
-            url_for('spec.get_spec')
-        ]
-
-        if request.path not in no_auth_req:
-            from app.authentication import auth
-            error = auth.requires_auth()
-            if error:
-                return error
-
     @app.before_request
     def record_user_agent():
         statsd_client.incr("user-agent.{}".format(process_user_agent(request.headers.get('User-Agent', None))))

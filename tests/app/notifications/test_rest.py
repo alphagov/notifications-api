@@ -13,68 +13,47 @@ from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
 
 
-def test_get_sms_notification_by_id(client, sample_notification):
-        auth_header = create_authorization_header(service_id=sample_notification.service_id)
+@pytest.mark.parametrize('type', ('email', 'sms'))
+def test_get_notification_by_id(client, sample_notification, sample_email_notification, type):
+        if type == 'email':
+            notification_to_get = sample_email_notification
+        if type == 'sms':
+            notification_to_get = sample_notification
 
+        auth_header = create_authorization_header(service_id=notification_to_get.service_id)
         response = client.get(
-            '/notifications/{}'.format(sample_notification.id),
+            '/notifications/{}'.format(notification_to_get.id),
             headers=[auth_header])
 
         assert response.status_code == 200
         notification = json.loads(response.get_data(as_text=True))['data']['notification']
         assert notification['status'] == 'created'
         assert notification['template'] == {
-            'id': str(sample_notification.template.id),
-            'name': sample_notification.template.name,
-            'template_type': sample_notification.template.template_type,
+            'id': str(notification_to_get.template.id),
+            'name': notification_to_get.template.name,
+            'template_type': notification_to_get.template.template_type,
             'version': 1
         }
-        assert notification['to'] == '+447700900855'
-        assert notification['service'] == str(sample_notification.service_id)
-        assert notification['body'] == "This is a template:\nwith a newline"
-        assert not notification.get('subject')
+        assert notification['to'] == notification_to_get.to
+        assert notification['service'] == str(notification_to_get.service_id)
+        assert notification['body'] == notification_to_get.template.content
+        assert notification.get('subject', None) == notification_to_get.subject
 
 
 @pytest.mark.parametrize("id", ["1234-badly-formatted-id-7890", "0"])
-def test_get_sms_notification_by_invalid_id(client, sample_notification, id):
-        auth_header = create_authorization_header(service_id=sample_notification.service_id)
+@pytest.mark.parametrize('type', ('email', 'sms'))
+def test_get_notification_by_invalid_id(client, sample_notification, sample_email_notification, id, type):
+        if type == 'email':
+            notification_to_get = sample_email_notification
+        if type == 'sms':
+            notification_to_get = sample_notification
+        auth_header = create_authorization_header(service_id=notification_to_get.service_id)
 
         response = client.get(
             '/notifications/{}'.format(id),
             headers=[auth_header])
 
         assert response.status_code == 405
-
-
-def test_get_email_notification_by_id(client, notify_db, notify_db_session, sample_email_template):
-
-    email_notification = create_sample_notification(notify_db,
-                                                    notify_db_session,
-                                                    to_field="sample_email@example.com",
-                                                    service=sample_email_template.service,
-                                                    template=sample_email_template,
-                                                    status='sending')
-
-    auth_header = create_authorization_header(service_id=email_notification.service_id)
-
-    response = client.get(
-        '/notifications/{}'.format(email_notification.id),
-        headers=[auth_header])
-
-    notification = json.loads(response.get_data(as_text=True))['data']['notification']
-
-    assert notification['status'] == 'sending'
-    assert notification['template'] == {
-        'id': str(email_notification.template.id),
-        'name': email_notification.template.name,
-        'template_type': email_notification.template.template_type,
-        'version': 1
-    }
-    assert notification['to'] == 'sample_email@example.com'
-    assert notification['service'] == str(email_notification.service_id)
-    assert response.status_code == 200
-    assert notification['body'] == sample_email_template.content
-    assert notification['subject'] == sample_email_template.subject
 
 
 def test_get_notifications_empty_result(client, sample_api_key):
