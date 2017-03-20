@@ -97,17 +97,15 @@ def test_get_template_request_schema_against_invalid_args_is_invalid(args, error
 
 
 @pytest.mark.parametrize("template_type", TEMPLATE_TYPES)
+@pytest.mark.parametrize("response", [valid_json_get_response, valid_json_get_response_with_optionals])
 @pytest.mark.parametrize("updated_datetime", [None, '2017-01-11T18:25:43.511Z'])
-def test_get_template_response_schema_is_valid(template_type, updated_datetime):
+def test_get_template_response_schema_is_valid(response, template_type, updated_datetime):
     if updated_datetime:
-        valid_json_get_response['updated_at'] = updated_datetime
+        response['updated_at'] = updated_datetime
 
-    valid_json_get_response['type'] = template_type
+    response['type'] = template_type
 
-    if template_type != EMAIL_TYPE:
-        valid_json_get_response['subject'] = None
-
-    assert validate(valid_json_get_response, get_template_by_id_response) == valid_json_get_response
+    assert validate(response, get_template_by_id_response) == response
 
 
 def test_post_template_preview_against_valid_args_is_valid():
@@ -127,10 +125,8 @@ def test_post_template_preview_against_invalid_args_is_invalid(args, error_messa
 
 
 @pytest.mark.parametrize("template_type", TEMPLATE_TYPES)
-def test_post_template_preview_response_schema_is_valid(template_type):
-    valid_json_post_response['type'] = template_type
+@pytest.mark.parametrize("response", [valid_json_post_response, valid_json_post_response_with_optionals])
+def test_post_template_preview_response_schema_is_valid(response, template_type):
+    response['type'] = template_type
 
-    if template_type != EMAIL_TYPE:
-        valid_json_post_response['subject'] = None
-
-    assert validate(valid_json_post_response, post_template_preview_response) == valid_json_post_response
+    assert validate(response, post_template_preview_response) == response
