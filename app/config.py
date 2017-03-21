@@ -262,6 +262,7 @@ configs = {
     'development': Development,
     'test': Test,
     'live': Live,
+    'production': Live,
     'staging': Staging,
     'preview': Preview,
     'sandbox': Sandbox
