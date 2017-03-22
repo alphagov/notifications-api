@@ -15,13 +15,10 @@ from app.v2.template.template_schemas import post_template_preview_request, crea
 
 @v2_template_blueprint.route("/<template_id>/preview", methods=['POST'])
 def post_template_preview(template_id):
-    try:
-        _data = request.get_json()
-        _data['id'] = template_id
+    _data = request.get_json()
+    _data['id'] = template_id
 
-        data = validate(_data, post_template_preview_request)
-    except ValueError or AttributeError:
-        abort(404)
+    data = validate(_data, post_template_preview_request)
 
     template = templates_dao.dao_get_template_by_id_and_service_id(
         template_id, api_user.service_id)
