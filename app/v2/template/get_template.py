@@ -7,12 +7,12 @@ from werkzeug.exceptions import abort
 from app import api_user
 from app.dao import templates_dao
 from app.schema_validation import validate
-from app.v2.template import template_blueprint
+from app.v2.template import v2_template_blueprint
 from app.v2.template.template_schemas import get_template_by_id_request
 
 
-@template_blueprint.route("/<template_id>", methods=['GET'])
-@template_blueprint.route("/<template_id>/version/<int:version>", methods=['GET'])
+@v2_template_blueprint.route("/<template_id>", methods=['GET'])
+@v2_template_blueprint.route("/<template_id>/version/<int:version>", methods=['GET'])
 def get_template_by_id(template_id, version=None):
     try:
         _data = {}

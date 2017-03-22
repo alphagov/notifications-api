@@ -9,11 +9,11 @@ from app.dao import templates_dao
 from app.schema_validation import validate
 from app.utils import get_template_instance
 from app.v2.errors import BadRequestError
-from app.v2.template import template_blueprint
+from app.v2.template import v2_template_blueprint
 from app.v2.template.template_schemas import post_template_preview_request, create_post_template_preview_response
 
 
-@template_blueprint.route("/<template_id>/preview", methods=['POST'])
+@v2_template_blueprint.route("/<template_id>/preview", methods=['POST'])
 def post_template_preview(template_id):
     try:
         _data = request.get_json()
