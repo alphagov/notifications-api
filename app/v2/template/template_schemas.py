@@ -66,3 +66,14 @@ post_template_preview_response = {
     },
     "required": ["id", "type", "version", "body"]
 }
+
+
+def create_post_template_preview_response(template, body, url_root):
+    return {
+        "id": template.id,
+        "type": template.template_type,
+        "version": template.version,
+        "content": {'body': body},
+        "subject": template.subject,
+        "uri": "{}v2/template/{}/preview".format(url_root, template.id)
+    }
