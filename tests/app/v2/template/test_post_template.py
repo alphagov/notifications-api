@@ -57,13 +57,11 @@ def test_invalid_post_template_returns_400(client, sample_service, tmp_type):
     assert 'Missing personalisation: Missing' in resp_json['errors'][0]['message']
 
 
-def test_post_template_with_non_existent_template_id_returns_404(client, sample_service):
+def test_post_template_with_non_existent_template_id_returns_404(client, fake_uuid, sample_service):
     auth_header = create_authorization_header(service_id=sample_service.id)
 
-    random_template_id = str(uuid.uuid4())
-
     response = client.post(
-        path='/v2/template/{}/preview'.format(random_template_id),
+        path='/v2/template/{}/preview'.format(fake_uuid),
         data=json.dumps(valid_data),
         headers=[('Content-Type', 'application/json'), auth_header])
 
