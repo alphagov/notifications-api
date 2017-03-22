@@ -3,7 +3,7 @@ import uuid
 
 from flask import json
 
-from app.models import EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
+from app.models import TEMPLATE_TYPES
 from tests import create_authorization_header
 from tests.app.db import create_template
 
@@ -12,7 +12,7 @@ valid_data = {
 }
 
 
-@pytest.mark.parametrize("tmp_type", [EMAIL_TYPE, SMS_TYPE])
+@pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)
 def test_valid_post_template_returns_200(client, sample_service, tmp_type):
     template = create_template(
         sample_service,
@@ -35,7 +35,7 @@ def test_valid_post_template_returns_200(client, sample_service, tmp_type):
     assert 'Dear {}'.format(valid_data['personalisation']['Name']) in resp_json['content']['body']
 
 
-@pytest.mark.parametrize("tmp_type", [EMAIL_TYPE, SMS_TYPE])
+@pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)
 def test_invalid_post_template_returns_400(client, sample_service, tmp_type):
     template = create_template(
         sample_service,
