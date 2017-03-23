@@ -285,7 +285,7 @@ cf-deploy: ## Deploys the app to Cloud Foundry
 cf-deploy-api-db-migration:
 	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
 	cf push notify-api-db-migration -f manifest-api-${CF_SPACE}.yml
-	cf run-task notify-api-db-migration "scripts/run_app_paas.sh python db.py db upgrade" --name api_db_migration
+	cf run-task notify-api-db-migration "python db.py db upgrade" --name api_db_migration
 
 .PHONY: cf-check-api-db-migration-task
 cf-check-api-db-migration-task: ## Get the status for the last notify-api-db-migration task
