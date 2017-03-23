@@ -73,7 +73,7 @@ def create_post_template_preview_response(template, body, url_root):
         "id": template.id,
         "type": template.template_type,
         "version": template.version,
-        "content": {'body': body},
+        "body": body,
         "subject": template.subject,
         "uri": "{}v2/template/{}/preview".format(url_root, template.id)
     }
