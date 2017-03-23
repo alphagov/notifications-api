@@ -5,6 +5,7 @@ from flask import current_app
 from app import redis_store
 from app.celery import provider_tasks
 from notifications_utils.clients import redis
+
 from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
 from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE
 from app.v2.errors import BadRequestError, SendNotificationToQueueError
@@ -37,7 +38,9 @@ def persist_notification(template_id,
                          job_row_number=None,
                          reference=None,
                          notification_id=None,
-                         simulated=False):
+                         simulated=False,
+                         persist=True):
+
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     notification = Notification(
         id=notification_id,
@@ -56,7 +59,8 @@ def persist_notification(template_id,
         client_reference=reference
     )
     if not simulated:
-        dao_create_notification(notification)
+        if persist:
+            dao_create_notification(notification)
         if redis_store.get(redis.daily_limit_cache_key(service.id)):
             redis_store.incr(redis.daily_limit_cache_key(service.id))
         if redis_store.get_all_from_hash(cache_key_for_service_template_counter(service.id)):
