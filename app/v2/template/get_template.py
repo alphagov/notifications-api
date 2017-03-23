@@ -14,8 +14,7 @@ from app.v2.template.template_schemas import get_template_by_id_request
 @v2_template_blueprint.route("/<template_id>", methods=['GET'])
 @v2_template_blueprint.route("/<template_id>/version/<int:version>", methods=['GET'])
 def get_template_by_id(template_id, version=None):
-    _data = {}
-    _data['id'] = template_id
+    _data = {'id': template_id}
     if version:
         _data['version'] = version
 
