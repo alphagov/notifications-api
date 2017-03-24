@@ -495,6 +495,8 @@ def sample_letter_notification(sample_letter_template):
         'addressline2': 'A2',
         'addressline3': 'A3',
         'addressline4': 'A4',
+        'addressline5': 'A5',
+        'addressline6': 'A6',
         'postcode': 'A_POST'
     }
     return create_notification(sample_letter_template, personalisation=address)
