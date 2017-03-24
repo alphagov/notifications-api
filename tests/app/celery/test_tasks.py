@@ -6,7 +6,7 @@ import pytest
 from flask import current_app
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
-from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate
+from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate, LetterDVLATemplate
 from celery.exceptions import Retry
 
 from app import (encryption, DATETIME_FORMAT)
@@ -996,3 +996,13 @@ def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_let
 
     tasks.build_dvla_file.retry.assert_called_with(queue='retry',
                                                    exc="All notifications for job {} are not persisted".format(job.id))
+
+
+@freeze_time("2017-03-23 11:09:00.061258")
+def test_dvla_letter_template(sample_letter_notification):
+    t = {"content": sample_letter_notification.template.content,
+         "subject": sample_letter_notification.template.subject}
+    letter = LetterDVLATemplate(t,
+                                sample_letter_notification.personalisation,
+                                12345)
+    assert str(letter) == "140|001|001||201703230012345|23032017||||||||||||A1|A2|A3|A4|A5|A6||A_POST||||||||Template subject|Dear Sir/Madam, Hello. Yours Truly, The Government.<cr><cr>"  # noqa
