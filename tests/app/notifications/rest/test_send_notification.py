@@ -1,8 +1,9 @@
 import random
 import string
-import pytest
 from datetime import datetime
+from unittest.mock import ANY
 
+import pytest
 from flask import (json, current_app)
 from freezegun import freeze_time
 from notifications_python_client.authentication import create_jwt_token
@@ -133,6 +134,7 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_email_t
                     "something_encrypted",
                     '2016-01-01T11:09:00.061258Z'
                 ),
+                kwargs=ANY,
                 queue="db-email"
             )
             assert response.status_code == 201
@@ -290,6 +292,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
                  notification_id,
                  "something_encrypted",
                  '2016-01-01T11:09:00.061258Z'),
+                kwargs=ANY,
                 queue='db-sms')
             assert response.status_code == 201
             assert notification_id
@@ -348,8 +351,8 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
                     notification_id,
                     "something_encrypted",
                     '2016-01-01T11:00:00.000000Z'
-
                 ),
+                kwargs=ANY,
                 queue="db-email"
             )
 
@@ -555,6 +558,10 @@ def test_should_send_email_if_team_api_key_and_a_service_user(notify_api, sample
              notification_id,
              "something_encrypted",
              "2016-01-01T11:00:00.000000Z"),
+            kwargs={
+                'api_key_id': str(api_key.id),
+                'key_type': KEY_TYPE_TEAM
+            },
             queue='db-email'
         )
         assert response.status_code == 201
@@ -594,6 +601,10 @@ def test_should_send_sms_to_anyone_with_test_key(
         notification_id = json.loads(response.data)['data']['notification']['id']
         app.celery.tasks.send_sms.apply_async.assert_called_once_with(
             (str(sample_template.service.id), notification_id, "something_encrypted", "2016-01-01T11:00:00.000000Z"),
+            kwargs={
+                'api_key_id': str(api_key.id),
+                'key_type': KEY_TYPE_TEST
+            },
             queue='research-mode'
         )
         assert response.status_code == 201
@@ -635,6 +646,10 @@ def test_should_send_email_to_anyone_with_test_key(
              notification_id,
              "something_encrypted",
              "2016-01-01T11:00:00.000000Z"),
+            kwargs={
+                'api_key_id': str(api_key.id),
+                'key_type': KEY_TYPE_TEST
+            },
             queue='research-mode'
         )
         assert response.status_code == 201
@@ -669,6 +684,10 @@ def test_should_send_sms_if_team_api_key_and_a_service_user(notify_api, sample_t
              notification_id,
              "something_encrypted",
              "2016-01-01T11:00:00.000000Z"),
+            kwargs={
+                'api_key_id': str(api_key.id),
+                'key_type': KEY_TYPE_TEAM
+            },
             queue='db-sms'
         )
         assert response.status_code == 201
@@ -710,6 +729,7 @@ def test_should_persist_notification(notify_api, sample_template,
 
         mocked.assert_called_once_with(
             (str(template.service.id), notification_id, "something_encrypted", '2016-01-01T11:00:00.000000Z'),
+            kwargs=ANY,
             queue='db-{}'.format(template_type))
         assert response.status_code == 201
 
@@ -1037,5 +1057,7 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
 
     assert response.status_code == 201
     mocked.assert_called_once_with(
-        (str(sample.service_id), notification_id, "something_encrypted", '2016-01-01T11:00:00.000000Z'), queue='notify'
+        (str(sample.service_id), notification_id, "something_encrypted", '2016-01-01T11:00:00.000000Z'),
+        kwargs=ANY,
+        queue='notify'
     )

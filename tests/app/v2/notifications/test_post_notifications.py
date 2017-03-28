@@ -1,10 +1,14 @@
 import uuid
+from unittest.mock import ANY
+
 import pytest
 from flask import json
+from freezegun import freeze_time
+
 from app.models import Notification
+
 from tests import create_authorization_header
 from tests.app.conftest import sample_template as create_sample_template
-from freezegun import freeze_time
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -220,5 +224,7 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
     print(response.data)
     assert response.status_code == 201
     mocked.assert_called_once_with(
-        (str(sample.service_id), notification_id, 'something_encrypted', '2016-01-01T11:00:00.000000Z'), queue='notify'
+        (str(sample.service_id), notification_id, 'something_encrypted', '2016-01-01T11:00:00.000000Z'),
+        kwargs=ANY,
+        queue='notify'
     )
