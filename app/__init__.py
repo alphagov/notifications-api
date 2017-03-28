@@ -156,6 +156,7 @@ def register_v2_blueprints(application):
     from app.v2.notifications.post_notifications import v2_notification_blueprint as post_notifications
     from app.v2.notifications.get_notifications import v2_notification_blueprint as get_notifications
     from app.v2.template.get_template import v2_template_blueprint as get_template
+    from app.v2.templates.get_templates import v2_templates_blueprint as get_templates
     from app.v2.template.post_template import v2_template_blueprint as post_template
     from app.authentication.auth import requires_auth
 
@@ -164,6 +165,9 @@ def register_v2_blueprints(application):
 
     get_notifications.before_request(requires_auth)
     application.register_blueprint(get_notifications)
+
+    get_templates.before_request(requires_auth)
+    application.register_blueprint(get_templates)
 
     get_template.before_request(requires_auth)
     application.register_blueprint(get_template)

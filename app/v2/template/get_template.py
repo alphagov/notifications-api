@@ -1,8 +1,5 @@
-import uuid
-
-from flask import jsonify, request
+from flask import jsonify
 from jsonschema.exceptions import ValidationError
-from werkzeug.exceptions import abort
 
 from app import api_user
 from app.dao import templates_dao

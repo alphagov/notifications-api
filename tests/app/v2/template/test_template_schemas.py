@@ -8,9 +8,7 @@ from app.v2.template.template_schemas import (
     get_template_by_id_response,
     get_template_by_id_request,
     post_template_preview_request,
-    post_template_preview_response,
-    get_all_template_request,
-    get_all_template_response
+    post_template_preview_response
 )
 from app.schema_validation import validate
 from jsonschema.exceptions import ValidationError
@@ -77,74 +75,6 @@ valid_json_post_response_with_optionals = {
     'subject': 'some subject'
 }
 
-valid_json_get_all_response = [
-    {
-        'links': {'self': 'http://some.path', 'next': 'http://some.other.path'},
-        "templates": [
-            {"id": str(uuid.uuid4()), "version": 1, "uri": "http://template/id"},
-            {"id": str(uuid.uuid4()), "version": 2, "uri": "http://template/id"}
-        ]
-    },
-    {
-        'links': {'self': 'http://some.path'},
-        "templates": [{"id": str(uuid.uuid4()), "version": 1, "uri": "http://template/id"}]
-    },
-    {
-        'links': {'self': 'http://some.path'},
-        "templates": []
-    }
-]
-
-invalid_json_get_all_response = [
-    ({
-        'links': {'self': 'invalid_uri'},
-        "templates": [
-            {"id": str(uuid.uuid4()), "version": 1, "uri": "http://template/id"}
-        ]
-    }, ['links invalid_uri is not a valid URI.']),
-    ({
-        'links': {'self': 'http://some.path'},
-        "templates": [
-            {"id": 'invalid_id', "version": 1, "uri": "http://template/id"}
-        ]
-    }, ['templates is not a valid UUID']),
-    ({
-        'links': {'self': 'http://some.path'},
-        "templates": [
-            {"id": str(uuid.uuid4()), "version": 'invalid_version', "uri": "http://template/id"}
-        ]
-    }, ['templates invalid_version is not of type integer']),
-    ({
-        'links': {'self': 'http://some.path'},
-        "templates": [
-            {"id": str(uuid.uuid4()), "version": 1, "uri": "invalid_uri"}
-        ]
-    }, ['templates invalid_uri is not a valid URI.']),
-    ({
-        'links': {'self': 'http://some.path'}
-    }, ['templates is a required property']),
-    ({
-        'links': {'next': 'http://some.other.path'},
-        "templates": [{"id": str(uuid.uuid4()), "version": 1, "uri": "http://template/id"}]
-    }, ['links self is a required property']),
-    ({
-        'links': {'self': 'http://some.path', 'next': 'http://some.other.path'},
-        "templates": [{"version": 1, "uri": "http://template/id"}]
-    }, ['templates id is a required property']),
-    ({
-        'links': {'self': 'http://some.path', 'next': 'http://some.other.path'},
-        "templates": [{"id": str(uuid.uuid4()), "uri": "http://template/id"}]
-    }, ['templates version is a required property']),
-    ({
-        'links': {'self': 'http://some.path', 'next': 'http://some.other.path'},
-        "templates": [{"id": str(uuid.uuid4()), "version": 1}]
-    }, ['templates uri is a required property']),
-    ({
-        'links': {'self': 'http://some.path', 'next': 'http://some.other.path'},
-        "templates": [{"version": 1}]
-    }, ['templates id is a required property', 'templates uri is a required property']),
-]
-
 
 @pytest.mark.parametrize("args", valid_request_args)
 def test_get_template_request_schema_against_valid_args_is_valid(args):
@@ -197,26 +127,3 @@ def test_post_template_preview_response_schema_is_valid(response, template_type)
     response['type'] = template_type
 
     assert validate(response, post_template_preview_response) == response
-
-
-@pytest.mark.parametrize("template_type", TEMPLATE_TYPES)
-def test_get_all_template_request_schema_against_valid_args_is_valid(template_type):
-    data = {'type': template_type}
-    assert validate(data, get_all_template_request) == data
-
-
-@pytest.mark.parametrize("response", valid_json_get_all_response)
-def test_valid_get_all_templates_response_schema_is_valid(response):
-    assert validate(response, get_all_template_response) == response
-
-
-@pytest.mark.parametrize("response,error_messages", invalid_json_get_all_response)
-def test_invalid_get_all_templates_response_schema_is_invalid(response, error_messages):
-    with pytest.raises(ValidationError) as e:
-        validate(response, get_all_template_response)
-    errors = json.loads(str(e.value))
-
-    assert errors['status_code'] == 400
-    assert len(errors['errors']) == len(error_messages)
-    for error in errors['errors']:
-        assert error['message'] in error_messages
