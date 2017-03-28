@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import asc, func
 from sqlalchemy.orm import joinedload
@@ -324,14 +324,19 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
 
 @statsd(namespace='dao')
 def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True):
+    if not isinstance(end_date, datetime):
+        end_date = datetime.combine(end_date, datetime.min.time())
+
+    end_date += timedelta(hours=23, minutes=59, seconds=59)
+
     query = db.session.query(
         NotificationHistory.notification_type,
         NotificationHistory.status,
         NotificationHistory.service_id,
         func.count(NotificationHistory.id).label('count')
     ).filter(
-        func.date(NotificationHistory.created_at) >= start_date,
-        func.date(NotificationHistory.created_at) <= end_date
+        NotificationHistory.created_at >= start_date,
+        NotificationHistory.created_at <= end_date
     ).group_by(
         NotificationHistory.notification_type,
         NotificationHistory.status,
