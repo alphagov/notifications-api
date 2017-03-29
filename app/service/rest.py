@@ -1,5 +1,5 @@
 import itertools
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from flask import (
     jsonify,
