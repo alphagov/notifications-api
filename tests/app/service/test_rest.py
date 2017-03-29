@@ -1401,10 +1401,10 @@ def test_get_detailed_services_for_date_range(notify_db, notify_db_session, set_
     from app.service.rest import get_detailed_services
 
     with freeze_time(set_time):
-        create_sample_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=3))
-        create_sample_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=2))
-        create_sample_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=1))
-        create_sample_notification(notify_db, notify_db_session, created_at=datetime.now())
+        create_sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow() - timedelta(days=3))
+        create_sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow() - timedelta(days=2))
+        create_sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow() - timedelta(days=1))
+        create_sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow())
 
         start_date = (datetime.utcnow() - timedelta(days=2)).date()
         end_date = (datetime.utcnow() - timedelta(days=1)).date()

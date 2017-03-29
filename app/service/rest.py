@@ -53,7 +53,7 @@ from app.schemas import (
     notifications_filter_schema,
     detailed_service_schema
 )
-from app.utils import pagination_links, get_london_midnight_in_utc
+from app.utils import pagination_links
 from flask import Blueprint
 
 service_blueprint = Blueprint('service', __name__)
@@ -297,8 +297,8 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
         stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key)
     else:
 
-        stats = fetch_stats_by_date_range_for_all_services(start_date=get_london_midnight_in_utc(start_date),
-                                                           end_date=get_london_midnight_in_utc(end_date),
+        stats = fetch_stats_by_date_range_for_all_services(start_date=start_date,
+                                                           end_date=end_date,
                                                            include_from_test_key=include_from_test_key)
 
     for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
