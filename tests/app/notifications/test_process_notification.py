@@ -77,34 +77,6 @@ def test_persist_notification_creates_and_save_to_db(sample_template, sample_api
     mocked_redis.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count")
 
 
-@freeze_time("2016-01-01 11:09:00.061258")
-def test_persist_notification_does_not_create_and_save_to_db_if_persist_is_false(
-        sample_template, sample_api_key, sample_job, mocker
-):
-    mocked_redis = mocker.patch('app.notifications.process_notifications.redis_store.get')
-
-    assert Notification.query.count() == 0
-    assert NotificationHistory.query.count() == 0
-    persist_notification(
-        sample_template.id,
-        sample_template.version,
-        '+447111111111',
-        sample_template.service,
-        {},
-        'sms',
-        sample_api_key.id,
-        sample_api_key.key_type,
-        job_id=sample_job.id,
-        job_row_number=100,
-        reference="ref",
-        persist=False)
-
-    assert Notification.query.count() == 0
-    assert NotificationHistory.query.count() == 0
-
-    mocked_redis.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count")
-
-
 def test_persist_notification_throws_exception_when_missing_template(sample_api_key):
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0

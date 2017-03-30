@@ -1,10 +1,9 @@
 from flask import request, jsonify, current_app
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import api_user, encryption, create_uuid
-from app.celery import tasks
+from app import api_user
 from app.dao import services_dao, templates_dao
-from app.models import SMS_TYPE, EMAIL_TYPE, PRIORITY, KEY_TYPE_TEST
+from app.models import SMS_TYPE, EMAIL_TYPE, PRIORITY
 from app.notifications.process_notifications import (create_content_for_notification,
                                                      persist_notification,
                                                      send_notification_to_queue,
@@ -40,46 +39,19 @@ def post_notification(notification_type):
 
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(send_to, notification_type)
-    notification = persist_notification(
-        notification_id=create_uuid(),
-        template_id=template.id,
-        template_version=template.version,
-        recipient=send_to,
-        service=service,
-        personalisation=form.get('personalisation', {}),
-        notification_type=notification_type,
-        api_key_id=api_user.id,
-        key_type=api_user.key_type,
-        reference=form.get('reference', None),
-        simulated=simulated,
-        persist=False)
-
-    notification_data = {
-        'template': str(template.id),
-        'template_version': template.version,
-        'to': send_to
-    }
-    if notification.personalisation:
-        notification_data.update({
-            'personalisation': dict(notification.personalisation)
-        })
-
-    encrypted = encryption.encrypt(notification_data)
-
+    notification = persist_notification(template_id=template.id,
+                                        template_version=template.version,
+                                        recipient=send_to,
+                                        service=service,
+                                        personalisation=form.get('personalisation', None),
+                                        notification_type=notification_type,
+                                        api_key_id=api_user.id,
+                                        key_type=api_user.key_type,
+                                        reference=form.get('reference', None),
+                                        simulated=simulated)
     if not simulated:
-        tasks.send_notification_to_persist_queue(
-            notification_id=notification.id,
-            service=service,
-            template_type=template.template_type,
-            encrypted=encrypted,
-            api_key_id=str(notification.api_key_id),
-            key_type=api_user.key_type,
-            priority=template.process_type == PRIORITY,
-            research_mode=service.research_mode or api_user.key_type == KEY_TYPE_TEST
-        )
-        # not doing this during paas migration
-        # queue_name = 'notify' if template.process_type == PRIORITY else None
-        # send_notification_to_queue(notification=notification, research_mode=service.research_mode, queue=queue_name)
+        queue_name = 'notify' if template.process_type == PRIORITY else None
+        send_notification_to_queue(notification=notification, research_mode=service.research_mode, queue=queue_name)
     else:
         current_app.logger.info("POST simulated notification for id: {}".format(notification.id))
     if notification_type == SMS_TYPE:

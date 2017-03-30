@@ -1,9 +1,8 @@
 import random
 import string
-from datetime import datetime
-from unittest.mock import ANY
-
 import pytest
+from datetime import datetime
+
 from flask import (json, current_app)
 from freezegun import freeze_time
 from notifications_python_client.authentication import create_jwt_token
@@ -105,9 +104,7 @@ def test_send_notification_invalid_template_id(notify_api, sample_template, mock
 def test_send_notification_with_placeholders_replaced(notify_api, sample_email_template_with_placeholders, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocked = mocker.patch('app.celery.tasks.send_email.apply_async')
-            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
-            mocker.patch('app.encryption.decrypt', return_value={"key": "something_encrypted"})
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
             data = {
                 'to': 'ok@ok.com',
@@ -128,14 +125,8 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_email_t
             data.update({"template_version": sample_email_template_with_placeholders.version})
 
             mocked.assert_called_once_with(
-                (
-                    str(sample_email_template_with_placeholders.service.id),
-                    notification_id,
-                    "something_encrypted",
-                    '2016-01-01T11:09:00.061258Z'
-                ),
-                kwargs=ANY,
-                queue="db-email"
+                [notification_id],
+                queue="send-email"
             )
             assert response.status_code == 201
             assert response_data['body'] == u'Hello Jo\nThis is an email from GOV.\u200BUK'
@@ -208,7 +199,7 @@ def test_should_send_notification_if_restricted_and_a_service_user(notify_api,
                                                                    mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocked = mocker.patch('app.celery.tasks.send_{}.apply_async'.format(template_type))
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type))
 
             template = sample_template if template_type == 'sms' else sample_email_template
             to = template.service.created_by.mobile_number if template_type == 'sms' \
@@ -269,7 +260,7 @@ def test_should_not_allow_template_from_another_service(notify_api,
 def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocked = mocker.patch('app.celery.tasks.send_sms.apply_async')
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             data = {
@@ -287,13 +278,7 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
             response_data = json.loads(response.data)['data']
             notification_id = response_data['notification']['id']
 
-            mocked.assert_called_once_with(
-                (str(sample_template.service.id),
-                 notification_id,
-                 "something_encrypted",
-                 '2016-01-01T11:09:00.061258Z'),
-                kwargs=ANY,
-                queue='db-sms')
+            mocked.assert_called_once_with([notification_id], queue='send-sms')
             assert response.status_code == 201
             assert notification_id
             assert 'subject' not in response_data
@@ -324,11 +309,11 @@ def test_should_reject_email_notification_with_bad_email(notify_api, sample_emai
             assert data['message']['to'][0] == 'Not a valid email address'
 
 
-@freeze_time("2016-01-01 11:00:00.000000")
+@freeze_time("2016-01-01 11:09:00.061258")
 def test_should_allow_valid_email_notification(notify_api, sample_email_template, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocker.patch('app.celery.tasks.send_email.apply_async')
+            mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             data = {
@@ -345,15 +330,9 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
             assert response.status_code == 201
             response_data = json.loads(response.get_data(as_text=True))['data']
             notification_id = response_data['notification']['id']
-            app.celery.tasks.send_email.apply_async.assert_called_once_with(
-                (
-                    str(sample_email_template.service.id),
-                    notification_id,
-                    "something_encrypted",
-                    '2016-01-01T11:00:00.000000Z'
-                ),
-                kwargs=ANY,
-                queue="db-email"
+            app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
+                [notification_id],
+                queue="send-email"
             )
 
             assert response.status_code == 201
@@ -439,7 +418,7 @@ def test_should_allow_api_call_if_under_day_limit_regardless_of_type(
         restricted):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocker.patch('app.celery.tasks.send_sms.apply_async')
+            mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
             mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=restricted)
@@ -465,7 +444,7 @@ def test_should_allow_api_call_if_under_day_limit_regardless_of_type(
 def test_should_not_return_html_in_body(notify_api, notify_db, notify_db_session, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocker.patch('app.celery.tasks.send_email.apply_async')
+            mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
             email_template = create_sample_email_template(notify_db, notify_db_session, content='hello\nthere')
 
             data = {
@@ -485,7 +464,7 @@ def test_should_not_return_html_in_body(notify_api, notify_db, notify_db_session
 
 def test_should_not_send_email_if_team_api_key_and_not_a_service_user(notify_api, sample_email_template, mocker):
     with notify_api.test_request_context(), notify_api.test_client() as client:
-        mocker.patch('app.celery.tasks.send_email.apply_async')
+        mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
         data = {
             'to': "not-someone-we-trust@email-address.com",
             'template': str(sample_email_template.id),
@@ -500,15 +479,17 @@ def test_should_not_send_email_if_team_api_key_and_not_a_service_user(notify_api
 
         json_resp = json.loads(response.get_data(as_text=True))
 
-        app.celery.tasks.send_email.apply_async.assert_not_called()
+        app.celery.provider_tasks.deliver_email.apply_async.assert_not_called()
 
         assert response.status_code == 400
-        assert ['Can’t send to this recipient using a team-only API key'] == json_resp['message']['to']
+        assert [
+            'Can’t send to this recipient using a team-only API key'
+        ] == json_resp['message']['to']
 
 
 def test_should_not_send_sms_if_team_api_key_and_not_a_service_user(notify_api, sample_template, mocker):
     with notify_api.test_request_context(), notify_api.test_client() as client:
-        mocker.patch('app.celery.tasks.send_sms.apply_async')
+        mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
         data = {
             'to': '07123123123',
@@ -523,18 +504,18 @@ def test_should_not_send_sms_if_team_api_key_and_not_a_service_user(notify_api, 
             headers=[('Content-Type', 'application/json'), auth_header])
 
         json_resp = json.loads(response.get_data(as_text=True))
-        app.celery.tasks.send_sms.apply_async.assert_not_called()
+        app.celery.provider_tasks.deliver_sms.apply_async.assert_not_called()
 
         assert response.status_code == 400
-        assert ['Can’t send to this recipient using a team-only API key'] == json_resp['message']['to']
+        assert [
+            'Can’t send to this recipient using a team-only API key'
+        ] == json_resp['message']['to']
 
 
-@freeze_time("2016-01-01 11:00:00.000000")
 def test_should_send_email_if_team_api_key_and_a_service_user(notify_api, sample_email_template, fake_uuid, mocker):
     with notify_api.test_request_context(), notify_api.test_client() as client:
-        mocker.patch('app.celery.tasks.send_email.apply_async')
+        mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
         mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
-        mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
         data = {
             'to': sample_email_template.service.created_by.email_address,
@@ -551,31 +532,18 @@ def test_should_send_email_if_team_api_key_and_a_service_user(notify_api, sample
             path='/notifications/email',
             data=json.dumps(data),
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
-        notification_id = json.loads(response.data)['data']['notification']['id']
 
-        app.celery.tasks.send_email.apply_async.assert_called_once_with(
-            (str(sample_email_template.service.id),
-             notification_id,
-             "something_encrypted",
-             "2016-01-01T11:00:00.000000Z"),
-            kwargs={
-                'api_key_id': str(api_key.id),
-                'key_type': KEY_TYPE_TEAM
-            },
-            queue='db-email'
-        )
+        app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with([fake_uuid], queue='send-email')
         assert response.status_code == 201
 
 
 @pytest.mark.parametrize('restricted', [True, False])
 @pytest.mark.parametrize('limit', [0, 1])
-@freeze_time("2016-01-01 11:00:00.000000")
 def test_should_send_sms_to_anyone_with_test_key(
-        notify_api, sample_template, mocker, restricted, limit, fake_uuid
+    notify_api, sample_template, mocker, restricted, limit, fake_uuid
 ):
     with notify_api.test_request_context(), notify_api.test_client() as client:
-        mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
-        mocker.patch('app.celery.tasks.send_sms.apply_async')
+        mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
         mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
 
         data = {
@@ -598,27 +566,18 @@ def test_should_send_sms_to_anyone_with_test_key(
             data=json.dumps(data),
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))]
         )
-        notification_id = json.loads(response.data)['data']['notification']['id']
-        app.celery.tasks.send_sms.apply_async.assert_called_once_with(
-            (str(sample_template.service.id), notification_id, "something_encrypted", "2016-01-01T11:00:00.000000Z"),
-            kwargs={
-                'api_key_id': str(api_key.id),
-                'key_type': KEY_TYPE_TEST
-            },
-            queue='research-mode'
-        )
+        app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with([fake_uuid], queue='research-mode')
         assert response.status_code == 201
 
 
 @pytest.mark.parametrize('restricted', [True, False])
 @pytest.mark.parametrize('limit', [0, 1])
-@freeze_time("2016-01-01 11:00:00.000000")
 def test_should_send_email_to_anyone_with_test_key(
-        notify_api, sample_email_template, mocker, restricted, limit, fake_uuid
+    notify_api, sample_email_template, mocker, restricted, limit, fake_uuid
 ):
     with notify_api.test_request_context(), notify_api.test_client() as client:
-        mocker.patch('app.celery.tasks.send_email.apply_async')
-        mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+        mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+        mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
 
         data = {
             'to': 'anyone123@example.com',
@@ -640,27 +599,15 @@ def test_should_send_email_to_anyone_with_test_key(
             data=json.dumps(data),
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))]
         )
-        notification_id = json.loads(response.data)['data']['notification']['id']
-        app.celery.tasks.send_email.apply_async.assert_called_once_with(
-            (str(sample_email_template.service.id),
-             notification_id,
-             "something_encrypted",
-             "2016-01-01T11:00:00.000000Z"),
-            kwargs={
-                'api_key_id': str(api_key.id),
-                'key_type': KEY_TYPE_TEST
-            },
-            queue='research-mode'
-        )
+
+        app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with([fake_uuid], queue='research-mode')
         assert response.status_code == 201
 
 
-@freeze_time("2016-01-01 11:00:00.000000")
 def test_should_send_sms_if_team_api_key_and_a_service_user(notify_api, sample_template, fake_uuid, mocker):
     with notify_api.test_request_context(), notify_api.test_client() as client:
-        mocker.patch('app.celery.tasks.send_sms.apply_async')
+        mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
         mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
-        mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
         data = {
             'to': sample_template.service.created_by.mobile_number,
@@ -678,32 +625,18 @@ def test_should_send_sms_if_team_api_key_and_a_service_user(notify_api, sample_t
             data=json.dumps(data),
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
-        notification_id = json.loads(response.data)['data']['notification']['id']
-        app.celery.tasks.send_sms.apply_async.assert_called_once_with(
-            (str(sample_template.service.id),
-             notification_id,
-             "something_encrypted",
-             "2016-01-01T11:00:00.000000Z"),
-            kwargs={
-                'api_key_id': str(api_key.id),
-                'key_type': KEY_TYPE_TEAM
-            },
-            queue='db-sms'
-        )
+        app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with([fake_uuid], queue='send-sms')
         assert response.status_code == 201
 
 
 @pytest.mark.parametrize('template_type',
                          ['sms', 'email'])
-@freeze_time("2016-01-01 11:00:00.000000")
 def test_should_persist_notification(notify_api, sample_template,
                                      sample_email_template,
                                      template_type,
                                      fake_uuid, mocker):
     with notify_api.test_request_context(), notify_api.test_client() as client:
-        mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
-
-        mocked = mocker.patch('app.celery.tasks.send_{}.apply_async'.format(template_type))
+        mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type))
         mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
         template = sample_template if template_type == 'sms' else sample_email_template
         to = sample_template.service.created_by.mobile_number if template_type == 'sms' \
@@ -725,20 +658,17 @@ def test_should_persist_notification(notify_api, sample_template,
             data=json.dumps(data),
             headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
-        notification_id = json.loads(response.data)['data']['notification']['id']
-
-        mocked.assert_called_once_with(
-            (str(template.service.id), notification_id, "something_encrypted", '2016-01-01T11:00:00.000000Z'),
-            kwargs=ANY,
-            queue='db-{}'.format(template_type))
+        mocked.assert_called_once_with([fake_uuid], queue='send-{}'.format(template_type))
         assert response.status_code == 201
 
-        assert not notifications_dao.get_notification_by_id(fake_uuid)
+        notification = notifications_dao.get_notification_by_id(fake_uuid)
+        assert notification.to == to
+        assert notification.template_id == template.id
+        assert notification.notification_type == template_type
 
 
 @pytest.mark.parametrize('template_type',
                          ['sms', 'email'])
-@pytest.mark.skip(reason="This is not required for the duration of PaaS migration")
 def test_should_delete_notification_and_return_error_if_sqs_fails(
         client,
         sample_email_template,
@@ -840,7 +770,8 @@ def test_should_not_persist_notification_or_send_sms_if_simulated_number(
 ])
 @pytest.mark.parametrize('notification_type, to, _create_sample_template', [
     ('sms', '07827992635', create_sample_template),
-    ('email', 'non_whitelist_recipient@mail.com', create_sample_email_template)])
+    ('email', 'non_whitelist_recipient@mail.com', create_sample_email_template)]
+)
 def test_should_not_send_notification_to_non_whitelist_recipient_in_trial_mode(
     client,
     notify_db,
@@ -894,20 +825,21 @@ def test_should_not_send_notification_to_non_whitelist_recipient_in_trial_mode(
 ])
 @pytest.mark.parametrize('notification_type, to, _create_sample_template', [
     ('sms', '07123123123', create_sample_template),
-    ('email', 'whitelist_recipient@mail.com', create_sample_email_template)])
+    ('email', 'whitelist_recipient@mail.com', create_sample_email_template)]
+)
 def test_should_send_notification_to_whitelist_recipient(
-        client,
-        notify_db,
-        notify_db_session,
-        notification_type,
-        to,
-        _create_sample_template,
-        key_type,
-        service_restricted,
-        mocker
+    client,
+    notify_db,
+    notify_db_session,
+    notification_type,
+    to,
+    _create_sample_template,
+    key_type,
+    service_restricted,
+    mocker
 ):
     service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=service_restricted)
-    apply_async = mocker.patch('app.celery.tasks.send_{}.apply_async'.format(notification_type))
+    apply_async = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
     template = _create_sample_template(notify_db, notify_db_session, service=service)
     if notification_type == 'sms':
         service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session,
@@ -1027,7 +959,6 @@ def test_create_template_raises_invalid_request_when_content_too_large(
 @pytest.mark.parametrize("notification_type, send_to",
                          [("sms", "07700 900 855"),
                           ("email", "sample@email.com")])
-@freeze_time("2016-01-01 11:00:00.000000")
 def test_send_notification_uses_priority_queue_when_template_is_marked_as_priority(client, notify_db,
                                                                                    notify_db_session, mocker,
                                                                                    notification_type, send_to):
@@ -1037,8 +968,7 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
         template_type=notification_type,
         process_type='priority'
     )
-    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
-    mocked = mocker.patch('app.celery.tasks.send_{}.apply_async'.format(notification_type))
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
 
     data = {
         'to': send_to,
@@ -1056,8 +986,4 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
     notification_id = response_data['notification']['id']
 
     assert response.status_code == 201
-    mocked.assert_called_once_with(
-        (str(sample.service_id), notification_id, "something_encrypted", '2016-01-01T11:00:00.000000Z'),
-        kwargs=ANY,
-        queue='notify'
-    )
+    mocked.assert_called_once_with([notification_id], queue='notify')
