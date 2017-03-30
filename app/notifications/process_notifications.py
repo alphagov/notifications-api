@@ -57,10 +57,11 @@ def persist_notification(template_id,
     )
     if not simulated:
         dao_create_notification(notification)
-        if redis_store.get(redis.daily_limit_cache_key(service.id)):
-            redis_store.incr(redis.daily_limit_cache_key(service.id))
-        if redis_store.get_all_from_hash(cache_key_for_service_template_counter(service.id)):
-            redis_store.increment_hash_value(cache_key_for_service_template_counter(service.id), template_id)
+        if key_type != KEY_TYPE_TEST:
+            if redis_store.get(redis.daily_limit_cache_key(service.id)):
+                redis_store.incr(redis.daily_limit_cache_key(service.id))
+            if redis_store.get_all_from_hash(cache_key_for_service_template_counter(service.id)):
+                redis_store.increment_hash_value(cache_key_for_service_template_counter(service.id), template_id)
         current_app.logger.info(
             "{} {} created at {}".format(notification.notification_type, notification.id, notification.created_at)
         )
