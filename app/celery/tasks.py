@@ -144,6 +144,7 @@ def send_notification_to_persist_queue(
         queue_name = "notify"
     else:
         queue_name = queues[template_type]
+
     send_fn.apply_async(
         (
             str(service.id),
