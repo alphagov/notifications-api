@@ -12,7 +12,7 @@ from celery.exceptions import Retry
 from app import (encryption, DATETIME_FORMAT)
 from app.celery import provider_tasks
 from app.celery import tasks
-from app.celery.tasks import s3, build_dvla_file, send_notification_to_persist_queue
+from app.celery.tasks import s3, build_dvla_file
 from app.celery.tasks import (
     process_job,
     process_row,
@@ -64,84 +64,6 @@ def test_should_have_decorated_tasks_functions():
 @pytest.fixture
 def email_job_with_placeholders(notify_db, notify_db_session, sample_email_template_with_placeholders):
     return sample_job(notify_db, notify_db_session, template=sample_email_template_with_placeholders)
-
-
-@freeze_time("2016-01-01 11:09:00.061258")
-def test_should_put_sms_messages_in_db_sms_queue(sample_service, sample_template, mocker):
-    mocker.patch('app.celery.tasks.send_sms.apply_async')
-    send_notification_to_persist_queue("notification-id", sample_service, sample_template.template_type, "encrypted")
-
-    tasks.send_sms.apply_async.assert_called_once_with(
-        (str(sample_service.id),
-         "notification-id",
-         "encrypted",
-         "2016-01-01T11:09:00.061258Z"),
-        queue="db-sms"
-    )
-
-
-@freeze_time("2016-01-01 11:09:00.061258")
-def test_should_put_messages_in_priority_queue(sample_service, sample_template, mocker):
-    mocker.patch('app.celery.tasks.send_sms.apply_async')
-    send_notification_to_persist_queue(
-        "notification-id", sample_service, sample_template.template_type, "encrypted", True
-    )
-
-    tasks.send_sms.apply_async.assert_called_once_with(
-        (str(sample_service.id),
-         "notification-id",
-         "encrypted",
-         "2016-01-01T11:09:00.061258Z"),
-        queue="notify"
-    )
-
-
-@freeze_time("2016-01-01 11:09:00.061258")
-def test_should_put_messages_in_research_mode_queue(sample_service, sample_template, mocker):
-    mocker.patch('app.celery.tasks.send_sms.apply_async')
-    send_notification_to_persist_queue(
-        "notification-id", sample_service, sample_template.template_type, "encrypted", False, True
-    )
-
-    tasks.send_sms.apply_async.assert_called_once_with(
-        (str(sample_service.id),
-         "notification-id",
-         "encrypted",
-         "2016-01-01T11:09:00.061258Z"),
-        queue="research-mode"
-    )
-
-
-@freeze_time("2016-01-01 11:09:00.061258")
-def test_should_put_messages_in_research_mode_queue_overriding_priority_mode(sample_service, sample_template, mocker):
-    mocker.patch('app.celery.tasks.send_sms.apply_async')
-    send_notification_to_persist_queue(
-        "notification-id", sample_service, sample_template.template_type, "encrypted", True, True
-    )
-
-    tasks.send_sms.apply_async.assert_called_once_with(
-        (str(sample_service.id),
-         "notification-id",
-         "encrypted",
-         "2016-01-01T11:09:00.061258Z"),
-        queue="research-mode"
-    )
-
-
-@freeze_time("2016-01-01 11:09:00.061258")
-def test_should_put_email_messages_in_db_email_queue(sample_service, sample_email_template, mocker):
-    mocker.patch('app.celery.tasks.send_email.apply_async')
-    send_notification_to_persist_queue(
-        "notification-id", sample_service, sample_email_template.template_type, "encrypted"
-    )
-
-    tasks.send_email.apply_async.assert_called_once_with(
-        (str(sample_service.id),
-         "notification-id",
-         "encrypted",
-         "2016-01-01T11:09:00.061258Z"),
-        queue="db-email"
-    )
 
 
 # -------------- process_job tests -------------- #

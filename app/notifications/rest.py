@@ -6,14 +6,13 @@ from flask import (
     json
 )
 
-from app import api_user, encryption, create_uuid
-from app.celery import tasks
+from app import api_user
 from app.dao import (
     templates_dao,
     services_dao,
     notifications_dao
 )
-from app.models import KEY_TYPE_TEAM, PRIORITY, KEY_TYPE_TEST
+from app.models import KEY_TYPE_TEAM, PRIORITY
 from app.models import SMS_TYPE
 from app.notifications.process_client_response import (
     validate_callback_data,
@@ -42,6 +41,7 @@ from app.errors import (
     register_errors,
     InvalidRequest
 )
+
 
 register_errors(notifications)
 
@@ -95,6 +95,7 @@ def get_notification_statistics_for_day():
 
 @notifications.route('/notifications/<string:notification_type>', methods=['POST'])
 def send_notification(notification_type):
+
     if notification_type not in ['sms', 'email']:
         assert False
 
@@ -120,44 +121,20 @@ def send_notification(notification_type):
 
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(notification_form['to'], notification_type)
-    notification_model = persist_notification(
-        notification_id=create_uuid(),
-        template_id=template.id,
-        template_version=template.version,
-        recipient=notification_form['to'],
-        service=service,
-        personalisation=notification_form.get('personalisation', None),
-        notification_type=notification_type,
-        api_key_id=api_user.id,
-        key_type=api_user.key_type,
-        simulated=simulated,
-        persist=False)
-
-    notification_data = {
-        'template': str(template.id),
-        'template_version': template.version,
-        'to': notification_form['to']
-    }
-
-    if notification_model.personalisation:
-        notification_data.update({
-            'personalisation': dict(notification_model.personalisation)
-        })
-    encrypted = encryption.encrypt(notification_data)
-
+    notification_model = persist_notification(template_id=template.id,
+                                              template_version=template.version,
+                                              recipient=notification_form['to'],
+                                              service=service,
+                                              personalisation=notification_form.get('personalisation', None),
+                                              notification_type=notification_type,
+                                              api_key_id=api_user.id,
+                                              key_type=api_user.key_type,
+                                              simulated=simulated)
     if not simulated:
-        tasks.send_notification_to_persist_queue(
-            notification_model.id,
-            service,
-            template.template_type,
-            encrypted,
-            template.process_type == PRIORITY,
-            service.research_mode or api_user.key_type == KEY_TYPE_TEST
-        )
-        # queue_name = 'notify' if template.process_type == PRIORITY else None
-        # send_notification_to_queue(notification=notification_model,
-        #                            research_mode=service.research_mode,
-        #                            queue=queue_name)
+        queue_name = 'notify' if template.process_type == PRIORITY else None
+        send_notification_to_queue(notification=notification_model,
+                                   research_mode=service.research_mode,
+                                   queue=queue_name)
     else:
         current_app.logger.info("POST simulated notification for id: {}".format(notification_model.id))
     notification_form.update({"template_version": template.version})

@@ -4,14 +4,13 @@ from flask import json
 from app.models import Notification
 from tests import create_authorization_header
 from tests.app.conftest import sample_template as create_sample_template
-from freezegun import freeze_time
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
 def test_post_sms_notification_returns_201(notify_api, sample_template_with_placeholders, mocker, reference):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-            mocked = mocker.patch('app.celery.tasks.send_sms.apply_async')
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
             data = {
                 'phone_number': '+447700900855',
                 'template_id': str(sample_template_with_placeholders.id),
@@ -28,11 +27,14 @@ def test_post_sms_notification_returns_201(notify_api, sample_template_with_plac
             assert response.status_code == 201
             resp_json = json.loads(response.get_data(as_text=True))
             notifications = Notification.query.all()
-            assert len(notifications) == 0
+            assert len(notifications) == 1
+            notification_id = notifications[0].id
+            assert resp_json['id'] == str(notification_id)
+            assert resp_json['reference'] == reference
             assert resp_json['content']['body'] == sample_template_with_placeholders.content.replace("(( Name))", "Jo")
             # conftest fixture service does not have a sms sender, use config default
             assert resp_json['content']['from_number'] == notify_api.config["FROM_NUMBER"]
-            assert 'v2/notifications/{}'.format(resp_json['id']) in resp_json['uri']
+            assert 'v2/notifications/{}'.format(notification_id) in resp_json['uri']
             assert resp_json['template']['id'] == str(sample_template_with_placeholders.id)
             assert resp_json['template']['version'] == sample_template_with_placeholders.version
             assert 'services/{}/templates/{}'.format(sample_template_with_placeholders.service_id,
@@ -116,7 +118,7 @@ def test_notification_returns_400_and_for_schema_problems(client, sample_templat
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
 def test_post_email_notification_returns_201(client, sample_email_template_with_placeholders, mocker, reference):
-    mocked = mocker.patch('app.celery.tasks.send_email.apply_async')
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     data = {
         "email_address": sample_email_template_with_placeholders.service.users[0].email_address,
         "template_id": sample_email_template_with_placeholders.id,
@@ -131,12 +133,16 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 201
     resp_json = json.loads(response.get_data(as_text=True))
+    notification = Notification.query.first()
+    assert resp_json['id'] == str(notification.id)
+    assert resp_json['reference'] == reference
+    assert notification.reference is None
     assert resp_json['content']['body'] == sample_email_template_with_placeholders.content \
         .replace('((name))', 'Bob').replace('GOV.UK', u'GOV.\u200bUK')
     assert resp_json['content']['subject'] == sample_email_template_with_placeholders.subject \
         .replace('((name))', 'Bob')
     assert resp_json['content']['from_email'] == sample_email_template_with_placeholders.service.email_from
-    assert 'v2/notifications/{}'.format(resp_json['id']) in resp_json['uri']
+    assert 'v2/notifications/{}'.format(notification.id) in resp_json['uri']
     assert resp_json['template']['id'] == str(sample_email_template_with_placeholders.id)
     assert resp_json['template']['version'] == sample_email_template_with_placeholders.version
     assert 'services/{}/templates/{}'.format(str(sample_email_template_with_placeholders.service_id),
@@ -188,21 +194,19 @@ def test_should_not_persist_or_send_notification_if_simulated_recipient(
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
                          [("sms", "phone_number", "07700 900 855"),
                           ("email", "email_address", "sample@email.com")])
-@freeze_time("2016-01-01 11:00:00.000000")
 def test_send_notification_uses_priority_queue_when_template_is_marked_as_priority(client, notify_db,
                                                                                    notify_db_session,
                                                                                    mocker,
                                                                                    notification_type,
                                                                                    key_send_to,
                                                                                    send_to):
-    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     sample = create_sample_template(
         notify_db,
         notify_db_session,
         template_type=notification_type,
         process_type='priority'
     )
-    mocked = mocker.patch('app.celery.tasks.send_{}.apply_async'.format(notification_type))
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
 
     data = {
         key_send_to: send_to,
@@ -217,8 +221,6 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
         headers=[('Content-Type', 'application/json'), auth_header])
 
     notification_id = json.loads(response.data)['id']
-    print(response.data)
+
     assert response.status_code == 201
-    mocked.assert_called_once_with(
-        (str(sample.service_id), notification_id, 'something_encrypted', '2016-01-01T11:00:00.000000Z'), queue='notify'
-    )
+    mocked.assert_called_once_with([notification_id], queue='notify')
