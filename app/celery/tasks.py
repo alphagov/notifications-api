@@ -124,14 +124,7 @@ def process_row(row_number, recipient, personalisation, template, job, service):
 
 
 def send_notification_to_persist_queue(
-        notification_id,
-        service,
-        template_type,
-        encrypted,
-        api_key_id,
-        key_type,
-        priority=False,
-        research_mode=False
+        notification_id, service, template_type, encrypted, priority=False, research_mode=False
 ):
     queues = {
         SMS_TYPE: 'db-sms',
@@ -156,12 +149,8 @@ def send_notification_to_persist_queue(
             str(service.id),
             notification_id,
             encrypted,
-            datetime.utcnow().strftime(DATETIME_FORMAT),
+            datetime.utcnow().strftime(DATETIME_FORMAT)
         ),
-        kwargs={
-            'api_key_id': api_key_id,
-            'key_type': key_type
-        },
         queue=queue_name
     )
 

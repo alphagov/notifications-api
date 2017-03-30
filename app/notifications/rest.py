@@ -147,14 +147,12 @@ def send_notification(notification_type):
 
     if not simulated:
         tasks.send_notification_to_persist_queue(
-            notification_id=notification_model.id,
-            service=service,
-            template_type=template.template_type,
-            encrypted=encrypted,
-            api_key_id=str(notification_model.api_key_id),
-            key_type=api_user.key_type,
-            priority=template.process_type == PRIORITY,
-            research_mode=service.research_mode or api_user.key_type == KEY_TYPE_TEST
+            notification_model.id,
+            service,
+            template.template_type,
+            encrypted,
+            template.process_type == PRIORITY,
+            service.research_mode or api_user.key_type == KEY_TYPE_TEST
         )
         # queue_name = 'notify' if template.process_type == PRIORITY else None
         # send_notification_to_queue(notification=notification_model,
