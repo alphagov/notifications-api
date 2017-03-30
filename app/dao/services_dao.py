@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import asc, func
 from sqlalchemy.orm import joinedload
@@ -31,7 +31,7 @@ from app.models import (
 )
 from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
-from app.utils import get_london_month_from_utc_column
+from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
 
 
 def dao_fetch_all_services(only_active=False):
@@ -324,14 +324,18 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
 
 @statsd(namespace='dao')
 def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True):
+    start_date = get_london_midnight_in_utc(start_date)
+    end_date = get_london_midnight_in_utc(end_date)
+    end_date += timedelta(hours=23, minutes=59, seconds=59)
+
     query = db.session.query(
         NotificationHistory.notification_type,
         NotificationHistory.status,
         NotificationHistory.service_id,
         func.count(NotificationHistory.id).label('count')
     ).filter(
-        func.date(NotificationHistory.created_at) >= start_date,
-        func.date(NotificationHistory.created_at) <= end_date
+        NotificationHistory.created_at >= start_date,
+        NotificationHistory.created_at <= end_date
     ).group_by(
         NotificationHistory.notification_type,
         NotificationHistory.status,

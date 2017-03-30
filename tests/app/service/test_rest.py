@@ -1393,19 +1393,25 @@ def test_get_detailed_services_only_includes_todays_notifications(notify_db, not
     }
 
 
-@pytest.mark.xfail
-def test_get_detailed_services_for_date_range(notify_db, notify_db_session):
+@pytest.mark.parametrize(
+    'set_time',
+    ['2017-03-28T12:00:00', '2017-01-28T12:00:00', '2017-01-02T12:00:00', '2017-10-31T12:00:00']
+)
+def test_get_detailed_services_for_date_range(notify_db, notify_db_session, set_time):
     from app.service.rest import get_detailed_services
-    create_sample_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=3))
-    create_sample_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=2))
-    create_sample_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=1))
-    create_sample_notification(notify_db, notify_db_session, created_at=datetime.now())
 
-    start_date = (datetime.utcnow() - timedelta(days=2)).date()
-    end_date = (datetime.utcnow() - timedelta(days=1)).date()
+    with freeze_time(set_time):
+        create_sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow() - timedelta(days=3))
+        create_sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow() - timedelta(days=2))
+        create_sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow() - timedelta(days=1))
+        create_sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow())
+
+        start_date = (datetime.utcnow() - timedelta(days=2)).date()
+        end_date = (datetime.utcnow() - timedelta(days=1)).date()
 
     data = get_detailed_services(only_active=False, include_from_test_key=True,
                                  start_date=start_date, end_date=end_date)
+
     assert len(data) == 1
     assert data[0]['statistics'] == {
         'email': {'delivered': 0, 'failed': 0, 'requested': 0},
