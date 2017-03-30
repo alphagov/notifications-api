@@ -15,6 +15,7 @@ from app.notifications.process_notifications import (create_content_for_notifica
                                                      simulated_recipient)
 from app.utils import cache_key_for_service_template_counter
 from app.v2.errors import BadRequestError
+from tests.app.conftest import sample_api_key as create_api_key
 
 
 def test_create_content_for_notification_passes(sample_email_template):
@@ -126,6 +127,37 @@ def test_cache_is_not_incremented_on_failure_to_persist_notification(sample_api_
                              key_type=sample_api_key.key_type)
     mocked_redis.assert_not_called()
     mock_service_template_cache.assert_not_called()
+
+
+def test_persist_notification_does_not_increment_cache_if_test_key(
+        notify_db, notify_db_session, sample_template, sample_job, mocker
+):
+    api_key = create_api_key(notify_db=notify_db, notify_db_session=notify_db_session, service=sample_template.service,
+                             key_type='test')
+    mocker.patch('app.notifications.process_notifications.redis_store.get', return_value="cache")
+    mocker.patch('app.notifications.process_notifications.redis_store.get_all_from_hash', return_value="cache")
+    daily_limit_cache = mocker.patch('app.notifications.process_notifications.redis_store.incr')
+    template_usage_cache = mocker.patch('app.notifications.process_notifications.redis_store.increment_hash_value')
+
+    assert Notification.query.count() == 0
+    assert NotificationHistory.query.count() == 0
+    persist_notification(
+        sample_template.id,
+        sample_template.version,
+        '+447111111111',
+        sample_template.service,
+        {},
+        'sms',
+        api_key.id,
+        api_key.key_type,
+        job_id=sample_job.id,
+        job_row_number=100,
+        reference="ref")
+
+    assert Notification.query.count() == 1
+
+    assert not daily_limit_cache.called
+    assert not template_usage_cache.called
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
