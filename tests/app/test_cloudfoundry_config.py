@@ -151,6 +151,15 @@ def test_notify_config():
 
 
 @pytest.mark.usefixtures('os_environ', 'cloudfoundry_environ')
+def test_notify_config_if_perf_platform_not_set(cloudfoundry_config):
+    del cloudfoundry_config['user-provided'][0]['credentials']['performance_platform_token']
+
+    set_config_env_vars(cloudfoundry_config)
+
+    assert os.environ['PERFORMANCE_PLATFORM_TOKEN'] == ''
+
+
+@pytest.mark.usefixtures('os_environ', 'cloudfoundry_environ')
 def test_aws_config():
     extract_cloudfoundry_config()
 
