@@ -52,7 +52,7 @@ class Config(object):
     EXPIRE_CACHE_IN_SECONDS = 600
 
     # Performance platform
-    PERFORMANCE_PLATFORM_ENABLED = os.getenv('PERFORMANCE_PLATFORM_ENABLED') == '1'
+    PERFORMANCE_PLATFORM_ENABLED = False
     PERFORMANCE_PLATFORM_URL = 'https://www.performance.service.gov.uk/data/govuk-notify/notifications'
     PERFORMANCE_PLATFORM_TOKEN = os.getenv('PERFORMANCE_PLATFORM_TOKEN')
 
@@ -129,7 +129,7 @@ class Config(object):
         },
         'send-daily-performance-platform-stats': {
             'task': 'send-daily-performance-platform-stats',
-            'schedule': crontab(minute=30, hour=0),  # 00:30
+            'schedule': crontab(minute=0, hour=4),  # 04:00
             'options': {'queue': 'periodic'}
         },
         'switch-current-sms-provider-on-slow-delivery': {
@@ -244,6 +244,7 @@ class Live(Config):
     FROM_NUMBER = '40604'
     FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = '6c1d81bb-dae2-4ee9-80b0-89a4aae9f649'
     FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID = 'ba9e1789-a804-40b8-871f-cc60d4c1286f'
+    PERFORMANCE_PLATFORM_ENABLED = True
 
 
 class CloudFoundryConfig(Config):

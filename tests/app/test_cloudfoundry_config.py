@@ -16,6 +16,7 @@ def notify_config():
             'admin_client_secret': 'admin client secret',
             'secret_key': 'secret key',
             'dangerous_salt': 'dangerous salt',
+            'performance_platform_token': 'performance platform token'
         }
     }
 
@@ -146,6 +147,7 @@ def test_notify_config():
     assert os.environ['ADMIN_CLIENT_SECRET'] == 'admin client secret'
     assert os.environ['SECRET_KEY'] == 'secret key'
     assert os.environ['DANGEROUS_SALT'] == 'dangerous salt'
+    assert os.environ['PERFORMANCE_PLATFORM_TOKEN'] == 'performance platform token'
 
 
 @pytest.mark.usefixtures('os_environ', 'cloudfoundry_environ')
