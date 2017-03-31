@@ -129,7 +129,7 @@ class Config(object):
         },
         'send-daily-performance-platform-stats': {
             'task': 'send-daily-performance-platform-stats',
-            'schedule': crontab(minute=30, hour=0),  # 00:30
+            'schedule': crontab(minute=0, hour=4),  # 04:00
             'options': {'queue': 'periodic'}
         },
         'switch-current-sms-provider-on-slow-delivery': {
