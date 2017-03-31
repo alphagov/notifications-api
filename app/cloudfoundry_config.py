@@ -42,7 +42,7 @@ def extract_notify_config(notify_config):
     os.environ['ADMIN_CLIENT_SECRET'] = notify_config['credentials']['admin_client_secret']
     os.environ['SECRET_KEY'] = notify_config['credentials']['secret_key']
     os.environ['DANGEROUS_SALT'] = notify_config['credentials']['dangerous_salt']
-    os.environ['PERFORMANCE_PLATFORM_TOKEN'] = notify_config['credentials'].get('performance_platform_token')
+    os.environ['PERFORMANCE_PLATFORM_TOKEN'] = notify_config['credentials'].get('performance_platform_token', '')
 
 
 def extract_notify_aws_config(aws_config):
