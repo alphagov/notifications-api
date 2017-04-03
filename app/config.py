@@ -119,7 +119,7 @@ class Config(object):
         },
         'delete-failed-notifications': {
             'task': 'delete-failed-notifications',
-            'schedule': crontab(minute=0, hour='0,1,2'),
+            'schedule': crontab(minute=15, hour='0,1,2'),
             'options': {'queue': 'periodic'}
         },
         'delete-successful-notifications': {
@@ -139,12 +139,12 @@ class Config(object):
         },
         'timeout-sending-notifications': {
             'task': 'timeout-sending-notifications',
-            'schedule': crontab(minute=0, hour='0,1,2'),
+            'schedule': crontab(minute=30, hour='0,1,2'),
             'options': {'queue': 'periodic'}
         },
         'remove_csv_files': {
             'task': 'remove_csv_files',
-            'schedule': crontab(minute=1, hour='0,1,2'),
+            'schedule': crontab(minute=45, hour='0,1,2'),
             'options': {'queue': 'periodic'}
         }
     }
