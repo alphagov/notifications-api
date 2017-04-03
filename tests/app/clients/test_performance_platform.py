@@ -57,7 +57,7 @@ def test_send_platform_stats_creates_correct_call(notify_api, client):
             status_code=200
         )
         client.send_performance_stats(
-            date=datetime(2016, 10, 16, 0, 0, 0),
+            date=datetime(2016, 10, 15, 23, 0, 0),
             channel='sms',
             count=142,
             period='day'
