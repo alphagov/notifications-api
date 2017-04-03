@@ -325,8 +325,7 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
 @statsd(namespace='dao')
 def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True):
     start_date = get_london_midnight_in_utc(start_date)
-    end_date = get_london_midnight_in_utc(end_date)
-    end_date += timedelta(hours=23, minutes=59, seconds=59)
+    end_date = get_london_midnight_in_utc(end_date + timedelta(days=1))
 
     query = db.session.query(
         NotificationHistory.notification_type,
@@ -335,7 +334,7 @@ def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_fro
         func.count(NotificationHistory.id).label('count')
     ).filter(
         NotificationHistory.created_at >= start_date,
-        NotificationHistory.created_at <= end_date
+        NotificationHistory.created_at < end_date
     ).group_by(
         NotificationHistory.notification_type,
         NotificationHistory.status,
