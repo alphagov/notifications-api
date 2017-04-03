@@ -110,7 +110,6 @@ def test_get_total_sent_notifications_yesterday_returns_expected_totals_dict(
 
     assert total_count_dict == {
         "start_date": get_midnight_for_day_before(datetime.utcnow()),
-        "end_date": get_london_midnight_in_utc(datetime.utcnow()),
         "email": {
             "count": 3
         },
