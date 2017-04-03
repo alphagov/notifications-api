@@ -133,6 +133,42 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_email_t
             assert response_data['subject'] == 'Jo'
 
 
+def test_send_notification_with_placeholders_replaced_with_list(
+    client,
+    sample_email_template_with_placeholders,
+    mocker
+):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    response = client.post(
+        path='/notifications/email',
+        data=json.dumps(
+            {
+                'to': 'ok@ok.com',
+                'template': str(sample_email_template_with_placeholders.id),
+                'personalisation': {
+                    'name': ['Jo', 'John', 'Josephine']
+                }
+            }
+        ),
+        headers=[
+            ('Content-Type', 'application/json'),
+            create_authorization_header(service_id=sample_email_template_with_placeholders.service.id)
+        ]
+    )
+
+    response_data = json.loads(response.data)['data']
+    assert response.status_code == 201
+    assert response_data['body'] == (
+        'Hello \n\n'
+        '* Jo\n'
+        '* John\n'
+        '* Josephine\n'
+        'This is an email from GOV.\u200BUK'
+    )
+    assert response_data['subject'] == 'Jo, John and Josephine'
+
+
 def test_should_not_send_notification_for_archived_template(notify_api, sample_template):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
