@@ -52,7 +52,7 @@ def get_midnight_for_day_before(date):
 
 
 def get_utc_time_in_bst(utc_dt):
-    return utc_dt.replace(tzinfo=pytz.utc).astimezone(local_timezone).replace(tzinfo=None)
+    return pytz.utc.localize(utc_dt).astimezone(local_timezone).replace(tzinfo=None)
 
 
 def get_london_month_from_utc_column(column):
