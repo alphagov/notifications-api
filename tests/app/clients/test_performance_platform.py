@@ -57,7 +57,7 @@ def test_send_platform_stats_creates_correct_call(notify_api, client):
             status_code=200
         )
         client.send_performance_stats(
-            date=datetime(2016, 10, 16, 0, 0, 0),
+            date=datetime(2016, 10, 15, 23, 0, 0),
             channel='sms',
             count=142,
             period='day'
@@ -110,7 +110,6 @@ def test_get_total_sent_notifications_yesterday_returns_expected_totals_dict(
 
     assert total_count_dict == {
         "start_date": get_midnight_for_day_before(datetime.utcnow()),
-        "end_date": get_london_midnight_in_utc(datetime.utcnow()),
         "email": {
             "count": 3
         },

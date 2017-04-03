@@ -5,6 +5,8 @@ from flask import url_for
 from sqlalchemy import func
 from notifications_utils.template import SMSMessageTemplate, PlainTextEmailTemplate, LetterPreviewTemplate
 
+local_timezone = pytz.timezone("Europe/London")
+
 
 def pagination_links(pagination, endpoint, **kwargs):
     if 'page' in kwargs:
@@ -39,7 +41,7 @@ def get_london_midnight_in_utc(date):
      :param date: the day to calculate the London midnight in UTC for
      :return: the datetime of London midnight in UTC, for example 2016-06-17 = 2016-06-17 23:00:00
     """
-    return pytz.timezone('Europe/London').localize(datetime.combine(date, datetime.min.time())).astimezone(
+    return local_timezone.localize(datetime.combine(date, datetime.min.time())).astimezone(
         pytz.UTC).replace(
         tzinfo=None)
 
@@ -47,6 +49,10 @@ def get_london_midnight_in_utc(date):
 def get_midnight_for_day_before(date):
     day_before = date - timedelta(1)
     return get_london_midnight_in_utc(day_before)
+
+
+def get_utc_time_in_bst(utc_dt):
+    return pytz.utc.localize(utc_dt).astimezone(local_timezone).replace(tzinfo=None)
 
 
 def get_london_month_from_utc_column(column):

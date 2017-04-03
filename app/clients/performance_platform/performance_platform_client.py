@@ -1,13 +1,11 @@
 import base64
 import json
+from datetime import datetime, timedelta
+
 import requests
-from datetime import datetime
 from flask import current_app
 
-from app.utils import (
-    get_midnight_for_day_before,
-    get_london_midnight_in_utc
-)
+from app.utils import get_midnight_for_day_before, get_london_midnight_in_utc, get_utc_time_in_bst
 
 
 class PerformancePlatformClient:
@@ -29,7 +27,7 @@ class PerformancePlatformClient:
     def send_performance_stats(self, date, channel, count, period):
         if self.active:
             payload = {
-                '_timestamp': date.isoformat(),
+                '_timestamp': get_utc_time_in_bst(date).isoformat(),
                 'service': 'govuk-notify',
                 'channel': channel,
                 'count': count,
@@ -45,14 +43,16 @@ class PerformancePlatformClient:
         end_date = get_london_midnight_in_utc(today)
 
         from app.dao.notifications_dao import get_total_sent_notifications_in_date_range
+        email_count = get_total_sent_notifications_in_date_range(start_date, end_date, 'email')
+        sms_count = get_total_sent_notifications_in_date_range(start_date, end_date, 'sms')
+
         return {
             "start_date": start_date,
-            "end_date": end_date,
             "email": {
-                "count": get_total_sent_notifications_in_date_range(start_date, end_date, 'email')
+                "count": email_count
             },
             "sms": {
-                "count": get_total_sent_notifications_in_date_range(start_date, end_date, 'sms')
+                "count": sms_count
             }
         }
 
