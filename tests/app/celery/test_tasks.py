@@ -994,6 +994,7 @@ def test_build_dvla_file(sample_letter_template, mocker):
 
     # Named arguments
     assert mocked_letter_template.call_args[1]['numeric_id'] == 999
+    assert mocked_letter_template.call_args[1]['contact_block'] == 'London,\nSW1A 1AA'
 
 
 def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_letter_template, mocker):

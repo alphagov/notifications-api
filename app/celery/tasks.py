@@ -274,6 +274,7 @@ def build_dvla_file(self, job_id):
                     # This unique id is a 7 digits requested by DVLA, not known
                     # if this number needs to be sequential.
                     numeric_id=random.randint(1, int('9' * 7)),
+                    contact_block=notification.service.letter_contact_block,
                 ))
                 for notification in dao_get_all_notifications_for_job(job_id)
             )
