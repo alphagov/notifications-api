@@ -1,5 +1,5 @@
 from app.models import TEMPLATE_TYPES
-from app.v2.template_schema import template
+from app.v2.template.template_schemas import get_template_by_id_response as template
 
 
 get_all_template_request = {

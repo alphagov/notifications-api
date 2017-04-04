@@ -1,6 +1,5 @@
 from app.models import SMS_TYPE, TEMPLATE_TYPES
 from app.schema_validation.definitions import uuid, personalisation
-from app.v2.template_schema import template
 
 
 get_template_by_id_request = {
@@ -66,51 +65,6 @@ post_template_preview_response = {
         "subject": {"type": ["string", "null"]}
     },
     "required": ["id", "type", "version", "body"]
-}
-
-get_all_template_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "request schema for parameters allowed when getting all templates",
-    "type": "object",
-    "properties": {
-        "type": {"enum": TEMPLATE_TYPES},
-    },
-    "required": ["type"],
-    "additionalProperties": False,
-}
-
-get_all_template_response = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "GET response schema when getting all templates",
-    "type": "object",
-    "properties": {
-        "links": {
-            "type": "object",
-            "properties": {
-                "self": {
-                    "type": "string",
-                    "format": "uri"
-                },
-                "next": {
-                    "type": "string",
-                    "format": "uri"
-                }
-            },
-            "additionalProperties": False,
-            "required": ["self"],
-        },
-        "templates": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "$ref": "#/definitions/template"
-            }
-        }
-    },
-    "required": ["links", "templates"],
-    "definitions": {
-        "template": template
-    }
 }
 
 

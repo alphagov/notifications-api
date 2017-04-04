@@ -15,12 +15,38 @@ from jsonschema.exceptions import ValidationError
 valid_json_get_all_response = [
     {
         "templates": [
-            {"id": str(uuid.uuid4()), "version": 1, "uri": "http://template/id"},
-            {"id": str(uuid.uuid4()), "version": 2, "uri": "http://template/id"}
+            {
+                'id': str(uuid.uuid4()),
+                'type': SMS_TYPE,
+                'created_at': '2017-01-10T18:25:43.511Z',
+                'updated_at': None,
+                'version': 1,
+                'created_by': 'someone@test.com',
+                'body': 'some body'
+            },
+            {
+                'id': str(uuid.uuid4()),
+                'type': EMAIL_TYPE,
+                'created_at': '2017-02-10T18:25:43.511Z',
+                'updated_at': None,
+                'version': 2,
+                'created_by': 'someone@test.com',
+                'body': 'some body'
+            }
         ]
     },
     {
-        "templates": [{"id": str(uuid.uuid4()), "version": 1, "uri": "http://template/id"}]
+        "templates": [
+            {
+                'id': str(uuid.uuid4()),
+                'type': SMS_TYPE,
+                'created_at': '2017-02-10T18:25:43.511Z',
+                'updated_at': None,
+                'version': 2,
+                'created_by': 'someone@test.com',
+                'body': 'some body'
+            }
+        ]
     },
     {
         "templates": []
@@ -30,32 +56,139 @@ valid_json_get_all_response = [
 invalid_json_get_all_response = [
     ({
         "templates": [
-            {"id": 'invalid_id', "version": 1, "uri": "http://template/id"}
+            {
+                'id': 'invalid_id',
+                'type': SMS_TYPE,
+                'created_at': '2017-02-10T18:25:43.511Z',
+                'updated_at': None,
+                'version': 1,
+                'created_by': 'someone@test.com',
+                'body': 'some body'
+            }
         ]
     }, ['templates is not a valid UUID']),
     ({
         "templates": [
-            {"id": str(uuid.uuid4()), "version": 'invalid_version', "uri": "http://template/id"}
+            {
+                'id': str(uuid.uuid4()),
+                'type': SMS_TYPE,
+                'created_at': '2017-02-10T18:25:43.511Z',
+                'updated_at': None,
+                'version': 'invalid_version',
+                'created_by': 'someone@test.com',
+                'body': 'some body'
+            }
         ]
     }, ['templates invalid_version is not of type integer']),
     ({
         "templates": [
-            {"id": str(uuid.uuid4()), "version": 1, "uri": "invalid_uri"}
+            {
+                'id': str(uuid.uuid4()),
+                'type': SMS_TYPE,
+                'created_at': 'invalid_created_at',
+                'updated_at': None,
+                'version': 1,
+                'created_by': 'someone@test.com',
+                'body': 'some body'
+            }
         ]
-    }, ['templates invalid_uri is not a valid URI.']),
+    }, ['templates invalid_created_at is not a date-time']),
     ({}, ['templates is a required property']),
     ({
-        "templates": [{"version": 1, "uri": "http://template/id"}]
+        "templates": [
+            {
+                'type': SMS_TYPE,
+                'created_at': '2017-02-10T18:25:43.511Z',
+                'updated_at': None,
+                'version': 1,
+                'created_by': 'someone@test.com',
+                'body': 'some body'
+            }
+        ]
     }, ['templates id is a required property']),
     ({
-        "templates": [{"id": str(uuid.uuid4()), "uri": "http://template/id"}]
+        "templates": [
+            {
+                'id': str(uuid.uuid4()),
+                'created_at': '2017-02-10T18:25:43.511Z',
+                'updated_at': None,
+                'version': 1,
+                'created_by': 'someone@test.com',
+                'body': 'some body'
+            }
+        ]
+    }, ['templates type is a required property']),
+    ({
+        "templates": [
+            {
+                'id': str(uuid.uuid4()),
+                'type': SMS_TYPE,
+                'updated_at': None,
+                'version': 1,
+                'created_by': 'someone@test.com',
+                'body': 'some body'
+            }
+        ]
+    }, ['templates created_at is a required property']),
+    ({
+        "templates": [
+            {
+                'id': str(uuid.uuid4()),
+                'type': SMS_TYPE,
+                'created_at': '2017-02-10T18:25:43.511Z',
+                'version': 1,
+                'created_by': 'someone@test.com',
+                'body': 'some body'
+            }
+        ]
+    }, ['templates updated_at is a required property']),
+    ({
+        "templates": [
+            {
+                'id': str(uuid.uuid4()),
+                'type': SMS_TYPE,
+                'created_at': '2017-02-10T18:25:43.511Z',
+                'updated_at': None,
+                'created_by': 'someone@test.com',
+                'body': 'some body'
+            }
+        ]
     }, ['templates version is a required property']),
     ({
-        "templates": [{"id": str(uuid.uuid4()), "version": 1}]
-    }, ['templates uri is a required property']),
+        "templates": [
+            {
+                'id': str(uuid.uuid4()),
+                'type': SMS_TYPE,
+                'created_at': '2017-02-10T18:25:43.511Z',
+                'updated_at': None,
+                'version': 1,
+                'body': 'some body'
+            }
+        ]
+    }, ['templates created_by is a required property']),
     ({
-        "templates": [{"version": 1}]
-    }, ['templates id is a required property', 'templates uri is a required property']),
+        "templates": [
+            {
+                'id': str(uuid.uuid4()),
+                'type': SMS_TYPE,
+                'created_at': '2017-02-10T18:25:43.511Z',
+                'updated_at': None,
+                'version': 1,
+                'created_by': 'someone@test.com'
+            }
+        ]
+    }, ['templates body is a required property']),
+    ({
+        "templates": [
+            {
+                'type': SMS_TYPE,
+                'created_at': '2017-02-10T18:25:43.511Z',
+                'updated_at': None,
+                'created_by': 'someone@test.com',
+                'body': 'some body'
+            }
+        ]
+    }, ['templates id is a required property', 'templates version is a required property']),
 ]
 
 
