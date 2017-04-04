@@ -29,8 +29,7 @@ def post_template_preview(template_id):
     check_placeholders(template_object)
 
     resp = create_post_template_preview_response(template=template,
-                                                 body=str(template_object),
-                                                 url_root=request.url_root)
+                                                 body=str(template_object))
 
     return jsonify(resp), 200
 

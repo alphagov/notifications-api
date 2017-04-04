@@ -31,7 +31,6 @@ def test_valid_post_template_returns_200(client, sample_service, tmp_type):
     resp_json = json.loads(response.get_data(as_text=True))
 
     assert resp_json['id'] == str(template.id)
-    assert 'v2/template/{}/preview'.format(template.id) in resp_json['uri']
     assert 'Dear {}'.format(valid_data['personalisation']['Name']) in resp_json['body']
 
 
