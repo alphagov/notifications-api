@@ -1022,4 +1022,4 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
     notification_id = response_data['notification']['id']
 
     assert response.status_code == 201
-    mocked.assert_called_once_with([notification_id], queue='notify')
+    mocked.assert_called_once_with([notification_id], queue='priority')

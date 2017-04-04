@@ -50,7 +50,7 @@ def post_notification(notification_type):
                                         reference=form.get('reference', None),
                                         simulated=simulated)
     if not simulated:
-        queue_name = 'notify' if template.process_type == PRIORITY else None
+        queue_name = 'priority' if template.process_type == PRIORITY else None
         send_notification_to_queue(notification=notification, research_mode=service.research_mode, queue=queue_name)
     else:
         current_app.logger.info("POST simulated notification for id: {}".format(notification.id))
