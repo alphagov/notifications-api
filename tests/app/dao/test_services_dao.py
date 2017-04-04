@@ -647,6 +647,40 @@ def test_dao_suspend_service_marks_service_as_inactive_and_expires_api_keys(samp
     assert api_key.expiry_date == datetime(2001, 1, 1, 23, 59, 00)
 
 
+@pytest.mark.parametrize("start_delta, end_delta, expected",
+                         [("5", "1", "4"),  # a date range less than 7 days ago returns test and normal notifications
+                          ("9", "8", "1"),  # a date range older than 9 days does not return test notifications.
+                          ("8", "4", "2")])  # a date range that starts more than 7 days ago
+def test_fetch_stats_by_date_range_for_all_services_returns_test_notifications(notify_db,
+                                                                               notify_db_session,
+                                                                               sample_api_key,
+                                                                               start_delta,
+                                                                               end_delta,
+                                                                               expected):
+    result_one = create_notification(notify_db, notify_db_session, created_at=datetime.now(),
+                                     api_key_id=sample_api_key.id, key_type='test')
+    create_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=2),
+                        api_key_id=sample_api_key.id, key_type='test')
+    create_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=3),
+                        api_key_id=sample_api_key.id, key_type='test')
+    create_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=4),
+                        api_key_id=sample_api_key.id, key_type='normal')
+    create_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=4),
+                        api_key_id=sample_api_key.id, key_type='test')
+    create_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=8),
+                        api_key_id=sample_api_key.id, key_type='test')
+    create_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=8),
+                        api_key_id=sample_api_key.id, key_type='normal')
+
+    start_date = (datetime.utcnow() - timedelta(days=int(start_delta))).date()
+    end_date = (datetime.utcnow() - timedelta(days=int(end_delta))).date()
+
+    results = fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True)
+
+    assert len(results) == 1
+    assert results[0] == ('sms', 'created', result_one.service_id, int(expected))
+
+
 @freeze_time('2001-01-01T23:59:00')
 def test_dao_resume_service_marks_service_as_active_and_api_keys_are_still_revoked(sample_service, sample_api_key):
     dao_suspend_service(sample_service.id)

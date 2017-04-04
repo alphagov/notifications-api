@@ -327,24 +327,46 @@ def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_fro
     start_date = get_london_midnight_in_utc(start_date)
     end_date = get_london_midnight_in_utc(end_date + timedelta(days=1))
 
-    query = db.session.query(
-        NotificationHistory.notification_type,
-        NotificationHistory.status,
-        NotificationHistory.service_id,
-        func.count(NotificationHistory.id).label('count')
-    ).filter(
-        NotificationHistory.created_at >= start_date,
-        NotificationHistory.created_at < end_date
-    ).group_by(
-        NotificationHistory.notification_type,
-        NotificationHistory.status,
-        NotificationHistory.service_id
-    ).order_by(
-        NotificationHistory.service_id
-    )
+    if start_date >= datetime.utcnow() - timedelta(days=7):
+        # Use notifications table.
+        # This should improve performance for the default query and allow us to see test messages for the last week.
+        query = db.session.query(
+            Notification.notification_type,
+            Notification.status,
+            Notification.service_id,
+            func.count(Notification.id).label('count')
+        ).filter(
+            Notification.created_at >= start_date,
+            Notification.created_at < end_date
+        ).group_by(
+            Notification.notification_type,
+            Notification.status,
+            Notification.service_id
+        ).order_by(
+            Notification.service_id
+        )
+        if not include_from_test_key:
+            query = query.filter(NotificationHistory.key_type != KEY_TYPE_TEST)
 
-    if not include_from_test_key:
-        query = query.filter(NotificationHistory.key_type != KEY_TYPE_TEST)
+    else:
+        query = db.session.query(
+            NotificationHistory.notification_type,
+            NotificationHistory.status,
+            NotificationHistory.service_id,
+            func.count(NotificationHistory.id).label('count')
+        ).filter(
+            NotificationHistory.created_at >= start_date,
+            NotificationHistory.created_at < end_date
+        ).group_by(
+            NotificationHistory.notification_type,
+            NotificationHistory.status,
+            NotificationHistory.service_id
+        ).order_by(
+            NotificationHistory.service_id
+        )
+
+        if not include_from_test_key:
+            query = query.filter(NotificationHistory.key_type != KEY_TYPE_TEST)
 
     return query.all()
 
