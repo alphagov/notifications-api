@@ -190,6 +190,7 @@ class Development(Config):
     SQLALCHEMY_ECHO = False
     CELERY_QUEUES = Config.CELERY_QUEUES + [
         Queue('db-sms', Exchange('default'), routing_key='db-sms'),
+        Queue('priority', Exchange('default'), routing_key='priority'),
         Queue('periodic', Exchange('default'), routing_key='periodic'),
         Queue('db-email', Exchange('default'), routing_key='db-email'),
         Queue('db-letter', Exchange('default'), routing_key='db-letter'),
@@ -211,6 +212,7 @@ class Test(Config):
     STATSD_PORT = 1000
     CELERY_QUEUES = Config.CELERY_QUEUES + [
         Queue('periodic', Exchange('default'), routing_key='periodic'),
+        Queue('priority', Exchange('default'), routing_key='priority'),
         Queue('db-sms', Exchange('default'), routing_key='db-sms'),
         Queue('db-email', Exchange('default'), routing_key='db-email'),
         Queue('db-letter', Exchange('default'), routing_key='db-letter'),
