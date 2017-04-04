@@ -31,6 +31,7 @@ valid_json_get_all_response = [
                 'updated_at': None,
                 'version': 2,
                 'created_by': 'someone@test.com',
+                'subject': 'test subject',
                 'body': 'some body'
             }
         ]
