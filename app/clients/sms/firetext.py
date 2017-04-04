@@ -97,7 +97,8 @@ class FiretextClient(SmsClient):
             response = request(
                 "POST",
                 self.url,
-                data=data
+                data=data,
+                timeout=60
             )
             response.raise_for_status()
             try:

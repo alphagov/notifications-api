@@ -1,7 +1,7 @@
 import json
 from monotonic import monotonic
 from requests import (request, RequestException)
-
+from requests.exceptions import HTTPError
 from app.clients import (STATISTICS_DELIVERED, STATISTICS_FAILURE)
 from app.clients.sms import (SmsClient, SmsClientResponseException)
 
@@ -104,7 +104,8 @@ class MMGClient(SmsClient):
                 headers={
                     'Content-Type': 'application/json',
                     'Authorization': 'Basic {}'.format(self.api_key)
-                }
+                },
+                timeout=60
             )
 
             response.raise_for_status()
@@ -115,6 +116,9 @@ class MMGClient(SmsClient):
                 raise MMGClientResponseException(response=response, exception=e)
             self.record_outcome(True, response)
         except RequestException as e:
+            self.record_outcome(False, e.response)
+            raise MMGClientResponseException(response=e.response, exception=e)
+        except HTTPError as e:
             self.record_outcome(False, e.response)
             raise MMGClientResponseException(response=e.response, exception=e)
         finally:
