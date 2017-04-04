@@ -35,6 +35,11 @@ applications:
     env:
       NOTIFY_APP_NAME: delivery-worker-sender
 
+  - name: notify-delivery-worker-periodic
+    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=2 -Q periodic
+    env:
+      NOTIFY_APP_NAME: delivery-worker
+
   - name: notify-delivery-worker
     command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11
     env:
