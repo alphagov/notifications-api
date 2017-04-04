@@ -17,6 +17,8 @@ memory: 1G
 applications:
   - name: notify-delivery-celery-beat
     command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery beat --loglevel=INFO
+    instances: 1
+    memory: 128M
     env:
       NOTIFY_APP_NAME: delivery-celery-beat
 
@@ -37,8 +39,15 @@ applications:
 
   - name: notify-delivery-worker-periodic
     command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=2 -Q periodic
+    instances: 1
+    memory: 2G
     env:
-      NOTIFY_APP_NAME: delivery-worker
+      NOTIFY_APP_NAME: delivery-worker-periodic
+
+  - name: notify-delivery-worker-priority
+    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=5 -Q priority
+    env:
+      NOTIFY_APP_NAME: delivery-worker-priority
 
   - name: notify-delivery-worker
     command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11
