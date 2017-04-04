@@ -119,17 +119,17 @@ class Config(object):
         },
         'delete-failed-notifications': {
             'task': 'delete-failed-notifications',
-            'schedule': crontab(minute=15, hour='0,1,2'),
+            'schedule': crontab(minute=0, hour=0),
             'options': {'queue': 'periodic'}
         },
         'delete-successful-notifications': {
             'task': 'delete-successful-notifications',
-            'schedule': crontab(minute=0, hour='0,1,2'),
+            'schedule': crontab(minute=0, hour=1),
             'options': {'queue': 'periodic'}
         },
         'send-daily-performance-platform-stats': {
             'task': 'send-daily-performance-platform-stats',
-            'schedule': crontab(minute=0, hour=4),  # 04:00
+            'schedule': crontab(minute=0, hour=2),
             'options': {'queue': 'periodic'}
         },
         'switch-current-sms-provider-on-slow-delivery': {
@@ -139,17 +139,16 @@ class Config(object):
         },
         'timeout-sending-notifications': {
             'task': 'timeout-sending-notifications',
-            'schedule': crontab(minute=30, hour='0,1,2'),
+            'schedule': crontab(minute=0, hour=3),
             'options': {'queue': 'periodic'}
         },
         'remove_csv_files': {
             'task': 'remove_csv_files',
-            'schedule': crontab(minute=45, hour='0,1,2'),
+            'schedule': crontab(minute=0, hour=4),
             'options': {'queue': 'periodic'}
         }
     }
     CELERY_QUEUES = [
-        Queue('periodic', Exchange('default'), routing_key='periodic'),
         Queue('process-job', Exchange('default'), routing_key='process-job'),
         Queue('retry', Exchange('default'), routing_key='retry'),
         Queue('notify', Exchange('default'), routing_key='notify')
@@ -191,6 +190,8 @@ class Development(Config):
     SQLALCHEMY_ECHO = False
     CELERY_QUEUES = Config.CELERY_QUEUES + [
         Queue('db-sms', Exchange('default'), routing_key='db-sms'),
+        Queue('priority', Exchange('default'), routing_key='priority'),
+        Queue('periodic', Exchange('default'), routing_key='periodic'),
         Queue('db-email', Exchange('default'), routing_key='db-email'),
         Queue('db-letter', Exchange('default'), routing_key='db-letter'),
         Queue('send-sms', Exchange('default'), routing_key='send-sms'),
@@ -210,6 +211,8 @@ class Test(Config):
     STATSD_HOST = "localhost"
     STATSD_PORT = 1000
     CELERY_QUEUES = Config.CELERY_QUEUES + [
+        Queue('periodic', Exchange('default'), routing_key='periodic'),
+        Queue('priority', Exchange('default'), routing_key='priority'),
         Queue('db-sms', Exchange('default'), routing_key='db-sms'),
         Queue('db-email', Exchange('default'), routing_key='db-email'),
         Queue('db-letter', Exchange('default'), routing_key='db-letter'),

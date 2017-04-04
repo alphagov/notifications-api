@@ -131,7 +131,7 @@ def send_notification(notification_type):
                                               key_type=api_user.key_type,
                                               simulated=simulated)
     if not simulated:
-        queue_name = 'notify' if template.process_type == PRIORITY else None
+        queue_name = 'priority' if template.process_type == PRIORITY else None
         send_notification_to_queue(notification=notification_model,
                                    research_mode=service.research_mode,
                                    queue=queue_name)
