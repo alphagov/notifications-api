@@ -133,10 +133,39 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_email_t
             assert response_data['subject'] == 'Jo'
 
 
-def test_send_notification_with_placeholders_replaced_with_list(
+@pytest.mark.parametrize('personalisation, expected_body, expected_subject', [
+    (
+        ['Jo', 'John', 'Josephine'],
+        (
+            'Hello \n\n'
+            '* Jo\n'
+            '* John\n'
+            '* Josephine\n'
+            'This is an email from GOV.\u200BUK'
+        ),
+        'Jo, John and Josephine',
+    ),
+    (
+        6,
+        (
+            'Hello 6\n'
+            'This is an email from GOV.\u200BUK'
+        ),
+        '6',
+    ),
+    pytest.mark.xfail((
+        None,
+        ('we consider None equivalent to missing personalisation'),
+        '',
+    )),
+])
+def test_send_notification_with_placeholders_replaced_with_unusual_types(
     client,
     sample_email_template_with_placeholders,
-    mocker
+    mocker,
+    personalisation,
+    expected_body,
+    expected_subject,
 ):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
@@ -147,7 +176,7 @@ def test_send_notification_with_placeholders_replaced_with_list(
                 'to': 'ok@ok.com',
                 'template': str(sample_email_template_with_placeholders.id),
                 'personalisation': {
-                    'name': ['Jo', 'John', 'Josephine']
+                    'name': personalisation
                 }
             }
         ),
@@ -157,16 +186,10 @@ def test_send_notification_with_placeholders_replaced_with_list(
         ]
     )
 
-    response_data = json.loads(response.data)['data']
     assert response.status_code == 201
-    assert response_data['body'] == (
-        'Hello \n\n'
-        '* Jo\n'
-        '* John\n'
-        '* Josephine\n'
-        'This is an email from GOV.\u200BUK'
-    )
-    assert response_data['subject'] == 'Jo, John and Josephine'
+    response_data = json.loads(response.data)['data']
+    assert response_data['body'] == expected_body
+    assert response_data['subject'] == expected_subject
 
 
 def test_should_not_send_notification_for_archived_template(notify_api, sample_template):
