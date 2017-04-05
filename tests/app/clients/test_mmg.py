@@ -116,7 +116,7 @@ def test_send_sms_raises_if_mmg_fails_to_return_json(notify_api, mocker):
     assert exc.value.text == 'NOT AT ALL VALID JSON {"key" : "value"}}'
 
 
-def test_send_sms_raises_if_mmg_rejects_with_timeout(rmock):
+def test_send_sms_raises_if_mmg_rejects_with_connect_timeout(rmock):
     to = content = reference = 'foo'
 
     with pytest.raises(MMGClientResponseException) as exc:
@@ -127,7 +127,7 @@ def test_send_sms_raises_if_mmg_rejects_with_timeout(rmock):
     assert exc.value.text == 'Gateway Time-out'
 
 
-def test_send_sms_raises_if_firetext_rejects_with_timeout(rmock):
+def test_send_sms_raises_if_mmg_rejects_with_read_timeout(rmock):
     to = content = reference = 'foo'
 
     with pytest.raises(MMGClientResponseException) as exc:

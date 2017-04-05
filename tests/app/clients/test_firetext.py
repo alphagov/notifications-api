@@ -129,7 +129,7 @@ def test_send_sms_override_configured_shortcode_with_sender(mocker, mock_firetex
     assert request_args['from'][0] == 'fromservice'
 
 
-def test_send_sms_raises_if_firetext_rejects_with_timeout(rmock, mock_firetext_client):
+def test_send_sms_raises_if_firetext_rejects_with_connect_timeout(rmock, mock_firetext_client):
     to = content = reference = 'foo'
 
     with pytest.raises(FiretextClientResponseException) as exc:
@@ -140,7 +140,7 @@ def test_send_sms_raises_if_firetext_rejects_with_timeout(rmock, mock_firetext_c
     assert exc.value.text == 'Gateway Time-out'
 
 
-def test_send_sms_raises_if_firetext_rejects_with_timeout(rmock, mock_firetext_client):
+def test_send_sms_raises_if_firetext_rejects_with_read_timeout(rmock, mock_firetext_client):
     to = content = reference = 'foo'
 
     with pytest.raises(FiretextClientResponseException) as exc:
