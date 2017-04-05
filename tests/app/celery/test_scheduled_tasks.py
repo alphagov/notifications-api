@@ -215,7 +215,7 @@ def test_will_remove_csv_files_for_jobs_older_than_seven_days(notify_db, notify_
 
     with freeze_time('2016-10-18T10:00:00'):
         remove_csv_files()
-    s3.remove_job_from_s3.assert_has_calls([call(job_1.service_id, job_1.id), call(job_2.service_id, job_2.id)])
+    assert s3.remove_job_from_s3.call_args_list == [call(job_1.service_id, job_1.id), call(job_2.service_id, job_2.id)]
 
 
 def test_send_daily_performance_stats_calls_does_not_send_if_inactive(
