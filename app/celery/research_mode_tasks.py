@@ -56,7 +56,7 @@ def make_request(notification_type, provider, data, headers):
             api_call,
             headers=headers,
             data=data,
-            timeout=5
+            timeout=60
         )
         response.raise_for_status()
     except RequestException as e:
