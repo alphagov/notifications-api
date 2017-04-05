@@ -11,8 +11,6 @@ register_errors(sms_callback_blueprint)
 
 @sms_callback_blueprint.route('/mmg', methods=['POST'])
 def process_mmg_response():
-    from time import sleep
-    sleep(20)
     client_name = 'MMG'
     data = json.loads(request.data)
     errors = validate_callback_data(data=data,
