@@ -12,7 +12,7 @@ from celery.exceptions import Retry
 from app import (encryption, DATETIME_FORMAT)
 from app.celery import provider_tasks
 from app.celery import tasks
-from app.celery.tasks import s3, build_dvla_file
+from app.celery.tasks import s3, build_dvla_file, create_dvla_file_contents
 from app.celery.tasks import (
     process_job,
     process_row,
@@ -22,7 +22,15 @@ from app.celery.tasks import (
     get_template_class
 )
 from app.dao import jobs_dao, services_dao
-from app.models import Notification, KEY_TYPE_TEAM, KEY_TYPE_TEST, KEY_TYPE_NORMAL, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
+from app.models import (
+    Notification,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST,
+    KEY_TYPE_NORMAL,
+    SMS_TYPE,
+    EMAIL_TYPE,
+    LETTER_TYPE,
+    Job)
 
 from tests.app import load_example_csv
 from tests.app.conftest import (
@@ -308,12 +316,11 @@ def test_should_process_letter_job(sample_letter_job, mocker):
 
     assert process_row_mock.call_count == 1
 
-    assert sample_letter_job.job_status == 'finished'
+    assert sample_letter_job.job_status == 'in progress'
     tasks.build_dvla_file.apply_async.assert_called_once_with([str(sample_letter_job.id)], queue="process-job")
 
 
-def test_should_process_all_sms_job(sample_job,
-                                    sample_job_with_placeholdered_template,
+def test_should_process_all_sms_job(sample_job_with_placeholdered_template,
                                     mocker):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
@@ -970,8 +977,6 @@ def test_build_dvla_file(sample_letter_template, mocker):
     job = create_job(template=sample_letter_template, notification_count=2)
     create_notification(template=job.template, job=job)
     create_notification(template=job.template, job=job)
-
-    mocker.patch("app.celery.tasks.random.randint", return_value=999)
     mocked_upload = mocker.patch("app.celery.tasks.s3upload")
     mocked_letter_template = mocker.patch("app.celery.tasks.LetterDVLATemplate")
     mocked_letter_template_instance = mocked_letter_template.return_value
@@ -984,21 +989,11 @@ def test_build_dvla_file(sample_letter_template, mocker):
         bucket_name=current_app.config['DVLA_UPLOAD_BUCKET_NAME'],
         file_location="{}-dvla-job.text".format(job.id)
     )
-
-    # Template
-    assert mocked_letter_template.call_args[0][0]['subject'] == 'Template subject'
-    assert mocked_letter_template.call_args[0][0]['content'] == 'Dear Sir/Madam, Hello. Yours Truly, The Government.'
-
-    # Personalisation
-    assert mocked_letter_template.call_args[0][1] is None
-
-    # Named arguments
-    assert mocked_letter_template.call_args[1]['numeric_id'] == 999
-    assert mocked_letter_template.call_args[1]['contact_block'] == 'London,\nSW1A 1AA'
+    assert Job.query.get(job.id).job_status == 'ready to send'
 
 
 def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_letter_template, mocker):
-    job = create_job(template=sample_letter_template, notification_count=2)
+    job = create_job(template=sample_letter_template, notification_count=2, job_status='in progress')
     create_notification(template=job.template, job=job)
 
     mocked = mocker.patch("app.celery.tasks.s3upload")
@@ -1009,6 +1004,28 @@ def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_let
 
     tasks.build_dvla_file.retry.assert_called_with(queue='retry',
                                                    exc="All notifications for job {} are not persisted".format(job.id))
+    assert Job.query.get(job.id).job_status == 'in progress'
+
+
+def test_create_dvla_file_contents(sample_letter_template, mocker):
+    mocker.patch("app.celery.tasks.random.randint", return_value=999)
+    job = create_job(template=sample_letter_template, notification_count=2)
+    create_notification(template=job.template, job=job)
+    create_notification(template=job.template, job=job)
+    mocked_letter_template = mocker.patch("app.celery.tasks.LetterDVLATemplate")
+    mocked_letter_template_instance = mocked_letter_template.return_value
+    mocked_letter_template_instance.__str__.return_value = "dvla|string"
+    create_dvla_file_contents(job.id)
+    # Template
+    assert mocked_letter_template.call_args[0][0]['subject'] == 'Template subject'
+    assert mocked_letter_template.call_args[0][0]['content'] == 'Dear Sir/Madam, Hello. Yours Truly, The Government.'
+
+    # Personalisation
+    assert mocked_letter_template.call_args[0][1] is None
+
+    # Named arguments
+    assert mocked_letter_template.call_args[1]['numeric_id'] == 999
+    assert mocked_letter_template.call_args[1]['contact_block'] == 'London,\nSW1A 1AA'
 
 
 @freeze_time("2017-03-23 11:09:00.061258")

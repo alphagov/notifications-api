@@ -22,7 +22,8 @@ from app.dao.jobs_dao import (
     dao_update_job,
     dao_get_job_by_id,
     all_notifications_are_created_for_job,
-    dao_get_all_notifications_for_job)
+    dao_get_all_notifications_for_job,
+    dao_update_job_status)
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
@@ -31,7 +32,7 @@ from app.models import (
     SMS_TYPE,
     LETTER_TYPE,
     KEY_TYPE_NORMAL,
-    JOB_STATUS_CANCELLED, JOB_STATUS_PENDING, JOB_STATUS_IN_PROGRESS, JOB_STATUS_FINISHED)
+    JOB_STATUS_CANCELLED, JOB_STATUS_PENDING, JOB_STATUS_IN_PROGRESS, JOB_STATUS_FINISHED, JOB_STATUS_READY_TO_SEND)
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
@@ -73,18 +74,19 @@ def process_job(job_id):
     ).enumerated_recipients_and_personalisation:
         process_row(row_number, recipient, personalisation, template, job, service)
 
+    if template.template_type == LETTER_TYPE:
+        build_dvla_file.apply_async([str(job.id)], queue='process-job')
+        # temporary logging
+        current_app.logger.info("send job {} to build-dvla-file in the process-job queue".format(job_id))
+
     finished = datetime.utcnow()
-    job.job_status = JOB_STATUS_FINISHED
+    job.job_status = JOB_STATUS_FINISHED if template.template_type != LETTER_TYPE else job.job_status
     job.processing_started = start
     job.processing_finished = finished
     dao_update_job(job)
     current_app.logger.info(
         "Job {} created at {} started at {} finished at {}".format(job_id, job.created_at, start, finished)
     )
-    if template.template_type == LETTER_TYPE:
-        build_dvla_file.apply_async([str(job.id)], queue='process-job')
-        # temporary logging
-        current_app.logger.info("send job {} to build-dvla-file in the process-job queue".format(job_id))
 
 
 def process_row(row_number, recipient, personalisation, template, job, service):
@@ -267,29 +269,35 @@ def persist_letter(
 def build_dvla_file(self, job_id):
     try:
         if all_notifications_are_created_for_job(job_id):
-            file_contents = '\n'.join(
-                str(LetterDVLATemplate(
-                    notification.template.__dict__,
-                    notification.personalisation,
-                    # This unique id is a 7 digits requested by DVLA, not known
-                    # if this number needs to be sequential.
-                    numeric_id=random.randint(1, int('9' * 7)),
-                    contact_block=notification.service.letter_contact_block,
-                ))
-                for notification in dao_get_all_notifications_for_job(job_id)
-            )
+            file_contents = create_dvla_file_contents(job_id)
             s3upload(
                 filedata=file_contents + '\n',
                 region=current_app.config['AWS_REGION'],
                 bucket_name=current_app.config['DVLA_UPLOAD_BUCKET_NAME'],
                 file_location="{}-dvla-job.text".format(job_id)
             )
+            dao_update_job_status(job_id, JOB_STATUS_READY_TO_SEND)
         else:
             current_app.logger.info("All notifications for job {} are not persisted".format(job_id))
             self.retry(queue="retry", exc="All notifications for job {} are not persisted".format(job_id))
     except Exception as e:
         current_app.logger.exception("build_dvla_file threw exception")
         raise e
+
+
+def create_dvla_file_contents(job_id):
+    file_contents = '\n'.join(
+        str(LetterDVLATemplate(
+            notification.template.__dict__,
+            notification.personalisation,
+            # This unique id is a 7 digits requested by DVLA, not known
+            # if this number needs to be sequential.
+            numeric_id=random.randint(1, int('9' * 7)),
+            contact_block=notification.service.letter_contact_block,
+        ))
+        for notification in dao_get_all_notifications_for_job(job_id)
+    )
+    return file_contents
 
 
 def s3upload(filedata, region, bucket_name, file_location):
