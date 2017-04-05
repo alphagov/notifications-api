@@ -42,8 +42,10 @@ def get_firetext_responses(status):
 
 class FiretextClientResponseException(SmsClientResponseException):
     def __init__(self, response, exception):
-        self.status_code = response.status_code
-        self.text = response.text
+        status_code = response.status_code if response is not None else 504
+        text = response.text if response is not None else "Gateway Time-out"
+        self.status_code = status_code
+        self.text = text
         self.exception = exception
 
     def __str__(self):
@@ -68,11 +70,13 @@ class FiretextClient(SmsClient):
         return self.name
 
     def record_outcome(self, success, response):
+        status_code = response.status_code if response else 503
+
         log_message = "API {} request {} on {} response status_code {}".format(
             "POST",
             "succeeded" if success else "failed",
             self.url,
-            response.status_code
+            status_code
         )
 
         if success:

@@ -1,7 +1,6 @@
 import json
 from monotonic import monotonic
 from requests import (request, RequestException)
-from requests.exceptions import HTTPError
 from app.clients import (STATISTICS_DELIVERED, STATISTICS_FAILURE)
 from app.clients.sms import (SmsClient, SmsClientResponseException)
 
@@ -45,8 +44,11 @@ def get_mmg_responses(status):
 
 class MMGClientResponseException(SmsClientResponseException):
     def __init__(self, response, exception):
-        self.status_code = response.status_code
-        self.text = response.text
+        status_code = response.status_code if response is not None else 504
+        text = response.text if response is not None else "Gateway Time-out"
+
+        self.status_code = status_code
+        self.text = text
         self.exception = exception
 
     def __str__(self):
@@ -68,11 +70,12 @@ class MMGClient(SmsClient):
         self.mmg_url = current_app.config.get('MMG_URL')
 
     def record_outcome(self, success, response):
+        status_code = response.status_code if response else 503
         log_message = "API {} request {} on {} response status_code {}".format(
             "POST",
             "succeeded" if success else "failed",
             self.mmg_url,
-            response.status_code
+            status_code
         )
 
         if success:
@@ -116,9 +119,6 @@ class MMGClient(SmsClient):
                 raise MMGClientResponseException(response=response, exception=e)
             self.record_outcome(True, response)
         except RequestException as e:
-            self.record_outcome(False, e.response)
-            raise MMGClientResponseException(response=e.response, exception=e)
-        except HTTPError as e:
             self.record_outcome(False, e.response)
             raise MMGClientResponseException(response=e.response, exception=e)
         finally:

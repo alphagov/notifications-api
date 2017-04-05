@@ -3,11 +3,12 @@ import json
 import pytest
 import requests_mock
 from requests import HTTPError
+from requests.exceptions import ConnectTimeout, ReadTimeout
 
 from app import mmg_client
 from app.clients.sms import SmsClientResponseException
 
-from app.clients.sms.mmg import get_mmg_responses
+from app.clients.sms.mmg import get_mmg_responses, MMGClientResponseException
 
 
 def test_should_return_correct_details_for_delivery():
@@ -113,3 +114,25 @@ def test_send_sms_raises_if_mmg_fails_to_return_json(notify_api, mocker):
     assert 'app.clients.sms.mmg.MMGClientResponseException: Code 200 text NOT AT ALL VALID JSON {"key" : "value"}} exception Expecting value: line 1 column 1 (char 0)' in str(exc)  # noqa
     assert exc.value.status_code == 200
     assert exc.value.text == 'NOT AT ALL VALID JSON {"key" : "value"}}'
+
+
+def test_send_sms_raises_if_mmg_rejects_with_timeout(rmock):
+    to = content = reference = 'foo'
+
+    with pytest.raises(MMGClientResponseException) as exc:
+        rmock.register_uri('POST', 'https://api.mmg.co.uk/json/api.php', exc=ConnectTimeout)
+        mmg_client.send_sms(to, content, reference)
+
+    assert exc.value.status_code == 504
+    assert exc.value.text == 'Gateway Time-out'
+
+
+def test_send_sms_raises_if_firetext_rejects_with_timeout(rmock):
+    to = content = reference = 'foo'
+
+    with pytest.raises(MMGClientResponseException) as exc:
+        rmock.register_uri('POST', 'https://api.mmg.co.uk/json/api.php', exc=ReadTimeout)
+        mmg_client.send_sms(to, content, reference)
+
+    assert exc.value.status_code == 504
+    assert exc.value.text == 'Gateway Time-out'
