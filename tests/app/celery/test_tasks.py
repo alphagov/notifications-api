@@ -971,17 +971,30 @@ def test_build_dvla_file(sample_letter_template, mocker):
     create_notification(template=job.template, job=job)
     create_notification(template=job.template, job=job)
 
-    mocked = mocker.patch("app.celery.tasks.s3upload")
-    mocker.patch("app.celery.tasks.LetterDVLATemplate.__str__", return_value="dvla|string")
+    mocker.patch("app.celery.tasks.random.randint", return_value=999)
+    mocked_upload = mocker.patch("app.celery.tasks.s3upload")
+    mocked_letter_template = mocker.patch("app.celery.tasks.LetterDVLATemplate")
+    mocked_letter_template_instance = mocked_letter_template.return_value
+    mocked_letter_template_instance.__str__.return_value = "dvla|string"
     build_dvla_file(job.id)
 
-    file = "dvla|string\ndvla|string\n"
+    mocked_upload.assert_called_once_with(
+        filedata="dvla|string\ndvla|string\n",
+        region=current_app.config['AWS_REGION'],
+        bucket_name=current_app.config['DVLA_UPLOAD_BUCKET_NAME'],
+        file_location="{}-dvla-job.text".format(job.id)
+    )
 
-    assert mocked.called
-    mocked.assert_called_once_with(filedata=file,
-                                   region=current_app.config['AWS_REGION'],
-                                   bucket_name=current_app.config['DVLA_UPLOAD_BUCKET_NAME'],
-                                   file_location="{}-dvla-job.text".format(job.id))
+    # Template
+    assert mocked_letter_template.call_args[0][0]['subject'] == 'Template subject'
+    assert mocked_letter_template.call_args[0][0]['content'] == 'Dear Sir/Madam, Hello. Yours Truly, The Government.'
+
+    # Personalisation
+    assert mocked_letter_template.call_args[0][1] is None
+
+    # Named arguments
+    assert mocked_letter_template.call_args[1]['numeric_id'] == 999
+    assert mocked_letter_template.call_args[1]['contact_block'] == 'London,\nSW1A 1AA'
 
 
 def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_letter_template, mocker):

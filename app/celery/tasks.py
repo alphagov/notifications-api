@@ -267,18 +267,23 @@ def persist_letter(
 def build_dvla_file(self, job_id):
     try:
         if all_notifications_are_created_for_job(job_id):
-            notifications = dao_get_all_notifications_for_job(job_id)
-            file = ""
-            for n in notifications:
-                t = {"content": n.template.content, "subject": n.template.subject}
-                # This unique id is a 7 digits requested by DVLA, not known if this number needs to be sequential.
-                unique_id = int(''.join(map(str, random.sample(range(9), 7))))
-                template = LetterDVLATemplate(t, n.personalisation, unique_id)
-                file = file + str(template) + "\n"
-            s3upload(filedata=file,
-                     region=current_app.config['AWS_REGION'],
-                     bucket_name=current_app.config['DVLA_UPLOAD_BUCKET_NAME'],
-                     file_location="{}-dvla-job.text".format(job_id))
+            file_contents = '\n'.join(
+                str(LetterDVLATemplate(
+                    notification.template.__dict__,
+                    notification.personalisation,
+                    # This unique id is a 7 digits requested by DVLA, not known
+                    # if this number needs to be sequential.
+                    numeric_id=random.randint(1, int('9' * 7)),
+                    contact_block=notification.service.letter_contact_block,
+                ))
+                for notification in dao_get_all_notifications_for_job(job_id)
+            )
+            s3upload(
+                filedata=file_contents + '\n',
+                region=current_app.config['AWS_REGION'],
+                bucket_name=current_app.config['DVLA_UPLOAD_BUCKET_NAME'],
+                file_location="{}-dvla-job.text".format(job_id)
+            )
         else:
             current_app.logger.info("All notifications for job {} are not persisted".format(job_id))
             self.retry(queue="retry", exc="All notifications for job {} are not persisted".format(job_id))
