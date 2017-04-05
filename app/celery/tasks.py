@@ -78,9 +78,10 @@ def process_job(job_id):
         build_dvla_file.apply_async([str(job.id)], queue='process-job')
         # temporary logging
         current_app.logger.info("send job {} to build-dvla-file in the process-job queue".format(job_id))
+    else:
+        job.job_status = JOB_STATUS_FINISHED
 
     finished = datetime.utcnow()
-    job.job_status = JOB_STATUS_FINISHED if template.template_type != LETTER_TYPE else job.job_status
     job.processing_started = start
     job.processing_finished = finished
     dao_update_job(job)
