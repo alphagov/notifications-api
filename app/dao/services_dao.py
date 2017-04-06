@@ -326,47 +326,29 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
 def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True):
     start_date = get_london_midnight_in_utc(start_date)
     end_date = get_london_midnight_in_utc(end_date + timedelta(days=1))
+    table = NotificationHistory
 
     if start_date >= datetime.utcnow() - timedelta(days=7):
-        # Use notifications table.
-        # This should improve performance for the default query and allow us to see test messages for the last week.
-        query = db.session.query(
-            Notification.notification_type,
-            Notification.status,
-            Notification.service_id,
-            func.count(Notification.id).label('count')
-        ).filter(
-            Notification.created_at >= start_date,
-            Notification.created_at < end_date
-        ).group_by(
-            Notification.notification_type,
-            Notification.status,
-            Notification.service_id
-        ).order_by(
-            Notification.service_id
-        )
-        if not include_from_test_key:
-            query = query.filter(NotificationHistory.key_type != KEY_TYPE_TEST)
+        table = Notification
 
-    else:
-        query = db.session.query(
-            NotificationHistory.notification_type,
-            NotificationHistory.status,
-            NotificationHistory.service_id,
-            func.count(NotificationHistory.id).label('count')
-        ).filter(
-            NotificationHistory.created_at >= start_date,
-            NotificationHistory.created_at < end_date
-        ).group_by(
-            NotificationHistory.notification_type,
-            NotificationHistory.status,
-            NotificationHistory.service_id
-        ).order_by(
-            NotificationHistory.service_id
-        )
+    query = db.session.query(
+        table.notification_type,
+        table.status,
+        table.service_id,
+        func.count(table.id).label('count')
+    ).filter(
+        table.created_at >= start_date,
+        table.created_at < end_date
+    ).group_by(
+        table.notification_type,
+        table.status,
+        table.service_id
+    ).order_by(
+        table.service_id
+    )
 
-        if not include_from_test_key:
-            query = query.filter(NotificationHistory.key_type != KEY_TYPE_TEST)
+    if not include_from_test_key:
+        query = query.filter(table.key_type != KEY_TYPE_TEST)
 
     return query.all()
 
