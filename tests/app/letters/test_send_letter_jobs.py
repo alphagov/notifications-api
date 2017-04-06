@@ -1,5 +1,6 @@
 import uuid
 
+from flask import current_app
 from flask import json
 
 from tests import create_authorization_header
@@ -19,7 +20,10 @@ def test_send_letter_jobs(client, mocker):
     assert response.status_code == 200
     assert response.get_data(as_text=True) == "Task created to send files to DVLA"
 
-    mock_celery.assert_called_once_with(name="send_files_to_dvla", args=(job_ids['job_ids'],), queue="process-ftp")
+    mock_celery.assert_called_once_with(name="send_files_to_dvla",
+                                        args=(current_app.config.get("DVLA_UPLOAD_BUCKET_NAME"),
+                                              job_ids['job_ids'],),
+                                        queue="process-ftp")
 
 
 def test_send_letter_jobs_throws_validation_error(client, mocker):

@@ -1,4 +1,5 @@
 from flask import Blueprint
+from flask import current_app
 from flask import request
 
 from app import notify_celery
@@ -13,6 +14,7 @@ register_errors(letter_job)
 @letter_job.route('/send-letter-jobs', methods=['POST'])
 def send_letter_jobs():
     job_ids = validate(request.get_json(), letter_job_ids)
-    notify_celery.send_task(name="send_files_to_dvla", args=(job_ids['job_ids'],), queue="process-ftp")
+    notify_celery.send_task(name="send_files_to_dvla", args=(current_app.config.get("DVLA_UPLOAD_BUCKET_NAME"),
+                                                             job_ids['job_ids'],), queue="process-ftp")
 
     return "Task created to send files to DVLA"
