@@ -21,8 +21,7 @@ def test_send_letter_jobs(client, mocker):
     assert response.get_data(as_text=True) == "Task created to send files to DVLA"
 
     mock_celery.assert_called_once_with(name="send_files_to_dvla",
-                                        args=(current_app.config.get("DVLA_UPLOAD_BUCKET_NAME"),
-                                              job_ids['job_ids'],),
+                                        args=(job_ids['job_ids'],),
                                         queue="process-ftp")
 
 
