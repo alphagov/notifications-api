@@ -116,6 +116,11 @@ def dao_update_job(job):
     db.session.commit()
 
 
+def dao_update_job_status(job_id, status):
+    db.session.query(Job).filter_by(id=job_id).update({'job_status': status})
+    db.session.commit()
+
+
 def dao_get_jobs_older_than_limited_by(older_than=7, limit_days=2):
     return Job.query.filter(
         cast(Job.created_at, sql_date) < days_ago(older_than),

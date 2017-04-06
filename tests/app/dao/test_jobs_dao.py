@@ -13,7 +13,9 @@ from app.dao.jobs_dao import (
     dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job,
     all_notifications_are_created_for_job,
-    dao_get_all_notifications_for_job, dao_get_jobs_older_than_limited_by)
+    dao_update_job_status,
+    dao_get_all_notifications_for_job,
+    dao_get_jobs_older_than_limited_by)
 from app.models import Job
 
 from tests.app.conftest import sample_notification as create_notification
@@ -355,3 +357,9 @@ def test_dao_get_all_notifications_for_job(notify_db, notify_db_session, sample_
     create_notification(notify_db=notify_db, notify_db_session=notify_db_session, job=sample_job)
 
     assert len(dao_get_all_notifications_for_job(sample_job.id)) == 3
+
+
+def test_dao_update_job_status(sample_job):
+    dao_update_job_status(sample_job.id, 'sent to dvla')
+    updated_job = Job.query.get(sample_job.id)
+    assert updated_job.job_status == 'sent to dvla'
