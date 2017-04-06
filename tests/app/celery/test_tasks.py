@@ -1035,4 +1035,4 @@ def test_dvla_letter_template(sample_letter_notification):
     letter = LetterDVLATemplate(t,
                                 sample_letter_notification.personalisation,
                                 12345)
-    assert str(letter) == "140|500|001||201703230012345|23032017||||||||||||A1|A2|A3|A4|A5|A6||A_POST||||||||Template subject|Dear Sir/Madam, Hello. Yours Truly, The Government.<cr><cr>"  # noqa
+    assert str(letter) == "140|500|001||201703230012345|||||||||||||A1|A2|A3|A4|A5|A6||A_POST|||||||||23 March 2017<cr><cr><h1>Template subject<normal><cr><cr>Dear Sir/Madam, Hello. Yours Truly, The Government.<cr><cr>"  # noqa

@@ -203,17 +203,19 @@ def test_should_update_all_scheduled_jobs_and_put_on_queue(notify_db, notify_db_
 def test_will_remove_csv_files_for_jobs_older_than_seven_days(notify_db, notify_db_session, mocker):
     mocker.patch('app.celery.scheduled_tasks.s3.remove_job_from_s3')
 
-    one_millisecond_before_midnight = datetime(2016, 10, 9, 23, 59, 59, 999)
-    midnight = datetime(2016, 10, 10, 0, 0, 0, 0)
-    one_millisecond_past_midnight = datetime(2016, 10, 10, 0, 0, 0, 1)
+    eligible_job_1 = datetime(2016, 10, 10, 23, 59, 59, 000)
+    eligible_job_2 = datetime(2016, 10, 9, 00, 00, 00, 000)
+    in_eligible_job_too_new = datetime(2016, 10, 11, 00, 00, 00, 000)
+    in_eligible_job_too_old = datetime(2016, 10, 8, 23, 59, 59, 999)
 
-    job_1 = create_sample_job(notify_db, notify_db_session, created_at=one_millisecond_before_midnight)
-    create_sample_job(notify_db, notify_db_session, created_at=midnight)
-    create_sample_job(notify_db, notify_db_session, created_at=one_millisecond_past_midnight)
+    job_1 = create_sample_job(notify_db, notify_db_session, created_at=eligible_job_1)
+    job_2 = create_sample_job(notify_db, notify_db_session, created_at=eligible_job_2)
+    create_sample_job(notify_db, notify_db_session, created_at=in_eligible_job_too_new)
+    create_sample_job(notify_db, notify_db_session, created_at=in_eligible_job_too_old)
 
-    with freeze_time('2016-10-17T00:00:00'):
+    with freeze_time('2016-10-18T10:00:00'):
         remove_csv_files()
-    s3.remove_job_from_s3.assert_called_once_with(job_1.service_id, job_1.id)
+    assert s3.remove_job_from_s3.call_args_list == [call(job_1.service_id, job_1.id), call(job_2.service_id, job_2.id)]
 
 
 def test_send_daily_performance_stats_calls_does_not_send_if_inactive(

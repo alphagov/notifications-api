@@ -1,10 +1,11 @@
 from requests import HTTPError
 from urllib.parse import parse_qs
+from requests.exceptions import ConnectTimeout, ReadTimeout
 
 import pytest
 import requests_mock
 
-from app.clients.sms.firetext import get_firetext_responses, SmsClientResponseException
+from app.clients.sms.firetext import get_firetext_responses, SmsClientResponseException, FiretextClientResponseException
 
 
 def test_should_return_correct_details_for_delivery():
@@ -126,3 +127,25 @@ def test_send_sms_override_configured_shortcode_with_sender(mocker, mock_firetex
 
     request_args = parse_qs(request_mock.request_history[0].text)
     assert request_args['from'][0] == 'fromservice'
+
+
+def test_send_sms_raises_if_firetext_rejects_with_connect_timeout(rmock, mock_firetext_client):
+    to = content = reference = 'foo'
+
+    with pytest.raises(FiretextClientResponseException) as exc:
+        rmock.register_uri('POST', 'https://www.firetext.co.uk/api/sendsms/json', exc=ConnectTimeout)
+        mock_firetext_client.send_sms(to, content, reference)
+
+    assert exc.value.status_code == 504
+    assert exc.value.text == 'Gateway Time-out'
+
+
+def test_send_sms_raises_if_firetext_rejects_with_read_timeout(rmock, mock_firetext_client):
+    to = content = reference = 'foo'
+
+    with pytest.raises(FiretextClientResponseException) as exc:
+        rmock.register_uri('POST', 'https://www.firetext.co.uk/api/sendsms/json', exc=ReadTimeout)
+        mock_firetext_client.send_sms(to, content, reference)
+
+    assert exc.value.status_code == 504
+    assert exc.value.text == 'Gateway Time-out'

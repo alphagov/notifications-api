@@ -12,10 +12,10 @@ from app.dao.jobs_dao import (
     dao_set_scheduled_jobs_to_pending,
     dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job,
-    dao_get_jobs_older_than,
     all_notifications_are_created_for_job,
+    dao_update_job_status,
     dao_get_all_notifications_for_job,
-    dao_update_job_status)
+    dao_get_jobs_older_than_limited_by)
 from app.models import Job
 
 from tests.app.conftest import sample_notification as create_notification
@@ -269,19 +269,33 @@ def test_get_future_scheduled_job_gets_a_job_yet_to_send(sample_scheduled_job):
     assert result.id == sample_scheduled_job.id
 
 
-def test_should_get_jobs_older_than_seven_days(notify_db, notify_db_session):
-    one_millisecond_before_midnight = datetime(2016, 10, 9, 23, 59, 59, 999)
-    midnight = datetime(2016, 10, 10, 0, 0, 0, 0)
-    one_millisecond_past_midnight = datetime(2016, 10, 10, 0, 0, 0, 1)
+def test_should_get_jobs_seven_days_old(notify_db, notify_db_session):
+    # job runs at some point on each day
+    # shouldn't matter when, we are deleting things 7 days ago
+    job_run_time = '2016-10-31T10:00:00'
 
-    job_1 = create_job(notify_db, notify_db_session, created_at=one_millisecond_before_midnight)
-    create_job(notify_db, notify_db_session, created_at=midnight)
-    create_job(notify_db, notify_db_session, created_at=one_millisecond_past_midnight)
+    # running on the 31st means the previous 7 days are ignored
 
-    with freeze_time('2016-10-17T00:00:00'):
-        jobs = dao_get_jobs_older_than(7)
-        assert len(jobs) == 1
+    # 2 day window for delete jobs
+    # 7 days of files to skip includes the 30,29,28,27,26,25,24th, so the....
+    last_possible_time_for_eligible_job = '2016-10-23T23:59:59'
+    first_possible_time_for_eligible_job = '2016-10-22T00:00:00'
+
+    job_1 = create_job(notify_db, notify_db_session, created_at=last_possible_time_for_eligible_job)
+    job_2 = create_job(notify_db, notify_db_session, created_at=first_possible_time_for_eligible_job)
+
+    # bookmarks for jobs that should be ignored
+    last_possible_time_for_ineligible_job = '2016-10-24T00:00:00'
+    create_job(notify_db, notify_db_session, created_at=last_possible_time_for_ineligible_job)
+
+    first_possible_time_for_ineligible_job = '2016-10-21T23:59:59'
+    create_job(notify_db, notify_db_session, created_at=first_possible_time_for_ineligible_job)
+
+    with freeze_time(job_run_time):
+        jobs = dao_get_jobs_older_than_limited_by()
+        assert len(jobs) == 2
         assert jobs[0].id == job_1.id
+        assert jobs[1].id == job_2.id
 
 
 def test_get_jobs_for_service_is_paginated(notify_db, notify_db_session, sample_service, sample_template):
