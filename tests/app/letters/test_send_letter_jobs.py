@@ -20,7 +20,7 @@ def test_send_letter_jobs(client, mocker):
     assert response.status_code == 200
     assert response.get_data(as_text=True) == "Task created to send files to DVLA"
 
-    mock_celery.assert_called_once_with(name="send_files_to_dvla",
+    mock_celery.assert_called_once_with(name="send-files-to-dvla",
                                         args=(job_ids['job_ids'],),
                                         queue="process-ftp")
 
