@@ -39,6 +39,7 @@ def create_service(user=None, service_name="Sample service", service_id=None):
 def create_template(
     service,
     template_type=SMS_TYPE,
+    subject='Template subject',
     content='Dear Sir/Madam, Hello. Yours Truly, The Government.',
     template_id=None
 ):
@@ -50,7 +51,7 @@ def create_template(
         'created_by': service.created_by,
     }
     if template_type != SMS_TYPE:
-        data['subject'] = 'Template subject'
+        data['subject'] = subject
     template = Template(**data)
     dao_create_template(template)
     return template
