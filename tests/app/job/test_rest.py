@@ -673,7 +673,8 @@ def test_get_jobs_accepts_page_parameter(
 @pytest.mark.parametrize('statuses_filter, expected_statuses', [
     ('', JOB_STATUS_TYPES),
     ('pending', [JOB_STATUS_PENDING]),
-    ('pending, in progress, finished, sending limits exceeded, scheduled, cancelled', JOB_STATUS_TYPES),
+    ('pending, in progress, finished, sending limits exceeded, scheduled, cancelled, ready to send, sent to dvla',
+        JOB_STATUS_TYPES),
     # bad statuses are accepted, just return no data
     ('foo', [])
 ])
@@ -691,6 +692,8 @@ def test_get_jobs_can_filter_on_statuses(
     create_job(notify_db, notify_db_session, job_status='sending limits exceeded')
     create_job(notify_db, notify_db_session, job_status='scheduled')
     create_job(notify_db, notify_db_session, job_status='cancelled')
+    create_job(notify_db, notify_db_session, job_status='ready to send')
+    create_job(notify_db, notify_db_session, job_status='sent to dvla')
 
     path = '/service/{}/job'.format(sample_service.id)
     response = client.get(

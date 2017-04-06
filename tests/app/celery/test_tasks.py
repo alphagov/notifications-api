@@ -19,7 +19,8 @@ from app.celery.tasks import (
     send_sms,
     send_email,
     persist_letter,
-    get_template_class
+    get_template_class,
+    update_job_to_sent_to_dvla
 )
 from app.dao import jobs_dao, services_dao
 from app.models import (
@@ -1036,3 +1037,14 @@ def test_dvla_letter_template(sample_letter_notification):
                                 sample_letter_notification.personalisation,
                                 12345)
     assert str(letter) == "140|500|001||201703230012345|||||||||||||A1|A2|A3|A4|A5|A6||A_POST|||||||||23 March 2017<cr><cr><h1>Template subject<normal><cr><cr>Dear Sir/Madam, Hello. Yours Truly, The Government.<cr><cr>"  # noqa
+
+
+def test_update_job_to_sent_to_dvla(sample_letter_template, sample_letter_job):
+    create_notification(template=sample_letter_template, job=sample_letter_job)
+    create_notification(template=sample_letter_template, job=sample_letter_job)
+    update_job_to_sent_to_dvla(job_id=sample_letter_job.id)
+
+    updated_notifications = Notification.query.all()
+    assert [(n.status == 'sending', n.sent_by == 'dvla') for n in updated_notifications]
+
+    assert 'sent to dvla' == Job.query.filter_by(id=sample_letter_job.id).one().job_status

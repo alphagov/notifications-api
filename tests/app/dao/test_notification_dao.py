@@ -52,7 +52,6 @@ from tests.app.conftest import (
     sample_email_template,
     sample_service,
     sample_job,
-    sample_api_key,
     sample_notification_history as create_notification_history
 )
 
