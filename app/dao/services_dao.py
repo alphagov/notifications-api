@@ -325,27 +325,30 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
 @statsd(namespace='dao')
 def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True):
     start_date = get_london_midnight_in_utc(start_date)
-    end_date = get_london_midnight_in_utc(end_date)
-    end_date += timedelta(hours=23, minutes=59, seconds=59)
+    end_date = get_london_midnight_in_utc(end_date + timedelta(days=1))
+    table = NotificationHistory
+
+    if start_date >= datetime.utcnow() - timedelta(days=7):
+        table = Notification
 
     query = db.session.query(
-        NotificationHistory.notification_type,
-        NotificationHistory.status,
-        NotificationHistory.service_id,
-        func.count(NotificationHistory.id).label('count')
+        table.notification_type,
+        table.status,
+        table.service_id,
+        func.count(table.id).label('count')
     ).filter(
-        NotificationHistory.created_at >= start_date,
-        NotificationHistory.created_at <= end_date
+        table.created_at >= start_date,
+        table.created_at < end_date
     ).group_by(
-        NotificationHistory.notification_type,
-        NotificationHistory.status,
-        NotificationHistory.service_id
+        table.notification_type,
+        table.status,
+        table.service_id
     ).order_by(
-        NotificationHistory.service_id
+        table.service_id
     )
 
     if not include_from_test_key:
-        query = query.filter(NotificationHistory.key_type != KEY_TYPE_TEST)
+        query = query.filter(table.key_type != KEY_TYPE_TEST)
 
     return query.all()
 
