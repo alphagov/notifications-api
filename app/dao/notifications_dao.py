@@ -447,10 +447,9 @@ def dao_update_notifications_sent_to_dvla(job_id, provider):
     updated_count = db.session.query(Notification
                                      ).filter(Notification.job_id == job_id
                                               ).update({'status': 'sending', "sent_by": provider})
-    # only update NotificationHistory if api key typ is not test
+
     db.session.query(NotificationHistory
-                     ).filter(NotificationHistory.job_id == job_id,
-                              NotificationHistory.key_type != KEY_TYPE_TEST
+                     ).filter(NotificationHistory.job_id == job_id
                               ).update({'status': 'sending', "sent_by": provider})
 
     return updated_count
