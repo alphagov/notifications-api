@@ -363,3 +363,4 @@ def test_dao_update_job_status(sample_job):
     dao_update_job_status(sample_job.id, 'sent to dvla')
     updated_job = Job.query.get(sample_job.id)
     assert updated_job.job_status == 'sent to dvla'
+    assert updated_job.updated_at

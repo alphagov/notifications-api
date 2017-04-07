@@ -1563,9 +1563,13 @@ def test_dao_update_notifications_sent_to_dvla(notify_db, notify_db_session, sam
     updated_notification = Notification.query.get(notification.id)
     assert updated_notification.status == 'sending'
     assert updated_notification.sent_by == 'some provider'
+    assert updated_notification.sent_at
+    assert updated_notification.updated_at
     history = NotificationHistory.query.get(notification.id)
     assert history.status == 'sending'
     assert history.sent_by == 'some provider'
+    assert history.sent_at
+    assert history.updated_at
 
 
 def test_dao_update_notifications_sent_to_dvla_does_update_history_if_test_key(
@@ -1580,4 +1584,6 @@ def test_dao_update_notifications_sent_to_dvla_does_update_history_if_test_key(
     updated_notification = Notification.query.get(notification.id)
     assert updated_notification.status == 'sending'
     assert updated_notification.sent_by == 'some provider'
+    assert updated_notification.sent_at
+    assert updated_notification.updated_at
     assert not NotificationHistory.query.get(notification.id)

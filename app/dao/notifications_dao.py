@@ -444,12 +444,13 @@ def is_delivery_slow_for_provider(
 @statsd(namespace="dao")
 @transactional
 def dao_update_notifications_sent_to_dvla(job_id, provider):
+    now = datetime.utcnow()
     updated_count = db.session.query(
         Notification).filter(Notification.job_id == job_id).update(
-        {'status': 'sending', "sent_by": provider})
+        {'status': 'sending', "sent_by": provider, "sent_at": now})
 
     db.session.query(
         NotificationHistory).filter(NotificationHistory.job_id == job_id).update(
-        {'status': 'sending', "sent_by": provider})
+        {'status': 'sending', "sent_by": provider, "sent_at": now, "updated_at": now})
 
     return updated_count
