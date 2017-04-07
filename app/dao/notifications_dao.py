@@ -439,3 +439,17 @@ def is_delivery_slow_for_provider(
         (Notification.updated_at - Notification.sent_at) >= delivery_time,
     ).count()
     return count >= threshold
+
+
+@statsd(namespace="dao")
+@transactional
+def dao_update_notifications_sent_to_dvla(job_id, provider):
+    updated_count = db.session.query(
+        Notification).filter(Notification.job_id == job_id).update(
+        {'status': 'sending', "sent_by": provider})
+
+    db.session.query(
+        NotificationHistory).filter(NotificationHistory.job_id == job_id).update(
+        {'status': 'sending', "sent_by": provider})
+
+    return updated_count

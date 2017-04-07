@@ -8,8 +8,10 @@ from app.dao import days_ago
 from app.models import (Job,
                         Notification,
                         NotificationHistory,
+                        Template,
                         JOB_STATUS_SCHEDULED,
-                        JOB_STATUS_PENDING)
+                        JOB_STATUS_PENDING,
+                        LETTER_TYPE)
 from app.statsd_decorators import statsd
 
 
@@ -125,4 +127,10 @@ def dao_get_jobs_older_than_limited_by(older_than=7, limit_days=2):
     return Job.query.filter(
         cast(Job.created_at, sql_date) < days_ago(older_than),
         cast(Job.created_at, sql_date) >= days_ago(older_than + limit_days)
+    ).order_by(desc(Job.created_at)).all()
+
+
+def dao_get_all_letter_jobs():
+    return db.session.query(Job).join(Job.template).filter(
+        Template.template_type == LETTER_TYPE
     ).order_by(desc(Job.created_at)).all()
