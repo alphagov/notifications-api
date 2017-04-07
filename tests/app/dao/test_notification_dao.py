@@ -41,8 +41,8 @@ from app.dao.notifications_dao import (
     dao_timeout_notifications,
     get_financial_year,
     get_april_fools,
-    is_delivery_slow_for_provider
-)
+    is_delivery_slow_for_provider,
+    dao_update_notifications_sent_to_dvla)
 
 from app.dao.services_dao import dao_update_service
 from tests.app.db import create_notification
@@ -1551,3 +1551,33 @@ def test_slow_provider_delivery_does_not_return_for_standard_delivery_time(
     )
 
     assert not slow_delivery
+
+
+def test_dao_update_notifications_sent_to_dvla(notify_db, notify_db_session, sample_letter_template):
+    job = sample_job(notify_db=notify_db, notify_db_session=notify_db_session, template=sample_letter_template)
+    notification = create_notification(template=sample_letter_template, job=job)
+
+    updated_count = dao_update_notifications_sent_to_dvla(job_id=job.id, provider='some provider')
+
+    assert updated_count == 1
+    updated_notification = Notification.query.get(notification.id)
+    assert updated_notification.status == 'sending'
+    assert updated_notification.sent_by == 'some provider'
+    history = NotificationHistory.query.get(notification.id)
+    assert history.status == 'sending'
+    assert history.sent_by == 'some provider'
+
+
+def test_dao_update_notifications_sent_to_dvla_does_update_history_if_test_key(
+        notify_db, notify_db_session, sample_letter_template, sample_api_key):
+    job = sample_job(notify_db=notify_db, notify_db_session=notify_db_session, template=sample_letter_template)
+    notification = create_notification(template=sample_letter_template, job=job, api_key_id=sample_api_key.id,
+                                       key_type='test')
+
+    updated_count = dao_update_notifications_sent_to_dvla(job_id=job.id, provider='some provider')
+
+    assert updated_count == 1
+    updated_notification = Notification.query.get(notification.id)
+    assert updated_notification.status == 'sending'
+    assert updated_notification.sent_by == 'some provider'
+    assert not NotificationHistory.query.get(notification.id)
