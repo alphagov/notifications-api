@@ -49,7 +49,7 @@ post_template_preview_request = {
         "id": uuid,
         "personalisation": personalisation
     },
-    "required": ["id", "personalisation"]
+    "required": ["id"]
 }
 
 post_template_preview_response = {
@@ -68,12 +68,11 @@ post_template_preview_response = {
 }
 
 
-def create_post_template_preview_response(template, body, url_root):
+def create_post_template_preview_response(template, subject, body):
     return {
         "id": template.id,
         "type": template.template_type,
         "version": template.version,
         "body": body,
-        "subject": template.subject,
-        "uri": "{}v2/template/{}/preview".format(url_root, template.id)
+        "subject": subject
     }
