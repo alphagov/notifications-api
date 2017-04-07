@@ -308,18 +308,18 @@ def update_job_to_sent_to_dvla(self, job_id):
 
 
 def create_dvla_file_contents(job_id):
-        file_contents = '\n'.join(
-            str(LetterDVLATemplate(
-                notification.template.__dict__,
-                notification.personalisation,
-                # This unique id is a 7 digits requested by DVLA, not known
-                # if this number needs to be sequential.
-                numeric_id=random.randint(1, int('9' * 7)),
-                contact_block=notification.service.letter_contact_block,
-            ))
-            for notification in dao_get_all_notifications_for_job(job_id)
-        )
-        return file_contents
+    file_contents = '\n'.join(
+        str(LetterDVLATemplate(
+            notification.template.__dict__,
+            notification.personalisation,
+            # This unique id is a 7 digits requested by DVLA, not known
+            # if this number needs to be sequential.
+            numeric_id=random.randint(1, int('9' * 7)),
+            contact_block=notification.service.letter_contact_block,
+        ))
+        for notification in dao_get_all_notifications_for_job(job_id)
+    )
+    return file_contents
 
 
 def s3upload(filedata, region, bucket_name, file_location):

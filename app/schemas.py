@@ -283,8 +283,8 @@ class JobSchema(BaseSchema):
     job_status = field_for(models.JobStatus, 'name', required=False)
 
     scheduled_for = fields.DateTime()
-    service_name = fields.Nested(ServiceSchema, attribute="service", dump_to="service_name", only=["name"],
-                                 dump_only=True)
+    service_name = fields.Nested(
+        ServiceSchema, attribute="service", dump_to="service_name", only=["name"], dump_only=True)
 
     @validates('scheduled_for')
     def validate_scheduled_for(self, value):

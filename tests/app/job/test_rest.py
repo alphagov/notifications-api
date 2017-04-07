@@ -674,7 +674,7 @@ def test_get_jobs_accepts_page_parameter(
     ('', JOB_STATUS_TYPES),
     ('pending', [JOB_STATUS_PENDING]),
     ('pending, in progress, finished, sending limits exceeded, scheduled, cancelled, ready to send, sent to dvla',
-        JOB_STATUS_TYPES),
+     JOB_STATUS_TYPES),
     # bad statuses are accepted, just return no data
     ('foo', [])
 ])

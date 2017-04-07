@@ -1571,8 +1571,8 @@ def test_dao_update_notifications_sent_to_dvla(notify_db, notify_db_session, sam
 def test_dao_update_notifications_sent_to_dvla_does_update_history_if_test_key(
         notify_db, notify_db_session, sample_letter_template, sample_api_key):
     job = sample_job(notify_db=notify_db, notify_db_session=notify_db_session, template=sample_letter_template)
-    notification = create_notification(template=sample_letter_template, job=job, api_key_id=sample_api_key.id,
-                                       key_type='test')
+    notification = create_notification(
+        template=sample_letter_template, job=job, api_key_id=sample_api_key.id, key_type='test')
 
     updated_count = dao_update_notifications_sent_to_dvla(job_id=job.id, provider='some provider')
 
