@@ -52,4 +52,4 @@ def test_send_letter_jobs_throws_validation_error(client, sample_letter_job):
     assert len(json_resp['data']) == 1
     assert json_resp['data'][0]['id'] == str(sample_letter_job.id)
     assert json_resp['data'][0]['service_name']['name'] == sample_letter_job.service.name
-    assert json_resp['data'][0]['status'] == 'pending'
+    assert json_resp['data'][0]['job_status'] == 'pending'
