@@ -2,7 +2,6 @@ import uuid
 
 from flask import json
 
-from app.schemas import job_schema
 from tests import create_authorization_header
 
 
@@ -50,5 +49,7 @@ def test_send_letter_jobs_throws_validation_error(client, sample_letter_job):
 
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
-    assert len(json_resp['data']) == 0
-    assert job_schema.dumps(sample_letter_job) == json_resp['data'][0]
+    assert len(json_resp['data']) == 1
+    assert json_resp['data'][0]['id'] == str(sample_letter_job.id)
+    assert json_resp['data'][0]['service_name']['name'] == sample_letter_job.service.name
+    assert json_resp['data'][0]['status'] == 'pending'
