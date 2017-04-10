@@ -124,10 +124,10 @@ def dao_get_template_usage(service_id, limit_days=None):
 def dao_get_last_template_usage(template_id):
     return NotificationHistory.query.filter(
         NotificationHistory.template_id == template_id,
-        NotificationHistory.key_type != KEY_TYPE_TEST) \
-        .join(Template) \
-        .order_by(desc(NotificationHistory.created_at)) \
-        .first()
+        NotificationHistory.key_type != KEY_TYPE_TEST
+    ).order_by(
+        desc(NotificationHistory.created_at)
+    ).first()
 
 
 @statsd(namespace="dao")
