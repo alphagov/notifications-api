@@ -271,7 +271,7 @@ def persist_letter(
         handle_exception(self, notification, notification_id, e)
 
 
-@notify_celery.task(bind=True, name="build-dvla-file", countdown=30, max_retries=15, default_retry_delay=30)
+@notify_celery.task(bind=True, name="build-dvla-file", countdown=60, max_retries=15, default_retry_delay=300)
 @statsd(namespace="tasks")
 def build_dvla_file(self, job_id):
     try:
