@@ -17,7 +17,7 @@ def send_letter_jobs():
     job_ids = validate(request.get_json(), letter_job_ids)
     notify_celery.send_task(name="send-files-to-dvla", args=(job_ids['job_ids'],), queue="process-ftp")
 
-    return "Task created to send files to DVLA"
+    return jsonify(data={"response": "Task created to send files to DVLA"}), 201
 
 
 @letter_job.route('/letter-jobs', methods=['GET'])
