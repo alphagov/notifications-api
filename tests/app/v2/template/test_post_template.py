@@ -1,29 +1,62 @@
 import pytest
-import uuid
 
 from flask import json
 
-from app.models import TEMPLATE_TYPES
+from app.models import SMS_TYPE, TEMPLATE_TYPES
 from tests import create_authorization_header
 from tests.app.db import create_template
 
-valid_data = {
+valid_personalisation = {
     'personalisation': {'Name': 'Jo'}
 }
 
+valid_post = [
+    (
+        "Some subject",
+        "Some content",
+        None,
+        "Some subject",
+        "Some content"
+    ),
+    (
+        "Some subject",
+        "Dear ((Name)), Hello. Yours Truly, The Government.",
+        valid_personalisation,
+        "Some subject",
+        "Dear Jo, Hello. Yours Truly, The Government."
+    ),
+    (
+        "Message for ((Name))",
+        "Dear ((Name)), Hello. Yours Truly, The Government.",
+        valid_personalisation,
+        "Message for Jo",
+        "Dear Jo, Hello. Yours Truly, The Government."
+    ),
+    (
+        "Message for ((Name))",
+        "Some content",
+        valid_personalisation,
+        "Message for Jo",
+        "Some content"
+    ),
+]
+
 
 @pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)
-def test_valid_post_template_returns_200(client, sample_service, tmp_type):
+@pytest.mark.parametrize("subject,content,post_data,expected_subject,expected_content", valid_post)
+def test_valid_post_template_returns_200(
+        client, sample_service, tmp_type, subject, content, post_data, expected_subject, expected_content):
     template = create_template(
         sample_service,
         template_type=tmp_type,
-        content='Dear ((Name)), Hello. Yours Truly, The Government.')
+        subject=subject,
+        content=content)
 
     auth_header = create_authorization_header(service_id=sample_service.id)
 
     response = client.post(
         path='/v2/template/{}/preview'.format(template.id),
-        data=json.dumps(valid_data),
+        data=json.dumps(post_data),
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 200
@@ -31,8 +64,9 @@ def test_valid_post_template_returns_200(client, sample_service, tmp_type):
     resp_json = json.loads(response.get_data(as_text=True))
 
     assert resp_json['id'] == str(template.id)
-    assert 'v2/template/{}/preview'.format(template.id) in resp_json['uri']
-    assert 'Dear {}'.format(valid_data['personalisation']['Name']) in resp_json['body']
+    if tmp_type != SMS_TYPE:
+        assert expected_subject in resp_json['subject']
+    assert expected_content in resp_json['body']
 
 
 @pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)
@@ -46,7 +80,7 @@ def test_invalid_post_template_returns_400(client, sample_service, tmp_type):
 
     response = client.post(
         path='/v2/template/{}/preview'.format(template.id),
-        data=json.dumps(valid_data),
+        data=json.dumps(valid_personalisation),
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 400
@@ -62,7 +96,7 @@ def test_post_template_with_non_existent_template_id_returns_404(client, fake_uu
 
     response = client.post(
         path='/v2/template/{}/preview'.format(fake_uuid),
-        data=json.dumps(valid_data),
+        data=json.dumps(valid_personalisation),
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 404
