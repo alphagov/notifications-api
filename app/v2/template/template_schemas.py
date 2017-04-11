@@ -68,12 +68,12 @@ post_template_preview_response = {
 }
 
 
-def create_post_template_preview_response(template, body, url_root):
+def create_post_template_preview_response(template, template_object, url_root):
     return {
         "id": template.id,
         "type": template.template_type,
         "version": template.version,
-        "body": body,
+        "body": str(template_object),
         "subject": template.subject,
         "uri": "{}v2/template/{}/preview".format(url_root, template.id)
     }
