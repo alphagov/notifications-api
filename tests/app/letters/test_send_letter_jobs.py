@@ -16,7 +16,7 @@ def test_send_letter_jobs(client, mocker):
         data=json.dumps(job_ids),
         headers=[('Content-Type', 'application/json'), auth_header])
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert json.loads(response.get_data())['data'] == {'response': "Task created to send files to DVLA"}
 
     mock_celery.assert_called_once_with(name="send-files-to-dvla",
