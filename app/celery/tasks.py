@@ -1,7 +1,5 @@
 import random
 
-import botocore
-from boto3 import resource
 from datetime import (datetime)
 
 from flask import current_app
@@ -24,8 +22,7 @@ from app.dao.jobs_dao import (
     all_notifications_are_created_for_job,
     dao_get_all_notifications_for_job,
     dao_update_job_status)
-from app.dao.notifications_dao import get_notification_by_id, dao_update_notification, \
-    dao_update_notifications_sent_to_dvla
+from app.dao.notifications_dao import get_notification_by_id, dao_update_notifications_sent_to_dvla
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
@@ -39,10 +36,11 @@ from app.models import (
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_FINISHED,
     JOB_STATUS_READY_TO_SEND,
-    JOB_STATUS_SENT_TO_DVLA, NOTIFICATION_SENDING, Notification)
+    JOB_STATUS_SENT_TO_DVLA)
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
+from notifications_utils.s3 import s3upload
 
 
 @notify_celery.task(name="process-job")
@@ -272,7 +270,7 @@ def persist_letter(
         handle_exception(self, notification, notification_id, e)
 
 
-@notify_celery.task(bind=True, name="build-dvla-file", countdown=30, max_retries=15, default_retry_delay=300)
+@notify_celery.task(bind=True, name="build-dvla-file", countdown=60, max_retries=15, default_retry_delay=300)
 @statsd(namespace="tasks")
 def build_dvla_file(self, job_id):
     try:
@@ -285,6 +283,7 @@ def build_dvla_file(self, job_id):
                 file_location="{}-dvla-job.text".format(job_id)
             )
             dao_update_job_status(job_id, JOB_STATUS_READY_TO_SEND)
+            notify_celery.send_task("aggregrate-dvla-files", ([str(job_id)], ), queue='aggregate-dvla-files')
         else:
             current_app.logger.info("All notifications for job {} are not persisted".format(job_id))
             self.retry(queue="retry", exc="All notifications for job {} are not persisted".format(job_id))
@@ -320,37 +319,6 @@ def create_dvla_file_contents(job_id):
         for notification in dao_get_all_notifications_for_job(job_id)
     )
     return file_contents
-
-
-def s3upload(filedata, region, bucket_name, file_location):
-    # TODO: move this method to utils. Will need to change the filedata from here to send contents in filedata['data']
-    _s3 = resource('s3')
-    # contents = filedata['data']
-    contents = filedata
-
-    exists = True
-    try:
-        _s3.meta.client.head_bucket(
-            Bucket=bucket_name)
-    except botocore.exceptions.ClientError as e:
-        error_code = int(e.response['Error']['Code'])
-        if error_code == 404:
-            exists = False
-        else:
-            current_app.logger.error(
-                "Unable to create s3 bucket {}".format(bucket_name))
-            raise e
-
-    if not exists:
-        _s3.create_bucket(Bucket=bucket_name,
-                          CreateBucketConfiguration={'LocationConstraint': region})
-
-    upload_id = create_uuid()
-    upload_file_name = file_location
-    key = _s3.Object(bucket_name, upload_file_name)
-    key.put(Body=contents, ServerSideEncryption='AES256')
-
-    return upload_id
 
 
 def handle_exception(task, notification, notification_id, exc):
