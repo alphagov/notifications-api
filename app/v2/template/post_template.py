@@ -29,11 +29,8 @@ def post_template_preview(template_id):
 
     check_placeholders(template_object)
 
-    subject = template_object.subject if template.template_type != SMS_TYPE else None
-
     resp = create_post_template_preview_response(template=template,
-                                                 subject=subject,
-                                                 body=str(template_object))
+                                                 template_object=template_object)
 
     return jsonify(resp), 200
 

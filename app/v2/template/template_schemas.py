@@ -1,4 +1,4 @@
-from app.models import TEMPLATE_TYPES
+from app.models import SMS_TYPE, TEMPLATE_TYPES
 from app.schema_validation.definitions import uuid, personalisation
 
 
@@ -68,11 +68,13 @@ post_template_preview_response = {
 }
 
 
-def create_post_template_preview_response(template, subject, body):
+def create_post_template_preview_response(template, template_object):
+    subject = template_object.subject if template.template_type != SMS_TYPE else None
+
     return {
         "id": template.id,
         "type": template.template_type,
         "version": template.version,
-        "body": body,
+        "body": str(template_object),
         "subject": subject
     }
