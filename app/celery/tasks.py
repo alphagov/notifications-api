@@ -22,8 +22,7 @@ from app.dao.jobs_dao import (
     all_notifications_are_created_for_job,
     dao_get_all_notifications_for_job,
     dao_update_job_status)
-from app.dao.notifications_dao import get_notification_by_id, dao_update_notification, \
-    dao_update_notifications_sent_to_dvla
+from app.dao.notifications_dao import get_notification_by_id, dao_update_notifications_sent_to_dvla
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
@@ -37,7 +36,7 @@ from app.models import (
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_FINISHED,
     JOB_STATUS_READY_TO_SEND,
-    JOB_STATUS_SENT_TO_DVLA, NOTIFICATION_SENDING, Notification)
+    JOB_STATUS_SENT_TO_DVLA)
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd

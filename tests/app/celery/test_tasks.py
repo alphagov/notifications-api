@@ -979,6 +979,7 @@ def test_build_dvla_file(sample_letter_template, mocker):
     create_notification(template=job.template, job=job)
     create_notification(template=job.template, job=job)
     mocked_upload = mocker.patch("app.celery.tasks.s3upload")
+    mocked_send_task = mocker.patch("app.celery.tasks.notify_celery.send_task")
     mocked_letter_template = mocker.patch("app.celery.tasks.LetterDVLATemplate")
     mocked_letter_template_instance = mocked_letter_template.return_value
     mocked_letter_template_instance.__str__.return_value = "dvla|string"
@@ -991,6 +992,7 @@ def test_build_dvla_file(sample_letter_template, mocker):
         file_location="{}-dvla-job.text".format(job.id)
     )
     assert Job.query.get(job.id).job_status == 'ready to send'
+    mocked_send_task.assert_called_once_with("aggregrate-dvla-files", ([str(job.id)], ), queue='aggregate-dvla-files')
 
 
 def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_letter_template, mocker):
@@ -998,6 +1000,7 @@ def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_let
     create_notification(template=job.template, job=job)
 
     mocked = mocker.patch("app.celery.tasks.s3upload")
+    mocked_send_task = mocker.patch("app.celery.tasks.notify_celery.send_task")
     mocker.patch('app.celery.tasks.build_dvla_file.retry', side_effect=Retry)
     with pytest.raises(Retry):
         build_dvla_file(job.id)
@@ -1006,6 +1009,7 @@ def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_let
     tasks.build_dvla_file.retry.assert_called_with(queue='retry',
                                                    exc="All notifications for job {} are not persisted".format(job.id))
     assert Job.query.get(job.id).job_status == 'in progress'
+    mocked_send_task.assert_not_called()
 
 
 def test_create_dvla_file_contents(sample_letter_template, mocker):
