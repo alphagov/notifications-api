@@ -1,4 +1,6 @@
 import os
+import random
+import string
 import uuid
 
 from flask import Flask, _request_ctx_stack
@@ -202,6 +204,10 @@ def init_app(app):
 
 def create_uuid():
     return str(uuid.uuid4())
+
+
+def create_random_identifier():
+    return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(16))
 
 
 def process_user_agent(user_agent_string):

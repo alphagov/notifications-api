@@ -36,6 +36,7 @@ def persist_notification(template_id,
                          job_id=None,
                          job_row_number=None,
                          reference=None,
+                         client_reference=None,
                          notification_id=None,
                          simulated=False):
     # if simulated create a Notification model to return but do not persist the Notification to the dB
@@ -53,7 +54,8 @@ def persist_notification(template_id,
         created_at=created_at or datetime.utcnow(),
         job_id=job_id,
         job_row_number=job_row_number,
-        client_reference=reference
+        client_reference=client_reference,
+        reference=reference
     )
     if not simulated:
         dao_create_notification(notification)

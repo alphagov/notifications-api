@@ -907,6 +907,9 @@ def test_send_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample
 
 
 def test_persist_letter_saves_letter_to_database(sample_letter_job, mocker):
+
+    mocker.patch('app.celery.tasks.create_random_identifier', return_value="this-is-random-in-real-life")
+
     personalisation = {
         'addressline1': 'Foo',
         'addressline2': 'Bar',
@@ -945,6 +948,7 @@ def test_persist_letter_saves_letter_to_database(sample_letter_job, mocker):
     assert notification_db.sent_at is None
     assert notification_db.sent_by is None
     assert notification_db.personalisation == personalisation
+    assert notification_db.reference == "this-is-random-in-real-life"
 
 
 def test_should_cancel_job_if_service_is_inactive(sample_service,
@@ -1013,24 +1017,26 @@ def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_let
 
 
 def test_create_dvla_file_contents(sample_letter_template, mocker):
-    mocker.patch("app.celery.tasks.random.randint", return_value=999)
     job = create_job(template=sample_letter_template, notification_count=2)
-    create_notification(template=job.template, job=job)
-    create_notification(template=job.template, job=job)
+    create_notification(template=job.template, job=job, reference=1)
+    create_notification(template=job.template, job=job, reference=2)
     mocked_letter_template = mocker.patch("app.celery.tasks.LetterDVLATemplate")
     mocked_letter_template_instance = mocked_letter_template.return_value
     mocked_letter_template_instance.__str__.return_value = "dvla|string"
+
     create_dvla_file_contents(job.id)
+    calls = mocked_letter_template.call_args_list
     # Template
-    assert mocked_letter_template.call_args[0][0]['subject'] == 'Template subject'
-    assert mocked_letter_template.call_args[0][0]['content'] == 'Dear Sir/Madam, Hello. Yours Truly, The Government.'
+    assert calls[0][0][0]['subject'] == 'Template subject'
+    assert calls[0][0][0]['content'] == 'Dear Sir/Madam, Hello. Yours Truly, The Government.'
 
     # Personalisation
-    assert mocked_letter_template.call_args[0][1] is None
+    assert not calls[0][0][1]
 
     # Named arguments
-    assert mocked_letter_template.call_args[1]['numeric_id'] == 999
-    assert mocked_letter_template.call_args[1]['contact_block'] == 'London,\nSW1A 1AA'
+    assert calls[1][1]['contact_block'] == 'London,\nSW1A 1AA'
+    assert calls[0][1]['notification_reference'] == '1'
+    assert calls[1][1]['notification_reference'] == '2'
 
 
 @freeze_time("2017-03-23 11:09:00.061258")
