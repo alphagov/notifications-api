@@ -43,7 +43,7 @@ def all_notifications_are_created_for_job(job_id):
 
 @statsd(namespace="dao")
 def dao_get_all_notifications_for_job(job_id):
-    return db.session.query(Notification).filter(Notification.job_id == job_id).all()
+    return db.session.query(Notification).filter(Notification.job_id == job_id).order_by(Notification.created_at).all()
 
 
 def dao_get_job_by_service_id_and_job_id(service_id, job_id):
