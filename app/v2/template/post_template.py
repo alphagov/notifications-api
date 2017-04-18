@@ -1,11 +1,9 @@
-import uuid
-
 from flask import jsonify, request
 from jsonschema.exceptions import ValidationError
-from werkzeug.exceptions import abort
 
 from app import api_user
 from app.dao import templates_dao
+from app.models import SMS_TYPE
 from app.schema_validation import validate
 from app.utils import get_template_instance
 from app.v2.errors import BadRequestError
@@ -16,6 +14,9 @@ from app.v2.template.template_schemas import post_template_preview_request, crea
 @v2_template_blueprint.route("/<template_id>/preview", methods=['POST'])
 def post_template_preview(template_id):
     _data = request.get_json()
+    if _data is None:
+        _data = {}
+
     _data['id'] = template_id
 
     data = validate(_data, post_template_preview_request)
@@ -29,8 +30,7 @@ def post_template_preview(template_id):
     check_placeholders(template_object)
 
     resp = create_post_template_preview_response(template=template,
-                                                 body=str(template_object),
-                                                 url_root=request.url_root)
+                                                 template_object=template_object)
 
     return jsonify(resp), 200
 
