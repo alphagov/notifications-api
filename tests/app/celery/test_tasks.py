@@ -1060,6 +1060,8 @@ def test_update_dvla_job_to_error(sample_letter_template, sample_letter_job):
     update_dvla_job_to_error(job_id=sample_letter_job.id)
 
     updated_notifications = Notification.query.all()
-    assert [(n.status == 'created', n.sent_by == 'dvla') for n in updated_notifications]
+    for n in updated_notifications:
+        assert n.status == 'created'
+        assert not n.sent_by
 
     assert 'error' == Job.query.filter_by(id=sample_letter_job.id).one().job_status
