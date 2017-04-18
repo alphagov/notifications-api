@@ -14,8 +14,6 @@ def get_templates():
 
     templates = templates_dao.dao_get_all_templates_for_service(api_user.service_id)
 
-    print(templates)
-
     return jsonify(
         templates=[template.serialize() for template in templates]
     ), 200
