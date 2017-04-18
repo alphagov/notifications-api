@@ -2,7 +2,7 @@ import pytest
 
 from flask import json
 
-from app.models import TEMPLATE_TYPES
+from app.models import TEMPLATE_TYPES, EMAIL_TYPE
 from tests import create_authorization_header
 from tests.app.db import create_template
 
@@ -12,7 +12,8 @@ def test_get_all_templates_returns_200(client, sample_service):
     templates = []
     for i in range(num_templates):
         for tmp_type in TEMPLATE_TYPES:
-            templates.append(create_template(sample_service, template_type=tmp_type))
+            subject = 'subject_{}'.format(i) if tmp_type == EMAIL_TYPE else ''
+            templates.append(create_template(sample_service, template_type=tmp_type, subject=subject))
 
     auth_header = create_authorization_header(service_id=sample_service.id)
 
@@ -32,6 +33,8 @@ def test_get_all_templates_returns_200(client, sample_service):
         assert json_response['templates'][reverse_index]['id'] == str(templates[i].id)
         assert json_response['templates'][reverse_index]['body'] == templates[i].content
         assert json_response['templates'][reverse_index]['type'] == templates[i].template_type
+        if templates[i].template_type == EMAIL_TYPE:
+            assert json_response['templates'][reverse_index]['subject'] == templates[i].subject
 
 
 @pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)
@@ -39,7 +42,8 @@ def test_get_all_templates_for_valid_type_returns_200(client, sample_service, tm
     num_templates = 3
     templates = []
     for i in range(num_templates):
-        templates.append(create_template(sample_service, template_type=tmp_type))
+        subject = 'subject_{}'.format(i) if tmp_type == EMAIL_TYPE else ''
+        templates.append(create_template(sample_service, template_type=tmp_type, subject=subject))
 
     auth_header = create_authorization_header(service_id=sample_service.id)
 
@@ -59,6 +63,8 @@ def test_get_all_templates_for_valid_type_returns_200(client, sample_service, tm
         assert json_response['templates'][reverse_index]['id'] == str(templates[i].id)
         assert json_response['templates'][reverse_index]['body'] == templates[i].content
         assert json_response['templates'][reverse_index]['type'] == templates[i].template_type
+        if templates[i].template_type == EMAIL_TYPE:
+            assert json_response['templates'][reverse_index]['subject'] == templates[i].subject
 
 
 def test_get_all_templates_for_invalid_type_returns_400(client, sample_service):
