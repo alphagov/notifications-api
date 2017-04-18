@@ -179,7 +179,7 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
                          created_at=created_at,
                          job_id=sample_job.id,
                          job_row_number=10,
-                         reference="ref from client",
+                         client_reference="ref from client",
                          notification_id=n_id)
     assert Notification.query.count() == 1
     assert NotificationHistory.query.count() == 1

@@ -10,6 +10,7 @@ from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate
 from sqlalchemy.exc import SQLAlchemyError
 from app import (
     create_uuid,
+    create_random_identifier,
     DATETIME_FORMAT,
     notify_celery,
     encryption
@@ -262,7 +263,8 @@ def persist_letter(
             created_at=created_at,
             job_id=notification['job'],
             job_row_number=notification['row_number'],
-            notification_id=notification_id
+            notification_id=notification_id,
+            reference=create_random_identifier()
         )
 
         current_app.logger.info("Letter {} created at {}".format(saved_notification.id, created_at))
@@ -311,10 +313,8 @@ def create_dvla_file_contents(job_id):
         str(LetterDVLATemplate(
             notification.template.__dict__,
             notification.personalisation,
-            # This unique id is a 7 digits requested by DVLA, not known
-            # if this number needs to be sequential.
-            numeric_id=random.randint(1, int('9' * 7)),
-            contact_block=notification.service.letter_contact_block,
+            notification_reference=notification.reference,
+            contact_block=notification.service.letter_contact_block
         ))
         for notification in dao_get_all_notifications_for_job(job_id)
     )

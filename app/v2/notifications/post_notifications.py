@@ -47,7 +47,7 @@ def post_notification(notification_type):
                                         notification_type=notification_type,
                                         api_key_id=api_user.id,
                                         key_type=api_user.key_type,
-                                        reference=form.get('reference', None),
+                                        client_reference=form.get('reference', None),
                                         simulated=simulated)
     if not simulated:
         queue_name = 'priority' if template.process_type == PRIORITY else None
