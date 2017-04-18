@@ -62,9 +62,33 @@ def test_get_all_templates_for_valid_type_returns_200(client, sample_service, tm
         reverse_index = len(json_response['templates']) - 1 - i
         assert json_response['templates'][reverse_index]['id'] == str(templates[i].id)
         assert json_response['templates'][reverse_index]['body'] == templates[i].content
-        assert json_response['templates'][reverse_index]['type'] == templates[i].template_type
+        assert json_response['templates'][reverse_index]['type'] == tmp_type
         if templates[i].template_type == EMAIL_TYPE:
             assert json_response['templates'][reverse_index]['subject'] == templates[i].subject
+
+
+@pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)
+def test_get_correct_num_templates_for_valid_type_returns_200(client, sample_service, tmp_type):
+    num_templates = 3
+
+    templates = []
+    for i in range(num_templates):
+        templates.append(create_template(sample_service, template_type=tmp_type))
+
+    for other_type in TEMPLATE_TYPES:
+        if other_type != tmp_type:
+            templates.append(create_template(sample_service, template_type=other_type))
+
+    auth_header = create_authorization_header(service_id=sample_service.id)
+
+    response = client.get(path='/v2/templates/?type={}'.format(tmp_type),
+                          headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 200
+
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert len(json_response['templates']) == num_templates
 
 
 def test_get_all_templates_for_invalid_type_returns_400(client, sample_service):
