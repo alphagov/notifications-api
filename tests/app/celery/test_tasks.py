@@ -12,7 +12,7 @@ from celery.exceptions import Retry
 from app import (encryption, DATETIME_FORMAT)
 from app.celery import provider_tasks
 from app.celery import tasks
-from app.celery.tasks import s3, build_dvla_file, create_dvla_file_contents
+from app.celery.tasks import s3, build_dvla_file, create_dvla_file_contents, update_dvla_job_to_error
 from app.celery.tasks import (
     process_job,
     process_row,
@@ -1052,3 +1052,14 @@ def test_update_job_to_sent_to_dvla(sample_letter_template, sample_letter_job):
     assert [(n.status == 'sending', n.sent_by == 'dvla') for n in updated_notifications]
 
     assert 'sent to dvla' == Job.query.filter_by(id=sample_letter_job.id).one().job_status
+
+
+def test_update_dvla_job_to_error(sample_letter_template, sample_letter_job):
+    create_notification(template=sample_letter_template, job=sample_letter_job)
+    create_notification(template=sample_letter_template, job=sample_letter_job)
+    update_dvla_job_to_error(job_id=sample_letter_job.id)
+
+    updated_notifications = Notification.query.all()
+    assert [(n.status == 'created', n.sent_by == 'dvla') for n in updated_notifications]
+
+    assert 'error' == Job.query.filter_by(id=sample_letter_job.id).one().job_status
