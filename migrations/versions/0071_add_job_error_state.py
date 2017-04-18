@@ -19,4 +19,5 @@ def upgrade():
 
 
 def downgrade():
+    op.execute("UPDATE jobs SET job_status = 'finished' WHERE job_status = 'error'")
     op.execute("DELETE FROM JOB_STATUS WHERE name = 'error'")
