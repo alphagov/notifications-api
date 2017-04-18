@@ -1032,6 +1032,7 @@ def test_create_dvla_file_contents(sample_letter_template, mocker):
 
     # Personalisation
     assert not calls[0][0][1]
+    assert not calls[1][0][1]
 
     # Named arguments
     assert calls[1][1]['contact_block'] == 'London,\nSW1A 1AA'
