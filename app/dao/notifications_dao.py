@@ -1,3 +1,4 @@
+import functools
 import pytz
 from datetime import (
     datetime,
@@ -23,7 +24,9 @@ from app.models import (
     NOTIFICATION_PENDING,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEST
+    NOTIFICATION_PERMANENT_FAILURE,
+    KEY_TYPE_NORMAL, KEY_TYPE_TEST,
+    LETTER_TYPE
 )
 
 from app.dao.dao_utils import transactional
@@ -137,7 +140,7 @@ def dao_create_notification(notification):
         # need to populate defaulted fields before we create the notification history object
         notification.id = create_uuid()
     if not notification.status:
-        notification.status = 'created'
+        notification.status = NOTIFICATION_CREATED
 
     db.session.add(notification)
     if _should_record_notification_in_history_table(notification):
@@ -155,9 +158,8 @@ def _should_record_notification_in_history_table(notification):
 def _decide_permanent_temporary_failure(current_status, status):
     # Firetext will send pending, then send either succes or fail.
     # If we go from pending to delivered we need to set failure type as temporary-failure
-    if current_status == 'pending':
-        if status == 'permanent-failure':
-            status = 'temporary-failure'
+    if current_status == NOTIFICATION_PENDING and status == NOTIFICATION_PERMANENT_FAILURE:
+        status = NOTIFICATION_TEMPORARY_FAILURE
     return status
 
 
@@ -173,9 +175,9 @@ def _update_notification_status(notification, status):
 def update_notification_status_by_id(notification_id, status):
     notification = Notification.query.with_lockmode("update").filter(
         Notification.id == notification_id,
-        or_(Notification.status == 'created',
-            Notification.status == 'sending',
-            Notification.status == 'pending')).first()
+        or_(Notification.status == NOTIFICATION_CREATED,
+            Notification.status == NOTIFICATION_SENDING,
+            Notification.status == NOTIFICATION_PENDING)).first()
 
     if not notification:
         return None
@@ -191,8 +193,8 @@ def update_notification_status_by_id(notification_id, status):
 def update_notification_status_by_reference(reference, status):
     notification = Notification.query.filter(
         Notification.reference == reference,
-        or_(Notification.status == 'sending',
-            Notification.status == 'pending')).first()
+        or_(Notification.status == NOTIFICATION_SENDING,
+            Notification.status == NOTIFICATION_PENDING)).first()
 
     if not notification:
         return None
@@ -346,7 +348,7 @@ def delete_notifications_created_more_than_a_week_ago(status):
     seven_days_ago = date.today() - timedelta(days=7)
     deleted = db.session.query(Notification).filter(
         func.date(Notification.created_at) < seven_days_ago,
-        Notification.status == status
+        Notification.status == status,
     ).delete(synchronize_session='fetch')
     db.session.commit()
     return deleted
@@ -363,32 +365,40 @@ def dao_delete_notifications_and_history_by_id(notification_id):
     ).delete(synchronize_session='fetch')
 
 
-def dao_timeout_notifications(timeout_period_in_seconds):
-    # update all notifications that are older that the timeout_period_in_seconds
-    # with a status of created|sending|pending
+def _timeout_notifications(current_statuses, new_status, timeout_start, updated_at):
+    for table in [NotificationHistory, Notification]:
+        q = table.query.filter(
+            table.created_at < timeout_start,
+            table.status.in_(current_statuses),
+            table.notification_type != LETTER_TYPE
+        )
+        last_update_count = q.update({'status': new_status, 'updated_at': updated_at}, synchronize_session=False)
+    return last_update_count
 
+
+def dao_timeout_notifications(timeout_period_in_seconds):
+    """
+    Timeout SMS and email notifications by the following rules:
+
+    we never sent the notification to the provider for some reason
+        created -> technical-failure
+
+    the notification was sent to the provider but there was not a delivery receipt
+        sending -> temporary-failure
+        pending -> temporary-failure
+
+    Letter notifications are not timed out
+    """
+    timeout_start = datetime.utcnow() - timedelta(seconds=timeout_period_in_seconds)
+    updated_at = datetime.utcnow()
+
+    timeout = functools.partial(_timeout_notifications, timeout_start=timeout_start, updated_at=updated_at)
     # Notifications still in created status are marked with a technical-failure:
-    #   the notification has failed to go to the provider
-    update_at = datetime.utcnow()
-    updated = db.session.query(Notification). \
-        filter(Notification.created_at < (datetime.utcnow() - timedelta(seconds=timeout_period_in_seconds))). \
-        filter(Notification.status == NOTIFICATION_CREATED). \
-        update({'status': NOTIFICATION_TECHNICAL_FAILURE, 'updated_at': update_at}, synchronize_session=False)
-    db.session.query(NotificationHistory). \
-        filter(NotificationHistory.created_at < (datetime.utcnow() - timedelta(seconds=timeout_period_in_seconds))). \
-        filter(NotificationHistory.status == NOTIFICATION_CREATED). \
-        update({'status': NOTIFICATION_TECHNICAL_FAILURE, 'updated_at': update_at}, synchronize_session=False)
+    updated = timeout([NOTIFICATION_CREATED], NOTIFICATION_TECHNICAL_FAILURE)
 
     # Notifications still in sending or pending status are marked with a temporary-failure:
-    #   the notification was sent to the provider but there was not a delivery receipt, try to send again.
-    updated += db.session.query(Notification). \
-        filter(Notification.created_at < (datetime.utcnow() - timedelta(seconds=timeout_period_in_seconds))). \
-        filter(Notification.status.in_([NOTIFICATION_SENDING, NOTIFICATION_PENDING])). \
-        update({'status': NOTIFICATION_TEMPORARY_FAILURE, 'updated_at': update_at}, synchronize_session=False)
-    db.session.query(NotificationHistory). \
-        filter(NotificationHistory.created_at < (datetime.utcnow() - timedelta(seconds=timeout_period_in_seconds))). \
-        filter(NotificationHistory.status.in_([NOTIFICATION_SENDING, NOTIFICATION_PENDING])). \
-        update({'status': NOTIFICATION_TEMPORARY_FAILURE, 'updated_at': update_at}, synchronize_session=False)
+    updated += timeout([NOTIFICATION_SENDING, NOTIFICATION_PENDING], NOTIFICATION_TEMPORARY_FAILURE)
+
     db.session.commit()
 
     return updated
@@ -447,10 +457,10 @@ def dao_update_notifications_sent_to_dvla(job_id, provider):
     now = datetime.utcnow()
     updated_count = db.session.query(
         Notification).filter(Notification.job_id == job_id).update(
-        {'status': 'sending', "sent_by": provider, "sent_at": now})
+        {'status': NOTIFICATION_SENDING, "sent_by": provider, "sent_at": now})
 
     db.session.query(
         NotificationHistory).filter(NotificationHistory.job_id == job_id).update(
-        {'status': 'sending', "sent_by": provider, "sent_at": now, "updated_at": now})
+        {'status': NOTIFICATION_SENDING, "sent_by": provider, "sent_at": now, "updated_at": now})
 
     return updated_count

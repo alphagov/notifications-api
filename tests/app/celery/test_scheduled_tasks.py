@@ -105,12 +105,7 @@ def test_should_call_delete_invotations_on_delete_invitations_task(notify_api, m
     assert scheduled_tasks.delete_invitations_created_more_than_two_days_ago.call_count == 1
 
 
-def test_update_status_of_notifications_after_timeout(notify_api,
-                                                      notify_db,
-                                                      notify_db_session,
-                                                      sample_service,
-                                                      sample_template,
-                                                      mmg_provider):
+def test_update_status_of_notifications_after_timeout(notify_api, sample_template):
     with notify_api.test_request_context():
         not1 = create_notification(
             template=sample_template,
@@ -133,12 +128,7 @@ def test_update_status_of_notifications_after_timeout(notify_api,
         assert not3.status == 'temporary-failure'
 
 
-def test_not_update_status_of_notification_before_timeout(notify_api,
-                                                          notify_db,
-                                                          notify_db_session,
-                                                          sample_service,
-                                                          sample_template,
-                                                          mmg_provider):
+def test_not_update_status_of_notification_before_timeout(notify_api, sample_template):
     with notify_api.test_request_context():
         not1 = create_notification(
             template=sample_template,
@@ -147,6 +137,17 @@ def test_not_update_status_of_notification_before_timeout(notify_api,
                 seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') - 10))
         timeout_notifications()
         assert not1.status == 'sending'
+
+
+def test_should_not_update_status_of_letter_notifications(client, sample_letter_template):
+    created_at = datetime.utcnow() - timedelta(days=5)
+    not1 = create_notification(template=sample_letter_template, status='sending', created_at=created_at)
+    not2 = create_notification(template=sample_letter_template, status='created', created_at=created_at)
+
+    timeout_notifications()
+
+    assert not1.status == 'sending'
+    assert not2.status == 'created'
 
 
 def test_should_update_scheduled_jobs_and_put_on_queue(notify_db, notify_db_session, mocker):

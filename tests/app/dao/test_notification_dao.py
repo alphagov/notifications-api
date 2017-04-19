@@ -862,6 +862,15 @@ def test_should_not_delete_failed_notifications_before_seven_days(notify_db, not
     assert Notification.query.first().to == 'do_not_delete'
 
 
+def test_should_delete_letter_notifications(sample_letter_template):
+    should_delete = datetime.utcnow() - timedelta(days=8)
+
+    create_notification(sample_letter_template, created_at=should_delete)
+
+    delete_notifications_created_more_than_a_week_ago('created')
+    assert len(Notification.query.all()) == 0
+
+
 @freeze_time("2016-01-10")
 def test_should_limit_notifications_return_by_day_limit_plus_one(notify_db, notify_db_session, sample_service):
     assert len(Notification.query.all()) == 0
@@ -1036,12 +1045,12 @@ def _notification_json(sample_template, job_id=None, id=None, status=None):
     return data
 
 
-def test_dao_timeout_notifications(notify_db, notify_db_session, ):
+def test_dao_timeout_notifications(sample_template):
     with freeze_time(datetime.utcnow() - timedelta(minutes=2)):
-        created = sample_notification(notify_db, notify_db_session, status='created')
-        sending = sample_notification(notify_db, notify_db_session, status='sending')
-        pending = sample_notification(notify_db, notify_db_session, status='pending')
-        delivered = sample_notification(notify_db, notify_db_session, status='delivered')
+        created = create_notification(sample_template, status='created')
+        sending = create_notification(sample_template, status='sending')
+        pending = create_notification(sample_template, status='pending')
+        delivered = create_notification(sample_template, status='delivered')
 
     assert Notification.query.get(created.id).status == 'created'
     assert Notification.query.get(sending.id).status == 'sending'
@@ -1059,18 +1068,39 @@ def test_dao_timeout_notifications(notify_db, notify_db_session, ):
     assert updated == 3
 
 
-def test_dao_timeout_notifications_only_updates_for_older_notifications(notify_db, notify_db_session):
+def test_dao_timeout_notifications_only_updates_for_older_notifications(sample_template):
     with freeze_time(datetime.utcnow() + timedelta(minutes=10)):
-        created = sample_notification(notify_db, notify_db_session, status='created')
-        sending = sample_notification(notify_db, notify_db_session, status='sending')
-        pending = sample_notification(notify_db, notify_db_session, status='pending')
-        delivered = sample_notification(notify_db, notify_db_session, status='delivered')
+        created = create_notification(sample_template, status='created')
+        sending = create_notification(sample_template, status='sending')
+        pending = create_notification(sample_template, status='pending')
+        delivered = create_notification(sample_template, status='delivered')
 
     assert Notification.query.get(created.id).status == 'created'
     assert Notification.query.get(sending.id).status == 'sending'
     assert Notification.query.get(pending.id).status == 'pending'
     assert Notification.query.get(delivered.id).status == 'delivered'
     updated = dao_timeout_notifications(1)
+    assert NotificationHistory.query.get(created.id).status == 'created'
+    assert NotificationHistory.query.get(sending.id).status == 'sending'
+    assert NotificationHistory.query.get(pending.id).status == 'pending'
+    assert NotificationHistory.query.get(delivered.id).status == 'delivered'
+    assert updated == 0
+
+
+def test_dao_timeout_notifications_doesnt_affect_letters(sample_letter_template):
+    with freeze_time(datetime.utcnow() - timedelta(minutes=2)):
+        created = create_notification(sample_letter_template, status='created')
+        sending = create_notification(sample_letter_template, status='sending')
+        pending = create_notification(sample_letter_template, status='pending')
+        delivered = create_notification(sample_letter_template, status='delivered')
+
+    assert Notification.query.get(created.id).status == 'created'
+    assert Notification.query.get(sending.id).status == 'sending'
+    assert Notification.query.get(pending.id).status == 'pending'
+    assert Notification.query.get(delivered.id).status == 'delivered'
+
+    updated = dao_timeout_notifications(1)
+
     assert NotificationHistory.query.get(created.id).status == 'created'
     assert NotificationHistory.query.get(sending.id).status == 'sending'
     assert NotificationHistory.query.get(pending.id).status == 'pending'
