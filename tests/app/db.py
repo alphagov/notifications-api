@@ -86,6 +86,7 @@ def create_notification(
         'to': to_field,
         'job_id': job.id if job else None,
         'job': job,
+        'service_id': template.service.id,
         'service': template.service,
         'template_id': template.id if template else None,
         'template': template,
