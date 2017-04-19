@@ -8,7 +8,7 @@ from app.v2.templates import v2_templates_blueprint
 from app.v2.templates.templates_schemas import get_all_template_request
 
 
-@v2_templates_blueprint.route("/", methods=['GET'])
+@v2_templates_blueprint.route("", methods=['GET'])
 def get_templates():
     data = validate(request.args.to_dict(), get_all_template_request)
 

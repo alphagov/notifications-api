@@ -17,7 +17,7 @@ def test_get_all_templates_returns_200(client, sample_service):
 
     auth_header = create_authorization_header(service_id=sample_service.id)
 
-    response = client.get(path='/v2/templates/',
+    response = client.get(path='/v2/templates',
                           headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 200
@@ -47,7 +47,7 @@ def test_get_all_templates_for_valid_type_returns_200(client, sample_service, tm
 
     auth_header = create_authorization_header(service_id=sample_service.id)
 
-    response = client.get(path='/v2/templates/?type={}'.format(tmp_type),
+    response = client.get(path='/v2/templates?type={}'.format(tmp_type),
                           headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 200
@@ -81,7 +81,7 @@ def test_get_correct_num_templates_for_valid_type_returns_200(client, sample_ser
 
     auth_header = create_authorization_header(service_id=sample_service.id)
 
-    response = client.get(path='/v2/templates/?type={}'.format(tmp_type),
+    response = client.get(path='/v2/templates?type={}'.format(tmp_type),
                           headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 200
@@ -96,7 +96,7 @@ def test_get_all_templates_for_invalid_type_returns_400(client, sample_service):
 
     invalid_type = 'coconut'
 
-    response = client.get(path='/v2/templates/?type={}'.format(invalid_type),
+    response = client.get(path='/v2/templates?type={}'.format(invalid_type),
                           headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 400
