@@ -1,10 +1,9 @@
 import pytest
-import uuid
 
 from flask import json
 
 from app import DATETIME_FORMAT
-from app.models import EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, TEMPLATE_TYPES
+from app.models import EMAIL_TYPE, TEMPLATE_TYPES
 from tests import create_authorization_header
 from tests.app.db import create_template
 
@@ -13,7 +12,7 @@ valid_version_params = [None, 1]
 
 @pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)
 @pytest.mark.parametrize("version", valid_version_params)
-def test_get_email_template_by_id_returns_200(client, sample_service, tmp_type, version):
+def test_get_template_by_id_returns_200(client, sample_service, tmp_type, version):
     template = create_template(sample_service, template_type=tmp_type)
     auth_header = create_authorization_header(service_id=sample_service.id)
 

@@ -321,9 +321,8 @@ class Template(db.Model):
         )
 
     def serialize(self):
-
         serialized = {
-            "id": self.id,
+            "id": str(self.id),
             "type": self.template_type,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,

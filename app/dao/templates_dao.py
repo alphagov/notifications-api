@@ -42,7 +42,16 @@ def dao_get_template_by_id(template_id, version=None):
     return Template.query.filter_by(id=template_id).one()
 
 
-def dao_get_all_templates_for_service(service_id):
+def dao_get_all_templates_for_service(service_id, template_type=None):
+    if template_type is not None:
+        return Template.query.filter_by(
+            service_id=service_id,
+            template_type=template_type,
+            archived=False
+        ).order_by(
+            desc(Template.created_at)
+        ).all()
+
     return Template.query.filter_by(
         service_id=service_id,
         archived=False

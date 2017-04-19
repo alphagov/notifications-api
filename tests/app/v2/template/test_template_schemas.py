@@ -3,7 +3,7 @@ import uuid
 import pytest
 from flask import json
 
-from app.models import EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, TEMPLATE_TYPES
+from app.models import EMAIL_TYPE, SMS_TYPE, TEMPLATE_TYPES
 from app.v2.template.template_schemas import (
     get_template_by_id_response,
     get_template_by_id_request,
@@ -55,9 +55,7 @@ invalid_json_post_args = [
     ({"id": str(uuid.uuid4()), "personalisation": "invalid_personalisation"},
      ["personalisation should contain key value pairs"]),
     ({"personalisation": "invalid_personalisation"},
-        ["id is a required property",
-         "personalisation is a required property",
-         "personalisation should contain key value pairs"])
+     ["id is a required property", "personalisation should contain key value pairs"])
 ]
 
 valid_json_post_response = {
@@ -111,16 +109,16 @@ def test_post_template_preview_against_valid_args_is_valid():
     assert validate(valid_json_post_args, post_template_preview_request) == valid_json_post_args
 
 
-@pytest.mark.parametrize("args,error_message", invalid_json_post_args)
-def test_post_template_preview_against_invalid_args_is_invalid(args, error_message):
+@pytest.mark.parametrize("args,error_messages", invalid_json_post_args)
+def test_post_template_preview_against_invalid_args_is_invalid(args, error_messages):
     with pytest.raises(ValidationError) as e:
         validate(args, post_template_preview_request)
     errors = json.loads(str(e.value))
 
     assert errors['status_code'] == 400
-
+    assert len(errors['errors']) == len(error_messages)
     for error in errors['errors']:
-        assert error['message'] in error_message
+        assert error['message'] in error_messages
 
 
 @pytest.mark.parametrize("template_type", TEMPLATE_TYPES)
