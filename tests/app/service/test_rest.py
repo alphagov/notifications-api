@@ -10,7 +10,7 @@ from freezegun import freeze_time
 
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
-from app.models import User, Organisation
+from app.models import User, Organisation, DVLA_ORG_LAND_REGISTRY
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_service as create_service,
@@ -371,41 +371,41 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_email
             assert "Duplicate service name '{}'".format(service_name) in json_resp['message']['name']
 
 
-def test_update_service(notify_api, notify_db, sample_service):
+def test_update_service(client, notify_db, sample_service):
     org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
     notify_db.session.add(org)
     notify_db.session.commit()
 
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            auth_header = create_authorization_header()
-            resp = client.get(
-                '/service/{}'.format(sample_service.id),
-                headers=[auth_header]
-            )
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 200
-            assert json_resp['data']['name'] == sample_service.name
+    auth_header = create_authorization_header()
+    resp = client.get(
+        '/service/{}'.format(sample_service.id),
+        headers=[auth_header]
+    )
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert resp.status_code == 200
+    assert json_resp['data']['name'] == sample_service.name
 
-            data = {
-                'name': 'updated service name',
-                'email_from': 'updated.service.name',
-                'created_by': str(sample_service.created_by.id),
-                'organisation': str(org.id)
-            }
+    data = {
+        'name': 'updated service name',
+        'email_from': 'updated.service.name',
+        'created_by': str(sample_service.created_by.id),
+        'organisation': str(org.id),
+        'dvla_organisation': DVLA_ORG_LAND_REGISTRY
+    }
 
-            auth_header = create_authorization_header()
+    auth_header = create_authorization_header()
 
-            resp = client.post(
-                '/service/{}'.format(sample_service.id),
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header]
-            )
-            result = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 200
-            assert result['data']['name'] == 'updated service name'
-            assert result['data']['email_from'] == 'updated.service.name'
-            assert result['data']['organisation'] == str(org.id)
+    resp = client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+    assert resp.status_code == 200
+    assert result['data']['name'] == 'updated service name'
+    assert result['data']['email_from'] == 'updated.service.name'
+    assert result['data']['organisation'] == str(org.id)
+    assert result['data']['dvla_organisation'] == DVLA_ORG_LAND_REGISTRY
 
 
 def test_update_service_flags(notify_api, sample_service):
