@@ -1044,9 +1044,7 @@ def test_create_dvla_file_contents(sample_letter_template, mocker):
 def test_dvla_letter_template(sample_letter_notification):
     t = {"content": sample_letter_notification.template.content,
          "subject": sample_letter_notification.template.subject}
-    letter = LetterDVLATemplate(t,
-                                sample_letter_notification.personalisation,
-                                "random-string")
+    letter = LetterDVLATemplate(t, sample_letter_notification.personalisation, "random-string")
     assert str(letter) == "140|500|001||random-string|||||||||||||A1||A2|A3|A4|A5|A6|A_POST|||||||||23 March 2017<cr><cr><h1>Template subject<normal><cr><cr>Dear Sir/Madam, Hello. Yours Truly, The Government.<cr><cr>"  # noqa
 
 
