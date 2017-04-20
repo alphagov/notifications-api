@@ -490,6 +490,7 @@ class NotificationsFilterSchema(ma.Schema):
     include_jobs = fields.Boolean(required=False)
     include_from_test_key = fields.Boolean(required=False)
     older_than = fields.UUID(required=False)
+    format_for_csv = fields.String()
 
     @pre_load
     def handle_multidict(self, in_data):
