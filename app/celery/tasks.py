@@ -321,8 +321,7 @@ def create_dvla_file_contents(job_id):
             notification.template.__dict__,
             notification.personalisation,
             notification_reference=notification.reference,
-            contact_block=notification.service.letter_contact_block,
-            org_id=notification.service.dvla_organisation.id,
+            contact_block=notification.service.letter_contact_block
         ))
         for notification in dao_get_all_notifications_for_job(job_id)
     )
