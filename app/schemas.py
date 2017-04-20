@@ -177,7 +177,6 @@ class ServiceSchema(BaseSchema):
     created_by = field_for(models.Service, 'created_by', required=True)
     organisation = field_for(models.Service, 'organisation')
     branding = field_for(models.Service, 'branding')
-    dvla_organisation = field_for(models.Service, 'dvla_organisation')
 
     class Meta:
         model = models.Service
