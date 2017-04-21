@@ -29,8 +29,8 @@ def upgrade():
         ('500', 'Land Registry')
     """)
 
-    op.add_column('services', sa.Column('dvla_organisation_id', sa.String(), nullable=True))
-    op.add_column('services_history', sa.Column('dvla_organisation_id', sa.String(), nullable=True))
+    op.add_column('services', sa.Column('dvla_organisation_id', sa.String(), nullable=True, server_default='001'))
+    op.add_column('services_history', sa.Column('dvla_organisation_id', sa.String(), nullable=True, server_default='001'))
 
     # set everything to be HMG for now
     op.execute("UPDATE services SET dvla_organisation_id = '001'")
