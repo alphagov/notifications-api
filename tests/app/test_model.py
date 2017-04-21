@@ -87,18 +87,8 @@ def test_notification_for_csv_returns_correct_type(notify_db, notify_db_session,
         to_field=recipient
     )
 
-    expected_resp = {
-        "recipient": recipient,
-        "row_number": "",
-        "template_name": "Template Name",
-        "template_type": template_type,
-        "created_at": "Friday 01 January 2016 at 11:09",
-        "job_name": "some.csv",
-        "status": "Sending"
-    }
-
     serialized = notification.serialize_for_csv()
-    assert serialized == expected_resp
+    assert serialized['template_type'] == template_type
 
 
 @freeze_time("2016-01-01 11:09:00.000000")
@@ -108,59 +98,49 @@ def test_notification_for_csv_returns_correct_job_row_number(notify_db, notify_d
         notify_db_session,
         job_row_number=0
     )
-    expected_resp = {
-        "recipient": "+447700900855",
-        "row_number": 1,
-        "template_name": "Template Name",
-        "template_type": "sms",
-        "created_at": "Friday 01 January 2016 at 11:09",
-        "job_name": "some.csv",
-        "status": "Sending"
-    }
 
     serialized = notification.serialize_for_csv()
-    assert serialized == expected_resp
+    assert serialized['row_number'] == 1
 
 
 @freeze_time("2016-01-30 12:39:58.321312")
-def test_notifiation_for_csv_returns_formatted_status(notify_db, notify_db_session):
+@pytest.mark.parametrize('template_type, status, expected_status', [
+    ('email', 'failed', 'Failed'),
+    ('email', 'technical-failure', 'Technical failure'),
+    ('email', 'temporary-failure', 'Inbox not accepting messages right now'),
+    ('email', 'permanent-failure', 'Email address doesn’t exist'),
+    ('sms', 'temporary-failure', 'Phone not accepting messages right now'),
+    ('sms', 'permanent-failure', 'Phone number doesn’t exist'),
+    ('letter', 'permanent-failure', 'Permanent failure'),
+    ('letter', 'delivered', 'Delivered')
+])
+def test_notification_for_csv_returns_formatted_status(
+    notify_db,
+    notify_db_session,
+    template_type,
+    status,
+    expected_status
+):
+    template = create_sample_template(notify_db, notify_db_session, template_type=template_type)
     notification = create_sample_notification_with_job(
         notify_db,
         notify_db_session,
-        job_row_number=51,
-        status='temporary-failure'
+        status=status,
+        template=template
     )
-    expected_resp = {
-        "recipient": "+447700900855",
-        "row_number": 52,
-        "template_name": "Template Name",
-        "template_type": "sms",
-        "created_at": "Saturday 30 January 2016 at 12:39",
-        "job_name": "some.csv",
-        "status": "Phone not accepting messages right now"
-    }
 
     serialized = notification.serialize_for_csv()
-    assert serialized == expected_resp
+    assert serialized['status'] == expected_status
 
 
 @freeze_time("2017-03-26 23:01:53.321312")
-def test_notifiation_for_csv_returns_bst_correctly(notify_db, notify_db_session):
+def test_notification_for_csv_returns_bst_correctly(notify_db, notify_db_session):
     notification = create_sample_notification_with_job(
         notify_db,
         notify_db_session,
         job_row_number=100,
         status='permanent-failure'
     )
-    expected_resp = {
-        "recipient": "+447700900855",
-        "row_number": 101,
-        "template_name": "Template Name",
-        "template_type": "sms",
-        "created_at": "Monday 27 March 2017 at 00:01",
-        "job_name": "some.csv",
-        "status": "Phone number doesn’t exist"
-    }
 
     serialized = notification.serialize_for_csv()
-    assert serialized == expected_resp
+    assert serialized['created_at'] == 'Monday 27 March 2017 at 00:01'

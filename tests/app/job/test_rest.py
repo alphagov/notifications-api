@@ -731,8 +731,10 @@ def test_get_all_notifications_for_job_returns_csv_format(
         created_at=datetime.utcnow(),
     )
 
+    path = '/service/{}/job/{}/notifications'.format(notification.service.id, job.id)
+
     response = client.get(
-        path='/service/{}/job/{}/notifications?'.format(notification.service.id, job.id, True),
+        path=path,
         headers=[create_authorization_header()],
         query_string={'format_for_csv': True}
     )
