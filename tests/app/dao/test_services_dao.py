@@ -43,6 +43,7 @@ from app.models import (
     InvitedUser,
     Service,
     BRANDING_GOVUK,
+    DVLA_ORG_HM_GOVERNMENT,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST
@@ -77,6 +78,7 @@ def test_create_service(sample_user):
     assert service_db.name == "service_name"
     assert service_db.id == service.id
     assert service_db.branding == BRANDING_GOVUK
+    assert service_db.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
     assert service_db.research_mode is False
     assert service.active is True
     assert sample_user in service_db.users
@@ -263,7 +265,9 @@ def test_create_service_creates_a_history_record_with_current_data(sample_user):
     assert sample_user.id == service_history.created_by_id
     assert service_from_db.created_by.id == service_history.created_by_id
     assert service_from_db.branding == BRANDING_GOVUK
+    assert service_from_db.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
     assert service_history.branding == BRANDING_GOVUK
+    assert service_history.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
 
 
 def test_update_service_creates_a_history_record_with_current_data(sample_user):
