@@ -715,3 +715,33 @@ def create_10_jobs(db, session, service, template):
         for _ in range(10):
             the_time.tick(timedelta(hours=1))
             create_job(db, session, service, template)
+
+
+def test_get_all_notifications_for_job_returns_csv_format(
+    client,
+    notify_db,
+    notify_db_session,
+):
+    job = create_job(notify_db, notify_db_session)
+    notification = create_notification(
+        notify_db,
+        notify_db_session,
+        job=job,
+        job_row_number=1,
+        created_at=datetime.utcnow(),
+    )
+
+    path = '/service/{}/job/{}/notifications'.format(notification.service.id, job.id)
+
+    response = client.get(
+        path=path,
+        headers=[create_authorization_header()],
+        query_string={'format_for_csv': True}
+    )
+    assert response.status_code == 200
+
+    resp = json.loads(response.get_data(as_text=True))
+    assert len(resp['notifications']) == 1
+    notification = resp['notifications'][0]
+    assert set(notification.keys()) == \
+        set(['created_at', 'template_type', 'template_name', 'job_name', 'status', 'row_number', 'recipient'])

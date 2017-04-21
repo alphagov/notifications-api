@@ -1,3 +1,4 @@
+import time
 import uuid
 import datetime
 from flask import url_for
@@ -27,6 +28,7 @@ from app import (
 )
 
 from app.history_meta import Versioned
+from app.utils import get_utc_time_in_bst
 
 
 def filter_null_value_fields(obj):
@@ -709,8 +711,53 @@ class Notification(db.Model):
             template_object = get_template_instance(self.template.__dict__, self.personalisation)
             return template_object.subject
 
-    def serialize(self):
+    @property
+    def formatted_status(self):
+        return {
+            'email': {
+                'failed': 'Failed',
+                'technical-failure': 'Technical failure',
+                'temporary-failure': 'Inbox not accepting messages right now',
+                'permanent-failure': 'Email address doesn’t exist',
+                'delivered': 'Delivered',
+                'sending': 'Sending',
+                'created': 'Sending'
+            },
+            'sms': {
+                'failed': 'Failed',
+                'technical-failure': 'Technical failure',
+                'temporary-failure': 'Phone not accepting messages right now',
+                'permanent-failure': 'Phone number doesn’t exist',
+                'delivered': 'Delivered',
+                'sending': 'Sending',
+                'created': 'Sending'
+            },
+            'letter': {
+                'failed': 'Failed',
+                'technical-failure': 'Technical failure',
+                'temporary-failure': 'Temporary failure',
+                'permanent-failure': 'Permanent failure',
+                'delivered': 'Delivered',
+                'sending': 'Sending',
+                'created': 'Sending'
+            }
+        }[self.template.template_type].get(self.status, self.status)
 
+    def serialize_for_csv(self):
+        created_at_in_bst = get_utc_time_in_bst(self.created_at)
+        serialized = {
+            "row_number": '' if self.job_row_number is None else self.job_row_number + 1,
+            "recipient": self.to,
+            "template_name": self.template.name,
+            "template_type": self.template.template_type,
+            "job_name": self.job.original_file_name if self.job else '',
+            "status": self.formatted_status,
+            "created_at": time.strftime('%A %d %B %Y at %H:%M', created_at_in_bst.timetuple())
+        }
+
+        return serialized
+
+    def serialize(self):
         template_dict = {
             'version': self.template.version,
             'id': self.template.id,

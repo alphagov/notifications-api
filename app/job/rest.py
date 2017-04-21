@@ -69,8 +69,7 @@ def get_all_notifications_for_service_job(service_id, job_id):
     data = notifications_filter_schema.load(request.args).data
     page = data['page'] if 'page' in data else 1
     page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
-
-    pagination = get_notifications_for_job(
+    paginated_notifications = get_notifications_for_job(
         service_id,
         job_id,
         filter_dict=data,
@@ -78,22 +77,21 @@ def get_all_notifications_for_service_job(service_id, job_id):
         page_size=page_size)
 
     kwargs = request.args.to_dict()
-
-    if page_size > 50:
-        current_app.logger.info('Current page: {}'.format(page))
-        current_app.logger.info('Page size: {}'.format(page_size))
-        current_app.logger.info('Total pages in pagination: {}'.format(pagination.pages))
-        current_app.logger.info('Total notifications in pagination query: {}'.format(pagination.total))
-        current_app.logger.info('Arguments for next query: {}'.format(kwargs))
-
     kwargs['service_id'] = service_id
     kwargs['job_id'] = job_id
+
+    notifications = None
+    if data.get('format_for_csv'):
+        notifications = [notification.serialize_for_csv() for notification in paginated_notifications.items]
+    else:
+        notifications = notification_with_template_schema.dump(paginated_notifications.items, many=True).data
+
     return jsonify(
-        notifications=notification_with_template_schema.dump(pagination.items, many=True).data,
+        notifications=notifications,
         page_size=page_size,
-        total=pagination.total,
+        total=paginated_notifications.total,
         links=pagination_links(
-            pagination,
+            paginated_notifications,
             '.get_all_notifications_for_service_job',
             **kwargs
         )

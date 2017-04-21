@@ -405,14 +405,13 @@ def sample_notification_with_job(
 ):
     if job is None:
         job = sample_job(notify_db, notify_db_session, service=service, template=template)
-
     return sample_notification(
         notify_db,
         notify_db_session,
         service,
         template,
         job=job,
-        job_row_number=job_row_number if job_row_number else None,
+        job_row_number=job_row_number if job_row_number is not None else None,
         to_field=to_field,
         status=status,
         reference=reference,
@@ -482,7 +481,7 @@ def sample_notification(
         'updated_at': created_at if status in NOTIFICATION_STATUS_TYPES_COMPLETED else None,
         'client_reference': client_reference
     }
-    if job_row_number:
+    if job_row_number is not None:
         data['job_row_number'] = job_row_number
     notification = Notification(**data)
     dao_create_notification(notification)

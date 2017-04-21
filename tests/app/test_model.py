@@ -1,5 +1,7 @@
 import pytest
 
+from freezegun import freeze_time
+
 from app.models import (
     ServiceWhitelist,
     Notification,
@@ -10,6 +12,10 @@ from app.models import (
     NOTIFICATION_FAILED,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_STATUS_TYPES_FAILED
+)
+from tests.app.conftest import (
+    sample_template as create_sample_template,
+    sample_notification_with_job as create_sample_notification_with_job
 )
 
 
@@ -65,3 +71,76 @@ def test_status_conversion_handles_failed_statuses(initial_statuses, expected_st
     converted_statuses = Notification.substitute_status(initial_statuses)
     assert len(converted_statuses) == len(expected_statuses)
     assert set(converted_statuses) == set(expected_statuses)
+
+
+@freeze_time("2016-01-01 11:09:00.000000")
+@pytest.mark.parametrize('template_type, recipient', [
+    ('sms', '+447700900855'),
+    ('email', 'foo@bar.com'),
+])
+def test_notification_for_csv_returns_correct_type(notify_db, notify_db_session, template_type, recipient):
+    template = create_sample_template(notify_db, notify_db_session, template_type=template_type)
+    notification = create_sample_notification_with_job(
+        notify_db,
+        notify_db_session,
+        template=template,
+        to_field=recipient
+    )
+
+    serialized = notification.serialize_for_csv()
+    assert serialized['template_type'] == template_type
+
+
+@freeze_time("2016-01-01 11:09:00.000000")
+def test_notification_for_csv_returns_correct_job_row_number(notify_db, notify_db_session):
+    notification = create_sample_notification_with_job(
+        notify_db,
+        notify_db_session,
+        job_row_number=0
+    )
+
+    serialized = notification.serialize_for_csv()
+    assert serialized['row_number'] == 1
+
+
+@freeze_time("2016-01-30 12:39:58.321312")
+@pytest.mark.parametrize('template_type, status, expected_status', [
+    ('email', 'failed', 'Failed'),
+    ('email', 'technical-failure', 'Technical failure'),
+    ('email', 'temporary-failure', 'Inbox not accepting messages right now'),
+    ('email', 'permanent-failure', 'Email address doesn’t exist'),
+    ('sms', 'temporary-failure', 'Phone not accepting messages right now'),
+    ('sms', 'permanent-failure', 'Phone number doesn’t exist'),
+    ('letter', 'permanent-failure', 'Permanent failure'),
+    ('letter', 'delivered', 'Delivered')
+])
+def test_notification_for_csv_returns_formatted_status(
+    notify_db,
+    notify_db_session,
+    template_type,
+    status,
+    expected_status
+):
+    template = create_sample_template(notify_db, notify_db_session, template_type=template_type)
+    notification = create_sample_notification_with_job(
+        notify_db,
+        notify_db_session,
+        status=status,
+        template=template
+    )
+
+    serialized = notification.serialize_for_csv()
+    assert serialized['status'] == expected_status
+
+
+@freeze_time("2017-03-26 23:01:53.321312")
+def test_notification_for_csv_returns_bst_correctly(notify_db, notify_db_session):
+    notification = create_sample_notification_with_job(
+        notify_db,
+        notify_db_session,
+        job_row_number=100,
+        status='permanent-failure'
+    )
+
+    serialized = notification.serialize_for_csv()
+    assert serialized['created_at'] == 'Monday 27 March 2017 at 00:01'
