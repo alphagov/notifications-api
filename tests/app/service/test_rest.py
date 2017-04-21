@@ -10,7 +10,7 @@ from freezegun import freeze_time
 
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
-from app.models import User, Organisation
+from app.models import User, Organisation, DVLA_ORG_LAND_REGISTRY
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_service as create_service,
@@ -129,21 +129,20 @@ def test_get_service_list_should_return_empty_list_if_no_services(notify_api, no
             assert len(json_resp['data']) == 0
 
 
-def test_get_service_by_id(notify_api, sample_service):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            auth_header = create_authorization_header()
-            resp = client.get(
-                '/service/{}'.format(sample_service.id),
-                headers=[auth_header]
-            )
-            assert resp.status_code == 200
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp['data']['name'] == sample_service.name
-            assert json_resp['data']['id'] == str(sample_service.id)
-            assert not json_resp['data']['research_mode']
-            assert json_resp['data']['organisation'] is None
-            assert json_resp['data']['branding'] == 'govuk'
+def test_get_service_by_id(client, sample_service):
+    auth_header = create_authorization_header()
+    resp = client.get(
+        '/service/{}'.format(sample_service.id),
+        headers=[auth_header]
+    )
+    assert resp.status_code == 200
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert json_resp['data']['name'] == sample_service.name
+    assert json_resp['data']['id'] == str(sample_service.id)
+    assert not json_resp['data']['research_mode']
+    assert json_resp['data']['organisation'] is None
+    assert json_resp['data']['branding'] == 'govuk'
+    assert json_resp['data']['dvla_organisation'] == '001'
 
 
 def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
@@ -191,41 +190,40 @@ def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_
             assert json_resp['message'] == 'No result found'
 
 
-def test_create_service(notify_api, sample_user):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            data = {
-                'name': 'created service',
-                'user_id': str(sample_user.id),
-                'message_limit': 1000,
-                'restricted': False,
-                'active': False,
-                'email_from': 'created.service',
-                'created_by': str(sample_user.id)}
-            auth_header = create_authorization_header()
-            headers = [('Content-Type', 'application/json'), auth_header]
-            resp = client.post(
-                '/service',
-                data=json.dumps(data),
-                headers=headers)
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 201
-            assert json_resp['data']['id']
-            assert json_resp['data']['name'] == 'created service'
-            assert json_resp['data']['email_from'] == 'created.service'
-            assert not json_resp['data']['research_mode']
+def test_create_service(client, sample_user):
+    data = {
+        'name': 'created service',
+        'user_id': str(sample_user.id),
+        'message_limit': 1000,
+        'restricted': False,
+        'active': False,
+        'email_from': 'created.service',
+        'created_by': str(sample_user.id)}
+    auth_header = create_authorization_header()
+    headers = [('Content-Type', 'application/json'), auth_header]
+    resp = client.post(
+        '/service',
+        data=json.dumps(data),
+        headers=headers)
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert resp.status_code == 201
+    assert json_resp['data']['id']
+    assert json_resp['data']['name'] == 'created service'
+    assert json_resp['data']['email_from'] == 'created.service'
+    assert not json_resp['data']['research_mode']
+    assert json_resp['data']['dvla_organisation'] == '001'
 
-            auth_header_fetch = create_authorization_header()
+    auth_header_fetch = create_authorization_header()
 
-            resp = client.get(
-                '/service/{}?user_id={}'.format(json_resp['data']['id'], sample_user.id),
-                headers=[auth_header_fetch]
-            )
-            assert resp.status_code == 200
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp['data']['name'] == 'created service'
-            assert not json_resp['data']['research_mode']
-            assert not json_resp['data']['can_send_letters']
+    resp = client.get(
+        '/service/{}?user_id={}'.format(json_resp['data']['id'], sample_user.id),
+        headers=[auth_header_fetch]
+    )
+    assert resp.status_code == 200
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert json_resp['data']['name'] == 'created service'
+    assert not json_resp['data']['research_mode']
+    assert not json_resp['data']['can_send_letters']
 
 
 def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_uuid):
@@ -371,41 +369,41 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_email
             assert "Duplicate service name '{}'".format(service_name) in json_resp['message']['name']
 
 
-def test_update_service(notify_api, notify_db, sample_service):
+def test_update_service(client, notify_db, sample_service):
     org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
     notify_db.session.add(org)
     notify_db.session.commit()
 
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            auth_header = create_authorization_header()
-            resp = client.get(
-                '/service/{}'.format(sample_service.id),
-                headers=[auth_header]
-            )
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 200
-            assert json_resp['data']['name'] == sample_service.name
+    auth_header = create_authorization_header()
+    resp = client.get(
+        '/service/{}'.format(sample_service.id),
+        headers=[auth_header]
+    )
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert resp.status_code == 200
+    assert json_resp['data']['name'] == sample_service.name
 
-            data = {
-                'name': 'updated service name',
-                'email_from': 'updated.service.name',
-                'created_by': str(sample_service.created_by.id),
-                'organisation': str(org.id)
-            }
+    data = {
+        'name': 'updated service name',
+        'email_from': 'updated.service.name',
+        'created_by': str(sample_service.created_by.id),
+        'organisation': str(org.id),
+        'dvla_organisation': DVLA_ORG_LAND_REGISTRY
+    }
 
-            auth_header = create_authorization_header()
+    auth_header = create_authorization_header()
 
-            resp = client.post(
-                '/service/{}'.format(sample_service.id),
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header]
-            )
-            result = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 200
-            assert result['data']['name'] == 'updated service name'
-            assert result['data']['email_from'] == 'updated.service.name'
-            assert result['data']['organisation'] == str(org.id)
+    resp = client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+    assert resp.status_code == 200
+    assert result['data']['name'] == 'updated service name'
+    assert result['data']['email_from'] == 'updated.service.name'
+    assert result['data']['organisation'] == str(org.id)
+    assert result['data']['dvla_organisation'] == DVLA_ORG_LAND_REGISTRY
 
 
 def test_update_service_flags(notify_api, sample_service):
