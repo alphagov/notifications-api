@@ -944,3 +944,12 @@ class Event(db.Model):
         nullable=False,
         default=datetime.datetime.utcnow)
     data = db.Column(JSON, nullable=False)
+
+
+class Rates(db.Model):
+    __tablename__ = 'rates'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    valid_from = db.Column(db.DateTime, nullable=False)
+    rate = db.Column(db.Numeric(), nullable=False)
+    notification_type = db.Column(notification_types, index=True, nullable=False)
