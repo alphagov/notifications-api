@@ -8,7 +8,7 @@ from app.provider_details.switch_providers import (
     provider_is_primary,
     switch_providers
 )
-from app.models import ProviderDetails, ProviderDetailsHistory
+from app.models import ProviderDetails, ProviderDetailsHistory, INTERNATIONAL_PROVIDER, DOMESTIC_PROVIDER
 from app import db
 
 
@@ -34,10 +34,11 @@ def get_alternative_sms_provider(identifier):
     return ProviderDetails.query.filter_by(identifier=alternate_provider).one()
 
 
-def get_current_provider(notification_type):
+def get_current_provider(notification_type, international=False):
     return ProviderDetails.query.filter_by(
         notification_type=notification_type,
-        active=True
+        active=True,
+        provider_type=INTERNATIONAL_PROVIDER if international else DOMESTIC_PROVIDER
     ).order_by(
         asc(ProviderDetails.priority)
     ).first()
@@ -79,9 +80,10 @@ def dao_switch_sms_provider_to_provider_with_identifier(identifier):
             dao_update_provider_details(provider)
 
 
-def get_provider_details_by_notification_type(notification_type):
+def get_providers_by_notification_type(notification_type, provider_type='domestic'):
     return ProviderDetails.query.filter_by(
-        notification_type=notification_type
+        notification_type=notification_type,
+        provider_type=provider_type
     ).order_by(asc(ProviderDetails.priority)).all()
 
 

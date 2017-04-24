@@ -11,7 +11,7 @@ from app.dao.provider_details_dao import (
     get_current_provider,
     get_provider_details,
     get_provider_details_by_identifier,
-    get_provider_details_by_notification_type,
+    get_providers_by_notification_type,
     dao_switch_sms_provider_to_provider_with_identifier,
     dao_toggle_sms_provider,
     dao_update_provider_details,
@@ -32,30 +32,36 @@ def set_primary_sms_provider(identifier):
 
 
 def test_can_get_all_providers(restore_provider_details):
-    assert len(get_provider_details()) == 5
+    assert len(get_provider_details()) == 6
 
 
-def test_can_get_sms_providers(restore_provider_details):
-    sms_providers = get_provider_details_by_notification_type('sms')
-    assert len(sms_providers) == 3
-    assert all('sms' == prov.notification_type for prov in sms_providers)
+def test_can_get_domestic_sms_providers(restore_provider_details):
+    providers = get_providers_by_notification_type('sms')
+    assert len(providers) == 3
+    assert all('sms' == prov.notification_type for prov in providers)
 
 
-def test_can_get_sms_providers_in_order_of_priority(restore_provider_details):
-    providers = get_provider_details_by_notification_type('sms')
+def test_can_get_international_sms_providers(restore_provider_details):
+    providers = get_providers_by_notification_type('sms', 'international')
+    assert len(providers) == 1
+    assert all('sms' == prov.notification_type for prov in providers)
+
+
+def test_can_get_domestic_sms_providers_in_order_of_priority(restore_provider_details):
+    providers = get_providers_by_notification_type('sms')
 
     assert providers[0].priority < providers[1].priority < providers[2].priority
 
 
 def test_can_get_email_providers_in_order_of_priority(restore_provider_details):
-    providers = get_provider_details_by_notification_type('email')
+    providers = get_providers_by_notification_type('email')
 
     assert providers[0].identifier == "ses"
 
 
 def test_can_get_email_providers(restore_provider_details):
-    assert len(get_provider_details_by_notification_type('email')) == 1
-    types = [provider.notification_type for provider in get_provider_details_by_notification_type('email')]
+    assert len(get_providers_by_notification_type('email')) == 1
+    types = [provider.notification_type for provider in get_providers_by_notification_type('email')]
     assert all('email' == notification_type for notification_type in types)
 
 
@@ -108,12 +114,22 @@ def test_update_sms_provider_to_inactive_sets_inactive(restore_provider_details)
     assert not primary_provider.active
 
 
-def test_get_current_sms_provider_returns_correct_provider(restore_provider_details):
+def test_get_current_domestic_sms_provider_returns_correct_provider(restore_provider_details):
     set_primary_sms_provider('mmg')
 
     provider = get_current_provider('sms')
 
     assert provider.identifier == 'mmg'
+
+
+def test_get_current_international_sms_provider_returns_correct_provider(restore_provider_details):
+    primary_provider = get_provider_details_by_identifier('mmg-intl')
+    primary_provider.active = True
+
+    dao_update_provider_details(primary_provider)
+
+    provider = get_current_provider('sms', international=True)
+    assert provider.identifier == 'mmg-intl'
 
 
 @pytest.mark.parametrize('provider_identifier', ['firetext', 'mmg'])
@@ -153,7 +169,6 @@ def test_toggle_sms_provider_switches_provider(
     restore_provider_details,
     current_sms_provider,
     sample_user
-
 ):
     mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
     dao_toggle_sms_provider(current_sms_provider.identifier)

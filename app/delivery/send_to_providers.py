@@ -10,7 +10,7 @@ from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTempla
 from app import clients, statsd_client, create_uuid
 from app.dao.notifications_dao import dao_update_notification
 from app.dao.provider_details_dao import (
-    get_provider_details_by_notification_type,
+    get_providers_by_notification_type,
     dao_toggle_sms_provider
 )
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
@@ -122,7 +122,7 @@ def update_notification(notification, provider):
 
 def provider_to_use(notification_type, notification_id):
     active_providers_in_order = [
-        provider for provider in get_provider_details_by_notification_type(notification_type) if provider.active
+        provider for provider in get_providers_by_notification_type(notification_type) if provider.active
     ]
 
     if not active_providers_in_order:

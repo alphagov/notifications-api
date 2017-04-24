@@ -24,7 +24,7 @@ from tests.app.db import create_service, create_template, create_notification
 
 
 def test_should_return_highest_priority_active_provider(restore_provider_details):
-    providers = provider_details_dao.get_provider_details_by_notification_type('sms')
+    providers = provider_details_dao.get_providers_by_notification_type('sms')
 
     first = providers[0]
     second = providers[1]
