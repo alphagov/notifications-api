@@ -443,6 +443,11 @@ class ProviderDetails(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=True)
     created_by = db.relationship('User')
+    provider_type = db.Column(db.String(255), nullable=False, default='domestic')
+
+
+DOMESTIC_PROVIDER = 'domestic'
+INTERNATIONAL_PROVIDER = 'international'
 
 
 class ProviderDetailsHistory(db.Model, HistoryModel):
@@ -458,6 +463,7 @@ class ProviderDetailsHistory(db.Model, HistoryModel):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=True)
     created_by = db.relationship('User')
+    provider_type = db.Column(db.String(255), nullable=False, default='domestic')
 
 
 JOB_STATUS_PENDING = 'pending'
