@@ -2,12 +2,13 @@ from datetime import timedelta
 from celery.schedules import crontab
 from kombu import Exchange, Queue
 import os
-
+from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 
 if os.environ.get('VCAP_SERVICES'):
     # on cloudfoundry, config is a json blob in VCAP_SERVICES - unpack it, and populate
     # standard environment variables from it
     from app.cloudfoundry_config import extract_cloudfoundry_config
+
     extract_cloudfoundry_config()
 
 
@@ -176,6 +177,21 @@ class Config(object):
 
     DVLA_UPLOAD_BUCKET_NAME = "{}-dvla-file-per-job".format(os.getenv('NOTIFY_ENVIRONMENT'))
 
+    API_KEY_LIMITS = {
+        KEY_TYPE_TEAM: {
+            "limit": 3000,
+            "interval": 60
+        },
+        KEY_TYPE_NORMAL: {
+            "limit": 3000,
+            "interval": 60
+        },
+        KEY_TYPE_TEST: {
+            "limit": 3000,
+            "interval": 60
+        }
+    }
+
 
 ######################
 # Config overrides ###
@@ -222,6 +238,21 @@ class Test(Config):
     ]
     REDIS_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"
+
+    API_KEY_LIMITS = {
+        KEY_TYPE_TEAM: {
+            "limit": 1,
+            "interval": 2
+        },
+        KEY_TYPE_NORMAL: {
+            "limit": 10,
+            "interval": 20
+        },
+        KEY_TYPE_TEST: {
+            "limit": 100,
+            "interval": 200
+        }
+    }
 
 
 class Preview(Config):

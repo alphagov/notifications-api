@@ -13,6 +13,7 @@ from app.models import ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, No
 from app.dao.templates_dao import dao_get_all_templates_for_service, dao_update_template
 from app.dao.services_dao import dao_update_service
 from app.dao.api_key_dao import save_model_api_key
+from app.v2.errors import RateLimitError
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_notification as create_sample_notification,
@@ -1046,3 +1047,49 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
 
     assert response.status_code == 201
     mocked.assert_called_once_with([notification_id], queue='priority')
+
+
+@pytest.mark.parametrize(
+    "notification_type, send_to",
+    [("sms", "07700 900 855"), ("email", "sample@email.com")]
+)
+def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
+    client,
+    notify_db,
+    notify_db_session,
+    mocker,
+    notification_type,
+    send_to
+):
+    sample = create_sample_template(
+        notify_db,
+        notify_db_session,
+        template_type=notification_type
+    )
+    persist_mock = mocker.patch('app.notifications.rest.persist_notification')
+    deliver_mock = mocker.patch('app.notifications.rest.send_notification_to_queue')
+
+    mocker.patch(
+        'app.notifications.rest.check_rate_limiting',
+        side_effect=RateLimitError("LIMIT", "INTERVAL", "TYPE"))
+
+    data = {
+        'to': send_to,
+        'template': str(sample.id)
+    }
+
+    auth_header = create_authorization_header(service_id=sample.service_id)
+
+    response = client.post(
+        path='/notifications/{}'.format(notification_type),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    message = json.loads(response.data)['message']
+    result = json.loads(response.data)['result']
+    assert response.status_code == 429
+    assert result == 'error'
+    assert message == 'Exceeded rate limit for key type TYPE of LIMIT requests per INTERVAL seconds'
+
+    assert not persist_mock.called
+    assert not deliver_mock.called
