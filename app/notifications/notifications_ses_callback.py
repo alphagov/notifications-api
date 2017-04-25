@@ -36,6 +36,9 @@ def process_ses_response():
             current_app.logger.info("SNS subscription confirmation url: {}".format(ses_request['SubscribeURL']))
             subscribed_topic = confirm_subscription(ses_request)
             current_app.logger.info("Automatically subscribed to topic: {}".format(subscribed_topic))
+            return jsonify(
+                result="success", message="SES callback succeeded"
+            ), 200
 
         errors = validate_callback_data(data=ses_request, fields=['Message'], client_name=client_name)
         if errors:
