@@ -115,6 +115,16 @@ class Organisation(db.Model):
     name = db.Column(db.String(255), nullable=True)
 
 
+DVLA_ORG_HM_GOVERNMENT = '001'
+DVLA_ORG_LAND_REGISTRY = '500'
+
+
+class DVLAOrganisation(db.Model):
+    __tablename__ = 'dvla_organisation'
+    id = db.Column(db.String, primary_key=True)
+    name = db.Column(db.String(255), nullable=True)
+
+
 class Service(db.Model, Versioned):
     __tablename__ = 'services'
 
@@ -141,6 +151,7 @@ class Service(db.Model, Versioned):
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
     research_mode = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=False)
     can_send_letters = db.Column(db.Boolean, nullable=False, default=False)
+    can_send_international_sms = db.Column(db.Boolean, nullable=False, default=False)
     email_from = db.Column(db.Text, index=False, unique=True, nullable=False)
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
@@ -149,6 +160,14 @@ class Service(db.Model, Versioned):
     sms_sender = db.Column(db.String(11), nullable=True)
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
     organisation = db.relationship('Organisation')
+    dvla_organisation_id = db.Column(
+        db.String,
+        db.ForeignKey('dvla_organisation.id'),
+        index=True,
+        nullable=False,
+        default=DVLA_ORG_HM_GOVERNMENT
+    )
+    dvla_organisation = db.relationship('DVLAOrganisation')
     branding = db.Column(
         db.String(255),
         db.ForeignKey('branding_type.name'),
@@ -926,3 +945,12 @@ class Event(db.Model):
         nullable=False,
         default=datetime.datetime.utcnow)
     data = db.Column(JSON, nullable=False)
+
+
+class Rate(db.Model):
+    __tablename__ = 'rates'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    valid_from = db.Column(db.DateTime, nullable=False)
+    rate = db.Column(db.Numeric(), nullable=False)
+    notification_type = db.Column(notification_types, index=True, nullable=False)

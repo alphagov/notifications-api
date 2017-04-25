@@ -90,6 +90,7 @@ def register_blueprint(application):
     from app.provider_details.rest import provider_details as provider_details_blueprint
     from app.spec.rest import spec as spec_blueprint
     from app.organisation.rest import organisation_blueprint
+    from app.dvla_organisation.rest import dvla_organisation_blueprint
     from app.delivery.rest import delivery_blueprint
     from app.notifications.receive_notifications import receive_notifications_blueprint
     from app.notifications.notifications_ses_callback import ses_callback_blueprint
@@ -147,6 +148,9 @@ def register_blueprint(application):
 
     organisation_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(organisation_blueprint, url_prefix='/organisation')
+
+    dvla_organisation_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(dvla_organisation_blueprint, url_prefix='/dvla_organisations')
 
     letter_job.before_request(requires_admin_auth)
     application.register_blueprint(letter_job)
@@ -211,7 +215,7 @@ def create_uuid():
 
 
 def create_random_identifier():
-    return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(16))
+    return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(16))
 
 
 def process_user_agent(user_agent_string):
