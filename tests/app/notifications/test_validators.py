@@ -1,6 +1,6 @@
 import pytest
 from freezegun import freeze_time
-
+from flask import current_app
 import app
 from app.notifications.validators import (
     check_service_over_daily_message_limit,
@@ -320,3 +320,20 @@ def test_that_when_not_exceeded_rate_limit_request_succeeds(
             limit,
             interval
         )
+
+
+def test_should_not_rate_limit_if_limiting_is_disabled(
+        notify_db,
+        notify_db_session,
+        mocker):
+    with freeze_time("2016-01-01 12:00:00.000000"):
+        current_app.config['API_RATE_LIMIT_ENABLED'] = False
+
+        mocker.patch('app.redis_store.exceeded_rate_limit', return_value=False)
+        mocker.patch('app.notifications.validators.services_dao')
+
+        service = create_service(notify_db, notify_db_session, restricted=True)
+        api_key = sample_api_key(notify_db, notify_db_session, service=service)
+
+        check_service_over_api_rate_limit(service, api_key)
+        assert not app.redis_store.exceeded_rate_limit.called

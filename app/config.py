@@ -215,6 +215,7 @@ class Development(Config):
         Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
     API_HOST_NAME = "http://localhost:6011"
+    API_RATE_LIMIT_ENABLED = True
 
 
 class Test(Config):
@@ -237,6 +238,7 @@ class Test(Config):
         Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
     REDIS_ENABLED = True
+    API_RATE_LIMIT_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"
 
     API_KEY_LIMITS = {
@@ -260,6 +262,7 @@ class Preview(Config):
     NOTIFY_ENVIRONMENT = 'preview'
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
     FROM_NUMBER = 'preview'
+    API_RATE_LIMIT_ENABLED = True
 
 
 class Staging(Config):
@@ -268,6 +271,7 @@ class Staging(Config):
     CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
     STATSD_ENABLED = True
     FROM_NUMBER = 'stage'
+    API_RATE_LIMIT_ENABLED = True
 
 
 class Live(Config):
@@ -279,6 +283,7 @@ class Live(Config):
     FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = '6c1d81bb-dae2-4ee9-80b0-89a4aae9f649'
     FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID = 'ba9e1789-a804-40b8-871f-cc60d4c1286f'
     PERFORMANCE_PLATFORM_ENABLED = True
+    API_RATE_LIMIT_ENABLED = False
 
 
 class CloudFoundryConfig(Config):
