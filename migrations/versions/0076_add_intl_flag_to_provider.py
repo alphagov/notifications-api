@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0074_add_intl_flag_to_provider
+Revision ID: 0076_add_intl_flag_to_provider
 Revises: 0073_add_international_sms_flag
 Create Date: 2017-04-25 09:44:13.194164
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0074_add_intl_flag_to_provider'
-down_revision = '0073_add_international_sms_flag'
+revision = '0076_add_intl_flag_to_provider'
+down_revision = '0075_create_rates_table'
 
 from alembic import op
 import sqlalchemy as sa
