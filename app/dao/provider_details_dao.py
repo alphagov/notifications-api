@@ -36,7 +36,8 @@ def get_alternative_sms_provider(identifier):
 
 def get_current_provider(notification_type):
     return ProviderDetails.query.filter_by(
-        notification_type=notification_type
+        notification_type=notification_type,
+        active=True
     ).order_by(
         asc(ProviderDetails.priority)
     ).first()

@@ -273,3 +273,12 @@ def test_get_sms_provider_with_equal_priority_returns_provider(
         dao_get_sms_provider_with_equal_priority(current_provider.identifier, current_provider.priority)
 
     assert conflicting_provider
+
+
+def test_get_current_sms_provider_returns_active_only(restore_provider_details):
+    current_provider = get_current_provider('sms')
+    current_provider.active = False
+    dao_update_provider_details(current_provider)
+    new_current_provider = get_current_provider('sms')
+
+    assert current_provider.identifier != new_current_provider.identifier
