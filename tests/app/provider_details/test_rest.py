@@ -47,7 +47,7 @@ def test_get_provider_details_contains_correct_fields(client, notify_db):
     allowed_keys = {
         "id", "created_by", "display_name",
         "identifier", "priority", 'notification_type',
-        "active", "version", "updated_at"
+        "active", "version", "updated_at", "supports_international"
     }
     assert allowed_keys == set(json_resp[0].keys())
 
@@ -116,7 +116,7 @@ def test_get_provider_versions_contains_correct_fields(client, notify_db):
     allowed_keys = {
         "id", "created_by", "display_name",
         "identifier", "priority", 'notification_type',
-        "active", "version", "updated_at"
+        "active", "version", "updated_at", "supports_international"
     }
     assert allowed_keys == set(json_resp[0].keys())
 
