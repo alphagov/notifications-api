@@ -946,7 +946,7 @@ class Event(db.Model):
     data = db.Column(JSON, nullable=False)
 
 
-class Rates(db.Model):
+class Rate(db.Model):
     __tablename__ = 'rates'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
