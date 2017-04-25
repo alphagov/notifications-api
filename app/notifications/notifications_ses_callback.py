@@ -15,6 +15,7 @@ from app.dao import (
 )
 
 from app.notifications.process_client_response import validate_callback_data
+from app.notifications.utils import confirm_subscription
 
 ses_callback_blueprint = Blueprint('notifications_ses_callback', __name__)
 
@@ -33,6 +34,8 @@ def process_ses_response():
 
         if 'Type' in ses_request and ses_request['Type'] == 'SubscriptionConfirmation':
             current_app.logger.info("SNS subscription confirmation url: {}".format(ses_request['SubscribeURL']))
+            subscribed_topic = confirm_subscription(ses_request)
+            current_app.logger.info("Automatically subscribed to topic: {}".format(subscribed_topic))
 
         errors = validate_callback_data(data=ses_request, fields=['Message'], client_name=client_name)
         if errors:
