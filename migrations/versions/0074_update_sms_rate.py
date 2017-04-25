@@ -1,7 +1,7 @@
 """empty message
 
 Revision ID: 0074_update_sms_rate
-Revises: 0072_add_dvla_orgs
+Revises: 0073_add_international_sms_flag
 Create Date: 2017-04-24 12:10:02.116278
 
 """
@@ -9,7 +9,7 @@ Create Date: 2017-04-24 12:10:02.116278
 import uuid
 
 revision = '0074_update_sms_rate'
-down_revision = '0072_add_dvla_orgs'
+down_revision = '0073_add_international_sms_flag'
 
 from alembic import op
 
