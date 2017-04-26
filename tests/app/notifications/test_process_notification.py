@@ -170,19 +170,20 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
     n_id = uuid.uuid4()
     created_at = datetime.datetime(2016, 11, 11, 16, 8, 18)
     persist_notification(
-         template_id=sample_job.template.id,
-         template_version=sample_job.template.version,
-         recipient='+447111111111',
-         service=sample_job.service,
-         personalisation=None, notification_type='sms',
-         api_key_id=sample_api_key.id,
-         key_type=sample_api_key.key_type,
-         created_at=created_at,
-         job_id=sample_job.id,
-         job_row_number=10,
-         client_reference="ref from client",
-         notification_id=n_id
-     )
+        template_id=sample_job.template.id,
+        template_version=sample_job.template.version,
+        recipient='+447111111111',
+        service=sample_job.service,
+        personalisation=None,
+        notification_type='sms',
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        created_at=created_at,
+        job_id=sample_job.id,
+        job_row_number=10,
+        client_reference="ref from client",
+        notification_id=n_id
+    )
     assert Notification.query.count() == 1
     assert NotificationHistory.query.count() == 1
     persisted_notification = Notification.query.all()[0]
@@ -197,7 +198,6 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
     assert persisted_notification.international is False
     assert persisted_notification.phone_prefix is None
     assert persisted_notification.rate_multiplier is None
-
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
