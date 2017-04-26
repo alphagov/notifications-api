@@ -446,7 +446,6 @@ class ProviderDetails(db.Model):
     supports_international = db.Column(db.Boolean, nullable=False, default=False)
 
 
-
 class ProviderDetailsHistory(db.Model, HistoryModel):
     __tablename__ = 'provider_details_history'
 
