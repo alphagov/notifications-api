@@ -1,7 +1,7 @@
 """empty message
 
 Revision ID: 0076_add_intl_flag_to_provider
-Revises: 0073_add_international_sms_flag
+Revises: 0075_create_rates_table
 Create Date: 2017-04-25 09:44:13.194164
 
 """
