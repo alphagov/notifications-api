@@ -76,8 +76,7 @@ def notify_db_session(notify_db):
                             "job_status",
                             "provider_details_history",
                             "template_process_type",
-                            "dvla_organisation",
-                            "rates"]:
+                            "dvla_organisation"]:
             notify_db.engine.execute(tbl.delete())
     notify_db.session.commit()
 
