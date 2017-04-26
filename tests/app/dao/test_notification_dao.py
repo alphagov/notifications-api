@@ -3,7 +3,6 @@ import uuid
 from functools import partial
 
 import pytest
-
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
@@ -18,8 +17,7 @@ from app.models import (
     NOTIFICATION_SENT,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
-    KEY_TYPE_TEST
-)
+    KEY_TYPE_TEST)
 
 from app.dao.notifications_dao import (
     dao_create_notification,
@@ -40,8 +38,6 @@ from app.dao.notifications_dao import (
     update_notification_status_by_reference,
     dao_delete_notifications_and_history_by_id,
     dao_timeout_notifications,
-    get_financial_year,
-    get_april_fools,
     is_delivery_slow_for_provider,
     dao_update_notifications_sent_to_dvla)
 
@@ -1357,18 +1353,6 @@ def test_should_exclude_test_key_notifications_by_default(
 
     all_notifications = get_notifications_for_service(sample_service.id, limit_days=1, key_type=KEY_TYPE_TEST).items
     assert len(all_notifications) == 1
-
-
-def test_get_financial_year():
-    start, end = get_financial_year(2000)
-    assert str(start) == '2000-03-31 23:00:00'
-    assert str(end) == '2001-03-31 23:00:00'
-
-
-def test_get_april_fools():
-    april_fools = get_april_fools(2016)
-    assert str(april_fools) == '2016-03-31 23:00:00'
-    assert april_fools.tzinfo is None
 
 
 @pytest.mark.parametrize('notification_type', ['sms', 'email'])
