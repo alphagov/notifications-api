@@ -47,7 +47,7 @@ def downgrade():
     op.execute('ALTER TYPE {enum} RENAME TO {tmp_name}'.format(enum=enum_name, tmp_name=tmp_name))
 
     # Convert 'sent' template into 'sending'
-    update_str = "UPDATE TABLE {table} SET status='sending' where status='sent'"
+    update_str = "UPDATE {table} SET status='sending' where status='sent'"
 
     op.execute(update_str.format(table='notifications'))
     op.execute(update_str.format(table='notification_history'))
