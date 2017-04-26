@@ -443,6 +443,7 @@ class ProviderDetails(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=True)
     created_by = db.relationship('User')
+    supports_international = db.Column(db.Boolean, nullable=False, default=False)
 
 
 class ProviderDetailsHistory(db.Model, HistoryModel):
@@ -458,6 +459,7 @@ class ProviderDetailsHistory(db.Model, HistoryModel):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=True)
     created_by = db.relationship('User')
+    supports_international = db.Column(db.Boolean, nullable=False, default=False)
 
 
 JOB_STATUS_PENDING = 'pending'
@@ -664,6 +666,12 @@ class Notification(db.Model):
         foreign(template_version) == remote(TemplateHistory.version)
     ))
 
+    client_reference = db.Column(db.String, index=True, nullable=True)
+
+    international = db.Column(db.Boolean, nullable=False, default=False)
+    phone_prefix = db.Column(db.String, nullable=True)
+    rate_multiplier = db.Column(db.Numeric(), nullable=True)
+
     @property
     def personalisation(self):
         if self._personalisation:
@@ -836,6 +844,10 @@ class NotificationHistory(db.Model, HistoryModel):
     status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
     reference = db.Column(db.String, nullable=True, index=True)
     client_reference = db.Column(db.String, nullable=True)
+
+    international = db.Column(db.Boolean, nullable=False, default=False)
+    phone_prefix = db.Column(db.String, nullable=True)
+    rate_multiplier = db.Column(db.Numeric(), nullable=True)
 
     @classmethod
     def from_original(cls, notification):
