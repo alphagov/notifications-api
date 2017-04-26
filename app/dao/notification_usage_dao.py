@@ -47,14 +47,20 @@ def email_billing_data_query(service_id, start_date, end_date):
     result = db.session.query(
         func.count(NotificationHistory.id),
         NotificationHistory.notification_type,
-        "0"
+        "0",
+        NotificationHistory.rate_multiplier,
+        NotificationHistory.international,
+        NotificationHistory.phone_prefix
     ).filter(
         *billing_data_filter(EMAIL_TYPE, start_date, end_date, service_id)
     ).group_by(
-        NotificationHistory.notification_type
+        NotificationHistory.notification_type,
+        NotificationHistory.rate_multiplier,
+        NotificationHistory.international,
+        NotificationHistory.phone_prefix
     ).first()
     if not result:
-        return 0, EMAIL_TYPE, Decimal("0")
+        return 0, EMAIL_TYPE, Decimal("0"), None, False, None
     else:
         return result
 
@@ -63,14 +69,20 @@ def sms_billing_data_query(rate, service_id, start_date, end_date):
     result = db.session.query(
         func.sum(NotificationHistory.billable_units),
         NotificationHistory.notification_type,
-        rate
+        rate,
+        NotificationHistory.rate_multiplier,
+        NotificationHistory.international,
+        NotificationHistory.phone_prefix
     ).filter(
         *billing_data_filter(SMS_TYPE, start_date, end_date, service_id)
     ).group_by(
-        NotificationHistory.notification_type
+        NotificationHistory.notification_type,
+        NotificationHistory.rate_multiplier,
+        NotificationHistory.international,
+        NotificationHistory.phone_prefix
     ).first()
     if not result:
-        return 0, SMS_TYPE, Decimal("0")
+        return 0, SMS_TYPE, Decimal("0"), None, False, None
     else:
         return result
 
@@ -86,11 +98,17 @@ def sms_billing_data_per_month_query(rate, service_id, start_date, end_date):
         month,
         func.sum(NotificationHistory.billable_units),
         NotificationHistory.notification_type,
-        rate
+        rate,
+        NotificationHistory.rate_multiplier,
+        NotificationHistory.international,
+        NotificationHistory.phone_prefix
     ).filter(
         *billing_data_filter(SMS_TYPE, start_date, end_date, service_id)
     ).group_by(
-        NotificationHistory.notification_type, month
+        NotificationHistory.notification_type, month,
+        NotificationHistory.rate_multiplier,
+        NotificationHistory.international,
+        NotificationHistory.phone_prefix
     ).order_by(
         month
     ).all()
@@ -102,11 +120,17 @@ def email_billing_data_per_month_query(rate, service_id, start_date, end_date):
         month,
         func.count(NotificationHistory.id),
         NotificationHistory.notification_type,
-        rate
+        rate,
+        NotificationHistory.rate_multiplier,
+        NotificationHistory.international,
+        NotificationHistory.phone_prefix
     ).filter(
         *billing_data_filter(EMAIL_TYPE, start_date, end_date, service_id)
     ).group_by(
-        NotificationHistory.notification_type, month
+        NotificationHistory.notification_type, month,
+        NotificationHistory.rate_multiplier,
+        NotificationHistory.international,
+        NotificationHistory.phone_prefix
     ).order_by(
         month
     ).all()
@@ -124,4 +148,4 @@ def get_notification_billing_data_per_month(service_id, year):
 
     result.extend(email_billing_data_per_month_query("0", service_id, start_date, end_date))
 
-    return [(datetime.strftime(x[0], "%B"), x[1:]) for x in result]
+    return [(datetime.strftime(x[0], "%B"), x[1], x[2], x[3], x[4], x[5], x[6]) for x in result]
