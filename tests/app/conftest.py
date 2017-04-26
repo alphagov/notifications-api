@@ -123,7 +123,8 @@ def sample_service(
     user=None,
     restricted=False,
     limit=1000,
-    email_from=None
+    email_from=None,
+    can_send_international_sms=False
 ):
     if user is None:
         user = create_user()
@@ -136,6 +137,7 @@ def sample_service(
         'email_from': email_from,
         'created_by': user,
         'letter_contact_block': 'London,\nSW1A 1AA',
+        'can_send_international_sms': can_send_international_sms
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
