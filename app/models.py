@@ -662,6 +662,12 @@ class Notification(db.Model):
         foreign(template_version) == remote(TemplateHistory.version)
     ))
 
+    client_reference = db.Column(db.String, index=True, nullable=True)
+
+    international = db.Column(db.Boolean, nullable=False, default=False)
+    phone_prefix = db.Column(db.String, nullable=True)
+    rate_multiplier = db.Column(db.Numeric(), nullable=True)
+
     @property
     def personalisation(self):
         if self._personalisation:
@@ -834,6 +840,10 @@ class NotificationHistory(db.Model, HistoryModel):
     status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
     reference = db.Column(db.String, nullable=True, index=True)
     client_reference = db.Column(db.String, nullable=True)
+
+    international = db.Column(db.Boolean, nullable=False, default=False)
+    phone_prefix = db.Column(db.String, nullable=True)
+    rate_multiplier = db.Column(db.Numeric(), nullable=True)
 
     @classmethod
     def from_original(cls, notification):
