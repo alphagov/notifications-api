@@ -9,10 +9,13 @@ from collections import namedtuple
 
 from app.models import Template, Notification, NotificationHistory
 from app.notifications import SendNotificationToQueueError
-from app.notifications.process_notifications import (create_content_for_notification,
-                                                     persist_notification,
-                                                     send_notification_to_queue,
-                                                     simulated_recipient)
+from app.notifications.process_notifications import (
+    create_content_for_notification,
+    persist_notification,
+    send_notification_to_queue,
+    simulated_recipient
+)
+from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
 from app.utils import cache_key_for_service_template_counter
 from app.v2.errors import BadRequestError
 from tests.app.conftest import sample_api_key as create_api_key
@@ -255,22 +258,36 @@ def test_send_notification_to_queue_throws_exception_deletes_notification(sample
     assert NotificationHistory.query.count() == 0
 
 
-@pytest.mark.parametrize("to_address, notification_type, expected",
-                         [("+447700900000", "sms", True),
-                          ("+447700900111", "sms", True),
-                          ("+447700900222", "sms", True),
-                          ("simulate-delivered@notifications.service.gov.uk", "email", True),
-                          ("simulate-delivered-2@notifications.service.gov.uk", "email", True),
-                          ("simulate-delivered-3@notifications.service.gov.uk", "email", True),
-                          ("07515896969", "sms", False),
-                          ("valid_email@test.com", "email", False)])
+@pytest.mark.parametrize("to_address, notification_type, expected", [
+    ("+447700900000", "sms", True),
+    ("+447700900111", "sms", True),
+    ("+447700900222", "sms", True),
+    ("07700900000", "sms", True),
+    ("7700900111", "sms", True),
+    ("simulate-delivered@notifications.service.gov.uk", "email", True),
+    ("simulate-delivered-2@notifications.service.gov.uk", "email", True),
+    ("simulate-delivered-3@notifications.service.gov.uk", "email", True),
+    ("07515896969", "sms", False),
+    ("valid_email@test.com", "email", False)
+])
 def test_simulated_recipient(notify_api, to_address, notification_type, expected):
-    # The values where the expected = 'research-mode' are listed in the config['SIMULATED_EMAIL_ADDRESSES']
-    # and config['SIMULATED_SMS_NUMBERS']. These values should result in using the research mode queue.
-    #  SIMULATED_EMAIL_ADDRESSES = ('simulate-delivered@notifications.service.gov.uk',
-    #                               'simulate-delivered-2@notifications.service.gov.uk',
-    #                               'simulate-delivered-2@notifications.service.gov.uk')
-    #  SIMULATED_SMS_NUMBERS = ('+447700900000', '+447700900111', '+447700900222')
+    """
+    The values where the expected = 'research-mode' are listed in the config['SIMULATED_EMAIL_ADDRESSES']
+    and config['SIMULATED_SMS_NUMBERS']. These values should result in using the research mode queue.
+    SIMULATED_EMAIL_ADDRESSES = (
+        'simulate-delivered@notifications.service.gov.uk',
+        'simulate-delivered-2@notifications.service.gov.uk',
+        'simulate-delivered-2@notifications.service.gov.uk'
+    )
+    SIMULATED_SMS_NUMBERS = ('+447700900000', '+447700900111', '+447700900222')
+    """
+    formatted_address = None
 
-    actual = simulated_recipient(to_address, notification_type)
-    assert actual == expected
+    if notification_type == 'email':
+        formatted_address = validate_and_format_email_address(to_address)
+    else:
+        formatted_address = validate_and_format_phone_number(to_address)
+
+    is_simulated_address = simulated_recipient(formatted_address, notification_type)
+
+    assert is_simulated_address == expected
