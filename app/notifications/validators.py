@@ -15,7 +15,7 @@ def check_service_over_api_rate_limit(service, api_key):
         rate_limit = current_app.config['API_KEY_LIMITS'][api_key.key_type]['limit']
         interval = current_app.config['API_KEY_LIMITS'][api_key.key_type]['interval']
         if redis_store.exceeded_rate_limit(cache_key, rate_limit, interval):
-            raise RateLimitError(interval, api_key.key_type)
+            raise RateLimitError(rate_limit, interval, api_key.key_type)
 
 
 def check_service_over_daily_message_limit(key_type, service):
