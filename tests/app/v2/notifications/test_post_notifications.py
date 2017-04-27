@@ -200,6 +200,9 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
                                                                                    notification_type,
                                                                                    key_send_to,
                                                                                    send_to):
+
+    mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
+
     sample = create_sample_template(
         notify_db,
         notify_db_session,
@@ -248,10 +251,12 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(client
     ]
 
 
-def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(notify_db, notify_db_session, client):
+def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(notify_db, notify_db_session, client, mocker):
 
     service = sample_service(notify_db, notify_db_session, can_send_international_sms=True)
     template = create_sample_template(notify_db, notify_db_session, service=service)
+
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     data = {
         'phone_number': '20-12-1234-1234',
