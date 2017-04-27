@@ -506,7 +506,7 @@ def test_should_send_sms_to_international_providers(
     )
 
     firetext_client.send_sms.assert_called_once_with(
-        to=format_phone_number(validate_phone_number("+447234123999")),
+        to="447234123999",
         content=ANY,
         reference=str(db_notification_uk.id),
         sender=None
@@ -517,7 +517,7 @@ def test_should_send_sms_to_international_providers(
     )
 
     mmg_client.send_sms.assert_called_once_with(
-        to=format_phone_number(validate_phone_number("+447234123111")),
+        to="447234123111",
         content=ANY,
         reference=str(db_notification_international.id),
         sender=None
