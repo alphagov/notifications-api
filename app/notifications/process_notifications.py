@@ -4,6 +4,7 @@ from flask import current_app
 
 from app import redis_store
 from app.celery import provider_tasks
+from notifications_utils.recipients import validate_and_format_phone_number
 from notifications_utils.clients import redis
 from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
 from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE
@@ -98,6 +99,10 @@ def send_notification_to_queue(notification, research_mode, queue=None):
 
 
 def simulated_recipient(to_address, notification_type):
-    return (to_address in current_app.config['SIMULATED_SMS_NUMBERS']
-            if notification_type == SMS_TYPE
-            else to_address in current_app.config['SIMULATED_EMAIL_ADDRESSES'])
+    if notification_type == SMS_TYPE:
+        formatted_simulated_numbers = [
+            validate_and_format_phone_number(number) for number in current_app.config['SIMULATED_SMS_NUMBERS']
+        ]
+        return to_address in formatted_simulated_numbers
+    else:
+        return to_address in current_app.config['SIMULATED_EMAIL_ADDRESSES']
