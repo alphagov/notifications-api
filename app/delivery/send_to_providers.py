@@ -45,7 +45,7 @@ def send_sms_to_provider(notification):
         else:
             try:
                 provider.send_sms(
-                    to=validate_and_format_phone_number(notification.to, internationl=notification.international),
+                    to=validate_and_format_phone_number(notification.to, international=notification.international),
                     content=str(template),
                     reference=str(notification.id),
                     sender=service.sms_sender
