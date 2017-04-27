@@ -12,6 +12,7 @@ from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
 from app.models import User, Organisation, DVLA_ORG_LAND_REGISTRY, Rate
 from tests import create_authorization_header
+from tests.app.db import create_template
 from tests.app.conftest import (
     sample_service as create_service,
     sample_service_permission as create_service_permission,
@@ -1548,7 +1549,7 @@ def test_get_yearly_billing_usage_returns_400_if_missing_year(client, sample_ser
     }
 
 
-def test_get_monthly_billing_usage(client, notify_db, notify_db_session):
+def test_get_monthly_billing_usage(client, notify_db, notify_db_session, sample_service):
     rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=1.58, notification_type='sms')
     notify_db.session.add(rate)
     notification = create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
@@ -1560,6 +1561,12 @@ def test_get_monthly_billing_usage(client, notify_db, notify_db_session):
     create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 7, 5),
                                sent_at=datetime(2016, 7, 5),
                                status='sending')
+
+    template = create_template(sample_service, template_type='email')
+    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
+                               sent_at=datetime(2016, 6, 5),
+                               status='sending',
+                               template=template)
     response = client.get(
         '/service/{}/monthly-usage?year=2016'.format(notification.service_id),
         headers=[create_authorization_header()]
