@@ -2,8 +2,7 @@ from flask import (
     Blueprint,
     jsonify,
     request,
-    current_app,
-    json
+    current_app
 )
 
 from app import api_user
@@ -14,10 +13,6 @@ from app.dao import (
 )
 from app.models import KEY_TYPE_TEAM, PRIORITY
 from app.models import SMS_TYPE
-from app.notifications.process_client_response import (
-    validate_callback_data,
-    process_sms_client_response
-)
 from app.notifications.process_notifications import (persist_notification,
                                                      send_notification_to_queue,
                                                      simulated_recipient)

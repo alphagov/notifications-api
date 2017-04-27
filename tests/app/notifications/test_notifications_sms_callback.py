@@ -13,16 +13,6 @@ from app.models import NotificationStatistics
 from tests.app.conftest import sample_notification as create_sample_notification
 
 
-def test_dvla_callback_should_not_need_auth(client):
-    data = json.dumps({"somekey": "somevalue"})
-    response = client.post(
-        path='/notifications/letter/dvla',
-        data=data,
-        headers=[('Content-Type', 'application/json')])
-
-    assert response.status_code == 200
-
-
 def test_firetext_callback_should_not_need_auth(client, mocker):
     mocker.patch('app.statsd_client.incr')
     response = client.post(
@@ -458,3 +448,12 @@ def test_firetext_callback_should_record_statsd(client, notify_db, notify_db_ses
 
 def get_notification_stats(service_id):
     return NotificationStatistics.query.filter_by(service_id=service_id).one()
+
+
+def test_process_mmg_response_returns_400_when_data_is_not_json(client):
+    data = "something weird in response, not json"
+
+    response = client.post(path='notifications/sms/mmg',
+                           data=data,
+                           headers=[('Content-Type', 'application/json')])
+    assert response.status_code == 400

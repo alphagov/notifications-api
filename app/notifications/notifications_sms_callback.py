@@ -1,4 +1,7 @@
+from json import JSONDecodeError
+
 from flask import Blueprint
+from flask import current_app
 from flask import json
 from flask import request, jsonify
 
@@ -12,7 +15,12 @@ register_errors(sms_callback_blueprint)
 @sms_callback_blueprint.route('/mmg', methods=['POST'])
 def process_mmg_response():
     client_name = 'MMG'
-    data = json.loads(request.data)
+    data = None
+    try:
+        data = json.loads(request.data)
+    except JSONDecodeError:
+        raise InvalidRequest("{} callback was not json: {}".format(client_name, request.data), status_code=400)
+
     errors = validate_callback_data(data=data,
                                     fields=['status', 'CID'],
                                     client_name=client_name)
