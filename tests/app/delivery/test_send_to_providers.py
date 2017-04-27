@@ -474,6 +474,7 @@ def test_should_update_billable_units_according_to_research_mode_and_key_type(no
     assert sample_notification.billable_units == billable_units
 
 
+<<<<<<< HEAD
 def test_should_send_sms_to_international_providers(
     restore_provider_details,
     sample_sms_template_with_html,
@@ -530,3 +531,11 @@ def test_should_send_sms_to_international_providers(
     assert notification_uk.sent_by == 'firetext'
     assert notification_int.status == 'sending'
     assert notification_int.sent_by == 'mmg'
+
+
+def test_should_send_international_sms_with_formatted_phone_number():
+    assert 1 == 2
+
+
+def test_should_set_international_phone_number_to_sent_status():
+    assert 1 == 2

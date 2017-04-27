@@ -352,6 +352,14 @@ def test_should_update_status_by_id_if_created(notify_db, notify_db_session):
     assert updated.status == 'failed'
 
 
+def test_should_not_update_status_by_reference_if_in_sent_status(notify_db, notify_db_session):
+    assert 1 == 2
+
+
+def test_should_not_update_status_by_id_if_in_sent_status(notify_db, notify_db_session):
+    assert 1 == 2
+
+
 def test_should_not_update_status_by_reference_if_not_sending(notify_db, notify_db_session):
     notification = sample_notification(notify_db, notify_db_session, status='created', reference='reference')
     assert Notification.query.get(notification.id).status == 'created'

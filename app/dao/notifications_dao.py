@@ -26,8 +26,8 @@ from app.models import (
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST,
-    LETTER_TYPE
-)
+    LETTER_TYPE,
+    NOTIFICATION_SENT)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
