@@ -307,8 +307,8 @@ def test_get_all_notifications_filter_by_status_invalid_status(client, sample_no
 
     assert json_response['status_code'] == 400
     assert len(json_response['errors']) == 1
-    assert json_response['errors'][0]['message'] == "status elephant is not one of [created, sending, delivered, " \
-        "pending, failed, technical-failure, temporary-failure, permanent-failure]"
+    assert json_response['errors'][0]['message'] == "status elephant is not one of [created, sending, sent, " \
+        "delivered, pending, failed, technical-failure, temporary-failure, permanent-failure]"
 
 
 def test_get_all_notifications_filter_by_multiple_statuses(client, notify_db, notify_db_session):
