@@ -264,6 +264,7 @@ def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(notify_db,
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header])
 
+    print(json.loads(response.get_data(as_text=True)))
     assert response.status_code == 201
     assert response.headers['Content-type'] == 'application/json'
 
