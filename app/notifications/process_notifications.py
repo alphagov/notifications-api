@@ -2,9 +2,13 @@ from datetime import datetime
 
 from flask import current_app
 
+from notifications_utils.recipients import (
+    get_international_phone_info,
+    validate_and_format_phone_number
+)
+
 from app import redis_store
 from app.celery import provider_tasks
-from notifications_utils.recipients import validate_and_format_phone_number
 from notifications_utils.clients import redis
 from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
 from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE
@@ -25,22 +29,23 @@ def check_placeholders(template_object):
         raise BadRequestError(fields=[{'template': message}], message=message)
 
 
-def persist_notification(template_id,
-                         template_version,
-                         recipient,
-                         service,
-                         personalisation,
-                         notification_type,
-                         api_key_id,
-                         key_type,
-                         created_at=None,
-                         job_id=None,
-                         job_row_number=None,
-                         reference=None,
-                         client_reference=None,
-                         notification_id=None,
-                         simulated=False):
-    # if simulated create a Notification model to return but do not persist the Notification to the dB
+def persist_notification(
+    template_id,
+    template_version,
+    recipient,
+    service,
+    personalisation,
+    notification_type,
+    api_key_id,
+    key_type,
+    created_at=None,
+    job_id=None,
+    job_row_number=None,
+    reference=None,
+    client_reference=None,
+    notification_id=None,
+    simulated=False
+):
     notification = Notification(
         id=notification_id,
         template_id=template_id,
@@ -58,6 +63,15 @@ def persist_notification(template_id,
         client_reference=client_reference,
         reference=reference
     )
+
+    if notification_type == SMS_TYPE:
+        formatted_recipient = validate_and_format_phone_number(recipient, international=True)
+        recipient_info = get_international_phone_info(formatted_recipient)
+        notification.international = recipient_info.international
+        notification.phone_prefix = recipient_info.country_prefix
+        notification.rate_multiplier = recipient_info.billable_units
+
+    # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
         dao_create_notification(notification)
         if key_type != KEY_TYPE_TEST:
