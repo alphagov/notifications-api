@@ -10,7 +10,7 @@ from freezegun import freeze_time
 
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
-from app.models import User, Organisation, DVLA_ORG_LAND_REGISTRY
+from app.models import User, Organisation, DVLA_ORG_LAND_REGISTRY, Rate
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_service as create_service,
@@ -1509,3 +1509,69 @@ def test_get_template_stats_by_month_returns_error_for_incorrect_year(
     )
     assert response.status_code == expected_status
     assert json.loads(response.get_data(as_text=True)) == expected_json
+
+
+def test_get_yearly_billing_usage(client, notify_db, notify_db_session):
+    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=1.58, notification_type='sms')
+    notify_db.session.add(rate)
+    notification = create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
+                                              sent_at=datetime(2016, 6, 5),
+                                              status='sending')
+    response = client.get(
+        '/service/{}/yearly-usage?year=2016'.format(notification.service_id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 200
+
+    assert json.loads(response.get_data(as_text=True)) == [{'billing_units': 1, 'notification_type': 'sms',
+                                                            'phone_prefix': None, 'international': False,
+                                                            'rate_multiplier': None, 'rate': 1.58},
+                                                           {'billing_units': 0, 'notification_type': 'email',
+                                                            'phone_prefix': None, 'international': False,
+                                                            'rate_multiplier': None, 'rate': 0}]
+
+
+def test_get_yearly_billing_usage_returns_400_if_missing_year(client, sample_service):
+    response = client.get(
+        '/service/{}/yearly-usage'.format(sample_service.id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True)) == {
+        'message': 'No valid year provided', 'result': 'error'
+    }
+
+
+def test_get_monthly_billing_usage(client, notify_db, notify_db_session):
+    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=1.58, notification_type='sms')
+    notify_db.session.add(rate)
+    notification = create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
+                                              sent_at=datetime(2016, 6, 5),
+                                              status='sending')
+    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 7, 5),
+                               sent_at=datetime(2016, 7, 5),
+                               status='sending')
+    response = client.get(
+        '/service/{}/monthly-usage?year=2016'.format(notification.service_id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 200
+    actual = json.loads(response.get_data(as_text=True))
+    assert len(actual) == 2
+    assert actual == [{'month': 'June', 'billing_units': 1, 'notification_type': 'sms',
+                       'phone_prefix': None, 'international': False,
+                       'rate_multiplier': None, 'rate': 1.58},
+                      {'month': 'July', 'billing_units': 1, 'notification_type': 'sms',
+                       'phone_prefix': None, 'international': False,
+                       'rate_multiplier': None, 'rate': 1.58}]
+
+
+def test_get_monthly_billing_usage_returns_400_if_missing_year(client, sample_service):
+    response = client.get(
+        '/service/{}/monthly-usage'.format(sample_service.id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True)) == {
+        'message': 'No valid year provided', 'result': 'error'
+    }

@@ -1,10 +1,8 @@
 import uuid
 from datetime import datetime
 
-from decimal import Decimal
-
 from app.dao.notification_usage_dao import (get_rates_for_year, get_yearly_billing_data,
-                                            get_notification_billing_data_per_month)
+                                            get_monthly_billing_data)
 from app.models import Rate
 from tests.app.db import create_notification
 
@@ -15,11 +13,11 @@ def test_get_rates_for_year(notify_db, notify_db_session):
     rates = get_rates_for_year(datetime(2016, 4, 1), datetime(2017, 3, 31), 'sms')
     assert len(rates) == 1
     assert datetime.strftime(rates[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2016-04-01 00:00:00"
-    assert rates[0].rate == Decimal("1.50")
+    assert rates[0].rate == 1.50
     rates = get_rates_for_year(datetime(2017, 4, 1), datetime(2018, 3, 31), 'sms')
     assert len(rates) == 1
     assert datetime.strftime(rates[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2017-06-01 00:00:00"
-    assert rates[0].rate == Decimal("1.75")
+    assert rates[0].rate == 1.75
 
 
 def test_get_yearly_billing_data(notify_db, notify_db_session, sample_template, sample_email_template):
@@ -48,9 +46,9 @@ def test_get_yearly_billing_data(notify_db, notify_db_session, sample_template, 
                         status='sending', billable_units=6)
     results = get_yearly_billing_data(sample_template.service_id, 2016)
     assert len(results) == 3
-    assert results[0] == (3, 'sms', Decimal('1.4'), None, False, None)
-    assert results[1] == (12, 'sms', Decimal('1.58'), None, False, None)
-    assert results[2] == (2, 'email', Decimal("0"), None, False, None)
+    assert results[0] == (3, 'sms', None, False, None, 1.40)
+    assert results[1] == (12, 'sms', None, False, None, 1.58)
+    assert results[2] == (2, 'email', None, False, None, 0)
 
 
 def test_get_yearly_billing_data_with_one_rate(notify_db, notify_db_session, sample_template):
@@ -76,8 +74,8 @@ def test_get_yearly_billing_data_with_one_rate(notify_db, notify_db_session, sam
                         status='sending', billable_units=7)
     results = get_yearly_billing_data(sample_template.service_id, 2016)
     assert len(results) == 2
-    assert results[0] == (15, 'sms', Decimal('1.4'), None, False, None)
-    assert results[1] == (0, 'email', Decimal('0'), None, False, None)
+    assert results[0] == (15, 'sms', None, False, None, 1.4)
+    assert results[1] == (0, 'email', None, False, None, 0)
 
 
 def test_get_yearly_billing_data_with_no_sms_notifications(notify_db, notify_db_session, sample_email_template):
@@ -89,11 +87,11 @@ def test_get_yearly_billing_data_with_no_sms_notifications(notify_db, notify_db_
 
     results = get_yearly_billing_data(sample_email_template.service_id, 2016)
     assert len(results) == 2
-    assert results[0] == (0, 'sms', Decimal('0'), None, False, None)
-    assert results[1] == (2, 'email', Decimal('0'), None, False, None)
+    assert results[0] == (0, 'sms', None, False, None, 0)
+    assert results[1] == (2, 'email', None, False, None, 0)
 
 
-def test_get_notification_billing_data_per_month(notify_db, notify_db_session, sample_template, sample_email_template):
+def test_get_monthly_billing_data(notify_db, notify_db_session, sample_template, sample_email_template):
     set_up_rate(notify_db, datetime(2016, 4, 1), 1.40)
     # previous year
     create_notification(template=sample_template, created_at=datetime(2016, 3, 31), sent_at=datetime(2016, 3, 31),
@@ -114,16 +112,16 @@ def test_get_notification_billing_data_per_month(notify_db, notify_db_session, s
     # next year
     create_notification(template=sample_template, created_at=datetime(2017, 3, 31, 23, 00, 00),
                         sent_at=datetime(2017, 3, 31), status='sending', billable_units=6)
-    results = get_notification_billing_data_per_month(sample_template.service_id, 2016)
+    results = get_monthly_billing_data(sample_template.service_id, 2016)
     assert len(results) == 4
-    assert results[0] == ('April', 1, 'sms', Decimal('1.4'), None, False, None)
-    assert results[1] == ('May', 2, 'sms', Decimal('1.4'), None, False, None)
-    assert results[2] == ('July', 7, 'sms', Decimal('1.4'), None, False, None)
-    assert results[3] == ('August', 2, 'email', Decimal('0'), None, False, None)
+    assert results[0] == ('April', 1, 'sms', None, False, None, 1.4)
+    assert results[1] == ('May', 2, 'sms', None, False, None, 1.4)
+    assert results[2] == ('July', 7, 'sms', None, False, None, 1.4)
+    assert results[3] == ('August', 2, 'email', None, False, None, 0)
 
 
-def test_get_notification_billing_data_per_month_with_multiple_rates(notify_db, notify_db_session, sample_template,
-                                                                     sample_email_template):
+def test_get_monthly_billing_data_with_multiple_rates(notify_db, notify_db_session, sample_template,
+                                                      sample_email_template):
     set_up_rate(notify_db, datetime(2016, 4, 1), 1.40)
     set_up_rate(notify_db, datetime(2016, 6, 5), 1.75)
     # previous year
@@ -147,13 +145,13 @@ def test_get_notification_billing_data_per_month_with_multiple_rates(notify_db, 
     # next year
     create_notification(template=sample_template, created_at=datetime(2017, 3, 31, 23, 00, 00),
                         sent_at=datetime(2017, 3, 31), status='sending', billable_units=6)
-    results = get_notification_billing_data_per_month(sample_template.service_id, 2016)
+    results = get_monthly_billing_data(sample_template.service_id, 2016)
     assert len(results) == 5
-    assert results[0] == ('April', 1, 'sms', Decimal('1.4'), None, False, None)
-    assert results[1] == ('May', 2, 'sms', Decimal('1.4'), None, False, None)
-    assert results[2] == ('June', 3, 'sms', Decimal('1.4'), None, False, None)
-    assert results[3] == ('June', 4, 'sms', Decimal('1.75'), None, False, None)
-    assert results[4] == ('August', 2, 'email', Decimal('0'), None, False, None)
+    assert results[0] == ('April', 1, 'sms', None, False, None, 1.4)
+    assert results[1] == ('May', 2, 'sms', None, False, None, 1.4)
+    assert results[2] == ('June', 3, 'sms', None, False, None, 1.4)
+    assert results[3] == ('June', 4, 'sms', None, False, None, 1.75)
+    assert results[4] == ('August', 2, 'email', None, False, None, 0)
 
 
 def set_up_rate(notify_db, start_date, value):
