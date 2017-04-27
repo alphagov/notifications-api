@@ -1,6 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
-
 from sqlalchemy import func
 
 from app import db
@@ -23,9 +21,9 @@ def get_yearly_billing_data(service_id, year):
     result = []
     for r, n in zip(rates, rates[1:]):
         result.append(
-            sms_billing_data_query(str(r.rate), service_id, r.valid_from, n.valid_from))
+            sms_billing_data_query(r.rate, service_id, r.valid_from, n.valid_from))
 
-    result.append(sms_billing_data_query(str(rates[-1].rate), service_id, rates[-1].valid_from, end_date))
+    result.append(sms_billing_data_query(rates[-1].rate, service_id, rates[-1].valid_from, end_date))
 
     result.append(email_billing_data_query(service_id, start_date, end_date))
 
@@ -47,7 +45,6 @@ def email_billing_data_query(service_id, start_date, end_date):
     result = db.session.query(
         func.count(NotificationHistory.id),
         NotificationHistory.notification_type,
-        "0",
         NotificationHistory.rate_multiplier,
         NotificationHistory.international,
         NotificationHistory.phone_prefix
@@ -59,17 +56,14 @@ def email_billing_data_query(service_id, start_date, end_date):
         NotificationHistory.international,
         NotificationHistory.phone_prefix
     ).first()
-    if not result:
-        return 0, EMAIL_TYPE, Decimal("0"), None, False, None
-    else:
-        return result
+
+    return tuple(result) + (0,)
 
 
 def sms_billing_data_query(rate, service_id, start_date, end_date):
     result = db.session.query(
         func.sum(NotificationHistory.billable_units),
         NotificationHistory.notification_type,
-        rate,
         NotificationHistory.rate_multiplier,
         NotificationHistory.international,
         NotificationHistory.phone_prefix
@@ -82,9 +76,9 @@ def sms_billing_data_query(rate, service_id, start_date, end_date):
         NotificationHistory.phone_prefix
     ).first()
     if not result:
-        return 0, SMS_TYPE, Decimal("0"), None, False, None
+        return 0, SMS_TYPE, None, False, None, 0
     else:
-        return result
+        return tuple(result) + (rate,)
 
 
 def get_rates_for_year(start_date, end_date, notification_type):
@@ -94,11 +88,10 @@ def get_rates_for_year(start_date, end_date, notification_type):
 
 def sms_billing_data_per_month_query(rate, service_id, start_date, end_date):
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
-    return db.session.query(
+    return [result + (rate,) for result in db.session.query(
         month,
         func.sum(NotificationHistory.billable_units),
         NotificationHistory.notification_type,
-        rate,
         NotificationHistory.rate_multiplier,
         NotificationHistory.international,
         NotificationHistory.phone_prefix
@@ -112,15 +105,15 @@ def sms_billing_data_per_month_query(rate, service_id, start_date, end_date):
     ).order_by(
         month
     ).all()
+    ]
 
 
 def email_billing_data_per_month_query(rate, service_id, start_date, end_date):
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
-    return db.session.query(
+    return [result + (rate,) for result in db.session.query(
         month,
         func.count(NotificationHistory.id),
         NotificationHistory.notification_type,
-        rate,
         NotificationHistory.rate_multiplier,
         NotificationHistory.international,
         NotificationHistory.phone_prefix
@@ -134,18 +127,19 @@ def email_billing_data_per_month_query(rate, service_id, start_date, end_date):
     ).order_by(
         month
     ).all()
+    ]
 
 
 @statsd(namespace="dao")
-def get_notification_billing_data_per_month(service_id, year):
+def get_monthly_billing_data(service_id, year):
     start_date, end_date = get_financial_year(year)
     rates = get_rates_for_year(start_date, end_date, SMS_TYPE)
 
     result = []
     for r, n in zip(rates, rates[1:]):
-        result.extend(sms_billing_data_per_month_query(str(r.rate), service_id, r.valid_from, n.valid_from))
-    result.extend(sms_billing_data_per_month_query(str(rates[-1].rate), service_id, rates[-1].valid_from, end_date))
+        result.extend(sms_billing_data_per_month_query(r.rate, service_id, r.valid_from, n.valid_from))
+    result.extend(sms_billing_data_per_month_query(rates[-1].rate, service_id, rates[-1].valid_from, end_date))
 
-    result.extend(email_billing_data_per_month_query("0", service_id, start_date, end_date))
+    result.extend(email_billing_data_per_month_query(0, service_id, start_date, end_date))
 
     return [(datetime.strftime(x[0], "%B"), x[1], x[2], x[3], x[4], x[5], x[6]) for x in result]
