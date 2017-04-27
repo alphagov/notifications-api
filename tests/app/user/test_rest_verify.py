@@ -230,7 +230,7 @@ def test_send_user_code_for_sms_with_optional_to_field(client,
     """
     Tests POST endpoint /user/<user_id>/sms-code with optional to field
     """
-    to_number = '+441119876757'
+    to_number = '+447119876757'
     mocked = mocker.patch('app.user.rest.create_secret_code', return_value='11111')
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
     auth_header = create_authorization_header()
