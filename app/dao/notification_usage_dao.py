@@ -56,8 +56,10 @@ def email_billing_data_query(service_id, start_date, end_date):
         NotificationHistory.international,
         NotificationHistory.phone_prefix
     ).first()
-
-    return tuple(result) + (0,)
+    if not result:
+        return 0, EMAIL_TYPE, None, False, None, 0
+    else:
+        return tuple(result) + (0,)
 
 
 def sms_billing_data_query(rate, service_id, start_date, end_date):
