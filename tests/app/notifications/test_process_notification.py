@@ -1,7 +1,7 @@
 import datetime
 import uuid
-
 import pytest
+
 from boto3.exceptions import Boto3Error
 from sqlalchemy.exc import SQLAlchemyError
 from freezegun import freeze_time
@@ -199,8 +199,8 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
     assert persisted_notification.client_reference == "ref from client"
     assert persisted_notification.reference is None
     assert persisted_notification.international is False
-    assert persisted_notification.phone_prefix is None
-    assert persisted_notification.rate_multiplier is None
+    assert persisted_notification.phone_prefix == '44'
+    assert persisted_notification.rate_multiplier == 1
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -297,3 +297,64 @@ def test_simulated_recipient(notify_api, to_address, notification_type, expected
     is_simulated_address = simulated_recipient(formatted_address, notification_type)
 
     assert is_simulated_address == expected
+
+
+@pytest.mark.parametrize('recipient, expected_international, expected_prefix, expected_units', [
+    ('7900900123', False, '44', 1),  # UK
+    ('+447900900123', False, '44', 1),  # UK
+    ('07700900222', False, '44', 1),  # UK
+    ('73122345678', True, '7', 1),  # Russia
+    ('360623400400', True, '36', 3)]  # Hungary
+)
+def test_persist_notification_with_international_info_stores_correct_info(
+    sample_job,
+    sample_api_key,
+    mocker,
+    recipient,
+    expected_international,
+    expected_prefix,
+    expected_units
+):
+    persist_notification(
+        template_id=sample_job.template.id,
+        template_version=sample_job.template.version,
+        recipient=recipient,
+        service=sample_job.service,
+        personalisation=None,
+        notification_type='sms',
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        job_id=sample_job.id,
+        job_row_number=10,
+        client_reference="ref from client"
+    )
+    persisted_notification = Notification.query.all()[0]
+
+    assert persisted_notification.international is expected_international
+    assert persisted_notification.phone_prefix == expected_prefix
+    assert persisted_notification.rate_multiplier == expected_units
+
+
+def test_persist_notification_with_international_info_does_not_store_for_email(
+    sample_job,
+    sample_api_key,
+    mocker
+):
+    persist_notification(
+        template_id=sample_job.template.id,
+        template_version=sample_job.template.version,
+        recipient='foo@bar.com',
+        service=sample_job.service,
+        personalisation=None,
+        notification_type='email',
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        job_id=sample_job.id,
+        job_row_number=10,
+        client_reference="ref from client"
+    )
+    persisted_notification = Notification.query.all()[0]
+
+    assert persisted_notification.international is False
+    assert persisted_notification.phone_prefix is None
+    assert persisted_notification.rate_multiplier is None

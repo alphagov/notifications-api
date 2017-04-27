@@ -670,7 +670,7 @@ class Notification(db.Model):
 
     international = db.Column(db.Boolean, nullable=False, default=False)
     phone_prefix = db.Column(db.String, nullable=True)
-    rate_multiplier = db.Column(db.Numeric(), nullable=True)
+    rate_multiplier = db.Column(db.Float(), nullable=True)
 
     @property
     def personalisation(self):
@@ -847,7 +847,7 @@ class NotificationHistory(db.Model, HistoryModel):
 
     international = db.Column(db.Boolean, nullable=False, default=False)
     phone_prefix = db.Column(db.String, nullable=True)
-    rate_multiplier = db.Column(db.Numeric(), nullable=True)
+    rate_multiplier = db.Column(db.Float(), nullable=True)
 
     @classmethod
     def from_original(cls, notification):
