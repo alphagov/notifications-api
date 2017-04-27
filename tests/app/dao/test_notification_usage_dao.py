@@ -160,6 +160,13 @@ def test_get_monthly_billing_data_with_multiple_rates(notify_db, notify_db_sessi
     assert results[3] == ('June', 4, 1, False, 'sms', 1.75)
 
 
+def test_get_monthly_billing_data_with_no_notifications_for_year(notify_db, notify_db_session, sample_template,
+                                                                 sample_email_template):
+    set_up_rate(notify_db, datetime(2016, 4, 1), 1.40)
+    results = get_monthly_billing_data(sample_template.service_id, 2016)
+    assert len(results) == 0
+
+
 def set_up_rate(notify_db, start_date, value):
     rate = Rate(id=uuid.uuid4(), valid_from=start_date, rate=value, notification_type='sms')
     notify_db.session.add(rate)

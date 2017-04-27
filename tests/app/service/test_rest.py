@@ -1554,6 +1554,9 @@ def test_get_monthly_billing_usage(client, notify_db, notify_db_session):
     notification = create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
                                               sent_at=datetime(2016, 6, 5),
                                               status='sending')
+    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
+                               sent_at=datetime(2016, 6, 5),
+                               status='sending', rate_multiplier=2)
     create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 7, 5),
                                sent_at=datetime(2016, 7, 5),
                                status='sending')
@@ -1563,11 +1566,16 @@ def test_get_monthly_billing_usage(client, notify_db, notify_db_session):
     )
     assert response.status_code == 200
     actual = json.loads(response.get_data(as_text=True))
-    assert len(actual) == 2
-    print(actual)
+    assert len(actual) == 3
     assert actual == [{'month': 'June',
                        'international': False,
                        'rate_multiplier': 1,
+                       'notification_type': 'sms',
+                       'rate': 1.58,
+                       'billing_units': 1},
+                      {'month': 'June',
+                       'international': False,
+                       'rate_multiplier': 2,
                        'notification_type': 'sms',
                        'rate': 1.58,
                        'billing_units': 1},
@@ -1588,3 +1596,14 @@ def test_get_monthly_billing_usage_returns_400_if_missing_year(client, sample_se
     assert json.loads(response.get_data(as_text=True)) == {
         'message': 'No valid year provided', 'result': 'error'
     }
+
+
+def test_get_monthly_billing_usage_returns_empty_list_if_no_notifications(client, notify_db, sample_service):
+    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=1.58, notification_type='sms')
+    notify_db.session.add(rate)
+    response = client.get(
+        '/service/{}/monthly-usage?year=2016'.format(sample_service.id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == []
