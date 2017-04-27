@@ -25,7 +25,7 @@ def send_sms_to_provider(notification):
         return
 
     if notification.status == 'created':
-        provider = provider_to_use(SMS_TYPE, notification.id)
+        provider = provider_to_use(SMS_TYPE, notification.id, notification.international)
         current_app.logger.info(
             "Starting sending SMS {} to provider at {}".format(notification.id, datetime.utcnow())
         )
@@ -120,9 +120,9 @@ def update_notification(notification, provider):
     dao_update_notification(notification)
 
 
-def provider_to_use(notification_type, notification_id):
+def provider_to_use(notification_type, notification_id, international=False):
     active_providers_in_order = [
-        provider for provider in get_provider_details_by_notification_type(notification_type) if provider.active
+        p for p in get_provider_details_by_notification_type(notification_type, international) if p.active
     ]
 
     if not active_providers_in_order:
@@ -147,11 +147,8 @@ def get_logo_url(base_url, branding_path, logo_file):
     base_url = parse.urlparse(base_url)
     netloc = base_url.netloc
 
-    if (
-        base_url.netloc.startswith('localhost') or
-        # covers both preview and staging
-        'notify.works' in base_url.netloc
-    ):
+    # covers both preview and staging
+    if base_url.netloc.startswith('localhost') or 'notify.works' in base_url.netloc:
         path = '/static' + branding_path + logo_file
     else:
         if base_url.netloc.startswith('www'):
