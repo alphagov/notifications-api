@@ -1,5 +1,9 @@
 from flask import current_app
-from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
+from notifications_utils.recipients import (
+    validate_and_format_phone_number,
+    validate_and_format_email_address,
+    get_international_phone_info
+)
 
 from app.dao import services_dao
 from app.models import KEY_TYPE_TEST, KEY_TYPE_TEAM, SMS_TYPE
@@ -47,8 +51,17 @@ def service_can_send_to_recipient(send_to, key_type, service):
 
 def validate_and_format_recipient(send_to, key_type, service, notification_type):
     service_can_send_to_recipient(send_to, key_type, service)
+
     if notification_type == SMS_TYPE:
-        return validate_and_format_phone_number(number=send_to)
+        international_phone_info = get_international_phone_info(send_to)
+
+        if international_phone_info.international and not service.can_send_international_sms:
+            raise BadRequestError(message="Cannot send to international mobile numbers")
+
+        return validate_and_format_phone_number(
+            number=send_to,
+            international=international_phone_info.international
+        )
     else:
         return validate_and_format_email_address(email_address=send_to)
 

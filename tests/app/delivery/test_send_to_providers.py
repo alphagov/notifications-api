@@ -4,7 +4,7 @@ from collections import namedtuple
 from unittest.mock import ANY
 
 import pytest
-from notifications_utils.recipients import validate_phone_number, format_phone_number
+from notifications_utils.recipients import validate_and_format_phone_number
 
 import app
 from app import mmg_client
@@ -69,7 +69,7 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     )
 
     mmg_client.send_sms.assert_called_once_with(
-        to=format_phone_number(validate_phone_number("+447234123123")),
+        to=validate_and_format_phone_number("+447234123123"),
         content="Sample service: Hello Jo\nHere is <em>some HTML</em> & entities",
         reference=str(db_notification.id),
         sender=None
@@ -151,7 +151,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     )
 
     mmg_client.send_sms.assert_called_once_with(
-        to=format_phone_number(validate_phone_number("+447234123123")),
+        to=validate_and_format_phone_number("+447234123123"),
         content="Sample service: This is a template:\nwith a newline",
         reference=str(db_notification.id),
         sender=None
@@ -254,7 +254,7 @@ def test_should_send_sms_sender_from_service_if_present(
     )
 
     mmg_client.send_sms.assert_called_once_with(
-        to=format_phone_number(validate_phone_number("+447234123123")),
+        to=validate_and_format_phone_number("+447234123123"),
         content="This is a template:\nwith a newline",
         reference=str(db_notification.id),
         sender=sample_service.sms_sender

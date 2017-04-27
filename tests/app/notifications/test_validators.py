@@ -2,12 +2,14 @@ import pytest
 from freezegun import freeze_time
 
 import app
+from app.models import KEY_TYPE_NORMAL
 from app.notifications.validators import (
     check_service_message_limit,
     check_template_is_for_notification_type,
     check_template_is_active,
     service_can_send_to_recipient,
-    check_sms_content_char_count
+    check_sms_content_char_count,
+    validate_and_format_recipient
 )
 from app.v2.errors import (
     BadRequestError,
@@ -262,3 +264,19 @@ def test_check_sms_content_char_count_fails(char_count, notify_api):
     assert e.value.message == 'Content for template has a character count greater than the limit of {}'.format(
         notify_api.config['SMS_CHAR_COUNT_LIMIT'])
     assert e.value.fields == []
+
+
+@pytest.mark.parametrize('key_type', ['test', 'normal'])
+def test_rejects_api_calls_with_international_numbers_if_service_does_not_allow_int_sms(sample_service, key_type):
+    with pytest.raises(BadRequestError) as e:
+        validate_and_format_recipient('20-12-1234-1234', key_type, sample_service, 'sms')
+    assert e.value.status_code == 400
+    assert e.value.message == 'Cannot send to international mobile numbers'
+    assert e.value.fields == []
+
+
+@pytest.mark.parametrize('key_type', ['test', 'normal'])
+def test_allows_api_calls_with_international_numbers_if_service_does_allow_int_sms(sample_service, key_type):
+    sample_service.can_send_international_sms = True
+    result = validate_and_format_recipient('20-12-1234-1234', key_type, sample_service, 'sms')
+    assert result == '201212341234'
