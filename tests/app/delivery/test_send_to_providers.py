@@ -7,8 +7,9 @@ import pytest
 from notifications_utils.recipients import validate_phone_number, format_phone_number
 
 import app
-from app import mmg_client
+from app import mmg_client, firetext_client
 from app.dao import (provider_details_dao, notifications_dao)
+from app.dao.provider_details_dao import dao_switch_sms_provider_to_provider_with_identifier
 from app.delivery import send_to_providers
 from app.models import (
     Notification,
@@ -18,7 +19,7 @@ from app.models import (
     KEY_TYPE_TEAM,
     BRANDING_ORG,
     BRANDING_BOTH,
-)
+    ProviderDetails)
 
 from tests.app.db import create_service, create_template, create_notification
 
@@ -471,3 +472,61 @@ def test_should_update_billable_units_according_to_research_mode_and_key_type(no
     )
 
     assert sample_notification.billable_units == billable_units
+
+
+def test_should_send_sms_to_international_providers(
+    restore_provider_details,
+    sample_sms_template_with_html,
+    sample_user,
+    mocker
+):
+    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
+
+    dao_switch_sms_provider_to_provider_with_identifier('firetext')
+
+    db_notification_uk = create_notification(
+        template=sample_sms_template_with_html,
+        to_field="+447234123999",
+        personalisation={"name": "Jo"},
+        status='created',
+        international=False)
+
+    db_notification_international = create_notification(
+        template=sample_sms_template_with_html,
+        to_field="+447234123111",
+        personalisation={"name": "Jo"},
+        status='created',
+        international=True)
+
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.firetext_client.send_sms')
+
+    send_to_providers.send_sms_to_provider(
+        db_notification_uk
+    )
+
+    firetext_client.send_sms.assert_called_once_with(
+        to=format_phone_number(validate_phone_number("+447234123999")),
+        content=ANY,
+        reference=str(db_notification_uk.id),
+        sender=None
+    )
+
+    send_to_providers.send_sms_to_provider(
+        db_notification_international
+    )
+
+    mmg_client.send_sms.assert_called_once_with(
+        to=format_phone_number(validate_phone_number("+447234123111")),
+        content=ANY,
+        reference=str(db_notification_international.id),
+        sender=None
+    )
+
+    notification_uk = Notification.query.filter_by(id=db_notification_uk.id).one()
+    notification_int = Notification.query.filter_by(id=db_notification_international.id).one()
+
+    assert notification_uk.status == 'sending'
+    assert notification_uk.sent_by == 'firetext'
+    assert notification_int.status == 'sending'
+    assert notification_int.sent_by == 'mmg'

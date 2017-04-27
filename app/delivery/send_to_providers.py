@@ -121,21 +121,17 @@ def update_notification(notification, provider):
 
 
 def provider_to_use(notification_type, notification_id, international=False):
-    provider = None
-    # Default to MMG for international SMS
-    if notification_type == SMS_TYPE:
-        provider_id = 'mmg' if international else get_current_provider('sms')
-        provider = get_provider_details_by_identifier('mmg')
-    elif notification_type == EMAIL_TYPE:
-        provider = get_current_provider(notification_type)
+    active_providers_in_order = [
+        p for p in get_provider_details_by_notification_type(notification_type, international) if p.active
+    ]
 
-    if not provider:
+    if not active_providers_in_order:
         current_app.logger.error(
             "{} {} failed as no active providers".format(notification_type, notification_id)
         )
         raise Exception("No active {} providers".format(notification_type))
 
-    return clients.get_client_by_name_and_type(provider.identifier, notification_type)
+    return clients.get_client_by_name_and_type(active_providers_in_order[0].identifier, notification_type)
 
 
 def get_logo_url(base_url, branding_path, logo_file):
@@ -151,11 +147,8 @@ def get_logo_url(base_url, branding_path, logo_file):
     base_url = parse.urlparse(base_url)
     netloc = base_url.netloc
 
-    if (
-        base_url.netloc.startswith('localhost') or
-        # covers both preview and staging
-        'notify.works' in base_url.netloc
-    ):
+    # covers both preview and staging
+    if base_url.netloc.startswith('localhost') or 'notify.works' in base_url.netloc:
         path = '/static' + branding_path + logo_file
     else:
         if base_url.netloc.startswith('www'):
