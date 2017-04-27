@@ -35,16 +35,24 @@ def test_can_get_all_providers(restore_provider_details):
     assert len(get_provider_details()) == 5
 
 
-def test_can_get_sms_providers(restore_provider_details):
+def test_can_get_sms_non_international_providers(restore_provider_details):
     sms_providers = get_provider_details_by_notification_type('sms')
     assert len(sms_providers) == 3
     assert all('sms' == prov.notification_type for prov in sms_providers)
+    assert all(not prov.supports_international for prov in sms_providers)
+
+
+def test_can_get_sms_international_providers(restore_provider_details):
+    sms_providers = get_provider_details_by_notification_type('sms', True)
+    assert len(sms_providers) == 1
+    assert all('sms' == prov.notification_type for prov in sms_providers)
+    assert all(prov.supports_international for prov in sms_providers)
 
 
 def test_can_get_sms_providers_in_order_of_priority(restore_provider_details):
-    providers = get_provider_details_by_notification_type('sms')
+    providers = get_provider_details_by_notification_type('sms', False)
 
-    assert providers[0].priority < providers[1].priority < providers[2].priority
+    assert providers[0].priority < providers[1].priority
 
 
 def test_can_get_email_providers_in_order_of_priority(restore_provider_details):

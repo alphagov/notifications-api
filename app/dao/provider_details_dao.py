@@ -60,6 +60,7 @@ def dao_toggle_sms_provider(identifier):
 @transactional
 def dao_switch_sms_provider_to_provider_with_identifier(identifier):
     new_provider = get_provider_details_by_identifier(identifier)
+
     if provider_is_inactive(new_provider):
         return
 
@@ -69,7 +70,7 @@ def dao_switch_sms_provider_to_provider_with_identifier(identifier):
     providers_to_update = []
 
     if conflicting_provider:
-        providers_to_update = switch_providers(conflicting_provider, new_provider)
+        switch_providers(conflicting_provider, new_provider)
     else:
         current_provider = get_current_provider('sms')
         if not provider_is_primary(current_provider, new_provider, identifier):
@@ -79,10 +80,14 @@ def dao_switch_sms_provider_to_provider_with_identifier(identifier):
             dao_update_provider_details(provider)
 
 
-def get_provider_details_by_notification_type(notification_type):
-    return ProviderDetails.query.filter_by(
-        notification_type=notification_type
-    ).order_by(asc(ProviderDetails.priority)).all()
+def get_provider_details_by_notification_type(notification_type, supports_international=False):
+
+    filters = [ProviderDetails.notification_type == notification_type]
+
+    if supports_international:
+        filters.append(ProviderDetails.supports_international == supports_international)
+
+    return ProviderDetails.query.filter(*filters).order_by(asc(ProviderDetails.priority)).all()
 
 
 @transactional
