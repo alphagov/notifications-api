@@ -25,7 +25,7 @@ def send_sms_to_provider(notification):
         return
 
     if notification.status == 'created':
-        provider = provider_to_use(SMS_TYPE, notification.id)
+        provider = provider_to_use(SMS_TYPE, notification.id, notification.international)
         current_app.logger.info(
             "Starting sending SMS {} to provider at {}".format(notification.id, datetime.utcnow())
         )
@@ -120,18 +120,22 @@ def update_notification(notification, provider):
     dao_update_notification(notification)
 
 
-def provider_to_use(notification_type, notification_id):
-    active_providers_in_order = [
-        provider for provider in get_provider_details_by_notification_type(notification_type) if provider.active
-    ]
+def provider_to_use(notification_type, notification_id, international=False):
+    provider = None
+    # Default to MMG for international SMS
+    if notification_type == SMS_TYPE:
+        provider_id = 'mmg' if international else get_current_provider('sms')
+        provider = get_provider_details_by_identifier('mmg')
+    elif notification_type == EMAIL_TYPE:
+        provider = get_current_provider(notification_type)
 
-    if not active_providers_in_order:
+    if not provider:
         current_app.logger.error(
             "{} {} failed as no active providers".format(notification_type, notification_id)
         )
         raise Exception("No active {} providers".format(notification_type))
 
-    return clients.get_client_by_name_and_type(active_providers_in_order[0].identifier, notification_type)
+    return clients.get_client_by_name_and_type(provider.identifier, notification_type)
 
 
 def get_logo_url(base_url, branding_path, logo_file):
