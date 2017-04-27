@@ -420,11 +420,11 @@ def get_yearly_billing_usage(service_id):
     try:
         year = int(request.args.get('year'))
         results = notification_usage_dao.get_yearly_billing_data(service_id, year)
-        json_result = [{"billing_units": x[0],
-                        "notification_type": x[1],
+        json_result = [{"credits": x[0],
+                        "billing_units": x[1],
                         "rate_multiplier": x[2],
-                        "international": x[3],
-                        "phone_prefix": x[4],
+                        "notification_type": x[3],
+                        "international": x[4],
                         "rate": x[5]
                         } for x in results]
         return json.dumps(json_result)
@@ -440,11 +440,10 @@ def get_yearly_monthly_usage(service_id):
         results = notification_usage_dao.get_monthly_billing_data(service_id, year)
         json_results = [{"month": x[0],
                          "billing_units": x[1],
-                         "notification_type": x[2],
-                         "rate_multiplier": x[3],
-                         "international": x[4],
-                         "phone_prefix": x[5],
-                         "rate": x[6]
+                         "rate_multiplier": x[2],
+                         "international": x[3],
+                         "notification_type": x[4],
+                         "rate": x[5]
                          } for x in results]
         return json.dumps(json_results)
     except TypeError:

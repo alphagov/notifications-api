@@ -1523,12 +1523,18 @@ def test_get_yearly_billing_usage(client, notify_db, notify_db_session):
     )
     assert response.status_code == 200
 
-    assert json.loads(response.get_data(as_text=True)) == [{'billing_units': 1, 'notification_type': 'sms',
-                                                            'phone_prefix': None, 'international': False,
-                                                            'rate_multiplier': None, 'rate': 1.58},
-                                                           {'billing_units': 0, 'notification_type': 'email',
-                                                            'phone_prefix': None, 'international': False,
-                                                            'rate_multiplier': None, 'rate': 0}]
+    assert json.loads(response.get_data(as_text=True)) == [{'credits': 1,
+                                                            'billing_units': 1,
+                                                            'rate_multiplier': 1,
+                                                            'notification_type': 'sms',
+                                                            'international': False,
+                                                            'rate': 1.58},
+                                                           {'credits': 0,
+                                                            'billing_units': 0,
+                                                            'rate_multiplier': 1,
+                                                            'notification_type': 'email',
+                                                            'international': False,
+                                                            'rate': 0}]
 
 
 def test_get_yearly_billing_usage_returns_400_if_missing_year(client, sample_service):
@@ -1558,12 +1564,19 @@ def test_get_monthly_billing_usage(client, notify_db, notify_db_session):
     assert response.status_code == 200
     actual = json.loads(response.get_data(as_text=True))
     assert len(actual) == 2
-    assert actual == [{'month': 'June', 'billing_units': 1, 'notification_type': 'sms',
-                       'phone_prefix': None, 'international': False,
-                       'rate_multiplier': None, 'rate': 1.58},
-                      {'month': 'July', 'billing_units': 1, 'notification_type': 'sms',
-                       'phone_prefix': None, 'international': False,
-                       'rate_multiplier': None, 'rate': 1.58}]
+    print(actual)
+    assert actual == [{'month': 'June',
+                       'international': False,
+                       'rate_multiplier': 1,
+                       'notification_type': 'sms',
+                       'rate': 1.58,
+                       'billing_units': 1},
+                      {'month': 'July',
+                       'international': False,
+                       'rate_multiplier': 1,
+                       'notification_type': 'sms',
+                       'rate': 1.58,
+                       'billing_units': 1}]
 
 
 def test_get_monthly_billing_usage_returns_400_if_missing_year(client, sample_service):

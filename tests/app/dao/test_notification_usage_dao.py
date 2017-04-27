@@ -32,7 +32,7 @@ def test_get_yearly_billing_data(notify_db, notify_db_session, sample_template, 
     create_notification(template=sample_template, created_at=datetime(2016, 5, 18), sent_at=datetime(2016, 5, 18),
                         status='sending', billable_units=2)
     create_notification(template=sample_template, created_at=datetime(2016, 7, 22), sent_at=datetime(2016, 7, 22),
-                        status='sending', billable_units=3)
+                        status='sending', billable_units=3, rate_multiplier=2, international=True, phone_prefix="1")
     create_notification(template=sample_template, created_at=datetime(2016, 9, 15), sent_at=datetime(2016, 9, 15),
                         status='sending', billable_units=4)
     create_notification(template=sample_template, created_at=datetime(2017, 3, 31), sent_at=datetime(2017, 3, 31),
@@ -45,10 +45,11 @@ def test_get_yearly_billing_data(notify_db, notify_db_session, sample_template, 
     create_notification(template=sample_template, created_at=datetime(2017, 4, 1), sent_at=datetime(2017, 4, 1),
                         status='sending', billable_units=6)
     results = get_yearly_billing_data(sample_template.service_id, 2016)
-    assert len(results) == 3
-    assert results[0] == (3, 'sms', None, False, None, 1.40)
-    assert results[1] == (12, 'sms', None, False, None, 1.58)
-    assert results[2] == (2, 'email', None, False, None, 0)
+    assert len(results) == 4
+    assert results[0] == (3, 3, 1, 'sms', False, 1.4)
+    assert results[1] == (9, 9, 1, 'sms', False, 1.58)
+    assert results[2] == (6, 3, 2, 'sms', True, 1.58)
+    assert results[3] == (2, 2, 1, 'email', False, 0)
 
 
 def test_get_yearly_billing_data_with_one_rate(notify_db, notify_db_session, sample_template):
@@ -74,8 +75,8 @@ def test_get_yearly_billing_data_with_one_rate(notify_db, notify_db_session, sam
                         status='sending', billable_units=7)
     results = get_yearly_billing_data(sample_template.service_id, 2016)
     assert len(results) == 2
-    assert results[0] == (15, 'sms', None, False, None, 1.4)
-    assert results[1] == (0, 'email', None, False, None, 0)
+    assert results[0] == (15, 15, 1, 'sms', False, 1.4)
+    assert results[1] == (0, 0, 1, 'email', False, 0)
 
 
 def test_get_yearly_billing_data_with_no_sms_notifications(notify_db, notify_db_session, sample_email_template):
@@ -87,8 +88,8 @@ def test_get_yearly_billing_data_with_no_sms_notifications(notify_db, notify_db_
 
     results = get_yearly_billing_data(sample_email_template.service_id, 2016)
     assert len(results) == 2
-    assert results[0] == (0, 'sms', None, False, None, 0)
-    assert results[1] == (2, 'email', None, False, None, 0)
+    assert results[0] == (0, 0, 1, 'sms', False, 1.4)
+    assert results[1] == (2, 2, 1, 'email', False, 0)
 
 
 def test_get_monthly_billing_data(notify_db, notify_db_session, sample_template, sample_email_template):
@@ -103,8 +104,13 @@ def test_get_monthly_billing_data(notify_db, notify_db_session, sample_template,
                         status='sending', billable_units=2)
     create_notification(template=sample_template, created_at=datetime(2016, 7, 22), sent_at=datetime(2016, 7, 22),
                         status='sending', billable_units=3)
+    create_notification(template=sample_template, created_at=datetime(2016, 7, 22), sent_at=datetime(2016, 7, 22),
+                        status='sending', billable_units=3, rate_multiplier=2)
+    create_notification(template=sample_template, created_at=datetime(2016, 7, 22), sent_at=datetime(2016, 7, 22),
+                        status='sending', billable_units=3, rate_multiplier=2)
     create_notification(template=sample_template, created_at=datetime(2016, 7, 30), sent_at=datetime(2016, 7, 22),
                         status='sending', billable_units=4)
+
     create_notification(template=sample_email_template, created_at=datetime(2016, 8, 22), sent_at=datetime(2016, 7, 22),
                         status='sending', billable_units=0)
     create_notification(template=sample_email_template, created_at=datetime(2016, 8, 30), sent_at=datetime(2016, 7, 22),
@@ -114,10 +120,11 @@ def test_get_monthly_billing_data(notify_db, notify_db_session, sample_template,
                         sent_at=datetime(2017, 3, 31), status='sending', billable_units=6)
     results = get_monthly_billing_data(sample_template.service_id, 2016)
     assert len(results) == 4
-    assert results[0] == ('April', 1, 'sms', None, False, None, 1.4)
-    assert results[1] == ('May', 2, 'sms', None, False, None, 1.4)
-    assert results[2] == ('July', 7, 'sms', None, False, None, 1.4)
-    assert results[3] == ('August', 2, 'email', None, False, None, 0)
+    # (billable_units, rate_multiplier, international, type, rate)
+    assert results[0] == ('April', 1, 1, False, 'sms', 1.4)
+    assert results[1] == ('May', 2, 1, False, 'sms', 1.4)
+    assert results[2] == ('July', 7, 1, False, 'sms', 1.4)
+    assert results[3] == ('July', 6, 2, False, 'sms', 1.4)
 
 
 def test_get_monthly_billing_data_with_multiple_rates(notify_db, notify_db_session, sample_template,
@@ -146,12 +153,11 @@ def test_get_monthly_billing_data_with_multiple_rates(notify_db, notify_db_sessi
     create_notification(template=sample_template, created_at=datetime(2017, 3, 31, 23, 00, 00),
                         sent_at=datetime(2017, 3, 31), status='sending', billable_units=6)
     results = get_monthly_billing_data(sample_template.service_id, 2016)
-    assert len(results) == 5
-    assert results[0] == ('April', 1, 'sms', None, False, None, 1.4)
-    assert results[1] == ('May', 2, 'sms', None, False, None, 1.4)
-    assert results[2] == ('June', 3, 'sms', None, False, None, 1.4)
-    assert results[3] == ('June', 4, 'sms', None, False, None, 1.75)
-    assert results[4] == ('August', 2, 'email', None, False, None, 0)
+    assert len(results) == 4
+    assert results[0] == ('April', 1, 1, False, 'sms', 1.4)
+    assert results[1] == ('May', 2, 1, False, 'sms', 1.4)
+    assert results[2] == ('June', 3, 1, False, 'sms', 1.4)
+    assert results[3] == ('June', 4, 1, False, 'sms', 1.75)
 
 
 def set_up_rate(notify_db, start_date, value):

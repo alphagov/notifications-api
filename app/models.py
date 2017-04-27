@@ -847,7 +847,7 @@ class NotificationHistory(db.Model, HistoryModel):
 
     international = db.Column(db.Boolean, nullable=False, default=False)
     phone_prefix = db.Column(db.String, nullable=True)
-    rate_multiplier = db.Column(db.Float(), nullable=True)
+    rate_multiplier = db.Column(db.Float(asdecimal=False), nullable=True)
 
     @classmethod
     def from_original(cls, notification):
@@ -968,5 +968,5 @@ class Rate(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     valid_from = db.Column(db.DateTime, nullable=False)
-    rate = db.Column(db.Numeric(asdecimal=False), nullable=False)
+    rate = db.Column(db.Float(asdecimal=False), nullable=False)
     notification_type = db.Column(notification_types, index=True, nullable=False)
