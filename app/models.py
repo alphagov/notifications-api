@@ -752,7 +752,8 @@ class Notification(db.Model):
                 'permanent-failure': 'Email address doesn’t exist',
                 'delivered': 'Delivered',
                 'sending': 'Sending',
-                'created': 'Sending'
+                'created': 'Sending',
+                'sent': 'Delivered'
             },
             'sms': {
                 'failed': 'Failed',
@@ -761,7 +762,8 @@ class Notification(db.Model):
                 'permanent-failure': 'Phone number doesn’t exist',
                 'delivered': 'Delivered',
                 'sending': 'Sending',
-                'created': 'Sending'
+                'created': 'Sending',
+                'sent': 'Sent internationally'
             },
             'letter': {
                 'failed': 'Failed',
@@ -770,7 +772,8 @@ class Notification(db.Model):
                 'permanent-failure': 'Permanent failure',
                 'delivered': 'Delivered',
                 'sending': 'Sending',
-                'created': 'Sending'
+                'created': 'Sending',
+                'sent': 'Delivered'
             }
         }[self.template.template_type].get(self.status, self.status)
 
