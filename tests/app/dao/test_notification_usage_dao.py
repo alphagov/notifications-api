@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 
+from app.dao.date_util import get_financial_year
 from app.dao.notification_usage_dao import (get_rates_for_year, get_yearly_billing_data,
                                             get_monthly_billing_data)
 from app.models import Rate
@@ -9,20 +10,64 @@ from tests.app.db import create_notification
 
 def test_get_rates_for_year(notify_db, notify_db_session):
     set_up_rate(notify_db, datetime(2016, 4, 1), 1.50)
+    set_up_rate(notify_db, datetime(2016, 9, 1), 1.60)
     set_up_rate(notify_db, datetime(2017, 6, 1), 1.75)
-    rates = get_rates_for_year(datetime(2016, 4, 1), datetime(2017, 3, 31), 'sms')
-    assert len(rates) == 1
+    rates = get_rates_for_year(datetime(2016, 3, 31), datetime(2017, 3, 31), 'sms')
+    assert len(rates) == 2
     assert datetime.strftime(rates[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2016-04-01 00:00:00"
     assert rates[0].rate == 1.50
-    rates = get_rates_for_year(datetime(2017, 4, 1), datetime(2018, 3, 31), 'sms')
-    assert len(rates) == 1
+    assert datetime.strftime(rates[1].valid_from, '%Y-%m-%d %H:%M:%S') == "2016-09-01 00:00:00"
+    assert rates[1].rate == 1.6
+    start_date, end_date = get_financial_year(2017)
+    rates_2017 = get_rates_for_year(start_date, end_date, 'sms')
+    assert len(rates_2017) == 2
+    assert datetime.strftime(rates_2017[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2016-09-01 00:00:00"
+    assert rates_2017[0].rate == 1.60
+    assert datetime.strftime(rates_2017[1].valid_from, '%Y-%m-%d %H:%M:%S') == "2017-06-01 00:00:00"
+    assert rates_2017[1].rate == 1.75
+
+
+def test_get_rates_for_year_in_the_future(notify_db, notify_db_session):
+    set_up_rate(notify_db, datetime(2016, 4, 1), 1.50)
+    set_up_rate(notify_db, datetime(2017, 6, 1), 1.75)
+    start_date, end_date = get_financial_year(2018)
+    rates = get_rates_for_year(start_date, end_date, 'sms')
     assert datetime.strftime(rates[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2017-06-01 00:00:00"
     assert rates[0].rate == 1.75
+
+
+def test_get_rates_for_year_returns_empty_list_if_year_is_before_earliest_rate(notify_db, notify_db_session):
+    set_up_rate(notify_db, datetime(2016, 4, 1), 1.50)
+    set_up_rate(notify_db, datetime(2017, 6, 1), 1.75)
+    start_date, end_date = get_financial_year(2015)
+    rates = get_rates_for_year(start_date, end_date, 'sms')
+    assert rates == []
+
+
+def test_get_rates_for_year_early_rate(notify_db, notify_db_session):
+    set_up_rate(notify_db, datetime(2015, 6, 1), 1.40)
+    set_up_rate(notify_db, datetime(2016, 6, 1), 1.50)
+    set_up_rate(notify_db, datetime(2016, 9, 1), 1.60)
+    set_up_rate(notify_db, datetime(2017, 6, 1), 1.75)
+    start_date, end_date = get_financial_year(2016)
+    rates = get_rates_for_year(start_date, end_date, 'sms')
+    assert len(rates) == 3
+
+
+def test_get_rates_for_year_edge_case(notify_db, notify_db_session):
+    set_up_rate(notify_db, datetime(2016, 3, 31, 23, 00), 1.50)
+    set_up_rate(notify_db, datetime(2017, 3, 31, 23, 00), 1.75)
+    start_date, end_date = get_financial_year(2016)
+    rates = get_rates_for_year(start_date, end_date, 'sms')
+    assert len(rates) == 1
+    assert datetime.strftime(rates[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2016-03-31 23:00:00"
+    assert rates[0].rate == 1.50
 
 
 def test_get_yearly_billing_data(notify_db, notify_db_session, sample_template, sample_email_template):
     set_up_rate(notify_db, datetime(2016, 4, 1), 1.40)
     set_up_rate(notify_db, datetime(2016, 6, 1), 1.58)
+    set_up_rate(notify_db, datetime(2017, 6, 1), 1.65)
     # previous year
     create_notification(template=sample_template, created_at=datetime(2016, 3, 31), sent_at=datetime(2016, 3, 31),
                         status='sending', billable_units=1)
@@ -131,6 +176,7 @@ def test_get_monthly_billing_data_with_multiple_rates(notify_db, notify_db_sessi
                                                       sample_email_template):
     set_up_rate(notify_db, datetime(2016, 4, 1), 1.40)
     set_up_rate(notify_db, datetime(2016, 6, 5), 1.75)
+    set_up_rate(notify_db, datetime(2017, 7, 5), 1.80)
     # previous year
     create_notification(template=sample_template, created_at=datetime(2016, 3, 31), sent_at=datetime(2016, 3, 31),
                         status='sending', billable_units=1)
