@@ -528,5 +528,47 @@ def test_should_send_sms_to_international_providers(
 
     assert notification_uk.status == 'sending'
     assert notification_uk.sent_by == 'firetext'
-    assert notification_int.status == 'sending'
+    assert notification_int.status == 'sent'
     assert notification_int.sent_by == 'mmg'
+
+
+def test_should_send_international_sms_with_formatted_phone_number(
+    notify_db,
+    sample_template,
+    mocker
+):
+    notification = create_notification(
+        template=sample_template,
+        to_field="+6011-17224412",
+        international=True
+    )
+
+    send_notification_mock = mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.delivery.send_to_providers.send_sms_response')
+
+    send_to_providers.send_sms_to_provider(
+        notification
+    )
+
+    assert send_notification_mock.called is True
+
+
+def test_should_set_international_phone_number_to_sent_status(
+    notify_db,
+    sample_template,
+    mocker
+):
+    notification = create_notification(
+        template=sample_template,
+        to_field="+6011-17224412",
+        international=True
+    )
+
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.delivery.send_to_providers.send_sms_response')
+
+    send_to_providers.send_sms_to_provider(
+        notification
+    )
+
+    assert notification.status == 'sent'

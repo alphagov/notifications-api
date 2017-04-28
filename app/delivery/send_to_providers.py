@@ -15,7 +15,8 @@ from app.dao.provider_details_dao import (
 )
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE, NOTIFICATION_TECHNICAL_FAILURE
+from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE, NOTIFICATION_TECHNICAL_FAILURE, \
+    NOTIFICATION_SENT, NOTIFICATION_SENDING
 
 
 def send_sms_to_provider(notification):
@@ -44,7 +45,7 @@ def send_sms_to_provider(notification):
         else:
             try:
                 provider.send_sms(
-                    to=validate_and_format_phone_number(notification.to),
+                    to=validate_and_format_phone_number(notification.to, international=notification.international),
                     content=str(template),
                     reference=str(notification.id),
                     sender=service.sms_sender
@@ -54,7 +55,7 @@ def send_sms_to_provider(notification):
                 raise e
             else:
                 notification.billable_units = template.fragment_count
-                update_notification(notification, provider)
+                update_notification(notification, provider, notification.international)
 
         current_app.logger.info(
             "SMS {} sent to provider {} at {}".format(notification.id, provider.get_name(), notification.sent_at)
@@ -113,10 +114,13 @@ def send_email_to_provider(notification):
         statsd_client.timing("email.total-time", delta_milliseconds)
 
 
-def update_notification(notification, provider):
+def update_notification(notification, provider, international=False):
     notification.sent_at = datetime.utcnow()
     notification.sent_by = provider.get_name()
-    notification.status = 'sending'
+    if international:
+        notification.status = NOTIFICATION_SENT
+    else:
+        notification.status = NOTIFICATION_SENDING
     dao_update_notification(notification)
 
 

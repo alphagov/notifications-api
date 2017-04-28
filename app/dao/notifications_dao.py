@@ -26,8 +26,8 @@ from app.models import (
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST,
-    LETTER_TYPE
-)
+    LETTER_TYPE,
+    NOTIFICATION_SENT)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
@@ -175,11 +175,14 @@ def _update_notification_status(notification, status):
 def update_notification_status_by_id(notification_id, status):
     notification = Notification.query.with_lockmode("update").filter(
         Notification.id == notification_id,
-        or_(Notification.status == NOTIFICATION_CREATED,
+        or_(
+            Notification.status == NOTIFICATION_CREATED,
             Notification.status == NOTIFICATION_SENDING,
-            Notification.status == NOTIFICATION_PENDING)).first()
+            Notification.status == NOTIFICATION_PENDING,
+            Notification.status == NOTIFICATION_SENT
+        )).first()
 
-    if not notification:
+    if not notification or notification.status == NOTIFICATION_SENT:
         return None
 
     return _update_notification_status(
@@ -193,10 +196,13 @@ def update_notification_status_by_id(notification_id, status):
 def update_notification_status_by_reference(reference, status):
     notification = Notification.query.filter(
         Notification.reference == reference,
-        or_(Notification.status == NOTIFICATION_SENDING,
-            Notification.status == NOTIFICATION_PENDING)).first()
+        or_(
+            Notification.status == NOTIFICATION_SENDING,
+            Notification.status == NOTIFICATION_PENDING,
+            Notification.status == NOTIFICATION_SENT
+        )).first()
 
-    if not notification:
+    if not notification or notification.status == NOTIFICATION_SENT:
         return None
 
     return _update_notification_status(
