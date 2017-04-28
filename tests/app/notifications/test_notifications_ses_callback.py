@@ -31,7 +31,7 @@ def test_ses_callback_should_fail_if_invalid_json(client):
     assert json_resp['message'] == 'SES callback failed: invalid json'
 
 
-def test_ses_callback_should_auto_confirm_subscriptions(client, rmock):
+def test_ses_callback_should_autoconfirm_subscriptions(client, rmock):
     endpoint = json.loads(ses_confirmation_callback())['SubscribeURL']
     rmock.request(
         "GET",
@@ -53,7 +53,7 @@ def test_ses_callback_should_auto_confirm_subscriptions(client, rmock):
     assert json_resp['message'] == 'SES callback succeeded'
 
 
-def test_ses_callback_autoconfirmat_raises_exception_if_not_200(client, rmock):
+def test_ses_callback_autoconfirm_raises_exception_if_not_200(client, rmock):
     endpoint = json.loads(ses_confirmation_callback())['SubscribeURL']
     rmock.request(
         "GET",
