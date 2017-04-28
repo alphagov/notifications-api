@@ -44,7 +44,7 @@ def deliver_sms(self, notification_id):
     except Exception as e:
         try:
             current_app.logger.exception(
-                "RETRY: SMS notification {} failed".format(notification_id)
+                "SMS notification delivery for id: {} failed".format(notification_id)
             )
             self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
         except self.MaxRetriesExceededError:

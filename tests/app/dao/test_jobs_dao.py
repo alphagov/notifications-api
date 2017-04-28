@@ -43,6 +43,7 @@ def test_should_get_all_statuses_for_notifications_associated_with_job(
     notification(status='technical-failure')
     notification(status='temporary-failure')
     notification(status='permanent-failure')
+    notification(status='sent')
 
     results = dao_get_notification_outcomes_for_job(sample_service.id, sample_job.id)
     assert [(row.count, row.status) for row in results] == [
@@ -53,7 +54,8 @@ def test_should_get_all_statuses_for_notifications_associated_with_job(
         (1, 'failed'),
         (1, 'technical-failure'),
         (1, 'temporary-failure'),
-        (1, 'permanent-failure')
+        (1, 'permanent-failure'),
+        (1, 'sent')
     ]
 
 

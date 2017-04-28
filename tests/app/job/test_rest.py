@@ -205,7 +205,6 @@ def test_should_not_create_scheduled_job_more_then_24_hours_hence(notify_api, sa
                 auth_header = create_authorization_header()
                 headers = [('Content-Type', 'application/json'), auth_header]
 
-                print(json.dumps(data))
                 response = client.post(
                     path,
                     data=json.dumps(data),
@@ -240,7 +239,6 @@ def test_should_not_create_scheduled_job_in_the_past(notify_api, sample_template
                 auth_header = create_authorization_header()
                 headers = [('Content-Type', 'application/json'), auth_header]
 
-                print(json.dumps(data))
                 response = client.post(
                     path,
                     data=json.dumps(data),

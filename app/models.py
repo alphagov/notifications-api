@@ -574,6 +574,7 @@ class VerifyCode(db.Model):
 
 NOTIFICATION_CREATED = 'created'
 NOTIFICATION_SENDING = 'sending'
+NOTIFICATION_SENT = 'sent'
 NOTIFICATION_DELIVERED = 'delivered'
 NOTIFICATION_PENDING = 'pending'
 NOTIFICATION_FAILED = 'failed'
@@ -588,6 +589,7 @@ NOTIFICATION_STATUS_TYPES_FAILED = [
 ]
 
 NOTIFICATION_STATUS_TYPES_COMPLETED = [
+    NOTIFICATION_SENT,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_FAILED,
     NOTIFICATION_TECHNICAL_FAILURE,
@@ -597,6 +599,7 @@ NOTIFICATION_STATUS_TYPES_COMPLETED = [
 
 NOTIFICATION_STATUS_TYPES_BILLABLE = [
     NOTIFICATION_SENDING,
+    NOTIFICATION_SENT,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_FAILED,
     NOTIFICATION_TECHNICAL_FAILURE,
@@ -607,6 +610,7 @@ NOTIFICATION_STATUS_TYPES_BILLABLE = [
 NOTIFICATION_STATUS_TYPES = [
     NOTIFICATION_CREATED,
     NOTIFICATION_SENDING,
+    NOTIFICATION_SENT,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING,
     NOTIFICATION_FAILED,
@@ -666,7 +670,7 @@ class Notification(db.Model):
 
     international = db.Column(db.Boolean, nullable=False, default=False)
     phone_prefix = db.Column(db.String, nullable=True)
-    rate_multiplier = db.Column(db.Numeric(), nullable=True)
+    rate_multiplier = db.Column(db.Float(asdecimal=False), nullable=True)
 
     @property
     def personalisation(self):
@@ -748,7 +752,8 @@ class Notification(db.Model):
                 'permanent-failure': 'Email address doesn’t exist',
                 'delivered': 'Delivered',
                 'sending': 'Sending',
-                'created': 'Sending'
+                'created': 'Sending',
+                'sent': 'Delivered'
             },
             'sms': {
                 'failed': 'Failed',
@@ -757,7 +762,8 @@ class Notification(db.Model):
                 'permanent-failure': 'Phone number doesn’t exist',
                 'delivered': 'Delivered',
                 'sending': 'Sending',
-                'created': 'Sending'
+                'created': 'Sending',
+                'sent': 'Sent internationally'
             },
             'letter': {
                 'failed': 'Failed',
@@ -766,7 +772,8 @@ class Notification(db.Model):
                 'permanent-failure': 'Permanent failure',
                 'delivered': 'Delivered',
                 'sending': 'Sending',
-                'created': 'Sending'
+                'created': 'Sending',
+                'sent': 'Delivered'
             }
         }[self.template.template_type].get(self.status, self.status)
 
@@ -843,7 +850,7 @@ class NotificationHistory(db.Model, HistoryModel):
 
     international = db.Column(db.Boolean, nullable=False, default=False)
     phone_prefix = db.Column(db.String, nullable=True)
-    rate_multiplier = db.Column(db.Numeric(), nullable=True)
+    rate_multiplier = db.Column(db.Float(asdecimal=False), nullable=True)
 
     @classmethod
     def from_original(cls, notification):
@@ -964,5 +971,5 @@ class Rate(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     valid_from = db.Column(db.DateTime, nullable=False)
-    rate = db.Column(db.Numeric(), nullable=False)
+    rate = db.Column(db.Float(asdecimal=False), nullable=False)
     notification_type = db.Column(notification_types, index=True, nullable=False)

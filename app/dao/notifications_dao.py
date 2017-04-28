@@ -1,5 +1,4 @@
 import functools
-import pytz
 from datetime import (
     datetime,
     timedelta,
@@ -12,6 +11,7 @@ from sqlalchemy.orm import joinedload
 
 from app import db, create_uuid
 from app.dao import days_ago
+from app.dao.date_util import get_financial_year
 from app.models import (
     Service,
     Notification,
@@ -26,8 +26,8 @@ from app.models import (
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST,
-    LETTER_TYPE
-)
+    LETTER_TYPE,
+    NOTIFICATION_SENT)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
@@ -175,11 +175,14 @@ def _update_notification_status(notification, status):
 def update_notification_status_by_id(notification_id, status):
     notification = Notification.query.with_lockmode("update").filter(
         Notification.id == notification_id,
-        or_(Notification.status == NOTIFICATION_CREATED,
+        or_(
+            Notification.status == NOTIFICATION_CREATED,
             Notification.status == NOTIFICATION_SENDING,
-            Notification.status == NOTIFICATION_PENDING)).first()
+            Notification.status == NOTIFICATION_PENDING,
+            Notification.status == NOTIFICATION_SENT
+        )).first()
 
-    if not notification:
+    if not notification or notification.status == NOTIFICATION_SENT:
         return None
 
     return _update_notification_status(
@@ -193,10 +196,13 @@ def update_notification_status_by_id(notification_id, status):
 def update_notification_status_by_reference(reference, status):
     notification = Notification.query.filter(
         Notification.reference == reference,
-        or_(Notification.status == NOTIFICATION_SENDING,
-            Notification.status == NOTIFICATION_PENDING)).first()
+        or_(
+            Notification.status == NOTIFICATION_SENDING,
+            Notification.status == NOTIFICATION_PENDING,
+            Notification.status == NOTIFICATION_SENT
+        )).first()
 
-    if not notification:
+    if not notification or notification.status == NOTIFICATION_SENT:
         return None
 
     return _update_notification_status(
@@ -237,13 +243,15 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
 def get_notification_billable_unit_count_per_month(service_id, year):
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
 
+    start_date, end_date = get_financial_year(year)
     notifications = db.session.query(
         month,
         func.sum(NotificationHistory.billable_units)
     ).filter(
         NotificationHistory.billable_units != 0,
         NotificationHistory.service_id == service_id,
-        NotificationHistory.created_at.between(*get_financial_year(year)),
+        NotificationHistory.created_at >= start_date,
+        NotificationHistory.created_at < end_date
     ).group_by(
         month
     ).order_by(
@@ -402,21 +410,6 @@ def dao_timeout_notifications(timeout_period_in_seconds):
     db.session.commit()
 
     return updated
-
-
-def get_financial_year(year):
-    return get_april_fools(year), get_april_fools(year + 1)
-
-
-def get_april_fools(year):
-    """
-     This function converts the start of the financial year April 1, 00:00 as BST (British Standard Time) to UTC,
-     the tzinfo is lastly removed from the datetime becasue the database stores the timestamps without timezone.
-     :param year: the year to calculate the April 1, 00:00 BST for
-     :return: the datetime of April 1 for the given year, for example 2016 = 2016-03-31 23:00:00
-    """
-    return pytz.timezone('Europe/London').localize(datetime(year, 4, 1, 0, 0, 0)).astimezone(pytz.UTC).replace(
-        tzinfo=None)
 
 
 def get_total_sent_notifications_in_date_range(start_date, end_date, notification_type):

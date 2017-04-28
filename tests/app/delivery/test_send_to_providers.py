@@ -4,11 +4,12 @@ from collections import namedtuple
 from unittest.mock import ANY
 
 import pytest
-from notifications_utils.recipients import validate_phone_number, format_phone_number
+from notifications_utils.recipients import validate_and_format_phone_number
 
 import app
-from app import mmg_client
+from app import mmg_client, firetext_client
 from app.dao import (provider_details_dao, notifications_dao)
+from app.dao.provider_details_dao import dao_switch_sms_provider_to_provider_with_identifier
 from app.delivery import send_to_providers
 from app.models import (
     Notification,
@@ -18,7 +19,7 @@ from app.models import (
     KEY_TYPE_TEAM,
     BRANDING_ORG,
     BRANDING_BOTH,
-)
+    ProviderDetails)
 
 from tests.app.db import create_service, create_template, create_notification
 
@@ -69,7 +70,7 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     )
 
     mmg_client.send_sms.assert_called_once_with(
-        to=format_phone_number(validate_phone_number("+447234123123")),
+        to=validate_and_format_phone_number("+447234123123"),
         content="Sample service: Hello Jo\nHere is <em>some HTML</em> & entities",
         reference=str(db_notification.id),
         sender=None
@@ -151,7 +152,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     )
 
     mmg_client.send_sms.assert_called_once_with(
-        to=format_phone_number(validate_phone_number("+447234123123")),
+        to=validate_and_format_phone_number("+447234123123"),
         content="Sample service: This is a template:\nwith a newline",
         reference=str(db_notification.id),
         sender=None
@@ -254,7 +255,7 @@ def test_should_send_sms_sender_from_service_if_present(
     )
 
     mmg_client.send_sms.assert_called_once_with(
-        to=format_phone_number(validate_phone_number("+447234123123")),
+        to=validate_and_format_phone_number("+447234123123"),
         content="This is a template:\nwith a newline",
         reference=str(db_notification.id),
         sender=sample_service.sms_sender
@@ -471,3 +472,103 @@ def test_should_update_billable_units_according_to_research_mode_and_key_type(no
     )
 
     assert sample_notification.billable_units == billable_units
+
+
+def test_should_send_sms_to_international_providers(
+    restore_provider_details,
+    sample_sms_template_with_html,
+    sample_user,
+    mocker
+):
+    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
+
+    dao_switch_sms_provider_to_provider_with_identifier('firetext')
+
+    db_notification_uk = create_notification(
+        template=sample_sms_template_with_html,
+        to_field="+447234123999",
+        personalisation={"name": "Jo"},
+        status='created',
+        international=False)
+
+    db_notification_international = create_notification(
+        template=sample_sms_template_with_html,
+        to_field="+447234123111",
+        personalisation={"name": "Jo"},
+        status='created',
+        international=True)
+
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.firetext_client.send_sms')
+
+    send_to_providers.send_sms_to_provider(
+        db_notification_uk
+    )
+
+    firetext_client.send_sms.assert_called_once_with(
+        to="447234123999",
+        content=ANY,
+        reference=str(db_notification_uk.id),
+        sender=None
+    )
+
+    send_to_providers.send_sms_to_provider(
+        db_notification_international
+    )
+
+    mmg_client.send_sms.assert_called_once_with(
+        to="447234123111",
+        content=ANY,
+        reference=str(db_notification_international.id),
+        sender=None
+    )
+
+    notification_uk = Notification.query.filter_by(id=db_notification_uk.id).one()
+    notification_int = Notification.query.filter_by(id=db_notification_international.id).one()
+
+    assert notification_uk.status == 'sending'
+    assert notification_uk.sent_by == 'firetext'
+    assert notification_int.status == 'sent'
+    assert notification_int.sent_by == 'mmg'
+
+
+def test_should_send_international_sms_with_formatted_phone_number(
+    notify_db,
+    sample_template,
+    mocker
+):
+    notification = create_notification(
+        template=sample_template,
+        to_field="+6011-17224412",
+        international=True
+    )
+
+    send_notification_mock = mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.delivery.send_to_providers.send_sms_response')
+
+    send_to_providers.send_sms_to_provider(
+        notification
+    )
+
+    assert send_notification_mock.called is True
+
+
+def test_should_set_international_phone_number_to_sent_status(
+    notify_db,
+    sample_template,
+    mocker
+):
+    notification = create_notification(
+        template=sample_template,
+        to_field="+6011-17224412",
+        international=True
+    )
+
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.delivery.send_to_providers.send_sms_response')
+
+    send_to_providers.send_sms_to_provider(
+        notification
+    )
+
+    assert notification.status == 'sent'
