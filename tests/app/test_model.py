@@ -111,6 +111,7 @@ def test_notification_for_csv_returns_correct_job_row_number(notify_db, notify_d
     ('email', 'permanent-failure', 'Email address doesn’t exist'),
     ('sms', 'temporary-failure', 'Phone not accepting messages right now'),
     ('sms', 'permanent-failure', 'Phone number doesn’t exist'),
+    ('sms', 'sent', 'Sent internationally'),
     ('letter', 'permanent-failure', 'Permanent failure'),
     ('letter', 'delivered', 'Delivered')
 ])
