@@ -73,7 +73,9 @@ def create_notification(
     key_type=KEY_TYPE_NORMAL,
     sent_by=None,
     client_reference=None,
-    international=False
+    rate_multiplier=None,
+    international=False,
+    phone_prefix=None
 ):
     if created_at is None:
         created_at = datetime.utcnow()
@@ -105,7 +107,9 @@ def create_notification(
         'updated_at': updated_at,
         'client_reference': client_reference,
         'job_row_number': job_row_number,
-        'international': international
+        'rate_multiplier': rate_multiplier,
+        'international': international,
+        'phone_prefix': phone_prefix
     }
     notification = Notification(**data)
     dao_create_notification(notification)

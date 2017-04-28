@@ -229,6 +229,7 @@ def _stats_for_service_query(service_id):
 def dao_fetch_monthly_historical_stats_by_template_for_service(service_id, year):
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
 
+    start_date, end_date = get_financial_year(year)
     sq = db.session.query(
         NotificationHistory.template_id,
         NotificationHistory.status,
@@ -236,7 +237,9 @@ def dao_fetch_monthly_historical_stats_by_template_for_service(service_id, year)
         func.count().label('count')
     ).filter(
         NotificationHistory.service_id == service_id,
-        NotificationHistory.created_at.between(*get_financial_year(year))
+        NotificationHistory.created_at >= start_date,
+        NotificationHistory.created_at < end_date
+
     ).group_by(
         month,
         NotificationHistory.template_id,
@@ -262,6 +265,7 @@ def dao_fetch_monthly_historical_stats_by_template_for_service(service_id, year)
 def dao_fetch_monthly_historical_stats_for_service(service_id, year):
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
 
+    start_date, end_date = get_financial_year(year)
     rows = db.session.query(
         NotificationHistory.notification_type,
         NotificationHistory.status,
@@ -269,7 +273,8 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
         func.count(NotificationHistory.id).label('count')
     ).filter(
         NotificationHistory.service_id == service_id,
-        NotificationHistory.created_at.between(*get_financial_year(year)),
+        NotificationHistory.created_at >= start_date,
+        NotificationHistory.created_at < end_date
     ).group_by(
         NotificationHistory.notification_type,
         NotificationHistory.status,
