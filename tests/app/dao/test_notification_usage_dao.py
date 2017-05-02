@@ -103,6 +103,21 @@ def test_get_yearly_billing_data(notify_db, notify_db_session, sample_template, 
     assert results[3] == (2, 2, 1, 'email', False, 0)
 
 
+def test_get_future_yearly_billing_data(notify_db, notify_db_session, sample_template, sample_email_template):
+    set_up_rate(notify_db, datetime(2017, 4, 1), 1.58)
+
+    create_notification(template=sample_template, created_at=datetime(2017, 3, 30), sent_at=datetime(2017, 3, 30),
+                        status='sending', billable_units=1)
+    create_notification(template=sample_template, created_at=datetime(2017, 4, 6), sent_at=datetime(2017, 4, 6),
+                        status='sending', billable_units=1)
+    create_notification(template=sample_template, created_at=datetime(2017, 4, 6), sent_at=datetime(2017, 4, 6),
+                        status='sending', billable_units=1)
+
+    results = get_yearly_billing_data(sample_template.service_id, 2018)
+    assert len(results) == 2
+    assert results[0] == (0, 0, 1, 'sms', False, 1.58)
+
+
 def test_get_yearly_billing_data_with_one_rate(notify_db, notify_db_session, sample_template):
     set_up_rate(notify_db, datetime(2016, 4, 1), 1.40)
     # previous year
