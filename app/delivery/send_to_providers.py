@@ -15,7 +15,8 @@ from app.dao.provider_details_dao import (
 )
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE, NOTIFICATION_TECHNICAL_FAILURE
+from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE, NOTIFICATION_TECHNICAL_FAILURE, \
+    NOTIFICATION_SENT, NOTIFICATION_SENDING
 
 
 def send_sms_to_provider(notification):
@@ -25,7 +26,7 @@ def send_sms_to_provider(notification):
         return
 
     if notification.status == 'created':
-        provider = provider_to_use(SMS_TYPE, notification.id)
+        provider = provider_to_use(SMS_TYPE, notification.id, notification.international)
         current_app.logger.info(
             "Starting sending SMS {} to provider at {}".format(notification.id, datetime.utcnow())
         )
@@ -44,7 +45,7 @@ def send_sms_to_provider(notification):
         else:
             try:
                 provider.send_sms(
-                    to=validate_and_format_phone_number(notification.to),
+                    to=validate_and_format_phone_number(notification.to, international=notification.international),
                     content=str(template),
                     reference=str(notification.id),
                     sender=service.sms_sender
@@ -54,7 +55,7 @@ def send_sms_to_provider(notification):
                 raise e
             else:
                 notification.billable_units = template.fragment_count
-                update_notification(notification, provider)
+                update_notification(notification, provider, notification.international)
 
         current_app.logger.info(
             "SMS {} sent to provider {} at {}".format(notification.id, provider.get_name(), notification.sent_at)
@@ -113,16 +114,19 @@ def send_email_to_provider(notification):
         statsd_client.timing("email.total-time", delta_milliseconds)
 
 
-def update_notification(notification, provider):
+def update_notification(notification, provider, international=False):
     notification.sent_at = datetime.utcnow()
     notification.sent_by = provider.get_name()
-    notification.status = 'sending'
+    if international:
+        notification.status = NOTIFICATION_SENT
+    else:
+        notification.status = NOTIFICATION_SENDING
     dao_update_notification(notification)
 
 
-def provider_to_use(notification_type, notification_id):
+def provider_to_use(notification_type, notification_id, international=False):
     active_providers_in_order = [
-        provider for provider in get_provider_details_by_notification_type(notification_type) if provider.active
+        p for p in get_provider_details_by_notification_type(notification_type, international) if p.active
     ]
 
     if not active_providers_in_order:
@@ -147,11 +151,8 @@ def get_logo_url(base_url, branding_path, logo_file):
     base_url = parse.urlparse(base_url)
     netloc = base_url.netloc
 
-    if (
-        base_url.netloc.startswith('localhost') or
-        # covers both preview and staging
-        'notify.works' in base_url.netloc
-    ):
+    # covers both preview and staging
+    if base_url.netloc.startswith('localhost') or 'notify.works' in base_url.netloc:
         path = '/static' + branding_path + logo_file
     else:
         if base_url.netloc.startswith('www'):

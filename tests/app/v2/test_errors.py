@@ -88,7 +88,6 @@ def test_validation_error(app_for_test):
             response = client.get(url_for('v2_under_test.raising_validation_error'))
             assert response.status_code == 400
             error = json.loads(response.get_data(as_text=True))
-            print(error)
             assert len(error.keys()) == 2
             assert error['status_code'] == 400
             assert len(error['errors']) == 2

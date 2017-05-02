@@ -2,8 +2,7 @@ from flask import (
     Blueprint,
     jsonify,
     request,
-    current_app,
-    json
+    current_app
 )
 
 from app import api_user
@@ -14,10 +13,6 @@ from app.dao import (
 )
 from app.models import KEY_TYPE_TEAM, PRIORITY
 from app.models import SMS_TYPE
-from app.notifications.process_client_response import (
-    validate_callback_data,
-    process_sms_client_response
-)
 from app.notifications.process_notifications import (persist_notification,
                                                      send_notification_to_queue,
                                                      simulated_recipient)
@@ -34,6 +29,8 @@ from app.schemas import (
 )
 from app.service.utils import service_allowed_to_send_to
 from app.utils import pagination_links, get_template_instance
+
+from notifications_utils.recipients import get_international_phone_info
 
 notifications = Blueprint('notifications', __name__)
 
@@ -104,13 +101,15 @@ def send_notification(notification_type):
     notification_form, errors = (
         sms_template_notification_schema if notification_type == SMS_TYPE else email_notification_schema
     ).load(request.get_json())
+
     if errors:
         raise InvalidRequest(errors, status_code=400)
 
     check_rate_limiting(service, api_user)
 
-    template = templates_dao.dao_get_template_by_id_and_service_id(template_id=notification_form['template'],
-                                                                   service_id=service.id)
+    template = templates_dao.dao_get_template_by_id_and_service_id(
+        template_id=notification_form['template'],
+        service_id=service.id)
 
     check_template_is_for_notification_type(notification_type, template.template_type)
     check_template_is_active(template)
@@ -118,12 +117,14 @@ def send_notification(notification_type):
     template_object = create_template_object_for_notification(template, notification_form.get('personalisation', {}))
 
     _service_allowed_to_send_to(notification_form, service)
+    if notification_type == SMS_TYPE:
+        _service_can_send_internationally(service, notification_form['to'])
 
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(notification_form['to'], notification_type)
     notification_model = persist_notification(template_id=template.id,
                                               template_version=template.version,
-                                              recipient=notification_form['to'],
+                                              recipient=request.get_json()['to'],
                                               service=service,
                                               personalisation=notification_form.get('personalisation', None),
                                               notification_type=notification_type,
@@ -158,6 +159,16 @@ def get_notification_return_data(notification_id, notification, template):
         output.update({'subject': template.subject})
 
     return output
+
+
+def _service_can_send_internationally(service, number):
+    international_phone_info = get_international_phone_info(number)
+
+    if international_phone_info.international and not service.can_send_international_sms:
+        raise InvalidRequest(
+            {'to': ["Cannot send to international mobile numbers"]},
+            status_code=400
+        )
 
 
 def _service_allowed_to_send_to(notification, service):

@@ -31,6 +31,7 @@ def post_notification(notification_type):
         form = validate(request.get_json(), post_email_request)
     else:
         form = validate(request.get_json(), post_sms_request)
+
     service = services_dao.dao_fetch_service_by_id(api_user.service_id)
 
     check_rate_limiting(service, api_user)
@@ -48,7 +49,7 @@ def post_notification(notification_type):
 
     notification = persist_notification(template_id=template.id,
                                         template_version=template.version,
-                                        recipient=send_to,
+                                        recipient=form_send_to,
                                         service=service,
                                         personalisation=form.get('personalisation', None),
                                         notification_type=notification_type,

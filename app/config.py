@@ -203,7 +203,6 @@ class Development(Config):
     NOTIFY_ENVIRONMENT = 'development'
     NOTIFICATION_QUEUE_PREFIX = 'development'
     DEBUG = True
-    SQLALCHEMY_ECHO = False
     CELERY_QUEUES = Config.CELERY_QUEUES + [
         Queue('db-sms', Exchange('default'), routing_key='db-sms'),
         Queue('priority', Exchange('default'), routing_key='priority'),

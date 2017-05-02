@@ -123,7 +123,8 @@ def sample_service(
     user=None,
     restricted=False,
     limit=1000,
-    email_from=None
+    email_from=None,
+    can_send_international_sms=False
 ):
     if user is None:
         user = create_user()
@@ -136,6 +137,7 @@ def sample_service(
         'email_from': email_from,
         'created_by': user,
         'letter_contact_block': 'London,\nSW1A 1AA',
+        'can_send_international_sms': can_send_international_sms
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
@@ -442,7 +444,8 @@ def sample_notification(
     api_key_id=None,
     key_type=KEY_TYPE_NORMAL,
     sent_by=None,
-    client_reference=None
+    client_reference=None,
+    rate_multiplier=1.0
 ):
     if created_at is None:
         created_at = datetime.utcnow()
@@ -479,7 +482,8 @@ def sample_notification(
         'key_type': key_type,
         'sent_by': sent_by,
         'updated_at': created_at if status in NOTIFICATION_STATUS_TYPES_COMPLETED else None,
-        'client_reference': client_reference
+        'client_reference': client_reference,
+        'rate_multiplier': rate_multiplier
     }
     if job_row_number is not None:
         data['job_row_number'] = job_row_number

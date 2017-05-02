@@ -4,7 +4,7 @@ from flask import json
 from app.models import Notification
 from app.v2.errors import RateLimitError
 from tests import create_authorization_header
-from tests.app.conftest import sample_template as create_sample_template
+from tests.app.conftest import sample_template as create_sample_template, sample_service
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -201,6 +201,9 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
                                                                                    notification_type,
                                                                                    key_send_to,
                                                                                    send_to):
+
+    mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
+
     sample = create_sample_template(
         notify_db,
         notify_db_session,
@@ -273,3 +276,74 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
 
     assert not persist_mock.called
     assert not deliver_mock.called
+
+
+def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(client, sample_service, sample_template):
+    data = {
+        'phone_number': '20-12-1234-1234',
+        'template_id': sample_template.id
+    }
+    auth_header = create_authorization_header(service_id=sample_service.id)
+
+    response = client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 400
+    assert response.headers['Content-type'] == 'application/json'
+
+    error_json = json.loads(response.get_data(as_text=True))
+    assert error_json['status_code'] == 400
+    assert error_json['errors'] == [
+        {"error": "BadRequestError", "message": 'Cannot send to international mobile numbers'}
+    ]
+
+
+def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(notify_db, notify_db_session, client, mocker):
+
+    service = sample_service(notify_db, notify_db_session, can_send_international_sms=True)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
+
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    data = {
+        'phone_number': '20-12-1234-1234',
+        'template_id': template.id
+    }
+    auth_header = create_authorization_header(service_id=service.id)
+
+    response = client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    print(json.loads(response.get_data(as_text=True)))
+    assert response.status_code == 201
+    assert response.headers['Content-type'] == 'application/json'
+
+
+def test_post_sms_should_persist_supplied_sms_number(notify_api, sample_template_with_placeholders, mocker):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+            data = {
+                'phone_number': '+(44) 77009-00855',
+                'template_id': str(sample_template_with_placeholders.id),
+                'personalisation': {' Name': 'Jo'}
+            }
+
+            auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
+
+            response = client.post(
+                path='/v2/notifications/sms',
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header])
+            assert response.status_code == 201
+            resp_json = json.loads(response.get_data(as_text=True))
+            notifications = Notification.query.all()
+            assert len(notifications) == 1
+            notification_id = notifications[0].id
+            assert '+(44) 77009-00855' == notifications[0].to
+            assert resp_json['id'] == str(notification_id)
+            assert mocked.called

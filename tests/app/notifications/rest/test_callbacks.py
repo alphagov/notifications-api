@@ -13,6 +13,16 @@ from app.models import NotificationStatistics
 from tests.app.conftest import sample_notification as create_sample_notification
 
 
+def test_dvla_callback_should_not_need_auth(client):
+    data = json.dumps({"somekey": "somevalue"})
+    response = client.post(
+        path='/notifications/letter/dvla',
+        data=data,
+        headers=[('Content-Type', 'application/json')])
+
+    assert response.status_code == 200
+
+
 def test_firetext_callback_should_not_need_auth(client, mocker):
     mocker.patch('app.statsd_client.incr')
     response = client.post(

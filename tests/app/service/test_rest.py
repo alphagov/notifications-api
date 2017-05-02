@@ -10,8 +10,9 @@ from freezegun import freeze_time
 
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
-from app.models import User, Organisation, DVLA_ORG_LAND_REGISTRY
+from app.models import User, Organisation, DVLA_ORG_LAND_REGISTRY, Rate
 from tests import create_authorization_header
+from tests.app.db import create_template
 from tests.app.conftest import (
     sample_service as create_service,
     sample_service_permission as create_service_permission,
@@ -224,6 +225,7 @@ def test_create_service(client, sample_user):
     assert json_resp['data']['name'] == 'created service'
     assert not json_resp['data']['research_mode']
     assert not json_resp['data']['can_send_letters']
+    assert not json_resp['data']['can_send_international_sms']
 
 
 def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_uuid):
@@ -419,10 +421,12 @@ def test_update_service_flags(notify_api, sample_service):
             assert json_resp['data']['name'] == sample_service.name
             assert json_resp['data']['research_mode'] is False
             assert json_resp['data']['can_send_letters'] is False
+            assert json_resp['data']['can_send_international_sms'] is False
 
             data = {
                 'research_mode': True,
-                'can_send_letters': True
+                'can_send_letters': True,
+                'can_send_international_sms': True,
             }
 
             auth_header = create_authorization_header()
@@ -436,6 +440,7 @@ def test_update_service_flags(notify_api, sample_service):
             assert resp.status_code == 200
             assert result['data']['research_mode'] is True
             assert result['data']['can_send_letters'] is True
+            assert result['data']['can_send_international_sms'] is True
 
 
 def test_update_service_research_mode_throws_validation_error(notify_api, sample_service):
@@ -1505,3 +1510,107 @@ def test_get_template_stats_by_month_returns_error_for_incorrect_year(
     )
     assert response.status_code == expected_status
     assert json.loads(response.get_data(as_text=True)) == expected_json
+
+
+def test_get_yearly_billing_usage(client, notify_db, notify_db_session):
+    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=1.58, notification_type='sms')
+    notify_db.session.add(rate)
+    notification = create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
+                                              sent_at=datetime(2016, 6, 5),
+                                              status='sending')
+    response = client.get(
+        '/service/{}/yearly-usage?year=2016'.format(notification.service_id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 200
+
+    assert json.loads(response.get_data(as_text=True)) == [{'credits': 1,
+                                                            'billing_units': 1,
+                                                            'rate_multiplier': 1,
+                                                            'notification_type': 'sms',
+                                                            'international': False,
+                                                            'rate': 1.58},
+                                                           {'credits': 0,
+                                                            'billing_units': 0,
+                                                            'rate_multiplier': 1,
+                                                            'notification_type': 'email',
+                                                            'international': False,
+                                                            'rate': 0}]
+
+
+def test_get_yearly_billing_usage_returns_400_if_missing_year(client, sample_service):
+    response = client.get(
+        '/service/{}/yearly-usage'.format(sample_service.id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True)) == {
+        'message': 'No valid year provided', 'result': 'error'
+    }
+
+
+def test_get_monthly_billing_usage(client, notify_db, notify_db_session, sample_service):
+    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=1.58, notification_type='sms')
+    notify_db.session.add(rate)
+    notification = create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
+                                              sent_at=datetime(2016, 6, 5),
+                                              status='sending')
+    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
+                               sent_at=datetime(2016, 6, 5),
+                               status='sending', rate_multiplier=2)
+    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 7, 5),
+                               sent_at=datetime(2016, 7, 5),
+                               status='sending')
+
+    template = create_template(sample_service, template_type='email')
+    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
+                               sent_at=datetime(2016, 6, 5),
+                               status='sending',
+                               template=template)
+    response = client.get(
+        '/service/{}/monthly-usage?year=2016'.format(notification.service_id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 200
+    actual = json.loads(response.get_data(as_text=True))
+    assert len(actual) == 3
+    assert actual == [{'month': 'June',
+                       'international': False,
+                       'rate_multiplier': 1,
+                       'notification_type': 'sms',
+                       'rate': 1.58,
+                       'billing_units': 1},
+                      {'month': 'June',
+                       'international': False,
+                       'rate_multiplier': 2,
+                       'notification_type': 'sms',
+                       'rate': 1.58,
+                       'billing_units': 1},
+                      {'month': 'July',
+                       'international': False,
+                       'rate_multiplier': 1,
+                       'notification_type': 'sms',
+                       'rate': 1.58,
+                       'billing_units': 1}]
+
+
+def test_get_monthly_billing_usage_returns_400_if_missing_year(client, sample_service):
+    response = client.get(
+        '/service/{}/monthly-usage'.format(sample_service.id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True)) == {
+        'message': 'No valid year provided', 'result': 'error'
+    }
+
+
+def test_get_monthly_billing_usage_returns_empty_list_if_no_notifications(client, notify_db, sample_service):
+    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=1.58, notification_type='sms')
+    notify_db.session.add(rate)
+    response = client.get(
+        '/service/{}/monthly-usage?year=2016'.format(sample_service.id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == []

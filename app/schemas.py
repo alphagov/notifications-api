@@ -324,13 +324,13 @@ class SmsNotificationSchema(NotificationSchema):
     @validates('to')
     def validate_to(self, value):
         try:
-            validate_phone_number(value)
+            validate_phone_number(value, international=True)
         except InvalidPhoneError as error:
             raise ValidationError('Invalid phone number: {}'.format(error))
 
     @post_load
     def format_phone_number(self, item):
-        item['to'] = validate_and_format_phone_number(item['to'])
+        item['to'] = validate_and_format_phone_number(item['to'], international=True)
         return item
 
 

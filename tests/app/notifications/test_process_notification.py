@@ -1,7 +1,7 @@
 import datetime
 import uuid
-
 import pytest
+
 from boto3.exceptions import Boto3Error
 from sqlalchemy.exc import SQLAlchemyError
 from freezegun import freeze_time
@@ -9,10 +9,13 @@ from collections import namedtuple
 
 from app.models import Template, Notification, NotificationHistory
 from app.notifications import SendNotificationToQueueError
-from app.notifications.process_notifications import (create_content_for_notification,
-                                                     persist_notification,
-                                                     send_notification_to_queue,
-                                                     simulated_recipient)
+from app.notifications.process_notifications import (
+    create_content_for_notification,
+    persist_notification,
+    send_notification_to_queue,
+    simulated_recipient
+)
+from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
 from app.utils import cache_key_for_service_template_counter
 from app.v2.errors import BadRequestError
 from tests.app.conftest import sample_api_key as create_api_key
@@ -169,18 +172,21 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
         'app.notifications.process_notifications.redis_store.get_all_from_hash')
     n_id = uuid.uuid4()
     created_at = datetime.datetime(2016, 11, 11, 16, 8, 18)
-    persist_notification(template_id=sample_job.template.id,
-                         template_version=sample_job.template.version,
-                         recipient='+447111111111',
-                         service=sample_job.service,
-                         personalisation=None, notification_type='sms',
-                         api_key_id=sample_api_key.id,
-                         key_type=sample_api_key.key_type,
-                         created_at=created_at,
-                         job_id=sample_job.id,
-                         job_row_number=10,
-                         client_reference="ref from client",
-                         notification_id=n_id)
+    persist_notification(
+        template_id=sample_job.template.id,
+        template_version=sample_job.template.version,
+        recipient='+447111111111',
+        service=sample_job.service,
+        personalisation=None,
+        notification_type='sms',
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        created_at=created_at,
+        job_id=sample_job.id,
+        job_row_number=10,
+        client_reference="ref from client",
+        notification_id=n_id
+    )
     assert Notification.query.count() == 1
     assert NotificationHistory.query.count() == 1
     persisted_notification = Notification.query.all()[0]
@@ -192,6 +198,9 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
     mock_service_template_cache.assert_called_once_with(cache_key_for_service_template_counter(sample_job.service_id))
     assert persisted_notification.client_reference == "ref from client"
     assert persisted_notification.reference is None
+    assert persisted_notification.international is False
+    assert persisted_notification.phone_prefix == '44'
+    assert persisted_notification.rate_multiplier == 1
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -255,22 +264,97 @@ def test_send_notification_to_queue_throws_exception_deletes_notification(sample
     assert NotificationHistory.query.count() == 0
 
 
-@pytest.mark.parametrize("to_address, notification_type, expected",
-                         [("+447700900000", "sms", True),
-                          ("+447700900111", "sms", True),
-                          ("+447700900222", "sms", True),
-                          ("simulate-delivered@notifications.service.gov.uk", "email", True),
-                          ("simulate-delivered-2@notifications.service.gov.uk", "email", True),
-                          ("simulate-delivered-3@notifications.service.gov.uk", "email", True),
-                          ("07515896969", "sms", False),
-                          ("valid_email@test.com", "email", False)])
+@pytest.mark.parametrize("to_address, notification_type, expected", [
+    ("+447700900000", "sms", True),
+    ("+447700900111", "sms", True),
+    ("+447700900222", "sms", True),
+    ("07700900000", "sms", True),
+    ("7700900111", "sms", True),
+    ("simulate-delivered@notifications.service.gov.uk", "email", True),
+    ("simulate-delivered-2@notifications.service.gov.uk", "email", True),
+    ("simulate-delivered-3@notifications.service.gov.uk", "email", True),
+    ("07515896969", "sms", False),
+    ("valid_email@test.com", "email", False)
+])
 def test_simulated_recipient(notify_api, to_address, notification_type, expected):
-    # The values where the expected = 'research-mode' are listed in the config['SIMULATED_EMAIL_ADDRESSES']
-    # and config['SIMULATED_SMS_NUMBERS']. These values should result in using the research mode queue.
-    #  SIMULATED_EMAIL_ADDRESSES = ('simulate-delivered@notifications.service.gov.uk',
-    #                               'simulate-delivered-2@notifications.service.gov.uk',
-    #                               'simulate-delivered-2@notifications.service.gov.uk')
-    #  SIMULATED_SMS_NUMBERS = ('+447700900000', '+447700900111', '+447700900222')
+    """
+    The values where the expected = 'research-mode' are listed in the config['SIMULATED_EMAIL_ADDRESSES']
+    and config['SIMULATED_SMS_NUMBERS']. These values should result in using the research mode queue.
+    SIMULATED_EMAIL_ADDRESSES = (
+        'simulate-delivered@notifications.service.gov.uk',
+        'simulate-delivered-2@notifications.service.gov.uk',
+        'simulate-delivered-2@notifications.service.gov.uk'
+    )
+    SIMULATED_SMS_NUMBERS = ('+447700900000', '+447700900111', '+447700900222')
+    """
+    formatted_address = None
 
-    actual = simulated_recipient(to_address, notification_type)
-    assert actual == expected
+    if notification_type == 'email':
+        formatted_address = validate_and_format_email_address(to_address)
+    else:
+        formatted_address = validate_and_format_phone_number(to_address)
+
+    is_simulated_address = simulated_recipient(formatted_address, notification_type)
+
+    assert is_simulated_address == expected
+
+
+@pytest.mark.parametrize('recipient, expected_international, expected_prefix, expected_units', [
+    ('7900900123', False, '44', 1),  # UK
+    ('+447900900123', False, '44', 1),  # UK
+    ('07700900222', False, '44', 1),  # UK
+    ('73122345678', True, '7', 1),  # Russia
+    ('360623400400', True, '36', 3)]  # Hungary
+)
+def test_persist_notification_with_international_info_stores_correct_info(
+    sample_job,
+    sample_api_key,
+    mocker,
+    recipient,
+    expected_international,
+    expected_prefix,
+    expected_units
+):
+    persist_notification(
+        template_id=sample_job.template.id,
+        template_version=sample_job.template.version,
+        recipient=recipient,
+        service=sample_job.service,
+        personalisation=None,
+        notification_type='sms',
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        job_id=sample_job.id,
+        job_row_number=10,
+        client_reference="ref from client"
+    )
+    persisted_notification = Notification.query.all()[0]
+
+    assert persisted_notification.international is expected_international
+    assert persisted_notification.phone_prefix == expected_prefix
+    assert persisted_notification.rate_multiplier == expected_units
+
+
+def test_persist_notification_with_international_info_does_not_store_for_email(
+    sample_job,
+    sample_api_key,
+    mocker
+):
+    persist_notification(
+        template_id=sample_job.template.id,
+        template_version=sample_job.template.version,
+        recipient='foo@bar.com',
+        service=sample_job.service,
+        personalisation=None,
+        notification_type='email',
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        job_id=sample_job.id,
+        job_row_number=10,
+        client_reference="ref from client"
+    )
+    persisted_notification = Notification.query.all()[0]
+
+    assert persisted_notification.international is False
+    assert persisted_notification.phone_prefix is None
+    assert persisted_notification.rate_multiplier is None

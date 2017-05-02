@@ -3,7 +3,6 @@ import uuid
 from functools import partial
 
 import pytest
-
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
@@ -15,10 +14,10 @@ from app.models import (
     TemplateStatistics,
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_FAILED,
+    NOTIFICATION_SENT,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
-    KEY_TYPE_TEST
-)
+    KEY_TYPE_TEST)
 
 from app.dao.notifications_dao import (
     dao_create_notification,
@@ -39,8 +38,6 @@ from app.dao.notifications_dao import (
     update_notification_status_by_reference,
     dao_delete_notifications_and_history_by_id,
     dao_timeout_notifications,
-    get_financial_year,
-    get_april_fools,
     is_delivery_slow_for_provider,
     dao_update_notifications_sent_to_dvla)
 
@@ -350,6 +347,30 @@ def test_should_update_status_by_id_if_created(notify_db, notify_db_session):
     updated = update_notification_status_by_id(notification.id, 'failed')
     assert Notification.query.get(notification.id).status == 'failed'
     assert updated.status == 'failed'
+
+
+def test_should_not_update_status_by_reference_if_in_sent_status(notify_db, notify_db_session):
+    notification = sample_notification(
+        notify_db,
+        notify_db_session,
+        status=NOTIFICATION_SENT,
+        reference='foo'
+    )
+
+    update_notification_status_by_reference('foo', 'failed')
+    assert Notification.query.get(notification.id).status == NOTIFICATION_SENT
+
+
+def test_should_not_update_status_by_id_if_in_sent_status(notify_db, notify_db_session):
+    notification = sample_notification(
+        notify_db,
+        notify_db_session,
+        status=NOTIFICATION_SENT
+    )
+
+    update_notification_status_by_id(notification.id, 'failed')
+
+    assert Notification.query.get(notification.id).status == NOTIFICATION_SENT
 
 
 def test_should_not_update_status_by_reference_if_not_sending(notify_db, notify_db_session):
@@ -1332,18 +1353,6 @@ def test_should_exclude_test_key_notifications_by_default(
 
     all_notifications = get_notifications_for_service(sample_service.id, limit_days=1, key_type=KEY_TYPE_TEST).items
     assert len(all_notifications) == 1
-
-
-def test_get_financial_year():
-    start, end = get_financial_year(2000)
-    assert str(start) == '2000-03-31 23:00:00'
-    assert str(end) == '2001-03-31 23:00:00'
-
-
-def test_get_april_fools():
-    april_fools = get_april_fools(2016)
-    assert str(april_fools) == '2016-03-31 23:00:00'
-    assert april_fools.tzinfo is None
 
 
 @pytest.mark.parametrize('notification_type', ['sms', 'email'])
