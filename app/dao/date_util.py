@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytz
 
 
 def get_financial_year(year):
-    return get_april_fools(year), get_april_fools(year + 1)
+    return get_april_fools(year), get_april_fools(year + 1) - timedelta(microseconds=1)
 
 
 def get_april_fools(year):
