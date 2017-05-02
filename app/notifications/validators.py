@@ -19,6 +19,7 @@ def check_service_over_api_rate_limit(service, api_key):
         rate_limit = current_app.config['API_KEY_LIMITS'][api_key.key_type]['limit']
         interval = current_app.config['API_KEY_LIMITS'][api_key.key_type]['interval']
         if redis_store.exceeded_rate_limit(cache_key, rate_limit, interval):
+            current_app.logger.error("service {} has been rate limited for throughput".format(service.id))
             raise RateLimitError(rate_limit, interval, api_key.key_type)
 
 
@@ -30,6 +31,10 @@ def check_service_over_daily_message_limit(key_type, service):
             service_stats = services_dao.fetch_todays_total_message_count(service.id)
             redis_store.set(cache_key, service_stats, ex=3600)
         if int(service_stats) >= service.message_limit:
+            current_app.logger.error(
+                "service {} has been rate limited for daily use sent {} limit {}".format(
+                    service.id, int(service_stats), service.message_limit)
+            )
             raise TooManyRequestsError(service.message_limit)
 
 
