@@ -2,6 +2,7 @@ import uuid
 import pytest
 from flask import json
 from app.models import Notification
+from app.v2.errors import RateLimitError
 from tests import create_authorization_header
 from tests.app.conftest import sample_template as create_sample_template, sample_service
 
@@ -227,6 +228,54 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
 
     assert response.status_code == 201
     mocked.assert_called_once_with([notification_id], queue='priority')
+
+
+@pytest.mark.parametrize(
+    "notification_type, key_send_to, send_to",
+    [("sms", "phone_number", "07700 900 855"), ("email", "email_address", "sample@email.com")]
+)
+def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
+    client,
+    notify_db,
+    notify_db_session,
+    mocker,
+    notification_type,
+    key_send_to,
+    send_to
+):
+    sample = create_sample_template(
+        notify_db,
+        notify_db_session,
+        template_type=notification_type
+    )
+    persist_mock = mocker.patch('app.v2.notifications.post_notifications.persist_notification')
+    deliver_mock = mocker.patch('app.v2.notifications.post_notifications.send_notification_to_queue')
+    mocker.patch(
+        'app.v2.notifications.post_notifications.check_rate_limiting',
+        side_effect=RateLimitError("LIMIT", "INTERVAL", "TYPE"))
+
+    data = {
+        key_send_to: send_to,
+        'template_id': str(sample.id)
+    }
+
+    auth_header = create_authorization_header(service_id=sample.service_id)
+
+    response = client.post(
+        path='/v2/notifications/{}'.format(notification_type),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    error = json.loads(response.data)['errors'][0]['error']
+    message = json.loads(response.data)['errors'][0]['message']
+    status_code = json.loads(response.data)['status_code']
+    assert response.status_code == 429
+    assert error == 'RateLimitError'
+    assert message == 'Exceeded rate limit for key type TYPE of LIMIT requests per INTERVAL seconds'
+    assert status_code == 429
+
+    assert not persist_mock.called
+    assert not deliver_mock.called
 
 
 def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(client, sample_service, sample_template):

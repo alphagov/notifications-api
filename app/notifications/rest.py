@@ -16,9 +16,9 @@ from app.models import SMS_TYPE
 from app.notifications.process_notifications import (persist_notification,
                                                      send_notification_to_queue,
                                                      simulated_recipient)
-from app.notifications.validators import (check_service_message_limit,
+from app.notifications.validators import (check_service_over_daily_message_limit,
                                           check_template_is_for_notification_type,
-                                          check_template_is_active)
+                                          check_template_is_active, check_rate_limiting)
 from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
@@ -105,7 +105,7 @@ def send_notification(notification_type):
     if errors:
         raise InvalidRequest(errors, status_code=400)
 
-    check_service_message_limit(api_user.key_type, service)
+    check_rate_limiting(service, api_user)
 
     template = templates_dao.dao_get_template_by_id_and_service_id(
         template_id=notification_form['template'],
