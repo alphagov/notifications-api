@@ -49,8 +49,7 @@ def get_monthly_billing_data(service_id, year):
 def billing_data_filter(notification_type, start_date, end_date, service_id):
     return [
         NotificationHistory.notification_type == notification_type,
-        NotificationHistory.created_at >= start_date,
-        NotificationHistory.created_at < end_date,
+        NotificationHistory.created_at.between(start_date, end_date),
         NotificationHistory.service_id == service_id,
         NotificationHistory.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE),
         NotificationHistory.key_type != KEY_TYPE_TEST
@@ -103,8 +102,25 @@ def sms_yearly_billing_data_query(rate, service_id, start_date, end_date):
 
 
 def get_rates_for_year(start_date, end_date, notification_type):
-    return Rate.query.filter(Rate.valid_from >= start_date, Rate.valid_from < end_date,
-                             Rate.notification_type == notification_type).order_by(Rate.valid_from).all()
+    rates = Rate.query.filter(Rate.notification_type == notification_type).order_by(Rate.valid_from).all()
+    results = []
+    for current_rate, current_rate_expiry_date in zip(rates, rates[1:]):
+        if is_between(current_rate.valid_from, start_date, end_date) or \
+                is_between(current_rate_expiry_date.valid_from, start_date, end_date):
+            results.append(current_rate)
+
+    if is_between(rates[-1].valid_from, start_date, end_date):
+        results.append(rates[-1])
+
+    if not results:
+        if start_date >= rates[-1].valid_from:
+            results.append(rates[-1])
+
+    return results
+
+
+def is_between(date, start_date, end_date):
+    return start_date <= date <= end_date
 
 
 def sms_billing_data_per_month_query(rate, service_id, start_date, end_date):

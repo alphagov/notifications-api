@@ -237,8 +237,7 @@ def dao_fetch_monthly_historical_stats_by_template_for_service(service_id, year)
         func.count().label('count')
     ).filter(
         NotificationHistory.service_id == service_id,
-        NotificationHistory.created_at >= start_date,
-        NotificationHistory.created_at < end_date
+        NotificationHistory.created_at.between(start_date, end_date)
 
     ).group_by(
         month,
@@ -273,8 +272,7 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
         func.count(NotificationHistory.id).label('count')
     ).filter(
         NotificationHistory.service_id == service_id,
-        NotificationHistory.created_at >= start_date,
-        NotificationHistory.created_at < end_date
+        NotificationHistory.created_at.between(start_date, end_date)
     ).group_by(
         NotificationHistory.notification_type,
         NotificationHistory.status,

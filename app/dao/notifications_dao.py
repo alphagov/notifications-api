@@ -250,8 +250,7 @@ def get_notification_billable_unit_count_per_month(service_id, year):
     ).filter(
         NotificationHistory.billable_units != 0,
         NotificationHistory.service_id == service_id,
-        NotificationHistory.created_at >= start_date,
-        NotificationHistory.created_at < end_date
+        NotificationHistory.created_at.between(start_date, end_date)
     ).group_by(
         month
     ).order_by(
