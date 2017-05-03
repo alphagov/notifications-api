@@ -1513,7 +1513,7 @@ def test_get_template_stats_by_month_returns_error_for_incorrect_year(
 
 
 def test_get_yearly_billing_usage(client, notify_db, notify_db_session):
-    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=1.58, notification_type='sms')
+    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type='sms')
     notify_db.session.add(rate)
     notification = create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
                                               sent_at=datetime(2016, 6, 5),
@@ -1529,7 +1529,7 @@ def test_get_yearly_billing_usage(client, notify_db, notify_db_session):
                                                             'rate_multiplier': 1,
                                                             'notification_type': 'sms',
                                                             'international': False,
-                                                            'rate': 1.58},
+                                                            'rate': 0.0158},
                                                            {'credits': 0,
                                                             'billing_units': 0,
                                                             'rate_multiplier': 1,
@@ -1550,7 +1550,7 @@ def test_get_yearly_billing_usage_returns_400_if_missing_year(client, sample_ser
 
 
 def test_get_monthly_billing_usage(client, notify_db, notify_db_session, sample_service):
-    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=1.58, notification_type='sms')
+    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type='sms')
     notify_db.session.add(rate)
     notification = create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
                                               sent_at=datetime(2016, 6, 5),
@@ -1578,19 +1578,19 @@ def test_get_monthly_billing_usage(client, notify_db, notify_db_session, sample_
                        'international': False,
                        'rate_multiplier': 1,
                        'notification_type': 'sms',
-                       'rate': 1.58,
+                       'rate': 0.0158,
                        'billing_units': 1},
                       {'month': 'June',
                        'international': False,
                        'rate_multiplier': 2,
                        'notification_type': 'sms',
-                       'rate': 1.58,
+                       'rate': 0.0158,
                        'billing_units': 1},
                       {'month': 'July',
                        'international': False,
                        'rate_multiplier': 1,
                        'notification_type': 'sms',
-                       'rate': 1.58,
+                       'rate': 0.0158,
                        'billing_units': 1}]
 
 
@@ -1606,7 +1606,7 @@ def test_get_monthly_billing_usage_returns_400_if_missing_year(client, sample_se
 
 
 def test_get_monthly_billing_usage_returns_empty_list_if_no_notifications(client, notify_db, sample_service):
-    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=1.58, notification_type='sms')
+    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type='sms')
     notify_db.session.add(rate)
     response = client.get(
         '/service/{}/monthly-usage?year=2016'.format(sample_service.id),
