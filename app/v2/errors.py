@@ -16,6 +16,19 @@ class TooManyRequestsError(InvalidRequest):
         self.message = self.message_template.format(sending_limit)
 
 
+class RateLimitError(InvalidRequest):
+    status_code = 429
+    message_template = 'Exceeded rate limit for key type {} of {} requests per {} seconds'
+
+    def __init__(self, sending_limit, interval, key_type):
+        # normal keys are spoken of as "live" in the documentation
+        # so using this in the error messaging
+        if key_type == 'normal':
+            key_type = 'live'
+
+        self.message = self.message_template.format(key_type.upper(), sending_limit, interval)
+
+
 class BadRequestError(InvalidRequest):
     status_code = 400
     message = "An error occurred"

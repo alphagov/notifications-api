@@ -2,12 +2,13 @@ from datetime import timedelta
 from celery.schedules import crontab
 from kombu import Exchange, Queue
 import os
-
+from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 
 if os.environ.get('VCAP_SERVICES'):
     # on cloudfoundry, config is a json blob in VCAP_SERVICES - unpack it, and populate
     # standard environment variables from it
     from app.cloudfoundry_config import extract_cloudfoundry_config
+
     extract_cloudfoundry_config()
 
 
@@ -176,6 +177,21 @@ class Config(object):
 
     DVLA_UPLOAD_BUCKET_NAME = "{}-dvla-file-per-job".format(os.getenv('NOTIFY_ENVIRONMENT'))
 
+    API_KEY_LIMITS = {
+        KEY_TYPE_TEAM: {
+            "limit": 3000,
+            "interval": 60
+        },
+        KEY_TYPE_NORMAL: {
+            "limit": 3000,
+            "interval": 60
+        },
+        KEY_TYPE_TEST: {
+            "limit": 3000,
+            "interval": 60
+        }
+    }
+
 
 ######################
 # Config overrides ###
@@ -198,6 +214,7 @@ class Development(Config):
         Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
     API_HOST_NAME = "http://localhost:6011"
+    API_RATE_LIMIT_ENABLED = True
 
 
 class Test(Config):
@@ -220,7 +237,23 @@ class Test(Config):
         Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
     REDIS_ENABLED = True
+    API_RATE_LIMIT_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"
+
+    API_KEY_LIMITS = {
+        KEY_TYPE_TEAM: {
+            "limit": 1,
+            "interval": 2
+        },
+        KEY_TYPE_NORMAL: {
+            "limit": 10,
+            "interval": 20
+        },
+        KEY_TYPE_TEST: {
+            "limit": 100,
+            "interval": 200
+        }
+    }
 
 
 class Preview(Config):
@@ -228,6 +261,7 @@ class Preview(Config):
     NOTIFY_ENVIRONMENT = 'preview'
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
     FROM_NUMBER = 'preview'
+    API_RATE_LIMIT_ENABLED = True
 
 
 class Staging(Config):
@@ -236,6 +270,7 @@ class Staging(Config):
     CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
     STATSD_ENABLED = True
     FROM_NUMBER = 'stage'
+    API_RATE_LIMIT_ENABLED = True
 
 
 class Live(Config):
@@ -247,6 +282,7 @@ class Live(Config):
     FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = '6c1d81bb-dae2-4ee9-80b0-89a4aae9f649'
     FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID = 'ba9e1789-a804-40b8-871f-cc60d4c1286f'
     PERFORMANCE_PLATFORM_ENABLED = True
+    API_RATE_LIMIT_ENABLED = False
 
 
 class CloudFoundryConfig(Config):
