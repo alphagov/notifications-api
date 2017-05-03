@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import Float, Integer
 from sqlalchemy import func, case, cast
@@ -27,7 +27,6 @@ def get_yearly_billing_data(service_id, year):
     result = []
     for r, n in zip(rates, rates[1:]):
         result.append(sms_yearly_billing_data_query(r.rate, service_id, get_valid_from(r.valid_from), n.valid_from))
-
     result.append(
         sms_yearly_billing_data_query(rates[-1].rate, service_id, get_valid_from(rates[-1].valid_from), end_date))
     result.append(email_yearly_billing_data_query(service_id, start_date, end_date))
@@ -108,7 +107,7 @@ def get_rates_for_year(start_date, end_date, notification_type):
     results = []
     for current_rate, current_rate_expiry_date in zip(rates, rates[1:]):
         if is_between(current_rate.valid_from, start_date, end_date) or \
-                is_between(current_rate_expiry_date.valid_from, start_date, end_date):
+                is_between(current_rate_expiry_date.valid_from - timedelta(microseconds=1), start_date, end_date):
             results.append(current_rate)
 
     if is_between(rates[-1].valid_from, start_date, end_date):
