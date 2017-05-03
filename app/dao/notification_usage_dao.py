@@ -21,13 +21,15 @@ def get_yearly_billing_data(service_id, year):
     start_date, end_date = get_financial_year(year)
     rates = get_rates_for_year(start_date, end_date, SMS_TYPE)
 
+    def get_valid_from(valid_from):
+        return start_date if valid_from < start_date else valid_from
+
     result = []
     for r, n in zip(rates, rates[1:]):
-        result.append(
-            sms_yearly_billing_data_query(r.rate, service_id, r.valid_from, n.valid_from))
+        result.append(sms_yearly_billing_data_query(r.rate, service_id, get_valid_from(r.valid_from), n.valid_from))
 
-    result.append(sms_yearly_billing_data_query(rates[-1].rate, service_id, rates[-1].valid_from, end_date))
-
+    result.append(
+        sms_yearly_billing_data_query(rates[-1].rate, service_id, get_valid_from(rates[-1].valid_from), end_date))
     result.append(email_yearly_billing_data_query(service_id, start_date, end_date))
 
     return sum(result, [])
