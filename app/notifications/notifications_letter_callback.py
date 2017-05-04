@@ -9,6 +9,7 @@ from flask import (
 )
 
 from app import statsd_client
+from app.celery.tasks import update_letter_notifications_statuses
 from app.clients.email.aws_ses import get_aws_responses
 from app.dao import (
     notifications_dao
@@ -29,11 +30,18 @@ register_errors(letter_callback_blueprint)
 @letter_callback_blueprint.route('/notifications/letter/dvla', methods=['POST'])
 def process_letter_response():
     try:
-        dvla_request = json.loads(request.data)
-        current_app.logger.info(dvla_request)
+        req_json = json.loads(request.data)
+        # The callback should have one record for an S3 Put Event.
+        filename = req_json['Message']['Records'][0]['s3']['object']['key']
+
+    except (ValueError, KeyError):
+        error = "DVLA callback failed: Invalid JSON"
+        raise InvalidRequest(error, status_code=400)
+
+    else:
+        current_app.logger.info('DVLA callback: Calling task to update letter notifications')
+        update_letter_notifications_statuses.apply_async([filename], queue='notify')
+
         return jsonify(
             result="success", message="DVLA callback succeeded"
         ), 200
-    except ValueError:
-        error = "DVLA callback failed: invalid json"
-        raise InvalidRequest(error, status_code=400)
