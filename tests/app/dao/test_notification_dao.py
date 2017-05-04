@@ -311,6 +311,8 @@ def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_
         data = _notification_json(sample_template, job_id=sample_job.id, status='sending')
         notification = Notification(**data)
         dao_create_notification(notification)
+        assert notification._status_enum == 'sending'
+        assert notification._status_fkey == 'sending'
 
     assert Notification.query.get(notification.id).status == 'sending'
 
@@ -321,6 +323,8 @@ def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_
     assert updated.updated_at == datetime(2000, 1, 2, 12, 0, 0)
     assert Notification.query.get(notification.id).status == 'delivered'
     assert notification.updated_at == datetime(2000, 1, 2, 12, 0, 0)
+    assert notification._status_enum == 'delivered'
+    assert notification._status_fkey == 'delivered'
 
 
 def test_should_not_update_status_by_id_if_not_sending_and_does_not_update_job(notify_db, notify_db_session):
@@ -825,12 +829,30 @@ def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_ses
         ) == months
 
 
-def test_update_notification(sample_notification, sample_template):
+def test_update_notification(sample_notification):
     assert sample_notification.status == 'created'
     sample_notification.status = 'failed'
     dao_update_notification(sample_notification)
     notification_from_db = Notification.query.get(sample_notification.id)
     assert notification_from_db.status == 'failed'
+
+
+def test_update_notification_with_no_notification_status(sample_notification):
+    # specifically, it has an old enum status, but not a new status (because the upgrade script has just run)
+    sample_notification._status_fkey = None
+    sample_notification._enum_status = 'created'
+    dao_update_notification(sample_notification)
+
+    assert sample_notification.status == 'created'
+    assert sample_notification._enum_status == 'created'
+    assert sample_notification._status_fkey == None
+
+    sample_notification.status = 'failed'
+    dao_update_notification(sample_notification)
+    notification_from_db = Notification.query.get(sample_notification.id)
+    assert notification_from_db.status == 'failed'
+    assert notification_from_db._status_enum == 'failed'
+    assert notification_from_db._status_fkey == 'failed'
 
 
 @freeze_time("2016-01-10 12:00:00.000000")

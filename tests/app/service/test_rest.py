@@ -1240,17 +1240,16 @@ def test_get_monthly_notification_stats(mocker, client, sample_service, url, exp
     assert json.loads(response.get_data(as_text=True)) == expected_json
 
 
-def test_get_services_with_detailed_flag(notify_api, notify_db, notify_db_session):
+def test_get_services_with_detailed_flag(client, notify_db, notify_db_session):
     notifications = [
         create_sample_notification(notify_db, notify_db_session),
         create_sample_notification(notify_db, notify_db_session),
         create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST)
     ]
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        resp = client.get(
-            '/service?detailed=True',
-            headers=[create_authorization_header()]
-        )
+    resp = client.get(
+        '/service?detailed=True',
+        headers=[create_authorization_header()]
+    )
 
     assert resp.status_code == 200
     data = json.loads(resp.get_data(as_text=True))['data']

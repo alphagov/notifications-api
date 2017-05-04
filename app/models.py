@@ -1,8 +1,9 @@
 import time
 import uuid
 import datetime
-from flask import url_for
+from flask import url_for, current_app
 
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
@@ -46,7 +47,12 @@ class HistoryModel:
 
     def update_from_original(self, original):
         for c in self.__table__.columns:
-            setattr(self, c.name, getattr(original, c.name))
+            # in some cases, columns may have different names to their underlying db column -  so only copy those
+            # that we can, and leave it up to subclasses to deal with any oddities/properties etc.
+            if hasattr(original, c.name):
+                setattr(self, c.name, getattr(original, c.name))
+            else:
+                current_app.logger.debug('{} has no column {} to copy from'.format(original, c.name))
 
 
 class User(db.Model):
@@ -621,6 +627,12 @@ NOTIFICATION_STATUS_TYPES = [
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
 
+class NotificationStatusTypes(db.Model):
+    __tablename__ = 'notification_status_types'
+
+    name = db.Column(db.String(255), primary_key=True)
+
+
 class Notification(db.Model):
     __tablename__ = 'notifications'
 
@@ -656,7 +668,15 @@ class Notification(db.Model):
         unique=False,
         nullable=True,
         onupdate=datetime.datetime.utcnow)
-    status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
+    _status_enum = db.Column('status', NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
+    _status_fkey = db.Column(
+        'notification_status',
+        db.String,
+        db.ForeignKey('notification_status_types.name'),
+        index=True,
+        nullable=True,
+        default='created'
+    )
     reference = db.Column(db.String, nullable=True, index=True)
     client_reference = db.Column(db.String, index=True, nullable=True)
     _personalisation = db.Column(db.String, nullable=True)
@@ -671,6 +691,15 @@ class Notification(db.Model):
     international = db.Column(db.Boolean, nullable=False, default=False)
     phone_prefix = db.Column(db.String, nullable=True)
     rate_multiplier = db.Column(db.Float(asdecimal=False), nullable=True)
+
+    @hybrid_property
+    def status(self):
+        return self._status_enum
+
+    @status.setter
+    def status(self, status):
+        self._status_fkey = status
+        self._status_enum = status
 
     @property
     def personalisation(self):
@@ -844,7 +873,15 @@ class NotificationHistory(db.Model, HistoryModel):
     sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
     sent_by = db.Column(db.String, nullable=True)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
-    status = db.Column(NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
+    _status_enum = db.Column('status', NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
+    _status_fkey = db.Column(
+        'notification_status',
+        db.String,
+        db.ForeignKey('notification_status_types.name'),
+        index=True,
+        nullable=True,
+        default='created'
+    )
     reference = db.Column(db.String, nullable=True, index=True)
     client_reference = db.Column(db.String, nullable=True)
 
@@ -855,7 +892,17 @@ class NotificationHistory(db.Model, HistoryModel):
     @classmethod
     def from_original(cls, notification):
         history = super().from_original(notification)
+        history.status = notification.status
         return history
+
+    @hybrid_property
+    def status(self):
+        return self._status_enum
+
+    @status.setter
+    def status(self, status):
+        self._status_fkey = status
+        self._status_enum = status
 
 
 INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
