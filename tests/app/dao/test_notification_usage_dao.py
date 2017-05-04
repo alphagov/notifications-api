@@ -12,7 +12,6 @@ def test_get_rates_for_year(notify_db, notify_db_session):
     set_up_rate(notify_db, datetime(2016, 5, 18), 0.016)
     set_up_rate(notify_db, datetime(2017, 3, 31, 23), 0.0158)
     start_date, end_date = get_financial_year(2017)
-    print(start_date)
     rates = get_rates_for_year(start_date, end_date, 'sms')
     assert len(rates) == 1
     assert datetime.strftime(rates[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2017-03-31 23:00:00"
