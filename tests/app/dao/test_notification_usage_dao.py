@@ -9,14 +9,25 @@ from tests.app.db import create_notification
 
 
 def test_get_rates_for_year(notify_db, notify_db_session):
+    set_up_rate(notify_db, datetime(2016, 5, 18), 0.016)
+    set_up_rate(notify_db, datetime(2017, 3, 31, 23), 0.0158)
+    start_date, end_date = get_financial_year(2017)
+    rates = get_rates_for_year(start_date, end_date, 'sms')
+    assert len(rates) == 1
+    assert datetime.strftime(rates[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2017-03-31 23:00:00"
+    assert rates[0].rate == 0.0158
+
+
+def test_get_rates_for_year_multiple_result_per_year(notify_db, notify_db_session):
     set_up_rate(notify_db, datetime(2016, 4, 1), 0.015)
-    set_up_rate(notify_db, datetime(2016, 9, 1), 0.016)
-    set_up_rate(notify_db, datetime(2017, 6, 1), 0.0175)
-    rates = get_rates_for_year(datetime(2016, 3, 31), datetime(2017, 3, 31), 'sms')
+    set_up_rate(notify_db, datetime(2016, 5, 18), 0.016)
+    set_up_rate(notify_db, datetime(2017, 4, 1), 0.0158)
+    start_date, end_date = get_financial_year(2016)
+    rates = get_rates_for_year(start_date, end_date, 'sms')
     assert len(rates) == 2
     assert datetime.strftime(rates[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2016-04-01 00:00:00"
     assert rates[0].rate == 0.015
-    assert datetime.strftime(rates[1].valid_from, '%Y-%m-%d %H:%M:%S') == "2016-09-01 00:00:00"
+    assert datetime.strftime(rates[1].valid_from, '%Y-%m-%d %H:%M:%S') == "2016-05-18 00:00:00"
     assert rates[1].rate == 0.016
 
 
