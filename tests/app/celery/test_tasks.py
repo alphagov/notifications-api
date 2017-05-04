@@ -38,6 +38,7 @@ from app.models import (
     Job)
 
 from tests.app import load_example_csv
+from tests.conftest import set_config
 from tests.app.conftest import (
     sample_service,
     sample_template,
@@ -1083,6 +1084,15 @@ def test_update_letter_notifications_statuses_raises_for_invalid_format(notify_a
 
     with pytest.raises(TypeError):
         update_letter_notifications_statuses(filename='foo.txt')
+
+
+def test_update_letter_notifications_statuses_calls_with_correct_bucket_location(notify_api, mocker):
+    invalid_file = b'ref-foo|Sent|1|Unsorted\nref-bar|Sent|2'
+    s3_mock = mocker.patch('app.celery.tasks.s3.get_s3_object')
+
+    with set_config(notify_api, 'NOTIFY_EMAIL_DOMAIN', 'foo.bar'):
+        update_letter_notifications_statuses(filename='foo.txt')
+        s3_mock.assert_called_with('{}-ftp'.format(current_app.config['NOTIFY_EMAIL_DOMAIN']), 'foo.txt')
 
 
 def test_update_letter_notifications_statuses_builds_updates_list(notify_api, mocker):

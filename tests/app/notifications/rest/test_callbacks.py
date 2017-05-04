@@ -29,8 +29,9 @@ def test_dvla_callback_returns_400_with_invalid_request(client):
     assert json_resp['message'] == 'DVLA callback failed: Invalid JSON'
 
 
-def test_dvla_callback_returns_200_with_valid_request(client):
+def test_dvla_callback_returns_200_with_valid_request(client, mocker):
     data = _sample_sns_s3_callback()
+    mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
     response = client.post(
         path='/notifications/letter/dvla',
         data=data,
@@ -42,8 +43,8 @@ def test_dvla_callback_returns_200_with_valid_request(client):
 
 
 def test_dvla_callback_calls_update_letter_notifications_task(client, mocker):
-    update_notifications_mock = \
-        mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses')
+    update_task = \
+        mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
     data = _sample_sns_s3_callback()
     response = client.post(
         path='/notifications/letter/dvla',
@@ -53,7 +54,8 @@ def test_dvla_callback_calls_update_letter_notifications_task(client, mocker):
     json_resp = json.loads(response.get_data(as_text=True))
 
     assert response.status_code == 200
-    assert update_notifications_mock.apply_async.called is True
+    assert update_task.called is True
+    update_task.assert_called_with(['bar.txt'], queue='notify')
 
 
 def test_firetext_callback_should_not_need_auth(client, mocker):

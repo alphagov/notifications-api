@@ -363,7 +363,8 @@ def get_template_class(template_type):
 @notify_celery.task(bind=True, name='update-letter-notifications-statuses')
 @statsd(namespace="tasks")
 def update_letter_notifications_statuses(self, filename):
-    response_file = s3.get_s3_object('development-notifications-csv-upload', filename).decode('utf-8')
+    bucket_location = '{}-ftp'.format(current_app.config['NOTIFY_EMAIL_DOMAIN'])
+    response_file = s3.get_s3_object(bucket_location, filename).decode('utf-8')
     lines = response_file.splitlines()
     notification_updates = []
 
