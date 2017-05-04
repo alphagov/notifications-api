@@ -12,15 +12,19 @@ from celery.exceptions import Retry
 from app import (encryption, DATETIME_FORMAT)
 from app.celery import provider_tasks
 from app.celery import tasks
-from app.celery.tasks import s3, build_dvla_file, create_dvla_file_contents, update_dvla_job_to_error
 from app.celery.tasks import (
+    s3,
+    build_dvla_file,
+    create_dvla_file_contents,
+    update_dvla_job_to_error,
     process_job,
     process_row,
     send_sms,
     send_email,
     persist_letter,
     get_template_class,
-    update_job_to_sent_to_dvla
+    update_job_to_sent_to_dvla,
+    update_letter_notifications_statuses
 )
 from app.dao import jobs_dao, services_dao
 from app.models import (
@@ -1071,3 +1075,29 @@ def test_update_dvla_job_to_error(sample_letter_template, sample_letter_job):
         assert not n.sent_by
 
     assert 'error' == Job.query.filter_by(id=sample_letter_job.id).one().job_status
+
+
+def test_update_letter_notifications_statuses_raises_for_invalid_format(notify_api, mocker):
+    invalid_file = b'ref-foo|Sent|1|Unsorted\nref-bar|Sent|2'
+    mocker.patch('app.celery.tasks.s3.get_s3_object', return_value=invalid_file)
+
+    with pytest.raises(TypeError):
+        update_letter_notifications_statuses(filename='foo.txt')
+
+
+def test_update_letter_notifications_statuses_builds_updates_list(notify_api, mocker):
+    valid_file = b'ref-foo|Sent|1|Unsorted\nref-bar|Sent|2|Sorted'
+    mocker.patch('app.celery.tasks.s3.get_s3_object', return_value=valid_file)
+    updates = update_letter_notifications_statuses(filename='foo.txt')
+
+    assert len(updates) == 2
+
+    assert updates[0].reference == 'ref-foo'
+    assert updates[0].status == 'Sent'
+    assert updates[0].page_count == '1'
+    assert updates[0].cost_threshold == 'Unsorted'
+
+    assert updates[1].reference == 'ref-bar'
+    assert updates[1].status == 'Sent'
+    assert updates[1].page_count == '2'
+    assert updates[1].cost_threshold == 'Sorted'

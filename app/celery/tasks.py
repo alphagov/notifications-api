@@ -1,6 +1,7 @@
 import random
 
 from datetime import (datetime)
+from collections import namedtuple
 
 from flask import current_app
 from notifications_utils.recipients import (
@@ -23,7 +24,10 @@ from app.dao.jobs_dao import (
     all_notifications_are_created_for_job,
     dao_get_all_notifications_for_job,
     dao_update_job_status)
-from app.dao.notifications_dao import get_notification_by_id, dao_update_notifications_sent_to_dvla
+from app.dao.notifications_dao import (
+    get_notification_by_id,
+    dao_update_notifications_sent_to_dvla
+)
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
@@ -354,3 +358,29 @@ def get_template_class(template_type):
         # since we don't need rendering capabilities (we only need to extract placeholders) both email and letter can
         # use the same base template
         return WithSubjectTemplate
+
+
+@notify_celery.task(bind=True, name='update-letter-notifications-statuses')
+@statsd(namespace="tasks")
+def update_letter_notifications_statuses(self, filename):
+    response_file = s3.get_s3_object('development-notifications-csv-upload', filename).decode('utf-8')
+    lines = response_file.splitlines()
+    notification_updates = []
+
+    try:
+        NotificationUpdate = namedtuple('NotificationUpdate', ['reference', 'status', 'page_count', 'cost_threshold'])
+        for line in lines:
+            notification_updates.append(NotificationUpdate(*line.split('|')))
+
+    except TypeError:
+        current_app.logger.exception('DVLA response file has an invalid format')
+        raise
+
+    else:
+        if notification_updates:
+            for update in notification_updates:
+                current_app.logger.error(str(update))
+                # TODO: Update notifications with desired status
+            return notification_updates
+        else:
+            current_app.logger.exception('DVLA response file contained no updates')
