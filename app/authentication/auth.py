@@ -5,7 +5,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
 from notifications_python_client.errors import TokenDecodeError, TokenExpiredError, TokenIssuerError
 
-from app.dao.services_dao import dao_fetch_service_by_id
+from app.dao.services_dao import dao_fetch_service_by_id_with_api_keys
 
 
 class AuthError(Exception):
@@ -59,7 +59,7 @@ def requires_auth():
     client = __get_token_issuer(auth_token)
 
     try:
-        service = dao_fetch_service_by_id(client)
+        service = dao_fetch_service_by_id_with_api_keys(client)
     except DataError:
         raise AuthError("Invalid token: service id is not the right data type", 403)
     except NoResultFound:
@@ -81,7 +81,9 @@ def requires_auth():
             raise AuthError("Invalid token: API key revoked", 403)
 
         g.service_id = api_key.service_id
+        _request_ctx_stack.top.authenticated_service = service
         _request_ctx_stack.top.api_user = api_key
+
         return
     else:
         # service has API keys, but none matching the one the user provided
