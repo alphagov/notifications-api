@@ -1,7 +1,7 @@
 from flask import request, jsonify, current_app
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import api_user
+from app import api_user, authenticated_service
 from app.dao import services_dao, templates_dao
 from app.models import SMS_TYPE, EMAIL_TYPE, PRIORITY
 from app.notifications.process_notifications import (
@@ -32,17 +32,15 @@ def post_notification(notification_type):
     else:
         form = validate(request.get_json(), post_sms_request)
 
-    service = services_dao.dao_fetch_service_by_id(api_user.service_id)
-
-    check_rate_limiting(service, api_user)
+    check_rate_limiting(authenticated_service, api_user)
 
     form_send_to = form['phone_number'] if notification_type == SMS_TYPE else form['email_address']
     send_to = validate_and_format_recipient(send_to=form_send_to,
                                             key_type=api_user.key_type,
-                                            service=service,
+                                            service=authenticated_service,
                                             notification_type=notification_type)
 
-    template, template_with_content = __validate_template(form, service, notification_type)
+    template, template_with_content = __validate_template(form, authenticated_service, notification_type)
 
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(send_to, notification_type)
@@ -50,7 +48,7 @@ def post_notification(notification_type):
     notification = persist_notification(template_id=template.id,
                                         template_version=template.version,
                                         recipient=form_send_to,
-                                        service=service,
+                                        service=authenticated_service,
                                         personalisation=form.get('personalisation', None),
                                         notification_type=notification_type,
                                         api_key_id=api_user.id,
@@ -60,23 +58,32 @@ def post_notification(notification_type):
 
     if not simulated:
         queue_name = 'priority' if template.process_type == PRIORITY else None
-        send_notification_to_queue(notification=notification, research_mode=service.research_mode, queue=queue_name)
+        send_notification_to_queue(
+            notification=notification,
+            research_mode=authenticated_service.research_mode,
+            queue=queue_name
+        )
+
     else:
         current_app.logger.info("POST simulated notification for id: {}".format(notification.id))
     if notification_type == SMS_TYPE:
-        sms_sender = service.sms_sender if service.sms_sender else current_app.config.get('FROM_NUMBER')
+        sms_sender = (authenticated_service.sms_sender
+                      if authenticated_service.sms_sender
+                      else current_app.config.get('FROM_NUMBER')
+                      )
         resp = create_post_sms_response_from_notification(notification=notification,
                                                           body=str(template_with_content),
                                                           from_number=sms_sender,
                                                           url_root=request.url_root,
-                                                          service_id=service.id)
+                                                          service_id=authenticated_service.id)
     else:
         resp = create_post_email_response_from_notification(notification=notification,
                                                             content=str(template_with_content),
                                                             subject=template_with_content.subject,
-                                                            email_from=service.email_from,
+                                                            email_from=authenticated_service.email_from,
                                                             url_root=request.url_root,
-                                                            service_id=service.id)
+                                                            service_id=authenticated_service.id)
+
     return jsonify(resp), 201
 
 
