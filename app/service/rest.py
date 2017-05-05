@@ -271,6 +271,13 @@ def get_all_notifications_for_service(service_id):
     ), 200
 
 
+@service_blueprint.route('/<uuid:service_id>/notification/<search_term>', methods=['GET'])
+def search_for_notification_by_to_field(service_id, search_term):
+    results = notifications_dao.dao_get_notifications_by_to_field(service_id, search_term)
+    return jsonify(
+        notifications=notification_with_template_schema.dump(results, many=True).data), 200
+
+
 @service_blueprint.route('/<uuid:service_id>/notifications/monthly', methods=['GET'])
 def get_monthly_notification_stats(service_id):
     service = dao_fetch_service_by_id(service_id)

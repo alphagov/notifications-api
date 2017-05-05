@@ -456,3 +456,10 @@ def dao_update_notifications_sent_to_dvla(job_id, provider):
         {'status': NOTIFICATION_SENDING, "sent_by": provider, "sent_at": now, "updated_at": now})
 
     return updated_count
+
+
+@statsd(namespace="dao")
+def dao_get_notifications_by_to_field(service_id, search_term):
+    return Notification.query.filter(
+        Notification.service_id == service_id,
+        func.replace(func.lower(Notification.to), " ", "") == search_term.lower().replace(" ", "")).all()
