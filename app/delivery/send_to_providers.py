@@ -1,6 +1,7 @@
 from urllib import parse
 from datetime import datetime
 
+from app.celery.tasks import update_notification_statistics
 from flask import current_app
 from notifications_utils.recipients import (
     validate_and_format_phone_number
@@ -56,6 +57,8 @@ def send_sms_to_provider(notification):
             else:
                 notification.billable_units = template.fragment_count
                 update_notification(notification, provider, notification.international)
+
+        update_notification_statistics.apply_async([str(notification.id)], queue='update-notification-statistics')
 
         current_app.logger.info(
             "SMS {} sent to provider {} at {}".format(notification.id, provider.get_name(), notification.sent_at)

@@ -26,6 +26,7 @@ from app.dao.jobs_dao import (
 from app.dao.notifications_dao import get_notification_by_id, dao_update_notifications_sent_to_dvla
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
+from app.dao.statistics_dao import save_notification_statistics
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
     EMAIL_TYPE,
@@ -37,11 +38,12 @@ from app.models import (
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_FINISHED,
     JOB_STATUS_READY_TO_SEND,
-    JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_ERROR)
-from app.notifications.process_notifications import persist_notification
+    JOB_STATUS_SENT_TO_DVLA,
+    JOB_STATUS_ERROR)
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
 from notifications_utils.s3 import s3upload
+from app.notifications.process_notifications import persist_notification
 
 
 @notify_celery.task(name="process-job")
@@ -354,3 +356,13 @@ def get_template_class(template_type):
         # since we don't need rendering capabilities (we only need to extract placeholders) both email and letter can
         # use the same base template
         return WithSubjectTemplate
+
+
+@notify_celery.task(bind=True, name='update-notification-statistics')
+@statsd(namespace="tasks")
+def update_notification_statistics(notification_id):
+    notification = get_notification_by_id(notification_id)
+
+    save_notification_statistics()
+
+    current_app.logger.info("Updated {} notification statistics".format(notification_id))

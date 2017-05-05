@@ -150,6 +150,7 @@ class Config(object):
         }
     }
     CELERY_QUEUES = [
+        Queue('update-notification-statistics', Exchange('default'), routing_key='update-notification-statistics'),
         Queue('process-job', Exchange('default'), routing_key='process-job'),
         Queue('retry', Exchange('default'), routing_key='retry'),
         Queue('notify', Exchange('default'), routing_key='notify')
