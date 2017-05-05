@@ -198,6 +198,7 @@ class Config(object):
 ######################
 
 class Development(Config):
+    SQLALCHEMY_ECHO = False
     NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
     NOTIFY_ENVIRONMENT = 'development'
@@ -236,7 +237,7 @@ class Test(Config):
         Queue('send-email', Exchange('default'), routing_key='send-email'),
         Queue('research-mode', Exchange('default'), routing_key='research-mode')
     ]
-    REDIS_ENABLED = True
+
     API_RATE_LIMIT_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"
 
@@ -295,6 +296,7 @@ class Sandbox(CloudFoundryConfig):
     NOTIFY_ENVIRONMENT = 'sandbox'
     CSV_UPLOAD_BUCKET_NAME = 'cf-sandbox-notifications-csv-upload'
     FROM_NUMBER = 'sandbox'
+    REDIS_ENABLED = False
 
 
 configs = {
