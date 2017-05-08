@@ -33,13 +33,13 @@ class Config(object):
     MMG_URL = os.environ['MMG_URL']
 
     # MMG API Key
-    MMG_API_KEY = os.environ['MMG_API_KEY']
+    MMG_API_KEY = "BOEN" # os.environ['MMG_API_KEY']
 
     # Firetext API Key
-    FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
+    FIRETEXT_API_KEY = "BORJKEN" #os.getenv("FIRETEXT_API_KEY")
 
     # Firetext simluation key
-    LOADTESTING_API_KEY = os.getenv("LOADTESTING_API_KEY")
+    LOADTESTING_API_KEY = "BEOKRN" # os.getenv("LOADTESTING_API_KEY")
 
     # Hosted graphite statsd prefix
     STATSD_PREFIX = os.getenv('STATSD_PREFIX')

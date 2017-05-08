@@ -354,13 +354,3 @@ def get_template_class(template_type):
         # since we don't need rendering capabilities (we only need to extract placeholders) both email and letter can
         # use the same base template
         return WithSubjectTemplate
-
-
-@notify_celery.task(bind=True, name='update-notification-statistics')
-@statsd(namespace="tasks")
-def update_notification_statistics(notification_id):
-    notification = get_notification_by_id(notification_id)
-
-    save_notification_statistics()
-
-    current_app.logger.info("Updated {} notification statistics".format(notification_id))

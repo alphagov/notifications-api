@@ -1,8 +1,8 @@
 from urllib import parse
 from datetime import datetime
 
-from app.celery.tasks import update_notification_statistics
 from flask import current_app
+from app.celery.statistics_tasks import update_notification_statistics
 from notifications_utils.recipients import (
     validate_and_format_phone_number
 )
@@ -45,12 +45,13 @@ def send_sms_to_provider(notification):
             send_sms_response(provider.get_name(), str(notification.id), notification.to)
         else:
             try:
-                provider.send_sms(
-                    to=validate_and_format_phone_number(notification.to, international=notification.international),
-                    content=str(template),
-                    reference=str(notification.id),
-                    sender=service.sms_sender
-                )
+                print("SKIPPING")
+                # provider.send_sms(
+                #     to=validate_and_format_phone_number(notification.to, international=notification.international),
+                #     content=str(template),
+                #     reference=str(notification.id),
+                #     sender=service.sms_sender
+                # )
             except Exception as e:
                 dao_toggle_sms_provider(provider.name)
                 raise e

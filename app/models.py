@@ -273,6 +273,7 @@ class NotificationStatistics(db.Model):
     emails_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     emails_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     emails_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_billable_units = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     sms_requested = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     sms_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     sms_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
