@@ -1621,7 +1621,7 @@ def test_search_for_notification_by_to_field(client, notify_db, notify_db_sessio
                                                to_field="+447700900855")
     notification2 = create_sample_notification(notify_db, notify_db_session, to_field="jack@gmail.com")
 
-    response = client.get('/service/{}/notification/{}'.format(notification1.service_id, "jack@gmail.com"),
+    response = client.get('/service/{}/notifications?to={}'.format(notification1.service_id, "jack@gmail.com"),
                           headers=[create_authorization_header()])
     assert response.status_code == 200
     result = json.loads(response.get_data(as_text=True))
@@ -1635,7 +1635,7 @@ def test_search_for_notification_by_to_field_return_empty_list_if_there_is_no_ma
                                                to_field="+447700900855")
     notification2 = create_sample_notification(notify_db, notify_db_session, to_field="jack@gmail.com")
 
-    response = client.get('/service/{}/notification/{}'.format(notification1.service_id, "+447700900800"),
+    response = client.get('/service/{}/notifications?to={}'.format(notification1.service_id, "+447700900800"),
                           headers=[create_authorization_header()])
     assert response.status_code == 200
     assert len(json.loads(response.get_data(as_text=True))["notifications"]) == 0
@@ -1651,7 +1651,7 @@ def test_search_for_notification_by_to_field_return_multiple_matches(
                                                to_field="+44770 0900 855")
     notification4 = create_sample_notification(notify_db, notify_db_session, to_field="jack@gmail.com")
 
-    response = client.get('/service/{}/notification/{}'.format(notification1.service_id, "+447700900855"),
+    response = client.get('/service/{}/notifications?to={}'.format(notification1.service_id, "+447700900855"),
                           headers=[create_authorization_header()])
     assert response.status_code == 200
     result = json.loads(response.get_data(as_text=True))
