@@ -2,7 +2,7 @@ from flask import current_app
 
 from app import notify_celery
 from app.dao.notifications_dao import get_notification_by_id
-from app.dao.statistics_dao import save_notification_statistics, save_template_statistics
+from app.dao.statistics_dao import save_notification_statistics, save_template_statistics, save_job_statistics
 from app.statsd_decorators import statsd
 
 
@@ -12,5 +12,8 @@ def update_notification_statistics(self, notification_id):
     notification = get_notification_by_id(notification_id)
 
     save_notification_statistics(notification)
+    save_template_statistics(notification)
+    if notification.job_id:
+        save_job_statistics(notification)
 
     current_app.logger.info("Updated {} notification statistics".format(notification_id))
