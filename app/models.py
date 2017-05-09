@@ -895,6 +895,10 @@ class NotificationHistory(db.Model, HistoryModel):
         history.status = notification.status
         return history
 
+    def update_from_original(self, original):
+        super().update_from_original(original)
+        self.status = original.status
+
     @hybrid_property
     def status(self):
         return self._status_enum
