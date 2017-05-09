@@ -6,4 +6,3 @@ from app.statsd_decorators import statsd
 @statsd(namespace="tasks")
 def record_initial_job_statistics(notification):
     pass
-
