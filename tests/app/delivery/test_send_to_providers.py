@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from collections import namedtuple
-from unittest.mock import ANY
+from unittest.mock import ANY, call
 
 import pytest
 from notifications_utils.recipients import validate_and_format_phone_number
@@ -18,8 +18,7 @@ from app.models import (
     KEY_TYPE_TEST,
     KEY_TYPE_TEAM,
     BRANDING_ORG,
-    BRANDING_BOTH,
-    ProviderDetails)
+    BRANDING_BOTH)
 
 from tests.app.db import create_service, create_template, create_notification
 
@@ -64,6 +63,7 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
                                           status='created')
 
     mocker.patch('app.mmg_client.send_sms')
+    stats_mock = mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     send_to_providers.send_sms_to_provider(
         db_notification
@@ -75,6 +75,9 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
         reference=str(db_notification.id),
         sender=None
     )
+
+    stats_mock.assert_called_once_with(db_notification)
+
     notification = Notification.query.filter_by(id=db_notification.id).one()
 
     assert notification.status == 'sending'
@@ -95,6 +98,7 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
     )
 
     mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    stats_mock = mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     send_to_providers.send_email_to_provider(
         db_notification
@@ -108,6 +112,8 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
         html_body=ANY,
         reply_to_address=None
     )
+    stats_mock.assert_called_once_with(db_notification)
+
     assert '<!DOCTYPE html' in app.aws_ses_client.send_email.call_args[1]['html_body']
     assert '&lt;em&gt;some HTML&lt;/em&gt;' in app.aws_ses_client.send_email.call_args[1]['html_body']
 
@@ -118,17 +124,29 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
     assert notification.personalisation == {"name": "Jo"}
 
 
-@pytest.mark.parametrize("client_send",
-                         ["app.aws_ses_client.send_email",
-                          "app.mmg_client.send_sms",
-                          "app.firetext_client.send_sms"])
-def test_should_not_send_message_when_service_is_inactive_notiifcation_is_in_tech_failure(
-        sample_service, sample_notification, mocker, client_send):
+def test_should_not_send_email_message_when_service_is_inactive_notifcation_is_in_tech_failure(
+        sample_service, sample_notification, mocker
+):
     sample_service.active = False
-    send_mock = mocker.patch(client_send, return_value='reference')
+    send_mock = mocker.patch("app.aws_ses_client.send_email", return_value='reference')
+    stats_mock = mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     send_to_providers.send_email_to_provider(sample_notification)
     send_mock.assert_not_called()
+    stats_mock.assert_not_called()
+    assert Notification.query.get(sample_notification.id).status == 'technical-failure'
+
+
+@pytest.mark.parametrize("client_send", ["app.mmg_client.send_sms", "app.firetext_client.send_sms"])
+def test_should_not_send_sms_message_when_service_is_inactive_notifcation_is_in_tech_failure(
+        sample_service, sample_notification, mocker, client_send):
+    sample_service.active = False
+    send_mock = mocker.patch(client_send, return_value='reference')
+    stats_mock = mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+
+    send_to_providers.send_sms_to_provider(sample_notification)
+    send_mock.assert_not_called()
+    stats_mock.assert_not_called()
     assert Notification.query.get(sample_notification.id).status == 'technical-failure'
 
 
@@ -138,6 +156,8 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     db_notification = create_notification(template=sample_template, to_field='+447234123123', status='created')
 
     mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+
     version_on_notification = sample_template.version
 
     # Change the template
@@ -171,10 +191,12 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     (True, KEY_TYPE_NORMAL),
     (False, KEY_TYPE_TEST)
 ])
-def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_service, sample_notification, mocker,
-                                                             research_mode, key_type):
+def test_should_call_send_sms_response_task_if_research_mode(
+        notify_db, sample_service, sample_notification, mocker, research_mode, key_type
+):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
+    stats_mock = mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     if research_mode:
         sample_service.research_mode = True
@@ -187,6 +209,8 @@ def test_should_call_send_sms_response_task_if_research_mode(notify_db, sample_s
         sample_notification
     )
     assert not mmg_client.send_sms.called
+    stats_mock.assert_called_once_with(sample_notification)
+
     app.delivery.send_to_providers.send_sms_response.assert_called_once_with(
         'mmg', str(sample_notification.id), sample_notification.to
     )
@@ -209,6 +233,8 @@ def test_should_set_billable_units_to_zero_in_research_mode_or_test_key(
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
+    stats_mock = mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+
     if research_mode:
         sample_service.research_mode = True
         notify_db.session.add(sample_service)
@@ -218,7 +244,7 @@ def test_should_set_billable_units_to_zero_in_research_mode_or_test_key(
     send_to_providers.send_sms_to_provider(
         sample_notification
     )
-
+    stats_mock.assert_called_once_with(sample_notification)
     assert notifications_dao.get_notification_by_id(sample_notification.id).billable_units == 0
 
 
@@ -228,14 +254,16 @@ def test_should_not_send_to_provider_when_status_is_not_created(
 ):
     notification = create_notification(template=sample_template, status='sending')
     mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.delivery.send_to_providers.send_sms_response')
+    response_mock = mocker.patch('app.delivery.send_to_providers.send_sms_response')
+    stats_mock = mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     send_to_providers.send_sms_to_provider(
         notification
     )
 
     app.mmg_client.send_sms.assert_not_called()
-    app.delivery.send_to_providers.send_sms_response.assert_not_called()
+    response_mock.assert_not_called()
+    stats_mock.assert_not_called()
 
 
 def test_should_send_sms_sender_from_service_if_present(
@@ -249,6 +277,7 @@ def test_should_send_sms_sender_from_service_if_present(
     sample_service.sms_sender = 'elevenchars'
 
     mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     send_to_providers.send_sms_to_provider(
         db_notification
@@ -276,6 +305,7 @@ def test_should_send_sms_with_downgraded_content(notify_db_session, mocker):
     )
 
     mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     send_to_providers.send_sms_to_provider(db_notification)
 
@@ -308,14 +338,16 @@ def test_send_email_to_provider_should_call_research_mode_task_response_task_if_
     mocker.patch('app.uuid.uuid4', return_value=reference)
     mocker.patch('app.aws_ses_client.send_email')
     mocker.patch('app.delivery.send_to_providers.send_email_response')
+    stats_mock = mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     send_to_providers.send_email_to_provider(
         notification
     )
+
     assert not app.aws_ses_client.send_email.called
+    stats_mock.assert_called_once_with(notification)
     app.delivery.send_to_providers.send_email_response.assert_called_once_with('ses', str(reference), 'john@smith.com')
     persisted_notification = Notification.query.filter_by(id=notification.id).one()
-
     assert persisted_notification.to == 'john@smith.com'
     assert persisted_notification.template_id == sample_email_template.id
     assert persisted_notification.status == 'sending'
@@ -333,11 +365,12 @@ def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_c
     notification = create_notification(template=sample_email_template, status='sending')
     mocker.patch('app.aws_ses_client.send_email')
     mocker.patch('app.delivery.send_to_providers.send_email_response')
+    stats_mock = mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     send_to_providers.send_sms_to_provider(
         notification
     )
-
+    stats_mock.assert_not_called()
     app.aws_ses_client.send_email.assert_not_called()
     app.delivery.send_to_providers.send_email_response.assert_not_called()
 
@@ -347,6 +380,7 @@ def test_send_email_should_use_service_reply_to_email(
         sample_email_template,
         mocker):
     mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     db_notification = create_notification(template=sample_email_template)
     sample_service.reply_to_email_address = 'foo@bar.com'
@@ -430,6 +464,7 @@ def test_get_logo_url_works_for_different_environments(base_url, expected_url):
 def test_should_not_set_billable_units_if_research_mode(notify_db, sample_service, sample_notification, mocker):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
+    stats_mock = mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     sample_service.research_mode = True
     notify_db.session.add(sample_service)
@@ -438,7 +473,7 @@ def test_should_not_set_billable_units_if_research_mode(notify_db, sample_servic
     send_to_providers.send_sms_to_provider(
         sample_notification
     )
-
+    stats_mock.assert_called_once_with(sample_notification)
     persisted_notification = notifications_dao.get_notification_by_id(sample_notification.id)
     assert persisted_notification.billable_units == 0
 
@@ -451,15 +486,19 @@ def test_should_not_set_billable_units_if_research_mode(notify_db, sample_servic
     (True, KEY_TYPE_TEAM, 0),
     (False, KEY_TYPE_TEAM, 1)
 ])
-def test_should_update_billable_units_according_to_research_mode_and_key_type(notify_db,
-                                                                              sample_service,
-                                                                              sample_notification,
-                                                                              mocker,
-                                                                              research_mode,
-                                                                              key_type,
-                                                                              billable_units):
+def test_should_update_billable_units_according_to_research_mode_and_key_type(
+    notify_db,
+    sample_service,
+    sample_notification,
+    mocker,
+    research_mode,
+    key_type,
+    billable_units
+):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
+    stats_mock = mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+
     if research_mode:
         sample_service.research_mode = True
         notify_db.session.add(sample_service)
@@ -470,7 +509,7 @@ def test_should_update_billable_units_according_to_research_mode_and_key_type(no
     send_to_providers.send_sms_to_provider(
         sample_notification
     )
-
+    stats_mock.assert_called_once_with(sample_notification)
     assert sample_notification.billable_units == billable_units
 
 
@@ -500,6 +539,7 @@ def test_should_send_sms_to_international_providers(
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.firetext_client.send_sms')
+    stats_mock = mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     send_to_providers.send_sms_to_provider(
         db_notification_uk
@@ -526,6 +566,11 @@ def test_should_send_sms_to_international_providers(
     notification_uk = Notification.query.filter_by(id=db_notification_uk.id).one()
     notification_int = Notification.query.filter_by(id=db_notification_international.id).one()
 
+    stats_mock.assert_has_calls([
+        call(db_notification_uk),
+        call(db_notification_international)
+    ])
+
     assert notification_uk.status == 'sending'
     assert notification_uk.sent_by == 'firetext'
     assert notification_int.status == 'sent'
@@ -545,6 +590,7 @@ def test_should_send_international_sms_with_formatted_phone_number(
 
     send_notification_mock = mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     send_to_providers.send_sms_to_provider(
         notification
@@ -566,6 +612,7 @@ def test_should_set_international_phone_number_to_sent_status(
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     send_to_providers.send_sms_to_provider(
         notification

@@ -1,4 +1,5 @@
 from datetime import datetime
+from unittest.mock import call
 
 from flask import json
 from freezegun import freeze_time
@@ -19,7 +20,9 @@ def test_ses_callback_should_not_need_auth(client):
     assert response.status_code == 404
 
 
-def test_ses_callback_should_fail_if_invalid_json(client):
+def test_ses_callback_should_fail_if_invalid_json(client, mocker):
+    stats_mock = mocker.patch('app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks')
+
     response = client.post(
         path='/notifications/email/ses',
         data="nonsense",
@@ -29,9 +32,12 @@ def test_ses_callback_should_fail_if_invalid_json(client):
     assert response.status_code == 400
     assert json_resp['result'] == 'error'
     assert json_resp['message'] == 'SES callback failed: invalid json'
+    stats_mock.assert_not_called()
 
 
-def test_ses_callback_should_autoconfirm_subscriptions(client, rmock):
+def test_ses_callback_should_autoconfirm_subscriptions(client, rmock, mocker):
+    stats_mock = mocker.patch('app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks')
+
     endpoint = json.loads(ses_confirmation_callback())['SubscribeURL']
     rmock.request(
         "GET",
@@ -51,9 +57,12 @@ def test_ses_callback_should_autoconfirm_subscriptions(client, rmock):
     assert response.status_code == 200
     assert json_resp['result'] == 'success'
     assert json_resp['message'] == 'SES callback succeeded'
+    stats_mock.assert_not_called()
 
 
-def test_ses_callback_autoconfirm_raises_exception_if_not_200(client, rmock):
+def test_ses_callback_autoconfirm_raises_exception_if_not_200(client, rmock, mocker):
+    stats_mock = mocker.patch('app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks')
+
     endpoint = json.loads(ses_confirmation_callback())['SubscribeURL']
     rmock.request(
         "GET",
@@ -71,9 +80,12 @@ def test_ses_callback_autoconfirm_raises_exception_if_not_200(client, rmock):
     assert rmock.called
     assert rmock.request_history[0].url == endpoint
     assert exc.value.response.status_code == 405
+    stats_mock.assert_not_called()
 
 
-def test_ses_callback_should_fail_if_invalid_notification_type(client):
+def test_ses_callback_should_fail_if_invalid_notification_type(client, mocker):
+    stats_mock = mocker.patch('app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks')
+
     response = client.post(
         path='/notifications/email/ses',
         data=ses_invalid_notification_type_callback(),
@@ -83,9 +95,12 @@ def test_ses_callback_should_fail_if_invalid_notification_type(client):
     assert response.status_code == 400
     assert json_resp['result'] == 'error'
     assert json_resp['message'] == 'SES callback failed: status Unknown not found'
+    stats_mock.assert_not_called()
 
 
-def test_ses_callback_should_fail_if_missing_message_id(client):
+def test_ses_callback_should_fail_if_missing_message_id(client, mocker):
+    stats_mock = mocker.patch('app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks')
+
     response = client.post(
         path='/notifications/email/ses',
         data=ses_missing_notification_id_callback(),
@@ -95,9 +110,12 @@ def test_ses_callback_should_fail_if_missing_message_id(client):
     assert response.status_code == 400
     assert json_resp['result'] == 'error'
     assert json_resp['message'] == 'SES callback failed: messageId missing'
+    stats_mock.assert_not_called()
 
 
-def test_ses_callback_should_fail_if_notification_cannot_be_found(notify_db, notify_db_session, client):
+def test_ses_callback_should_fail_if_notification_cannot_be_found(notify_db, notify_db_session, client, mocker):
+    stats_mock = mocker.patch('app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks')
+
     response = client.post(
         path='/notifications/email/ses',
         data=ses_invalid_notification_id_callback(),
@@ -107,6 +125,7 @@ def test_ses_callback_should_fail_if_notification_cannot_be_found(notify_db, not
     assert response.status_code == 404
     assert json_resp['result'] == 'error'
     assert json_resp['message'] == 'SES callback failed: notification either not found or already updated from sending. Status delivered for notification reference missing'  # noqa
+    stats_mock.assert_not_called()
 
 
 def test_ses_callback_should_update_notification_status(
@@ -118,6 +137,10 @@ def test_ses_callback_should_update_notification_status(
     with freeze_time('2001-01-01T12:00:00'):
         mocker.patch('app.statsd_client.incr')
         mocker.patch('app.statsd_client.timing_with_dates')
+        stats_mock = mocker.patch(
+            'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
+        )
+
         notification = create_sample_notification(
             notify_db,
             notify_db_session,
@@ -143,6 +166,7 @@ def test_ses_callback_should_update_notification_status(
             "callback.ses.elapsed-time", datetime.utcnow(), notification.sent_at
         )
         statsd_client.incr.assert_any_call("callback.ses.delivered")
+        stats_mock.assert_called_once_with(notification)
 
 
 def test_ses_callback_should_update_multiple_notification_status_sent(
@@ -151,6 +175,11 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
         notify_db_session,
         sample_email_template,
         mocker):
+
+    stats_mock = mocker.patch(
+        'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
+    )
+
     notification1 = create_sample_notification(
         notify_db,
         notify_db_session,
@@ -194,12 +223,23 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
     assert resp1.status_code == 200
     assert resp2.status_code == 200
     assert resp3.status_code == 200
+    stats_mock.assert_has_calls([
+        call(notification1),
+        call(notification2),
+        call(notification3)
+    ])
 
 
 def test_ses_callback_should_set_status_to_temporary_failure(client,
                                                              notify_db,
                                                              notify_db_session,
-                                                             sample_email_template):
+                                                             sample_email_template,
+                                                             mocker):
+
+    stats_mock = mocker.patch(
+        'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
+    )
+
     notification = create_sample_notification(
         notify_db,
         notify_db_session,
@@ -220,12 +260,18 @@ def test_ses_callback_should_set_status_to_temporary_failure(client,
     assert json_resp['result'] == 'success'
     assert json_resp['message'] == 'SES callback succeeded'
     assert get_notification_by_id(notification.id).status == 'temporary-failure'
+    stats_mock.assert_called_once_with(notification)
 
 
 def test_ses_callback_should_not_set_status_once_status_is_delivered(client,
                                                                      notify_db,
                                                                      notify_db_session,
-                                                                     sample_email_template):
+                                                                     sample_email_template,
+                                                                     mocker):
+    stats_mock = mocker.patch(
+        'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
+    )
+
     notification = create_sample_notification(
         notify_db,
         notify_db_session,
@@ -247,12 +293,18 @@ def test_ses_callback_should_not_set_status_once_status_is_delivered(client,
     assert json_resp['result'] == 'error'
     assert json_resp['message'] == 'SES callback failed: notification either not found or already updated from sending. Status temporary-failure for notification reference ref'  # noqa
     assert get_notification_by_id(notification.id).status == 'delivered'
+    stats_mock.assert_not_called()
 
 
 def test_ses_callback_should_set_status_to_permanent_failure(client,
                                                              notify_db,
                                                              notify_db_session,
-                                                             sample_email_template):
+                                                             sample_email_template,
+                                                             mocker):
+    stats_mock = mocker.patch(
+        'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
+    )
+
     notification = create_sample_notification(
         notify_db,
         notify_db_session,
@@ -274,6 +326,7 @@ def test_ses_callback_should_set_status_to_permanent_failure(client,
     assert json_resp['result'] == 'success'
     assert json_resp['message'] == 'SES callback succeeded'
     assert get_notification_by_id(notification.id).status == 'permanent-failure'
+    stats_mock.assert_called_once_with(notification)
 
 
 def ses_notification_callback(ref='ref'):
