@@ -21,7 +21,9 @@ def test_ses_callback_should_not_need_auth(client):
 
 
 def test_ses_callback_should_fail_if_invalid_json(client, mocker):
-    stats_mock = mocker.patch('app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks')
+    stats_mock = mocker.patch(
+        'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
+    )
 
     response = client.post(
         path='/notifications/email/ses',
@@ -36,7 +38,9 @@ def test_ses_callback_should_fail_if_invalid_json(client, mocker):
 
 
 def test_ses_callback_should_autoconfirm_subscriptions(client, rmock, mocker):
-    stats_mock = mocker.patch('app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks')
+    stats_mock = mocker.patch(
+        'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
+    )
 
     endpoint = json.loads(ses_confirmation_callback())['SubscribeURL']
     rmock.request(
@@ -61,7 +65,9 @@ def test_ses_callback_should_autoconfirm_subscriptions(client, rmock, mocker):
 
 
 def test_ses_callback_autoconfirm_raises_exception_if_not_200(client, rmock, mocker):
-    stats_mock = mocker.patch('app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks')
+    stats_mock = mocker.patch(
+        'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
+    )
 
     endpoint = json.loads(ses_confirmation_callback())['SubscribeURL']
     rmock.request(
@@ -84,7 +90,9 @@ def test_ses_callback_autoconfirm_raises_exception_if_not_200(client, rmock, moc
 
 
 def test_ses_callback_should_fail_if_invalid_notification_type(client, mocker):
-    stats_mock = mocker.patch('app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks')
+    stats_mock = mocker.patch(
+        'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
+    )
 
     response = client.post(
         path='/notifications/email/ses',
@@ -99,7 +107,9 @@ def test_ses_callback_should_fail_if_invalid_notification_type(client, mocker):
 
 
 def test_ses_callback_should_fail_if_missing_message_id(client, mocker):
-    stats_mock = mocker.patch('app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks')
+    stats_mock = mocker.patch(
+        'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
+    )
 
     response = client.post(
         path='/notifications/email/ses',
@@ -114,7 +124,9 @@ def test_ses_callback_should_fail_if_missing_message_id(client, mocker):
 
 
 def test_ses_callback_should_fail_if_notification_cannot_be_found(notify_db, notify_db_session, client, mocker):
-    stats_mock = mocker.patch('app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks')
+    stats_mock = mocker.patch(
+        'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
+    )
 
     response = client.post(
         path='/notifications/email/ses',
