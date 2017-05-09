@@ -14,7 +14,7 @@ def test_should_create_initial_job_task_if_notification_is_related_to_a_job(
     mock = mocker.patch("app.celery.statistics_tasks.record_initial_job_statistics.apply_async")
     notification = sample_notification(notify_db, notify_db_session, job=sample_job)
     create_initial_notification_statistic_tasks(notification)
-    mock.assert_called_once_with((str(notification.id), ), queue="notify")
+    mock.assert_called_once_with((str(notification.id), ), queue="statistics")
 
 
 def test_should_not_create_initial_job_task_if_notification_is_related_to_a_job(
@@ -31,7 +31,7 @@ def test_should_create_outcome_job_task_if_notification_is_related_to_a_job(
     mock = mocker.patch("app.celery.statistics_tasks.record_outcome_job_statistics.apply_async")
     notification = sample_notification(notify_db, notify_db_session, job=sample_job)
     create_outcome_notification_statistic_tasks(notification)
-    mock.assert_called_once_with((str(notification.id), ), queue="notify")
+    mock.assert_called_once_with((str(notification.id), ), queue="statistics")
 
 
 def test_should_not_create_outcome_job_task_if_notification_is_related_to_a_job(
@@ -40,7 +40,6 @@ def test_should_not_create_outcome_job_task_if_notification_is_related_to_a_job(
     mock = mocker.patch("app.celery.statistics_tasks.record_outcome_job_statistics.apply_async")
     create_outcome_notification_statistic_tasks(sample_notification)
     mock.assert_not_called()
-
 
 
 def test_should_call_create_job_stats_dao_methods(notify_db, notify_db_session, sample_notification, mocker):

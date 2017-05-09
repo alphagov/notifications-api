@@ -12,17 +12,18 @@ from app.dao.notifications_dao import get_notification_by_id
 
 def create_initial_notification_statistic_tasks(notification):
     if notification.job_id:
-        record_initial_job_statistics.apply_async((str(notification.id),), queue="notify")
+        record_initial_job_statistics.apply_async((str(notification.id),), queue="statistics")
 
 
 def create_outcome_notification_statistic_tasks(notification):
     if notification.job_id:
-        record_outcome_job_statistics.apply_async((str(notification.id),), queue="notify")
+        record_outcome_job_statistics.apply_async((str(notification.id),), queue="statistics")
 
 
 @notify_celery.task(bind=True, name='record_initial_job_statistics', max_retries=20, default_retry_delay=10)
 @statsd(namespace="tasks")
 def record_initial_job_statistics(self, notification_id):
+    notification = None
     try:
         notification = get_notification_by_id(notification_id)
         if notification:
@@ -34,13 +35,16 @@ def record_initial_job_statistics(self, notification_id):
         self.retry(queue="retry")
     except self.MaxRetriesExceededError:
         current_app.logger.error(
-            "RETRY FAILED: task record_initial_job_statistics failed for notification {}".format(notification.id)
+            "RETRY FAILED: task record_initial_job_statistics failed for notification {}".format(
+                notification.id if notification else "missing ID"
+            )
         )
 
 
 @notify_celery.task(bind=True, name='record_outcome_job_statistics', max_retries=20, default_retry_delay=10)
 @statsd(namespace="tasks")
 def record_outcome_job_statistics(self, notification_id):
+    notification = None
     try:
         notification = get_notification_by_id(notification_id)
         if notification:
@@ -54,5 +58,7 @@ def record_outcome_job_statistics(self, notification_id):
         self.retry(queue="retry")
     except self.MaxRetriesExceededError:
         current_app.logger.error(
-            "RETRY FAILED: task update_job_stats_outcome_count failed for notification {}".format(notification.id)
+            "RETRY FAILED: task update_job_stats_outcome_count failed for notification {}".format(
+                notification.id if notification else "missing ID"
+            )
         )
