@@ -379,7 +379,6 @@ class TemplateHistory(db.Model):
                              default=NORMAL)
 
     def serialize(self):
-
         serialized = {
             "id": self.id,
             "type": self.template_type,
@@ -975,7 +974,6 @@ class Rate(db.Model):
     notification_type = db.Column(notification_types, index=True, nullable=False)
 
 
-
 class JobStatistics(db.Model):
     __tablename__ = 'job_statistics'
 
@@ -990,3 +988,20 @@ class JobStatistics(db.Model):
     sms_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     letters_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     letters_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    updated_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True,
+        onupdate=datetime.datetime.utcnow)
+
+    def __str__(self):
+        the_string = ""
+        the_string += "email sent {} email delivered {} email failed {} ".format(
+            self.emails_sent, self.emails_delivered, self.emails_failed
+        )
+        the_string += "sms sent {} sms delivered {} sms failed {} ".format(
+            self.sms_sent, self.sms_delivered, self.sms_failed
+        )
+        the_string += "letter sent {} letter failed {} ".format(self.letters_sent, self.letters_failed)
+        return the_string
