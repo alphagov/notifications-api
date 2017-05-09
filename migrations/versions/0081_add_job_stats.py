@@ -2,7 +2,7 @@
 
 Revision ID: 0081_add_job_stats
 Revises: 0080_fix_rate_start_date
-Create Date: 2017-05-09 11:21:06.959075
+Create Date: 2017-05-09 12:44:43.173269
 
 """
 
@@ -26,6 +26,7 @@ def upgrade():
     sa.Column('sms_failed', sa.BigInteger(), nullable=False),
     sa.Column('letters_sent', sa.BigInteger(), nullable=False),
     sa.Column('letters_failed', sa.BigInteger(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['job_id'], ['jobs.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
