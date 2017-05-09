@@ -973,3 +973,20 @@ class Rate(db.Model):
     valid_from = db.Column(db.DateTime, nullable=False)
     rate = db.Column(db.Float(asdecimal=False), nullable=False)
     notification_type = db.Column(notification_types, index=True, nullable=False)
+
+
+
+class JobStatistics(db.Model):
+    __tablename__ = 'job_statistics'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = db.Column(UUID(as_uuid=True), db.ForeignKey('jobs.id'), index=True, unique=True)
+    job = db.relationship('Job', backref=db.backref('job_statistics', lazy='dynamic'))
+    emails_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    emails_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    emails_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    letters_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    letters_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
