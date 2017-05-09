@@ -12,6 +12,7 @@ from app.dao.notifications_dao import (
     get_notification_by_id
 )
 from app.models import NotificationStatistics
+from tests.app.notifications.test_notifications_ses_callback import ses_confirmation_callback
 from tests.app.conftest import sample_notification as create_sample_notification
 
 
@@ -22,24 +23,41 @@ def test_dvla_callback_returns_400_with_invalid_request(client):
         data=data,
         headers=[('Content-Type', 'application/json')]
     )
+
     json_resp = json.loads(response.get_data(as_text=True))
 
     assert response.status_code == 400
-    assert json_resp['result'] == 'error'
-    assert json_resp['message'] == 'DVLA callback failed: Invalid JSON'
 
 
-def test_dvla_callback_returns_200_with_valid_request(client, mocker):
-    data = _sample_sns_s3_callback()
-    mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
+def test_dvla_callback_autoconfirms_subscription(client, mocker):
+    autoconfirm_mock = mocker.patch('app.notifications.notifications_letter_callback.autoconfirm_subscription')
+
+    data = ses_confirmation_callback()
     response = client.post(
         path='/notifications/letter/dvla',
         data=data,
         headers=[('Content-Type', 'application/json')]
     )
-    json_resp = json.loads(response.get_data(as_text=True))
 
     assert response.status_code == 200
+    assert autoconfirm_mock.called
+
+
+def test_dvla_callback_autoconfirm_does_not_call_update_letter_notifications_task(client, mocker):
+    autoconfirm_mock = mocker.patch('app.notifications.notifications_letter_callback.autoconfirm_subscription')
+    update_task = \
+        mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
+
+    data = ses_confirmation_callback()
+    response = client.post(
+        path='/notifications/letter/dvla',
+        data=data,
+        headers=[('Content-Type', 'application/json')]
+    )
+
+    assert response.status_code == 200
+    assert autoconfirm_mock.called
+    assert not update_task.called
 
 
 def test_dvla_callback_calls_update_letter_notifications_task(client, mocker):
@@ -54,7 +72,7 @@ def test_dvla_callback_calls_update_letter_notifications_task(client, mocker):
     json_resp = json.loads(response.get_data(as_text=True))
 
     assert response.status_code == 200
-    assert update_task.called is True
+    assert update_task.called
     update_task.assert_called_with(['bar.txt'], queue='notify')
 
 
