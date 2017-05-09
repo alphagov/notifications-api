@@ -3,14 +3,32 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import notify_celery
 from flask import current_app
 from app.statsd_decorators import statsd
-from app.dao.statistics_dao import create_or_update_job_sending_statistics, update_job_stats_outcome_count
+from app.dao.statistics_dao import (
+    create_or_update_job_sending_statistics,
+    update_job_stats_outcome_count
+)
+from app.dao.notifications_dao import get_notification_by_id
 
 
-@notify_celery.task(bind=True, name='record_initial_job_statistics', max_retries=20, default_retry_delay=300)
+def create_initial_notification_statistic_tasks(notification):
+    if notification.job_id:
+        record_initial_job_statistics.apply_async((str(notification.id),), queue="notify")
+
+
+def create_outcome_notification_statistic_tasks(notification):
+    if notification.job_id:
+        record_outcome_job_statistics.apply_async((str(notification.id),), queue="notify")
+
+
+@notify_celery.task(bind=True, name='record_initial_job_statistics', max_retries=20, default_retry_delay=10)
 @statsd(namespace="tasks")
-def record_initial_job_statistics(self, notification):
+def record_initial_job_statistics(self, notification_id):
     try:
-        create_or_update_job_sending_statistics(notification)
+        notification = get_notification_by_id(notification_id)
+        if notification:
+            create_or_update_job_sending_statistics(notification)
+        else:
+            raise SQLAlchemyError("Failed to find notification with id {}".format(notification_id))
     except SQLAlchemyError as e:
         current_app.logger.exception(e)
         self.retry(queue="retry")
@@ -20,13 +38,17 @@ def record_initial_job_statistics(self, notification):
         )
 
 
-@notify_celery.task(bind=True, name='record_outcome_job_statistics', max_retries=20, default_retry_delay=300)
+@notify_celery.task(bind=True, name='record_outcome_job_statistics', max_retries=20, default_retry_delay=10)
 @statsd(namespace="tasks")
-def record_outcome_job_statistics(self, notification):
+def record_outcome_job_statistics(self, notification_id):
     try:
-        updated_count = update_job_stats_outcome_count(notification)
-        if updated_count == 0:
-            self.retry(queue="retry")
+        notification = get_notification_by_id(notification_id)
+        if notification:
+            updated_count = update_job_stats_outcome_count(notification)
+            if updated_count == 0:
+                self.retry(queue="retry")
+        else:
+            raise SQLAlchemyError("Failed to find notification with id {}".format(notification_id))
     except SQLAlchemyError as e:
         current_app.logger.exception(e)
         self.retry(queue="retry")
