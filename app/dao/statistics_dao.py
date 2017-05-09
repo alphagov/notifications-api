@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import current_app
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -25,6 +27,7 @@ def create_or_update_job_sending_statistics(notification):
                 raise SQLAlchemyError("Failed to create job statistics for {}".format(notification.job_id))
 
 
+@transactional
 def __update_job_stats_sent_count(notification):
     update = {
         JobStatistics.emails_sent:
@@ -46,11 +49,13 @@ def __insert_job_stats(notification):
         job_id=notification.job_id,
         emails_sent=1 if notification.notification_type == EMAIL_TYPE else 0,
         sms_sent=1 if notification.notification_type == SMS_TYPE else 0,
-        letters_sent=1 if notification.notification_type == LETTER_TYPE else 0
+        letters_sent=1 if notification.notification_type == LETTER_TYPE else 0,
+        updated_at=datetime.utcnow()
     )
     db.session.add(stats)
 
 
+@transactional
 def update_job_stats_outcome_count(notification):
     update = None
 
