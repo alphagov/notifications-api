@@ -1,7 +1,7 @@
 from unittest.mock import call
 
 import pytest
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.dao.statistics_dao import (
     create_or_update_job_sending_statistics,
@@ -126,18 +126,22 @@ def test_should_update_a_stats_entry_for_a_job(
     assert stat.letters_failed == 0
 
 
-def test_should_handle_case_where_stats_row_created_by_another_thread(
+def test_should_handle_error_conditions(
         notify_db,
         notify_db_session,
-        sample_notification,
+        sample_job,
         mocker):
-    create_mock = mocker.patch("app.dao.statistics_dao.__insert_job_stats", side_effect=SQLAlchemyError("beaten to it"))
+    create_mock = mocker.patch("app.dao.statistics_dao.__insert_job_stats", side_effect=IntegrityError("1", "2", "3"))
     update_mock = mocker.patch("app.dao.statistics_dao.__update_job_stats_sent_count", return_value=0)
 
-    create_or_update_job_sending_statistics(sample_notification)
+    notification = sample_notification(notify_db, notify_db_session, job=sample_job)
 
-    update_mock.assert_has_calls([call(sample_notification), call(sample_notification)])
-    create_mock.assert_called_once_with(sample_notification)
+    with pytest.raises(SQLAlchemyError) as e:
+        create_or_update_job_sending_statistics(notification)
+    assert 'Failed to create job statistics for {}'.format(sample_job.id) in str(e.value)
+
+    update_mock.assert_has_calls([call(notification), call(notification)])
+    create_mock.assert_called_once_with(notification)
 
 
 @pytest.mark.parametrize('notification_type, sms_count, email_count, letter_count', [

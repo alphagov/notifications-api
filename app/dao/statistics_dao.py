@@ -1,5 +1,5 @@
 from flask import current_app
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app import db
 from app.dao.dao_utils import transactional
@@ -15,14 +15,14 @@ from app.statsd_decorators import statsd
 
 
 @statsd(namespace="dao")
-@transactional
 def create_or_update_job_sending_statistics(notification):
     if __update_job_stats_sent_count(notification) == 0:
         try:
             __insert_job_stats(notification)
-        except SQLAlchemyError as e:
+        except IntegrityError as e:
             current_app.logger.exception(e)
-            __update_job_stats_sent_count(notification)
+            if __update_job_stats_sent_count(notification) == 0:
+                raise SQLAlchemyError("Failed to create job statistics for {}".format(notification.job_id))
 
 
 def __update_job_stats_sent_count(notification):
@@ -39,6 +39,7 @@ def __update_job_stats_sent_count(notification):
     ).update(update)
 
 
+@transactional
 def __insert_job_stats(notification):
 
     stats = JobStatistics(
