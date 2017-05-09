@@ -380,7 +380,7 @@ def update_letter_notifications_statuses(self, filename):
     else:
         if notification_updates:
             for update in notification_updates:
-                current_app.logger.error(str(update))
+                current_app.logger.info('DVLA update: {}'.format(str(update)))
                 # TODO: Update notifications with desired status
             return notification_updates
         else:
