@@ -220,7 +220,9 @@ class NotificationModelSchema(BaseSchema):
     class Meta:
         model = models.Notification
         strict = True
-        exclude = ('_personalisation', 'job', 'service', 'template', 'api_key', '')
+        exclude = ('_personalisation', 'job', 'service', 'template', 'api_key', '_status_enum', '_status_fkey')
+
+    status = fields.String(required=False)
 
 
 class BaseTemplateSchema(BaseSchema):
@@ -315,6 +317,7 @@ class NotificationSchema(ma.Schema):
     class Meta:
         strict = True
 
+    status = fields.String(required=False)
     personalisation = fields.Dict(required=False)
 
 
@@ -369,7 +372,7 @@ class NotificationWithTemplateSchema(BaseSchema):
     class Meta:
         model = models.Notification
         strict = True
-        exclude = ('_personalisation',)
+        exclude = ('_personalisation', '_status_enum', '_status_fkey')
 
     template = fields.Nested(
         TemplateSchema,
@@ -377,6 +380,7 @@ class NotificationWithTemplateSchema(BaseSchema):
         dump_only=True
     )
     job = fields.Nested(JobSchema, only=["id", "original_file_name"], dump_only=True)
+    status = fields.String(required=False)
     personalisation = fields.Dict(required=False)
     key_type = field_for(models.Notification, 'key_type', required=True)
     key_name = fields.String()
