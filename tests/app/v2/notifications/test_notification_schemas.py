@@ -131,10 +131,15 @@ def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
     assert len(error.keys()) == 2
 
 
-@pytest.mark.parametrize('invalid_phone_number, err_msg',
-                         [('08515111111', 'phone_number Not a UK mobile number'),
-                          ('07515111*11', 'phone_number Must not contain letters or symbols'),
-                          ('notaphoneumber', 'phone_number Must not contain letters or symbols')])
+@pytest.mark.parametrize('invalid_phone_number, err_msg', [
+    ('08515111111', 'phone_number Not a UK mobile number'),
+    ('07515111*11', 'phone_number Must not contain letters or symbols'),
+    ('notaphoneumber', 'phone_number Must not contain letters or symbols'),
+    (7700900001, 'phone_number 7700900001 is not of type string'),
+    (None, 'phone_number None is not of type string'),
+    ([], 'phone_number [] is not of type string'),
+    ({}, 'phone_number {} is not of type string'),
+])
 def test_post_sms_request_schema_invalid_phone_number(invalid_phone_number, err_msg):
     j = {"phone_number": invalid_phone_number,
          "template_id": str(uuid.uuid4())
@@ -213,11 +218,21 @@ def test_post_email_schema_bad_uuid_and_missing_email_address():
         validate(j, post_email_request_schema)
 
 
-def test_post_email_schema_invalid_email_address():
-    j = {"template_id": str(uuid.uuid4()),
-         "email_address": "notavalidemail@address"}
-    with pytest.raises(ValidationError):
+@pytest.mark.parametrize('email_address, err_msg', [
+    ('example', 'email_address Not a valid email address'),
+    (12345, 'email_address 12345 is not of type string'),
+    (None, 'email_address None is not of type string'),
+    ([], 'email_address [] is not of type string'),
+    ({}, 'email_address {} is not of type string'),
+])
+def test_post_email_schema_invalid_email_address(email_address, err_msg):
+    j = {"template_id": str(uuid.uuid4()), "email_address": email_address}
+    with pytest.raises(ValidationError) as e:
         validate(j, post_email_request_schema)
+
+    errors = json.loads(str(e.value)).get('errors')
+    assert len(errors) == 1
+    assert {"error": "ValidationError", "message": err_msg} == errors[0]
 
 
 def valid_email_response():
