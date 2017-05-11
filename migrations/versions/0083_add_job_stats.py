@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0081_add_job_stats
+Revision ID: 0083_add_job_stats
 Revises: 0080_fix_rate_start_date
 Create Date: 2017-05-09 12:44:43.173269
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0081_add_job_stats'
-down_revision = '0080_fix_rate_start_date'
+revision = '0083_add_job_stats'
+down_revision = '0082_add_go_live_template'
 
 from alembic import op
 import sqlalchemy as sa
