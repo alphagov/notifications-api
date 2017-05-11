@@ -447,6 +447,25 @@ def test_get_all_notifications_for_job_filtered_by_status(
         assert response.status_code == 200
 
 
+def test_get_all_notifications_for_job_returns_correct_format(
+    client,
+    sample_notification_with_job
+):
+    service_id = sample_notification_with_job.service_id
+    job_id = sample_notification_with_job.job_id
+    response = client.get(
+        path='/service/{}/job/{}/notifications'.format(service_id, job_id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 200
+    resp = json.loads(response.get_data(as_text=True))
+    assert len(resp['notifications']) == 1
+    assert resp['notifications'][0]['id'] == str(sample_notification_with_job.id)
+    assert resp['notifications'][0]['status'] == sample_notification_with_job.status
+    assert '_status_fkey' not in resp['notifications'][0]
+    assert '_status_enum' not in resp['notifications'][0]
+
+
 def test_get_job_by_id(notify_api, sample_job):
     job_id = str(sample_job.id)
     service_id = sample_job.service.id
