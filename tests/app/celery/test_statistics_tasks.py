@@ -1,3 +1,4 @@
+import pytest
 from app.celery.statistics_tasks import (
     record_initial_job_statistics,
     record_outcome_job_statistics,
@@ -6,6 +7,8 @@ from app.celery.statistics_tasks import (
 from sqlalchemy.exc import SQLAlchemyError
 from app import create_uuid
 from tests.app.conftest import sample_notification
+from app.models import NOTIFICATION_STATUS_TYPES_COMPLETED, NOTIFICATION_SENT, NOTIFICATION_SENDING, \
+    NOTIFICATION_PENDING, NOTIFICATION_CREATED, NOTIFICATION_DELIVERED
 
 
 def test_should_create_initial_job_task_if_notification_is_related_to_a_job(
@@ -17,11 +20,34 @@ def test_should_create_initial_job_task_if_notification_is_related_to_a_job(
     mock.assert_called_once_with((str(notification.id), ), queue="statistics")
 
 
-def test_should_not_create_initial_job_task_if_notification_is_related_to_a_job(
-        notify_db, notify_db_session, sample_notification, mocker
+@pytest.mark.parametrize('status', [
+    NOTIFICATION_SENDING, NOTIFICATION_CREATED, NOTIFICATION_PENDING
+])
+def test_should_create_intial_job_task_if_notification_is_not_in_completed_state(
+    notify_db, notify_db_session, sample_job, mocker, status
 ):
     mock = mocker.patch("app.celery.statistics_tasks.record_initial_job_statistics.apply_async")
-    create_initial_notification_statistic_tasks(sample_notification)
+    notification = sample_notification(notify_db, notify_db_session, job=sample_job, status=status)
+    create_initial_notification_statistic_tasks(notification)
+    mock.assert_called_once_with((str(notification.id), ), queue="statistics")
+
+
+@pytest.mark.parametrize('status', NOTIFICATION_STATUS_TYPES_COMPLETED)
+def test_should_not_create_initial_job_task_if_notification_in_completed_state_already(
+    notify_db, notify_db_session, sample_job, mocker, status
+):
+    mock = mocker.patch("app.celery.statistics_tasks.record_initial_job_statistics.apply_async")
+    notification = sample_notification(notify_db, notify_db_session, job=sample_job, status=status)
+    create_initial_notification_statistic_tasks(notification)
+    mock.assert_not_called()
+
+
+def test_should_not_create_initial_job_task_if_notification_is_not_related_to_a_job(
+        notify_db, notify_db_session, mocker
+):
+    notification = sample_notification(notify_db, notify_db_session, status=NOTIFICATION_CREATED)
+    mock = mocker.patch("app.celery.statistics_tasks.record_initial_job_statistics.apply_async")
+    create_initial_notification_statistic_tasks(notification)
     mock.assert_not_called()
 
 
@@ -29,12 +55,34 @@ def test_should_create_outcome_job_task_if_notification_is_related_to_a_job(
         notify_db, notify_db_session, sample_job, mocker
 ):
     mock = mocker.patch("app.celery.statistics_tasks.record_outcome_job_statistics.apply_async")
-    notification = sample_notification(notify_db, notify_db_session, job=sample_job)
+    notification = sample_notification(notify_db, notify_db_session, job=sample_job, status=NOTIFICATION_DELIVERED)
     create_outcome_notification_statistic_tasks(notification)
     mock.assert_called_once_with((str(notification.id), ), queue="statistics")
 
 
-def test_should_not_create_outcome_job_task_if_notification_is_related_to_a_job(
+@pytest.mark.parametrize('status', NOTIFICATION_STATUS_TYPES_COMPLETED)
+def test_should_create_outcome_job_task_if_notification_is_in_completed_state(
+    notify_db, notify_db_session, sample_job, mocker, status
+):
+    mock = mocker.patch("app.celery.statistics_tasks.record_outcome_job_statistics.apply_async")
+    notification = sample_notification(notify_db, notify_db_session, job=sample_job, status=status)
+    create_outcome_notification_statistic_tasks(notification)
+    mock.assert_called_once_with((str(notification.id), ), queue='statistics')
+
+
+@pytest.mark.parametrize('status', [
+    NOTIFICATION_SENDING, NOTIFICATION_CREATED, NOTIFICATION_PENDING
+])
+def test_should_not_create_outcome_job_task_if_notification_is_not_in_completed_state_already(
+    notify_db, notify_db_session, sample_job, mocker, status
+):
+    mock = mocker.patch("app.celery.statistics_tasks.record_initial_job_statistics.apply_async")
+    notification = sample_notification(notify_db, notify_db_session, job=sample_job, status=status)
+    create_outcome_notification_statistic_tasks(notification)
+    mock.assert_not_called()
+
+
+def test_should_not_create_outcome_job_task_if_notification_is_not_related_to_a_job(
         notify_db, notify_db_session, sample_notification, mocker
 ):
     mock = mocker.patch("app.celery.statistics_tasks.record_outcome_job_statistics.apply_async")

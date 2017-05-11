@@ -2,21 +2,24 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import notify_celery
 from flask import current_app
+
+from app.models import JobStatistics
 from app.statsd_decorators import statsd
 from app.dao.statistics_dao import (
     create_or_update_job_sending_statistics,
     update_job_stats_outcome_count
 )
 from app.dao.notifications_dao import get_notification_by_id
+from app.models import NOTIFICATION_STATUS_TYPES_COMPLETED
 
 
 def create_initial_notification_statistic_tasks(notification):
-    if notification.job_id:
+    if notification.job_id and notification.status not in NOTIFICATION_STATUS_TYPES_COMPLETED:
         record_initial_job_statistics.apply_async((str(notification.id),), queue="statistics")
 
 
 def create_outcome_notification_statistic_tasks(notification):
-    if notification.job_id:
+    if notification.job_id and notification.status in NOTIFICATION_STATUS_TYPES_COMPLETED:
         record_outcome_job_statistics.apply_async((str(notification.id),), queue="statistics")
 
 
