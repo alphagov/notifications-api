@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import current_app
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -14,6 +14,29 @@ from app.models import (
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENT)
 from app.statsd_decorators import statsd
+
+
+@transactional
+def timeout_job_counts(notifications_type, timeout_start):
+    sent = columns(notifications_type, 'sent')
+    delivered = columns(notifications_type, 'delivered')
+    failed = columns(notifications_type, 'failed')
+
+    query = JobStatistics.query.filter(
+        JobStatistics.created_at < timeout_start,
+        sent != failed + delivered
+    )
+    return query.update(
+        {failed: sent - delivered}, synchronize_session=False
+    )
+
+
+@statsd(namespace="dao")
+def timeout_job_statistics(timeout_period):
+    timeout_start = datetime.utcnow() - timedelta(seconds=timeout_period)
+    sms_count = timeout_job_counts(SMS_TYPE, timeout_start)
+    email_count = timeout_job_counts(EMAIL_TYPE, timeout_start)
+    return sms_count + email_count
 
 
 @statsd(namespace="dao")

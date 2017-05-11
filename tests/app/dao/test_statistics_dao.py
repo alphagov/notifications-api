@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from unittest.mock import call
 
 import pytest
@@ -5,8 +6,8 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.dao.statistics_dao import (
     create_or_update_job_sending_statistics,
-    update_job_stats_outcome_count
-)
+    update_job_stats_outcome_count,
+    timeout_job_statistics)
 from app.models import (
     JobStatistics,
     SMS_TYPE,
@@ -613,3 +614,99 @@ def test_updating_one_type_of_notification_to_error_maintains_other_counts(
     assert stats[0].sms_delivered == 0
     assert stats[0].sms_failed == 1
     assert stats[0].emails_failed == 1
+
+
+def test_will_timeout_job_counts_after_notification_timeouts(notify_db, notify_db_session, sample_job):
+    sms_template = sample_template(notify_db, notify_db_session, service=sample_job.service)
+    email_template = sample_email_template(notify_db, notify_db_session, service=sample_job.service)
+
+    one_minute_ago = datetime.utcnow() - timedelta(minutes=1)
+
+    sms = sample_notification(
+        notify_db,
+        notify_db_session,
+        service=sample_job.service,
+        template=sms_template,
+        job=sample_job,
+        status=NOTIFICATION_CREATED
+    )
+
+    email = sample_notification(
+        notify_db,
+        notify_db_session,
+        service=sample_job.service,
+        template=email_template,
+        job=sample_job,
+        status=NOTIFICATION_CREATED
+    )
+
+    create_or_update_job_sending_statistics(email)
+    create_or_update_job_sending_statistics(sms)
+
+    JobStatistics.query.update({JobStatistics.created_at: one_minute_ago})
+
+    intial_stats = JobStatistics.query.all()
+
+    assert intial_stats[0].emails_sent == 1
+    assert intial_stats[0].sms_sent == 1
+    assert intial_stats[0].emails_delivered == 0
+    assert intial_stats[0].sms_delivered == 0
+    assert intial_stats[0].sms_failed == 0
+    assert intial_stats[0].emails_failed == 0
+
+    timeout_job_statistics(59)
+    updated_stats = JobStatistics.query.all()
+    assert updated_stats[0].emails_sent == 1
+    assert updated_stats[0].sms_sent == 1
+    assert updated_stats[0].emails_delivered == 0
+    assert updated_stats[0].sms_delivered == 0
+    assert updated_stats[0].sms_failed == 1
+    assert updated_stats[0].emails_failed == 1
+
+
+def test_will_not_timeout_job_counts_before_notification_timeouts(notify_db, notify_db_session, sample_job):
+    sms_template = sample_template(notify_db, notify_db_session, service=sample_job.service)
+    email_template = sample_email_template(notify_db, notify_db_session, service=sample_job.service)
+
+    one_minute_ago = datetime.utcnow() - timedelta(minutes=1)
+
+    sms = sample_notification(
+        notify_db,
+        notify_db_session,
+        service=sample_job.service,
+        template=sms_template,
+        job=sample_job,
+        status=NOTIFICATION_CREATED
+    )
+
+    email = sample_notification(
+        notify_db,
+        notify_db_session,
+        service=sample_job.service,
+        template=email_template,
+        job=sample_job,
+        status=NOTIFICATION_CREATED
+    )
+
+    create_or_update_job_sending_statistics(email)
+    create_or_update_job_sending_statistics(sms)
+
+    JobStatistics.query.update({JobStatistics.created_at: one_minute_ago})
+
+    intial_stats = JobStatistics.query.all()
+
+    assert intial_stats[0].emails_sent == 1
+    assert intial_stats[0].sms_sent == 1
+    assert intial_stats[0].emails_delivered == 0
+    assert intial_stats[0].sms_delivered == 0
+    assert intial_stats[0].sms_failed == 0
+    assert intial_stats[0].emails_failed == 0
+
+    timeout_job_statistics(61)
+    updated_stats = JobStatistics.query.all()
+    assert updated_stats[0].emails_sent == 1
+    assert updated_stats[0].sms_sent == 1
+    assert updated_stats[0].emails_delivered == 0
+    assert updated_stats[0].sms_delivered == 0
+    assert updated_stats[0].sms_failed == 0
+    assert updated_stats[0].emails_failed == 0
