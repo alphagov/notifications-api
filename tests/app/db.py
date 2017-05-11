@@ -2,11 +2,14 @@ from datetime import datetime
 import uuid
 
 from app.dao.jobs_dao import dao_create_job
-from app.models import Service, User, Template, Notification, SMS_TYPE, KEY_TYPE_NORMAL, Job
+from app.models import (Service, User, Template, Notification, EMAIL_TYPE, LETTER_TYPE,
+                        SMS_TYPE, KEY_TYPE_NORMAL, Job, ServicePermission)
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.templates_dao import dao_create_template
 from app.dao.services_dao import dao_create_service
+from app.dao.service_permissions_dao import (
+    dao_add_and_commit_service_permissions, make_service_permissions_list)
 
 
 def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk"):
@@ -141,3 +144,12 @@ def create_job(template,
     job = Job(**data)
     dao_create_job(job)
     return job
+
+
+def create_service_permissions(service_id, permissions=[EMAIL_TYPE, LETTER_TYPE]):
+    dao_add_and_commit_service_permissions(
+        service_id if service_id else create_service().id, permissions)
+
+    service_permissions = ServicePermission.query.all()
+
+    return service_permissions
