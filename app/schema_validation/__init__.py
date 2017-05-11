@@ -10,13 +10,13 @@ def validate(json_to_validate, schema):
 
     @format_checker.checks('phone_number', raises=InvalidPhoneError)
     def validate_schema_phone_number(instance):
-        if instance is not None:
+        if isinstance(instance, str):
             validate_phone_number(instance, international=True)
         return True
 
     @format_checker.checks('email_address', raises=InvalidEmailError)
     def validate_schema_email_address(instance):
-        if instance is not None:
+        if isinstance(instance, str):
             validate_email_address(instance)
         return True
 

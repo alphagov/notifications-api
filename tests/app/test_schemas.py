@@ -1,5 +1,4 @@
 import pytest
-
 from marshmallow import ValidationError
 from sqlalchemy import desc
 
@@ -31,6 +30,22 @@ def test_notification_schema_adds_api_key_name(sample_notification_with_api_key)
 
     data = notification_with_template_schema.dump(sample_notification_with_api_key).data
     assert data['key_name'] == 'Test key'
+
+
+@pytest.mark.parametrize('schema_name', [
+    'notification_with_template_schema',
+    'notification_schema',
+    'notification_with_template_schema',
+    'notification_with_personalisation_schema',
+])
+def test_notification_schema_has_correct_status(sample_notification, schema_name):
+    from app import schemas
+
+    data = getattr(schemas, schema_name).dump(sample_notification).data
+
+    assert data['status'] == sample_notification.status
+    assert '_status_enum' not in data
+    assert '_status_fkey' not in data
 
 
 @pytest.mark.parametrize('user_attribute, user_value', [
