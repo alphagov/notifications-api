@@ -147,6 +147,11 @@ class Config(object):
             'task': 'remove_csv_files',
             'schedule': crontab(minute=0, hour=4),
             'options': {'queue': 'periodic'}
+        },
+        'timeout-job-statistics': {
+            'task': 'timeout-job-statistics',
+            'schedule': crontab(minute=0, hour=5),
+            'options': {'queue': 'periodic'}
         }
     }
     CELERY_QUEUES = [
@@ -198,6 +203,7 @@ class Config(object):
 ######################
 
 class Development(Config):
+    SQLALCHEMY_ECHO = False
     NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
     NOTIFY_ENVIRONMENT = 'development'
