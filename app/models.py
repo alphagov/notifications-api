@@ -988,6 +988,12 @@ class JobStatistics(db.Model):
     sms_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     letters_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     letters_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True,
+        default=datetime.datetime.utcnow)
     updated_at = db.Column(
         db.DateTime,
         index=False,
