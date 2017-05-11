@@ -11,8 +11,8 @@ from app.models import (
     SMS_TYPE,
     LETTER_TYPE,
     NOTIFICATION_STATUS_TYPES_FAILED,
-    NOTIFICATION_DELIVERED
-)
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_SENT)
 from app.statsd_decorators import statsd
 
 
@@ -29,22 +29,17 @@ def create_or_update_job_sending_statistics(notification):
 
 @transactional
 def __update_job_stats_sent_count(notification):
-    update = {
-        JobStatistics.emails_sent:
-            JobStatistics.emails_sent + 1 if notification.notification_type == EMAIL_TYPE else 0,
-        JobStatistics.sms_sent:
-            JobStatistics.sms_sent + 1 if notification.notification_type == SMS_TYPE else 0,
-        JobStatistics.letters_sent:
-            JobStatistics.letters_sent + 1 if notification.notification_type == LETTER_TYPE else 0
-    }
+    column = columns(notification.notification_type, 'sent')
+
     return db.session.query(JobStatistics).filter_by(
         job_id=notification.job_id,
-    ).update(update)
+    ).update({
+        column: column + 1
+    })
 
 
 @transactional
 def __insert_job_stats(notification):
-
     stats = JobStatistics(
         job_id=notification.job_id,
         emails_sent=1 if notification.notification_type == EMAIL_TYPE else 0,
@@ -55,31 +50,43 @@ def __insert_job_stats(notification):
     db.session.add(stats)
 
 
+def columns(notification_type, status):
+    keys = {
+        EMAIL_TYPE: {
+            'failed': JobStatistics.emails_failed,
+            'delivered': JobStatistics.emails_delivered,
+            'sent': JobStatistics.emails_sent
+        },
+        SMS_TYPE: {
+            'failed': JobStatistics.sms_failed,
+            'delivered': JobStatistics.sms_delivered,
+            'sent': JobStatistics.sms_sent
+        },
+        LETTER_TYPE: {
+            'failed': JobStatistics.letters_failed,
+            'sent': JobStatistics.letters_sent
+        }
+    }
+    return keys.get(notification_type).get(status)
+
+
 @transactional
 def update_job_stats_outcome_count(notification):
-    update = None
-
     if notification.status in NOTIFICATION_STATUS_TYPES_FAILED:
-        update = {
-            JobStatistics.emails_failed:
-                JobStatistics.emails_failed + 1 if notification.notification_type == EMAIL_TYPE else 0,
-            JobStatistics.sms_failed:
-                JobStatistics.sms_failed + 1 if notification.notification_type == SMS_TYPE else 0,
-            JobStatistics.letters_failed:
-                JobStatistics.letters_failed + 1 if notification.notification_type == LETTER_TYPE else 0
-        }
+        column = columns(notification.notification_type, 'failed')
 
-    elif notification.status == NOTIFICATION_DELIVERED and notification.notification_type != LETTER_TYPE:
-        update = {
-            JobStatistics.emails_delivered:
-                JobStatistics.emails_delivered + 1 if notification.notification_type == EMAIL_TYPE else 0,
-            JobStatistics.sms_delivered:
-                JobStatistics.sms_delivered + 1 if notification.notification_type == SMS_TYPE else 0
-        }
+    elif notification.status in [NOTIFICATION_DELIVERED,
+                                 NOTIFICATION_SENT] and notification.notification_type != LETTER_TYPE:
+        column = columns(notification.notification_type, 'delivered')
 
-    if update:
+    else:
+        column = None
+
+    if column:
         return db.session.query(JobStatistics).filter_by(
             job_id=notification.job_id,
-        ).update(update)
+        ).update({
+            column: column + 1
+        })
     else:
         return 0
