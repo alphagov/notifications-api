@@ -2,11 +2,12 @@ from datetime import datetime
 import uuid
 
 from app.dao.jobs_dao import dao_create_job
-from app.models import Service, User, Template, Notification, SMS_TYPE, KEY_TYPE_NORMAL, Job
-from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import dao_create_notification
-from app.dao.templates_dao import dao_create_template
+from app.dao.rates_dao import dao_create_rate
 from app.dao.services_dao import dao_create_service
+from app.dao.templates_dao import dao_create_template
+from app.dao.users_dao import save_model_user
+from app.models import Service, User, Template, Notification, SMS_TYPE, KEY_TYPE_NORMAL, Job, Rate
 
 
 def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk"):
@@ -141,3 +142,16 @@ def create_job(template,
     job = Job(**data)
     dao_create_job(job)
     return job
+
+
+def create_rate(valid_from, rate, notification_type='sms'):
+    data = {
+        'id': uuid.uuid4(),
+        'valid_from': valid_from,
+        'rate': rate,
+        'notification_type': notification_type
+    }
+
+    rate = Rate(**data)
+    dao_create_rate(rate)
+    return rate
