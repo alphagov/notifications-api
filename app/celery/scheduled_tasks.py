@@ -16,6 +16,7 @@ from app.dao.notifications_dao import (
     dao_timeout_notifications,
     is_delivery_slow_for_provider
 )
+from app.dao.statistics_dao import timeout_job_statistics as dao_timeout_job_statistics
 from app.dao.provider_details_dao import (
     get_current_provider,
     dao_toggle_sms_provider
@@ -180,3 +181,12 @@ def switch_current_sms_provider_on_slow_delivery():
             )
 
             dao_toggle_sms_provider(current_provider.identifier)
+
+
+@notify_celery.task(name='timeout-job-statistics')
+@statsd(namespace="tasks")
+def timeout_job_statistics():
+    updated = dao_timeout_job_statistics(current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'))
+    if updated:
+        current_app.logger.info(
+            "Timeout period reached for {} job statistics, failure count has been updated.".format(updated))
