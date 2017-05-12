@@ -365,16 +365,13 @@ def get_template_class(template_type):
 def update_letter_notifications_statuses(self, filename):
     bucket_location = '{}-ftp'.format(current_app.config['NOTIFY_EMAIL_DOMAIN'])
     response_file = s3.get_s3_object(bucket_location, filename).decode('utf-8')
-    lines = response_file.splitlines()
-    notification_updates = []
 
     try:
         NotificationUpdate = namedtuple('NotificationUpdate', ['reference', 'status', 'page_count', 'cost_threshold'])
-        for line in lines:
-            notification_updates.append(NotificationUpdate(*line.split('|')))
+        notification_updates = [NotificationUpdate(*line.split('|')) for line in response_file.splitlines()]
 
     except TypeError:
-        current_app.logger.exception('DVLA response file has an invalid format')
+        current_app.logger.exception('DVLA response file: {} has an invalid format'.format(filename))
         raise
 
     else:

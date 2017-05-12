@@ -1087,7 +1087,6 @@ def test_update_letter_notifications_statuses_raises_for_invalid_format(notify_a
 
 
 def test_update_letter_notifications_statuses_calls_with_correct_bucket_location(notify_api, mocker):
-    invalid_file = b'ref-foo|Sent|1|Unsorted\nref-bar|Sent|2'
     s3_mock = mocker.patch('app.celery.tasks.s3.get_s3_object')
 
     with set_config(notify_api, 'NOTIFY_EMAIL_DOMAIN', 'foo.bar'):
