@@ -28,7 +28,7 @@ from app.models import (
     KEY_TYPE_TEST,
     NOTIFICATION_STATUS_TYPES,
     TEMPLATE_TYPES,
-)
+    JobStatistics)
 from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
@@ -160,6 +160,10 @@ def delete_service_and_all_associated_db_objects(service):
         query.delete()
         db.session.commit()
 
+    job_stats = JobStatistics.query.join(Job).filter(Job.service_id == service.id)
+    list(map(db.session.delete, job_stats))
+    db.session.commit()
+
     _delete_commit(NotificationStatistics.query.filter_by(service=service))
     _delete_commit(TemplateStatistics.query.filter_by(service=service))
     _delete_commit(ProviderStatistics.query.filter_by(service=service))
@@ -167,11 +171,13 @@ def delete_service_and_all_associated_db_objects(service):
     _delete_commit(Permission.query.filter_by(service=service))
     _delete_commit(ApiKey.query.filter_by(service=service))
     _delete_commit(ApiKey.get_history_model().query.filter_by(service_id=service.id))
+    _delete_commit(Job.query.filter_by(service=service))
     _delete_commit(NotificationHistory.query.filter_by(service=service))
     _delete_commit(Notification.query.filter_by(service=service))
-    _delete_commit(Job.query.filter_by(service=service))
     _delete_commit(Template.query.filter_by(service=service))
     _delete_commit(TemplateHistory.query.filter_by(service_id=service.id))
+
+
 
     verify_codes = VerifyCode.query.join(User).filter(User.id.in_([x.id for x in service.users]))
     list(map(db.session.delete, verify_codes))

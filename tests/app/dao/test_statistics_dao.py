@@ -699,6 +699,7 @@ def test_timeout_job_counts_timesout_multiple_jobs(
         assert stats.sms_failed == sms_count
         assert stats.emails_failed == email_count
 
+
 count_notifications = len(NOTIFICATION_STATUS_TYPES)
 count_success_notifications = len(NOTIFICATION_STATUS_SUCCESS)
 count_error_notifications = len(NOTIFICATION_STATUS_TYPES) - len(NOTIFICATION_STATUS_SUCCESS)
