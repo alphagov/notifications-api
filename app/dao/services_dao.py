@@ -140,7 +140,8 @@ def dao_update_service(service):
     db.session.add(service)
 
 
-def dao_add_user_to_service(service, user, permissions=[]):
+def dao_add_user_to_service(service, user, permissions=None):
+    permissions = permissions or []
     try:
         from app.dao.permissions_dao import permission_dao
         service.users.append(user)
@@ -227,7 +228,8 @@ def fetch_todays_total_message_count(service_id):
 def _stats_for_service_query(service_id):
     return db.session.query(
         Notification.notification_type,
-        Notification.status,
+        # see dao_fetch_todays_stats_for_all_services for why we have this label
+        Notification.status.label('status'),
         func.count(Notification.id).label('count')
     ).filter(
         Notification.service_id == service_id,
@@ -245,13 +247,13 @@ def dao_fetch_monthly_historical_stats_by_template_for_service(service_id, year)
     start_date, end_date = get_financial_year(year)
     sq = db.session.query(
         NotificationHistory.template_id,
-        NotificationHistory.status,
+        # see dao_fetch_todays_stats_for_all_services for why we have this label
+        NotificationHistory.status.label('status'),
         month.label('month'),
         func.count().label('count')
     ).filter(
         NotificationHistory.service_id == service_id,
         NotificationHistory.created_at.between(start_date, end_date)
-
     ).group_by(
         month,
         NotificationHistory.template_id,
@@ -262,7 +264,7 @@ def dao_fetch_monthly_historical_stats_by_template_for_service(service_id, year)
         Template.id.label('template_id'),
         Template.name,
         Template.template_type,
-        sq.c.status,
+        sq.c.status.label('status'),
         sq.c.count.label('count'),
         sq.c.month
     ).join(
@@ -280,7 +282,8 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
     start_date, end_date = get_financial_year(year)
     rows = db.session.query(
         NotificationHistory.notification_type,
-        NotificationHistory.status,
+        # see dao_fetch_todays_stats_for_all_services for why we have this label
+        NotificationHistory.status.label('status'),
         month,
         func.count(NotificationHistory.id).label('count')
     ).filter(
@@ -319,7 +322,9 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
 def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
     query = db.session.query(
         Notification.notification_type,
-        Notification.status,
+        # this label is necessary as the column has a different name under the hood (_status_enum / _status_fkey),
+        # if we query the Notification object there is a hybrid property to translate, but here there isn't anything.
+        Notification.status.label('status'),
         Notification.service_id,
         func.count(Notification.id).label('count')
     ).filter(
@@ -349,7 +354,8 @@ def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_fro
 
     query = db.session.query(
         table.notification_type,
-        table.status,
+        # see dao_fetch_todays_stats_for_all_services for why we have this label
+        table.status.label('status'),
         table.service_id,
         func.count(table.id).label('count')
     ).filter(

@@ -1240,17 +1240,16 @@ def test_get_monthly_notification_stats(mocker, client, sample_service, url, exp
     assert json.loads(response.get_data(as_text=True)) == expected_json
 
 
-def test_get_services_with_detailed_flag(notify_api, notify_db, notify_db_session):
+def test_get_services_with_detailed_flag(client, notify_db, notify_db_session):
     notifications = [
         create_sample_notification(notify_db, notify_db_session),
         create_sample_notification(notify_db, notify_db_session),
         create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST)
     ]
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        resp = client.get(
-            '/service?detailed=True',
-            headers=[create_authorization_header()]
-        )
+    resp = client.get(
+        '/service?detailed=True',
+        headers=[create_authorization_header()]
+    )
 
     assert resp.status_code == 200
     data = json.loads(resp.get_data(as_text=True))['data']
@@ -1614,3 +1613,48 @@ def test_get_monthly_billing_usage_returns_empty_list_if_no_notifications(client
     )
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == []
+
+
+def test_search_for_notification_by_to_field(client, notify_db, notify_db_session):
+    notification1 = create_sample_notification(notify_db, notify_db_session,
+                                               to_field="+447700900855")
+    notification2 = create_sample_notification(notify_db, notify_db_session, to_field="jack@gmail.com")
+
+    response = client.get('/service/{}/notifications?to={}'.format(notification1.service_id, "jack@gmail.com"),
+                          headers=[create_authorization_header()])
+    assert response.status_code == 200
+    result = json.loads(response.get_data(as_text=True))
+    assert len(result["notifications"]) == 1
+    assert result["notifications"][0]["id"] == str(notification2.id)
+
+
+def test_search_for_notification_by_to_field_return_empty_list_if_there_is_no_match(
+        client, notify_db, notify_db_session):
+    notification1 = create_sample_notification(notify_db, notify_db_session,
+                                               to_field="+447700900855")
+    notification2 = create_sample_notification(notify_db, notify_db_session, to_field="jack@gmail.com")
+
+    response = client.get('/service/{}/notifications?to={}'.format(notification1.service_id, "+447700900800"),
+                          headers=[create_authorization_header()])
+    assert response.status_code == 200
+    assert len(json.loads(response.get_data(as_text=True))["notifications"]) == 0
+
+
+def test_search_for_notification_by_to_field_return_multiple_matches(
+        client, notify_db, notify_db_session):
+    notification1 = create_sample_notification(notify_db, notify_db_session,
+                                               to_field="+447700900855")
+    notification2 = create_sample_notification(notify_db, notify_db_session,
+                                               to_field=" +44 77009 00855 ")
+    notification3 = create_sample_notification(notify_db, notify_db_session,
+                                               to_field="+44770 0900 855")
+    notification4 = create_sample_notification(notify_db, notify_db_session, to_field="jack@gmail.com")
+
+    response = client.get('/service/{}/notifications?to={}'.format(notification1.service_id, "+447700900855"),
+                          headers=[create_authorization_header()])
+    assert response.status_code == 200
+    result = json.loads(response.get_data(as_text=True))
+    assert len(result["notifications"]) == 3
+    assert str(notification1.id) in [n["id"] for n in result["notifications"]]
+    assert str(notification2.id) in [n["id"] for n in result["notifications"]]
+    assert str(notification3.id) in [n["id"] for n in result["notifications"]]

@@ -39,7 +39,7 @@ from app.dao.notifications_dao import (
     dao_delete_notifications_and_history_by_id,
     dao_timeout_notifications,
     is_delivery_slow_for_provider,
-    dao_update_notifications_sent_to_dvla)
+    dao_update_notifications_sent_to_dvla, dao_get_notifications_by_to_field)
 
 from app.dao.services_dao import dao_update_service
 from tests.app.db import create_notification
@@ -311,6 +311,8 @@ def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_
         data = _notification_json(sample_template, job_id=sample_job.id, status='sending')
         notification = Notification(**data)
         dao_create_notification(notification)
+        assert notification._status_enum == 'sending'
+        assert notification._status_fkey == 'sending'
 
     assert Notification.query.get(notification.id).status == 'sending'
 
@@ -321,6 +323,8 @@ def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_
     assert updated.updated_at == datetime(2000, 1, 2, 12, 0, 0)
     assert Notification.query.get(notification.id).status == 'delivered'
     assert notification.updated_at == datetime(2000, 1, 2, 12, 0, 0)
+    assert notification._status_enum == 'delivered'
+    assert notification._status_fkey == 'delivered'
 
 
 def test_should_not_update_status_by_id_if_not_sending_and_does_not_update_job(notify_db, notify_db_session):
@@ -825,12 +829,43 @@ def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_ses
         ) == months
 
 
-def test_update_notification(sample_notification, sample_template):
+def test_update_notification(sample_notification):
     assert sample_notification.status == 'created'
     sample_notification.status = 'failed'
     dao_update_notification(sample_notification)
     notification_from_db = Notification.query.get(sample_notification.id)
     assert notification_from_db.status == 'failed'
+
+
+def test_update_notification_with_no_notification_status(sample_notification):
+    # specifically, it has an old enum status, but not a new status (because the upgrade script has just run)
+    update_dict = {'_status_enum': 'created', '_status_fkey': None}
+    Notification.query.filter(Notification.id == sample_notification.id).update(update_dict)
+
+    # now lets update the status to failed - both columns should now be populated
+    sample_notification.status = 'failed'
+    dao_update_notification(sample_notification)
+
+    notification_from_db = Notification.query.get(sample_notification.id)
+    assert notification_from_db.status == 'failed'
+    assert notification_from_db._status_enum == 'failed'
+    assert notification_from_db._status_fkey == 'failed'
+
+
+def test_updating_notification_with_no_notification_status_updates_notification_history(sample_notification):
+    # same as above, but with notification history
+    update_dict = {'_status_enum': 'created', '_status_fkey': None}
+    Notification.query.filter(Notification.id == sample_notification.id).update(update_dict)
+    NotificationHistory.query.filter(NotificationHistory.id == sample_notification.id).update(update_dict)
+
+    # now lets update the notification's status to failed - both columns should now be populated on the history object
+    sample_notification.status = 'failed'
+    dao_update_notification(sample_notification)
+
+    hist_from_db = NotificationHistory.query.get(sample_notification.id)
+    assert hist_from_db.status == 'failed'
+    assert hist_from_db._status_enum == 'failed'
+    assert hist_from_db._status_fkey == 'failed'
 
 
 @freeze_time("2016-01-10 12:00:00.000000")
@@ -1626,3 +1661,33 @@ def test_dao_update_notifications_sent_to_dvla_does_update_history_if_test_key(
     assert updated_notification.sent_at
     assert updated_notification.updated_at
     assert not NotificationHistory.query.get(notification.id)
+
+
+def test_dao_get_notifications_by_to_field(sample_template):
+    notification1 = create_notification(template=sample_template, to_field='+447700900855')
+    notification2 = create_notification(template=sample_template, to_field='jack@gmail.com')
+    notification3 = create_notification(template=sample_template, to_field='jane@gmail.com')
+    results = dao_get_notifications_by_to_field(notification1.service_id, "+447700900855")
+    assert len(results) == 1
+    assert results[0].id == notification1.id
+
+
+def test_dao_get_notifications_by_to_field_search_is_not_case_sensitive(sample_template):
+    notification1 = create_notification(template=sample_template, to_field='+447700900855')
+    notification2 = create_notification(template=sample_template, to_field='jack@gmail.com')
+    notification3 = create_notification(template=sample_template, to_field='jane@gmail.com')
+    results = dao_get_notifications_by_to_field(notification1.service_id, 'JACK@gmail.com')
+    assert len(results) == 1
+    assert results[0].id == notification2.id
+
+
+def test_dao_get_notifications_by_to_field_search_ignores_spaces(sample_template):
+    notification1 = create_notification(template=sample_template, to_field='+447700900855')
+    notification2 = create_notification(template=sample_template, to_field='+44 77 00900 855')
+    notification3 = create_notification(template=sample_template, to_field=' +4477009 00 855 ')
+    notification4 = create_notification(template=sample_template, to_field='jack@gmail.com')
+    results = dao_get_notifications_by_to_field(notification1.service_id, '+447700900855')
+    assert len(results) == 3
+    assert notification1.id in [r.id for r in results]
+    assert notification2.id in [r.id for r in results]
+    assert notification3.id in [r.id for r in results]

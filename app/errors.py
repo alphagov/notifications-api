@@ -92,7 +92,7 @@ def register_errors(blueprint):
     @blueprint.errorhandler(SQLAlchemyError)
     def db_error(e):
         current_app.logger.exception(e)
-        if e.orig.pgerror and \
+        if hasattr(e, 'orig') and hasattr(e.orig, 'pgerror') and e.orig.pgerror and \
             ('duplicate key value violates unique constraint "services_name_key"' in e.orig.pgerror or
                 'duplicate key value violates unique constraint "services_email_from_key"' in e.orig.pgerror):
             return jsonify(
