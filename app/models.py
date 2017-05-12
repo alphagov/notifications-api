@@ -602,6 +602,11 @@ NOTIFICATION_STATUS_TYPES_COMPLETED = [
     NOTIFICATION_PERMANENT_FAILURE,
 ]
 
+NOTIFICATION_STATUS_SUCCESS = [
+    NOTIFICATION_SENT,
+    NOTIFICATION_DELIVERED
+]
+
 NOTIFICATION_STATUS_TYPES_BILLABLE = [
     NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
@@ -623,6 +628,7 @@ NOTIFICATION_STATUS_TYPES = [
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
 ]
+
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
 
@@ -1060,5 +1066,11 @@ class JobStatistics(db.Model):
         the_string += "sms sent {} sms delivered {} sms failed {} ".format(
             self.sms_sent, self.sms_delivered, self.sms_failed
         )
-        the_string += "letter sent {} letter failed {} ".format(self.letters_sent, self.letters_failed)
+        the_string += "letter sent {} letter failed {} ".format(
+            self.letters_sent, self.letters_failed
+        )
+        the_string += "job_id {} ".format(
+            self.job_id
+        )
+        the_string += "created at {}".format(self.created_at)
         return the_string
