@@ -25,11 +25,11 @@ def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-off
     return user
 
 
-def create_service(user=None, service_name="Sample service", service_id=None):
+def create_service(user=None, service_name="Sample service", service_id=None, restricted=False):
     service = Service(
         name=service_name,
         message_limit=1000,
-        restricted=False,
+        restricted=restricted,
         email_from=service_name.lower().replace(' ', '.'),
         created_by=user or create_user()
     )

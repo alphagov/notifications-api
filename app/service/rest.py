@@ -46,6 +46,7 @@ from app.errors import (
     InvalidRequest, register_errors)
 from app.service import statistics
 from app.service.utils import get_whitelist_objects
+from app.service.sender import send_notification_to_service_users
 from app.schemas import (
     service_schema,
     api_key_schema,
@@ -117,10 +118,25 @@ def create_service():
 @service_blueprint.route('/<uuid:service_id>', methods=['POST'])
 def update_service(service_id):
     fetched_service = dao_fetch_service_by_id(service_id)
+    # Capture the status change here as Marshmallow changes this later
+    service_going_live = fetched_service.restricted and not request.get_json().get('restricted')
+
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())
     update_dict = service_schema.load(current_data).data
     dao_update_service(update_dict)
+
+    if service_going_live:
+        send_notification_to_service_users(
+            service_id=service_id,
+            template_id=current_app.config['SERVICE_NOW_LIVE_TEMPLATE_ID'],
+            personalisation={
+                'service_name': current_data['name'],
+                'message_limit': current_data['message_limit']
+            },
+            include_user_fields=['name']
+        )
+
     return jsonify(data=service_schema.dump(fetched_service).data), 200
 
 
