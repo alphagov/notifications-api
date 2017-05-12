@@ -16,7 +16,7 @@ from app.dao.notifications_dao import (
     dao_timeout_notifications,
     is_delivery_slow_for_provider
 )
-from app.dao.statistics_dao import timeout_job_statistics as dao_timeout_job_statistics
+from app.dao.statistics_dao import dao_timeout_job_statistics
 from app.dao.provider_details_dao import (
     get_current_provider,
     dao_toggle_sms_provider

@@ -14,7 +14,7 @@ from app.models import NOTIFICATION_STATUS_TYPES_COMPLETED
 
 
 def create_initial_notification_statistic_tasks(notification):
-    if notification.job_id and notification.status not in NOTIFICATION_STATUS_TYPES_COMPLETED:
+    if notification.job_id and notification.status:
         record_initial_job_statistics.apply_async((str(notification.id),), queue="statistics")
 
 
