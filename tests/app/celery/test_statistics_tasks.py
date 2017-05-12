@@ -32,16 +32,6 @@ def test_should_create_intial_job_task_if_notification_is_not_in_completed_state
     mock.assert_called_once_with((str(notification.id), ), queue="statistics")
 
 
-@pytest.mark.parametrize('status', NOTIFICATION_STATUS_TYPES_COMPLETED)
-def test_should_not_create_initial_job_task_if_notification_in_completed_state_already(
-    notify_db, notify_db_session, sample_job, mocker, status
-):
-    mock = mocker.patch("app.celery.statistics_tasks.record_initial_job_statistics.apply_async")
-    notification = sample_notification(notify_db, notify_db_session, job=sample_job, status=status)
-    create_initial_notification_statistic_tasks(notification)
-    mock.assert_not_called()
-
-
 def test_should_not_create_initial_job_task_if_notification_is_not_related_to_a_job(
         notify_db, notify_db_session, mocker
 ):
