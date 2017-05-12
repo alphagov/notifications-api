@@ -177,8 +177,6 @@ def delete_service_and_all_associated_db_objects(service):
     _delete_commit(Template.query.filter_by(service=service))
     _delete_commit(TemplateHistory.query.filter_by(service_id=service.id))
 
-
-
     verify_codes = VerifyCode.query.join(User).filter(User.id.in_([x.id for x in service.users]))
     list(map(db.session.delete, verify_codes))
     db.session.commit()
