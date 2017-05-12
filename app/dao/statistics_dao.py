@@ -1,12 +1,15 @@
 from datetime import datetime, timedelta
+from itertools import groupby
 
 from flask import current_app
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app import db
 from app.dao.dao_utils import transactional
 from app.models import (
     JobStatistics,
+    Notification,
     EMAIL_TYPE,
     SMS_TYPE,
     LETTER_TYPE,
@@ -18,21 +21,50 @@ from app.statsd_decorators import statsd
 
 @transactional
 def timeout_job_counts(notifications_type, timeout_start):
+    total_updated = 0
+
     sent = columns(notifications_type, 'sent')
     delivered = columns(notifications_type, 'delivered')
     failed = columns(notifications_type, 'failed')
 
-    query = JobStatistics.query.filter(
+    results = db.session.query(
+        JobStatistics.job_id.label('job_id'),
+        func.count(Notification.status).label('count'),
+        Notification.status.label('status')
+    ).filter(
+        JobStatistics.job_id == Notification.job_id,
         JobStatistics.created_at < timeout_start,
         sent != failed + delivered
-    )
-    return query.update(
-        {failed: sent - delivered}, synchronize_session=False
-    )
+    ).group_by(Notification.status, JobStatistics.job_id).order_by(JobStatistics.job_id).all()
+
+    sort = sorted(results, key=lambda result: result.job_id)
+    groups = []
+    for k, g in groupby(sort, key=lambda result: result.job_id):
+        groups.append(list(g))
+
+    for job in groups:
+        sent_count = 0
+        delivered_count = 0
+        failed_count = 0
+        for notification_status in job:
+            if notification_status.status in [NOTIFICATION_DELIVERED, NOTIFICATION_SENT]:
+                delivered_count += notification_status.count
+            else:
+                failed_count += notification_status.count
+            sent_count += notification_status.count
+
+        total_updated += JobStatistics.query.filter_by(
+            job_id=notification_status.job_id
+        ).update({
+            sent: sent_count,
+            failed: failed_count,
+            delivered: delivered_count
+        }, synchronize_session=False)
+    return total_updated
 
 
 @statsd(namespace="dao")
-def timeout_job_statistics(timeout_period):
+def dao_timeout_job_statistics(timeout_period):
     timeout_start = datetime.utcnow() - timedelta(seconds=timeout_period)
     sms_count = timeout_job_counts(SMS_TYPE, timeout_start)
     email_count = timeout_job_counts(EMAIL_TYPE, timeout_start)
