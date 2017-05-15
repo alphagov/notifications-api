@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 from jsonschema import (Draft4Validator, ValidationError, FormatChecker)
 from notifications_utils.recipients import (validate_phone_number, validate_email_address, InvalidPhoneError,
@@ -18,6 +19,16 @@ def validate(json_to_validate, schema):
     def validate_schema_email_address(instance):
         if isinstance(instance, str):
             validate_email_address(instance)
+        return True
+
+    @format_checker.checks('datetime', raises=ValidationError)
+    def validate_schema_datetime(instance):
+        if isinstance(instance, str):
+            try:
+                datetime.strptime(instance, "%Y-%m-%d %H:%M:%S")
+            except ValueError as e:
+                raise ValidationError("datetime format is invalid. Use the format: "
+                                      "YYYY-MM-DD HH:MM:SS, for example 2017-05-30 13:00:00")
         return True
 
     validator = Draft4Validator(schema, format_checker=format_checker)
