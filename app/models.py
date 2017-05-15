@@ -686,6 +686,8 @@ class Notification(db.Model):
         foreign(template_version) == remote(TemplateHistory.version)
     ))
 
+    scheduled_for = db.relationship('ScheduledNotification')
+
     client_reference = db.Column(db.String, index=True, nullable=True)
 
     international = db.Column(db.Boolean, nullable=False, default=False)
@@ -846,7 +848,9 @@ class Notification(db.Model):
             "subject": self.subject,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "sent_at": self.sent_at.strftime(DATETIME_FORMAT) if self.sent_at else None,
-            "completed_at": self.completed_at()
+            "completed_at": self.completed_at(),
+            "scheduled_for": self.scheduled_for[0].scheduled_for.strftime(
+                DATETIME_FORMAT) if self.scheduled_for else None
         }
 
         return serialized

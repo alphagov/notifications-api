@@ -8,7 +8,8 @@ from app.notifications.process_notifications import (
     create_content_for_notification,
     persist_notification,
     send_notification_to_queue,
-    simulated_recipient)
+    simulated_recipient,
+    persist_scheduled_notification)
 from app.notifications.validators import (
     check_template_is_for_notification_type,
     check_template_is_active,
@@ -57,26 +58,32 @@ def post_notification(notification_type):
                                         key_type=api_user.key_type,
                                         client_reference=form.get('reference', None),
                                         simulated=simulated)
-
-    if not simulated:
-        queue_name = 'priority' if template.process_type == PRIORITY else None
-        send_notification_to_queue(notification=notification, research_mode=service.research_mode, queue=queue_name)
+    scheduled_for = form.get("scheduled_for", None)
+    if scheduled_for:
+        persist_scheduled_notification(notification.id, form["scheduled_for"])
     else:
-        current_app.logger.info("POST simulated notification for id: {}".format(notification.id))
+        if not simulated:
+            queue_name = 'priority' if template.process_type == PRIORITY else None
+            send_notification_to_queue(notification=notification, research_mode=service.research_mode, queue=queue_name)
+        else:
+            current_app.logger.info("POST simulated notification for id: {}".format(notification.id))
+
     if notification_type == SMS_TYPE:
         sms_sender = service.sms_sender if service.sms_sender else current_app.config.get('FROM_NUMBER')
         resp = create_post_sms_response_from_notification(notification=notification,
                                                           body=str(template_with_content),
                                                           from_number=sms_sender,
                                                           url_root=request.url_root,
-                                                          service_id=service.id)
+                                                          service_id=service.id,
+                                                          scheduled_for=scheduled_for)
     else:
         resp = create_post_email_response_from_notification(notification=notification,
                                                             content=str(template_with_content),
                                                             subject=template_with_content.subject,
                                                             email_from=service.email_from,
                                                             url_root=request.url_root,
-                                                            service_id=service.id)
+                                                            service_id=service.id,
+                                                            scheduled_for=scheduled_for)
     return jsonify(resp), 201
 
 

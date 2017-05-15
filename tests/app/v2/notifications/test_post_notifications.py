@@ -1,7 +1,7 @@
 import uuid
 import pytest
 from flask import json
-from app.models import Notification
+from app.models import Notification, ScheduledNotification
 from app.v2.errors import RateLimitError
 from tests import create_authorization_header
 from tests.app.conftest import sample_template as create_sample_template, sample_service
@@ -41,6 +41,7 @@ def test_post_sms_notification_returns_201(notify_api, sample_template_with_plac
             assert 'services/{}/templates/{}'.format(sample_template_with_placeholders.service_id,
                                                      sample_template_with_placeholders.id) \
                    in resp_json['template']['uri']
+            assert not resp_json["scheduled_for"]
             assert mocked.called
 
 
@@ -149,6 +150,7 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
     assert 'services/{}/templates/{}'.format(str(sample_email_template_with_placeholders.service_id),
                                              str(sample_email_template_with_placeholders.id)) \
            in resp_json['template']['uri']
+    assert not resp_json["scheduled_for"]
     assert mocked.called
 
 
@@ -318,32 +320,56 @@ def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(notify_db,
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header])
 
-    print(json.loads(response.get_data(as_text=True)))
     assert response.status_code == 201
     assert response.headers['Content-type'] == 'application/json'
 
 
-def test_post_sms_should_persist_supplied_sms_number(notify_api, sample_template_with_placeholders, mocker):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-            data = {
-                'phone_number': '+(44) 77009-00855',
-                'template_id': str(sample_template_with_placeholders.id),
-                'personalisation': {' Name': 'Jo'}
-            }
+def test_post_sms_should_persist_supplied_sms_number(client, sample_template_with_placeholders, mocker):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    data = {
+        'phone_number': '+(44) 77009-00855',
+        'template_id': str(sample_template_with_placeholders.id),
+        'personalisation': {' Name': 'Jo'}
+    }
 
-            auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
+    auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
 
-            response = client.post(
-                path='/v2/notifications/sms',
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert response.status_code == 201
-            resp_json = json.loads(response.get_data(as_text=True))
-            notifications = Notification.query.all()
-            assert len(notifications) == 1
-            notification_id = notifications[0].id
-            assert '+(44) 77009-00855' == notifications[0].to
-            assert resp_json['id'] == str(notification_id)
-            assert mocked.called
+    response = client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 201
+    resp_json = json.loads(response.get_data(as_text=True))
+    notifications = Notification.query.all()
+    assert len(notifications) == 1
+    notification_id = notifications[0].id
+    assert '+(44) 77009-00855' == notifications[0].to
+    assert resp_json['id'] == str(notification_id)
+    assert mocked.called
+
+
+@pytest.mark.parametrize("type", ["sms", "email"])
+def test_post_notification_with_scheduled_for(client, sample_template, sample_email_template, type):
+    if type == 'sms':
+        data = {
+            'phone_number': '+(44) 77009-00855',
+            'template_id': str(sample_template.id),
+            'scheduled_for': '2017-05-14 15:00:00'
+        }
+    else:
+        data = {
+            'email_address': 'jack@blah.com',
+            'template_id': str(sample_email_template.id),
+            'scheduled_for': '2017-05-14 15:00:00'
+        }
+    auth_header = create_authorization_header(service_id=sample_template.service_id)
+
+    response = client.post('/v2/notifications/{}'.format(type),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 201
+    resp_json = json.loads(response.get_data(as_text=True))
+    scheduled_notification = ScheduledNotification.query.all()
+    assert len(scheduled_notification) == 1
+    assert resp_json["id"] == str(scheduled_notification[0].notification_id)
+    assert resp_json["scheduled_for"] == str(scheduled_notification[0].scheduled_for)

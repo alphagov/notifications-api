@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from app.models import NOTIFICATION_STATUS_TYPES, TEMPLATE_TYPES
 from app.schema_validation.definitions import (uuid, personalisation)
 
@@ -192,7 +194,7 @@ post_email_response = {
 }
 
 
-def create_post_sms_response_from_notification(notification, body, from_number, url_root, service_id):
+def create_post_sms_response_from_notification(notification, body, from_number, url_root, service_id, scheduled_for):
     return {"id": notification.id,
             "reference": notification.client_reference,
             "content": {'body': body,
@@ -200,11 +202,13 @@ def create_post_sms_response_from_notification(notification, body, from_number, 
             "uri": "{}v2/notifications/{}".format(url_root, str(notification.id)),
             "template": __create_template_from_notification(notification=notification,
                                                             url_root=url_root,
-                                                            service_id=service_id)
+                                                            service_id=service_id),
+            "scheduled_for": scheduled_for
             }
 
 
-def create_post_email_response_from_notification(notification, content, subject, email_from, url_root, service_id):
+def create_post_email_response_from_notification(notification, content, subject, email_from, url_root, service_id,
+                                                 scheduled_for):
     return {
         "id": notification.id,
         "reference": notification.client_reference,
@@ -216,7 +220,8 @@ def create_post_email_response_from_notification(notification, content, subject,
         "uri": "{}v2/notifications/{}".format(url_root, str(notification.id)),
         "template": __create_template_from_notification(notification=notification,
                                                         url_root=url_root,
-                                                        service_id=service_id)
+                                                        service_id=service_id),
+        "scheduled_for": scheduled_for
     }
 
 

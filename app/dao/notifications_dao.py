@@ -463,3 +463,9 @@ def dao_get_notifications_by_to_field(service_id, search_term):
     return Notification.query.filter(
         Notification.service_id == service_id,
         func.replace(func.lower(Notification.to), " ", "") == search_term.lower().replace(" ", "")).all()
+
+
+@statsd(namespace="dao")
+def dao_created_scheduled_notification(scheduled_notification):
+    db.session.add(scheduled_notification)
+    db.session.commit()

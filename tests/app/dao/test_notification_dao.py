@@ -12,6 +12,7 @@ from app.models import (
     Job,
     NotificationStatistics,
     TemplateStatistics,
+    ScheduledNotification,
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_FAILED,
     NOTIFICATION_SENT,
@@ -39,7 +40,9 @@ from app.dao.notifications_dao import (
     dao_delete_notifications_and_history_by_id,
     dao_timeout_notifications,
     is_delivery_slow_for_provider,
-    dao_update_notifications_sent_to_dvla, dao_get_notifications_by_to_field)
+    dao_update_notifications_sent_to_dvla,
+    dao_get_notifications_by_to_field,
+    dao_created_scheduled_notification)
 
 from app.dao.services_dao import dao_update_service
 from tests.app.db import create_notification
@@ -1691,3 +1694,13 @@ def test_dao_get_notifications_by_to_field_search_ignores_spaces(sample_template
     assert notification1.id in [r.id for r in results]
     assert notification2.id in [r.id for r in results]
     assert notification3.id in [r.id for r in results]
+
+
+def test_dao_created_scheduled_notification(sample_notification):
+    scheduled_notification = ScheduledNotification(notification_id=sample_notification.id,
+                                                   scheduled_for="2017-01-05 14:00:00")
+    dao_created_scheduled_notification(scheduled_notification)
+    saved_notification = ScheduledNotification.query.all()
+    assert len(saved_notification) == 1
+    assert saved_notification[0].notification_id == sample_notification.id
+    assert saved_notification[0].scheduled_for == datetime(2017, 1, 5, 14)
