@@ -912,6 +912,16 @@ class NotificationHistory(db.Model, HistoryModel):
 INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
 
 
+class ScheduledNotification(db.Model):
+    __tablename__ = 'scheduled_notifications'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4())
+    notification_id = db.Column(UUID(as_uuid=True), db.ForeignKey('notifications.id'), index=True, nullable=False)
+    notification = db.relationship('Notification')
+    scheduled_for = db.Column(db.DateTime, index=False, nullable=False)
+    pending = db.Column(db.Boolean, nullable=False, default=False)
+
+
 class InvitedUser(db.Model):
     __tablename__ = 'invited_users'
 
