@@ -12,15 +12,19 @@ from celery.exceptions import Retry
 from app import (encryption, DATETIME_FORMAT)
 from app.celery import provider_tasks
 from app.celery import tasks
-from app.celery.tasks import s3, build_dvla_file, create_dvla_file_contents, update_dvla_job_to_error
 from app.celery.tasks import (
+    s3,
+    build_dvla_file,
+    create_dvla_file_contents,
+    update_dvla_job_to_error,
     process_job,
     process_row,
     send_sms,
     send_email,
     persist_letter,
     get_template_class,
-    update_job_to_sent_to_dvla
+    update_job_to_sent_to_dvla,
+    update_letter_notifications_statuses
 )
 from app.dao import jobs_dao, services_dao
 from app.models import (
@@ -34,6 +38,7 @@ from app.models import (
     Job)
 
 from tests.app import load_example_csv
+from tests.conftest import set_config
 from tests.app.conftest import (
     sample_service,
     sample_template,

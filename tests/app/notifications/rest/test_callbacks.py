@@ -10,17 +10,65 @@ from app.dao.notifications_dao import (
     get_notification_by_id
 )
 from app.models import NotificationStatistics
+from tests.app.notifications.test_notifications_ses_callback import ses_confirmation_callback
 from tests.app.conftest import sample_notification as create_sample_notification
 
 
-def test_dvla_callback_should_not_need_auth(client):
-    data = json.dumps({"somekey": "somevalue"})
+def test_dvla_callback_returns_400_with_invalid_request(client):
+    data = json.dumps({"foo": "bar"})
     response = client.post(
         path='/notifications/letter/dvla',
         data=data,
-        headers=[('Content-Type', 'application/json')])
+        headers=[('Content-Type', 'application/json')]
+    )
+
+    assert response.status_code == 400
+
+
+def test_dvla_callback_autoconfirms_subscription(client, mocker):
+    autoconfirm_mock = mocker.patch('app.notifications.notifications_letter_callback.autoconfirm_subscription')
+
+    data = ses_confirmation_callback()
+    response = client.post(
+        path='/notifications/letter/dvla',
+        data=data,
+        headers=[('Content-Type', 'application/json')]
+    )
 
     assert response.status_code == 200
+    assert autoconfirm_mock.called
+
+
+def test_dvla_callback_autoconfirm_does_not_call_update_letter_notifications_task(client, mocker):
+    autoconfirm_mock = mocker.patch('app.notifications.notifications_letter_callback.autoconfirm_subscription')
+    update_task = \
+        mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
+
+    data = ses_confirmation_callback()
+    response = client.post(
+        path='/notifications/letter/dvla',
+        data=data,
+        headers=[('Content-Type', 'application/json')]
+    )
+
+    assert response.status_code == 200
+    assert autoconfirm_mock.called
+    assert not update_task.called
+
+
+def test_dvla_callback_calls_update_letter_notifications_task(client, mocker):
+    update_task = \
+        mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
+    data = _sample_sns_s3_callback()
+    response = client.post(
+        path='/notifications/letter/dvla',
+        data=data,
+        headers=[('Content-Type', 'application/json')]
+    )
+
+    assert response.status_code == 200
+    assert update_task.called
+    update_task.assert_called_with(['bar.txt'], queue='notify')
 
 
 def test_firetext_callback_should_not_need_auth(client, mocker):
@@ -458,3 +506,46 @@ def test_firetext_callback_should_record_statsd(client, notify_db, notify_db_ses
 
 def get_notification_stats(service_id):
     return NotificationStatistics.query.filter_by(service_id=service_id).one()
+
+
+def _sample_sns_s3_callback():
+    return json.dumps({
+        "SigningCertURL": "foo.pem",
+        "UnsubscribeURL": "bar",
+        "Signature": "some-signature",
+        "Type": "Notification",
+        "Timestamp": "2016-05-03T08:35:12.884Z",
+        "SignatureVersion": "1",
+        "MessageId": "6adbfe0a-d610-509a-9c47-af894e90d32d",
+        "Subject": "Amazon S3 Notification",
+        "TopicArn": "sample-topic-arn",
+        "Message": {
+            "Records": [{
+                "eventVersion": "2.0",
+                "eventSource": "aws:s3",
+                "awsRegion": "eu-west-1",
+                "eventTime": "2017-05-03T08:35:12.826Z",
+                "eventName": "ObjectCreated:Put",
+                "userIdentity": {"principalId": "some-p-id"},
+                "requestParameters": {"sourceIPAddress": "8.8.8.8"},
+                "responseElements": {"x-amz-request-id": "some-req-id", "x-amz-id-2": "some-amz-id"},
+                "s3": {
+                    "s3SchemaVersion": "1.0",
+                    "configurationId": "some-config-id",
+                    "bucket": {
+                        "name": "some-bucket",
+                        "ownerIdentity": {"principalId": "some-p-id"},
+                        "arn": "some-bucket-arn"
+                    },
+                    "object": {
+                        "key": "bar.txt",
+                        "size": 200,
+                        "eTag": "some-etag",
+                        "versionId": "some-v-id",
+                        "sequencer": "some-seq"
+                    }
+                }
+            }
+            ]
+        }
+    })
