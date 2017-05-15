@@ -1,6 +1,7 @@
 import random
 
 from datetime import (datetime)
+from collections import namedtuple
 
 from flask import current_app
 from notifications_utils.recipients import (
@@ -354,3 +355,27 @@ def get_template_class(template_type):
         # since we don't need rendering capabilities (we only need to extract placeholders) both email and letter can
         # use the same base template
         return WithSubjectTemplate
+
+
+@notify_celery.task(bind=True, name='update-letter-notifications-statuses')
+@statsd(namespace="tasks")
+def update_letter_notifications_statuses(self, filename):
+    bucket_location = '{}-ftp'.format(current_app.config['NOTIFY_EMAIL_DOMAIN'])
+    response_file = s3.get_s3_file(bucket_location, filename)
+
+    try:
+        NotificationUpdate = namedtuple('NotificationUpdate', ['reference', 'status', 'page_count', 'cost_threshold'])
+        notification_updates = [NotificationUpdate(*line.split('|')) for line in response_file.splitlines()]
+
+    except TypeError:
+        current_app.logger.exception('DVLA response file: {} has an invalid format'.format(filename))
+        raise
+
+    else:
+        if notification_updates:
+            for update in notification_updates:
+                current_app.logger.info('DVLA update: {}'.format(str(update)))
+                # TODO: Update notifications with desired status
+            return notification_updates
+        else:
+            current_app.logger.exception('DVLA response file contained no updates')
