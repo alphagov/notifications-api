@@ -212,6 +212,7 @@ class ServicePermission(db.Model):
 
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'),
                            primary_key=True, index=True, nullable=False)
+    service = db.relationship('Service')
     permission = db.Column(db.String(255), db.ForeignKey('service_permission_types.name'),
                            index=True, primary_key=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
