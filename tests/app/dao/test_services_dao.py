@@ -50,7 +50,7 @@ from app.models import (
     KEY_TYPE_TEST
 )
 
-from tests.app.db import create_user
+from tests.app.db import create_user, create_service
 from tests.app.conftest import (
     sample_notification as create_notification,
     sample_notification_history as create_notification_history,
@@ -787,9 +787,11 @@ def test_fetch_monthly_historical_template_stats_for_service_separates_templates
     assert str(template_two.id) in result.get('2016-04').keys()
 
 
-def test_dao_fetch_active_users_for_service_returns_active_only(sample_service):
-    pending_user = create_user(email='foo@bar.com', state='pending')
-    dao_add_user_to_service(sample_service, pending_user)
-    users = dao_fetch_active_users_for_service(sample_service.id)
+def test_dao_fetch_active_users_for_service_returns_active_only(notify_db, notify_db_session):
+    active_user = create_user(email='active@foo.com', state='active')
+    pending_user = create_user(email='pending@foo.com', state='pending')
+    service = create_service(user=active_user)
+    dao_add_user_to_service(service, pending_user)
+    users = dao_fetch_active_users_for_service(service.id)
 
     assert len(users) == 1

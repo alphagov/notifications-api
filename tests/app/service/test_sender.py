@@ -77,7 +77,10 @@ def test_send_notification_to_service_users_includes_user_fields_in_personalisat
         include_user_fields=['name', 'email_address', 'state']
     )
 
-    assert persist_mock.mock_calls[0][2]['personalisation'] == {
+    persist_call = persist_mock.call_args_list[0][1]
+
+    assert len(persist_mock.call_args_list) == 1
+    assert persist_call['personalisation'] == {
         'name': sample_user.name,
         'email_address': sample_user.email_address,
         'state': sample_user.state,
