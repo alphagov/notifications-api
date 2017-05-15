@@ -1702,3 +1702,22 @@ def test_update_service_does_not_call_send_notification_for_live_service(sample_
 
     assert resp.status_code == 200
     assert not send_notification_mock.called
+
+
+def test_update_service_does_not_call_send_notification_when_restricted_not_changed(sample_service, client, mocker):
+    send_notification_mock = mocker.patch('app.service.rest.send_notification_to_service_users')
+
+    data = {
+        "name": 'Name of service'
+    }
+
+    auth_header = create_authorization_header()
+    resp = client.post(
+        'service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[auth_header],
+        content_type='application/json'
+    )
+
+    assert resp.status_code == 200
+    assert not send_notification_mock.called
