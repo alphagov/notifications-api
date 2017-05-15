@@ -1658,3 +1658,66 @@ def test_search_for_notification_by_to_field_return_multiple_matches(
     assert str(notification1.id) in [n["id"] for n in result["notifications"]]
     assert str(notification2.id) in [n["id"] for n in result["notifications"]]
     assert str(notification3.id) in [n["id"] for n in result["notifications"]]
+
+
+def test_update_service_calls_send_notification_as_service_becomes_live(notify_db, notify_db_session, client, mocker):
+    send_notification_mock = mocker.patch('app.service.rest.send_notification_to_service_users')
+
+    restricted_service = create_service(
+        notify_db,
+        notify_db_session,
+        restricted=True
+    )
+
+    data = {
+        "restricted": False
+    }
+
+    auth_header = create_authorization_header()
+    resp = client.post(
+        'service/{}'.format(restricted_service.id),
+        data=json.dumps(data),
+        headers=[auth_header],
+        content_type='application/json'
+    )
+
+    assert resp.status_code == 200
+    assert send_notification_mock.called
+
+
+def test_update_service_does_not_call_send_notification_for_live_service(sample_service, client, mocker):
+    send_notification_mock = mocker.patch('app.service.rest.send_notification_to_service_users')
+
+    data = {
+        "restricted": True
+    }
+
+    auth_header = create_authorization_header()
+    resp = client.post(
+        'service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[auth_header],
+        content_type='application/json'
+    )
+
+    assert resp.status_code == 200
+    assert not send_notification_mock.called
+
+
+def test_update_service_does_not_call_send_notification_when_restricted_not_changed(sample_service, client, mocker):
+    send_notification_mock = mocker.patch('app.service.rest.send_notification_to_service_users')
+
+    data = {
+        "name": 'Name of service'
+    }
+
+    auth_header = create_authorization_header()
+    resp = client.post(
+        'service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[auth_header],
+        content_type='application/json'
+    )
+
+    assert resp.status_code == 200
+    assert not send_notification_mock.called

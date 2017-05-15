@@ -384,3 +384,12 @@ def dao_suspend_service(service_id):
 def dao_resume_service(service_id):
     service = Service.query.get(service_id)
     service.active = True
+
+
+def dao_fetch_active_users_for_service(service_id):
+    query = User.query.filter(
+        User.user_to_service.any(id=service_id),
+        User.state == 'active'
+    )
+
+    return query.all()
