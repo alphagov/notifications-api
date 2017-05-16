@@ -19,7 +19,7 @@ from app.models import (
     NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_PENDING, NOTIFICATION_CREATED, NOTIFICATION_FAILED, NOTIFICATION_SENT, NOTIFICATION_SENDING,
     NOTIFICATION_STATUS_TYPES_COMPLETED, Notification, NOTIFICATION_STATUS_TYPES, NOTIFICATION_STATUS_SUCCESS)
-from tests.app.conftest import sample_notification, sample_email_template, sample_template, sample_job
+from tests.app.conftest import sample_notification, sample_email_template, sample_template, sample_job, sample_service
 
 
 @pytest.mark.parametrize('notification_type, sms_count, email_count, letter_count', [
@@ -705,48 +705,82 @@ count_success_notifications = len(NOTIFICATION_STATUS_SUCCESS)
 count_error_notifications = len(NOTIFICATION_STATUS_TYPES) - len(NOTIFICATION_STATUS_SUCCESS)
 
 
-def test_timeout_job_sets_all_non_delivered_emails_to_error(
+def test_timeout_job_sets_all_non_delivered_emails_to_error_and_doesnt_affect_sms(
         notify_db,
-        notify_db_session,
-        sample_job
+        notify_db_session
 ):
-    # Make a notification in every state
+    service = sample_service(notify_db, notify_db_session)
+
+    sms_template = sample_template(notify_db, notify_db_session, service=service)
+    email_template = sample_email_template(notify_db, notify_db_session, service=service)
+
+    email_job = sample_job(
+        notify_db, notify_db_session, template=email_template, service=service
+    )
+    sms_job = sample_job(
+        notify_db, notify_db_session, template=sms_template, service=service
+    )
+
+    # Make an email notification in every state
     for i in range(len(NOTIFICATION_STATUS_TYPES)):
         n = sample_notification(
             notify_db,
             notify_db_session,
-            service=sample_job.service,
-            template=sample_email_template(notify_db, notify_db_session, service=sample_job.service),
-            job=sample_job,
+            service=email_job.service,
+            template=email_template,
+            job=email_job,
             status=NOTIFICATION_STATUS_TYPES[i]
         )
         create_or_update_job_sending_statistics(n)
 
+    # single sms notification
+    sms_notification = sample_notification(
+        notify_db, notify_db_session, service=service, template=sms_template, job=sms_job
+    )
+    create_or_update_job_sending_statistics(sms_notification)
+
     # fudge the created at time on the job stats table to make the eligible for timeout query
-    JobStatistics.query.update({JobStatistics.created_at: datetime.utcnow() - timedelta(minutes=1)})
+    JobStatistics.query.update({
+        JobStatistics.created_at: datetime.utcnow() - timedelta(minutes=1)
+    })
 
     # should have sent an email for every state (len(NOTIFICATION_STATUS_TYPES))
-    initial_stats = JobStatistics.query.all()
-    for stats in initial_stats:
-        assert stats.emails_sent == count_notifications
-        assert stats.sms_sent == 0
-        assert stats.emails_delivered == 0
-        assert stats.sms_delivered == 0
-        assert stats.sms_failed == 0
-        assert stats.emails_failed == 0
+    initial_stats = JobStatistics.query.filter_by(job_id=email_job.id).all()
+    assert len(initial_stats) == 1
+    assert initial_stats[0].emails_sent == count_notifications
+    assert initial_stats[0].sms_sent == 0
+    assert initial_stats[0].emails_delivered == 0
+    assert initial_stats[0].sms_delivered == 0
+    assert initial_stats[0].sms_failed == 0
+    assert initial_stats[0].emails_failed == 0
+
+    all = JobStatistics.query.all()
+    for a in all:
+        print(a)
 
     # timeout the notifications
     dao_timeout_job_statistics(1)
 
+    all = JobStatistics.query.all()
+    for a in all:
+        print(a)
+
     # after timeout all delivered states are success and ALL other states are failed
-    updated_stats = JobStatistics.query.all()
-    for stats in updated_stats:
-        assert stats.emails_sent == count_notifications
-        assert stats.sms_sent == 0
-        assert stats.emails_delivered == count_success_notifications
-        assert stats.sms_delivered == 0
-        assert stats.sms_failed == 0
-        assert stats.emails_failed == count_error_notifications
+    updated_stats = JobStatistics.query.filter_by(job_id=email_job.id).all()
+    assert updated_stats[0].emails_sent == count_notifications
+    assert updated_stats[0].sms_sent == 0
+    assert updated_stats[0].emails_delivered == count_success_notifications
+    assert updated_stats[0].sms_delivered == 0
+    assert updated_stats[0].sms_failed == 0
+    assert updated_stats[0].emails_failed == count_error_notifications
+
+    sms_stats = JobStatistics.query.filter_by(job_id=sms_job.id).all()
+    assert sms_stats[0].emails_sent == 0
+    assert sms_stats[0].sms_sent == 1
+    assert sms_stats[0].emails_delivered == 0
+    assert sms_stats[0].sms_delivered == 0
+    assert sms_stats[0].sms_failed == 1
+    assert sms_stats[0].emails_failed == 100
 
 
 # this test is as above, but for SMS not email
