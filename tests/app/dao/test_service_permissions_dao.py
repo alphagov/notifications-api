@@ -1,20 +1,17 @@
 import pytest
 
-from app.dao.service_permissions_dao import (
-    dao_fetch_service_permissions, dao_remove_service_permission)
-from app.models import (
-    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INCOMING_SMS_TYPE, SERVICE_PERMISSION_TYPES)
+from app.dao.service_permissions_dao import dao_fetch_service_permissions, dao_remove_service_permission
+from app.models import EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INCOMING_SMS_TYPE
 
 from tests.app.db import create_service_permission
 
 
 def test_create_service_permission(sample_service):
-    service_permission = create_service_permission(
-        service_id=sample_service.id, permission=SMS_TYPE)
+    service_permissions = create_service_permission(service_id=sample_service.id, permission=SMS_TYPE)
 
-    assert len(service_permission) == 1
-    assert service_permission[0].service_id == sample_service.id
-    assert service_permission[0].permission == SMS_TYPE
+    assert len(service_permissions) == 1
+    assert service_permissions[0].service_id == sample_service.id
+    assert service_permissions[0].permission == SMS_TYPE
 
 
 def test_fetch_service_permissions_gets_service_permissions(sample_service):
