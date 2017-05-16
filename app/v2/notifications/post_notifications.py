@@ -67,10 +67,7 @@ def post_notification(notification_type):
     else:
         current_app.logger.info("POST simulated notification for id: {}".format(notification.id))
     if notification_type == SMS_TYPE:
-        sms_sender = (authenticated_service.sms_sender
-                      if authenticated_service.sms_sender
-                      else current_app.config.get('FROM_NUMBER')
-                      )
+        sms_sender = authenticated_service.sms_sender or current_app.config.get('FROM_NUMBER')
         resp = create_post_sms_response_from_notification(notification=notification,
                                                           body=str(template_with_content),
                                                           from_number=sms_sender,

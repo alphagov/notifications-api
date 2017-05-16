@@ -38,7 +38,7 @@ def persist_notification(
     notification_type,
     api_key_id,
     key_type,
-    created_at=None,
+    created_at=datetime.utcnow(),
     job_id=None,
     job_row_number=None,
     reference=None,
@@ -47,7 +47,6 @@ def persist_notification(
     simulated=False
 ):
 
-    notification_created_at = created_at or datetime.utcnow()
     notification = Notification(
         id=notification_id,
         template_id=template_id,
@@ -59,7 +58,7 @@ def persist_notification(
         notification_type=notification_type,
         api_key_id=api_key_id,
         key_type=key_type,
-        created_at=notification_created_at,
+        created_at=created_at,
         job_id=job_id,
         job_row_number=job_row_number,
         client_reference=client_reference,
