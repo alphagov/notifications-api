@@ -1,7 +1,7 @@
 """empty message
 
 Revision ID: 0083_scheduled_notifications
-Revises: 0082_add_go_live_template
+Revises: 0083_add_perm_types_and_svc_perm
 Create Date: 2017-05-15 12:50:20.041950
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = '0083_scheduled_notifications'
-down_revision = '0082_add_go_live_template'
+down_revision = '0083_add_perm_types_and_svc_perm'
 
 
 def upgrade():
