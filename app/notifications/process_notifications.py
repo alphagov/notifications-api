@@ -81,7 +81,7 @@ def persist_notification(
             if redis_store.get_all_from_hash(cache_key_for_service_template_counter(service.id)):
                 redis_store.increment_hash_value(cache_key_for_service_template_counter(service.id), template_id)
         current_app.logger.info(
-            "{} {} created at {}".format(notification_type, notification_id, notification_created_at)
+            "{} {} created at {}".format(notification_type, notification_id, created_at)
         )
     return notification
 
