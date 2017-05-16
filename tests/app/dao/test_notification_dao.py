@@ -1708,9 +1708,12 @@ def test_dao_created_scheduled_notification(sample_notification):
 
 def test_dao_get_scheduled_notifications(notify_db, notify_db_session, sample_template):
     notification_1 = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                                         template=sample_template, scheduled_for='2017-05-05 14:00:00')
+                                         template=sample_template, scheduled_for='2017-05-05 14:00:00',
+                                         status='created')
     sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                        template=sample_template)
+                        template=sample_template, scheduled_for='2017-05-04 14:00:00', status='delivered')
+    sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                        template=sample_template, status='created')
     scheduled_notifications = dao_get_scheduled_notifications()
     assert len(scheduled_notifications) == 1
-    assert scheduled_notifications[0].notification_id == notification_1.id
+    assert scheduled_notifications[0].id == notification_1.id

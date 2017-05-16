@@ -473,6 +473,10 @@ def dao_created_scheduled_notification(scheduled_notification):
 
 @statsd(namespace="dao")
 def dao_get_scheduled_notifications():
-    scheduled_notifications = ScheduledNotification.query.filter(
-        ScheduledNotification.scheduled_for < datetime.utcnow()).all()
-    return scheduled_notifications
+    notifications = Notification.query.join(
+        ScheduledNotification
+    ).filter(
+        ScheduledNotification.scheduled_for < datetime.utcnow(),
+        Notification.status == NOTIFICATION_CREATED).all()
+
+    return notifications
