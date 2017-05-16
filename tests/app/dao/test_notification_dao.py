@@ -716,13 +716,18 @@ def test_save_notification_with_no_job(sample_template, mmg_provider):
     assert notification_from_db.status == 'created'
 
 
-def test_get_notification_by_id(sample_notification):
+def test_get_notification_by_id(notify_db, notify_db_session, client, sample_template):
+    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                       template=sample_template,
+                                       scheduled_for='2017-05-05 14:00:00',
+                                       status='created')
     notification_from_db = get_notification_with_personalisation(
-        sample_notification.service.id,
-        sample_notification.id,
+        sample_template.service.id,
+        notification.id,
         key_type=None
     )
-    assert sample_notification == notification_from_db
+    assert notification == notification_from_db
+    assert notification_from_db.scheduled_notification.scheduled_for == datetime(2017, 5, 5, 14, 0)
 
 
 def test_get_notifications_by_reference(notify_db, notify_db_session, sample_service):
