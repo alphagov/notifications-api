@@ -1,6 +1,8 @@
 import uuid
 import pytest
 from flask import json
+
+from app import DATETIME_FORMAT
 from app.models import Notification, ScheduledNotification
 from app.v2.errors import RateLimitError
 from tests import create_authorization_header
@@ -348,23 +350,19 @@ def test_post_sms_should_persist_supplied_sms_number(client, sample_template_wit
     assert mocked.called
 
 
-@pytest.mark.parametrize("type", ["sms", "email"])
-def test_post_notification_with_scheduled_for(client, sample_template, sample_email_template, type):
-    if type == 'sms':
-        data = {
-            'phone_number': '+(44) 77009-00855',
-            'template_id': str(sample_template.id),
-            'scheduled_for': '2017-05-14 15:00:00'
-        }
-    else:
-        data = {
-            'email_address': 'jack@blah.com',
-            'template_id': str(sample_email_template.id),
-            'scheduled_for': '2017-05-14 15:00:00'
-        }
+@pytest.mark.parametrize("notification_type, key_send_to, send_to",
+                         [("sms", "phone_number", "07700 900 855"),
+                          ("email", "email_address", "sample@email.com")])
+def test_post_notification_with_scheduled_for(client, sample_template, sample_email_template,
+                                              notification_type, key_send_to, send_to):
+    data = {
+        key_send_to: send_to,
+        'template_id': str(sample_email_template.id) if notification_type == 'email' else str(sample_template.id),
+        'scheduled_for': '2017-05-14 15:00:00'
+    }
     auth_header = create_authorization_header(service_id=sample_template.service_id)
 
-    response = client.post('/v2/notifications/{}'.format(type),
+    response = client.post('/v2/notifications/{}'.format(notification_type),
                            data=json.dumps(data),
                            headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 201
@@ -372,4 +370,4 @@ def test_post_notification_with_scheduled_for(client, sample_template, sample_em
     scheduled_notification = ScheduledNotification.query.all()
     assert len(scheduled_notification) == 1
     assert resp_json["id"] == str(scheduled_notification[0].notification_id)
-    assert resp_json["scheduled_for"] == str(scheduled_notification[0].scheduled_for)
+    assert resp_json["scheduled_for"] == scheduled_notification[0].scheduled_for.strftime(DATETIME_FORMAT)
