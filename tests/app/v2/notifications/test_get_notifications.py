@@ -16,12 +16,17 @@ from tests.app.conftest import (
     (1, None)
 ])
 def test_get_notification_by_id_returns_200(
-        client, notify_db, notify_db_session, sample_provider_rate, billable_units, provider
+        client, notify_db, notify_db_session, billable_units, provider
 ):
     sample_notification = create_sample_notification(
-        notify_db, notify_db_session, billable_units=billable_units, sent_by=provider
+        notify_db, notify_db_session, billable_units=billable_units, sent_by=provider,
+        scheduled_for="2017-05-12 14:00:00"
     )
 
+    another = create_sample_notification(
+        notify_db, notify_db_session, billable_units=billable_units, sent_by=provider,
+        scheduled_for="2017-06-12 14:00:00"
+    )
     auth_header = create_authorization_header(service_id=sample_notification.service_id)
     response = client.get(
         path='/v2/notifications/{}'.format(sample_notification.id),
@@ -57,7 +62,8 @@ def test_get_notification_by_id_returns_200(
         'body': sample_notification.template.content,
         "subject": None,
         'sent_at': sample_notification.sent_at,
-        'completed_at': sample_notification.completed_at()
+        'completed_at': sample_notification.completed_at(),
+        'scheduled_for': '2017-05-12T14:00:00.000000Z'
     }
 
     assert json_response == expected_response
@@ -105,7 +111,8 @@ def test_get_notification_by_id_with_placeholders_returns_200(
         'body': "Hello Bob\nThis is an email from GOV.\u200bUK",
         "subject": "Bob",
         'sent_at': sample_notification.sent_at,
-        'completed_at': sample_notification.completed_at()
+        'completed_at': sample_notification.completed_at(),
+        'scheduled_for': None
     }
 
     assert json_response == expected_response
@@ -128,6 +135,25 @@ def test_get_notification_by_reference_returns_200(client, notify_db, notify_db_
 
     assert json_response['notifications'][0]['id'] == str(sample_notification_with_reference.id)
     assert json_response['notifications'][0]['reference'] == "some-client-reference"
+
+
+def test_get_notifications_returns_scheduled_for(client, notify_db, notify_db_session):
+    sample_notification_with_reference = create_sample_notification(
+        notify_db, notify_db_session, client_reference='some-client-reference', scheduled_for='2017-05-23 16:00:00')
+
+    auth_header = create_authorization_header(service_id=sample_notification_with_reference.service_id)
+    response = client.get(
+        path='/v2/notifications?reference={}'.format(sample_notification_with_reference.client_reference),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 200
+    assert response.headers['Content-type'] == 'application/json'
+
+    json_response = json.loads(response.get_data(as_text=True))
+    assert len(json_response['notifications']) == 1
+
+    assert json_response['notifications'][0]['id'] == str(sample_notification_with_reference.id)
+    assert json_response['notifications'][0]['scheduled_for'] == "2017-05-23T16:00:00.000000Z"
 
 
 def test_get_notification_by_reference_nonexistent_reference_returns_no_notifications(client, sample_service):
@@ -208,6 +234,7 @@ def test_get_all_notifications_returns_200(client, notify_db, notify_db_session)
     }
     assert json_response['notifications'][0]['phone_number'] == "+447700900855"
     assert json_response['notifications'][0]['type'] == "sms"
+    assert not json_response['notifications'][0]['scheduled_for']
 
 
 def test_get_all_notifications_no_notifications_if_no_notifications(client, sample_service):
