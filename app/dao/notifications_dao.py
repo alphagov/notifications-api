@@ -27,7 +27,7 @@ from app.models import (
     NOTIFICATION_PERMANENT_FAILURE,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST,
     LETTER_TYPE,
-    NOTIFICATION_SENT)
+    NOTIFICATION_SENT, ScheduledNotification)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
@@ -469,3 +469,9 @@ def dao_get_notifications_by_to_field(service_id, search_term):
 def dao_created_scheduled_notification(scheduled_notification):
     db.session.add(scheduled_notification)
     db.session.commit()
+
+
+@statsd(namespace="dao")
+def dao_get_scheduled_notifications():
+    scheduled_notifications = ScheduledNotification.query.filter(ScheduledNotification.scheduled_for < datetime.utcnow()).all()
+    return scheduled_notifications
