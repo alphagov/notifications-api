@@ -8,8 +8,7 @@ from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.templates_dao import dao_create_template
 from app.dao.services_dao import dao_create_service
-from app.dao.service_permissions_dao import (
-    dao_add_and_commit_service_permissions, make_service_permissions_list)
+from app.dao.service_permissions_dao import dao_add_and_commit_service_permission
 
 
 def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk"):
@@ -146,9 +145,9 @@ def create_job(template,
     return job
 
 
-def create_service_permissions(service_id, permissions=[EMAIL_TYPE, LETTER_TYPE]):
-    dao_add_and_commit_service_permissions(
-        service_id if service_id else create_service().id, permissions)
+def create_service_permission(service_id, permission=EMAIL_TYPE):
+    dao_add_and_commit_service_permission(
+        service_id if service_id else create_service().id, permission)
 
     service_permissions = ServicePermission.query.all()
 
