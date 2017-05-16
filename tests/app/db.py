@@ -9,13 +9,14 @@ from app.dao.templates_dao import dao_create_template
 from app.dao.services_dao import dao_create_service
 
 
-def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk"):
+def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk", state='active'):
     data = {
+        'id': uuid.uuid4(),
         'name': 'Test User',
         'email_address': email,
         'password': 'password',
         'mobile_number': mobile_number,
-        'state': 'active'
+        'state': state
     }
     user = User.query.filter_by(email_address=email).first()
     if not user:
@@ -24,11 +25,11 @@ def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-off
     return user
 
 
-def create_service(user=None, service_name="Sample service", service_id=None):
+def create_service(user=None, service_name="Sample service", service_id=None, restricted=False):
     service = Service(
         name=service_name,
         message_limit=1000,
-        restricted=False,
+        restricted=restricted,
         email_from=service_name.lower().replace(' ', '.'),
         created_by=user or create_user()
     )

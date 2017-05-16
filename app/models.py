@@ -31,6 +31,18 @@ from app import (
 from app.history_meta import Versioned
 from app.utils import get_utc_time_in_bst
 
+SMS_TYPE = 'sms'
+EMAIL_TYPE = 'email'
+LETTER_TYPE = 'letter'
+
+TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
+
+template_types = db.Enum(*TEMPLATE_TYPES, name='template_type')
+
+NORMAL = 'normal'
+PRIORITY = 'priority'
+TEMPLATE_PROCESS_TYPE = [NORMAL, PRIORITY]
+
 
 def filter_null_value_fields(obj):
     return dict(
@@ -183,6 +195,30 @@ class Service(db.Model, Versioned):
     )
 
 
+INTERNATIONAL_SMS_TYPE = 'international_sms'
+INCOMING_SMS_TYPE = 'incoming_sms'
+
+SERVICE_PERMISSION_TYPES = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INCOMING_SMS_TYPE]
+
+
+class ServicePermissionTypes(db.Model):
+    __tablename__ = 'service_permission_types'
+
+    name = db.Column(db.String(255), primary_key=True)
+
+
+class ServicePermission(db.Model):
+    __tablename__ = "service_permissions"
+
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'),
+                           primary_key=True, index=True, nullable=False)
+    service = db.relationship('Service')
+    permission = db.Column(db.String(255), db.ForeignKey('service_permission_types.name'),
+                           index=True, primary_key=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+
 MOBILE_TYPE = 'mobile'
 EMAIL_TYPE = 'email'
 
@@ -291,19 +327,6 @@ class NotificationStatistics(db.Model):
 class TemplateProcessTypes(db.Model):
     __tablename__ = 'template_process_type'
     name = db.Column(db.String(255), primary_key=True)
-
-
-SMS_TYPE = 'sms'
-EMAIL_TYPE = 'email'
-LETTER_TYPE = 'letter'
-
-TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
-
-template_types = db.Enum(*TEMPLATE_TYPES, name='template_type')
-
-NORMAL = 'normal'
-PRIORITY = 'priority'
-TEMPLATE_PROCESS_TYPE = [NORMAL, PRIORITY]
 
 
 class Template(db.Model):
