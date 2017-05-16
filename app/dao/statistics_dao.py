@@ -14,6 +14,7 @@ from app.models import (
     SMS_TYPE,
     LETTER_TYPE,
     NOTIFICATION_STATUS_TYPES_FAILED,
+    NOTIFICATION_STATUS_SUCCESS,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENT)
 from app.statsd_decorators import statsd
@@ -32,6 +33,7 @@ def timeout_job_counts(notifications_type, timeout_start):
         func.count(Notification.status).label('count'),
         Notification.status.label('status')
     ).filter(
+        Notification.notification_type == notifications_type,
         JobStatistics.job_id == Notification.job_id,
         JobStatistics.created_at < timeout_start,
         sent != failed + delivered
@@ -47,7 +49,7 @@ def timeout_job_counts(notifications_type, timeout_start):
         delivered_count = 0
         failed_count = 0
         for notification_status in job:
-            if notification_status.status in [NOTIFICATION_DELIVERED, NOTIFICATION_SENT]:
+            if notification_status.status in NOTIFICATION_STATUS_SUCCESS:
                 delivered_count += notification_status.count
             else:
                 failed_count += notification_status.count

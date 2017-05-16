@@ -780,7 +780,7 @@ def test_timeout_job_sets_all_non_delivered_emails_to_error_and_doesnt_affect_sm
     assert sms_stats[0].emails_delivered == 0
     assert sms_stats[0].sms_delivered == 0
     assert sms_stats[0].sms_failed == 1
-    assert sms_stats[0].emails_failed == 100
+    assert sms_stats[0].emails_failed == 0
 
 
 # this test is as above, but for SMS not email
