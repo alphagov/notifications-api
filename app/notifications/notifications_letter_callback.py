@@ -35,7 +35,7 @@ def validate_schema(schema):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kw):
-            validate(request.json, schema)
+            validate(request.get_json(force=True), schema)
             return f(*args, **kw)
         return wrapper
     return decorator
@@ -44,7 +44,8 @@ def validate_schema(schema):
 @letter_callback_blueprint.route('/notifications/letter/dvla', methods=['POST'])
 @validate_schema(dvla_sns_callback_schema)
 def process_letter_response():
-    req_json = request.json
+    req_json = request.get_json(force=True)
+    current_app.logger.info('Received SNS callback: {}'.format(req_json))
     if not autoconfirm_subscription(req_json):
         # The callback should have one record for an S3 Put Event.
         filename = req_json['Message']['Records'][0]['s3']['object']['key']

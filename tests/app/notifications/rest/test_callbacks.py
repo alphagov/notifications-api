@@ -71,6 +71,18 @@ def test_dvla_callback_calls_update_letter_notifications_task(client, mocker):
     update_task.assert_called_with(['bar.txt'], queue='notify')
 
 
+def test_dvla_callback_does_not_raise_error_parsing_json_for_plaintext_header(client, mocker):
+    mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
+    data = _sample_sns_s3_callback()
+    response = client.post(
+        path='/notifications/letter/dvla',
+        data=data,
+        headers=[('Content-Type', 'text/plain')]
+    )
+
+    assert response.status_code == 200
+
+
 def test_firetext_callback_should_not_need_auth(client, mocker):
     mocker.patch('app.statsd_client.incr')
     response = client.post(
