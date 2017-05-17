@@ -1,11 +1,11 @@
 import base64
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import requests
 from flask import current_app
 
-from app.utils import get_midnight_for_day_before, get_london_midnight_in_utc, get_utc_time_in_bst
+from app.utils import get_midnight_for_day_before, get_london_midnight_in_utc, convert_utc_time_in_bst
 
 
 class PerformancePlatformClient:
@@ -27,7 +27,7 @@ class PerformancePlatformClient:
     def send_performance_stats(self, date, channel, count, period):
         if self.active:
             payload = {
-                '_timestamp': get_utc_time_in_bst(date).isoformat(),
+                '_timestamp': convert_utc_time_in_bst(date).isoformat(),
                 'service': 'govuk-notify',
                 'channel': channel,
                 'count': count,

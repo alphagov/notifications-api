@@ -1,10 +1,7 @@
-from datetime import datetime
-
-from app import DATETIME_FORMAT
 from app.models import NOTIFICATION_STATUS_TYPES, TEMPLATE_TYPES
 from app.schema_validation.definitions import (uuid, personalisation)
 
-# this may belong in a templates module
+
 template = {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "description": "template schema",
@@ -204,8 +201,7 @@ def create_post_sms_response_from_notification(notification, body, from_number, 
             "template": __create_template_from_notification(notification=notification,
                                                             url_root=url_root,
                                                             service_id=service_id),
-            "scheduled_for": datetime.strptime(scheduled_for,
-                                               "%Y-%m-%d %H:%M:%S").strftime(DATETIME_FORMAT) if scheduled_for else None
+            "scheduled_for": scheduled_for if scheduled_for else None
             }
 
 
@@ -223,8 +219,7 @@ def create_post_email_response_from_notification(notification, content, subject,
         "template": __create_template_from_notification(notification=notification,
                                                         url_root=url_root,
                                                         service_id=service_id),
-        "scheduled_for": datetime.strptime(scheduled_for,
-                                           "%Y-%m-%d %H:%M:%S").strftime(DATETIME_FORMAT) if scheduled_for else None
+        "scheduled_for": scheduled_for if scheduled_for else None
     }
 
 

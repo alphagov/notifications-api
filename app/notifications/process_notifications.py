@@ -15,7 +15,7 @@ from app.dao.notifications_dao import (dao_create_notification,
                                        dao_created_scheduled_notification)
 from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE, ScheduledNotification
 from app.v2.errors import BadRequestError, SendNotificationToQueueError
-from app.utils import get_template_instance, cache_key_for_service_template_counter
+from app.utils import get_template_instance, cache_key_for_service_template_counter, convert_bst_to_utc
 
 
 def create_content_for_notification(template, personalisation):
@@ -125,6 +125,7 @@ def simulated_recipient(to_address, notification_type):
 
 
 def persist_scheduled_notification(notification_id, scheduled_for):
+    scheduled_datetime = convert_bst_to_utc(datetime.strptime(scheduled_for, "%Y-%m-%d %H"))
     scheduled_notification = ScheduledNotification(notification_id=notification_id,
-                                                   scheduled_for=scheduled_for)
+                                                   scheduled_for=scheduled_datetime)
     dao_created_scheduled_notification(scheduled_notification)

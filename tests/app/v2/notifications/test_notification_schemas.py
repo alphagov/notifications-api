@@ -360,7 +360,7 @@ def test_get_notifications_response_with_email_and_phone_number():
 def test_post_schema_valid_scheduled_for(schema):
     j = {"template_id": str(uuid.uuid4()),
          "email_address": "joe@gmail.com",
-         "scheduled_for": "2017-05-12 13:00:00"}
+         "scheduled_for": "2017-05-12 13"}
     if schema == post_email_request_schema:
         j.update({"email_address": "joe@gmail.com"})
     else:
@@ -369,7 +369,7 @@ def test_post_schema_valid_scheduled_for(schema):
 
 
 @pytest.mark.parametrize("invalid_datetime",
-                         ["2017-05-12 13:00", "13:00:00 2017-01-01"])
+                         ["2017-05-12 13:00:00", "13:00:00 2017-01-01"])
 @pytest.mark.parametrize("schema",
                          [post_email_request_schema, post_sms_request_schema])
 def test_post_email_schema_invalid_scheduled_for(invalid_datetime, schema):
@@ -385,4 +385,4 @@ def test_post_email_schema_invalid_scheduled_for(invalid_datetime, schema):
     assert error['status_code'] == 400
     assert error['errors'] == [{'error': 'ValidationError',
                                 'message': "scheduled_for datetime format is invalid. Use the format: "
-                                           "YYYY-MM-DD HH:MM:SS, for example 2017-05-30 13:00:00"}]
+                                           "YYYY-MM-DD HH, for example 2017-05-30 13"}]

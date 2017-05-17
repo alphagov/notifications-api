@@ -22,13 +22,13 @@ def validate(json_to_validate, schema):
         return True
 
     @format_checker.checks('datetime', raises=ValidationError)
-    def validate_schema_datetime(instance):
+    def validate_schema_date_with_hour(instance):
         if isinstance(instance, str):
             try:
-                datetime.strptime(instance, "%Y-%m-%d %H:%M:%S")
+                datetime.strptime(instance, "%Y-%m-%d %H")
             except ValueError as e:
                 raise ValidationError("datetime format is invalid. Use the format: "
-                                      "YYYY-MM-DD HH:MM:SS, for example 2017-05-30 13:00:00")
+                                      "YYYY-MM-DD HH, for example 2017-05-30 13")
         return True
 
     validator = Draft4Validator(schema, format_checker=format_checker)
