@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0083_add_job_stats
-Revises: 0082_add_go_live_template
+Revision ID: 0084_add_job_stats
+Revises: 0083_add_perm_types_and_svc_perm
 Create Date: 2017-05-12 13:16:14.147368
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0083_add_job_stats'
-down_revision = '0082_add_go_live_template'
+revision = '0084_add_job_stats'
+down_revision = '0083_add_perm_types_and_svc_perm'
 
 from alembic import op
 import sqlalchemy as sa

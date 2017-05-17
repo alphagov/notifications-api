@@ -24,7 +24,8 @@ from app.dao.services_dao import (
     dao_fetch_todays_stats_for_all_services,
     fetch_stats_by_date_range_for_all_services,
     dao_suspend_service,
-    dao_resume_service
+    dao_resume_service,
+    dao_fetch_active_users_for_service
 )
 from app.dao.users_dao import save_model_user
 from app.models import (
@@ -49,6 +50,7 @@ from app.models import (
     KEY_TYPE_TEST
 )
 
+from tests.app.db import create_user, create_service
 from tests.app.conftest import (
     sample_notification as create_notification,
     sample_notification_history as create_notification_history,
@@ -783,3 +785,13 @@ def test_fetch_monthly_historical_template_stats_for_service_separates_templates
     assert len(result.get('2016-04').keys()) == 2
     assert str(template_one.id) in result.get('2016-04').keys()
     assert str(template_two.id) in result.get('2016-04').keys()
+
+
+def test_dao_fetch_active_users_for_service_returns_active_only(notify_db, notify_db_session):
+    active_user = create_user(email='active@foo.com', state='active')
+    pending_user = create_user(email='pending@foo.com', state='pending')
+    service = create_service(user=active_user)
+    dao_add_user_to_service(service, pending_user)
+    users = dao_fetch_active_users_for_service(service.id)
+
+    assert len(users) == 1
