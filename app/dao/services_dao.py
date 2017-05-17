@@ -25,9 +25,12 @@ from app.models import (
     User,
     InvitedUser,
     Service,
+    ServicePermission,
     KEY_TYPE_TEST,
     NOTIFICATION_STATUS_TYPES,
     TEMPLATE_TYPES,
+    SMS_TYPE,
+    EMAIL_TYPE
 )
 from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
@@ -124,13 +127,18 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
 
 @transactional
 @version_class(Service)
-def dao_create_service(service, user, service_id=None):
+def dao_create_service(service, user, service_id=None, service_permissions=[SMS_TYPE, EMAIL_TYPE]):
     from app.dao.permissions_dao import permission_dao
     service.users.append(user)
     permission_dao.add_default_service_permissions_for_user(user, service)
     service.id = service_id or uuid.uuid4()  # must be set now so version history model can use same id
     service.active = True
     service.research_mode = False
+
+    for permission in service_permissions:
+        service_permission = ServicePermission(service_id=service.id, permission=permission)
+        db.session.add(service_permission)
+
     db.session.add(service)
 
 
@@ -185,6 +193,7 @@ def delete_service_and_all_associated_db_objects(service):
     _delete_commit(Job.query.filter_by(service=service))
     _delete_commit(Template.query.filter_by(service=service))
     _delete_commit(TemplateHistory.query.filter_by(service_id=service.id))
+    _delete_commit(ServicePermission.query.filter_by(service_id=service.id))
 
     verify_codes = VerifyCode.query.join(User).filter(User.id.in_([x.id for x in service.users]))
     list(map(db.session.delete, verify_codes))
