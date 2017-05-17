@@ -3,7 +3,7 @@ import uuid
 from flask import jsonify, request, url_for, current_app
 from werkzeug.exceptions import abort
 
-from app import api_user
+from app import api_user, authenticated_service
 from app.dao import notifications_dao
 from app.schema_validation import validate
 from app.v2.notifications import v2_notification_blueprint
@@ -17,7 +17,7 @@ def get_notification_by_id(id):
     except ValueError or AttributeError:
         abort(404)
     notification = notifications_dao.get_notification_with_personalisation(
-        api_user.service_id, casted_id, key_type=None
+        authenticated_service.id, casted_id, key_type=None
     )
 
     return jsonify(notification.serialize()), 200
@@ -38,7 +38,7 @@ def get_notifications():
     data = validate(_data, get_notifications_request)
 
     paginated_notifications = notifications_dao.get_notifications_for_service(
-        str(api_user.service_id),
+        str(authenticated_service.id),
         filter_dict=data,
         key_type=api_user.key_type,
         personalisation=True,

@@ -38,7 +38,7 @@ def persist_notification(
     notification_type,
     api_key_id,
     key_type,
-    created_at=None,
+    created_at=datetime.utcnow(),
     job_id=None,
     job_row_number=None,
     reference=None,
@@ -46,6 +46,7 @@ def persist_notification(
     notification_id=None,
     simulated=False
 ):
+
     notification = Notification(
         id=notification_id,
         template_id=template_id,
@@ -57,7 +58,7 @@ def persist_notification(
         notification_type=notification_type,
         api_key_id=api_key_id,
         key_type=key_type,
-        created_at=created_at or datetime.utcnow(),
+        created_at=created_at,
         job_id=job_id,
         job_row_number=job_row_number,
         client_reference=client_reference,
@@ -80,7 +81,7 @@ def persist_notification(
             if redis_store.get_all_from_hash(cache_key_for_service_template_counter(service.id)):
                 redis_store.increment_hash_value(cache_key_for_service_template_counter(service.id), template_id)
         current_app.logger.info(
-            "{} {} created at {}".format(notification.notification_type, notification.id, notification.created_at)
+            "{} {} created at {}".format(notification_type, notification_id, created_at)
         )
     return notification
 

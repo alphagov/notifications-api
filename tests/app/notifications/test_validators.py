@@ -23,42 +23,6 @@ from tests.app.conftest import (
     sample_api_key)
 
 
-@pytest.mark.parametrize('key_type', ['team', 'normal'])
-def test_exception_thrown_by_redis_store_get_should_not_be_fatal(
-        notify_db,
-        notify_db_session,
-        notify_api,
-        key_type,
-        mocker):
-    with freeze_time("2016-01-01 12:00:00.000000"):
-
-        mocker.patch('app.notifications.validators.redis_store.redis_store.get', side_effect=Exception("broken redis"))
-        mocker.patch('app.notifications.validators.redis_store.redis_store.set')
-
-        service = create_service(notify_db, notify_db_session, restricted=True, limit=4)
-        for x in range(5):
-            create_notification(notify_db, notify_db_session, service=service)
-
-        with pytest.raises(TooManyRequestsError) as e:
-            check_service_over_daily_message_limit(key_type, service)
-        assert e.value.status_code == 429
-        assert e.value.message == 'Exceeded send limits (4) for today'
-        assert e.value.fields == []
-        app.notifications.validators.redis_store.redis_store.set.assert_called_with(
-            "{}-2016-01-01-count".format(str(service.id)), 5, 3600, None, False, False
-        )
-
-
-@pytest.mark.parametrize('key_type', ['test', 'team', 'normal'])
-def test_exception_thown_by_redis_store_set_should_not_be_fatal(
-        key_type,
-        sample_service,
-        mocker):
-    mocker.patch('app.notifications.validators.redis_store.redis_store.set', side_effect=Exception("broken redis"))
-    mocker.patch('app.notifications.validators.redis_store.get', return_value=None)
-    assert not check_service_over_daily_message_limit(key_type, sample_service)
-
-
 @pytest.mark.parametrize('key_type', ['test', 'team', 'normal'])
 def test_check_service_message_limit_in_cache_with_unrestricted_service_is_allowed(
         key_type,

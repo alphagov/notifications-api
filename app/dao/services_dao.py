@@ -60,6 +60,19 @@ def dao_fetch_service_by_id(service_id, only_active=False):
     return query.one()
 
 
+def dao_fetch_service_by_id_with_api_keys(service_id, only_active=False):
+    query = Service.query.filter_by(
+        id=service_id
+    ).options(
+        joinedload('api_keys')
+    )
+
+    if only_active:
+        query = query.filter(Service.active)
+
+    return query.one()
+
+
 def dao_fetch_all_services_by_user(user_id, only_active=False):
     query = Service.query.filter(
         Service.users.any(id=user_id)
