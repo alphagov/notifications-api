@@ -51,9 +51,11 @@ def run_scheduled_jobs():
 @statsd(namespace="tasks")
 def send_scheduled_notifications():
     try:
-        for notification in dao_get_scheduled_notifications():
+        scheduled_notifications = dao_get_scheduled_notifications()
+        for notification in scheduled_notifications:
             send_notification_to_queue(notification, notification.service.research_mode)
-
+        current_app.logger.info(
+            "Sent {} scheudled notifications to the provider queue".format(len(scheduled_notifications)))
     except SQLAlchemyError as e:
         current_app.logger.exception("Failed to send scheduled notifications")
         raise
