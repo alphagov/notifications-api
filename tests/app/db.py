@@ -28,7 +28,8 @@ def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-off
 
 
 def create_service(
-        user=None, service_name="Sample service", service_id=None, service_permissions=[EMAIL_TYPE, SMS_TYPE]):
+        user=None, service_name="Sample service", service_id=None, restricted=False,
+        service_permissions=[EMAIL_TYPE, SMS_TYPE]):
     service = Service(
         name=service_name,
         message_limit=1000,
