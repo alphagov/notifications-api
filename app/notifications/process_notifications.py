@@ -38,7 +38,7 @@ def persist_notification(
     notification_type,
     api_key_id,
     key_type,
-    created_at,
+    created_at=None,
     job_id=None,
     job_row_number=None,
     reference=None,
