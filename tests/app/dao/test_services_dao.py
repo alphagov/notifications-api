@@ -258,7 +258,7 @@ def test_create_service_returns_service_with_default_permissions(service_factory
     assert all(p.permission in [SMS_TYPE, EMAIL_TYPE] for p in service.permissions)
 
 
-# This test is only for backward compatibility and will be removed 
+# This test is only for backward compatibility and will be removed
 # when the 'can_use' columns are dropped from the Service data model
 @pytest.mark.parametrize("permission_to_add, can_send_letters, can_send_international_sms",
                          [(LETTER_TYPE, True, False),
