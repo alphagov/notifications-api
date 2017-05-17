@@ -9,13 +9,14 @@ def dao_fetch_service_permissions(service_id):
 
 
 @transactional
-def dao_create_service_permission(service_id, permission):
+def dao_add_service_permission(service_id, permission):
     service_permission = ServicePermission(service_id=service_id, permission=permission)
-
     db.session.add(service_permission)
 
 
 def dao_remove_service_permission(service_id, permission):
-    return ServicePermission.query.filter(
+    deleted = ServicePermission.query.filter(
         ServicePermission.service_id == service_id,
         ServicePermission.permission == permission).delete()
+    db.session.commit()
+    return deleted
