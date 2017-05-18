@@ -89,6 +89,7 @@ class Config(object):
     PASSWORD_RESET_TEMPLATE_ID = '474e9242-823b-4f99-813d-ed392e7f1201'
     ALREADY_REGISTERED_EMAIL_TEMPLATE_ID = '0880fbb1-a0c6-46f0-9a8e-36c986381ceb'
     CHANGE_EMAIL_CONFIRMATION_TEMPLATE_ID = 'eb4d9930-87ab-4aef-9bce-786762687884'
+    SERVICE_NOW_LIVE_TEMPLATE_ID = '618185c6-3636-49cd-b7d2-6f6f5eb3bdde'
 
     BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {
@@ -147,6 +148,11 @@ class Config(object):
             'task': 'remove_csv_files',
             'schedule': crontab(minute=0, hour=4),
             'options': {'queue': 'periodic'}
+        },
+        'timeout-job-statistics': {
+            'task': 'timeout-job-statistics',
+            'schedule': crontab(minute=0, hour=5),
+            'options': {'queue': 'periodic'}
         }
     }
     CELERY_QUEUES = [
@@ -198,6 +204,7 @@ class Config(object):
 ######################
 
 class Development(Config):
+    SQLALCHEMY_ECHO = False
     NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
     NOTIFY_ENVIRONMENT = 'development'
@@ -211,7 +218,8 @@ class Development(Config):
         Queue('db-letter', Exchange('default'), routing_key='db-letter'),
         Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('send-email', Exchange('default'), routing_key='send-email'),
-        Queue('research-mode', Exchange('default'), routing_key='research-mode')
+        Queue('research-mode', Exchange('default'), routing_key='research-mode'),
+        Queue('statistics', Exchange('default'), routing_key='statistics')
     ]
     API_HOST_NAME = "http://localhost:6011"
     API_RATE_LIMIT_ENABLED = True
@@ -234,9 +242,10 @@ class Test(Config):
         Queue('db-letter', Exchange('default'), routing_key='db-letter'),
         Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('send-email', Exchange('default'), routing_key='send-email'),
-        Queue('research-mode', Exchange('default'), routing_key='research-mode')
+        Queue('research-mode', Exchange('default'), routing_key='research-mode'),
+        Queue('statistics', Exchange('default'), routing_key='statistics')
     ]
-    REDIS_ENABLED = True
+
     API_RATE_LIMIT_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"
 
@@ -295,6 +304,7 @@ class Sandbox(CloudFoundryConfig):
     NOTIFY_ENVIRONMENT = 'sandbox'
     CSV_UPLOAD_BUCKET_NAME = 'cf-sandbox-notifications-csv-upload'
     FROM_NUMBER = 'sandbox'
+    REDIS_ENABLED = False
 
 
 configs = {

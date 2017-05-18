@@ -18,6 +18,8 @@ from app.dao.templates_dao import dao_get_template_by_id
 from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE, NOTIFICATION_TECHNICAL_FAILURE, \
     NOTIFICATION_SENT, NOTIFICATION_SENDING
 
+from app.celery.statistics_tasks import record_initial_job_statistics, create_initial_notification_statistic_tasks
+
 
 def send_sms_to_provider(notification):
     service = notification.service
@@ -56,6 +58,8 @@ def send_sms_to_provider(notification):
             else:
                 notification.billable_units = template.fragment_count
                 update_notification(notification, provider, notification.international)
+
+        create_initial_notification_statistic_tasks(notification)
 
         current_app.logger.info(
             "SMS {} sent to provider {} at {}".format(notification.id, provider.get_name(), notification.sent_at)
@@ -106,6 +110,8 @@ def send_email_to_provider(notification):
             )
             notification.reference = reference
             update_notification(notification, provider)
+
+        create_initial_notification_statistic_tasks(notification)
 
         current_app.logger.info(
             "Email {} sent to provider at {}".format(notification.id, notification.sent_at)

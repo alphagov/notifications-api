@@ -31,6 +31,18 @@ from app import (
 from app.history_meta import Versioned
 from app.utils import get_utc_time_in_bst
 
+SMS_TYPE = 'sms'
+EMAIL_TYPE = 'email'
+LETTER_TYPE = 'letter'
+
+TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
+
+template_types = db.Enum(*TEMPLATE_TYPES, name='template_type')
+
+NORMAL = 'normal'
+PRIORITY = 'priority'
+TEMPLATE_PROCESS_TYPE = [NORMAL, PRIORITY]
+
 
 def filter_null_value_fields(obj):
     return dict(
@@ -131,6 +143,30 @@ class DVLAOrganisation(db.Model):
     name = db.Column(db.String(255), nullable=True)
 
 
+INTERNATIONAL_SMS_TYPE = 'international_sms'
+INCOMING_SMS_TYPE = 'incoming_sms'
+
+SERVICE_PERMISSION_TYPES = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INCOMING_SMS_TYPE]
+
+
+class ServicePermissionTypes(db.Model):
+    __tablename__ = 'service_permission_types'
+
+    name = db.Column(db.String(255), primary_key=True)
+
+
+class ServicePermission(db.Model):
+    __tablename__ = "service_permissions"
+
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'),
+                           primary_key=True, index=True, nullable=False)
+    service = db.relationship('Service')
+    permission = db.Column(db.String(255), db.ForeignKey('service_permission_types.name'),
+                           index=True, primary_key=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+
 class Service(db.Model, Versioned):
     __tablename__ = 'services'
 
@@ -181,6 +217,13 @@ class Service(db.Model, Versioned):
         nullable=False,
         default=BRANDING_GOVUK
     )
+    permissions = db.relationship('ServicePermission')
+
+    # This is only for backward compatibility and will be dropped when the columns are removed from the data model
+    def set_permissions(self):
+        if self.permissions:
+            self.can_send_letters = LETTER_TYPE in [p.permission for p in self.permissions]
+            self.can_send_international_sms = INTERNATIONAL_SMS_TYPE in [p.permission for p in self.permissions]
 
 
 MOBILE_TYPE = 'mobile'
@@ -293,19 +336,6 @@ class TemplateProcessTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
-SMS_TYPE = 'sms'
-EMAIL_TYPE = 'email'
-LETTER_TYPE = 'letter'
-
-TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
-
-template_types = db.Enum(*TEMPLATE_TYPES, name='template_type')
-
-NORMAL = 'normal'
-PRIORITY = 'priority'
-TEMPLATE_PROCESS_TYPE = [NORMAL, PRIORITY]
-
-
 class Template(db.Model):
     __tablename__ = 'templates'
 
@@ -385,7 +415,6 @@ class TemplateHistory(db.Model):
                              default=NORMAL)
 
     def serialize(self):
-
         serialized = {
             "id": self.id,
             "type": self.template_type,
@@ -603,6 +632,11 @@ NOTIFICATION_STATUS_TYPES_COMPLETED = [
     NOTIFICATION_PERMANENT_FAILURE,
 ]
 
+NOTIFICATION_STATUS_SUCCESS = [
+    NOTIFICATION_SENT,
+    NOTIFICATION_DELIVERED
+]
+
 NOTIFICATION_STATUS_TYPES_BILLABLE = [
     NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
@@ -624,6 +658,7 @@ NOTIFICATION_STATUS_TYPES = [
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
 ]
+
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
 
@@ -1024,3 +1059,48 @@ class Rate(db.Model):
     valid_from = db.Column(db.DateTime, nullable=False)
     rate = db.Column(db.Float(asdecimal=False), nullable=False)
     notification_type = db.Column(notification_types, index=True, nullable=False)
+
+
+class JobStatistics(db.Model):
+    __tablename__ = 'job_statistics'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = db.Column(UUID(as_uuid=True), db.ForeignKey('jobs.id'), index=True, unique=True, nullable=False)
+    job = db.relationship('Job', backref=db.backref('job_statistics', lazy='dynamic'))
+    emails_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    emails_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    emails_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    letters_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    letters_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True,
+        default=datetime.datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True,
+        onupdate=datetime.datetime.utcnow)
+
+    def __str__(self):
+        the_string = ""
+        the_string += "email sent {} email delivered {} email failed {} ".format(
+            self.emails_sent, self.emails_delivered, self.emails_failed
+        )
+        the_string += "sms sent {} sms delivered {} sms failed {} ".format(
+            self.sms_sent, self.sms_delivered, self.sms_failed
+        )
+        the_string += "letter sent {} letter failed {} ".format(
+            self.letters_sent, self.letters_failed
+        )
+        the_string += "job_id {} ".format(
+            self.job_id
+        )
+        the_string += "created at {}".format(self.created_at)
+        return the_string

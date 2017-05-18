@@ -5,7 +5,7 @@ from functools import partial
 
 from flask import current_app
 from freezegun import freeze_time
-from app.celery.scheduled_tasks import s3
+from app.celery.scheduled_tasks import s3, timeout_job_statistics
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
     delete_verify_codes,
@@ -409,3 +409,10 @@ def test_switch_providers_on_slow_delivery_does_not_switch_based_on_older_notifi
         switch_current_sms_provider_on_slow_delivery()
         current_provider = get_current_provider('sms')
         assert starting_provider.identifier == current_provider.identifier
+
+
+def test_timeout_job_statistics_called_with_notification_timeout(notify_api, mocker):
+    notify_api.config['SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'] = 999
+    dao_mock = mocker.patch('app.celery.scheduled_tasks.dao_timeout_job_statistics')
+    timeout_job_statistics()
+    dao_mock.assert_called_once_with(999)

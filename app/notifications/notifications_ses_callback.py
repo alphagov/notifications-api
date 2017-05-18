@@ -13,9 +13,9 @@ from app.clients.email.aws_ses import get_aws_responses
 from app.dao import (
     notifications_dao
 )
-
+from app.celery.statistics_tasks import create_outcome_notification_statistic_tasks
 from app.notifications.process_client_response import validate_callback_data
-from app.notifications.utils import confirm_subscription
+from app.notifications.utils import autoconfirm_subscription
 
 ses_callback_blueprint = Blueprint('notifications_ses_callback', __name__)
 
@@ -32,14 +32,12 @@ def process_ses_response():
     try:
         ses_request = json.loads(request.data)
 
-        if ses_request.get('Type') == 'SubscriptionConfirmation':
-            current_app.logger.info("SNS subscription confirmation url: {}".format(ses_request['SubscribeURL']))
-            subscribed_topic = confirm_subscription(ses_request)
-            if subscribed_topic:
-                current_app.logger.info("Automatically subscribed to topic: {}".format(subscribed_topic))
-                return jsonify(
-                    result="success", message="SES callback succeeded"
-                ), 200
+        subscribed_topic = autoconfirm_subscription(ses_request)
+        if subscribed_topic:
+            current_app.logger.info("Automatically subscribed to topic: {}".format(subscribed_topic))
+            return jsonify(
+                result="success", message="SES callback succeeded"
+            ), 200
 
         errors = validate_callback_data(data=ses_request, fields=['Message'], client_name=client_name)
         if errors:
@@ -95,6 +93,9 @@ def process_ses_response():
                     datetime.utcnow(),
                     notification.sent_at
                 )
+
+            create_outcome_notification_statistic_tasks(notification)
+
             return jsonify(
                 result="success", message="SES callback succeeded"
             ), 200

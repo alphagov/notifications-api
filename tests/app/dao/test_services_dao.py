@@ -24,8 +24,10 @@ from app.dao.services_dao import (
     dao_fetch_todays_stats_for_all_services,
     fetch_stats_by_date_range_for_all_services,
     dao_suspend_service,
-    dao_resume_service
+    dao_resume_service,
+    dao_fetch_active_users_for_service
 )
+from app.dao.service_permissions_dao import dao_add_service_permission, dao_remove_service_permission
 from app.dao.users_dao import save_model_user
 from app.models import (
     NotificationStatistics,
@@ -46,9 +48,14 @@ from app.models import (
     DVLA_ORG_HM_GOVERNMENT,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
-    KEY_TYPE_TEST
+    KEY_TYPE_TEST,
+    EMAIL_TYPE,
+    SMS_TYPE,
+    LETTER_TYPE,
+    INTERNATIONAL_SMS_TYPE
 )
 
+from tests.app.db import create_user, create_service
 from tests.app.conftest import (
     sample_notification as create_notification,
     sample_notification_history as create_notification_history,
@@ -241,6 +248,62 @@ def test_get_service_by_id_returns_none_if_no_service(notify_db):
 def test_get_service_by_id_returns_service(service_factory):
     service = service_factory.get('testing', email_from='testing')
     assert dao_fetch_service_by_id(service.id).name == 'testing'
+
+
+def test_create_service_returns_service_with_default_permissions(service_factory):
+    service = service_factory.get('testing', email_from='testing')
+
+    service = dao_fetch_service_by_id(service.id)
+    assert len(service.permissions) == 2
+    assert all(p.permission in [SMS_TYPE, EMAIL_TYPE] for p in service.permissions)
+
+
+# This test is only for backward compatibility and will be removed
+# when the 'can_use' columns are dropped from the Service data model
+@pytest.mark.parametrize("permission_to_add, can_send_letters, can_send_international_sms",
+                         [(LETTER_TYPE, True, False),
+                          (INTERNATIONAL_SMS_TYPE, False, True)])
+def test_create_service_by_id_adding_service_permission_returns_service_with_permissions_set(
+        service_factory, permission_to_add, can_send_letters, can_send_international_sms):
+    service = service_factory.get('testing', email_from='testing')
+
+    dao_add_service_permission(service_id=service.id, permission=permission_to_add)
+    service.set_permissions()
+
+    service = dao_fetch_service_by_id(service.id)
+    assert len(service.permissions) == 3
+    assert all(p.permission in [SMS_TYPE, EMAIL_TYPE, permission_to_add] for p in service.permissions)
+    assert service.can_send_letters == can_send_letters
+    assert service.can_send_international_sms == can_send_international_sms
+
+
+def test_remove_permission_from_service_by_id_returns_service_with_correct_permissions(service_factory):
+    service = service_factory.get('testing', email_from='testing')
+    dao_remove_service_permission(service_id=service.id, permission=SMS_TYPE)
+
+    service = dao_fetch_service_by_id(service.id)
+    assert len(service.permissions) == 1
+    assert service.permissions[0].permission == EMAIL_TYPE
+
+
+def test_create_service_by_id_adding_and_removing_letter_returns_service_without_letter(service_factory):
+    service = service_factory.get('testing', email_from='testing')
+
+    dao_add_service_permission(service_id=service.id, permission=LETTER_TYPE)
+    service.set_permissions()
+
+    service = dao_fetch_service_by_id(service.id)
+    assert len(service.permissions) == 3
+    assert all(p.permission in [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE] for p in service.permissions)
+    assert service.can_send_letters
+
+    dao_remove_service_permission(service_id=service.id, permission=LETTER_TYPE)
+    service.set_permissions()
+    service = dao_fetch_service_by_id(service.id)
+
+    assert len(service.permissions) == 2
+    assert all(p.permission in [SMS_TYPE, EMAIL_TYPE] for p in service.permissions)
+    assert not service.can_send_letters
 
 
 def test_create_service_creates_a_history_record_with_current_data(sample_user):
@@ -783,3 +846,13 @@ def test_fetch_monthly_historical_template_stats_for_service_separates_templates
     assert len(result.get('2016-04').keys()) == 2
     assert str(template_one.id) in result.get('2016-04').keys()
     assert str(template_two.id) in result.get('2016-04').keys()
+
+
+def test_dao_fetch_active_users_for_service_returns_active_only(notify_db, notify_db_session):
+    active_user = create_user(email='active@foo.com', state='active')
+    pending_user = create_user(email='pending@foo.com', state='pending')
+    service = create_service(user=active_user)
+    dao_add_user_to_service(service, pending_user)
+    users = dao_fetch_active_users_for_service(service.id)
+
+    assert len(users) == 1
