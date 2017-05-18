@@ -29,6 +29,7 @@ from app.models import (
     KEY_TYPE_TEST,
     NOTIFICATION_STATUS_TYPES,
     TEMPLATE_TYPES,
+    JobStatistics,
     SMS_TYPE,
     EMAIL_TYPE
 )
@@ -181,6 +182,10 @@ def delete_service_and_all_associated_db_objects(service):
         query.delete()
         db.session.commit()
 
+    job_stats = JobStatistics.query.join(Job).filter(Job.service_id == service.id)
+    list(map(db.session.delete, job_stats))
+    db.session.commit()
+
     _delete_commit(NotificationStatistics.query.filter_by(service=service))
     _delete_commit(TemplateStatistics.query.filter_by(service=service))
     _delete_commit(ProviderStatistics.query.filter_by(service=service))
@@ -188,9 +193,9 @@ def delete_service_and_all_associated_db_objects(service):
     _delete_commit(Permission.query.filter_by(service=service))
     _delete_commit(ApiKey.query.filter_by(service=service))
     _delete_commit(ApiKey.get_history_model().query.filter_by(service_id=service.id))
+    _delete_commit(Job.query.filter_by(service=service))
     _delete_commit(NotificationHistory.query.filter_by(service=service))
     _delete_commit(Notification.query.filter_by(service=service))
-    _delete_commit(Job.query.filter_by(service=service))
     _delete_commit(Template.query.filter_by(service=service))
     _delete_commit(TemplateHistory.query.filter_by(service_id=service.id))
     _delete_commit(ServicePermission.query.filter_by(service_id=service.id))

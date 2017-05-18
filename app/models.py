@@ -415,7 +415,6 @@ class TemplateHistory(db.Model):
                              default=NORMAL)
 
     def serialize(self):
-
         serialized = {
             "id": self.id,
             "type": self.template_type,
@@ -633,6 +632,11 @@ NOTIFICATION_STATUS_TYPES_COMPLETED = [
     NOTIFICATION_PERMANENT_FAILURE,
 ]
 
+NOTIFICATION_STATUS_SUCCESS = [
+    NOTIFICATION_SENT,
+    NOTIFICATION_DELIVERED
+]
+
 NOTIFICATION_STATUS_TYPES_BILLABLE = [
     NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
@@ -654,6 +658,7 @@ NOTIFICATION_STATUS_TYPES = [
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
 ]
+
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
 
@@ -1054,3 +1059,48 @@ class Rate(db.Model):
     valid_from = db.Column(db.DateTime, nullable=False)
     rate = db.Column(db.Float(asdecimal=False), nullable=False)
     notification_type = db.Column(notification_types, index=True, nullable=False)
+
+
+class JobStatistics(db.Model):
+    __tablename__ = 'job_statistics'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = db.Column(UUID(as_uuid=True), db.ForeignKey('jobs.id'), index=True, unique=True, nullable=False)
+    job = db.relationship('Job', backref=db.backref('job_statistics', lazy='dynamic'))
+    emails_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    emails_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    emails_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sms_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    letters_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    letters_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    created_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True,
+        default=datetime.datetime.utcnow)
+    updated_at = db.Column(
+        db.DateTime,
+        index=False,
+        unique=False,
+        nullable=True,
+        onupdate=datetime.datetime.utcnow)
+
+    def __str__(self):
+        the_string = ""
+        the_string += "email sent {} email delivered {} email failed {} ".format(
+            self.emails_sent, self.emails_delivered, self.emails_failed
+        )
+        the_string += "sms sent {} sms delivered {} sms failed {} ".format(
+            self.sms_sent, self.sms_delivered, self.sms_failed
+        )
+        the_string += "letter sent {} letter failed {} ".format(
+            self.letters_sent, self.letters_failed
+        )
+        the_string += "job_id {} ".format(
+            self.job_id
+        )
+        the_string += "created at {}".format(self.created_at)
+        return the_string

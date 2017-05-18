@@ -7,6 +7,8 @@ from app import statsd_client
 from app.dao import notifications_dao
 from app.clients.sms.firetext import get_firetext_responses
 from app.clients.sms.mmg import get_mmg_responses
+from app.celery.statistics_tasks import create_outcome_notification_statistic_tasks
+
 
 sms_response_mapper = {
     'MMG': get_mmg_responses,
@@ -45,8 +47,9 @@ def process_sms_client_response(status, reference, client_name):
     # validate  status
     try:
         response_dict = response_parser(status)
-        current_app.logger.info('{} callback return status of {} for reference: {}'.format(client_name,
-                                                                                           status, reference))
+        current_app.logger.info('{} callback return status of {} for reference: {}'.format(
+            client_name, status, reference)
+        )
     except KeyError:
         msg = "{} callback failed: status {} not found.".format(client_name, status)
         return success, msg
@@ -77,5 +80,8 @@ def process_sms_client_response(status, reference, client_name):
             datetime.utcnow(),
             notification.sent_at
         )
+
+    create_outcome_notification_statistic_tasks(notification)
+
     success = "{} callback succeeded. reference {} updated".format(client_name, reference)
     return success, errors

@@ -13,6 +13,7 @@ from app.clients.email.aws_ses import get_aws_responses
 from app.dao import (
     notifications_dao
 )
+from app.celery.statistics_tasks import create_outcome_notification_statistic_tasks
 from app.notifications.process_client_response import validate_callback_data
 from app.notifications.utils import autoconfirm_subscription
 
@@ -92,6 +93,9 @@ def process_ses_response():
                     datetime.utcnow(),
                     notification.sent_at
                 )
+
+            create_outcome_notification_statistic_tasks(notification)
+
             return jsonify(
                 result="success", message="SES callback succeeded"
             ), 200

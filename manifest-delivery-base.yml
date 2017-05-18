@@ -38,7 +38,7 @@ applications:
       NOTIFY_APP_NAME: delivery-worker-sender
 
   - name: notify-delivery-worker-periodic
-    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=2 -Q periodic
+    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=2 -Q periodic, statistics
     instances: 1
     memory: 2G
     env:

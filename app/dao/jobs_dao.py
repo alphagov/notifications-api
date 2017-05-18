@@ -11,7 +11,7 @@ from app.models import (Job,
                         Template,
                         JOB_STATUS_SCHEDULED,
                         JOB_STATUS_PENDING,
-                        LETTER_TYPE)
+                        LETTER_TYPE, JobStatistics)
 from app.statsd_decorators import statsd
 
 
@@ -109,6 +109,11 @@ def dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id):
 
 
 def dao_create_job(job):
+    job_stats = JobStatistics(
+        job_id=job.id,
+        updated_at=datetime.utcnow()
+    )
+    db.session.add(job_stats)
     db.session.add(job)
     db.session.commit()
 

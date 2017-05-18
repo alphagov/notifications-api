@@ -148,6 +148,11 @@ class Config(object):
             'task': 'remove_csv_files',
             'schedule': crontab(minute=0, hour=4),
             'options': {'queue': 'periodic'}
+        },
+        'timeout-job-statistics': {
+            'task': 'timeout-job-statistics',
+            'schedule': crontab(minute=0, hour=5),
+            'options': {'queue': 'periodic'}
         }
     }
     CELERY_QUEUES = [
@@ -213,7 +218,8 @@ class Development(Config):
         Queue('db-letter', Exchange('default'), routing_key='db-letter'),
         Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('send-email', Exchange('default'), routing_key='send-email'),
-        Queue('research-mode', Exchange('default'), routing_key='research-mode')
+        Queue('research-mode', Exchange('default'), routing_key='research-mode'),
+        Queue('statistics', Exchange('default'), routing_key='statistics')
     ]
     API_HOST_NAME = "http://localhost:6011"
     API_RATE_LIMIT_ENABLED = True
@@ -236,7 +242,8 @@ class Test(Config):
         Queue('db-letter', Exchange('default'), routing_key='db-letter'),
         Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('send-email', Exchange('default'), routing_key='send-email'),
-        Queue('research-mode', Exchange('default'), routing_key='research-mode')
+        Queue('research-mode', Exchange('default'), routing_key='research-mode'),
+        Queue('statistics', Exchange('default'), routing_key='statistics')
     ]
 
     API_RATE_LIMIT_ENABLED = True
