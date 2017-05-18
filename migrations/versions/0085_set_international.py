@@ -1,7 +1,7 @@
 """empty message
 
-Revision ID: 0083_set_international
-Revises: 0082_add_go_live_template
+Revision ID: 0085_set_international
+Revises: 0084_add_job_stats
 Create Date: 2017-05-05 15:26:34.621670
 
 """
@@ -9,8 +9,8 @@ from datetime import datetime
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = '0083_set_international'
-down_revision = '0082_add_go_live_template'
+revision = '0085_set_international'
+down_revision = '0084_add_job_stats'
 
 
 def upgrade():
@@ -37,7 +37,7 @@ def upgrade():
         res2 = results2.fetchall()
 
     end = datetime.utcnow()
-    print("Started at: {}   ended at: {}".format(start, end))
+    print("Started at: {}   ended at: {}, taking {}".format(start, end, end-start))
 
 
 def downgrade():
