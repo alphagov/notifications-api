@@ -10,12 +10,12 @@ from app.models import KEY_TYPE_TEST, KEY_TYPE_TEAM, SMS_TYPE
 from app.service.utils import service_allowed_to_send_to
 from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
 from app import redis_store
-from notifications_utils.clients import redis
+from notifications_utils.clients.redis import rate_limit_cache_key, daily_limit_cache_key
 
 
 def check_service_over_api_rate_limit(service, api_key):
     if current_app.config['API_RATE_LIMIT_ENABLED']:
-        cache_key = redis.rate_limit_cache_key(service.id, api_key.key_type)
+        cache_key = rate_limit_cache_key(service.id, api_key.key_type)
         rate_limit = current_app.config['API_KEY_LIMITS'][api_key.key_type]['limit']
         interval = current_app.config['API_KEY_LIMITS'][api_key.key_type]['interval']
         if redis_store.exceeded_rate_limit(cache_key, rate_limit, interval):
@@ -25,7 +25,7 @@ def check_service_over_api_rate_limit(service, api_key):
 
 def check_service_over_daily_message_limit(key_type, service):
     if key_type != KEY_TYPE_TEST:
-        cache_key = redis.daily_limit_cache_key(service.id)
+        cache_key = daily_limit_cache_key(service.id)
         service_stats = redis_store.get(cache_key)
         if not service_stats:
             service_stats = services_dao.fetch_todays_total_message_count(service.id)

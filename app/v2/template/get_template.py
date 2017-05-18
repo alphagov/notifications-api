@@ -1,7 +1,6 @@
 from flask import jsonify
-from jsonschema.exceptions import ValidationError
 
-from app import api_user
+from app import authenticated_service
 from app.dao import templates_dao
 from app.schema_validation import validate
 from app.v2.template import v2_template_blueprint
@@ -18,6 +17,6 @@ def get_template_by_id(template_id, version=None):
     data = validate(_data, get_template_by_id_request)
 
     template = templates_dao.dao_get_template_by_id_and_service_id(
-        template_id, api_user.service_id, data.get('version'))
+        template_id, authenticated_service.id, data.get('version'))
 
     return jsonify(template.serialize()), 200

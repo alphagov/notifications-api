@@ -143,6 +143,30 @@ class DVLAOrganisation(db.Model):
     name = db.Column(db.String(255), nullable=True)
 
 
+INTERNATIONAL_SMS_TYPE = 'international_sms'
+INCOMING_SMS_TYPE = 'incoming_sms'
+
+SERVICE_PERMISSION_TYPES = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INCOMING_SMS_TYPE]
+
+
+class ServicePermissionTypes(db.Model):
+    __tablename__ = 'service_permission_types'
+
+    name = db.Column(db.String(255), primary_key=True)
+
+
+class ServicePermission(db.Model):
+    __tablename__ = "service_permissions"
+
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'),
+                           primary_key=True, index=True, nullable=False)
+    service = db.relationship('Service')
+    permission = db.Column(db.String(255), db.ForeignKey('service_permission_types.name'),
+                           index=True, primary_key=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+
 class Service(db.Model, Versioned):
     __tablename__ = 'services'
 
@@ -193,30 +217,13 @@ class Service(db.Model, Versioned):
         nullable=False,
         default=BRANDING_GOVUK
     )
+    permissions = db.relationship('ServicePermission')
 
-
-INTERNATIONAL_SMS_TYPE = 'international_sms'
-INCOMING_SMS_TYPE = 'incoming_sms'
-
-SERVICE_PERMISSION_TYPES = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INCOMING_SMS_TYPE]
-
-
-class ServicePermissionTypes(db.Model):
-    __tablename__ = 'service_permission_types'
-
-    name = db.Column(db.String(255), primary_key=True)
-
-
-class ServicePermission(db.Model):
-    __tablename__ = "service_permissions"
-
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'),
-                           primary_key=True, index=True, nullable=False)
-    service = db.relationship('Service')
-    permission = db.Column(db.String(255), db.ForeignKey('service_permission_types.name'),
-                           index=True, primary_key=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    # This is only for backward compatibility and will be dropped when the columns are removed from the data model
+    def set_permissions(self):
+        if self.permissions:
+            self.can_send_letters = LETTER_TYPE in [p.permission for p in self.permissions]
+            self.can_send_international_sms = INTERNATIONAL_SMS_TYPE in [p.permission for p in self.permissions]
 
 
 MOBILE_TYPE = 'mobile'

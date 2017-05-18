@@ -245,7 +245,7 @@ class Test(Config):
         Queue('research-mode', Exchange('default'), routing_key='research-mode'),
         Queue('statistics', Exchange('default'), routing_key='statistics')
     ]
-    REDIS_ENABLED = True
+
     API_RATE_LIMIT_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"
 
@@ -304,6 +304,7 @@ class Sandbox(CloudFoundryConfig):
     NOTIFY_ENVIRONMENT = 'sandbox'
     CSV_UPLOAD_BUCKET_NAME = 'cf-sandbox-notifications-csv-upload'
     FROM_NUMBER = 'sandbox'
+    REDIS_ENABLED = False
 
 
 configs = {

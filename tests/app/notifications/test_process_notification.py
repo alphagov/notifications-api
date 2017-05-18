@@ -97,25 +97,6 @@ def test_persist_notification_throws_exception_when_missing_template(sample_api_
     assert NotificationHistory.query.count() == 0
 
 
-def test_exception_thown_by_redis_store_get_should_not_be_fatal(sample_template, sample_api_key, mocker):
-    mocker.patch(
-        'app.notifications.process_notifications.redis_store.redis_store.incr',
-        side_effect=Exception("broken redis"))
-
-    notification = persist_notification(
-        sample_template.id,
-        sample_template.version,
-        '+447111111111',
-        sample_template.service,
-        {},
-        'sms',
-        sample_api_key.id,
-        sample_api_key.key_type)
-    assert Notification.query.count() == 1
-    assert Notification.query.get(notification.id) is not None
-    assert NotificationHistory.query.count() == 1
-
-
 def test_cache_is_not_incremented_on_failure_to_persist_notification(sample_api_key, mocker):
     mocked_redis = mocker.patch('app.redis_store.get')
     mock_service_template_cache = mocker.patch('app.redis_store.get_all_from_hash')
