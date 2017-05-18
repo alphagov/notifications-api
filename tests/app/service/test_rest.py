@@ -1682,7 +1682,15 @@ def test_update_service_calls_send_notification_as_service_becomes_live(notify_d
     )
 
     assert resp.status_code == 200
-    assert send_notification_mock.called
+    send_notification_mock.assert_called_once_with(
+        service_id=restricted_service.id,
+        template_id='618185c6-3636-49cd-b7d2-6f6f5eb3bdde',
+        personalisation={
+            'service_name': restricted_service.name,
+            'message_limit': '1,000'
+        },
+        include_user_fields=['name']
+    )
 
 
 def test_update_service_does_not_call_send_notification_for_live_service(sample_service, client, mocker):
