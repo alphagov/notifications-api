@@ -1,3 +1,5 @@
+import json
+
 from functools import wraps
 
 from flask import (
@@ -48,7 +50,8 @@ def process_letter_response():
     current_app.logger.info('Received SNS callback: {}'.format(req_json))
     if not autoconfirm_subscription(req_json):
         # The callback should have one record for an S3 Put Event.
-        filename = req_json['Message']['Records'][0]['s3']['object']['key']
+        message = json.loads(req_json['Message'])
+        filename = message['Records'][0]['s3']['object']['key']
         current_app.logger.info('Received file from DVLA: {}'.format(filename))
         current_app.logger.info('DVLA callback: Calling task to update letter notifications')
         update_letter_notifications_statuses.apply_async([filename], queue='notify')
