@@ -25,6 +25,7 @@ manager = Manager(application)
 migrate = Migrate(application, db)
 manager.add_command('db', MigrateCommand)
 manager.add_command('purge_functional_test_data', commands.PurgeFunctionalTestDataCommand)
+manager.add_command('custom_db_script', commands.CustomDbScript)
 
 if __name__ == '__main__':
     manager.run()
