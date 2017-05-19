@@ -1,11 +1,17 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
+
+import pytest
 
 from app.dao.date_util import get_financial_year
 from app.dao.notification_usage_dao import (get_rates_for_year, get_yearly_billing_data,
-                                            get_monthly_billing_data)
-from app.models import Rate
+                                            get_monthly_billing_data,
+                                            get_total_billable_units_for_sent_sms_notifications_in_date_range)
+from app.models import Rate, NOTIFICATION_STATUS_SUCCESS, NOTIFICATION_DELIVERED, NOTIFICATION_STATUS_TYPES_BILLABLE, \
+    NOTIFICATION_CREATED, NOTIFICATION_STATUS_TYPES_NON_BILLABLE
+from tests.app.conftest import sample_notification, sample_email_template, sample_letter_template, sample_service
 from tests.app.db import create_notification
+from freezegun import freeze_time
 
 
 def test_get_rates_for_year(notify_db, notify_db_session):
@@ -248,3 +254,188 @@ def test_get_monthly_billing_data_with_no_notifications_for_year(notify_db, noti
 def set_up_rate(notify_db, start_date, value):
     rate = Rate(id=uuid.uuid4(), valid_from=start_date, rate=value, notification_type='sms')
     notify_db.session.add(rate)
+
+
+@freeze_time("2016-01-10 12:00:00.000000")
+def test_returns_total_billable_units_for_sms_notifications(notify_db, notify_db_session, sample_service):
+    sample_notification(
+        notify_db, notify_db_session, service=sample_service, billable_units=1, status=NOTIFICATION_DELIVERED)
+    sample_notification(
+        notify_db, notify_db_session, service=sample_service, billable_units=2, status=NOTIFICATION_DELIVERED)
+    sample_notification(
+        notify_db, notify_db_session, service=sample_service, billable_units=3, status=NOTIFICATION_DELIVERED)
+    sample_notification(
+        notify_db, notify_db_session, service=sample_service, billable_units=4, status=NOTIFICATION_DELIVERED)
+
+    start = datetime.utcnow() - timedelta(minutes=10)
+    end = datetime.utcnow() + timedelta(minutes=10)
+
+    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id) == 10
+
+
+@freeze_time("2016-01-10 12:00:00.000000")
+def test_returns_total_billable_units_multiplied_by_multipler_for_sms_notifications(
+        notify_db, notify_db_session, sample_service
+):
+    sample_notification(
+        notify_db, notify_db_session, service=sample_service, rate_multiplier=1.0, status=NOTIFICATION_DELIVERED)
+    sample_notification(
+        notify_db, notify_db_session, service=sample_service, rate_multiplier=2.0, status=NOTIFICATION_DELIVERED)
+    sample_notification(
+        notify_db, notify_db_session, service=sample_service, rate_multiplier=5.0, status=NOTIFICATION_DELIVERED)
+    sample_notification(
+        notify_db, notify_db_session, service=sample_service, rate_multiplier=10.0, status=NOTIFICATION_DELIVERED)
+
+    start = datetime.utcnow() - timedelta(minutes=10)
+    end = datetime.utcnow() + timedelta(minutes=10)
+
+    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id) == 18
+
+
+@freeze_time("2016-01-10 12:00:00.000000")
+def test_returns_total_billable_units_for_sms_notifications_ignoring_letters_and_emails(
+        notify_db, notify_db_session, sample_service
+):
+    email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
+    letter_template = sample_letter_template(sample_service)
+
+    sample_notification(
+        notify_db,
+        notify_db_session,
+        service=sample_service,
+        billable_units=2,
+        status=NOTIFICATION_DELIVERED)
+    sample_notification(
+        notify_db,
+        notify_db_session,
+        template=email_template,
+        service=sample_service,
+        billable_units=2,
+        status=NOTIFICATION_DELIVERED)
+    sample_notification(
+        notify_db,
+        notify_db_session,
+        template=letter_template,
+        service=sample_service,
+        billable_units=2,
+        status=NOTIFICATION_DELIVERED
+    )
+
+    start = datetime.utcnow() - timedelta(minutes=10)
+    end = datetime.utcnow() + timedelta(minutes=10)
+
+    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id) == 2
+
+
+@freeze_time("2016-01-10 12:00:00.000000")
+def test_returns_total_billable_units_for_sms_notifications_for_only_requested_service(
+        notify_db, notify_db_session
+):
+    service_1 = sample_service(notify_db, notify_db_session, service_name=str(uuid.uuid4()))
+    service_2 = sample_service(notify_db, notify_db_session, service_name=str(uuid.uuid4()))
+    service_3 = sample_service(notify_db, notify_db_session, service_name=str(uuid.uuid4()))
+
+    sample_notification(
+        notify_db,
+        notify_db_session,
+        service=service_1,
+        billable_units=2,
+        status=NOTIFICATION_DELIVERED)
+    sample_notification(
+        notify_db,
+        notify_db_session,
+        service=service_2,
+        billable_units=2,
+        status=NOTIFICATION_DELIVERED)
+    sample_notification(
+        notify_db,
+        notify_db_session,
+        service=service_3,
+        billable_units=2,
+        status=NOTIFICATION_DELIVERED
+    )
+
+    start = datetime.utcnow() - timedelta(minutes=10)
+    end = datetime.utcnow() + timedelta(minutes=10)
+
+    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, service_1.id) == 2
+
+
+@freeze_time("2016-01-10 12:00:00.000000")
+def test_returns_total_billable_units_for_sms_notifications_handling_null_values(
+    notify_db, notify_db_session, sample_service
+):
+    sample_notification(
+        notify_db,
+        notify_db_session,
+        service=sample_service,
+        billable_units=2,
+        rate_multiplier=None,
+        status=NOTIFICATION_DELIVERED)
+
+    start = datetime.utcnow() - timedelta(minutes=10)
+    end = datetime.utcnow() + timedelta(minutes=10)
+
+    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id) == 2
+
+
+@pytest.mark.parametrize('billable_units, states', ([
+    (len(NOTIFICATION_STATUS_TYPES_BILLABLE), NOTIFICATION_STATUS_TYPES_BILLABLE),
+    (0, NOTIFICATION_STATUS_TYPES_NON_BILLABLE)
+]))
+@freeze_time("2016-01-10 12:00:00.000000")
+def test_ignores_non_billable_states_when_returning_billable_units_for_sms_notifications(
+    notify_db, notify_db_session, sample_service, billable_units, states
+):
+    for state in states:
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            service=sample_service,
+            billable_units=1,
+            rate_multiplier=None,
+            status=state)
+
+    start = datetime.utcnow() - timedelta(minutes=10)
+    end = datetime.utcnow() + timedelta(minutes=10)
+
+    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(
+        start, end, sample_service.id
+    ) == billable_units
+
+
+@freeze_time("2016-01-10 12:00:00.000000")
+def test_restricts_to_time_period_when_returning_billable_units_for_sms_notifications(
+    notify_db, notify_db_session, sample_service
+):
+    sample_notification(
+        notify_db,
+        notify_db_session,
+        service=sample_service,
+        billable_units=1,
+        rate_multiplier=1.0,
+        created_at=datetime.utcnow() - timedelta(minutes=100),
+        status=NOTIFICATION_DELIVERED)
+
+    sample_notification(
+        notify_db,
+        notify_db_session,
+        service=sample_service,
+        billable_units=1,
+        rate_multiplier=1.0,
+        created_at=datetime.utcnow() - timedelta(minutes=5),
+        status=NOTIFICATION_DELIVERED)
+
+    start = datetime.utcnow() - timedelta(minutes=10)
+    end = datetime.utcnow() + timedelta(minutes=10)
+
+    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id) == 1
+
+
+def test_returns_zero_if_no_matching_rows_when_returning_billable_units_for_sms_notifications(
+        notify_db, notify_db_session, sample_service
+):
+    start = datetime.utcnow() - timedelta(minutes=10)
+    end = datetime.utcnow() + timedelta(minutes=10)
+    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id) == 0
+
