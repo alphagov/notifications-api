@@ -9,6 +9,7 @@ from flask import (
 )
 from sqlalchemy.orm.exc import NoResultFound
 
+from app import redis_store
 from app.dao import notification_usage_dao
 from app.dao.dao_utils import dao_rollback
 from app.dao.api_key_dao import (
@@ -16,6 +17,8 @@ from app.dao.api_key_dao import (
     get_model_api_keys,
     get_unsigned_secret,
     expire_api_key)
+from app.dao.date_util import get_financial_year
+from app.dao.notification_usage_dao import get_total_billable_units_for_sent_sms_notifications_in_date_range
 from app.dao.services_dao import (
     dao_fetch_service_by_id,
     dao_fetch_all_services,
@@ -58,6 +61,7 @@ from app.schemas import (
 )
 from app.utils import pagination_links
 from flask import Blueprint
+from notifications_utils.clients.redis import sms_billable_units_cache_key
 
 service_blueprint = Blueprint('service', __name__)
 
@@ -438,6 +442,26 @@ def get_monthly_template_stats(service_id):
         ))
     except ValueError:
         raise InvalidRequest('Year must be a number', status_code=400)
+
+
+@service_blueprint.route('/<uuid:service_id>/yearly-usage-count')
+def get_yearly_usage_count(service_id):
+    try:
+        cache_key = sms_billable_units_cache_key(service_id)
+        cached_value = redis_store.get(cache_key)
+        if cached_value:
+            return jsonify({'billable_sms_units': cached_value})
+        else:
+            start_date, end_date = get_financial_year(int(request.args.get('year')))
+            billable_units = get_total_billable_units_for_sent_sms_notifications_in_date_range(
+                start_date,
+                end_date,
+                service_id)
+            redis_store.set(cache_key, billable_units, ex=60)
+            return jsonify({'billable_sms_units': billable_units})
+
+    except (ValueError, TypeError):
+        return jsonify(result='error', message='No valid year provided'), 400
 
 
 @service_blueprint.route('/<uuid:service_id>/yearly-usage')
