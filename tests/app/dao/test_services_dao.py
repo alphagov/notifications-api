@@ -11,6 +11,7 @@ from app.dao.services_dao import (
     dao_create_service,
     dao_add_user_to_service,
     dao_remove_user_from_service,
+    dao_remove_service_permission as dao_services_remove_service_permission,
     dao_fetch_all_services,
     dao_fetch_service_by_id,
     dao_fetch_all_services_by_user,

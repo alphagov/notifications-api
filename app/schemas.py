@@ -25,7 +25,11 @@ from notifications_utils.recipients import (
 
 from app import ma
 from app import models
+<<<<<<< HEAD
 from app.models import ServicePermission, INTERNATIONAL_SMS_TYPE, SMS_TYPE, LETTER_TYPE, EMAIL_TYPE
+=======
+from app.models import ServicePermission
+>>>>>>> Updated service DAO and API end points
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_permissions_dao import dao_fetch_service_permissions
 from app.utils import get_template_instance
