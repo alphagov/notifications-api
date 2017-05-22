@@ -294,7 +294,7 @@ def test_remove_service_does_not_remove_service_permission_types(sample_service)
 
     services = dao_fetch_all_services()
     assert len(services) == 0
-    assert set([p.name for p in ServicePermissionTypes.query.all()]) == set(SERVICE_PERMISSION_TYPES)
+    assert set([p.name for p in ServicePermissionTypes.query.all()]) & set(SERVICE_PERMISSION_TYPES)
 
 
 def test_create_service_by_id_adding_and_removing_letter_returns_service_without_letter(service_factory):
