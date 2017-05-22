@@ -144,6 +144,7 @@ def test_get_service_by_id(client, sample_service):
     assert json_resp['data']['organisation'] is None
     assert json_resp['data']['branding'] == 'govuk'
     assert json_resp['data']['dvla_organisation'] == '001'
+    assert json_resp['data']['sms_sender'] == 'GOVUK'
 
 
 def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
@@ -213,6 +214,7 @@ def test_create_service(client, sample_user):
     assert json_resp['data']['email_from'] == 'created.service'
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['dvla_organisation'] == '001'
+    assert json_resp['data']['sms_sender'] == 'GOVUK'
 
     auth_header_fetch = create_authorization_header()
 
