@@ -25,8 +25,9 @@ from notifications_utils.recipients import (
 
 from app import ma
 from app import models
-from app.models import ServicePermission
+from app.models import ServicePermission, INTERNATIONAL_SMS_TYPE, SMS_TYPE
 from app.dao.permissions_dao import permission_dao
+from app.dao.service_permissions_dao import dao_fetch_service_permissions
 from app.utils import get_template_instance
 
 
@@ -180,11 +181,10 @@ class ServiceSchema(BaseSchema):
     branding = field_for(models.Service, 'branding')
     dvla_organisation = field_for(models.Service, 'dvla_organisation')
     permissions = fields.Method("service_permissions")
-    
+
     def service_permissions(self, service):
         permissions = []
 
-        from app.dao.service_permissions_dao import dao_fetch_service_permissions
         perms = dao_fetch_service_permissions(service.id)
         for p in perms:
             permission = {
@@ -216,9 +216,17 @@ class ServiceSchema(BaseSchema):
 
     @validates('permissions')
     def validate_permissions(self, value):
-        for v in [val.permission for val in value]:
-            if v not in models.SERVICE_PERMISSION_TYPES:
-                raise ValidationError("Invalid Service Permission: '{}'".format(v))
+        permissions = [v.permission for v in value]
+        for p in permissions:
+            if p not in models.SERVICE_PERMISSION_TYPES:
+                raise ValidationError("Invalid Service Permission: '{}'".format(p))
+
+        if len(set(permissions)) != len(permissions):
+            duplicates = list(set([x for x in permissions if permissions.count(x) > 1]))
+            raise ValueError('Service Permission duplicated: {}'.format(duplicates))
+
+        if INTERNATIONAL_SMS_TYPE in permissions and SMS_TYPE not in permissions:
+            raise ValueError('International SMS must have SMS enabled')
 
     @pre_load()
     def format_permissions_for_data_model(self, in_data):

@@ -541,6 +541,44 @@ def test_update_permissions_with_an_invalid_permission_will_raise_error(client, 
     assert "Invalid Service Permission: '{}'".format(invalid_permission) in result['message']['permissions']
 
 
+def test_update_permissions_with_duplicate_permissions_will_raise_error(client, sample_service):
+    auth_header = create_authorization_header()
+
+    data = {
+        'permissions': [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, LETTER_TYPE]
+    }
+
+    resp = client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+
+    assert resp.status_code == 400
+    assert result['result'] == 'error'
+    assert "Service Permission duplicated: ['{}']".format(LETTER_TYPE) in result['message']
+
+
+def test_update_permissions_with_international_sms_without_sms_permissions_will_raise_error(client, sample_service):
+    auth_header = create_authorization_header()
+
+    data = {
+        'permissions': [EMAIL_TYPE, INTERNATIONAL_SMS_TYPE]
+    }
+
+    resp = client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+
+    assert resp.status_code == 400
+    assert result['result'] == 'error'
+    assert "International SMS must have SMS enabled" == result['message']
+
+
 def test_update_service_flags_can_remove_service_permissions(client, sample_service):
     auth_header = create_authorization_header()
     initial_data = {
