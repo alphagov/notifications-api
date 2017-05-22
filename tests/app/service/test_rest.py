@@ -240,7 +240,11 @@ def test_create_service(client, sample_user):
     assert json_resp['data']['email_from'] == 'created.service'
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['dvla_organisation'] == '001'
+<<<<<<< HEAD
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
+=======
+    assert json_resp['data']['sms_sender'] == 'GOVUK'
+>>>>>>> set sms_sender to be 'GOVUK' if not otherwise specified
 
     service_db = Service.query.get(json_resp['data']['id'])
     assert service_db.name == 'created service'
