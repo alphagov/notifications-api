@@ -444,13 +444,13 @@ def get_monthly_template_stats(service_id):
         raise InvalidRequest('Year must be a number', status_code=400)
 
 
-@service_blueprint.route('/<uuid:service_id>/yearly-usage-count')
-def get_yearly_usage_count(service_id):
+@service_blueprint.route('/<uuid:service_id>/yearly-sms-billable-units')
+def get_yearly_sms_billable_units(service_id):
     try:
         cache_key = sms_billable_units_cache_key(service_id)
         cached_value = redis_store.get(cache_key)
         if cached_value:
-            return jsonify({'billable_sms_units': cached_value})
+            return jsonify({'billable_sms_units': int(cached_value)})
         else:
             start_date, end_date = get_financial_year(int(request.args.get('year')))
             billable_units = get_total_billable_units_for_sent_sms_notifications_in_date_range(
@@ -460,7 +460,7 @@ def get_yearly_usage_count(service_id):
             redis_store.set(cache_key, billable_units, ex=60)
             return jsonify({'billable_sms_units': billable_units})
 
-    except (ValueError, TypeError):
+    except (ValueError, TypeError) as e:
         return jsonify(result='error', message='No valid year provided'), 400
 
 

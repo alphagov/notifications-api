@@ -1202,19 +1202,19 @@ def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_s
 @pytest.mark.parametrize(
     'url, expected_status, expected_json', [
         (
-                '/service/{}/notifications/monthly?year=2001',
-                200,
-                {'data': {'foo': 'bar'}},
+            '/service/{}/notifications/monthly?year=2001',
+            200,
+            {'data': {'foo': 'bar'}},
         ),
         (
-                '/service/{}/notifications/monthly?year=baz',
-                400,
-                {'message': 'Year must be a number', 'result': 'error'},
+            '/service/{}/notifications/monthly?year=baz',
+            400,
+            {'message': 'Year must be a number', 'result': 'error'},
         ),
         (
-                '/service/{}/notifications/monthly',
-                400,
-                {'message': 'Year must be a number', 'result': 'error'},
+            '/service/{}/notifications/monthly',
+            400,
+            {'message': 'Year must be a number', 'result': 'error'},
         ),
     ]
 )
@@ -1724,7 +1724,7 @@ def test_update_service_does_not_call_send_notification_when_restricted_not_chan
 
 def test_get_yearly_billing_usage_count_returns_400_if_missing_year(client, sample_service):
     response = client.get(
-        '/service/{}/yearly-usage-count'.format(sample_service.id),
+        '/service/{}/yearly-sms-billable-units'.format(sample_service.id),
         headers=[create_authorization_header()]
     )
     assert response.status_code == 400
@@ -1738,7 +1738,7 @@ def test_get_yearly_billing_usage_count_returns_400_if_invalid_year(client, samp
     redis_set_mock = mocker.patch('app.service.rest.redis_store.set')
 
     response = client.get(
-        '/service/{}/yearly-usage-count?year=HAHAHAHAH'.format(sample_service.id),
+        '/service/{}/yearly-sms-billable-units?year=HAHAHAHAH'.format(sample_service.id),
         headers=[create_authorization_header()]
     )
     assert response.status_code == 400
@@ -1760,7 +1760,7 @@ def test_get_yearly_billing_usage_count_returns_200_if_year_provided(client, sam
     )
     mock_year = mocker.patch('app.service.rest.get_financial_year', return_value=(start, end))
     response = client.get(
-        '/service/{}/yearly-usage-count?year=2016'.format(sample_service.id),
+        '/service/{}/yearly-sms-billable-units?year=2016'.format(sample_service.id),
         headers=[create_authorization_header()]
     )
     assert response.status_code == 200
@@ -1785,7 +1785,7 @@ def test_get_yearly_billing_usage_count_returns_from_cache_if_present(client, sa
     mock_year = mocker.patch('app.service.rest.get_financial_year', return_value=(start, end))
 
     response = client.get(
-        '/service/{}/yearly-usage-count?year=2016'.format(sample_service.id),
+        '/service/{}/yearly-sms-billable-units?year=2016'.format(sample_service.id),
         headers=[create_authorization_header()]
     )
     assert response.status_code == 200

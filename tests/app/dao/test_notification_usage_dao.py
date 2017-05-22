@@ -438,4 +438,3 @@ def test_returns_zero_if_no_matching_rows_when_returning_billable_units_for_sms_
     start = datetime.utcnow() - timedelta(minutes=10)
     end = datetime.utcnow() + timedelta(minutes=10)
     assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id) == 0
-
