@@ -15,10 +15,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 def upgrade():
-    op.drop_column('service_permissions', 'updated_at')
     op.execute("UPDATE service_permission_types SET name='inbound_sms' WHERE name='incoming_sms'")
 
 
 def downgrade():
-    op.add_column('service_permissions', sa.Column('updated_at', postgresql.TIMESTAMP(), autoincrement=False, nullable=True))
     op.execute("UPDATE service_permission_types SET name='incoming_sms' WHERE name='inbound_sms'")
