@@ -95,12 +95,11 @@ def get_services():
 def get_service_by_id(service_id):
     if request.args.get('detailed') == 'True':
         data = get_detailed_service(service_id, today_only=request.args.get('today_only') == 'True')
-        return jsonify(data=data)
     else:
         fetched = dao_fetch_service_by_id(service_id)
 
         data = service_schema.dump(fetched).data
-        return jsonify(data=data)
+    return jsonify(data=data)
 
 
 @service_blueprint.route('', methods=['POST'])

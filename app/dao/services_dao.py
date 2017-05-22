@@ -138,7 +138,7 @@ def dao_create_service(service, user, service_id=None, service_permissions=[SMS_
 
     for permission in service_permissions:
         service_permission = ServicePermission(service_id=service.id, permission=permission)
-        db.session.add(service_permission)
+        service.permissions.append(service_permission)
 
     db.session.add(service)
 
@@ -146,6 +146,16 @@ def dao_create_service(service, user, service_id=None, service_permissions=[SMS_
 @transactional
 @version_class(Service)
 def dao_update_service(service):
+    db.session.add(service)
+
+
+@transactional
+@version_class(Service)
+def dao_remove_service_permission(service, permission):
+    for p in service.permissions:
+        if p.permission == permission:
+            service.permissions.remove(p)
+
     db.session.add(service)
 
 

@@ -25,6 +25,7 @@ from notifications_utils.recipients import (
 
 from app import ma
 from app import models
+from app.models import ServicePermission
 from app.dao.permissions_dao import permission_dao
 from app.utils import get_template_instance
 
@@ -178,24 +179,61 @@ class ServiceSchema(BaseSchema):
     organisation = field_for(models.Service, 'organisation')
     branding = field_for(models.Service, 'branding')
     dvla_organisation = field_for(models.Service, 'dvla_organisation')
+    permissions = fields.Method("service_permissions")
+    
+    def service_permissions(self, service):
+        permissions = []
+
+        from app.dao.service_permissions_dao import dao_fetch_service_permissions
+        perms = dao_fetch_service_permissions(service.id)
+        for p in perms:
+            permission = {
+                "service_id": service.id,
+                "permission": p.permission
+            }
+            permissions.append(permission)
+        return permissions
 
     class Meta:
         model = models.Service
-        exclude = ('updated_at',
-                   'created_at',
-                   'api_keys',
-                   'templates',
-                   'jobs',
-                   'old_id',
-                   'template_statistics',
-                   'service_provider_stats',
-                   'service_notification_stats')
+        exclude = (
+            'updated_at',
+            'created_at',
+            'api_keys',
+            'templates',
+            'jobs',
+            'old_id',
+            'template_statistics',
+            'service_provider_stats',
+            'service_notification_stats',
+        )
         strict = True
 
     @validates('sms_sender')
     def validate_sms_sender(self, value):
         if value and not re.match(r'^[a-zA-Z0-9\s]+$', value):
             raise ValidationError('Only alphanumeric characters allowed')
+
+    @validates('permissions')
+    def validate_permissions(self, value):
+        for v in [val.permission for val in value]:
+            if v not in models.SERVICE_PERMISSION_TYPES:
+                raise ValidationError("Invalid Service Permission: '{}'".format(v))
+
+    @pre_load()
+    def format_permissions_for_data_model(self, in_data):
+        if isinstance(in_data, dict) and 'permissions' in in_data:
+            permissions = []
+            for p in in_data.get('permissions'):
+                permission = models.ServicePermission(service_id=in_data["id"], permission=p)
+                permissions.append(permission)
+            in_data['permissions'] = permissions
+
+    @post_dump
+    def format_permissions_as_string_array(self, in_data):
+        if isinstance(in_data, dict) and 'permissions' in in_data:
+            in_data['permissions'] = [p.get('permission') for p in in_data.get('permissions')]
+        return in_data
 
 
 class DetailedServiceSchema(BaseSchema):
