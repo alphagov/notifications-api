@@ -1141,3 +1141,26 @@ class JobStatistics(db.Model):
         )
         the_string += "created at {}".format(self.created_at)
         return the_string
+
+
+class InboundSms(db.Model):
+    __tablename__ = 'inbound_sms'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
+    service = db.relationship('Service', backref='inbound_sms')
+
+    notify_number = db.Column(db.String, nullable=False)  # the service's number, that the msg was sent to
+    user_number = db.Column(db.String, nullable=False)  # the end user's number, that the msg was sent from
+    provider_date = db.Column(db.DateTime)
+    provider_reference = db.Column(db.String)
+    _content = db.Column('content', db.String, nullable=False)
+
+    @property
+    def content(self):
+        return encryption.decrypt(self._content)
+
+    @content.setter
+    def content(self, content):
+        self._content = encryption.encrypt(content)

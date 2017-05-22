@@ -25,7 +25,8 @@ from app.dao.services_dao import (
     fetch_stats_by_date_range_for_all_services,
     dao_suspend_service,
     dao_resume_service,
-    dao_fetch_active_users_for_service
+    dao_fetch_active_users_for_service,
+    dao_fetch_services_by_sms_sender
 )
 from app.dao.service_permissions_dao import dao_add_service_permission, dao_remove_service_permission
 from app.dao.users_dao import save_model_user
@@ -948,3 +949,13 @@ def test_dao_fetch_active_users_for_service_returns_active_only(notify_db, notif
     users = dao_fetch_active_users_for_service(service.id)
 
     assert len(users) == 1
+
+
+def test_dao_fetch_services_by_sms_sender(notify_db_session):
+    foo1 = create_service(service_name='a', sms_sender='foo')
+    foo2 = create_service(service_name='b', sms_sender='foo')
+    bar = create_service(service_name='c', sms_sender='bar')
+
+    services = dao_fetch_services_by_sms_sender('foo')
+
+    assert {foo1.id, foo2.id} == {x.id for x in services}

@@ -39,14 +39,20 @@ def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-off
 
 
 def create_service(
-        user=None, service_name="Sample service", service_id=None, restricted=False,
-        service_permissions=[EMAIL_TYPE, SMS_TYPE]):
+    user=None,
+    service_name="Sample service",
+    service_id=None,
+    restricted=False,
+    service_permissions=[EMAIL_TYPE, SMS_TYPE],
+    sms_sender='testing'
+):
     service = Service(
         name=service_name,
         message_limit=1000,
         restricted=restricted,
         email_from=service_name.lower().replace(' ', '.'),
-        created_by=user or create_user()
+        created_by=user or create_user(),
+        sms_sender=sms_sender
     )
     dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
     return service
