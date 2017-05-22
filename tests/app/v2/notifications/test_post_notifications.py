@@ -2,6 +2,7 @@ import uuid
 
 import pytest
 from flask import json
+from freezegun import freeze_time
 
 from app.models import Notification, ScheduledNotification
 from app.v2.errors import RateLimitError
@@ -353,6 +354,7 @@ def test_post_sms_should_persist_supplied_sms_number(client, sample_template_wit
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
                          [("sms", "phone_number", "07700 900 855"),
                           ("email", "email_address", "sample@email.com")])
+@freeze_time("2017-05-14 14:00:00")
 def test_post_notification_with_scheduled_for(client, sample_template, sample_email_template,
                                               notification_type, key_send_to, send_to):
     data = {

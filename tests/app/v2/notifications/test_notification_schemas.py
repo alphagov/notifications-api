@@ -2,6 +2,7 @@ import uuid
 
 import pytest
 from flask import json
+from freezegun import freeze_time
 from jsonschema import ValidationError
 
 from app.v2.notifications.notification_schemas import (
@@ -357,6 +358,7 @@ def test_get_notifications_response_with_email_and_phone_number():
 
 @pytest.mark.parametrize("schema",
                          [post_email_request_schema, post_sms_request_schema])
+@freeze_time("2017-05-12 13:00:00")
 def test_post_schema_valid_scheduled_for(schema):
     j = {"template_id": str(uuid.uuid4()),
          "email_address": "joe@gmail.com",
@@ -386,3 +388,29 @@ def test_post_email_schema_invalid_scheduled_for(invalid_datetime, schema):
     assert error['errors'] == [{'error': 'ValidationError',
                                 'message': "scheduled_for datetime format is invalid. Use the format: "
                                            "YYYY-MM-DD HH:MI, for example 2017-05-30 13:15"}]
+
+
+@freeze_time("2017-05-12 13:00:00")
+def test_scheduled_for_raises_validation_error_when_in_the_past():
+    j = {"phone_number": "07515111111",
+         "template_id": str(uuid.uuid4()),
+         "scheduled_for": "2017-05-12 10:00"}
+    with pytest.raises(ValidationError) as e:
+        validate(j, post_sms_request_schema)
+    error = json.loads(str(e.value))
+    assert error['status_code'] == 400
+    assert error['errors'] == [{'error': 'ValidationError',
+                                'message': "scheduled_for datetime can not be in the past"}]
+
+
+@freeze_time("2017-05-12 13:00:00")
+def test_scheduled_for_raises_validation_error_when_more_than_24_hours_in_the_future():
+    j = {"phone_number": "07515111111",
+         "template_id": str(uuid.uuid4()),
+         "scheduled_for": "2017-05-13 14:00"}
+    with pytest.raises(ValidationError) as e:
+        validate(j, post_sms_request_schema)
+    error = json.loads(str(e.value))
+    assert error['status_code'] == 400
+    assert error['errors'] == [{'error': 'ValidationError',
+                                'message': "scheduled_for datetime can only be 24 hours in the future"}]
