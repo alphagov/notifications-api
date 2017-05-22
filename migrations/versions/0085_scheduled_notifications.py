@@ -1,7 +1,7 @@
 """empty message
 
-Revision ID: 0084_scheduled_notifications
-Revises: 0083_add_perm_types_and_svc_perm
+Revision ID: 0085_scheduled_notifications
+Revises: 0084_add_job_stats
 Create Date: 2017-05-15 12:50:20.041950
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '0084_scheduled_notifications'
-down_revision = '0083_add_perm_types_and_svc_perm'
+revision = '0085_scheduled_notifications'
+down_revision = '0084_add_job_stats'
 
 
 def upgrade():

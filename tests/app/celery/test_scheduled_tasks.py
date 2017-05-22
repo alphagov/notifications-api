@@ -5,7 +5,7 @@ from functools import partial
 
 from flask import current_app
 from freezegun import freeze_time
-from app.celery.scheduled_tasks import s3, send_scheduled_notifications
+from app.celery.scheduled_tasks import s3, timeout_job_statistics, send_scheduled_notifications
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
     delete_verify_codes,
@@ -428,3 +428,10 @@ def test_should_send_all_scheduled_notifications_to_deliver_queue(notify_db,
     send_scheduled_notifications()
 
     mocked.apply_async.assert_called_once_with([str(message_to_deliver.id)], queue='send-sms')
+
+
+def test_timeout_job_statistics_called_with_notification_timeout(notify_api, mocker):
+    notify_api.config['SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'] = 999
+    dao_mock = mocker.patch('app.celery.scheduled_tasks.dao_timeout_job_statistics')
+    timeout_job_statistics()
+    dao_mock.assert_called_once_with(999)

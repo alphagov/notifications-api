@@ -675,11 +675,9 @@ def sample_permission(notify_db,
 
 
 @pytest.fixture(scope='function')
-def sample_service_permission(notify_db,
-                              notify_db_session,
-                              service=None,
-                              user=None,
-                              permission="manage_settings"):
+def sample_user_service_permission(
+    notify_db, notify_db_session, service=None, user=None, permission="manage_settings"
+):
     if user is None:
         user = create_user()
     if service is None:

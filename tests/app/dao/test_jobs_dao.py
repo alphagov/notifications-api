@@ -16,7 +16,7 @@ from app.dao.jobs_dao import (
     dao_update_job_status,
     dao_get_all_notifications_for_job,
     dao_get_jobs_older_than_limited_by)
-from app.models import Job
+from app.models import Job, JobStatistics
 
 from tests.app.conftest import sample_notification as create_notification
 from tests.app.conftest import sample_job as create_job
@@ -130,10 +130,23 @@ def test_create_job(sample_template):
     dao_create_job(job)
 
     assert Job.query.count() == 1
+    assert JobStatistics.query.count() == 1
     job_from_db = Job.query.get(job_id)
     assert job == job_from_db
     assert job_from_db.notifications_delivered == 0
     assert job_from_db.notifications_failed == 0
+    job_stats_from_db = JobStatistics.query.filter_by(job_id=job_id).all()
+    assert len(job_stats_from_db) == 1
+    assert job_stats_from_db[0].sms_sent == 0
+    assert job_stats_from_db[0].emails_sent == 0
+    assert job_stats_from_db[0].letters_sent == 0
+
+    assert job_stats_from_db[0].sms_failed == 0
+    assert job_stats_from_db[0].emails_failed == 0
+    assert job_stats_from_db[0].letters_failed == 0
+
+    assert job_stats_from_db[0].sms_delivered == 0
+    assert job_stats_from_db[0].emails_delivered == 0
 
 
 def test_get_job_by_id(sample_job):

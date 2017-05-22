@@ -1,1 +1,7 @@
 Generic single-database configuration.
+
+python application.py db migration to generate migration script.
+
+python application.py db upgrade to upgrade db with script.
+
+python application.py db downgrade to rollback db changes.

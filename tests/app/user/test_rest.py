@@ -290,13 +290,13 @@ def test_get_user_by_email_bad_url_returns_404(client, sample_user):
     assert json_resp['message'] == 'Invalid request. Email query string param required'
 
 
-def test_get_user_with_permissions(client, sample_service_permission):
+def test_get_user_with_permissions(client, sample_user_service_permission):
     header = create_authorization_header()
-    response = client.get(url_for('user.get_user', user_id=str(sample_service_permission.user.id)),
+    response = client.get(url_for('user.get_user', user_id=str(sample_user_service_permission.user.id)),
                           headers=[header])
     assert response.status_code == 200
     permissions = json.loads(response.get_data(as_text=True))['data']['permissions']
-    assert sample_service_permission.permission in permissions[str(sample_service_permission.service.id)]
+    assert sample_user_service_permission.permission in permissions[str(sample_user_service_permission.service.id)]
 
 
 def test_set_user_permissions(client, sample_user, sample_service):

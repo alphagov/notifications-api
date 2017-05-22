@@ -148,6 +148,11 @@ class Config(object):
             'task': 'remove_csv_files',
             'schedule': crontab(minute=0, hour=4),
             'options': {'queue': 'periodic'}
+        },
+        'timeout-job-statistics': {
+            'task': 'timeout-job-statistics',
+            'schedule': crontab(minute=0, hour=5),
+            'options': {'queue': 'periodic'}
         }
     }
     CELERY_QUEUES = [
@@ -199,6 +204,7 @@ class Config(object):
 ######################
 
 class Development(Config):
+    SQLALCHEMY_ECHO = False
     NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
     NOTIFY_ENVIRONMENT = 'development'
@@ -212,7 +218,8 @@ class Development(Config):
         Queue('db-letter', Exchange('default'), routing_key='db-letter'),
         Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('send-email', Exchange('default'), routing_key='send-email'),
-        Queue('research-mode', Exchange('default'), routing_key='research-mode')
+        Queue('research-mode', Exchange('default'), routing_key='research-mode'),
+        Queue('statistics', Exchange('default'), routing_key='statistics')
     ]
     API_HOST_NAME = "http://localhost:6011"
     API_RATE_LIMIT_ENABLED = True
@@ -235,9 +242,10 @@ class Test(Config):
         Queue('db-letter', Exchange('default'), routing_key='db-letter'),
         Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('send-email', Exchange('default'), routing_key='send-email'),
-        Queue('research-mode', Exchange('default'), routing_key='research-mode')
+        Queue('research-mode', Exchange('default'), routing_key='research-mode'),
+        Queue('statistics', Exchange('default'), routing_key='statistics')
     ]
-    REDIS_ENABLED = True
+
     API_RATE_LIMIT_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"
 
@@ -296,6 +304,7 @@ class Sandbox(CloudFoundryConfig):
     NOTIFY_ENVIRONMENT = 'sandbox'
     CSV_UPLOAD_BUCKET_NAME = 'cf-sandbox-notifications-csv-upload'
     FROM_NUMBER = 'sandbox'
+    REDIS_ENABLED = False
 
 
 configs = {

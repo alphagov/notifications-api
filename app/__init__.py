@@ -40,6 +40,7 @@ performance_platform_client = PerformancePlatformClient()
 clients = Clients()
 
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
+authenticated_service = LocalProxy(lambda: _request_ctx_stack.top.authenticated_service)
 
 
 def create_app(app_name=None):

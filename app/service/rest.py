@@ -132,7 +132,7 @@ def update_service(service_id):
             template_id=current_app.config['SERVICE_NOW_LIVE_TEMPLATE_ID'],
             personalisation={
                 'service_name': current_data['name'],
-                'message_limit': current_data['message_limit']
+                'message_limit': '{:,}'.format(current_data['message_limit'])
             },
             include_user_fields=['name']
         )

@@ -71,6 +71,18 @@ def test_dvla_callback_calls_update_letter_notifications_task(client, mocker):
     update_task.assert_called_with(['bar.txt'], queue='notify')
 
 
+def test_dvla_callback_does_not_raise_error_parsing_json_for_plaintext_header(client, mocker):
+    mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
+    data = _sample_sns_s3_callback()
+    response = client.post(
+        path='/notifications/letter/dvla',
+        data=data,
+        headers=[('Content-Type', 'text/plain')]
+    )
+
+    assert response.status_code == 200
+
+
 def test_firetext_callback_should_not_need_auth(client, mocker):
     mocker.patch('app.statsd_client.incr')
     response = client.post(
@@ -519,33 +531,5 @@ def _sample_sns_s3_callback():
         "MessageId": "6adbfe0a-d610-509a-9c47-af894e90d32d",
         "Subject": "Amazon S3 Notification",
         "TopicArn": "sample-topic-arn",
-        "Message": {
-            "Records": [{
-                "eventVersion": "2.0",
-                "eventSource": "aws:s3",
-                "awsRegion": "eu-west-1",
-                "eventTime": "2017-05-03T08:35:12.826Z",
-                "eventName": "ObjectCreated:Put",
-                "userIdentity": {"principalId": "some-p-id"},
-                "requestParameters": {"sourceIPAddress": "8.8.8.8"},
-                "responseElements": {"x-amz-request-id": "some-req-id", "x-amz-id-2": "some-amz-id"},
-                "s3": {
-                    "s3SchemaVersion": "1.0",
-                    "configurationId": "some-config-id",
-                    "bucket": {
-                        "name": "some-bucket",
-                        "ownerIdentity": {"principalId": "some-p-id"},
-                        "arn": "some-bucket-arn"
-                    },
-                    "object": {
-                        "key": "bar.txt",
-                        "size": 200,
-                        "eTag": "some-etag",
-                        "versionId": "some-v-id",
-                        "sequencer": "some-seq"
-                    }
-                }
-            }
-            ]
-        }
+        "Message": '{"Records":[{"eventVersion":"2.0","eventSource":"aws:s3","awsRegion":"eu-west-1","eventTime":"2017-05-16T11:38:41.073Z","eventName":"ObjectCreated:Put","userIdentity":{"principalId":"some-p-id"},"requestParameters":{"sourceIPAddress":"8.8.8.8"},"responseElements":{"x-amz-request-id":"some-r-id","x-amz-id-2":"some-x-am-id"},"s3":{"s3SchemaVersion":"1.0","configurationId":"some-c-id","bucket":{"name":"some-bucket","ownerIdentity":{"principalId":"some-p-id"},"arn":"some-bucket-arn"},"object":{"key":"bar.txt","size":200,"eTag":"some-e-tag","versionId":"some-v-id","sequencer":"some-seq"}}}]}'  # noqa
     })

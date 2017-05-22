@@ -15,7 +15,7 @@ from tests import create_authorization_header
 from tests.app.db import create_template
 from tests.app.conftest import (
     sample_service as create_service,
-    sample_service_permission as create_service_permission,
+    sample_user_service_permission as create_user_service_permission,
     sample_notification as create_sample_notification,
     sample_notification_history as create_notification_history,
     sample_notification_with_job
@@ -941,51 +941,51 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db
             assert result['message'] == expected_message
 
 
-def test_remove_user_from_service(notify_api, notify_db, notify_db_session, sample_service_permission):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            second_user = create_user(email="new@digital.cabinet-office.gov.uk")
-            # Simulates successfully adding a user to the service
-            second_permission = create_service_permission(
-                notify_db,
-                notify_db_session,
-                user=second_user)
-            endpoint = url_for(
-                'service.remove_user_from_service',
-                service_id=str(second_permission.service.id),
-                user_id=str(second_permission.user.id))
-            auth_header = create_authorization_header()
-            resp = client.delete(
-                endpoint,
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 204
+def test_remove_user_from_service(
+    notify_db, notify_db_session, client, sample_user_service_permission
+):
+    second_user = create_user(email="new@digital.cabinet-office.gov.uk")
+    # Simulates successfully adding a user to the service
+    second_permission = create_user_service_permission(
+        notify_db,
+        notify_db_session,
+        user=second_user)
+    endpoint = url_for(
+        'service.remove_user_from_service',
+        service_id=str(second_permission.service.id),
+        user_id=str(second_permission.user.id))
+    auth_header = create_authorization_header()
+    resp = client.delete(
+        endpoint,
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert resp.status_code == 204
 
 
-def test_remove_user_from_service(notify_api, notify_db, notify_db_session, sample_service_permission):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            second_user = create_user(email="new@digital.cabinet-office.gov.uk")
-            endpoint = url_for(
-                'service.remove_user_from_service',
-                service_id=str(sample_service_permission.service.id),
-                user_id=str(second_user.id))
-            auth_header = create_authorization_header()
-            resp = client.delete(
-                endpoint,
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert resp.status_code == 404
+def test_remove_non_existant_user_from_service(
+    client, sample_user_service_permission
+):
+    second_user = create_user(email="new@digital.cabinet-office.gov.uk")
+    endpoint = url_for(
+        'service.remove_user_from_service',
+        service_id=str(sample_user_service_permission.service.id),
+        user_id=str(second_user.id))
+    auth_header = create_authorization_header()
+    resp = client.delete(
+        endpoint,
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert resp.status_code == 404
 
 
 def test_cannot_remove_only_user_from_service(notify_api,
                                               notify_db,
                                               notify_db_session,
-                                              sample_service_permission):
+                                              sample_user_service_permission):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             endpoint = url_for(
                 'service.remove_user_from_service',
-                service_id=str(sample_service_permission.service.id),
-                user_id=str(sample_service_permission.user.id))
+                service_id=str(sample_user_service_permission.service.id),
+                user_id=str(sample_user_service_permission.user.id))
             auth_header = create_authorization_header()
             resp = client.delete(
                 endpoint,
@@ -1682,7 +1682,15 @@ def test_update_service_calls_send_notification_as_service_becomes_live(notify_d
     )
 
     assert resp.status_code == 200
-    assert send_notification_mock.called
+    send_notification_mock.assert_called_once_with(
+        service_id=restricted_service.id,
+        template_id='618185c6-3636-49cd-b7d2-6f6f5eb3bdde',
+        personalisation={
+            'service_name': restricted_service.name,
+            'message_limit': '1,000'
+        },
+        include_user_fields=['name']
+    )
 
 
 def test_update_service_does_not_call_send_notification_for_live_service(sample_service, client, mocker):
