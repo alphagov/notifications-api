@@ -214,11 +214,7 @@ def test_create_service(client, sample_user):
     assert json_resp['data']['email_from'] == 'created.service'
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['dvla_organisation'] == '001'
-<<<<<<< HEAD
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
-=======
-    assert json_resp['data']['sms_sender'] == 'GOVUK'
->>>>>>> set sms_sender to be 'GOVUK' if not otherwise specified
 
     auth_header_fetch = create_authorization_header()
 
@@ -1184,7 +1180,7 @@ def test_set_sms_sender_for_service_rejects_null(client, sample_service):
     result = json.loads(resp.get_data(as_text=True))
     assert resp.status_code == 400
     assert result['result'] == 'error'
-    assert result['message'] == {'sms_sender': 'Field may not be null.'}
+    assert result['message'] == {'sms_sender': ['Field may not be null.']}
 
 
 @pytest.mark.parametrize('today_only,stats', [
