@@ -358,7 +358,7 @@ def test_post_notification_with_scheduled_for(client, sample_template, sample_em
     data = {
         key_send_to: send_to,
         'template_id': str(sample_email_template.id) if notification_type == 'email' else str(sample_template.id),
-        'scheduled_for': '2017-05-14 14'
+        'scheduled_for': '2017-05-14 14:15'
     }
     auth_header = create_authorization_header(service_id=sample_template.service_id)
 
@@ -370,4 +370,4 @@ def test_post_notification_with_scheduled_for(client, sample_template, sample_em
     scheduled_notification = ScheduledNotification.query.all()
     assert len(scheduled_notification) == 1
     assert resp_json["id"] == str(scheduled_notification[0].notification_id)
-    assert resp_json["scheduled_for"] == '2017-05-14 14'
+    assert resp_json["scheduled_for"] == '2017-05-14 14:15'

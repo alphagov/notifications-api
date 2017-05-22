@@ -343,8 +343,8 @@ def test_persist_notification_with_international_info_does_not_store_for_email(
 
 
 def test_persist_scheduled_notification(sample_notification):
-    persist_scheduled_notification(sample_notification.id, '2017-05-12 14')
+    persist_scheduled_notification(sample_notification.id, '2017-05-12 14:15')
     scheduled_notification = ScheduledNotification.query.all()
     assert len(scheduled_notification) == 1
     assert scheduled_notification[0].notification_id == sample_notification.id
-    assert scheduled_notification[0].scheduled_for == datetime.datetime(2017, 5, 12, 13, 0)
+    assert scheduled_notification[0].scheduled_for == datetime.datetime(2017, 5, 12, 13, 15)

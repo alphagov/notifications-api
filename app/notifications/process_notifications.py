@@ -128,7 +128,7 @@ def simulated_recipient(to_address, notification_type):
 
 
 def persist_scheduled_notification(notification_id, scheduled_for):
-    scheduled_datetime = convert_bst_to_utc(datetime.strptime(scheduled_for, "%Y-%m-%d %H"))
+    scheduled_datetime = convert_bst_to_utc(datetime.strptime(scheduled_for, "%Y-%m-%d %H:%M"))
     scheduled_notification = ScheduledNotification(notification_id=notification_id,
                                                    scheduled_for=scheduled_datetime)
     dao_created_scheduled_notification(scheduled_notification)
