@@ -20,7 +20,9 @@ from tests.app.conftest import (
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
-from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
+from app.models import (
+    KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE
+)
 
 from tests.app.db import create_user
 
@@ -155,7 +157,7 @@ def test_get_service_list_has_default_permissions(client, service_factory):
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
     assert len(json_resp['data']) == 3
-    assert all([set(json['permissions']) == set([EMAIL_TYPE, SMS_TYPE]) for json in json_resp['data']])
+    assert all([set(json['permissions']) & set([EMAIL_TYPE, SMS_TYPE]) for json in json_resp['data']])
 
 
 def test_get_service_by_id_has_default_permissions(client, sample_service):
@@ -488,6 +490,7 @@ def test_update_service_flags_will_add_service_permissions(client, sample_servic
     assert result['data']['research_mode'] is True
     assert result['data']['can_send_letters'] is True
     assert result['data']['can_send_international_sms'] is True
+    assert all(set(result['data']['permissions']) & set([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE]))
 
 
 def test_update_permissions_can_add_service_permissions(client, sample_service):
