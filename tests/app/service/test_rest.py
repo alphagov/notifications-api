@@ -159,7 +159,7 @@ def test_get_service_list_has_default_permissions(client, service_factory):
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
     assert len(json_resp['data']) == 3
-    assert all([set(json['permissions']) == set([EMAIL_TYPE, SMS_TYPE]) for json in json_resp['data']])
+    assert all([set(json['permissions']) & set([EMAIL_TYPE, SMS_TYPE]) for json in json_resp['data']])
 
 
 def test_get_service_by_id_has_default_service_permissions(client, sample_service):
