@@ -15,8 +15,8 @@ from app.dao.notifications_dao import (
     delete_notifications_created_more_than_a_week_ago,
     dao_timeout_notifications,
     is_delivery_slow_for_provider,
-    dao_get_scheduled_notifications
-)
+    dao_get_scheduled_notifications,
+    set_scheduled_notification_to_processed)
 from app.dao.statistics_dao import dao_timeout_job_statistics
 from app.dao.provider_details_dao import (
     get_current_provider,
@@ -56,6 +56,7 @@ def send_scheduled_notifications():
         scheduled_notifications = dao_get_scheduled_notifications()
         for notification in scheduled_notifications:
             send_notification_to_queue(notification, notification.service.research_mode)
+            set_scheduled_notification_to_processed(notification.id)
         current_app.logger.info(
             "Sent {} scheudled notifications to the provider queue".format(len(scheduled_notifications)))
     except SQLAlchemyError as e:

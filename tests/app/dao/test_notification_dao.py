@@ -42,7 +42,7 @@ from app.dao.notifications_dao import (
     is_delivery_slow_for_provider,
     dao_update_notifications_sent_to_dvla,
     dao_get_notifications_by_to_field,
-    dao_created_scheduled_notification, dao_get_scheduled_notifications)
+    dao_created_scheduled_notification, dao_get_scheduled_notifications, set_scheduled_notification_to_processed)
 
 from app.dao.services_dao import dao_update_service
 from tests.app.db import create_notification
@@ -1723,3 +1723,18 @@ def test_dao_get_scheduled_notifications(notify_db, notify_db_session, sample_te
     scheduled_notifications = dao_get_scheduled_notifications()
     assert len(scheduled_notifications) == 1
     assert scheduled_notifications[0].id == notification_1.id
+    assert scheduled_notifications[0].scheduled_notification.pending
+
+
+def test_set_scheduled_notification_to_processed(notify_db, notify_db_session, sample_template):
+    notification_1 = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                         template=sample_template, scheduled_for='2017-05-05 14',
+                                         status='created')
+    scheduled_notifications = dao_get_scheduled_notifications()
+    assert len(scheduled_notifications) == 1
+    assert scheduled_notifications[0].id == notification_1.id
+    assert scheduled_notifications[0].scheduled_notification.pending
+
+    set_scheduled_notification_to_processed(notification_1.id)
+    scheduled_notifications = dao_get_scheduled_notifications()
+    assert not scheduled_notifications

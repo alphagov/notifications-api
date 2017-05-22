@@ -18,6 +18,7 @@ def upgrade():
                     sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
                     sa.Column('notification_id', postgresql.UUID(as_uuid=True), nullable=False),
                     sa.Column('scheduled_for', sa.DateTime(), nullable=False),
+                    sa.Column('pending', sa.Boolean, nullable=False, default=True),
                     sa.ForeignKeyConstraint(['notification_id'], ['notifications.id'], ),
                     sa.PrimaryKeyConstraint('id')
                     )

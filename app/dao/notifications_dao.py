@@ -477,6 +477,14 @@ def dao_get_scheduled_notifications():
         ScheduledNotification
     ).filter(
         ScheduledNotification.scheduled_for < datetime.utcnow(),
-        Notification.status == NOTIFICATION_CREATED).all()
+        ScheduledNotification.pending).all()
 
     return notifications
+
+
+def set_scheduled_notification_to_processed(notification_id):
+    ScheduledNotification.query.filter(
+        ScheduledNotification.notification_id == notification_id
+    ).update(
+        {'pending': False}
+    )

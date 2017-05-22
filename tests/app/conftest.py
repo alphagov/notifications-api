@@ -495,6 +495,8 @@ def sample_notification(
                                                        notification_id=notification.id,
                                                        scheduled_for=datetime.strptime(scheduled_for,
                                                                                        "%Y-%m-%d %H"))
+        if status != 'created':
+            scheduled_notification.pending = False
         db.session.add(scheduled_notification)
         db.session.commit()
 

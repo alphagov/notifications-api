@@ -20,6 +20,7 @@ from app.celery.scheduled_tasks import (
 )
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.dao.jobs_dao import dao_get_job_by_id
+from app.dao.notifications_dao import dao_get_scheduled_notifications
 from app.dao.provider_details_dao import (
     dao_update_provider_details,
     get_current_provider
@@ -425,9 +426,14 @@ def test_should_send_all_scheduled_notifications_to_deliver_queue(notify_db,
     sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                         template=sample_template, scheduled_for="2017-05-01 14")
 
+    scheduled_notifications = dao_get_scheduled_notifications()
+    assert len(scheduled_notifications) == 1
+
     send_scheduled_notifications()
 
     mocked.apply_async.assert_called_once_with([str(message_to_deliver.id)], queue='send-sms')
+    scheduled_notifications = dao_get_scheduled_notifications()
+    assert not scheduled_notifications
 
 
 def test_timeout_job_statistics_called_with_notification_timeout(notify_api, mocker):

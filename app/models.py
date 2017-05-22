@@ -958,6 +958,7 @@ class ScheduledNotification(db.Model):
     notification_id = db.Column(UUID(as_uuid=True), db.ForeignKey('notifications.id'), index=True, nullable=False)
     notification = db.relationship('Notification', uselist=False)
     scheduled_for = db.Column(db.DateTime, index=False, nullable=False)
+    pending = db.Column(db.Boolean, nullable=False, default=True)
 
 
 class InvitedUser(db.Model):
