@@ -483,8 +483,9 @@ def dao_get_scheduled_notifications():
 
 
 def set_scheduled_notification_to_processed(notification_id):
-    ScheduledNotification.query.filter(
+    db.session.query(ScheduledNotification).filter(
         ScheduledNotification.notification_id == notification_id
     ).update(
         {'pending': False}
     )
+    db.session.commit()

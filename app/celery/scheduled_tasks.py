@@ -44,7 +44,7 @@ def run_scheduled_jobs():
         for job in dao_set_scheduled_jobs_to_pending():
             process_job.apply_async([str(job.id)], queue="process-job")
             current_app.logger.info("Job ID {} added to process job queue".format(job.id))
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         current_app.logger.exception("Failed to run scheduled jobs")
         raise
 
@@ -58,8 +58,8 @@ def send_scheduled_notifications():
             send_notification_to_queue(notification, notification.service.research_mode)
             set_scheduled_notification_to_processed(notification.id)
         current_app.logger.info(
-            "Sent {} scheudled notifications to the provider queue".format(len(scheduled_notifications)))
-    except SQLAlchemyError as e:
+            "Sent {} scheduled notifications to the provider queue".format(len(scheduled_notifications)))
+    except SQLAlchemyError:
         current_app.logger.exception("Failed to send scheduled notifications")
         raise
 
