@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import (
     JSON
 )
 from sqlalchemy import UniqueConstraint, and_
-from sqlalchemy.orm import backref, foreign, remote
+from sqlalchemy.orm import foreign, remote
 from notifications_utils.recipients import (
     validate_email_address,
     validate_phone_number,
@@ -223,11 +223,10 @@ class ServicePermission(db.Model):
                            primary_key=True, index=True, nullable=False)
     permission = db.Column(db.String(255), db.ForeignKey('service_permission_types.name'),
                            index=True, primary_key=True, nullable=False)
-    service = db.relationship("Service", foreign_keys=[service_id])
+    service = db.relationship("Service")
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
 
-    service_permission_types = db.relationship(
-        Service, backref=backref("permissions", cascade="all, delete-orphan"))
+    service_permission_types = db.relationship(Service, backref=db.backref("permissions"))
 
     def __repr__(self):
         return '<{} has service permission: {}>'.format(self.service_id, self.permission)
