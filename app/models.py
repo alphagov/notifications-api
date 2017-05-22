@@ -3,13 +3,14 @@ import uuid
 import datetime
 from flask import url_for, current_app
 
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
 )
 from sqlalchemy import UniqueConstraint, and_
-from sqlalchemy.orm import foreign, remote
+from sqlalchemy.orm import backref, foreign, remote
 from notifications_utils.recipients import (
     validate_email_address,
     validate_phone_number,
@@ -144,27 +145,15 @@ class DVLAOrganisation(db.Model):
 
 
 INTERNATIONAL_SMS_TYPE = 'international_sms'
-INCOMING_SMS_TYPE = 'incoming_sms'
+INBOUND_SMS_TYPE = 'inbound_sms'
 
-SERVICE_PERMISSION_TYPES = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INCOMING_SMS_TYPE]
+SERVICE_PERMISSION_TYPES = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE]
 
 
 class ServicePermissionTypes(db.Model):
     __tablename__ = 'service_permission_types'
 
     name = db.Column(db.String(255), primary_key=True)
-
-
-class ServicePermission(db.Model):
-    __tablename__ = "service_permissions"
-
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'),
-                           primary_key=True, index=True, nullable=False)
-    service = db.relationship('Service')
-    permission = db.Column(db.String(255), db.ForeignKey('service_permission_types.name'),
-                           index=True, primary_key=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
 
 class Service(db.Model, Versioned):
@@ -217,13 +206,31 @@ class Service(db.Model, Versioned):
         nullable=False,
         default=BRANDING_GOVUK
     )
-    permissions = db.relationship('ServicePermission')
+
+    association_proxy('permissions', 'service_permission_types')
 
     # This is only for backward compatibility and will be dropped when the columns are removed from the data model
     def set_permissions(self):
         if self.permissions:
             self.can_send_letters = LETTER_TYPE in [p.permission for p in self.permissions]
             self.can_send_international_sms = INTERNATIONAL_SMS_TYPE in [p.permission for p in self.permissions]
+
+
+class ServicePermission(db.Model):
+    __tablename__ = "service_permissions"
+
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'),
+                           primary_key=True, index=True, nullable=False)
+    permission = db.Column(db.String(255), db.ForeignKey('service_permission_types.name'),
+                           index=True, primary_key=True, nullable=False)
+    service = db.relationship("Service", foreign_keys=[service_id])
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    service_permission_types = db.relationship(
+        Service, backref=backref("permissions", cascade="all, delete-orphan"))
+
+    def __repr__(self):
+        return '<{} has service permission: {}>'.format(self.service_id, self.permission)
 
 
 MOBILE_TYPE = 'mobile'
