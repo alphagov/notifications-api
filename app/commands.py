@@ -82,7 +82,7 @@ class CustomDbScript(Command):
 
         # Now update notification_history
         subq_history = "select id from notification_history where international is null limit 250000"
-        update_history = "update notification_history set international = False where id in ({})".format(subq)
+        update_history = "update notification_history set international = False where id in ({})".format(subq_history)
         result_history = db.session.execute(subq_history).fetchall()
         while len(result_history) > 0:
             db.session.execute(update_history)
