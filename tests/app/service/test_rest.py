@@ -1130,57 +1130,61 @@ def test_get_only_api_created_notifications_for_service(
     assert response.status_code == 200
 
 
-def test_set_sms_sender_for_service(client, sample_service):
-    data = {
-        'sms_sender': 'elevenchars',
-    }
+def test_set_sms_sender_for_service(notify_api, sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header()
+            resp = client.get(
+                '/service/{}'.format(sample_service.id),
+                headers=[auth_header]
+            )
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 200
+            assert json_resp['data']['name'] == sample_service.name
 
-    auth_header = create_authorization_header()
+            data = {
+                'sms_sender': 'elevenchars',
+            }
 
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    result = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 200
-    assert result['data']['sms_sender'] == 'elevenchars'
+            auth_header = create_authorization_header()
 
-
-def test_set_sms_sender_for_service_rejects_invalid_characters(client, sample_service):
-    data = {
-        'sms_sender': 'invalid####',
-    }
-
-    auth_header = create_authorization_header()
-
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    result = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 400
-    assert result['result'] == 'error'
-    assert result['message'] == {'sms_sender': ['Only alphanumeric characters allowed']}
+            resp = client.post(
+                '/service/{}'.format(sample_service.id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+            result = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 200
+            assert result['data']['sms_sender'] == 'elevenchars'
 
 
-def test_set_sms_sender_for_service_rejects_null(client, sample_service):
-    data = {
-        'sms_sender': None,
-    }
+def test_set_sms_sender_for_service_rejects_invalid_characters(notify_api, sample_service):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            auth_header = create_authorization_header()
+            resp = client.get(
+                '/service/{}'.format(sample_service.id),
+                headers=[auth_header]
+            )
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 200
+            assert json_resp['data']['name'] == sample_service.name
 
-    auth_header = create_authorization_header()
+            data = {
+                'sms_sender': 'invalid####',
+            }
 
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    result = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 400
-    assert result['result'] == 'error'
-    assert result['message'] == {'sms_sender': ['Field may not be null.']}
+            auth_header = create_authorization_header()
+
+            resp = client.post(
+                '/service/{}'.format(sample_service.id),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+            result = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == 400
+            assert result['result'] == 'error'
+            assert result['message'] == {'sms_sender': ['Only alphanumeric characters allowed']}
 
 
 @pytest.mark.parametrize('today_only,stats', [
