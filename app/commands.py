@@ -71,11 +71,21 @@ class CustomDbScript(Command):
 
     def update_notification_international_flag(self):
         # 250,000 rows takes 30 seconds to update.
-        subq = "select id from notification_history where international is null limit 250000"
-        update = "update notification_history set international = False where id in ({})".format(subq)
+        subq = "select id from notifications where international is null limit 250000"
+        update = "update notifications set international = False where id in ({})".format(subq)
         result = db.session.execute(subq).fetchall()
         while len(result) > 0:
             db.session.execute(update)
-            print('commit 10000 updates at {}'.format(datetime.utcnow()))
+            print('commit 250000 updates at {}'.format(datetime.utcnow()))
             db.session.commit()
             result = db.session.execute(subq).fetchall()
+
+        # Now update notification_history
+        subq_history = "select id from notification_history where international is null limit 250000"
+        update_history = "update notification_history set international = False where id in ({})".format(subq)
+        result_history = db.session.execute(subq_history).fetchall()
+        while len(result_history) > 0:
+            db.session.execute(update_history)
+            print('commit 250000 updates at {}'.format(datetime.utcnow()))
+            db.session.commit()
+            result_history = db.session.execute(subq_history).fetchall()
