@@ -44,6 +44,8 @@ from app.models import (
     User,
     InvitedUser,
     Service,
+    ServicePermission,
+    ServicePermissionTypes,
     BRANDING_GOVUK,
     DVLA_ORG_HM_GOVERNMENT,
     KEY_TYPE_NORMAL,
@@ -52,7 +54,8 @@ from app.models import (
     EMAIL_TYPE,
     SMS_TYPE,
     LETTER_TYPE,
-    INTERNATIONAL_SMS_TYPE
+    INTERNATIONAL_SMS_TYPE,
+    SERVICE_PERMISSION_TYPES
 )
 
 from tests.app.db import create_user, create_service
@@ -286,6 +289,14 @@ def test_remove_permission_from_service_by_id_returns_service_with_correct_permi
     assert service.permissions[0].permission == EMAIL_TYPE
 
 
+def test_remove_service_does_not_remove_service_permission_types(sample_service):
+    delete_service_and_all_associated_db_objects(sample_service)
+
+    services = dao_fetch_all_services()
+    assert len(services) == 0
+    assert set([p.name for p in ServicePermissionTypes.query.all()]) & set(SERVICE_PERMISSION_TYPES)
+
+
 def test_create_service_by_id_adding_and_removing_letter_returns_service_without_letter(service_factory):
     service = service_factory.get('testing', email_from='testing')
 
@@ -392,6 +403,9 @@ def test_delete_service_and_associated_objects(notify_db,
                                                sample_invited_user,
                                                sample_permission,
                                                sample_provider_statistics):
+    # Default service permissions of Email and SMS
+    assert ServicePermission.query.count() == 2
+
     delete_service_and_all_associated_db_objects(sample_service)
     assert NotificationStatistics.query.count() == 0
     assert TemplateStatistics.query.count() == 0
@@ -408,6 +422,7 @@ def test_delete_service_and_associated_objects(notify_db,
     assert InvitedUser.query.count() == 0
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
+    assert ServicePermission.query.count() == 0
 
 
 def test_add_existing_user_to_another_service_doesnot_change_old_permissions(sample_user):

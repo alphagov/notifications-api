@@ -23,6 +23,7 @@ from app.celery.statistics_tasks import record_initial_job_statistics, create_in
 
 def send_sms_to_provider(notification):
     service = notification.service
+
     if not service.active:
         technical_failure(notification=notification)
         return
@@ -37,7 +38,7 @@ def send_sms_to_provider(notification):
             template_model.__dict__,
             values=notification.personalisation,
             prefix=service.name,
-            sender=service.sms_sender
+            sender=service.sms_sender not in {None, current_app.config['FROM_NUMBER']}
         )
 
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
@@ -50,7 +51,7 @@ def send_sms_to_provider(notification):
                     to=validate_and_format_phone_number(notification.to, international=notification.international),
                     content=str(template),
                     reference=str(notification.id),
-                    sender=service.sms_sender
+                    sender=service.sms_sender or current_app.config['FROM_NUMBER']
                 )
             except Exception as e:
                 dao_toggle_sms_provider(provider.name)

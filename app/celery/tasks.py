@@ -1,5 +1,3 @@
-import random
-
 from datetime import (datetime)
 from collections import namedtuple
 
@@ -361,21 +359,20 @@ def get_template_class(template_type):
 @statsd(namespace="tasks")
 def update_letter_notifications_statuses(self, filename):
     bucket_location = '{}-ftp'.format(current_app.config['NOTIFY_EMAIL_DOMAIN'])
-    response_file = s3.get_s3_file(bucket_location, filename)
+    response_file_content = s3.get_s3_file(bucket_location, filename)
 
     try:
-        NotificationUpdate = namedtuple('NotificationUpdate', ['reference', 'status', 'page_count', 'cost_threshold'])
-        notification_updates = [NotificationUpdate(*line.split('|')) for line in response_file.splitlines()]
-
+        notification_updates = process_updates_from_file(response_file_content)
     except TypeError:
         current_app.logger.exception('DVLA response file: {} has an invalid format'.format(filename))
         raise
-
     else:
-        if notification_updates:
-            for update in notification_updates:
-                current_app.logger.info('DVLA update: {}'.format(str(update)))
-                # TODO: Update notifications with desired status
-            return notification_updates
-        else:
-            current_app.logger.exception('DVLA response file contained no updates')
+        for update in notification_updates:
+            current_app.logger.info('DVLA update: {}'.format(str(update)))
+            # TODO: Update notifications with desired status
+
+
+def process_updates_from_file(response_file):
+    NotificationUpdate = namedtuple('NotificationUpdate', ['reference', 'status', 'page_count', 'cost_threshold'])
+    notification_updates = [NotificationUpdate(*line.split('|')) for line in response_file.splitlines()]
+    return notification_updates

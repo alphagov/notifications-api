@@ -24,7 +24,8 @@ from app.celery.tasks import (
     persist_letter,
     get_template_class,
     update_job_to_sent_to_dvla,
-    update_letter_notifications_statuses
+    update_letter_notifications_statuses,
+    process_updates_from_file
 )
 from app.dao import jobs_dao, services_dao
 from app.models import (
@@ -1094,10 +1095,19 @@ def test_update_letter_notifications_statuses_calls_with_correct_bucket_location
         s3_mock.assert_called_with('{}-ftp'.format(current_app.config['NOTIFY_EMAIL_DOMAIN']), 'foo.txt')
 
 
-def test_update_letter_notifications_statuses_builds_updates_list(notify_api, mocker):
+def test_update_letter_notifications_statuses_builds_updates_from_content(notify_api, mocker):
     valid_file = 'ref-foo|Sent|1|Unsorted\nref-bar|Sent|2|Sorted'
     mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
-    updates = update_letter_notifications_statuses(filename='foo.txt')
+    update_mock = mocker.patch('app.celery.tasks.process_updates_from_file')
+
+    update_letter_notifications_statuses(filename='foo.txt')
+
+    update_mock.assert_called_with('ref-foo|Sent|1|Unsorted\nref-bar|Sent|2|Sorted')
+
+
+def test_update_letter_notifications_statuses_builds_updates_list(notify_api, mocker):
+    valid_file = 'ref-foo|Sent|1|Unsorted\nref-bar|Sent|2|Sorted'
+    updates = process_updates_from_file(valid_file)
 
     assert len(updates) == 2
 
