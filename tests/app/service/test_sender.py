@@ -109,5 +109,4 @@ def test_send_notification_to_service_users_sends_to_active_users_only(
 
     assert Notification.query.count() == 2
 
-    assert notifications[0].to == first_active_user.email_address
-    assert notifications[1].to == second_active_user.email_address
+    assert pending_user.email_address not in [n.to for n in notifications]

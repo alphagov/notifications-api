@@ -1,6 +1,8 @@
 import uuid
+
 import pytest
-from flask import json
+from flask import json, current_app
+
 from app.models import Notification
 from app.v2.errors import RateLimitError
 from tests import create_authorization_header
@@ -33,8 +35,7 @@ def test_post_sms_notification_returns_201(notify_api, sample_template_with_plac
             assert resp_json['id'] == str(notification_id)
             assert resp_json['reference'] == reference
             assert resp_json['content']['body'] == sample_template_with_placeholders.content.replace("(( Name))", "Jo")
-            # conftest fixture service does not have a sms sender, use config default
-            assert resp_json['content']['from_number'] == 'GOVUK'
+            assert resp_json['content']['from_number'] == current_app.config['FROM_NUMBER']
             assert 'v2/notifications/{}'.format(notification_id) in resp_json['uri']
             assert resp_json['template']['id'] == str(sample_template_with_placeholders.id)
             assert resp_json['template']['version'] == sample_template_with_placeholders.version
