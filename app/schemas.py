@@ -25,7 +25,7 @@ from notifications_utils.recipients import (
 
 from app import ma
 from app import models
-from app.models import ServicePermission, INTERNATIONAL_SMS_TYPE, SMS_TYPE
+from app.models import ServicePermission, INTERNATIONAL_SMS_TYPE, SMS_TYPE, LETTER_TYPE
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_permissions_dao import dao_fetch_service_permissions
 from app.utils import get_template_instance
@@ -184,6 +184,7 @@ class ServiceSchema(BaseSchema):
 
     def service_permissions(self, service):
         permissions = []
+        str_permissions = []
 
         perms = dao_fetch_service_permissions(service.id)
         for p in perms:
@@ -192,6 +193,28 @@ class ServiceSchema(BaseSchema):
                 "permission": p.permission
             }
             permissions.append(permission)
+            str_permissions.append(p.permission)
+
+        def process_deprecated_permission_flags():
+            def sync_flags(flag, notify_type):
+                if flag and notify_type not in str_permissions:
+                    permission = {
+                        "service_id": service.id,
+                        "permission": notify_type
+                    }
+                    permissions.append(permission)
+                elif flag is False and notify_type in str_permissions:
+                    permission = {
+                        "service_id": service.id,
+                        "permission": notify_type
+                    }
+                    permissions.remove(permission)
+
+            sync_flags(service.can_send_international_sms, INTERNATIONAL_SMS_TYPE)
+            sync_flags(service.can_send_letters, LETTER_TYPE)
+
+        process_deprecated_permission_flags()
+
         return permissions
 
     class Meta:
@@ -232,7 +255,7 @@ class ServiceSchema(BaseSchema):
     def format_permissions_for_data_model(self, in_data):
         if isinstance(in_data, dict) and 'permissions' in in_data:
             permissions = []
-            for p in in_data.get('permissions'):
+            for p in in_data['permissions']:
                 permission = models.ServicePermission(service_id=in_data["id"], permission=p)
                 permissions.append(permission)
             in_data['permissions'] = permissions
@@ -240,7 +263,7 @@ class ServiceSchema(BaseSchema):
     @post_dump
     def format_permissions_as_string_array(self, in_data):
         if isinstance(in_data, dict) and 'permissions' in in_data:
-            in_data['permissions'] = [p.get('permission') for p in in_data.get('permissions')]
+            in_data['permissions'] = [p.get("permission") for p in in_data['permissions']]
         return in_data
 
 

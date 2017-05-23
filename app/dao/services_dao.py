@@ -31,7 +31,9 @@ from app.models import (
     TEMPLATE_TYPES,
     JobStatistics,
     SMS_TYPE,
-    EMAIL_TYPE
+    EMAIL_TYPE,
+    INTERNATIONAL_SMS_TYPE,
+    LETTER_TYPE
 )
 from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
@@ -136,10 +138,28 @@ def dao_create_service(service, user, service_id=None, service_permissions=[SMS_
     service.active = True
     service.research_mode = False
 
-    for permission in service_permissions:
-        service_permission = ServicePermission(service_id=service.id, permission=permission)
-        service.permissions.append(service_permission)
+    def process_deprecated_service_permissions():
+        for permission in service_permissions:
+            service_permission = ServicePermission(service_id=service.id, permission=permission)
+            service.permissions.append(service_permission)
 
+            if permission == INTERNATIONAL_SMS_TYPE:
+                service.can_send_international_sms = True
+            if permission == LETTER_TYPE:
+                service.can_send_letters = True
+
+        def sync_flags(flag, notify_type):
+            if flag and notify_type not in service_permissions:
+                service_permission = ServicePermission(service_id=service.id, permission=notify_type)
+                service.permissions.append(service_permission)
+            elif flag is False and notify_type in service_permissions:
+                service_permission = ServicePermission(service_id=service.id, permission=notify_type)
+                service.permissions.remove(service_permission)
+
+        sync_flags(service.can_send_international_sms, INTERNATIONAL_SMS_TYPE)
+        sync_flags(service.can_send_letters, LETTER_TYPE)
+
+    process_deprecated_service_permissions()
     db.session.add(service)
 
 

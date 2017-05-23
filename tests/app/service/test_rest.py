@@ -21,6 +21,7 @@ from tests.app.conftest import (
     sample_notification_with_job
 )
 from app.models import (
+    ServicePermission,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE
 )
 
@@ -157,7 +158,7 @@ def test_get_service_list_has_default_permissions(client, service_factory):
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
     assert len(json_resp['data']) == 3
-    assert all([set(json['permissions']) & set([EMAIL_TYPE, SMS_TYPE]) for json in json_resp['data']])
+    assert all([set(json['permissions']) == set([EMAIL_TYPE, SMS_TYPE]) for json in json_resp['data']])
 
 
 def test_get_service_by_id_has_default_permissions(client, sample_service):
@@ -490,18 +491,41 @@ def test_update_service_flags_will_add_service_permissions(client, sample_servic
     assert result['data']['research_mode'] is True
     assert result['data']['can_send_letters'] is True
     assert result['data']['can_send_international_sms'] is True
-    assert all(set(result['data']['permissions']) & set([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE]))
+    assert set(result['data']['permissions']) == set([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
+
+
+def test_update_service_flags_will_remove_service_permissions(client, notify_db, notify_db_session):
+    auth_header = create_authorization_header()
+
+    service = create_service(notify_db, notify_db_session, can_send_international_sms=True)
+
+    assert service.can_send_international_sms is True
+    assert set([p.permission for p in service.permissions]) == set([SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE])
+
+    data = {
+        'can_send_international_sms': False,
+    }
+
+    resp = client.post(
+        '/service/{}'.format(service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+
+    assert resp.status_code == 200
+    assert result['data']['can_send_international_sms'] is False
+    assert set(result['data']['permissions']) == set([SMS_TYPE, EMAIL_TYPE])
 
 
 def test_update_permissions_can_add_service_permissions(client, sample_service):
-    from app.models import ServicePermission
     auth_header = create_authorization_header()
 
     data = {
         'research_mode': True,
-        'can_send_letters': True,
         'can_send_international_sms': True,
-        'permissions': [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]
+        'can_send_letters': True,
+        'permissions': [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE]
     }
 
     resp = client.post(
@@ -515,7 +539,7 @@ def test_update_permissions_can_add_service_permissions(client, sample_service):
     assert result['data']['research_mode'] is True
     assert result['data']['can_send_letters'] is True
     assert result['data']['can_send_international_sms'] is True
-    assert all(set(result['data']['permissions']) & set([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]))
+    assert set(result['data']['permissions']) == set([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
 
 
 def test_update_permissions_with_an_invalid_permission_will_raise_error(client, sample_service):
@@ -523,9 +547,6 @@ def test_update_permissions_with_an_invalid_permission_will_raise_error(client, 
     invalid_permission = 'invalid_permission'
 
     data = {
-        'research_mode': True,
-        'can_send_letters': True,
-        'can_send_international_sms': True,
         'permissions': [EMAIL_TYPE, SMS_TYPE, invalid_permission]
     }
 
@@ -577,40 +598,6 @@ def test_update_permissions_with_international_sms_without_sms_permissions_will_
     assert resp.status_code == 400
     assert result['result'] == 'error'
     assert "International SMS must have SMS enabled" == result['message']
-
-
-def test_update_service_flags_can_remove_service_permissions(client, sample_service):
-    auth_header = create_authorization_header()
-    initial_data = {
-        'research_mode': True,
-        'can_send_letters': True,
-        'can_send_international_sms': True,
-        'permissions': [EMAIL_TYPE, SMS_TYPE]
-    }
-
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(initial_data),
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-
-    remove_permission_data = {
-        'can_send_letters': True,
-        'can_send_international_sms': False,
-        'permissions': [EMAIL_TYPE]
-    }
-
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(remove_permission_data),
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    result = json.loads(resp.get_data(as_text=True))
-
-    assert resp.status_code == 200
-    assert result['data']['can_send_letters'] is True
-    assert result['data']['can_send_international_sms'] is False
-    assert result['data']['permissions'] == [EMAIL_TYPE]
 
 
 def test_update_service_research_mode_throws_validation_error(notify_api, sample_service):
