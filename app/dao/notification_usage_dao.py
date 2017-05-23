@@ -157,6 +157,9 @@ def rate_multiplier():
 
 @statsd(namespace="dao")
 def get_total_billable_units_for_sent_sms_notifications_in_date_range(start_date, end_date, service_id):
+    rates = get_rates_for_year(start_date, end_date, SMS_TYPE)
+    print(rates)
+
     result = db.session.query(
         func.sum(
             NotificationHistory.billable_units * func.coalesce(NotificationHistory.rate_multiplier, 1)
