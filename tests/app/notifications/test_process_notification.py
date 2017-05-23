@@ -383,3 +383,32 @@ def test_persist_sms_notification_stores_normalised_number(
 
     assert persisted_notification.to == recipient
     assert persisted_notification.normalised_to == expected_recipient_normalised
+
+
+@pytest.mark.parametrize('recipient, expected_recipient_normalised', [
+    ('FOO@bar.com', 'foo@bar.com'),
+    ('BAR@foo.com', 'bar@foo.com')
+
+])
+def test_persist_email_notification_stores_normalised_email(
+    sample_job,
+    sample_api_key,
+    mocker,
+    recipient,
+    expected_recipient_normalised
+):
+    persist_notification(
+        template_id=sample_job.template.id,
+        template_version=sample_job.template.version,
+        recipient=recipient,
+        service=sample_job.service,
+        personalisation=None,
+        notification_type='email',
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        job_id=sample_job.id,
+    )
+    persisted_notification = Notification.query.all()[0]
+
+    assert persisted_notification.to == recipient
+    assert persisted_notification.normalised_to == expected_recipient_normalised
