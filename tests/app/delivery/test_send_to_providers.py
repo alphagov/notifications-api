@@ -5,6 +5,7 @@ from unittest.mock import ANY, call
 
 import pytest
 from notifications_utils.recipients import validate_and_format_phone_number
+from flask import current_app
 
 import app
 from app import mmg_client, firetext_client
@@ -73,7 +74,7 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
         to=validate_and_format_phone_number("+447234123123"),
         content="Sample service: Hello Jo\nHere is <em>some HTML</em> & entities",
         reference=str(db_notification.id),
-        sender=None
+        sender=current_app.config['FROM_NUMBER']
     )
 
     stats_mock.assert_called_once_with(db_notification)
@@ -175,7 +176,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
         to=validate_and_format_phone_number("+447234123123"),
         content="Sample service: This is a template:\nwith a newline",
         reference=str(db_notification.id),
-        sender=None
+        sender=current_app.config['FROM_NUMBER']
     )
 
     persisted_notification = notifications_dao.get_notification_by_id(db_notification.id)
@@ -549,7 +550,7 @@ def test_should_send_sms_to_international_providers(
         to="447234123999",
         content=ANY,
         reference=str(db_notification_uk.id),
-        sender=None
+        sender=current_app.config['FROM_NUMBER']
     )
 
     send_to_providers.send_sms_to_provider(
@@ -560,7 +561,7 @@ def test_should_send_sms_to_international_providers(
         to="447234123111",
         content=ANY,
         reference=str(db_notification_international.id),
-        sender=None
+        sender=current_app.config['FROM_NUMBER']
     )
 
     notification_uk = Notification.query.filter_by(id=db_notification_uk.id).one()
@@ -619,3 +620,34 @@ def test_should_set_international_phone_number_to_sent_status(
     )
 
     assert notification.status == 'sent'
+
+
+@pytest.mark.parametrize('sms_sender, expected_sender, expected_content', [
+    ('foo', 'foo', 'bar'),
+    # if 40604 is actually in DB then treat that as if entered manually
+    ('40604', '40604', 'bar'),
+    # 'testing' is the FROM_NUMBER during unit tests
+    (None, 'testing', 'Sample service: bar'),
+    ('testing', 'testing', 'Sample service: bar'),
+])
+def test_should_handle_sms_sender_and_prefix_message(
+    sample_service,
+    mocker,
+    sms_sender,
+    expected_sender,
+    expected_content
+):
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+    sample_service.sms_sender = sms_sender
+    template = create_template(sample_service, content='bar')
+    notification = create_notification(template)
+
+    send_to_providers.send_sms_to_provider(notification)
+
+    mmg_client.send_sms.assert_called_once_with(
+        content=expected_content,
+        sender=expected_sender,
+        to=ANY,
+        reference=ANY,
+    )
