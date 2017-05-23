@@ -106,8 +106,9 @@ def test_send_notification_to_service_users_sends_to_active_users_only(
 
     send_notification_to_service_users(service_id=service.id, template_id=template.id)
     notifications = Notification.query.all()
+    notifications_recipients = [notification.to for notification in notifications]
 
     assert Notification.query.count() == 2
-
-    assert notifications[0].to == first_active_user.email_address
-    assert notifications[1].to == second_active_user.email_address
+    assert pending_user.email_address not in notifications_recipients
+    assert first_active_user.email_address in notifications_recipients
+    assert second_active_user.email_address in notifications_recipients
