@@ -351,11 +351,11 @@ def _filter_query(query, filter_dict=None):
 
 
 @statsd(namespace="dao")
-def delete_notifications_created_more_than_a_week_ago(status):
+def delete_notifications_created_more_than_a_week_ago_by_type(notification_type):
     seven_days_ago = date.today() - timedelta(days=7)
     deleted = db.session.query(Notification).filter(
         func.date(Notification.created_at) < seven_days_ago,
-        Notification.status == status,
+        Notification.notification_type == notification_type,
     ).delete(synchronize_session='fetch')
     db.session.commit()
     return deleted
