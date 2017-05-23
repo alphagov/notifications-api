@@ -169,16 +169,6 @@ def dao_update_service(service):
     db.session.add(service)
 
 
-@transactional
-@version_class(Service)
-def dao_remove_service_permission(service, permission):
-    for p in service.permissions:
-        if p.permission == permission:
-            service.permissions.remove(p)
-
-    db.session.add(service)
-
-
 def dao_add_user_to_service(service, user, permissions=None):
     permissions = permissions or []
     try:

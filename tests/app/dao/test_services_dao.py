@@ -11,7 +11,6 @@ from app.dao.services_dao import (
     dao_create_service,
     dao_add_user_to_service,
     dao_remove_user_from_service,
-    dao_remove_service_permission as dao_services_remove_service_permission,
     dao_fetch_all_services,
     dao_fetch_service_by_id,
     dao_fetch_all_services_by_user,
@@ -46,10 +45,7 @@ from app.models import (
     InvitedUser,
     Service,
     ServicePermission,
-<<<<<<< HEAD
     ServicePermissionTypes,
-=======
->>>>>>> Updated service DAO and API end points
     BRANDING_GOVUK,
     DVLA_ORG_HM_GOVERNMENT,
     KEY_TYPE_NORMAL,
@@ -298,7 +294,7 @@ def test_remove_service_does_not_remove_service_permission_types(sample_service)
 
     services = dao_fetch_all_services()
     assert len(services) == 0
-    assert set([p.name for p in ServicePermissionTypes.query.all()]) & set(SERVICE_PERMISSION_TYPES)
+    assert set([p.name for p in ServicePermissionTypes.query.all()]) == set(SERVICE_PERMISSION_TYPES)
 
 
 def test_create_service_by_id_adding_and_removing_letter_returns_service_without_letter(service_factory):
@@ -397,7 +393,9 @@ def test_update_service_permission_creates_a_history_record_with_current_data(sa
     assert service_from_db.version == 2
     assert LETTER_TYPE in [p.permission for p in service_from_db.permissions]
 
-    dao_services_remove_service_permission(service, permission='sms')
+    permission = [p for p in service.permissions if p.permission == 'sms'][0]
+    service.permissions.remove(permission)
+    dao_update_service(service)
 
     assert Service.query.count() == 1
     assert Service.get_history_model().query.count() == 3
