@@ -5,13 +5,13 @@ from functools import partial
 
 from flask import current_app
 from freezegun import freeze_time
-from app.celery.scheduled_tasks import s3, timeout_job_statistics
+from app.celery.scheduled_tasks import s3, timeout_job_statistics, delete_sms_notifications_older_than_seven_days, \
+    delete_letter_notifications_older_than_seven_days, delete_email_notifications_older_than_seven_days
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
     delete_verify_codes,
     remove_csv_files,
-    delete_successful_notifications,
-    delete_failed_notifications,
+    delete_notifications_created_more_than_a_week_ago_by_type,
     delete_invitations,
     timeout_notifications,
     run_scheduled_jobs,
@@ -70,8 +70,7 @@ def prepare_current_provider(restore_provider_details):
 
 def test_should_have_decorated_tasks_functions():
     assert delete_verify_codes.__wrapped__.__name__ == 'delete_verify_codes'
-    assert delete_successful_notifications.__wrapped__.__name__ == 'delete_successful_notifications'
-    assert delete_failed_notifications.__wrapped__.__name__ == 'delete_failed_notifications'
+    assert delete_notifications_created_more_than_a_week_ago_by_type.__wrapped__.__name__ == 'delete_notifications_created_more_than_a_week_ago_by_type'  # noqa
     assert timeout_notifications.__wrapped__.__name__ == 'timeout_notifications'
     assert delete_invitations.__wrapped__.__name__ == 'delete_invitations'
     assert run_scheduled_jobs.__wrapped__.__name__ == 'run_scheduled_jobs'
@@ -81,16 +80,22 @@ def test_should_have_decorated_tasks_functions():
         'switch_current_sms_provider_on_slow_delivery'
 
 
-def test_should_call_delete_successful_notifications_more_than_week_in_task(notify_api, mocker):
-    mocked = mocker.patch('app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago')
-    delete_successful_notifications()
-    mocked.assert_called_once_with('delivered')
+def test_should_call_delete_sms_notifications_more_than_week_in_task(notify_api, mocker):
+    mocked = mocker.patch('app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago_by_type')
+    delete_sms_notifications_older_than_seven_days()
+    mocked.assert_called_once_with('sms')
 
 
-def test_should_call_delete_failed_notifications_more_than_week_in_task(notify_api, mocker):
-    mocker.patch('app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago')
-    delete_failed_notifications()
-    assert scheduled_tasks.delete_notifications_created_more_than_a_week_ago.call_count == 4
+def test_should_call_delete_email_notifications_more_than_week_in_task(notify_api, mocker):
+    mocked = mocker.patch('app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago_by_type')
+    delete_email_notifications_older_than_seven_days()
+    mocked.assert_called_once_with('email')
+
+
+def test_should_call_delete_letter_notifications_more_than_week_in_task(notify_api, mocker):
+    mocked = mocker.patch('app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago_by_type')
+    delete_letter_notifications_older_than_seven_days()
+    mocked.assert_called_once_with('letter')
 
 
 def test_should_call_delete_codes_on_delete_verify_codes_task(notify_api, mocker):
