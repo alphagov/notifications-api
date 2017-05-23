@@ -383,6 +383,7 @@ def test_persist_sms_notification_stores_normalised_number(
 
     assert persisted_notification.to == recipient
     assert persisted_notification.normalised_to == expected_recipient_normalised
+<<<<<<< HEAD
 
 
 @pytest.mark.parametrize('recipient, expected_recipient_normalised', [
@@ -412,3 +413,5 @@ def test_persist_email_notification_stores_normalised_email(
 
     assert persisted_notification.to == recipient
     assert persisted_notification.normalised_to == expected_recipient_normalised
+=======
+>>>>>>> Store the normalised number on the notification
