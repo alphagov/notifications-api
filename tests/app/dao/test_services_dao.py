@@ -258,15 +258,15 @@ def test_create_service_returns_service_with_default_permissions(service_factory
 
     service = dao_fetch_service_by_id(service.id)
     assert len(service.permissions) == 2
-    assert all(p.permission in [SMS_TYPE, EMAIL_TYPE] for p in service.permissions)
+    assert set([SMS_TYPE, EMAIL_TYPE]) == set(p.permission for p in service.permissions)
 
 
 # This test is only for backward compatibility and will be removed
-# when the 'can_use' columns are dropped from the Service data model
+# when the deprecated 'can_use' columns are not used in the Service data model
 @pytest.mark.parametrize("permission_to_add, can_send_letters, can_send_international_sms",
                          [(LETTER_TYPE, True, False),
                           (INTERNATIONAL_SMS_TYPE, False, True)])
-def test_create_service_by_id_adding_service_permission_returns_service_with_permissions_set(
+def test_create_service_by_id_adding_service_permission_returns_service_with_flags_and_permissions_set(
         service_factory, permission_to_add, can_send_letters, can_send_international_sms):
     service = service_factory.get('testing', email_from='testing')
 
@@ -275,18 +275,59 @@ def test_create_service_by_id_adding_service_permission_returns_service_with_per
 
     service = dao_fetch_service_by_id(service.id)
     assert len(service.permissions) == 3
-    assert all(p.permission in [SMS_TYPE, EMAIL_TYPE, permission_to_add] for p in service.permissions)
+    assert set([SMS_TYPE, EMAIL_TYPE, permission_to_add]) == set(p.permission for p in service.permissions)
     assert service.can_send_letters == can_send_letters
     assert service.can_send_international_sms == can_send_international_sms
 
 
-def test_remove_permission_from_service_by_id_returns_service_with_correct_permissions(service_factory):
+# This test is only for backward compatibility and will be removed
+# when the deprecated 'can_use' columns are not used in the Service data model
+@pytest.mark.parametrize("permission_to_remove, can_send_letters, can_send_international_sms",
+                         [(LETTER_TYPE, False, True),
+                          (INTERNATIONAL_SMS_TYPE, True, False)])
+def test_create_service_by_id_removing_service_permission_returns_service_with_flags_and_permissions_set(
+        service_factory, permission_to_remove, can_send_letters, can_send_international_sms):
     service = service_factory.get('testing', email_from='testing')
-    dao_remove_service_permission(service_id=service.id, permission=SMS_TYPE)
+
+    dao_add_service_permission(service_id=service.id, permission=LETTER_TYPE)
+    dao_add_service_permission(service_id=service.id, permission=INTERNATIONAL_SMS_TYPE)
+    service = dao_fetch_service_by_id(service.id)
+    service.set_permissions()
+    assert len(service.permissions) == 4
+    assert service.can_send_letters
+    assert service.can_send_international_sms
+
+    dao_remove_service_permission(service_id=service.id, permission=permission_to_remove)
+    service.set_permissions()
 
     service = dao_fetch_service_by_id(service.id)
+    expected_permissions = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE]
+    expected_permissions.remove(permission_to_remove)
+
+    assert len(service.permissions) == 3
+    assert set(expected_permissions) == set(p.permission for p in service.permissions)
+    assert service.can_send_letters == can_send_letters
+    assert service.can_send_international_sms == can_send_international_sms
+
+
+@pytest.mark.parametrize("permission_to_remove, permission_remaining",
+                         [(SMS_TYPE, EMAIL_TYPE),
+                          (EMAIL_TYPE, SMS_TYPE)])
+def test_remove_permission_from_service_by_id_returns_service_with_correct_permissions(
+        sample_service, permission_to_remove, permission_remaining):
+    dao_remove_service_permission(service_id=sample_service.id, permission=permission_to_remove)
+
+    service = dao_fetch_service_by_id(sample_service.id)
     assert len(service.permissions) == 1
-    assert service.permissions[0].permission == EMAIL_TYPE
+    assert service.permissions[0].permission == permission_remaining
+
+
+def test_removing_all_permission_returns_service_with_no_permissions(sample_service):
+    dao_remove_service_permission(service_id=sample_service.id, permission=SMS_TYPE)
+    dao_remove_service_permission(service_id=sample_service.id, permission=EMAIL_TYPE)
+
+    service = dao_fetch_service_by_id(sample_service.id)
+    assert len(service.permissions) == 0
 
 
 def test_remove_service_does_not_remove_service_permission_types(sample_service):
@@ -294,7 +335,7 @@ def test_remove_service_does_not_remove_service_permission_types(sample_service)
 
     services = dao_fetch_all_services()
     assert len(services) == 0
-    assert set([p.name for p in ServicePermissionTypes.query.all()]) == set(SERVICE_PERMISSION_TYPES)
+    assert set(p.name for p in ServicePermissionTypes.query.all()) == set(SERVICE_PERMISSION_TYPES)
 
 
 def test_create_service_by_id_adding_and_removing_letter_returns_service_without_letter(service_factory):

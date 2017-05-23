@@ -22,7 +22,8 @@ from tests.app.conftest import (
 )
 from app.models import (
     ServicePermission,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE
+    KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, 
+    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE
 )
 
 from tests.app.db import create_user
@@ -161,7 +162,7 @@ def test_get_service_list_has_default_permissions(client, service_factory):
     assert all([set(json['permissions']) == set([EMAIL_TYPE, SMS_TYPE]) for json in json_resp['data']])
 
 
-def test_get_service_by_id_has_default_permissions(client, sample_service):
+def test_get_service_by_id_has_default_service_permissions(client, sample_service):
     auth_header = create_authorization_header()
     resp = client.get(
         '/service/{}'.format(sample_service.id),
@@ -542,6 +543,24 @@ def test_update_permissions_can_add_service_permissions(client, sample_service):
     assert set(result['data']['permissions']) == set([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
 
 
+def test_add_inbound_permissions_will_add_service_permissions(client, sample_service):
+    auth_header = create_authorization_header()
+
+    data = {
+        'permissions': [EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE]
+    }
+
+    resp = client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+
+    assert resp.status_code == 200
+    assert set(result['data']['permissions']) == set([SMS_TYPE, EMAIL_TYPE, INBOUND_SMS_TYPE])
+
+
 def test_update_permissions_with_an_invalid_permission_will_raise_error(client, sample_service):
     auth_header = create_authorization_header()
     invalid_permission = 'invalid_permission'
@@ -585,6 +604,7 @@ def test_update_permissions_with_international_sms_without_sms_permissions_will_
     auth_header = create_authorization_header()
 
     data = {
+        'can_send_international_sms': True,
         'permissions': [EMAIL_TYPE, INTERNATIONAL_SMS_TYPE]
     }
 
