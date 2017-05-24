@@ -556,7 +556,6 @@ def test_should_calculate_rate_boundaries_for_billing_query_for_single_relevant_
     start_date, end_date = get_financial_year(2016)
     set_up_rate(notify_db, datetime(2016, 1, 1), 0.016)
     rate_boundaries = discover_rate_bounds_for_billing_query(start_date, end_date)
-    print(rate_boundaries)
     assert len(rate_boundaries) == 1
     assert rate_boundaries[0]['start_date'] == start_date
     assert rate_boundaries[0]['end_date'] == end_date
