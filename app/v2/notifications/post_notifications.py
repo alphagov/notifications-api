@@ -15,7 +15,7 @@ from app.notifications.validators import (
     check_template_is_active,
     check_sms_content_char_count,
     validate_and_format_recipient,
-    check_rate_limiting)
+    check_rate_limiting, service_can_schedule_notification)
 from app.schema_validation import validate
 from app.v2.errors import BadRequestError
 from app.v2.notifications import v2_notification_blueprint
@@ -33,6 +33,10 @@ def post_notification(notification_type):
     else:
         form = validate(request.get_json(), post_sms_request)
 
+    scheduled_for = form.get("scheduled_for", None)
+    if scheduled_for:
+        if not service_can_schedule_notification(authenticated_service):
+            return
     check_rate_limiting(authenticated_service, api_user)
 
     form_send_to = form['phone_number'] if notification_type == SMS_TYPE else form['email_address']
@@ -57,7 +61,6 @@ def post_notification(notification_type):
                                         client_reference=form.get('reference', None),
                                         simulated=simulated)
 
-    scheduled_for = form.get("scheduled_for", None)
     if scheduled_for:
         persist_scheduled_notification(notification.id, form["scheduled_for"])
     else:

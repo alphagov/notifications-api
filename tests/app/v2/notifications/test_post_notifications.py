@@ -352,6 +352,7 @@ def test_post_sms_should_persist_supplied_sms_number(client, sample_template_wit
     assert mocked.called
 
 
+@pytest.mark.skip("Once the service can be invited to schedule notifications we can add this test.")
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
                          [("sms", "phone_number", "07700 900 855"),
                           ("email", "email_address", "sample@email.com")])
@@ -374,3 +375,25 @@ def test_post_notification_with_scheduled_for(client, sample_template, sample_em
     assert len(scheduled_notification) == 1
     assert resp_json["id"] == str(scheduled_notification[0].notification_id)
     assert resp_json["scheduled_for"] == '2017-05-14 14:15'
+
+
+@pytest.mark.parametrize("notification_type, key_send_to, send_to",
+                         [("sms", "phone_number", "07700 900 855"),
+                          ("email", "email_address", "sample@email.com")])
+@freeze_time("2017-05-14 14:00:00")
+def test_post_notification_with_scheduled_for_raises_bad_request(client, sample_template, sample_email_template,
+                                                                 notification_type, key_send_to, send_to):
+    data = {
+        key_send_to: send_to,
+        'template_id': str(sample_email_template.id) if notification_type == 'email' else str(sample_template.id),
+        'scheduled_for': '2017-05-14 14:15'
+    }
+    auth_header = create_authorization_header(service_id=sample_template.service_id)
+
+    response = client.post('/v2/notifications/{}'.format(notification_type),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 400
+    error_json = json.loads(response.get_data(as_text=True))
+    assert error_json['errors'] == [
+        {"error": "BadRequestError", "message": 'Your service must be invited to schedule notifications via the API.'}]

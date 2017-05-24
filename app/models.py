@@ -891,8 +891,7 @@ class Notification(db.Model):
             "sent_at": self.sent_at.strftime(DATETIME_FORMAT) if self.sent_at else None,
             "completed_at": self.completed_at(),
             "scheduled_for": convert_bst_to_utc(self.scheduled_notification.scheduled_for
-                                                ).strftime(
-                "%Y-%m-%d %H:%M") if self.scheduled_notification else None
+                                                ).strftime(DATETIME_FORMAT) if self.scheduled_notification else None
         }
 
         return serialized

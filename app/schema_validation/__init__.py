@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timedelta
 
+from iso8601 import iso8601, ParseError
 from jsonschema import (Draft4Validator, ValidationError, FormatChecker)
 from notifications_utils.recipients import (validate_phone_number, validate_email_address, InvalidPhoneError,
                                             InvalidEmailError)
@@ -25,14 +26,14 @@ def validate(json_to_validate, schema):
     def validate_schema_date_with_hour(instance):
         if isinstance(instance, str):
             try:
-                dt = datetime.strptime(instance, "%Y-%m-%d %H:%M")
+                dt = iso8601.parse_date(instance).replace(tzinfo=None)
                 if dt < datetime.utcnow():
                     raise ValidationError("datetime can not be in the past")
                 if dt > datetime.utcnow() + timedelta(hours=24):
                     raise ValidationError("datetime can only be 24 hours in the future")
-            except ValueError as e:
-                raise ValidationError("datetime format is invalid. Use the format: "
-                                      "YYYY-MM-DD HH:MI, for example 2017-05-30 13:15")
+            except ParseError:
+                raise ValidationError("datetime format is invalid. It must be a valid ISO8601 date time format, "
+                                      "https://en.wikipedia.org/wiki/ISO_8601")
         return True
 
     validator = Draft4Validator(schema, format_checker=format_checker)

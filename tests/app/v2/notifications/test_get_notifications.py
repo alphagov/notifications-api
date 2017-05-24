@@ -63,7 +63,7 @@ def test_get_notification_by_id_returns_200(
         "subject": None,
         'sent_at': sample_notification.sent_at,
         'completed_at': sample_notification.completed_at(),
-        'scheduled_for': '2017-05-12 14:15'
+        'scheduled_for': '2017-05-12T14:15:00.000000Z'
     }
 
     assert json_response == expected_response
@@ -153,7 +153,7 @@ def test_get_notifications_returns_scheduled_for(client, notify_db, notify_db_se
     assert len(json_response['notifications']) == 1
 
     assert json_response['notifications'][0]['id'] == str(sample_notification_with_reference.id)
-    assert json_response['notifications'][0]['scheduled_for'] == "2017-05-23 16:15"
+    assert json_response['notifications'][0]['scheduled_for'] == "2017-05-23T16:15:00.000000Z"
 
 
 def test_get_notification_by_reference_nonexistent_reference_returns_no_notifications(client, sample_service):

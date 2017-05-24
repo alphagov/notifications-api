@@ -371,7 +371,10 @@ def test_post_schema_valid_scheduled_for(schema):
 
 
 @pytest.mark.parametrize("invalid_datetime",
-                         ["2017-05-12 13:00:00", "13:00:00 2017-01-01"])
+                         ["13:00:00 2017-01-01",
+                          "2017-31-12 13:00:00",
+                          "01-01-2017T14:00:00.0000Z"
+                          ])
 @pytest.mark.parametrize("schema",
                          [post_email_request_schema, post_sms_request_schema])
 def test_post_email_schema_invalid_scheduled_for(invalid_datetime, schema):
@@ -386,8 +389,9 @@ def test_post_email_schema_invalid_scheduled_for(invalid_datetime, schema):
     error = json.loads(str(e.value))
     assert error['status_code'] == 400
     assert error['errors'] == [{'error': 'ValidationError',
-                                'message': "scheduled_for datetime format is invalid. Use the format: "
-                                           "YYYY-MM-DD HH:MI, for example 2017-05-30 13:15"}]
+                                'message': "scheduled_for datetime format is invalid. "
+                                           "It must be a valid ISO8601 date time format, "
+                                           "https://en.wikipedia.org/wiki/ISO_8601"}]
 
 
 @freeze_time("2017-05-12 13:00:00")
