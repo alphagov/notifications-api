@@ -1069,6 +1069,12 @@ class Rate(db.Model):
     rate = db.Column(db.Float(asdecimal=False), nullable=False)
     notification_type = db.Column(notification_types, index=True, nullable=False)
 
+    def __str__(self):
+        the_string = "{}".format(self.rate)
+        the_string += " {}".format(self.notification_type)
+        the_string += " {}".format(self.valid_from)
+        return the_string
+
 
 class JobStatistics(db.Model):
     __tablename__ = 'job_statistics'
