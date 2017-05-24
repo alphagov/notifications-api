@@ -25,7 +25,7 @@ from notifications_utils.recipients import (
 
 from app import ma
 from app import models
-from app.models import ServicePermission, INTERNATIONAL_SMS_TYPE, SMS_TYPE, LETTER_TYPE
+from app.models import ServicePermission, INTERNATIONAL_SMS_TYPE, SMS_TYPE, LETTER_TYPE, EMAIL_TYPE
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_permissions_dao import dao_fetch_service_permissions
 from app.utils import get_template_instance
@@ -181,6 +181,7 @@ class ServiceSchema(BaseSchema):
     branding = field_for(models.Service, 'branding')
     dvla_organisation = field_for(models.Service, 'dvla_organisation')
     permissions = fields.Method("service_permissions")
+    override_flag = False
 
     def service_permissions(self, service):
         permissions = []
@@ -195,8 +196,8 @@ class ServiceSchema(BaseSchema):
             permissions.append(permission)
             str_permissions.append(p.permission)
 
-        def process_deprecated_permission_flags():
-            def sync_flags(flag, notify_type):
+        def deprecate_convert_flags_to_permissions():
+            def convert_flags(flag, notify_type):
                 if flag and notify_type not in str_permissions:
                     permission = {
                         "service_id": service.id,
@@ -210,10 +211,10 @@ class ServiceSchema(BaseSchema):
                     }
                     permissions.remove(permission)
 
-            sync_flags(service.can_send_international_sms, INTERNATIONAL_SMS_TYPE)
-            sync_flags(service.can_send_letters, LETTER_TYPE)
+            convert_flags(service.can_send_international_sms, INTERNATIONAL_SMS_TYPE)
+            convert_flags(service.can_send_letters, LETTER_TYPE)
 
-        process_deprecated_permission_flags()
+        deprecate_convert_flags_to_permissions()
 
         return permissions
 
@@ -248,23 +249,46 @@ class ServiceSchema(BaseSchema):
             duplicates = list(set([x for x in permissions if permissions.count(x) > 1]))
             raise ValueError('Service Permission duplicated: {}'.format(duplicates))
 
-        if INTERNATIONAL_SMS_TYPE in permissions and SMS_TYPE not in permissions:
-            raise ValueError('International SMS must have SMS enabled')
-
     @pre_load()
-    def format_permissions_for_data_model(self, in_data):
+    def format_for_data_model(self, in_data):
         if isinstance(in_data, dict) and 'permissions' in in_data:
+            str_permissions = in_data['permissions']
             permissions = []
             for p in in_data['permissions']:
-                permission = models.ServicePermission(service_id=in_data["id"], permission=p)
+                permission = ServicePermission(service_id=in_data["id"], permission=p)
                 permissions.append(permission)
             in_data['permissions'] = permissions
 
+            def deprecate_override_flags():
+                in_data['can_send_letters'] = LETTER_TYPE in [p.permission for p in permissions]
+                in_data['can_send_international_sms'] = INTERNATIONAL_SMS_TYPE in [p.permission for p in permissions]
+
+            def deprecate_convert_flags_to_permissions():
+                def convert_flag(flag, notify_type):
+                    if flag and notify_type not in str_permissions:
+                        permission = ServicePermission(service_id=in_data['id'], permission=notify_type)
+                        permissions.append(permission)
+                    elif flag is False and notify_type in str_permissions:
+                        for p in permissions:
+                            if p.permission == notify_type:
+                                permissions.remove(p)
+
+                convert_flag(in_data["can_send_international_sms"], INTERNATIONAL_SMS_TYPE)
+                convert_flag(in_data["can_send_letters"], LETTER_TYPE)
+
+            if self.override_flag:
+                deprecate_override_flags()
+            else:
+                deprecate_convert_flags_to_permissions()
+
     @post_dump
-    def format_permissions_as_string_array(self, in_data):
+    def format_as_string_array(self, in_data):
         if isinstance(in_data, dict) and 'permissions' in in_data:
             in_data['permissions'] = [p.get("permission") for p in in_data['permissions']]
         return in_data
+
+    def set_override_flag(self, flag):
+        self.override_flag = flag
 
 
 class DetailedServiceSchema(BaseSchema):
