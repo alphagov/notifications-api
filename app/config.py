@@ -204,7 +204,6 @@ class Config(object):
 ######################
 
 class Development(Config):
-    REDIS_ENABLED = False
     SQLALCHEMY_ECHO = False
     NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
