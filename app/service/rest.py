@@ -5,11 +5,12 @@ from datetime import datetime
 from flask import (
     jsonify,
     request,
-    current_app
+    current_app,
+    Blueprint
 )
 from sqlalchemy.orm.exc import NoResultFound
 
-from app.dao import notification_usage_dao
+from app.dao import notification_usage_dao, notifications_dao
 from app.dao.dao_utils import dao_rollback
 from app.dao.api_key_dao import (
     save_model_api_key,
@@ -39,11 +40,13 @@ from app.dao.service_whitelist_dao import (
     dao_add_and_commit_whitelisted_contacts,
     dao_remove_service_whitelist
 )
-from app.dao import notifications_dao
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_user_by_id
 from app.errors import (
-    InvalidRequest, register_errors)
+    InvalidRequest,
+    register_errors
+)
+from app.models import Service
 from app.service import statistics
 from app.service.utils import get_whitelist_objects
 from app.service.sender import send_notification_to_service_users
@@ -57,7 +60,6 @@ from app.schemas import (
     detailed_service_schema
 )
 from app.utils import pagination_links
-from flask import Blueprint
 
 service_blueprint = Blueprint('service', __name__)
 
@@ -108,9 +110,14 @@ def create_service():
         errors = {'user_id': ['Missing data for required field.']}
         raise InvalidRequest(errors, status_code=400)
 
-    user = get_user_by_id(data['user_id'])
-    data.pop('user_id', None)
-    valid_service = service_schema.load(request.get_json()).data
+    # validate json with marshmallow
+    service_schema.load(request.get_json())
+
+    user = get_user_by_id(data.pop('user_id', None))
+
+    # unpack valid json into service object
+    valid_service = Service.from_json(data)
+
     dao_create_service(valid_service, user)
     return jsonify(data=service_schema.dump(valid_service).data), 201
 

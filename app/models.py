@@ -188,7 +188,7 @@ class Service(db.Model, Versioned):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     reply_to_email_address = db.Column(db.Text, index=False, unique=False, nullable=True)
     letter_contact_block = db.Column(db.Text, index=False, unique=False, nullable=True)
-    sms_sender = db.Column(db.String(11), nullable=True, default=lambda: current_app.config['FROM_NUMBER'])
+    sms_sender = db.Column(db.String(11), nullable=False, default=lambda: current_app.config['FROM_NUMBER'])
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
     organisation = db.relationship('Organisation')
     dvla_organisation_id = db.Column(
@@ -214,6 +214,21 @@ class Service(db.Model, Versioned):
         if self.permissions:
             self.can_send_letters = LETTER_TYPE in [p.permission for p in self.permissions]
             self.can_send_international_sms = INTERNATIONAL_SMS_TYPE in [p.permission for p in self.permissions]
+
+    @classmethod
+    def from_json(cls, data):
+        """
+        Assumption: data has been validated appropriately.
+
+        Returns a Service object based on the provided data. Deserialises created_by to created_by_id as marshmallow
+        would.
+        """
+        # validate json with marshmallow
+        fields = data.copy()
+
+        fields['created_by_id'] = fields.pop('created_by')
+
+        return cls(**fields)
 
 
 class ServicePermission(db.Model):
