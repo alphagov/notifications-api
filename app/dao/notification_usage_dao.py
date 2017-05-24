@@ -176,7 +176,7 @@ def get_total_billable_units_for_sent_sms_notifications_in_date_range(start_date
         )
         billable_units_by_rate_boundry = result.scalar()
         if billable_units_by_rate_boundry:
-            billable_units += int(billable_units_by_rate_boundry)vi end_date
+            billable_units += int(billable_units_by_rate_boundry)
             total_cost += int(billable_units_by_rate_boundry) * rate_boundary['rate']
 
     return billable_units, total_cost
