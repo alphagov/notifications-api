@@ -5,6 +5,12 @@ from datetime import (
     date)
 
 from flask import current_app
+
+from notifications_utils.recipients import (
+    validate_and_format_phone_number,
+    validate_and_format_email_address,
+    InvalidPhoneError
+)
 from werkzeug.datastructures import MultiDict
 from sqlalchemy import (desc, func, or_, and_, asc)
 from sqlalchemy.orm import joinedload
@@ -467,10 +473,22 @@ def dao_update_notifications_sent_to_dvla(job_id, provider):
 
 
 @statsd(namespace="dao")
-def dao_get_notifications_by_to_field(service_id, search_term):
-    return Notification.query.filter(
+def dao_get_notifications_by_to_field(service_id, search_term, statuses=None):
+    try:
+        normalised = validate_and_format_phone_number(search_term)
+    except InvalidPhoneError:
+        normalised = validate_and_format_email_address(search_term)
+
+    filters = [
         Notification.service_id == service_id,
-        func.replace(func.lower(Notification.to), " ", "") == search_term.lower().replace(" ", "")).all()
+        Notification.normalised_to == normalised
+    ]
+
+    if statuses:
+        filters.append(Notification.status.in_(statuses))
+
+    results = db.session.query(Notification).filter(*filters).all()
+    return results
 
 
 @statsd(namespace="dao")
