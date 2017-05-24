@@ -1758,7 +1758,7 @@ def test_get_yearly_billing_usage_count_returns_200_if_year_provided(client, sam
     start = datetime.utcnow()
     end = datetime.utcnow() + timedelta(minutes=10)
     mock_query = mocker.patch(
-        'app.service.rest.get_total_billable_units_for_sent_sms_notifications_in_date_range', return_value=100
+        'app.service.rest.get_total_billable_units_for_sent_sms_notifications_in_date_range', return_value=(100, 200.0)
     )
     mock_year = mocker.patch('app.service.rest.get_financial_year', return_value=(start, end))
     response = client.get(
@@ -1767,7 +1767,8 @@ def test_get_yearly_billing_usage_count_returns_200_if_year_provided(client, sam
     )
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == {
-        'billable_sms_units': 100
+        'billable_sms_units': 100,
+        'total_cost': 200.0
     }
     mock_query.assert_called_once_with(start, end, sample_service.id)
     mock_year.assert_called_once_with(2016)
@@ -1776,10 +1777,10 @@ def test_get_yearly_billing_usage_count_returns_200_if_year_provided(client, sam
 
 
 def test_get_yearly_billing_usage_count_returns_from_cache_if_present(client, sample_service, mocker):
-    redis_get_mock = mocker.patch('app.service.rest.redis_store.get', return_value=50)
+    redis_get_mock = mocker.patch('app.service.rest.redis_store.get', return_value=(50, 100.0))
     redis_set_mock = mocker.patch('app.service.rest.redis_store.set')
     mock_query = mocker.patch(
-        'app.service.rest.get_total_billable_units_for_sent_sms_notifications_in_date_range', return_value=50
+        'app.service.rest.get_total_billable_units_for_sent_sms_notifications_in_date_range', return_value=(50, 100.0)
     )
 
     start = datetime.utcnow()
@@ -1790,9 +1791,11 @@ def test_get_yearly_billing_usage_count_returns_from_cache_if_present(client, sa
         '/service/{}/yearly-sms-billable-units?year=2016'.format(sample_service.id),
         headers=[create_authorization_header()]
     )
+    print(response.get_data(as_text=True))
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == {
-        'billable_sms_units': 50
+        'billable_sms_units': 50,
+        'total_cost': 100.0
     }
     redis_get_mock.assert_called_once_with("{}-sms_billable_units".format(str(sample_service.id)))
     mock_year.assert_not_called()

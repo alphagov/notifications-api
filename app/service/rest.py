@@ -448,19 +448,26 @@ def get_monthly_template_stats(service_id):
 def get_yearly_sms_billable_units(service_id):
     try:
         cache_key = sms_billable_units_cache_key(service_id)
-        cached_value = redis_store.get(cache_key)
-        if cached_value:
-            return jsonify({'billable_sms_units': int(cached_value)})
+        cached_billable_sms_units = redis_store.get(cache_key)
+        if cached_billable_sms_units:
+            return jsonify({
+                'billable_sms_units': int(cached_billable_sms_units[0]),
+                'total_cost': float(cached_billable_sms_units[1])
+            })
         else:
             start_date, end_date = get_financial_year(int(request.args.get('year')))
-            billable_units = get_total_billable_units_for_sent_sms_notifications_in_date_range(
+            billable_units, total_cost = get_total_billable_units_for_sent_sms_notifications_in_date_range(
                 start_date,
                 end_date,
                 service_id)
             redis_store.set(cache_key, billable_units, ex=60)
-            return jsonify({'billable_sms_units': billable_units})
+            return jsonify({
+                'billable_sms_units': billable_units,
+                'total_cost': total_cost
+            })
 
     except (ValueError, TypeError) as e:
+        print(e)
         return jsonify(result='error', message='No valid year provided'), 400
 
 
