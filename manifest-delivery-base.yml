@@ -50,6 +50,6 @@ applications:
       NOTIFY_APP_NAME: delivery-worker-priority
 
   - name: notify-delivery-worker
-    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11
+    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q process-job,notify,retry
     env:
       NOTIFY_APP_NAME: delivery-worker

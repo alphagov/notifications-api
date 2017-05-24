@@ -160,11 +160,7 @@ class Config(object):
             'options': {'queue': 'periodic'}
         }
     }
-    CELERY_QUEUES = [
-        Queue('process-job', Exchange('default'), routing_key='process-job'),
-        Queue('retry', Exchange('default'), routing_key='retry'),
-        Queue('notify', Exchange('default'), routing_key='notify')
-    ]
+    CELERY_QUEUES = []
 
     NOTIFICATIONS_ALERT = 5  # five mins
     FROM_NUMBER = 'development'
@@ -224,7 +220,10 @@ class Development(Config):
         Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('send-email', Exchange('default'), routing_key='send-email'),
         Queue('research-mode', Exchange('default'), routing_key='research-mode'),
-        Queue('statistics', Exchange('default'), routing_key='statistics')
+        Queue('statistics', Exchange('default'), routing_key='statistics'),
+        Queue('process-job', Exchange('default'), routing_key='process-job'),
+        Queue('retry', Exchange('default'), routing_key='retry'),
+        Queue('notify', Exchange('default'), routing_key='notify')
     ]
     API_HOST_NAME = "http://localhost:6011"
     API_RATE_LIMIT_ENABLED = True
@@ -248,7 +247,10 @@ class Test(Config):
         Queue('send-sms', Exchange('default'), routing_key='send-sms'),
         Queue('send-email', Exchange('default'), routing_key='send-email'),
         Queue('research-mode', Exchange('default'), routing_key='research-mode'),
-        Queue('statistics', Exchange('default'), routing_key='statistics')
+        Queue('statistics', Exchange('default'), routing_key='statistics'),
+        Queue('process-job', Exchange('default'), routing_key='process-job'),
+        Queue('retry', Exchange('default'), routing_key='retry'),
+        Queue('notify', Exchange('default'), routing_key='notify')
     ]
 
     API_RATE_LIMIT_ENABLED = True
