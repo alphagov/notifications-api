@@ -1736,8 +1736,8 @@ def test_get_yearly_billing_usage_count_returns_400_if_missing_year(client, samp
 
 
 def test_get_yearly_billing_usage_count_returns_400_if_invalid_year(client, sample_service, mocker):
-    redis_get_mock = mocker.patch('app.service.rest.redis_store.get', return_value=None)
-    redis_set_mock = mocker.patch('app.service.rest.redis_store.set')
+    redis_get_mock = mocker.patch('app.service.rest.redis_store.get_all_from_hash', return_value=None)
+    redis_set_mock = mocker.patch('app.service.rest.redis_store.set_hash_and_expire')
 
     response = client.get(
         '/service/{}/yearly-sms-billable-units?year=HAHAHAHAH'.format(sample_service.id),
@@ -1752,8 +1752,8 @@ def test_get_yearly_billing_usage_count_returns_400_if_invalid_year(client, samp
 
 
 def test_get_yearly_billing_usage_count_returns_200_if_year_provided(client, sample_service, mocker):
-    redis_get_mock = mocker.patch('app.service.rest.redis_store.get', return_value=None)
-    redis_set_mock = mocker.patch('app.service.rest.redis_store.set')
+    redis_get_mock = mocker.patch('app.service.rest.redis_store.get_all_from_hash', return_value=None)
+    redis_set_mock = mocker.patch('app.service.rest.redis_store.set_hash_and_expire')
 
     start = datetime.utcnow()
     end = datetime.utcnow() + timedelta(minutes=10)
@@ -1773,12 +1773,19 @@ def test_get_yearly_billing_usage_count_returns_200_if_year_provided(client, sam
     mock_query.assert_called_once_with(start, end, sample_service.id)
     mock_year.assert_called_once_with(2016)
     redis_get_mock.assert_called_once_with("{}-sms_billable_units".format(str(sample_service.id)))
-    redis_set_mock.assert_called_once_with("{}-sms_billable_units".format(str(sample_service.id)), 100, ex=60)
+    redis_set_mock.assert_called_once_with(
+        "{}-sms_billable_units".format(str(sample_service.id)),
+        {'billable_units': 100, 'total_cost': 200.0},
+        expire_in_seconds=60
+    )
 
 
 def test_get_yearly_billing_usage_count_returns_from_cache_if_present(client, sample_service, mocker):
-    redis_get_mock = mocker.patch('app.service.rest.redis_store.get', return_value=(50, 100.0))
-    redis_set_mock = mocker.patch('app.service.rest.redis_store.set')
+    redis_get_mock = mocker.patch(
+        'app.service.rest.redis_store.get_all_from_hash',
+        return_value={b'total_cost': 100.0, b'billable_units': 50}
+    )
+    redis_set_mock = mocker.patch('app.service.rest.redis_store.set_hash_and_expire')
     mock_query = mocker.patch(
         'app.service.rest.get_total_billable_units_for_sent_sms_notifications_in_date_range', return_value=(50, 100.0)
     )
