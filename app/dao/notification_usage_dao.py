@@ -153,3 +153,21 @@ def rate_multiplier():
         (NotificationHistory.rate_multiplier == None, literal_column("'1'")),  # noqa
         (NotificationHistory.rate_multiplier != None, NotificationHistory.rate_multiplier),  # noqa
     ]), Integer())
+
+
+@statsd(namespace="dao")
+def get_total_billable_units_for_sent_sms_notifications_in_date_range(start_date, end_date, service_id):
+    result = db.session.query(
+        func.sum(
+            NotificationHistory.billable_units * func.coalesce(NotificationHistory.rate_multiplier, 1)
+        ).label('billable_units')
+    ).filter(
+        NotificationHistory.service_id == service_id,
+        NotificationHistory.notification_type == 'sms',
+        NotificationHistory.created_at >= start_date,
+        NotificationHistory.created_at <= end_date,
+        NotificationHistory.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE)
+    )
+    if result.scalar():
+        return int(result.scalar())
+    return 0
