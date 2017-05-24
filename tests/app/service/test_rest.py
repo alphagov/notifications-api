@@ -1735,3 +1735,19 @@ def test_update_service_does_not_call_send_notification_when_restricted_not_chan
 
     assert resp.status_code == 200
     assert not send_notification_mock.called
+
+
+def test_update_service_works_when_sms_sender_is_null(sample_service, client, mocker):
+    sample_service.sms_sender = None
+    data = {'name': 'new name'}
+
+    resp = client.post(
+        'service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[create_authorization_header()],
+        content_type='application/json'
+    )
+
+    assert resp.status_code == 200
+    # make sure it wasn't changed to not-null under the hood
+    assert sample_service.sms_sender is None
