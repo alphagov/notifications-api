@@ -2,7 +2,10 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from flask.ext.script import Command, Manager, Option
-from app.models import (PROVIDERS, Service, User)
+
+
+from app import db
+from app.models import (PROVIDERS, Service, User, NotificationHistory)
 from app.dao.services_dao import (
     delete_service_and_all_associated_db_objects,
     dao_fetch_all_services_by_user
@@ -60,3 +63,29 @@ class PurgeFunctionalTestDataCommand(Command):
                     else:
                         delete_user_verify_codes(usr)
                         delete_model_user(usr)
+
+
+class CustomDbScript(Command):
+    def run(self):
+        self.update_notification_international_flag()
+
+    def update_notification_international_flag(self):
+        # 250,000 rows takes 30 seconds to update.
+        subq = "select id from notifications where international is null limit 250000"
+        update = "update notifications set international = False where id in ({})".format(subq)
+        result = db.session.execute(subq).fetchall()
+        while len(result) > 0:
+            db.session.execute(update)
+            print('commit 250000 updates at {}'.format(datetime.utcnow()))
+            db.session.commit()
+            result = db.session.execute(subq).fetchall()
+
+        # Now update notification_history
+        subq_history = "select id from notification_history where international is null limit 250000"
+        update_history = "update notification_history set international = False where id in ({})".format(subq_history)
+        result_history = db.session.execute(subq_history).fetchall()
+        while len(result_history) > 0:
+            db.session.execute(update_history)
+            print('commit 250000 updates at {}'.format(datetime.utcnow()))
+            db.session.commit()
+            result_history = db.session.execute(subq_history).fetchall()

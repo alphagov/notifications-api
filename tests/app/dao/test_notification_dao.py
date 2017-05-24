@@ -18,7 +18,8 @@ from app.models import (
     NOTIFICATION_SENT,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
-    KEY_TYPE_TEST)
+    KEY_TYPE_TEST
+)
 
 from app.dao.notifications_dao import (
     dao_create_notification,
@@ -27,7 +28,7 @@ from app.dao.notifications_dao import (
     dao_get_potential_notification_statistics_for_day,
     dao_get_template_usage,
     dao_update_notification,
-    delete_notifications_created_more_than_a_week_ago,
+    delete_notifications_created_more_than_a_week_ago_by_type,
     get_notification_by_id,
     get_notification_for_job,
     get_notification_billable_unit_count_per_month,
@@ -52,8 +53,8 @@ from tests.app.conftest import (
     sample_email_template,
     sample_service,
     sample_job,
-    sample_notification_history as create_notification_history
-)
+    sample_notification_history as create_notification_history,
+    sample_letter_template)
 
 
 def test_should_have_decorated_notifications_dao_functions():
@@ -69,7 +70,7 @@ def test_should_have_decorated_notifications_dao_functions():
     assert get_notification_with_personalisation.__wrapped__.__name__ == 'get_notification_with_personalisation'  # noqa
     assert get_notifications_for_service.__wrapped__.__name__ == 'get_notifications_for_service'  # noqa
     assert get_notification_by_id.__wrapped__.__name__ == 'get_notification_by_id'  # noqa
-    assert delete_notifications_created_more_than_a_week_ago.__wrapped__.__name__ == 'delete_notifications_created_more_than_a_week_ago'  # noqa
+    assert delete_notifications_created_more_than_a_week_ago_by_type.__wrapped__.__name__ == 'delete_notifications_created_more_than_a_week_ago_by_type'  # noqa
     assert dao_delete_notifications_and_history_by_id.__wrapped__.__name__ == 'dao_delete_notifications_and_history_by_id'  # noqa
 
 
@@ -876,63 +877,118 @@ def test_updating_notification_with_no_notification_status_updates_notification_
     assert hist_from_db._status_fkey == 'failed'
 
 
+@pytest.mark.parametrize('notification_type, expected_sms_count, expected_email_count, expected_letter_count', [
+    ('sms', 8, 10, 10), ('email', 10, 8, 10), ('letter', 10, 10, 8)
+])
 @freeze_time("2016-01-10 12:00:00.000000")
-def test_should_delete_notifications_after_seven_days(notify_db, notify_db_session):
+def test_should_delete_notifications_by_type_after_seven_days(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        notification_type,
+        expected_sms_count,
+        expected_email_count,
+        expected_letter_count
+):
     assert len(Notification.query.all()) == 0
 
-    # create one notification a day between 1st and 10th from 11:00 to 19:00
+    email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
+    sms_template = sample_template(notify_db, notify_db_session, service=sample_service)
+    letter_template = sample_letter_template(sample_service)
+
+    # create one notification a day between 1st and 10th from 11:00 to 19:00 of each type
     for i in range(1, 11):
         past_date = '2016-01-{0:02d}  {0:02d}:00:00.000000'.format(i)
         with freeze_time(past_date):
-            sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow(), status="failed")
+            sample_notification(
+                notify_db,
+                notify_db_session,
+                created_at=datetime.utcnow(),
+                status="failed",
+                service=sample_service,
+                template=email_template
+            )
+            sample_notification(
+                notify_db,
+                notify_db_session,
+                created_at=datetime.utcnow(),
+                status="failed",
+                service=sample_service,
+                template=sms_template
+            )
+            sample_notification(
+                notify_db,
+                notify_db_session,
+                created_at=datetime.utcnow(),
+                status="failed",
+                service=sample_service,
+                template=letter_template
+            )
 
     all_notifications = Notification.query.all()
-    assert len(all_notifications) == 10
+    assert len(all_notifications) == 30
 
     # Records from before 3rd should be deleted
-    delete_notifications_created_more_than_a_week_ago('failed')
-    remaining_notifications = Notification.query.all()
-    assert len(remaining_notifications) == 8
-    for notification in remaining_notifications:
+    delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
+    remaining_sms_notifications = Notification.query.filter_by(notification_type='sms').all()
+    remaining_letter_notifications = Notification.query.filter_by(notification_type='letter').all()
+    remaining_email_notifications = Notification.query.filter_by(notification_type='email').all()
+
+    assert len(remaining_sms_notifications) == expected_sms_count
+    assert len(remaining_email_notifications) == expected_email_count
+    assert len(remaining_letter_notifications) == expected_letter_count
+
+    if notification_type == 'sms':
+        notifications_to_check = remaining_sms_notifications
+    if notification_type == 'email':
+        notifications_to_check = remaining_email_notifications
+    if notification_type == 'letter':
+        notifications_to_check = remaining_letter_notifications
+
+    for notification in notifications_to_check:
         assert notification.created_at.date() >= date(2016, 1, 3)
 
 
+@pytest.mark.parametrize('notification_type', ['sms', 'email', 'letter'])
 @freeze_time("2016-01-10 12:00:00.000000")
-def test_should_not_delete_notification_history(notify_db, notify_db_session):
+def test_should_not_delete_notification_history(notify_db, notify_db_session, sample_service, notification_type):
     with freeze_time('2016-01-01 12:00'):
-        notification = sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow(), status="failed")
-        notification_id = notification.id
+        email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
+        sms_template = sample_template(notify_db, notify_db_session, service=sample_service)
+        letter_template = sample_letter_template(sample_service)
 
-    assert Notification.query.count() == 1
-    assert NotificationHistory.query.count() == 1
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            created_at=datetime.utcnow(),
+            status="failed",
+            service=sample_service,
+            template=email_template
+        )
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            created_at=datetime.utcnow(),
+            status="failed",
+            service=sample_service,
+            template=sms_template
+        )
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            created_at=datetime.utcnow(),
+            status="failed",
+            service=sample_service,
+            template=letter_template
+        )
 
-    delete_notifications_created_more_than_a_week_ago('failed')
+    assert Notification.query.count() == 3
+    assert NotificationHistory.query.count() == 3
 
-    assert Notification.query.count() == 0
-    assert NotificationHistory.query.count() == 1
-    assert NotificationHistory.query.one().id == notification_id
+    delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
 
-
-def test_should_not_delete_failed_notifications_before_seven_days(notify_db, notify_db_session):
-    should_delete = datetime.utcnow() - timedelta(days=8)
-    do_not_delete = datetime.utcnow() - timedelta(days=7)
-    sample_notification(notify_db, notify_db_session, created_at=should_delete, status="failed",
-                        to_field="should_delete")
-    sample_notification(notify_db, notify_db_session, created_at=do_not_delete, status="failed",
-                        to_field="do_not_delete")
-    assert len(Notification.query.all()) == 2
-    delete_notifications_created_more_than_a_week_ago('failed')
-    assert len(Notification.query.all()) == 1
-    assert Notification.query.first().to == 'do_not_delete'
-
-
-def test_should_delete_letter_notifications(sample_letter_template):
-    should_delete = datetime.utcnow() - timedelta(days=8)
-
-    create_notification(sample_letter_template, created_at=should_delete)
-
-    delete_notifications_created_more_than_a_week_ago('created')
-    assert len(Notification.query.all()) == 0
+    assert Notification.query.count() == 2
+    assert NotificationHistory.query.count() == 3
 
 
 @freeze_time("2016-01-10")

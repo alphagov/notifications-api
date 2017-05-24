@@ -124,14 +124,19 @@ class Config(object):
             'schedule': timedelta(minutes=66),
             'options': {'queue': 'periodic'}
         },
-        'delete-failed-notifications': {
-            'task': 'delete-failed-notifications',
+        'delete-sms-notifications': {
+            'task': 'delete-sms-notifications',
             'schedule': crontab(minute=0, hour=0),
             'options': {'queue': 'periodic'}
         },
-        'delete-successful-notifications': {
-            'task': 'delete-successful-notifications',
-            'schedule': crontab(minute=0, hour=1),
+        'delete-email-notifications': {
+            'task': 'delete-email-notifications',
+            'schedule': crontab(minute=20, hour=0),
+            'options': {'queue': 'periodic'}
+        },
+        'delete-letter-notifications': {
+            'task': 'delete-letter-notifications',
+            'schedule': crontab(minute=40, hour=0),
             'options': {'queue': 'periodic'}
         },
         'send-daily-performance-platform-stats': {
