@@ -20,12 +20,12 @@ def test_get_notification_by_id_returns_200(
 ):
     sample_notification = create_sample_notification(
         notify_db, notify_db_session, billable_units=billable_units, sent_by=provider,
-        scheduled_for="2017-05-12 14"
+        scheduled_for="2017-05-12 15:15"
     )
 
     another = create_sample_notification(
         notify_db, notify_db_session, billable_units=billable_units, sent_by=provider,
-        scheduled_for="2017-06-12 14"
+        scheduled_for="2017-06-12 15:15"
     )
     auth_header = create_authorization_header(service_id=sample_notification.service_id)
     response = client.get(
@@ -63,7 +63,7 @@ def test_get_notification_by_id_returns_200(
         "subject": None,
         'sent_at': sample_notification.sent_at,
         'completed_at': sample_notification.completed_at(),
-        'scheduled_for': '2017-05-12 14'
+        'scheduled_for': '2017-05-12 14:15'
     }
 
     assert json_response == expected_response
@@ -139,7 +139,7 @@ def test_get_notification_by_reference_returns_200(client, notify_db, notify_db_
 
 def test_get_notifications_returns_scheduled_for(client, notify_db, notify_db_session):
     sample_notification_with_reference = create_sample_notification(
-        notify_db, notify_db_session, client_reference='some-client-reference', scheduled_for='2017-05-23 16')
+        notify_db, notify_db_session, client_reference='some-client-reference', scheduled_for='2017-05-23 17:15')
 
     auth_header = create_authorization_header(service_id=sample_notification_with_reference.service_id)
     response = client.get(
@@ -153,7 +153,7 @@ def test_get_notifications_returns_scheduled_for(client, notify_db, notify_db_se
     assert len(json_response['notifications']) == 1
 
     assert json_response['notifications'][0]['id'] == str(sample_notification_with_reference.id)
-    assert json_response['notifications'][0]['scheduled_for'] == "2017-05-23 16"
+    assert json_response['notifications'][0]['scheduled_for'] == "2017-05-23 16:15"
 
 
 def test_get_notification_by_reference_nonexistent_reference_returns_no_notifications(client, sample_service):

@@ -424,13 +424,13 @@ def test_should_send_all_scheduled_notifications_to_deliver_queue(notify_db,
                                                                   sample_template, mocker):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_sms')
     message_to_deliver = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                                             template=sample_template, scheduled_for="2017-05-01 13")
+                                             template=sample_template, scheduled_for="2017-05-01 13:15")
     sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                        template=sample_template, scheduled_for="2017-05-01 10", status='delivered')
+                        template=sample_template, scheduled_for="2017-05-01 10:15", status='delivered')
     sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                         template=sample_template)
     sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                        template=sample_template, scheduled_for="2017-05-01 14")
+                        template=sample_template, scheduled_for="2017-05-01 14:15")
 
     scheduled_notifications = dao_get_scheduled_notifications()
     assert len(scheduled_notifications) == 1

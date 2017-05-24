@@ -720,7 +720,7 @@ def test_save_notification_with_no_job(sample_template, mmg_provider):
 def test_get_notification_by_id(notify_db, notify_db_session, sample_template):
     notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                                        template=sample_template,
-                                       scheduled_for='2017-05-05 14',
+                                       scheduled_for='2017-05-05 14:15',
                                        status='created')
     notification_from_db = get_notification_with_personalisation(
         sample_template.service.id,
@@ -728,7 +728,7 @@ def test_get_notification_by_id(notify_db, notify_db_session, sample_template):
         key_type=None
     )
     assert notification == notification_from_db
-    assert notification_from_db.scheduled_notification.scheduled_for == datetime(2017, 5, 5, 14)
+    assert notification_from_db.scheduled_notification.scheduled_for == datetime(2017, 5, 5, 14, 15)
 
 
 def test_get_notifications_by_reference(notify_db, notify_db_session, sample_service):
@@ -1760,20 +1760,21 @@ def test_dao_get_notifications_by_to_field_search_ignores_spaces(sample_template
 def test_dao_created_scheduled_notification(sample_notification):
 
     scheduled_notification = ScheduledNotification(notification_id=sample_notification.id,
-                                                   scheduled_for=datetime.strptime("2017-01-05 14", "%Y-%m-%d %H"))
+                                                   scheduled_for=datetime.strptime("2017-01-05 14:15",
+                                                                                   "%Y-%m-%d %H:%M"))
     dao_created_scheduled_notification(scheduled_notification)
     saved_notification = ScheduledNotification.query.all()
     assert len(saved_notification) == 1
     assert saved_notification[0].notification_id == sample_notification.id
-    assert saved_notification[0].scheduled_for == datetime(2017, 1, 5, 14)
+    assert saved_notification[0].scheduled_for == datetime(2017, 1, 5, 14, 15)
 
 
 def test_dao_get_scheduled_notifications(notify_db, notify_db_session, sample_template):
     notification_1 = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                                         template=sample_template, scheduled_for='2017-05-05 14',
+                                         template=sample_template, scheduled_for='2017-05-05 14:15',
                                          status='created')
     sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                        template=sample_template, scheduled_for='2017-05-04 14', status='delivered')
+                        template=sample_template, scheduled_for='2017-05-04 14:15', status='delivered')
     sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                         template=sample_template, status='created')
     scheduled_notifications = dao_get_scheduled_notifications()
@@ -1784,7 +1785,7 @@ def test_dao_get_scheduled_notifications(notify_db, notify_db_session, sample_te
 
 def test_set_scheduled_notification_to_processed(notify_db, notify_db_session, sample_template):
     notification_1 = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                                         template=sample_template, scheduled_for='2017-05-05 14',
+                                         template=sample_template, scheduled_for='2017-05-05 14:15',
                                          status='created')
     scheduled_notifications = dao_get_scheduled_notifications()
     assert len(scheduled_notifications) == 1

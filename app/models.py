@@ -30,7 +30,7 @@ from app import (
 )
 
 from app.history_meta import Versioned
-from app.utils import convert_utc_time_in_bst
+from app.utils import convert_utc_time_in_bst, convert_bst_to_utc
 
 SMS_TYPE = 'sms'
 EMAIL_TYPE = 'email'
@@ -890,8 +890,9 @@ class Notification(db.Model):
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "sent_at": self.sent_at.strftime(DATETIME_FORMAT) if self.sent_at else None,
             "completed_at": self.completed_at(),
-            "scheduled_for": self.scheduled_notification.scheduled_for.strftime(
-                "%Y-%m-%d %H") if self.scheduled_notification else None
+            "scheduled_for": convert_bst_to_utc(self.scheduled_notification.scheduled_for
+                                                ).strftime(
+                "%Y-%m-%d %H:%M") if self.scheduled_notification else None
         }
 
         return serialized

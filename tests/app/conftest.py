@@ -494,7 +494,7 @@ def sample_notification(
         scheduled_notification = ScheduledNotification(id=uuid.uuid4(),
                                                        notification_id=notification.id,
                                                        scheduled_for=datetime.strptime(scheduled_for,
-                                                                                       "%Y-%m-%d %H"))
+                                                                                       "%Y-%m-%d %H:%M"))
         if status != 'created':
             scheduled_notification.pending = False
         db.session.add(scheduled_notification)

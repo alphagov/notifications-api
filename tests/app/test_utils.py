@@ -40,7 +40,7 @@ def test_get_utc_in_bst_returns_expected_date(date, expected_date):
 
 
 def test_convert_bst_to_utc():
-    bst = "2017-05-12 13"
-    bst_datetime = datetime.strptime(bst, "%Y-%m-%d %H")
+    bst = "2017-05-12 13:15"
+    bst_datetime = datetime.strptime(bst, "%Y-%m-%d %H:%M")
     utc = convert_bst_to_utc(bst_datetime)
-    assert utc == datetime(2017, 5, 12, 12, 0)
+    assert utc == datetime(2017, 5, 12, 12, 15)
