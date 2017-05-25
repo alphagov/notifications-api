@@ -130,10 +130,7 @@ def update_service(service_id):
     current_data = dict(service_schema.dump(fetched_service).data.items())
     service_schema.set_override_flag(request.get_json().get('permissions') is not None)
     current_data.update(request.get_json())
-    try:
-        update_dict = service_schema.load(current_data).data
-    except ValueError as e:
-        raise InvalidRequest(str(e), status_code=400)
+    update_dict = service_schema.load(current_data).data
     dao_update_service(update_dict)
 
     if service_going_live:

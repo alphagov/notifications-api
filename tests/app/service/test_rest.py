@@ -21,7 +21,7 @@ from tests.app.conftest import (
     sample_notification_with_job
 )
 from app.models import (
-    ServicePermission,
+    Service, ServicePermission,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE
 )
@@ -629,7 +629,7 @@ def test_update_permissions_with_duplicate_permissions_will_raise_error(client, 
 
     assert resp.status_code == 400
     assert result['result'] == 'error'
-    assert "Service Permission duplicated: ['{}']".format(LETTER_TYPE) in result['message']
+    assert "Duplicate Service Permission: ['{}']".format(LETTER_TYPE) in result['message']['permissions']
 
 
 def test_update_service_research_mode_throws_validation_error(notify_api, sample_service):

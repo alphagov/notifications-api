@@ -138,7 +138,7 @@ def dao_create_service(service, user, service_id=None, service_permissions=[SMS_
     service.active = True
     service.research_mode = False
 
-    def process_deprecated_service_permissions():
+    def deprecate_process_service_permissions():
         for permission in service_permissions:
             service_permission = ServicePermission(service_id=service.id, permission=permission)
             service.permissions.append(service_permission)
@@ -148,7 +148,7 @@ def dao_create_service(service, user, service_id=None, service_permissions=[SMS_
             if permission == LETTER_TYPE:
                 service.can_send_letters = True
 
-        def sync_flags(flag, notify_type):
+        def convert_flags(flag, notify_type):
             if flag and notify_type not in service_permissions:
                 service_permission = ServicePermission(service_id=service.id, permission=notify_type)
                 service.permissions.append(service_permission)
@@ -156,10 +156,10 @@ def dao_create_service(service, user, service_id=None, service_permissions=[SMS_
                 service_permission = ServicePermission(service_id=service.id, permission=notify_type)
                 service.permissions.remove(service_permission)
 
-        sync_flags(service.can_send_international_sms, INTERNATIONAL_SMS_TYPE)
-        sync_flags(service.can_send_letters, LETTER_TYPE)
+        convert_flags(service.can_send_international_sms, INTERNATIONAL_SMS_TYPE)
+        convert_flags(service.can_send_letters, LETTER_TYPE)
 
-    process_deprecated_service_permissions()
+    deprecate_process_service_permissions()
     db.session.add(service)
 
 

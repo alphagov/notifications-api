@@ -247,7 +247,7 @@ class ServiceSchema(BaseSchema):
 
         if len(set(permissions)) != len(permissions):
             duplicates = list(set([x for x in permissions if permissions.count(x) > 1]))
-            raise ValueError('Service Permission duplicated: {}'.format(duplicates))
+            raise ValidationError('Duplicate Service Permission: {}'.format(duplicates))
 
     @pre_load()
     def format_for_data_model(self, in_data):
@@ -264,7 +264,7 @@ class ServiceSchema(BaseSchema):
                 in_data['can_send_international_sms'] = INTERNATIONAL_SMS_TYPE in [p.permission for p in permissions]
 
             def deprecate_convert_flags_to_permissions():
-                def convert_flag(flag, notify_type):
+                def convert_flags(flag, notify_type):
                     if flag and notify_type not in str_permissions:
                         permission = ServicePermission(service_id=in_data['id'], permission=notify_type)
                         permissions.append(permission)
@@ -273,8 +273,8 @@ class ServiceSchema(BaseSchema):
                             if p.permission == notify_type:
                                 permissions.remove(p)
 
-                convert_flag(in_data["can_send_international_sms"], INTERNATIONAL_SMS_TYPE)
-                convert_flag(in_data["can_send_letters"], LETTER_TYPE)
+                convert_flags(in_data["can_send_international_sms"], INTERNATIONAL_SMS_TYPE)
+                convert_flags(in_data["can_send_letters"], LETTER_TYPE)
 
             if self.override_flag:
                 deprecate_override_flags()
