@@ -1,7 +1,7 @@
 """empty message
 
-Revision ID: 0086_scheduled_notifications
-Revises: 0085_update_incoming_to_inbound
+Revision ID: 0087_scheduled_notifications
+Revises: 0086_add_norm_to_notification
 Create Date: 2017-05-15 12:50:20.041950
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '0086_scheduled_notifications'
-down_revision = '0085_update_incoming_to_inbound'
+revision = '0087_scheduled_notifications'
+down_revision = '0086_add_norm_to_notification'
 
 
 def upgrade():
