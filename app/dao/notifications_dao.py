@@ -8,6 +8,7 @@ from flask import current_app
 from werkzeug.datastructures import MultiDict
 from sqlalchemy import (desc, func, or_, and_, asc)
 from sqlalchemy.orm import joinedload
+from notifications_utils.international_billing_rates import INTERNATIONAL_BILLING_RATES
 
 from app import db, create_uuid
 from app.dao import days_ago
@@ -163,6 +164,10 @@ def _decide_permanent_temporary_failure(current_status, status):
     return status
 
 
+def country_records_delivery(phone_prefix):
+    return INTERNATIONAL_BILLING_RATES[phone_prefix]['attributes']['dlr'].lower() == 'yes'
+
+
 def _update_notification_status(notification, status):
     status = _decide_permanent_temporary_failure(current_status=notification.status, status=status)
     notification.status = status
@@ -182,7 +187,10 @@ def update_notification_status_by_id(notification_id, status):
             Notification.status == NOTIFICATION_SENT
         )).first()
 
-    if not notification or notification.status == NOTIFICATION_SENT:
+    if not notification:
+        return None
+
+    if notification.international and not country_records_delivery(notification.phone_prefix):
         return None
 
     return _update_notification_status(

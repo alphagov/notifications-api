@@ -15,6 +15,7 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_FAILED,
     NOTIFICATION_SENT,
+    NOTIFICATION_DELIVERED,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST
@@ -354,28 +355,45 @@ def test_should_update_status_by_id_if_created(notify_db, notify_db_session):
     assert updated.status == 'failed'
 
 
-def test_should_not_update_status_by_reference_if_in_sent_status(notify_db, notify_db_session):
-    notification = sample_notification(
-        notify_db,
-        notify_db_session,
+def test_should_not_update_status_by_reference_if_from_country_with_no_delivery_receipts(sample_template):
+    notification = create_notification(
+        sample_template,
         status=NOTIFICATION_SENT,
         reference='foo'
     )
 
-    update_notification_status_by_reference('foo', 'failed')
-    assert Notification.query.get(notification.id).status == NOTIFICATION_SENT
+    res = update_notification_status_by_reference('foo', 'failed')
+
+    assert res is None
+    assert notification.status == NOTIFICATION_SENT
 
 
-def test_should_not_update_status_by_id_if_in_sent_status(notify_db, notify_db_session):
-    notification = sample_notification(
-        notify_db,
-        notify_db_session,
-        status=NOTIFICATION_SENT
+def test_should_not_update_status_by_id_if_sent_to_country_with_no_delivery_receipts(sample_template):
+    notification = create_notification(
+        sample_template,
+        status=NOTIFICATION_SENT,
+        international=True,
+        phone_prefix='1'  # americans only have carrier delivery receipts
     )
 
-    update_notification_status_by_id(notification.id, 'failed')
+    res = update_notification_status_by_id(notification.id, 'delivered')
 
-    assert Notification.query.get(notification.id).status == NOTIFICATION_SENT
+    assert res is None
+    assert notification.status == NOTIFICATION_SENT
+
+
+def test_should_not_update_status_by_id_if_sent_to_country_with_no_delivery_receipts(sample_template):
+    notification = create_notification(
+        sample_template,
+        status=NOTIFICATION_SENT,
+        international=True,
+        phone_prefix='7'  # russians have full delivery receipts
+    )
+
+    res = update_notification_status_by_id(notification.id, 'delivered')
+
+    assert res == notification
+    assert notification.status == NOTIFICATION_DELIVERED
 
 
 def test_should_not_update_status_by_reference_if_not_sending(notify_db, notify_db_session):
