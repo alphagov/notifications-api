@@ -123,7 +123,7 @@ class Config(object):
     BROKER_TRANSPORT_OPTIONS = {
         'region': AWS_REGION,
         'polling_interval': 1,  # 1 second
-        'visibility_timeout': 300,
+        'visibility_timeout': 310,
         'queue_name_prefix': NOTIFICATION_QUEUE_PREFIX
     }
     CELERY_ENABLE_UTC = True,
