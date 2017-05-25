@@ -4,6 +4,7 @@ from datetime import datetime
 
 from flask import (jsonify, request, Blueprint, current_app)
 
+from app.config import QueueNames
 from app.dao.users_dao import (
     get_user_by_id,
     save_model_user,
@@ -182,7 +183,7 @@ def send_user_sms_code(user_id):
     # Assume that we never want to observe the Notify service's research mode
     # setting for this notification - we still need to be able to log into the
     # admin even if we're doing user research using this service:
-    send_notification_to_queue(saved_notification, False, queue='notify')
+    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
 
     return jsonify({}), 204
 
@@ -212,7 +213,7 @@ def send_user_confirm_new_email(user_id):
         key_type=KEY_TYPE_NORMAL
     )
 
-    send_notification_to_queue(saved_notification, False, queue='notify')
+    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
     return jsonify({}), 204
 
 
@@ -239,7 +240,7 @@ def send_user_email_verification(user_id):
         key_type=KEY_TYPE_NORMAL
     )
 
-    send_notification_to_queue(saved_notification, False, queue="notify")
+    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
 
     return jsonify({}), 204
 
@@ -265,7 +266,7 @@ def send_already_registered_email(user_id):
         key_type=KEY_TYPE_NORMAL
     )
 
-    send_notification_to_queue(saved_notification, False, queue="notify")
+    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
 
     return jsonify({}), 204
 
@@ -327,7 +328,7 @@ def send_user_reset_password():
         key_type=KEY_TYPE_NORMAL
     )
 
-    send_notification_to_queue(saved_notification, False, queue="notify")
+    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
 
     return jsonify({}), 204
 

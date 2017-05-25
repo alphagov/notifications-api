@@ -207,17 +207,17 @@ def test_persist_notification_increments_cache_if_key_exists(sample_template, sa
 
 
 @pytest.mark.parametrize('research_mode, requested_queue, expected_queue, notification_type, key_type',
-                         [(True, None, 'research-mode', 'sms', 'normal'),
-                          (True, None, 'research-mode', 'email', 'normal'),
-                          (True, None, 'research-mode', 'email', 'team'),
-                          (False, None, 'send-sms', 'sms', 'normal'),
-                          (False, None, 'send-email', 'email', 'normal'),
-                          (False, None, 'send-sms', 'sms', 'team'),
-                          (False, None, 'research-mode', 'sms', 'test'),
-                          (True, 'notify', 'research-mode', 'email', 'normal'),
-                          (False, 'notify', 'notify', 'sms', 'normal'),
-                          (False, 'notify', 'notify', 'email', 'normal'),
-                          (False, 'notify', 'research-mode', 'sms', 'test')])
+                         [(True, None, 'research-mode-tasks', 'sms', 'normal'),
+                          (True, None, 'research-mode-tasks', 'email', 'normal'),
+                          (True, None, 'research-mode-tasks', 'email', 'team'),
+                          (False, None, 'send-tasks', 'sms', 'normal'),
+                          (False, None, 'send-tasks', 'email', 'normal'),
+                          (False, None, 'send-tasks', 'sms', 'team'),
+                          (False, None, 'research-mode-tasks', 'sms', 'test'),
+                          (True, 'notify-internal-tasks', 'research-mode-tasks', 'email', 'normal'),
+                          (False, 'notify-internal-tasks', 'notify-internal-tasks', 'sms', 'normal'),
+                          (False, 'notify-internal-tasks', 'notify-internal-tasks', 'email', 'normal'),
+                          (False, 'notify-internal-tasks', 'research-mode-tasks', 'sms', 'test')])
 def test_send_notification_to_queue(notify_db, notify_db_session,
                                     research_mode, requested_queue, expected_queue,
                                     notification_type, key_type, mocker):

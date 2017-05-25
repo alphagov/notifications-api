@@ -6,6 +6,7 @@ from flask import (
 )
 
 from app import api_user, authenticated_service
+from app.config import QueueNames
 from app.dao import (
     templates_dao,
     notifications_dao
@@ -134,7 +135,7 @@ def send_notification(notification_type):
                                               key_type=api_user.key_type,
                                               simulated=simulated)
     if not simulated:
-        queue_name = 'priority' if template.process_type == PRIORITY else None
+        queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
         send_notification_to_queue(notification=notification_model,
                                    research_mode=authenticated_service.research_mode,
                                    queue=queue_name)

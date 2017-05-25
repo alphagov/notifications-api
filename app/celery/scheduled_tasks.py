@@ -23,6 +23,7 @@ from app.dao.provider_details_dao import (
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.statsd_decorators import statsd
 from app.celery.tasks import process_job
+from app.config import QueueNames
 
 
 @notify_celery.task(name="remove_csv_files")
@@ -39,7 +40,7 @@ def remove_csv_files():
 def run_scheduled_jobs():
     try:
         for job in dao_set_scheduled_jobs_to_pending():
-            process_job.apply_async([str(job.id)], queue="process-job")
+            process_job.apply_async([str(job.id)], queue=QueueNames.JOBS)
             current_app.logger.info("Job ID {} added to process job queue".format(job.id))
     except SQLAlchemyError as e:
         current_app.logger.exception("Failed to run scheduled jobs")

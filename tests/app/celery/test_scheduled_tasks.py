@@ -165,7 +165,7 @@ def test_should_update_scheduled_jobs_and_put_on_queue(notify_db, notify_db_sess
 
     updated_job = dao_get_job_by_id(job.id)
     assert updated_job.job_status == 'pending'
-    mocked.assert_called_with([str(job.id)], queue='process-job')
+    mocked.assert_called_with([str(job.id)], queue="job-tasks")
 
 
 def test_should_update_all_scheduled_jobs_and_put_on_queue(notify_db, notify_db_session, mocker):
@@ -200,9 +200,9 @@ def test_should_update_all_scheduled_jobs_and_put_on_queue(notify_db, notify_db_
     assert dao_get_job_by_id(job_2.id).job_status == 'pending'
 
     mocked.assert_has_calls([
-        call([str(job_3.id)], queue='process-job'),
-        call([str(job_2.id)], queue='process-job'),
-        call([str(job_1.id)], queue='process-job')
+        call([str(job_3.id)], queue="job-tasks"),
+        call([str(job_2.id)], queue="job-tasks"),
+        call([str(job_1.id)], queue="job-tasks")
     ])
 
 

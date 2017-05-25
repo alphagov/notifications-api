@@ -3,6 +3,7 @@ from notifications_utils.recipients import InvalidEmailError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import notify_celery
+from app.config import QueueNames
 from app.dao import notifications_dao
 from app.dao.notifications_dao import update_notification_status_by_id
 from app.statsd_decorators import statsd
@@ -46,7 +47,7 @@ def deliver_sms(self, notification_id):
             current_app.logger.exception(
                 "SMS notification delivery for id: {} failed".format(notification_id)
             )
-            self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
+            self.retry(queue=QueueNames.RETRY, countdown=retry_iteration_to_delay(self.request.retries))
         except self.MaxRetriesExceededError:
             current_app.logger.exception(
                 "RETRY FAILED: task send_sms_to_provider failed for notification {}".format(notification_id),
@@ -70,7 +71,7 @@ def deliver_email(self, notification_id):
             current_app.logger.exception(
                 "RETRY: Email notification {} failed".format(notification_id)
             )
-            self.retry(queue="retry", countdown=retry_iteration_to_delay(self.request.retries))
+            self.retry(queue=QueueNames.RETRY, countdown=retry_iteration_to_delay(self.request.retries))
         except self.MaxRetriesExceededError:
             current_app.logger.error(
                 "RETRY FAILED: task send_email_to_provider failed for notification {}".format(notification_id)

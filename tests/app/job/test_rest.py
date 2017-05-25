@@ -119,7 +119,7 @@ def test_create_unscheduled_job(notify_api, sample_template, mocker, fake_uuid):
 
             app.celery.tasks.process_job.apply_async.assert_called_once_with(
                 ([str(fake_uuid)]),
-                queue="process-job"
+                queue="job-tasks"
             )
 
             resp_json = json.loads(response.get_data(as_text=True))
