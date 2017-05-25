@@ -24,7 +24,7 @@ from app.models import (
     NotificationStatistics,
     ServiceWhitelist,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM,
-    MOBILE_TYPE, EMAIL_TYPE, LETTER_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED)
+    MOBILE_TYPE, EMAIL_TYPE, LETTER_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED, ScheduledNotification)
 from app.dao.users_dao import (create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
@@ -445,7 +445,8 @@ def sample_notification(
     key_type=KEY_TYPE_NORMAL,
     sent_by=None,
     client_reference=None,
-    rate_multiplier=1.0
+    rate_multiplier=1.0,
+    scheduled_for=None
 ):
     if created_at is None:
         created_at = datetime.utcnow()
@@ -489,6 +490,16 @@ def sample_notification(
         data['job_row_number'] = job_row_number
     notification = Notification(**data)
     dao_create_notification(notification)
+    if scheduled_for:
+        scheduled_notification = ScheduledNotification(id=uuid.uuid4(),
+                                                       notification_id=notification.id,
+                                                       scheduled_for=datetime.strptime(scheduled_for,
+                                                                                       "%Y-%m-%d %H:%M"))
+        if status != 'created':
+            scheduled_notification.pending = False
+        db.session.add(scheduled_notification)
+        db.session.commit()
+
     return notification
 
 

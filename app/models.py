@@ -30,7 +30,7 @@ from app import (
 )
 
 from app.history_meta import Versioned
-from app.utils import get_utc_time_in_bst
+from app.utils import convert_utc_time_in_bst, convert_bst_to_utc
 
 SMS_TYPE = 'sms'
 EMAIL_TYPE = 'email'
@@ -743,6 +743,8 @@ class Notification(db.Model):
         foreign(template_version) == remote(TemplateHistory.version)
     ))
 
+    scheduled_notification = db.relationship('ScheduledNotification', uselist=False)
+
     client_reference = db.Column(db.String, index=True, nullable=True)
 
     international = db.Column(db.Boolean, nullable=False, default=False)
@@ -864,7 +866,7 @@ class Notification(db.Model):
         }[self.template.template_type].get(self.status, self.status)
 
     def serialize_for_csv(self):
-        created_at_in_bst = get_utc_time_in_bst(self.created_at)
+        created_at_in_bst = convert_utc_time_in_bst(self.created_at)
         serialized = {
             "row_number": '' if self.job_row_number is None else self.job_row_number + 1,
             "recipient": self.to,
@@ -903,7 +905,9 @@ class Notification(db.Model):
             "subject": self.subject,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "sent_at": self.sent_at.strftime(DATETIME_FORMAT) if self.sent_at else None,
-            "completed_at": self.completed_at()
+            "completed_at": self.completed_at(),
+            "scheduled_for": convert_bst_to_utc(self.scheduled_notification.scheduled_for
+                                                ).strftime(DATETIME_FORMAT) if self.scheduled_notification else None
         }
 
         return serialized
@@ -967,6 +971,16 @@ class NotificationHistory(db.Model, HistoryModel):
 
 
 INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
+
+
+class ScheduledNotification(db.Model):
+    __tablename__ = 'scheduled_notifications'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4())
+    notification_id = db.Column(UUID(as_uuid=True), db.ForeignKey('notifications.id'), index=True, nullable=False)
+    notification = db.relationship('Notification', uselist=False)
+    scheduled_for = db.Column(db.DateTime, index=False, nullable=False)
+    pending = db.Column(db.Boolean, nullable=False, default=True)
 
 
 class InvitedUser(db.Model):

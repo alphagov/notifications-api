@@ -6,7 +6,8 @@ from functools import partial
 from flask import current_app
 from freezegun import freeze_time
 from app.celery.scheduled_tasks import s3, timeout_job_statistics, delete_sms_notifications_older_than_seven_days, \
-    delete_letter_notifications_older_than_seven_days, delete_email_notifications_older_than_seven_days
+    delete_letter_notifications_older_than_seven_days, delete_email_notifications_older_than_seven_days, \
+    send_scheduled_notifications
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
     delete_verify_codes,
@@ -20,6 +21,7 @@ from app.celery.scheduled_tasks import (
 )
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.dao.jobs_dao import dao_get_job_by_id
+from app.dao.notifications_dao import dao_get_scheduled_notifications
 from app.dao.provider_details_dao import (
     dao_update_provider_details,
     get_current_provider
@@ -30,8 +32,7 @@ from tests.app.db import create_notification, create_service
 from tests.app.conftest import (
     sample_job as create_sample_job,
     sample_notification_history as create_notification_history,
-    create_custom_template
-)
+    create_custom_template)
 from tests.conftest import set_config_values
 from unittest.mock import call, patch, PropertyMock
 
@@ -414,6 +415,24 @@ def test_switch_providers_on_slow_delivery_does_not_switch_based_on_older_notifi
         switch_current_sms_provider_on_slow_delivery()
         current_provider = get_current_provider('sms')
         assert starting_provider.identifier == current_provider.identifier
+
+
+@freeze_time("2017-05-01 14:00:00")
+def test_should_send_all_scheduled_notifications_to_deliver_queue(sample_template, mocker):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_sms')
+    message_to_deliver = create_notification(template=sample_template, scheduled_for="2017-05-01 13:15")
+    create_notification(template=sample_template, scheduled_for="2017-05-01 10:15", status='delivered')
+    create_notification(template=sample_template)
+    create_notification(template=sample_template, scheduled_for="2017-05-01 14:15")
+
+    scheduled_notifications = dao_get_scheduled_notifications()
+    assert len(scheduled_notifications) == 1
+
+    send_scheduled_notifications()
+
+    mocked.apply_async.assert_called_once_with([str(message_to_deliver.id)], queue='send-sms')
+    scheduled_notifications = dao_get_scheduled_notifications()
+    assert not scheduled_notifications
 
 
 def test_timeout_job_statistics_called_with_notification_timeout(notify_api, mocker):

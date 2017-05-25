@@ -90,3 +90,8 @@ def check_sms_content_char_count(content_count):
     if content_count > char_count_limit:
         message = 'Content for template has a character count greater than the limit of {}'.format(char_count_limit)
         raise BadRequestError(message=message)
+
+
+def service_can_schedule_notification(service):
+    # TODO: implement once the service permission works.
+    raise BadRequestError(message="Your service must be invited to schedule notifications via the API.")

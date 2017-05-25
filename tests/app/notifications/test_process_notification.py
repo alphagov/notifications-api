@@ -7,13 +7,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from freezegun import freeze_time
 from collections import namedtuple
 
-from app.models import Template, Notification, NotificationHistory
+from app.models import Template, Notification, NotificationHistory, ScheduledNotification
 from app.notifications import SendNotificationToQueueError
 from app.notifications.process_notifications import (
     create_content_for_notification,
     persist_notification,
     send_notification_to_queue,
-    simulated_recipient
+    simulated_recipient,
+    persist_scheduled_notification
 )
 from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
 from app.utils import cache_key_for_service_template_counter
@@ -339,3 +340,11 @@ def test_persist_notification_with_international_info_does_not_store_for_email(
     assert persisted_notification.international is False
     assert persisted_notification.phone_prefix is None
     assert persisted_notification.rate_multiplier is None
+
+
+def test_persist_scheduled_notification(sample_notification):
+    persist_scheduled_notification(sample_notification.id, '2017-05-12 14:15')
+    scheduled_notification = ScheduledNotification.query.all()
+    assert len(scheduled_notification) == 1
+    assert scheduled_notification[0].notification_id == sample_notification.id
+    assert scheduled_notification[0].scheduled_for == datetime.datetime(2017, 5, 12, 13, 15)

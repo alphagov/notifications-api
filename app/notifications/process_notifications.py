@@ -10,10 +10,12 @@ from notifications_utils.recipients import (
 from app import redis_store
 from app.celery import provider_tasks
 from notifications_utils.clients import redis
-from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
-from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE
+from app.dao.notifications_dao import (dao_create_notification,
+                                       dao_delete_notifications_and_history_by_id,
+                                       dao_created_scheduled_notification)
+from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE, ScheduledNotification
 from app.v2.errors import BadRequestError, SendNotificationToQueueError
-from app.utils import get_template_instance, cache_key_for_service_template_counter
+from app.utils import get_template_instance, cache_key_for_service_template_counter, convert_bst_to_utc
 
 
 def create_content_for_notification(template, personalisation):
@@ -123,3 +125,10 @@ def simulated_recipient(to_address, notification_type):
         return to_address in formatted_simulated_numbers
     else:
         return to_address in current_app.config['SIMULATED_EMAIL_ADDRESSES']
+
+
+def persist_scheduled_notification(notification_id, scheduled_for):
+    scheduled_datetime = convert_bst_to_utc(datetime.strptime(scheduled_for, "%Y-%m-%d %H:%M"))
+    scheduled_notification = ScheduledNotification(notification_id=notification_id,
+                                                   scheduled_for=scheduled_datetime)
+    dao_created_scheduled_notification(scheduled_notification)
