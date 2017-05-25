@@ -13,40 +13,38 @@ from tests.app.conftest import sample_template as create_sample_template, sample
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
-def test_post_sms_notification_returns_201(notify_api, sample_template_with_placeholders, mocker, reference):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-            data = {
-                'phone_number': '+447700900855',
-                'template_id': str(sample_template_with_placeholders.id),
-                'personalisation': {' Name': 'Jo'}
-            }
-            if reference:
-                data.update({"reference": reference})
-            auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
+def test_post_sms_notification_returns_201(client, sample_template_with_placeholders, mocker, reference):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    data = {
+        'phone_number': '+447700900855',
+        'template_id': str(sample_template_with_placeholders.id),
+        'personalisation': {' Name': 'Jo'}
+    }
+    if reference:
+        data.update({"reference": reference})
+    auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
 
-            response = client.post(
-                path='/v2/notifications/sms',
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
-            assert response.status_code == 201
-            resp_json = json.loads(response.get_data(as_text=True))
-            notifications = Notification.query.all()
-            assert len(notifications) == 1
-            notification_id = notifications[0].id
-            assert resp_json['id'] == str(notification_id)
-            assert resp_json['reference'] == reference
-            assert resp_json['content']['body'] == sample_template_with_placeholders.content.replace("(( Name))", "Jo")
-            assert resp_json['content']['from_number'] == current_app.config['FROM_NUMBER']
-            assert 'v2/notifications/{}'.format(notification_id) in resp_json['uri']
-            assert resp_json['template']['id'] == str(sample_template_with_placeholders.id)
-            assert resp_json['template']['version'] == sample_template_with_placeholders.version
-            assert 'services/{}/templates/{}'.format(sample_template_with_placeholders.service_id,
-                                                     sample_template_with_placeholders.id) \
-                   in resp_json['template']['uri']
-            assert not resp_json["scheduled_for"]
-            assert mocked.called
+    response = client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 201
+    resp_json = json.loads(response.get_data(as_text=True))
+    notifications = Notification.query.all()
+    assert len(notifications) == 1
+    notification_id = notifications[0].id
+    assert resp_json['id'] == str(notification_id)
+    assert resp_json['reference'] == reference
+    assert resp_json['content']['body'] == sample_template_with_placeholders.content.replace("(( Name))", "Jo")
+    assert resp_json['content']['from_number'] == current_app.config['FROM_NUMBER']
+    assert 'v2/notifications/{}'.format(notification_id) in resp_json['uri']
+    assert resp_json['template']['id'] == str(sample_template_with_placeholders.id)
+    assert resp_json['template']['version'] == sample_template_with_placeholders.version
+    assert 'services/{}/templates/{}'.format(sample_template_with_placeholders.service_id,
+                                             sample_template_with_placeholders.id) \
+           in resp_json['template']['uri']
+    assert not resp_json["scheduled_for"]
+    assert mocked.called
 
 
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",

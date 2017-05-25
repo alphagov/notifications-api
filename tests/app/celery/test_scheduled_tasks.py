@@ -32,8 +32,7 @@ from tests.app.db import create_notification, create_service
 from tests.app.conftest import (
     sample_job as create_sample_job,
     sample_notification_history as create_notification_history,
-    create_custom_template,
-    sample_notification)
+    create_custom_template)
 from tests.conftest import set_config_values
 from unittest.mock import call, patch, PropertyMock
 
@@ -419,18 +418,12 @@ def test_switch_providers_on_slow_delivery_does_not_switch_based_on_older_notifi
 
 
 @freeze_time("2017-05-01 14:00:00")
-def test_should_send_all_scheduled_notifications_to_deliver_queue(notify_db,
-                                                                  notify_db_session,
-                                                                  sample_template, mocker):
+def test_should_send_all_scheduled_notifications_to_deliver_queue(sample_template, mocker):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_sms')
-    message_to_deliver = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                                             template=sample_template, scheduled_for="2017-05-01 13:15")
-    sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                        template=sample_template, scheduled_for="2017-05-01 10:15", status='delivered')
-    sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                        template=sample_template)
-    sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                        template=sample_template, scheduled_for="2017-05-01 14:15")
+    message_to_deliver = create_notification(template=sample_template, scheduled_for="2017-05-01 13:15")
+    create_notification(template=sample_template, scheduled_for="2017-05-01 10:15", status='delivered')
+    create_notification(template=sample_template)
+    create_notification(template=sample_template, scheduled_for="2017-05-01 14:15")
 
     scheduled_notifications = dao_get_scheduled_notifications()
     assert len(scheduled_notifications) == 1
