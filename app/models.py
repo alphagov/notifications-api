@@ -215,6 +215,21 @@ class Service(db.Model, Versioned):
             self.can_send_letters = LETTER_TYPE in [p.permission for p in self.permissions]
             self.can_send_international_sms = INTERNATIONAL_SMS_TYPE in [p.permission for p in self.permissions]
 
+    @classmethod
+    def from_json(cls, data):
+        """
+        Assumption: data has been validated appropriately.
+
+        Returns a Service object based on the provided data. Deserialises created_by to created_by_id as marshmallow
+        would.
+        """
+        # validate json with marshmallow
+        fields = data.copy()
+
+        fields['created_by_id'] = fields.pop('created_by')
+
+        return cls(**fields)
+
 
 class ServicePermission(db.Model):
     __tablename__ = "service_permissions"
