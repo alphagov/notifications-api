@@ -20,7 +20,7 @@ from tests.app.conftest import (
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
-from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
+from app.models import Service, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 
 from tests.app.db import create_user
 
@@ -215,6 +215,10 @@ def test_create_service(client, sample_user):
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
+
+    service_db = Service.query.get(json_resp['data']['id'])
+    assert service_db.name == 'created service'
+    assert service_db.sms_sender == current_app.config['FROM_NUMBER']
 
     auth_header_fetch = create_authorization_header()
 
@@ -1731,3 +1735,19 @@ def test_update_service_does_not_call_send_notification_when_restricted_not_chan
 
     assert resp.status_code == 200
     assert not send_notification_mock.called
+
+
+def test_update_service_works_when_sms_sender_is_null(sample_service, client, mocker):
+    sample_service.sms_sender = None
+    data = {'name': 'new name'}
+
+    resp = client.post(
+        'service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[create_authorization_header()],
+        content_type='application/json'
+    )
+
+    assert resp.status_code == 200
+    # make sure it wasn't changed to not-null under the hood
+    assert sample_service.sms_sender is None
