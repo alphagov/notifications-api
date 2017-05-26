@@ -184,31 +184,13 @@ class ServiceSchema(BaseSchema):
     override_flag = False
 
     def service_permissions(self, service):
-        permissions = []
-        str_permissions = []
-
-        perms = dao_fetch_service_permissions(service.id)
-        for p in perms:
-            permission = {
-                "service_id": service.id,
-                "permission": p.permission
-            }
-            permissions.append(permission)
-            str_permissions.append(p.permission)
+        permissions = [p.permission for p in service.permissions]
 
         def deprecate_convert_flags_to_permissions():
-            def convert_flags(flag, notify_type):
-                if flag and notify_type not in str_permissions:
-                    permission = {
-                        "service_id": service.id,
-                        "permission": notify_type
-                    }
+            def convert_flags(flag, permission):
+                if flag and permission not in permissions:
                     permissions.append(permission)
-                elif flag is False and notify_type in str_permissions:
-                    permission = {
-                        "service_id": service.id,
-                        "permission": notify_type
-                    }
+                elif flag is False and permission in permissions:
                     permissions.remove(permission)
 
             convert_flags(service.can_send_international_sms, INTERNATIONAL_SMS_TYPE)
@@ -254,14 +236,13 @@ class ServiceSchema(BaseSchema):
         if isinstance(in_data, dict) and 'permissions' in in_data:
             str_permissions = in_data['permissions']
             permissions = []
-            for p in in_data['permissions']:
+            for p in str_permissions:
                 permission = ServicePermission(service_id=in_data["id"], permission=p)
                 permissions.append(permission)
-            in_data['permissions'] = permissions
 
             def deprecate_override_flags():
-                in_data['can_send_letters'] = LETTER_TYPE in [p.permission for p in permissions]
-                in_data['can_send_international_sms'] = INTERNATIONAL_SMS_TYPE in [p.permission for p in permissions]
+                in_data['can_send_letters'] = LETTER_TYPE in str_permissions
+                in_data['can_send_international_sms'] = INTERNATIONAL_SMS_TYPE in str_permissions
 
             def deprecate_convert_flags_to_permissions():
                 def convert_flags(flag, notify_type):
@@ -280,12 +261,7 @@ class ServiceSchema(BaseSchema):
                 deprecate_override_flags()
             else:
                 deprecate_convert_flags_to_permissions()
-
-    @post_dump
-    def format_as_string_array(self, in_data):
-        if isinstance(in_data, dict) and 'permissions' in in_data:
-            in_data['permissions'] = [p.get("permission") for p in in_data['permissions']]
-        return in_data
+            in_data['permissions'] = permissions
 
     def set_override_flag(self, flag):
         self.override_flag = flag
