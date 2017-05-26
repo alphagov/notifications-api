@@ -184,9 +184,7 @@ class ServiceSchema(BaseSchema):
     override_flag = False
 
     def service_permissions(self, service):
-        permissions = [p.permission for p in service.permissions]
-
-        return permissions
+        return [p.permission for p in service.permissions]
 
     class Meta:
         model = models.Service
