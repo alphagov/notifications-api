@@ -34,9 +34,8 @@ def post_notification(notification_type):
         form = validate(request.get_json(), post_sms_request)
 
     scheduled_for = form.get("scheduled_for", None)
-    if scheduled_for:
-        if not service_can_schedule_notification(authenticated_service):
-            return
+    service_can_schedule_notification(authenticated_service, scheduled_for)
+
     check_rate_limiting(authenticated_service, api_user)
 
     form_send_to = form['phone_number'] if notification_type == SMS_TYPE else form['email_address']
