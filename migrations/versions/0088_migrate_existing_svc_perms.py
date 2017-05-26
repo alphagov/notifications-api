@@ -12,9 +12,8 @@ down_revision = '0087_scheduled_notifications'
 
 from alembic import op
 import sqlalchemy as sa
-import time
 
-migration_date = time.strftime('2017-05-26 17:30:00.000000')
+migration_date = '2017-05-26 17:30:00.000000'
 
 
 def upgrade():
