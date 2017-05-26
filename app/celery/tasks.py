@@ -165,19 +165,20 @@ def send_sms(self,
         return
 
     try:
-        saved_notification = persist_notification(template_id=notification['template'],
-                                                  template_version=notification['template_version'],
-                                                  recipient=notification['to'],
-                                                  service=service,
-                                                  personalisation=notification.get('personalisation'),
-                                                  notification_type=SMS_TYPE,
-                                                  api_key_id=api_key_id,
-                                                  key_type=key_type,
-                                                  created_at=created_at,
-                                                  job_id=notification.get('job', None),
-                                                  job_row_number=notification.get('row_number', None),
-                                                  notification_id=notification_id
-                                                  )
+        saved_notification = persist_notification(
+            template_id=notification['template'],
+            template_version=notification['template_version'],
+            recipient=notification['to'],
+            service=service,
+            personalisation=notification.get('personalisation'),
+            notification_type=SMS_TYPE,
+            api_key_id=api_key_id,
+            key_type=key_type,
+            created_at=created_at,
+            job_id=notification.get('job', None),
+            job_row_number=notification.get('row_number', None),
+            notification_id=notification_id
+        )
 
         provider_tasks.deliver_sms.apply_async(
             [str(saved_notification.id)],

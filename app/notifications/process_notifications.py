@@ -4,7 +4,8 @@ from flask import current_app
 
 from notifications_utils.recipients import (
     get_international_phone_info,
-    validate_and_format_phone_number
+    validate_and_format_phone_number,
+    format_email_address
 )
 
 from app import redis_store
@@ -72,9 +73,12 @@ def persist_notification(
     if notification_type == SMS_TYPE:
         formatted_recipient = validate_and_format_phone_number(recipient, international=True)
         recipient_info = get_international_phone_info(formatted_recipient)
+        notification.normalised_to = formatted_recipient
         notification.international = recipient_info.international
         notification.phone_prefix = recipient_info.country_prefix
         notification.rate_multiplier = recipient_info.billable_units
+    elif notification_type == EMAIL_TYPE:
+        notification.normalised_to = format_email_address(notification.to)
 
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:

@@ -348,3 +348,67 @@ def test_persist_scheduled_notification(sample_notification):
     assert len(scheduled_notification) == 1
     assert scheduled_notification[0].notification_id == sample_notification.id
     assert scheduled_notification[0].scheduled_for == datetime.datetime(2017, 5, 12, 13, 15)
+
+
+@pytest.mark.parametrize('recipient, expected_recipient_normalised', [
+    ('7900900123', '447900900123'),
+    ('+447900   900 123', '447900900123'),
+    ('  07700900222', '447700900222'),
+    ('07700900222', '447700900222'),
+    (' 73122345678', '73122345678'),
+    ('360623400400', '360623400400'),
+    ('-077-00900222-', '447700900222'),
+    ('(360623(400400)', '360623400400')
+
+])
+def test_persist_sms_notification_stores_normalised_number(
+    sample_job,
+    sample_api_key,
+    mocker,
+    recipient,
+    expected_recipient_normalised
+):
+    persist_notification(
+        template_id=sample_job.template.id,
+        template_version=sample_job.template.version,
+        recipient=recipient,
+        service=sample_job.service,
+        personalisation=None,
+        notification_type='sms',
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        job_id=sample_job.id,
+    )
+    persisted_notification = Notification.query.all()[0]
+
+    assert persisted_notification.to == recipient
+    assert persisted_notification.normalised_to == expected_recipient_normalised
+
+
+@pytest.mark.parametrize('recipient, expected_recipient_normalised', [
+    ('FOO@bar.com', 'foo@bar.com'),
+    ('BAR@foo.com', 'bar@foo.com')
+
+])
+def test_persist_email_notification_stores_normalised_email(
+    sample_job,
+    sample_api_key,
+    mocker,
+    recipient,
+    expected_recipient_normalised
+):
+    persist_notification(
+        template_id=sample_job.template.id,
+        template_version=sample_job.template.version,
+        recipient=recipient,
+        service=sample_job.service,
+        personalisation=None,
+        notification_type='email',
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        job_id=sample_job.id,
+    )
+    persisted_notification = Notification.query.all()[0]
+
+    assert persisted_notification.to == recipient
+    assert persisted_notification.normalised_to == expected_recipient_normalised
