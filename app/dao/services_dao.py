@@ -148,17 +148,6 @@ def dao_create_service(service, user, service_id=None, service_permissions=[SMS_
             if permission == LETTER_TYPE:
                 service.can_send_letters = True
 
-        def convert_flags(flag, notify_type):
-            if flag and notify_type not in service_permissions:
-                service_permission = ServicePermission(service_id=service.id, permission=notify_type)
-                service.permissions.append(service_permission)
-            elif flag is False and notify_type in service_permissions:
-                service_permission = ServicePermission(service_id=service.id, permission=notify_type)
-                service.permissions.remove(service_permission)
-
-        convert_flags(service.can_send_international_sms, INTERNATIONAL_SMS_TYPE)
-        convert_flags(service.can_send_letters, LETTER_TYPE)
-
     deprecate_process_service_permissions()
     db.session.add(service)
 

@@ -501,10 +501,10 @@ def test_update_service_flags_with_service_without_default_service_permissions(c
 def test_update_service_flags_will_remove_service_permissions(client, notify_db, notify_db_session):
     auth_header = create_authorization_header()
 
-    service = create_service(notify_db, notify_db_session, can_send_international_sms=True)
+    service = create_service(
+        notify_db, notify_db_session, permissions=[SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE])
 
     assert service.can_send_international_sms is True
-    assert set([p.permission for p in service.permissions]) == set([SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE])
 
     data = {
         'can_send_international_sms': False
