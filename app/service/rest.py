@@ -265,8 +265,8 @@ def get_service_history(service_id):
 @service_blueprint.route('/<uuid:service_id>/notifications', methods=['GET'])
 def get_all_notifications_for_service(service_id):
     data = notifications_filter_schema.load(request.args).data
-    if data.get("to", None):
-        return search_for_notification_by_to_field(service_id, request.query_string.decode())
+    if data.get('to'):
+        return search_for_notification_by_to_field(service_id, data['to'], statuses=data.get('status'))
     page = data['page'] if 'page' in data else 1
     page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
     limit_days = data.get('limit_days')
@@ -296,11 +296,11 @@ def get_all_notifications_for_service(service_id):
     ), 200
 
 
-def search_for_notification_by_to_field(service_id, search_term):
-    search_term = search_term.replace('to=', '')
-    results = notifications_dao.dao_get_notifications_by_to_field(service_id, search_term)
+def search_for_notification_by_to_field(service_id, search_term, statuses):
+    results = notifications_dao.dao_get_notifications_by_to_field(service_id, search_term, statuses)
     return jsonify(
-        notifications=notification_with_template_schema.dump(results, many=True).data), 200
+        notifications=notification_with_template_schema.dump(results, many=True).data
+    ), 200
 
 
 @service_blueprint.route('/<uuid:service_id>/notifications/monthly', methods=['GET'])
