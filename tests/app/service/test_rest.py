@@ -10,7 +10,7 @@ from freezegun import freeze_time
 
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
-from app.models import User, Organisation, DVLA_ORG_LAND_REGISTRY, Rate
+from app.models import User, Organisation, DVLA_ORG_LAND_REGISTRY, Rate, ServicePermission
 from tests import create_authorization_header
 from tests.app.db import create_template
 from tests.app.conftest import (
@@ -20,28 +20,30 @@ from tests.app.conftest import (
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
-from app.models import Service, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
+from app.models import (
+    Service, ServicePermission,
+    KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
+    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE
+)
 
 from tests.app.db import create_user
 
 
-def test_get_service_list(notify_api, service_factory):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            service_factory.get('one')
-            service_factory.get('two')
-            service_factory.get('three')
-            auth_header = create_authorization_header()
-            response = client.get(
-                '/service',
-                headers=[auth_header]
-            )
-            assert response.status_code == 200
-            json_resp = json.loads(response.get_data(as_text=True))
-            assert len(json_resp['data']) == 3
-            assert json_resp['data'][0]['name'] == 'one'
-            assert json_resp['data'][1]['name'] == 'two'
-            assert json_resp['data'][2]['name'] == 'three'
+def test_get_service_list(client, service_factory):
+    service_factory.get('one')
+    service_factory.get('two')
+    service_factory.get('three')
+    auth_header = create_authorization_header()
+    response = client.get(
+        '/service',
+        headers=[auth_header]
+    )
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert len(json_resp['data']) == 3
+    assert json_resp['data'][0]['name'] == 'one'
+    assert json_resp['data'][1]['name'] == 'two'
+    assert json_resp['data'][2]['name'] == 'three'
 
 
 def test_get_service_list_with_only_active_flag(client, service_factory):
@@ -117,17 +119,15 @@ def test_get_service_list_by_user_should_return_empty_list_if_no_services(client
     assert len(json_resp['data']) == 0
 
 
-def test_get_service_list_should_return_empty_list_if_no_services(notify_api, notify_db, notify_db_session):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            auth_header = create_authorization_header()
-            response = client.get(
-                '/service',
-                headers=[auth_header]
-            )
-            assert response.status_code == 200
-            json_resp = json.loads(response.get_data(as_text=True))
-            assert len(json_resp['data']) == 0
+def test_get_service_list_should_return_empty_list_if_no_services(client):
+    auth_header = create_authorization_header()
+    response = client.get(
+        '/service',
+        headers=[auth_header]
+    )
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert len(json_resp['data']) == 0
 
 
 def test_get_service_by_id(client, sample_service):
@@ -145,6 +145,32 @@ def test_get_service_by_id(client, sample_service):
     assert json_resp['data']['branding'] == 'govuk'
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
+
+
+def test_get_service_list_has_default_permissions(client, service_factory):
+    service_factory.get('one')
+    service_factory.get('two')
+    service_factory.get('three')
+    auth_header = create_authorization_header()
+    response = client.get(
+        '/service',
+        headers=[auth_header]
+    )
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert len(json_resp['data']) == 3
+    assert all([set(json['permissions']) == set([EMAIL_TYPE, SMS_TYPE]) for json in json_resp['data']])
+
+
+def test_get_service_by_id_has_default_service_permissions(client, sample_service):
+    auth_header = create_authorization_header()
+    resp = client.get(
+        '/service/{}'.format(sample_service.id),
+        headers=[auth_header]
+    )
+    json_resp = json.loads(resp.get_data(as_text=True))
+
+    assert set(json_resp['data']['permissions']) == set([EMAIL_TYPE, SMS_TYPE])
 
 
 def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
@@ -414,39 +440,196 @@ def test_update_service(client, notify_db, sample_service):
     assert result['data']['dvla_organisation'] == DVLA_ORG_LAND_REGISTRY
 
 
-def test_update_service_flags(notify_api, sample_service):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            auth_header = create_authorization_header()
-            resp = client.get(
-                '/service/{}'.format(sample_service.id),
-                headers=[auth_header]
-            )
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 200
-            assert json_resp['data']['name'] == sample_service.name
-            assert json_resp['data']['research_mode'] is False
-            assert json_resp['data']['can_send_letters'] is False
-            assert json_resp['data']['can_send_international_sms'] is False
+def test_update_service_flags(client, sample_service):
+    auth_header = create_authorization_header()
+    resp = client.get(
+        '/service/{}'.format(sample_service.id),
+        headers=[auth_header]
+    )
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert resp.status_code == 200
+    assert json_resp['data']['name'] == sample_service.name
+    assert json_resp['data']['research_mode'] is False
+    assert json_resp['data']['can_send_letters'] is False
+    assert json_resp['data']['can_send_international_sms'] is False
 
-            data = {
-                'research_mode': True,
-                'can_send_letters': True,
-                'can_send_international_sms': True,
-            }
+    data = {
+        'research_mode': True,
+        'can_send_letters': True,
+        'can_send_international_sms': True,
+    }
 
-            auth_header = create_authorization_header()
+    auth_header = create_authorization_header()
 
-            resp = client.post(
-                '/service/{}'.format(sample_service.id),
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header]
-            )
-            result = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 200
-            assert result['data']['research_mode'] is True
-            assert result['data']['can_send_letters'] is True
-            assert result['data']['can_send_international_sms'] is True
+    resp = client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+    assert resp.status_code == 200
+    assert result['data']['research_mode'] is True
+    assert result['data']['can_send_letters'] is True
+    assert result['data']['can_send_international_sms'] is True
+
+
+@pytest.fixture(scope='function')
+def service_with_no_permissions(notify_db, notify_db_session):
+    return create_service(notify_db, notify_db_session, permissions=[])
+
+
+def test_update_service_flags_with_service_without_default_service_permissions(client, service_with_no_permissions):
+    auth_header = create_authorization_header()
+    data = {
+        'can_send_letters': True,
+        'can_send_international_sms': True,
+    }
+
+    resp = client.post(
+        '/service/{}'.format(service_with_no_permissions.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+
+    assert resp.status_code == 200
+    assert result['data']['can_send_letters'] is True
+    assert result['data']['can_send_international_sms'] is True
+    assert set(result['data']['permissions']) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
+
+
+def test_update_service_flags_will_remove_service_permissions(client, notify_db, notify_db_session):
+    auth_header = create_authorization_header()
+
+    service = create_service(
+        notify_db, notify_db_session, permissions=[SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE])
+
+    assert service.can_send_international_sms is True
+
+    data = {
+        'can_send_international_sms': False
+    }
+
+    resp = client.post(
+        '/service/{}'.format(service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+
+    assert resp.status_code == 200
+    assert result['data']['can_send_international_sms'] is False
+    assert set(result['data']['permissions']) == set([SMS_TYPE, EMAIL_TYPE])
+
+
+def test_update_permissions_will_override_permission_flags(client, service_with_no_permissions):
+    auth_header = create_authorization_header()
+
+    data = {
+        'permissions': [LETTER_TYPE, INTERNATIONAL_SMS_TYPE]
+    }
+
+    resp = client.post(
+        '/service/{}'.format(service_with_no_permissions.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+
+    assert resp.status_code == 200
+    assert result['data']['can_send_letters'] is True
+    assert result['data']['can_send_international_sms'] is True
+    assert set(result['data']['permissions']) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
+
+
+def test_update_service_permissions_will_add_service_permissions(client, sample_service):
+    auth_header = create_authorization_header()
+
+    data = {
+        'permissions': [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]
+    }
+
+    resp = client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+
+    assert resp.status_code == 200
+    assert set(result['data']['permissions']) == set([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE])
+
+
+@pytest.mark.parametrize(
+    'permission_to_add',
+    [
+        (EMAIL_TYPE),
+        (SMS_TYPE),
+        (INTERNATIONAL_SMS_TYPE),
+        (LETTER_TYPE),
+        (INBOUND_SMS_TYPE),
+    ]
+)
+def test_add_service_permission_will_add_permission(client, service_with_no_permissions, permission_to_add):
+    auth_header = create_authorization_header()
+
+    data = {
+        'permissions': [permission_to_add]
+    }
+
+    resp = client.post(
+        '/service/{}'.format(service_with_no_permissions.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    resp = client.get(
+        '/service/{}'.format(service_with_no_permissions.id),
+        headers=[auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+
+    assert resp.status_code == 200
+    assert result['data']['permissions'] == [permission_to_add]
+
+
+def test_update_permissions_with_an_invalid_permission_will_raise_error(client, sample_service):
+    auth_header = create_authorization_header()
+    invalid_permission = 'invalid_permission'
+
+    data = {
+        'permissions': [EMAIL_TYPE, SMS_TYPE, invalid_permission]
+    }
+
+    resp = client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+
+    assert resp.status_code == 400
+    assert result['result'] == 'error'
+    assert "Invalid Service Permission: '{}'".format(invalid_permission) in result['message']['permissions']
+
+
+def test_update_permissions_with_duplicate_permissions_will_raise_error(client, sample_service):
+    auth_header = create_authorization_header()
+
+    data = {
+        'permissions': [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, LETTER_TYPE]
+    }
+
+    resp = client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+
+    assert resp.status_code == 400
+    assert result['result'] == 'error'
+    assert "Duplicate Service Permission: ['{}']".format(LETTER_TYPE) in result['message']['permissions']
 
 
 def test_update_service_research_mode_throws_validation_error(notify_api, sample_service):

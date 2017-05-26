@@ -24,7 +24,7 @@ from app.models import (
     NotificationStatistics,
     ServiceWhitelist,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM,
-    MOBILE_TYPE, EMAIL_TYPE, LETTER_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED, ScheduledNotification)
+    MOBILE_TYPE, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED, ScheduledNotification)
 from app.dao.users_dao import (create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
@@ -124,7 +124,8 @@ def sample_service(
     restricted=False,
     limit=1000,
     email_from=None,
-    can_send_international_sms=False
+    can_send_international_sms=False,
+    permissions=[SMS_TYPE, EMAIL_TYPE]
 ):
     if user is None:
         user = create_user()
@@ -142,7 +143,7 @@ def sample_service(
     service = Service.query.filter_by(name=service_name).first()
     if not service:
         service = Service(**data)
-        dao_create_service(service, user)
+        dao_create_service(service, user, service_permissions=permissions)
     else:
         if user not in service.users:
             dao_add_user_to_service(service, user)

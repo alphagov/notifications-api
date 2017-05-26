@@ -241,7 +241,8 @@ class ServicePermission(db.Model):
     service = db.relationship("Service")
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
 
-    service_permission_types = db.relationship(Service, backref=db.backref("permissions"))
+    service_permission_types = db.relationship(
+        Service, backref=db.backref("permissions", cascade="all, delete-orphan"))
 
     def __repr__(self):
         return '<{} has service permission: {}>'.format(self.service_id, self.permission)

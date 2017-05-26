@@ -95,12 +95,11 @@ def get_services():
 def get_service_by_id(service_id):
     if request.args.get('detailed') == 'True':
         data = get_detailed_service(service_id, today_only=request.args.get('today_only') == 'True')
-        return jsonify(data=data)
     else:
         fetched = dao_fetch_service_by_id(service_id)
 
         data = service_schema.dump(fetched).data
-        return jsonify(data=data)
+    return jsonify(data=data)
 
 
 @service_blueprint.route('', methods=['POST'])
@@ -129,6 +128,7 @@ def update_service(service_id):
     service_going_live = fetched_service.restricted and not request.get_json().get('restricted', True)
 
     current_data = dict(service_schema.dump(fetched_service).data.items())
+    service_schema.set_override_flag(request.get_json().get('permissions') is not None)
     current_data.update(request.get_json())
     update_dict = service_schema.load(current_data).data
     dao_update_service(update_dict)
