@@ -186,18 +186,6 @@ class ServiceSchema(BaseSchema):
     def service_permissions(self, service):
         permissions = [p.permission for p in service.permissions]
 
-        def deprecate_convert_flags_to_permissions():
-            def convert_flags(flag, permission):
-                if flag and permission not in permissions:
-                    permissions.append(permission)
-                elif flag is False and permission in permissions:
-                    permissions.remove(permission)
-
-            convert_flags(service.can_send_international_sms, INTERNATIONAL_SMS_TYPE)
-            convert_flags(service.can_send_letters, LETTER_TYPE)
-
-        deprecate_convert_flags_to_permissions()
-
         return permissions
 
     class Meta:
