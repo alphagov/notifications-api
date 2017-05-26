@@ -519,7 +519,9 @@ def test_update_service_flags_will_remove_service_permissions(client, notify_db,
 
     assert resp.status_code == 200
     assert result['data']['can_send_international_sms'] is False
-    assert set(result['data']['permissions']) == set([SMS_TYPE, EMAIL_TYPE])
+
+    permissions = ServicePermission.query.filter_by(service_id=service.id).all()
+    assert set([p.permission for p in permissions]) == set([SMS_TYPE, EMAIL_TYPE])
 
 
 def test_update_permissions_will_override_permission_flags(client, service_with_no_permissions):
@@ -583,14 +585,10 @@ def test_add_service_permission_will_add_permission(client, service_with_no_perm
         headers=[('Content-Type', 'application/json'), auth_header]
     )
 
-    resp = client.get(
-        '/service/{}'.format(service_with_no_permissions.id),
-        headers=[auth_header]
-    )
-    result = json.loads(resp.get_data(as_text=True))
+    permissions = ServicePermission.query.filter_by(service_id=service_with_no_permissions.id).all()
 
     assert resp.status_code == 200
-    assert result['data']['permissions'] == [permission_to_add]
+    assert [p.permission for p in permissions] == [permission_to_add]
 
 
 def test_update_permissions_with_an_invalid_permission_will_raise_error(client, sample_service):
