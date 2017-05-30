@@ -3,19 +3,20 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
-from app.dao import services_dao, templates_dao
+from app.dao import templates_dao
 from app.models import SMS_TYPE, EMAIL_TYPE, PRIORITY
 from app.notifications.process_notifications import (
     create_content_for_notification,
     persist_notification,
     send_notification_to_queue,
-    simulated_recipient)
+    simulated_recipient,
+    persist_scheduled_notification)
 from app.notifications.validators import (
     check_template_is_for_notification_type,
     check_template_is_active,
     check_sms_content_char_count,
     validate_and_format_recipient,
-    check_rate_limiting)
+    check_rate_limiting, service_can_schedule_notification)
 from app.schema_validation import validate
 from app.v2.errors import BadRequestError
 from app.v2.notifications import v2_notification_blueprint
@@ -33,6 +34,10 @@ def post_notification(notification_type):
     else:
         form = validate(request.get_json(), post_sms_request)
 
+    scheduled_for = form.get("scheduled_for", None)
+    if scheduled_for:
+        if not service_can_schedule_notification(authenticated_service):
+            return
     check_rate_limiting(authenticated_service, api_user)
 
     form_send_to = form['phone_number'] if notification_type == SMS_TYPE else form['email_address']
@@ -57,31 +62,35 @@ def post_notification(notification_type):
                                         client_reference=form.get('reference', None),
                                         simulated=simulated)
 
-    if not simulated:
-        queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
-        send_notification_to_queue(
-            notification=notification,
-            research_mode=authenticated_service.research_mode,
-            queue=queue_name
-        )
-
+    if scheduled_for:
+        persist_scheduled_notification(notification.id, form["scheduled_for"])
     else:
-        current_app.logger.info("POST simulated notification for id: {}".format(notification.id))
+        if not simulated:
+            queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
+            send_notification_to_queue(
+                notification=notification,
+                research_mode=authenticated_service.research_mode,
+                queue=queue_name
+            )
+        else:
+            current_app.logger.info("POST simulated notification for id: {}".format(notification.id))
+
     if notification_type == SMS_TYPE:
         sms_sender = authenticated_service.sms_sender or current_app.config.get('FROM_NUMBER')
         resp = create_post_sms_response_from_notification(notification=notification,
                                                           body=str(template_with_content),
                                                           from_number=sms_sender,
                                                           url_root=request.url_root,
-                                                          service_id=authenticated_service.id)
+                                                          service_id=authenticated_service.id,
+                                                          scheduled_for=scheduled_for)
     else:
         resp = create_post_email_response_from_notification(notification=notification,
                                                             content=str(template_with_content),
                                                             subject=template_with_content.subject,
                                                             email_from=authenticated_service.email_from,
                                                             url_root=request.url_root,
-                                                            service_id=authenticated_service.id)
-
+                                                            service_id=authenticated_service.id,
+                                                            scheduled_for=scheduled_for)
     return jsonify(resp), 201
 
 

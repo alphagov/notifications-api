@@ -154,6 +154,11 @@ class Config(object):
             'schedule': crontab(minute=1),
             'options': {'queue': QueueNames.PERIODIC}
         },
+        # 'send-scheduled-notifications': {
+        #     'task': 'send-scheduled-notifications',
+        #     'schedule': crontab(minute='*/15'),
+        #     'options': {'queue': 'periodic'}
+        # },
         'delete-verify-codes': {
             'task': 'delete-verify-codes',
             'schedule': timedelta(minutes=63),

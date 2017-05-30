@@ -12,9 +12,11 @@ from app.models import (
     Job,
     NotificationStatistics,
     TemplateStatistics,
+    ScheduledNotification,
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_FAILED,
     NOTIFICATION_SENT,
+    NOTIFICATION_DELIVERED,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST
@@ -40,7 +42,9 @@ from app.dao.notifications_dao import (
     dao_delete_notifications_and_history_by_id,
     dao_timeout_notifications,
     is_delivery_slow_for_provider,
-    dao_update_notifications_sent_to_dvla, dao_get_notifications_by_to_field)
+    dao_update_notifications_sent_to_dvla,
+    dao_get_notifications_by_to_field,
+    dao_created_scheduled_notification, dao_get_scheduled_notifications, set_scheduled_notification_to_processed)
 
 from app.dao.services_dao import dao_update_service
 from tests.app.db import create_notification
@@ -354,28 +358,45 @@ def test_should_update_status_by_id_if_created(notify_db, notify_db_session):
     assert updated.status == 'failed'
 
 
-def test_should_not_update_status_by_reference_if_in_sent_status(notify_db, notify_db_session):
-    notification = sample_notification(
-        notify_db,
-        notify_db_session,
+def test_should_not_update_status_by_reference_if_from_country_with_no_delivery_receipts(sample_template):
+    notification = create_notification(
+        sample_template,
         status=NOTIFICATION_SENT,
         reference='foo'
     )
 
-    update_notification_status_by_reference('foo', 'failed')
-    assert Notification.query.get(notification.id).status == NOTIFICATION_SENT
+    res = update_notification_status_by_reference('foo', 'failed')
+
+    assert res is None
+    assert notification.status == NOTIFICATION_SENT
 
 
-def test_should_not_update_status_by_id_if_in_sent_status(notify_db, notify_db_session):
-    notification = sample_notification(
-        notify_db,
-        notify_db_session,
-        status=NOTIFICATION_SENT
+def test_should_not_update_status_by_id_if_sent_to_country_with_no_delivery_receipts(sample_template):
+    notification = create_notification(
+        sample_template,
+        status=NOTIFICATION_SENT,
+        international=True,
+        phone_prefix='1'  # americans only have carrier delivery receipts
     )
 
-    update_notification_status_by_id(notification.id, 'failed')
+    res = update_notification_status_by_id(notification.id, 'delivered')
 
-    assert Notification.query.get(notification.id).status == NOTIFICATION_SENT
+    assert res is None
+    assert notification.status == NOTIFICATION_SENT
+
+
+def test_should_not_update_status_by_id_if_sent_to_country_with_no_delivery_receipts(sample_template):
+    notification = create_notification(
+        sample_template,
+        status=NOTIFICATION_SENT,
+        international=True,
+        phone_prefix='7'  # russians have full delivery receipts
+    )
+
+    res = update_notification_status_by_id(notification.id, 'delivered')
+
+    assert res == notification
+    assert notification.status == NOTIFICATION_DELIVERED
 
 
 def test_should_not_update_status_by_reference_if_not_sending(notify_db, notify_db_session):
@@ -714,13 +735,18 @@ def test_save_notification_with_no_job(sample_template, mmg_provider):
     assert notification_from_db.status == 'created'
 
 
-def test_get_notification_by_id(sample_notification):
+def test_get_notification_by_id(notify_db, notify_db_session, sample_template):
+    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                       template=sample_template,
+                                       scheduled_for='2017-05-05 14:15',
+                                       status='created')
     notification_from_db = get_notification_with_personalisation(
-        sample_notification.service.id,
-        sample_notification.id,
+        sample_template.service.id,
+        notification.id,
         key_type=None
     )
-    assert sample_notification == notification_from_db
+    assert notification == notification_from_db
+    assert notification_from_db.scheduled_notification.scheduled_for == datetime(2017, 5, 5, 14, 15)
 
 
 def test_get_notifications_by_reference(notify_db, notify_db_session, sample_service):
@@ -1720,30 +1746,146 @@ def test_dao_update_notifications_sent_to_dvla_does_update_history_if_test_key(
 
 
 def test_dao_get_notifications_by_to_field(sample_template):
-    notification1 = create_notification(template=sample_template, to_field='+447700900855')
-    notification2 = create_notification(template=sample_template, to_field='jack@gmail.com')
-    notification3 = create_notification(template=sample_template, to_field='jane@gmail.com')
+    notification1 = create_notification(
+        template=sample_template, to_field='+447700900855', normalised_to='447700900855'
+    )
+    create_notification(
+        template=sample_template, to_field='jack@gmail.com', normalised_to='jack@gmail.com'
+    )
+    create_notification(
+        template=sample_template, to_field='jane@gmail.com', normalised_to='jane@gmail.com'
+    )
     results = dao_get_notifications_by_to_field(notification1.service_id, "+447700900855")
+
     assert len(results) == 1
-    assert results[0].id == notification1.id
+    assert notification1.id == results[0].id
 
 
 def test_dao_get_notifications_by_to_field_search_is_not_case_sensitive(sample_template):
-    notification1 = create_notification(template=sample_template, to_field='+447700900855')
-    notification2 = create_notification(template=sample_template, to_field='jack@gmail.com')
-    notification3 = create_notification(template=sample_template, to_field='jane@gmail.com')
-    results = dao_get_notifications_by_to_field(notification1.service_id, 'JACK@gmail.com')
+    notification = create_notification(
+        template=sample_template, to_field='jack@gmail.com', normalised_to='jack@gmail.com'
+    )
+    results = dao_get_notifications_by_to_field(notification.service_id, 'JACK@gmail.com')
+    notification_ids = [notification.id for notification in results]
+
     assert len(results) == 1
-    assert results[0].id == notification2.id
+    assert notification.id in notification_ids
 
 
 def test_dao_get_notifications_by_to_field_search_ignores_spaces(sample_template):
-    notification1 = create_notification(template=sample_template, to_field='+447700900855')
-    notification2 = create_notification(template=sample_template, to_field='+44 77 00900 855')
-    notification3 = create_notification(template=sample_template, to_field=' +4477009 00 855 ')
-    notification4 = create_notification(template=sample_template, to_field='jack@gmail.com')
+    notification1 = create_notification(
+        template=sample_template, to_field='+447700900855', normalised_to='447700900855'
+    )
+    notification2 = create_notification(
+        template=sample_template, to_field='+44 77 00900 855', normalised_to='447700900855'
+    )
+    notification3 = create_notification(
+        template=sample_template, to_field=' +4477009 00 855 ', normalised_to='447700900855'
+    )
+    create_notification(
+        template=sample_template, to_field='jaCK@gmail.com', normalised_to='jack@gmail.com'
+    )
+
     results = dao_get_notifications_by_to_field(notification1.service_id, '+447700900855')
+    notification_ids = [notification.id for notification in results]
+
     assert len(results) == 3
-    assert notification1.id in [r.id for r in results]
-    assert notification2.id in [r.id for r in results]
-    assert notification3.id in [r.id for r in results]
+    assert notification1.id in notification_ids
+    assert notification2.id in notification_ids
+    assert notification3.id in notification_ids
+
+
+def test_dao_created_scheduled_notification(sample_notification):
+
+    scheduled_notification = ScheduledNotification(notification_id=sample_notification.id,
+                                                   scheduled_for=datetime.strptime("2017-01-05 14:15",
+                                                                                   "%Y-%m-%d %H:%M"))
+    dao_created_scheduled_notification(scheduled_notification)
+    saved_notification = ScheduledNotification.query.all()
+    assert len(saved_notification) == 1
+    assert saved_notification[0].notification_id == sample_notification.id
+    assert saved_notification[0].scheduled_for == datetime(2017, 1, 5, 14, 15)
+
+
+def test_dao_get_scheduled_notifications(notify_db, notify_db_session, sample_template):
+    notification_1 = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                         template=sample_template, scheduled_for='2017-05-05 14:15',
+                                         status='created')
+    sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                        template=sample_template, scheduled_for='2017-05-04 14:15', status='delivered')
+    sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                        template=sample_template, status='created')
+    scheduled_notifications = dao_get_scheduled_notifications()
+    assert len(scheduled_notifications) == 1
+    assert scheduled_notifications[0].id == notification_1.id
+    assert scheduled_notifications[0].scheduled_notification.pending
+
+
+def test_set_scheduled_notification_to_processed(notify_db, notify_db_session, sample_template):
+    notification_1 = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                         template=sample_template, scheduled_for='2017-05-05 14:15',
+                                         status='created')
+    scheduled_notifications = dao_get_scheduled_notifications()
+    assert len(scheduled_notifications) == 1
+    assert scheduled_notifications[0].id == notification_1.id
+    assert scheduled_notifications[0].scheduled_notification.pending
+
+    set_scheduled_notification_to_processed(notification_1.id)
+    scheduled_notifications = dao_get_scheduled_notifications()
+    assert not scheduled_notifications
+
+
+def test_dao_get_notifications_by_to_field_filters_status(sample_template):
+    notification = create_notification(
+        template=sample_template, to_field='+447700900855',
+        normalised_to='447700900855', status='delivered'
+    )
+    create_notification(
+        template=sample_template, to_field='+447700900855',
+        normalised_to='447700900855', status='temporary-failure'
+    )
+
+    notifications = dao_get_notifications_by_to_field(notification.service_id, "+447700900855", statuses=['delivered'])
+
+    assert len(notifications) == 1
+    assert notification.id == notifications[0].id
+
+
+def test_dao_get_notifications_by_to_field_filters_multiple_statuses(sample_template):
+    notification1 = create_notification(
+        template=sample_template, to_field='+447700900855',
+        normalised_to='447700900855', status='delivered'
+    )
+    notification2 = create_notification(
+        template=sample_template, to_field='+447700900855',
+        normalised_to='447700900855', status='sending'
+    )
+
+    notifications = dao_get_notifications_by_to_field(
+        notification1.service_id, "+447700900855", statuses=['delivered', 'sending']
+    )
+    notification_ids = [notification.id for notification in notifications]
+
+    assert len(notifications) == 2
+    assert notification1.id in notification_ids
+    assert notification2.id in notification_ids
+
+
+def test_dao_get_notifications_by_to_field_returns_all_if_no_status_filter(sample_template):
+    notification1 = create_notification(
+        template=sample_template, to_field='+447700900855',
+        normalised_to='447700900855', status='delivered'
+    )
+    notification2 = create_notification(
+        template=sample_template, to_field='+447700900855',
+        normalised_to='447700900855', status='temporary-failure'
+    )
+
+    notifications = dao_get_notifications_by_to_field(
+        notification1.service_id, "+447700900855"
+    )
+    notification_ids = [notification.id for notification in notifications]
+
+    assert len(notifications) == 2
+    assert notification1.id in notification_ids
+    assert notification2.id in notification_ids

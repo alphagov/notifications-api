@@ -5,9 +5,16 @@ from datetime import (
     date)
 
 from flask import current_app
+
+from notifications_utils.recipients import (
+    validate_and_format_phone_number,
+    validate_and_format_email_address,
+    InvalidPhoneError
+)
 from werkzeug.datastructures import MultiDict
 from sqlalchemy import (desc, func, or_, and_, asc)
 from sqlalchemy.orm import joinedload
+from notifications_utils.international_billing_rates import INTERNATIONAL_BILLING_RATES
 
 from app import db, create_uuid
 from app.dao import days_ago
@@ -27,7 +34,7 @@ from app.models import (
     NOTIFICATION_PERMANENT_FAILURE,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST,
     LETTER_TYPE,
-    NOTIFICATION_SENT)
+    NOTIFICATION_SENT, ScheduledNotification)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
@@ -163,6 +170,10 @@ def _decide_permanent_temporary_failure(current_status, status):
     return status
 
 
+def country_records_delivery(phone_prefix):
+    return INTERNATIONAL_BILLING_RATES[phone_prefix]['attributes']['dlr'].lower() == 'yes'
+
+
 def _update_notification_status(notification, status):
     status = _decide_permanent_temporary_failure(current_status=notification.status, status=status)
     notification.status = status
@@ -182,7 +193,10 @@ def update_notification_status_by_id(notification_id, status):
             Notification.status == NOTIFICATION_SENT
         )).first()
 
-    if not notification or notification.status == NOTIFICATION_SENT:
+    if not notification:
+        return None
+
+    if notification.international and not country_records_delivery(notification.phone_prefix):
         return None
 
     return _update_notification_status(
@@ -459,7 +473,45 @@ def dao_update_notifications_sent_to_dvla(job_id, provider):
 
 
 @statsd(namespace="dao")
-def dao_get_notifications_by_to_field(service_id, search_term):
-    return Notification.query.filter(
+def dao_get_notifications_by_to_field(service_id, search_term, statuses=None):
+    try:
+        normalised = validate_and_format_phone_number(search_term)
+    except InvalidPhoneError:
+        normalised = validate_and_format_email_address(search_term)
+
+    filters = [
         Notification.service_id == service_id,
-        func.replace(func.lower(Notification.to), " ", "") == search_term.lower().replace(" ", "")).all()
+        Notification.normalised_to == normalised
+    ]
+
+    if statuses:
+        filters.append(Notification.status.in_(statuses))
+
+    results = db.session.query(Notification).filter(*filters).all()
+    return results
+
+
+@statsd(namespace="dao")
+def dao_created_scheduled_notification(scheduled_notification):
+    db.session.add(scheduled_notification)
+    db.session.commit()
+
+
+@statsd(namespace="dao")
+def dao_get_scheduled_notifications():
+    notifications = Notification.query.join(
+        ScheduledNotification
+    ).filter(
+        ScheduledNotification.scheduled_for < datetime.utcnow(),
+        ScheduledNotification.pending).all()
+
+    return notifications
+
+
+def set_scheduled_notification_to_processed(notification_id):
+    db.session.query(ScheduledNotification).filter(
+        ScheduledNotification.notification_id == notification_id
+    ).update(
+        {'pending': False}
+    )
+    db.session.commit()

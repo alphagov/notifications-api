@@ -5,11 +5,12 @@ from datetime import datetime
 from flask import (
     jsonify,
     request,
-    current_app
+    current_app,
+    Blueprint
 )
 from sqlalchemy.orm.exc import NoResultFound
 
-from app.dao import notification_usage_dao
+from app.dao import notification_usage_dao, notifications_dao
 from app.dao.dao_utils import dao_rollback
 from app.dao.api_key_dao import (
     save_model_api_key,
@@ -39,11 +40,13 @@ from app.dao.service_whitelist_dao import (
     dao_add_and_commit_whitelisted_contacts,
     dao_remove_service_whitelist
 )
-from app.dao import notifications_dao
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_user_by_id
 from app.errors import (
-    InvalidRequest, register_errors)
+    InvalidRequest,
+    register_errors
+)
+from app.models import Service
 from app.service import statistics
 from app.service.utils import get_whitelist_objects
 from app.service.sender import send_notification_to_service_users
@@ -57,7 +60,6 @@ from app.schemas import (
     detailed_service_schema
 )
 from app.utils import pagination_links
-from flask import Blueprint
 
 service_blueprint = Blueprint('service', __name__)
 
@@ -93,12 +95,11 @@ def get_services():
 def get_service_by_id(service_id):
     if request.args.get('detailed') == 'True':
         data = get_detailed_service(service_id, today_only=request.args.get('today_only') == 'True')
-        return jsonify(data=data)
     else:
         fetched = dao_fetch_service_by_id(service_id)
 
         data = service_schema.dump(fetched).data
-        return jsonify(data=data)
+    return jsonify(data=data)
 
 
 @service_blueprint.route('', methods=['POST'])
@@ -108,9 +109,14 @@ def create_service():
         errors = {'user_id': ['Missing data for required field.']}
         raise InvalidRequest(errors, status_code=400)
 
-    user = get_user_by_id(data['user_id'])
-    data.pop('user_id', None)
-    valid_service = service_schema.load(request.get_json()).data
+    # validate json with marshmallow
+    service_schema.load(request.get_json())
+
+    user = get_user_by_id(data.pop('user_id', None))
+
+    # unpack valid json into service object
+    valid_service = Service.from_json(data)
+
     dao_create_service(valid_service, user)
     return jsonify(data=service_schema.dump(valid_service).data), 201
 
@@ -122,6 +128,7 @@ def update_service(service_id):
     service_going_live = fetched_service.restricted and not request.get_json().get('restricted', True)
 
     current_data = dict(service_schema.dump(fetched_service).data.items())
+    service_schema.set_override_flag(request.get_json().get('permissions') is not None)
     current_data.update(request.get_json())
     update_dict = service_schema.load(current_data).data
     dao_update_service(update_dict)
@@ -258,8 +265,8 @@ def get_service_history(service_id):
 @service_blueprint.route('/<uuid:service_id>/notifications', methods=['GET'])
 def get_all_notifications_for_service(service_id):
     data = notifications_filter_schema.load(request.args).data
-    if data.get("to", None):
-        return search_for_notification_by_to_field(service_id, request.query_string.decode())
+    if data.get('to'):
+        return search_for_notification_by_to_field(service_id, data['to'], statuses=data.get('status'))
     page = data['page'] if 'page' in data else 1
     page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
     limit_days = data.get('limit_days')
@@ -289,11 +296,11 @@ def get_all_notifications_for_service(service_id):
     ), 200
 
 
-def search_for_notification_by_to_field(service_id, search_term):
-    search_term = search_term.replace('to=', '')
-    results = notifications_dao.dao_get_notifications_by_to_field(service_id, search_term)
+def search_for_notification_by_to_field(service_id, search_term, statuses):
+    results = notifications_dao.dao_get_notifications_by_to_field(service_id, search_term, statuses)
     return jsonify(
-        notifications=notification_with_template_schema.dump(results, many=True).data), 200
+        notifications=notification_with_template_schema.dump(results, many=True).data
+    ), 200
 
 
 @service_blueprint.route('/<uuid:service_id>/notifications/monthly', methods=['GET'])
