@@ -1772,6 +1772,20 @@ def test_dao_get_notifications_by_to_field_search_is_not_case_sensitive(sample_t
     assert notification.id in notification_ids
 
 
+@pytest.mark.parametrize('to', [
+    'not@email', '123'
+])
+def test_dao_get_notifications_by_to_field_accepts_invalid_phone_numbers_and_email_addresses(
+    sample_template,
+    to,
+):
+    notification = create_notification(
+        template=sample_template, to_field='test@example.com', normalised_to='test@example.com'
+    )
+    results = dao_get_notifications_by_to_field(notification.service_id, to)
+    assert len(results) == 0
+
+
 def test_dao_get_notifications_by_to_field_search_ignores_spaces(sample_template):
     notification1 = create_notification(
         template=sample_template, to_field='+447700900855', normalised_to='447700900855'
