@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0087_govuk_sms_sender
-Revises: 0086_add_norm_to_notification
+Revision ID: 0088_govuk_sms_sender
+Revises: 0087_scheduled_notifications
 Create Date: 2017-05-22 13:46:09.584801
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0087_govuk_sms_sender'
-down_revision = '0086_add_norm_to_notification'
+revision = '0088_govuk_sms_sender'
+down_revision = '0087_scheduled_notifications'
 
 from alembic import op
 
