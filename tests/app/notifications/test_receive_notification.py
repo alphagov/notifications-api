@@ -2,12 +2,13 @@ from datetime import datetime
 
 import pytest
 from flask import json
-import freezegun
 
 from app.notifications.receive_notifications import (
     format_message,
     create_inbound_sms_object
 )
+
+from tests.app.db import create_service
 
 
 def test_receive_notification_returns_received_to_mmg(client, sample_service):
@@ -57,3 +58,26 @@ def test_create_inbound_sms_object(sample_service):
     assert inbound_sms.provider_reference == 'bar'
     assert inbound_sms._content != 'hello there 📩'
     assert inbound_sms.content == 'hello there 📩'
+
+
+@pytest.mark.parametrize('notify_number', ['foo', 'baz'], ids=['two_matching_services', 'no_matching_services'])
+def test_receive_notification_error_if_not_single_matching_service(client, notify_db_session, notify_number):
+    create_service(service_name='a', sms_sender='foo')
+    create_service(service_name='b', sms_sender='foo')
+
+    data = {
+        'Message': 'hello',
+        'Number': notify_number,
+        'MSISDN': '7700900001',
+        'DateReceived': '2017-01-02 03:04:05',
+        'ID': 'bar',
+    }
+    response = client.post(path='/notifications/sms/receive/mmg',
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json')])
+
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True)) == {
+        'result': 'error',
+        'message': 'Inbound number "{}" not associated with exactly one service'.format(notify_number)
+    }
