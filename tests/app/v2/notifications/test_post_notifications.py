@@ -231,7 +231,7 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
     notification_id = json.loads(response.data)['id']
 
     assert response.status_code == 201
-    mocked.assert_called_once_with([notification_id], queue='priority')
+    mocked.assert_called_once_with([notification_id], queue='priority-tasks')
 
 
 @pytest.mark.parametrize(

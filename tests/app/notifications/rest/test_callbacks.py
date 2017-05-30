@@ -68,7 +68,7 @@ def test_dvla_callback_calls_update_letter_notifications_task(client, mocker):
 
     assert response.status_code == 200
     assert update_task.called
-    update_task.assert_called_with(['bar.txt'], queue='notify')
+    update_task.assert_called_with(['bar.txt'], queue='notify-internal-tasks')
 
 
 def test_dvla_callback_does_not_raise_error_parsing_json_for_plaintext_header(client, mocker):

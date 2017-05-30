@@ -13,7 +13,7 @@ from app.celery.tasks import update_letter_notifications_statuses
 from app.v2.errors import register_errors
 from app.notifications.utils import autoconfirm_subscription
 from app.schema_validation import validate
-
+from app.config import QueueNames
 
 letter_callback_blueprint = Blueprint('notifications_letter_callback', __name__)
 register_errors(letter_callback_blueprint)
@@ -54,7 +54,7 @@ def process_letter_response():
         filename = message['Records'][0]['s3']['object']['key']
         current_app.logger.info('Received file from DVLA: {}'.format(filename))
         current_app.logger.info('DVLA callback: Calling task to update letter notifications')
-        update_letter_notifications_statuses.apply_async([filename], queue='notify')
+        update_letter_notifications_statuses.apply_async([filename], queue=QueueNames.NOTIFY)
 
     return jsonify(
         result="success", message="DVLA callback succeeded"

@@ -33,7 +33,7 @@ def test_create_invited_user(client, sample_service, mocker, invitation_email_te
     assert json_resp['data']['id']
 
     notification = Notification.query.first()
-    mocked.assert_called_once_with([(str(notification.id))], queue="notify")
+    mocked.assert_called_once_with([(str(notification.id))], queue="notify-internal-tasks")
 
 
 def test_create_invited_user_invalid_email(client, sample_service, mocker):

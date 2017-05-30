@@ -78,7 +78,7 @@ def test_should_call_deliver_sms_task_if_send_sms_to_provider_fails(notify_api, 
             )
         app.delivery.send_to_providers.send_sms_to_provider.assert_called_with(sample_notification)
         app.celery.provider_tasks.deliver_sms.apply_async.assert_called_with(
-            (str(sample_notification.id)), queue='send-sms'
+            (str(sample_notification.id)), queue='send-tasks'
         )
         assert response.status_code == 204
 
@@ -100,6 +100,6 @@ def test_should_call_deliver_email_task_if_send_email_to_provider_fails(
             )
         app.delivery.send_to_providers.send_email_to_provider.assert_called_with(sample_email_notification)
         app.celery.provider_tasks.deliver_email.apply_async.assert_called_with(
-            (str(sample_email_notification.id)), queue='send-email'
+            (str(sample_email_notification.id)), queue='send-tasks'
         )
         assert response.status_code == 204
