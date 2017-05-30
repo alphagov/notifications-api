@@ -25,23 +25,6 @@ class QueueNames(object):
     PROCESS_FTP = 'process-ftp-tasks'
 
     @staticmethod
-    def old_queues():
-        return [
-            'db-sms',
-            'db-email',
-            'db-letter',
-            'priority',
-            'periodic',
-            'send-sms',
-            'send-email',
-            'research-mode',
-            'statistics',
-            'notify',
-            'retry',
-            'process-job'
-        ]
-
-    @staticmethod
     def all_queues():
         return [
             QueueNames.PRIORITY,
@@ -262,8 +245,6 @@ class Development(Config):
     NOTIFICATION_QUEUE_PREFIX = 'development'
     DEBUG = True
 
-    queues = QueueNames.all_queues() + QueueNames.old_queues()
-
     for queue in QueueNames.all_queues():
         Config.CELERY_QUEUES.append(
             Queue(queue, Exchange('default'), routing_key=queue)
@@ -283,9 +264,7 @@ class Test(Config):
     STATSD_HOST = "localhost"
     STATSD_PORT = 1000
 
-    queues = QueueNames.all_queues() + QueueNames.old_queues()
-
-    for queue in queues:
+    for queue in QueueNames.all_queues():
         Config.CELERY_QUEUES.append(
             Queue(queue, Exchange('default'), routing_key=queue)
         )
