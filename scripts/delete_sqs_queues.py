@@ -4,20 +4,20 @@ Script to manage SQS queues. Can list or delete queues.
 
 Uses boto, so relies on correctly set up AWS access keys and tokens.
 
-In principle use this script to dump details of all queues in a gievn environment, and then 
+In principle use this script to dump details of all queues in a gievn environment, and then
 manipulate the resultant CSV file so that it contains the queues you want to delete.
 
 Very hands on. Starter for a more automagic process.
 
 Usage:
     scripts/delete_sqs_queues.py <action>
-    
+
     options are:
     - list: dumps queue details to local file queues.csv in current directory.
     - delete: delete queues from local file queues.csv in current directory.
 
 Example:
-        scripts/delete_sqs_queues.py list delete 
+        scripts/delete_sqs_queues.py list delete
 """
 
 from docopt import docopt
@@ -50,9 +50,7 @@ def get_queue_attributes(queue_name):
         ]
     )
     queue_attributes = response['Attributes']
-    queue_attributes.update({
-       'QueueUrl': queue_name
-    })
+    queue_attributes.update({'QueueUrl': queue_name})
     return queue_attributes
 
 
