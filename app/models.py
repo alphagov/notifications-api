@@ -1141,3 +1141,20 @@ class JobStatistics(db.Model):
         )
         the_string += "created at {}".format(self.created_at)
         return the_string
+
+
+class LetterRate(db.Model):
+    __tablename__ = 'letter_rates'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    valid_from = valid_from = db.Column(db.DateTime, nullable=False)
+
+
+class LetterRateDetail(db.Model):
+    __tablename__ = 'letter_rate_details'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    letter_rate_id = db.Column(UUID(as_uuid=True), db.ForeignKey('letter_rates.id'), index=True, nullable=False)
+    letter_rate = db.relationship('LetterRate', backref='letter_rates')
+    page_total = db.Column(db.Integer, nullable=False)
+    rate = db.Column(db.Numeric(), nullable=False)
