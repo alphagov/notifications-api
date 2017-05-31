@@ -16,3 +16,16 @@ def test_receive_notification_returns_received_to_mmg(client):
 
     assert response.status_code == 200
     assert response.get_data(as_text=True) == 'RECEIVED'
+
+
+def test_receive_notification_returns_received_to_firetext(client):
+    data = {"some": "thing"}
+    response = client.post(
+        path='/notifications/sms/receive/firetext',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json')])
+
+    assert response.status_code == 200
+    result = json.loads(response.get_data(as_text=True))
+
+    assert result['status'] == 'ok'
