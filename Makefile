@@ -306,5 +306,5 @@ cf-push:
 
 .PHONY: check-if-migrations-to-run
 check-if-migrations-to-run:
-	@echo $(shell python scripts/check_if_new_migration.py)
+	@echo $(shell python3 scripts/check_if_new_migration.py)
 
