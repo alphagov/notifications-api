@@ -24,6 +24,7 @@ applications:
 
   - name: notify-delivery-worker-database
     command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q db-sms,db-email,db-letter,database-tasks
+    memory: 1G
     env:
       NOTIFY_APP_NAME: delivery-worker-database
 
@@ -34,13 +35,13 @@ applications:
 
   - name: notify-delivery-worker-sender
     command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q send-sms,send-email,send-tasks
+    memory: 1G
     env:
       NOTIFY_APP_NAME: delivery-worker-sender
 
   - name: notify-delivery-worker-periodic
     command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=2 -Q periodic,statistics,periodic-tasks,statistics-tasks
     instances: 1
-    memory: 2G
     env:
       NOTIFY_APP_NAME: delivery-worker-periodic
 
