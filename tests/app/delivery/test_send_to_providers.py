@@ -627,6 +627,7 @@ def test_should_set_international_phone_number_to_sent_status(
     # if 40604 is actually in DB then treat that as if entered manually
     ('40604', '40604', 'bar'),
     # 'testing' is the FROM_NUMBER during unit tests
+    (None, 'testing', 'Sample service: bar'),
     ('testing', 'testing', 'Sample service: bar'),
 ])
 def test_should_handle_sms_sender_and_prefix_message(
