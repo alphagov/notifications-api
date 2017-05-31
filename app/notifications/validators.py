@@ -95,4 +95,4 @@ def check_sms_content_char_count(content_count):
 def service_can_schedule_notification(service, scheduled_for):
     if scheduled_for:
         if SCHEDULE_NOTIFICATIONS not in [p.permission for p in service.permissions]:
-            raise BadRequestError(message="Your service must be invited to schedule notifications via the API.")
+            raise BadRequestError(message="Cannot schedule notifications (this feature is invite-only)")

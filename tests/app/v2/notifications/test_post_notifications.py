@@ -397,4 +397,4 @@ def test_post_notification_raises_bad_request_if_service_not_invited_to_schedule
     assert response.status_code == 400
     error_json = json.loads(response.get_data(as_text=True))
     assert error_json['errors'] == [
-        {"error": "BadRequestError", "message": 'Your service must be invited to schedule notifications via the API.'}]
+        {"error": "BadRequestError", "message": 'Cannot schedule notifications (this feature is invite-only)'}]
