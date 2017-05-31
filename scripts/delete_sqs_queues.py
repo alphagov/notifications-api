@@ -55,6 +55,7 @@ def get_queue_attributes(queue_name):
 
 
 def delete_queue(queue_url):
+    # Note that deleting a queue returns 200 OK if it doesn't exist
     print("DELETEING {}".format(queue_url))
     response = client.delete_queue(
         QueueUrl=queue_url
