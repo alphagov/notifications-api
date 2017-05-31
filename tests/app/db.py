@@ -4,6 +4,7 @@ import uuid
 
 from app.dao.jobs_dao import dao_create_job
 from app.models import (
+    InboundSms,
     Service,
     User,
     Template,
@@ -20,6 +21,7 @@ from app.dao.notifications_dao import dao_create_notification, dao_created_sched
 from app.dao.templates_dao import dao_create_template
 from app.dao.services_dao import dao_create_service
 from app.dao.service_permissions_dao import dao_add_service_permission
+from app.dao.inbound_sms_dao import dao_create_inbound_sms
 
 
 def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk", state='active'):
@@ -183,3 +185,24 @@ def create_service_permission(service_id, permission=EMAIL_TYPE):
     service_permissions = ServicePermission.query.all()
 
     return service_permissions
+
+
+def create_inbound_sms(
+    service,
+    notify_number=None,
+    user_number='7700900111',
+    provider_date=None,
+    provider_reference=None,
+    content='Hello'
+):
+    inbound = InboundSms(
+        service=service,
+        created_at=datetime.utcnow(),
+        notify_number=notify_number or service.sms_sender,
+        user_number=user_number,
+        provider_date=provider_date or datetime.utcnow(),
+        provider_reference=provider_reference or 'foo',
+        content=content,
+    )
+    dao_create_inbound_sms(inbound)
+    return inbound
