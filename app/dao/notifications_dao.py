@@ -9,7 +9,8 @@ from flask import current_app
 from notifications_utils.recipients import (
     validate_and_format_phone_number,
     validate_and_format_email_address,
-    InvalidPhoneError
+    InvalidPhoneError,
+    InvalidEmailError,
 )
 from werkzeug.datastructures import MultiDict
 from sqlalchemy import (desc, func, or_, and_, asc)
@@ -477,7 +478,10 @@ def dao_get_notifications_by_to_field(service_id, search_term, statuses=None):
     try:
         normalised = validate_and_format_phone_number(search_term)
     except InvalidPhoneError:
-        normalised = validate_and_format_email_address(search_term)
+        try:
+            normalised = validate_and_format_email_address(search_term)
+        except InvalidEmailError:
+            normalised = search_term
 
     filters = [
         Notification.service_id == service_id,
