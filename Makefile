@@ -303,3 +303,8 @@ cf-rollback: ## Rollbacks the app to the previous release
 cf-push:
 	$(if ${CF_APP},,$(error Must specify CF_APP))
 	cf push ${CF_APP} -f ${CF_MANIFEST_FILE}
+
+.PHONY: check-if-migrations-to-run
+check-if-migrations-to-run:
+	@echo $(shell python scripts/check_if_new_migration.py)
+
