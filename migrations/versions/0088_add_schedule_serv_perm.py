@@ -20,4 +20,5 @@ def upgrade():
 
 def downgrade():
     op.get_bind()
+    op.execute("delete from service_permissions where permission = 'schedule_notifications'")
     op.execute("delete from service_permission_types where name = 'schedule_notifications'")
