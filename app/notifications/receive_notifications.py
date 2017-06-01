@@ -19,6 +19,15 @@ def receive_mmg_sms():
 
 @receive_notifications_blueprint.route('/notifications/sms/receive/firetext', methods=['POST'])
 def receive_firetext_sms():
+
+    #data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
+
+    # source mobile number of citizen
+    # destination the firetext number (normalize)
+    # message - URL encoded
+    # time - timestamp
+    # keyword - unused - ignore.
+
     post_data = request.form
     current_app.logger.info("Received Firetext notification form data: {}".format(post_data))
 

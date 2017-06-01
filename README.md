@@ -102,6 +102,27 @@ That will run pycodestyle for code analysis and our unit test suite. If you wish
 
 
 
+## Required Functional Test data
+
+On the deployed environments, thats preview / staging / production we have services built through the UI to perform certain tasks.
+
+* Functional tests.
+
+used in the functional test runs to test the app, must have API keys, templates etc. The IDs of which are used by the functional tests to test the APIs etc.
+
+* Inbound SMS
+
+Inbound SMS requires there to be a phone number bound to a service. This numbers also are configured to point to a callback URL.
+
+* Firetext
+
+we have three firetext numbers for use in Notify testing. One for each environment. There is a "Firetext Inbound SMS" service in each environment that is mapped to that number.
+
+* MMG
+
+TDBcu
+
+
 ## To remove functional test data
 
 NOTE: There is assumption that both the server name prefix and user name prefix are followed by a uuid.
