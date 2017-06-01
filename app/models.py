@@ -146,8 +146,10 @@ class DVLAOrganisation(db.Model):
 
 INTERNATIONAL_SMS_TYPE = 'international_sms'
 INBOUND_SMS_TYPE = 'inbound_sms'
+SCHEDULE_NOTIFICATIONS = 'schedule_notifications'
 
-SERVICE_PERMISSION_TYPES = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE]
+SERVICE_PERMISSION_TYPES = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
+                            SCHEDULE_NOTIFICATIONS]
 
 
 class ServicePermissionTypes(db.Model):
@@ -188,7 +190,7 @@ class Service(db.Model, Versioned):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     reply_to_email_address = db.Column(db.Text, index=False, unique=False, nullable=True)
     letter_contact_block = db.Column(db.Text, index=False, unique=False, nullable=True)
-    sms_sender = db.Column(db.String(11), nullable=True, default=lambda: current_app.config['FROM_NUMBER'])
+    sms_sender = db.Column(db.String(11), nullable=False, default=lambda: current_app.config['FROM_NUMBER'])
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
     organisation = db.relationship('Organisation')
     dvla_organisation_id = db.Column(
@@ -669,6 +671,7 @@ NOTIFICATION_STATUS_TYPES_BILLABLE = [
     NOTIFICATION_PERMANENT_FAILURE,
 ]
 
+
 NOTIFICATION_STATUS_TYPES = [
     NOTIFICATION_CREATED,
     NOTIFICATION_SENDING,
@@ -680,6 +683,8 @@ NOTIFICATION_STATUS_TYPES = [
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
 ]
+
+NOTIFICATION_STATUS_TYPES_NON_BILLABLE = list(set(NOTIFICATION_STATUS_TYPES) - set(NOTIFICATION_STATUS_TYPES_BILLABLE))
 
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
@@ -977,7 +982,7 @@ INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
 class ScheduledNotification(db.Model):
     __tablename__ = 'scheduled_notifications'
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4())
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     notification_id = db.Column(UUID(as_uuid=True), db.ForeignKey('notifications.id'), index=True, nullable=False)
     notification = db.relationship('Notification', uselist=False)
     scheduled_for = db.Column(db.DateTime, index=False, nullable=False)
@@ -1096,6 +1101,12 @@ class Rate(db.Model):
     valid_from = db.Column(db.DateTime, nullable=False)
     rate = db.Column(db.Float(asdecimal=False), nullable=False)
     notification_type = db.Column(notification_types, index=True, nullable=False)
+
+    def __str__(self):
+        the_string = "{}".format(self.rate)
+        the_string += " {}".format(self.notification_type)
+        the_string += " {}".format(self.valid_from)
+        return the_string
 
 
 class JobStatistics(db.Model):

@@ -1,4 +1,5 @@
 from urllib.parse import unquote
+from flask import jsonify
 
 from flask import Blueprint, current_app, request
 from notifications_utils.recipients import normalise_phone_number
@@ -7,10 +8,7 @@ from app import statsd_client
 from app.dao.services_dao import dao_fetch_services_by_sms_sender
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.models import InboundSms
-from app.errors import (
-    register_errors,
-    InvalidRequest
-)
+from app.errors import register_errors
 
 receive_notifications_blueprint = Blueprint('receive_notifications', __name__)
 register_errors(receive_notifications_blueprint)
@@ -67,3 +65,13 @@ def create_inbound_sms_object(service, json):
     )
     dao_create_inbound_sms(inbound)
     return inbound
+
+
+@receive_notifications_blueprint.route('/notifications/sms/receive/firetext', methods=['POST'])
+def receive_firetext_sms():
+    post_data = request.form
+    current_app.logger.info("Received Firetext notification form data: {}".format(post_data))
+
+    return jsonify({
+        "status": "ok"
+    }), 200

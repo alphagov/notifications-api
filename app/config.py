@@ -25,23 +25,6 @@ class QueueNames(object):
     PROCESS_FTP = 'process-ftp-tasks'
 
     @staticmethod
-    def old_queues():
-        return [
-            'db-sms',
-            'db-email',
-            'db-letter',
-            'priority',
-            'periodic',
-            'send-sms',
-            'send-email',
-            'research-mode',
-            'statistics',
-            'notify',
-            'retry',
-            'process-job'
-        ]
-
-    @staticmethod
     def all_queues():
         return [
             QueueNames.PRIORITY,
@@ -124,6 +107,7 @@ class Config(object):
     SMS_CHAR_COUNT_LIMIT = 495
     BRANDING_PATH = '/images/email-template/crests/'
     TEST_MESSAGE_FILENAME = 'Test message'
+    ONE_OFF_MESSAGE_FILENAME = 'Report'
     MAX_VERIFY_CODE_COUNT = 10
 
     NOTIFY_SERVICE_ID = 'd6aa2c68-a2d9-4437-ab19-3ae8eb202553'
@@ -262,8 +246,6 @@ class Development(Config):
     NOTIFICATION_QUEUE_PREFIX = 'development'
     DEBUG = True
 
-    queues = QueueNames.all_queues() + QueueNames.old_queues()
-
     for queue in QueueNames.all_queues():
         Config.CELERY_QUEUES.append(
             Queue(queue, Exchange('default'), routing_key=queue)
@@ -283,9 +265,7 @@ class Test(Config):
     STATSD_HOST = "localhost"
     STATSD_PORT = 1000
 
-    queues = QueueNames.all_queues() + QueueNames.old_queues()
-
-    for queue in queues:
+    for queue in QueueNames.all_queues():
         Config.CELERY_QUEUES.append(
             Queue(queue, Exchange('default'), routing_key=queue)
         )

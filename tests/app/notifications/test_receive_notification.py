@@ -81,3 +81,17 @@ def test_receive_notification_error_if_not_single_matching_service(client, notif
     assert response.status_code == 200
     assert response.get_data(as_text=True) == 'RECEIVED'
     assert InboundSms.query.count() == 0
+
+
+def test_receive_notification_returns_received_to_firetext(client):
+    data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
+
+    response = client.post(
+        path='/notifications/sms/receive/firetext',
+        data=data,
+        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+    assert response.status_code == 200
+    result = json.loads(response.get_data(as_text=True))
+
+    assert result['status'] == 'ok'

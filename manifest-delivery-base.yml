@@ -23,33 +23,32 @@ applications:
       NOTIFY_APP_NAME: delivery-celery-beat
 
   - name: notify-delivery-worker-database
-    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q db-sms,db-email,db-letter,database-tasks
+    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q database-tasks
     env:
       NOTIFY_APP_NAME: delivery-worker-database
 
   - name: notify-delivery-worker-research
-    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=5 -Q research-mode,research-mode-tasks
+    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=5 -Q research-mode-tasks
     env:
       NOTIFY_APP_NAME: delivery-worker-research
 
   - name: notify-delivery-worker-sender
-    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q send-sms,send-email,send-tasks
+    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q send-tasks
     env:
       NOTIFY_APP_NAME: delivery-worker-sender
 
   - name: notify-delivery-worker-periodic
-    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=2 -Q periodic,statistics,periodic-tasks,statistics-tasks
+    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=2 -Q periodic-tasks,statistics-tasks
     instances: 1
-    memory: 2G
     env:
       NOTIFY_APP_NAME: delivery-worker-periodic
 
   - name: notify-delivery-worker-priority
-    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=5 -Q priority,priority-tasks
+    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=5 -Q priority-tasks
     env:
       NOTIFY_APP_NAME: delivery-worker-priority
 
   - name: notify-delivery-worker
-    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q process-job,notify,retry,job-tasks,retry-tasks,notify-internal-tasks
+    command: scripts/run_app_paas.sh celery -A aws_run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q job-tasks,retry-tasks,notify-internal-tasks
     env:
       NOTIFY_APP_NAME: delivery-worker

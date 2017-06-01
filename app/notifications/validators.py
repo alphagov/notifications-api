@@ -6,7 +6,7 @@ from notifications_utils.recipients import (
 )
 
 from app.dao import services_dao
-from app.models import KEY_TYPE_TEST, KEY_TYPE_TEAM, SMS_TYPE
+from app.models import KEY_TYPE_TEST, KEY_TYPE_TEAM, SMS_TYPE, SCHEDULE_NOTIFICATIONS
 from app.service.utils import service_allowed_to_send_to
 from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
 from app import redis_store
@@ -92,6 +92,7 @@ def check_sms_content_char_count(content_count):
         raise BadRequestError(message=message)
 
 
-def service_can_schedule_notification(service):
-    # TODO: implement once the service permission works.
-    raise BadRequestError(message="Your service must be invited to schedule notifications via the API.")
+def service_can_schedule_notification(service, scheduled_for):
+    if scheduled_for:
+        if SCHEDULE_NOTIFICATIONS not in [p.permission for p in service.permissions]:
+            raise BadRequestError(message="Cannot schedule notifications (this feature is invite-only)")
