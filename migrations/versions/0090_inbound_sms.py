@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0088_inbound_sms
-Revises: 0087_scheduled_notifications
+Revision ID: 0090_inbound_sms
+Revises: 0089_govuk_sms_sender
 Create Date: 2017-05-22 11:28:53.471004
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0088_inbound_sms'
-down_revision = '0087_scheduled_notifications'
+revision = '0090_inbound_sms'
+down_revision = '0089_govuk_sms_sender'
 
 from alembic import op
 import sqlalchemy as sa
