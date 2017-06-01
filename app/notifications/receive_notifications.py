@@ -3,6 +3,7 @@ from urllib.parse import unquote
 from flask import Blueprint, current_app, request
 from notifications_utils.recipients import normalise_phone_number
 
+from app import statsd_client
 from app.dao.services_dao import dao_fetch_services_by_sms_sender
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.models import InboundSms
@@ -30,11 +31,15 @@ def receive_mmg_sms():
     potential_services = dao_fetch_services_by_sms_sender(post_data['Number'])
 
     if len(potential_services) != 1:
-        current_app.logger.error('')
-        raise InvalidRequest(
-            'Inbound number "{}" not associated with exactly one service'.format(post_data['Number']),
-            status_code=400
-        )
+        current_app.logger.error('Inbound number "{}" not associated with exactly one service'.format(
+            post_data['Number']
+        ))
+        statsd_client.incr('inbound.mmg.failed')
+        # since this is an issue with our service <-> number mapping, we should still tell MMG that we received
+        # succesfully
+        return 'RECEIVED', 200
+
+    statsd_client.incr('inbound.mmg.succesful')
 
     service = potential_services[0]
 

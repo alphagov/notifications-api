@@ -8,6 +8,7 @@ from app.notifications.receive_notifications import (
     create_inbound_sms_object
 )
 
+from app.models import InboundSms
 from tests.app.db import create_service
 
 
@@ -76,8 +77,7 @@ def test_receive_notification_error_if_not_single_matching_service(client, notif
                            data=json.dumps(data),
                            headers=[('Content-Type', 'application/json')])
 
-    assert response.status_code == 400
-    assert json.loads(response.get_data(as_text=True)) == {
-        'result': 'error',
-        'message': 'Inbound number "{}" not associated with exactly one service'.format(notify_number)
-    }
+    # we still return 'RECEIVED' to MMG
+    assert response.status_code == 200
+    assert response.get_data(as_text=True) == 'RECEIVED'
+    assert InboundSms.query.count() == 0
