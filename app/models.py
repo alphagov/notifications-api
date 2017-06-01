@@ -671,6 +671,7 @@ NOTIFICATION_STATUS_TYPES_BILLABLE = [
     NOTIFICATION_PERMANENT_FAILURE,
 ]
 
+
 NOTIFICATION_STATUS_TYPES = [
     NOTIFICATION_CREATED,
     NOTIFICATION_SENDING,
@@ -682,6 +683,8 @@ NOTIFICATION_STATUS_TYPES = [
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
 ]
+
+NOTIFICATION_STATUS_TYPES_NON_BILLABLE = list(set(NOTIFICATION_STATUS_TYPES) - set(NOTIFICATION_STATUS_TYPES_BILLABLE))
 
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
@@ -1098,6 +1101,12 @@ class Rate(db.Model):
     valid_from = db.Column(db.DateTime, nullable=False)
     rate = db.Column(db.Float(asdecimal=False), nullable=False)
     notification_type = db.Column(notification_types, index=True, nullable=False)
+
+    def __str__(self):
+        the_string = "{}".format(self.rate)
+        the_string += " {}".format(self.notification_type)
+        the_string += " {}".format(self.valid_from)
+        return the_string
 
 
 class JobStatistics(db.Model):
