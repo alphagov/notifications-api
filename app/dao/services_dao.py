@@ -67,6 +67,12 @@ def dao_fetch_service_by_id(service_id, only_active=False):
     return query.one()
 
 
+def dao_fetch_services_by_sms_sender(sms_sender):
+    return Service.query.filter(
+        Service.sms_sender == sms_sender
+    ).all()
+
+
 def dao_fetch_service_by_id_with_api_keys(service_id, only_active=False):
     query = Service.query.filter_by(
         id=service_id
