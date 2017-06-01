@@ -41,7 +41,7 @@ def receive_mmg_sms():
 
     service = potential_services[0]
 
-    inbound = create_inbound_sms_object(service, post_data)
+    inbound = create_inbound_mmg_sms_object(service, post_data)
 
     current_app.logger.info('{} received inbound SMS with reference {}'.format(service.id, inbound.provider_reference))
 
@@ -52,15 +52,15 @@ def format_message(message):
     return unquote(message.replace('+', ' '))
 
 
-def create_inbound_sms_object(service, json):
+def create_inbound_mmg_sms_object(service, json):
     message = format_message(json['Message'])
     user_number = normalise_phone_number(json['MSISDN'])
     inbound = InboundSms(
         service=service,
         notify_number=service.sms_sender,
         user_number=user_number,
-        provider_date=json['DateReceived'],
-        provider_reference=json['ID'],
+        provider_date=json.get('DateRecieved'),
+        provider_reference=json.get('ID'),
         content=message,
     )
     dao_create_inbound_sms(inbound)

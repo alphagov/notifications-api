@@ -5,7 +5,7 @@ from flask import json
 
 from app.notifications.receive_notifications import (
     format_message,
-    create_inbound_sms_object
+    create_inbound_mmg_sms_object
 )
 
 from app.models import InboundSms
@@ -19,7 +19,7 @@ def test_receive_notification_returns_received_to_mmg(client, sample_service):
             "Trigger": "Trigger?",
             "Number": "testing",
             "Channel": "SMS",
-            "DateReceived": "2012-06-27 12:33:00"
+            "DateRecieved": "2012-06-27 12:33:00"
             }
     response = client.post(path='/notifications/sms/receive/mmg',
                            data=json.dumps(data),
@@ -40,17 +40,17 @@ def test_format_message(message, expected_output):
     assert format_message(message) == expected_output
 
 
-def test_create_inbound_sms_object(sample_service):
+def test_create_inbound_mmg_sms_object(sample_service):
     sample_service.sms_sender = 'foo'
     data = {
         'Message': 'hello+there+%F0%9F%93%A9',
         'Number': 'foo',
         'MSISDN': '07700 900 001',
-        'DateReceived': '2017-01-02 03:04:05',
+        'DateRecieved': '2017-01-02 03:04:05',
         'ID': 'bar',
     }
 
-    inbound_sms = create_inbound_sms_object(sample_service, data)
+    inbound_sms = create_inbound_mmg_sms_object(sample_service, data)
 
     assert inbound_sms.service_id == sample_service.id
     assert inbound_sms.notify_number == 'foo'
@@ -70,7 +70,7 @@ def test_receive_notification_error_if_not_single_matching_service(client, notif
         'Message': 'hello',
         'Number': notify_number,
         'MSISDN': '7700900001',
-        'DateReceived': '2017-01-02 03:04:05',
+        'DateRecieved': '2017-01-02 03:04:05',
         'ID': 'bar',
     }
     response = client.post(path='/notifications/sms/receive/mmg',
