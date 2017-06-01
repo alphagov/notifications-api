@@ -19,7 +19,7 @@ def receive_mmg_sms():
 
 @receive_notifications_blueprint.route('/notifications/sms/receive/firetext', methods=['POST'])
 def receive_firetext_sms():
-    post_data = request.get_json()
+    post_data = request.form
     current_app.logger.info("Received Firetext notification form data: {}".format(post_data))
 
     return jsonify({
