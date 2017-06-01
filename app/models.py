@@ -146,8 +146,10 @@ class DVLAOrganisation(db.Model):
 
 INTERNATIONAL_SMS_TYPE = 'international_sms'
 INBOUND_SMS_TYPE = 'inbound_sms'
+SCHEDULE_NOTIFICATIONS = 'schedule_notifications'
 
-SERVICE_PERMISSION_TYPES = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE]
+SERVICE_PERMISSION_TYPES = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
+                            SCHEDULE_NOTIFICATIONS]
 
 
 class ServicePermissionTypes(db.Model):
@@ -977,7 +979,7 @@ INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
 class ScheduledNotification(db.Model):
     __tablename__ = 'scheduled_notifications'
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4())
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     notification_id = db.Column(UUID(as_uuid=True), db.ForeignKey('notifications.id'), index=True, nullable=False)
     notification = db.relationship('Notification', uselist=False)
     scheduled_for = db.Column(db.DateTime, index=False, nullable=False)
