@@ -107,7 +107,7 @@ class Config(object):
     SMS_CHAR_COUNT_LIMIT = 495
     BRANDING_PATH = '/images/email-template/crests/'
     TEST_MESSAGE_FILENAME = 'Test message'
-    ONE_OFF_MESSAGE_FILENAME = 'One-off message'
+    ONE_OFF_MESSAGE_FILENAME = 'Report'
     MAX_VERIFY_CODE_COUNT = 10
 
     NOTIFY_SERVICE_ID = 'd6aa2c68-a2d9-4437-ab19-3ae8eb202553'

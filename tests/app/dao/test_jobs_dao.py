@@ -337,7 +337,7 @@ def test_get_jobs_for_service_is_paginated(notify_db, notify_db_session, sample_
 
 @pytest.mark.parametrize('file_name', [
     'Test message',
-    'One-off message'
+    'Report',
 ])
 def test_get_jobs_for_service_doesnt_return_test_messages(
     notify_db,
