@@ -108,7 +108,7 @@ def test_should_process_sms_job(sample_job, mocker):
          "uuid",
          "something_encrypted",
          "2016-01-01T11:09:00.061258Z"),
-        queue="db-sms"
+        queue="database-tasks"
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
     assert job.job_status == 'finished'
@@ -237,7 +237,7 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
             "something_encrypted",
             "2016-01-01T11:09:00.061258Z"
         ),
-        queue="db-email"
+        queue="database-tasks"
     )
 
 
@@ -283,7 +283,7 @@ def test_should_process_email_job(email_job_with_placeholders, mocker):
             "something_encrypted",
             "2016-01-01T11:09:00.061258Z"
         ),
-        queue="db-email"
+        queue="database-tasks"
     )
     job = jobs_dao.dao_get_job_by_id(email_job_with_placeholders.id)
     assert job.job_status == 'finished'
@@ -324,7 +324,7 @@ def test_should_process_letter_job(sample_letter_job, mocker):
     assert process_row_mock.call_count == 1
 
     assert sample_letter_job.job_status == 'in progress'
-    tasks.build_dvla_file.apply_async.assert_called_once_with([str(sample_letter_job.id)], queue="process-job")
+    tasks.build_dvla_file.apply_async.assert_called_once_with([str(sample_letter_job.id)], queue="job-tasks")
 
 
 def test_should_process_all_sms_job(sample_job_with_placeholdered_template,
@@ -355,12 +355,12 @@ def test_should_process_all_sms_job(sample_job_with_placeholdered_template,
 
 @freeze_time('2001-01-01T12:00:00')
 @pytest.mark.parametrize('template_type, research_mode, expected_function, expected_queue', [
-    (SMS_TYPE, False, 'send_sms', 'db-sms'),
-    (SMS_TYPE, True, 'send_sms', 'research-mode'),
-    (EMAIL_TYPE, False, 'send_email', 'db-email'),
-    (EMAIL_TYPE, True, 'send_email', 'research-mode'),
-    (LETTER_TYPE, False, 'persist_letter', 'db-letter'),
-    (LETTER_TYPE, True, 'persist_letter', 'research-mode'),
+    (SMS_TYPE, False, 'send_sms', 'database-tasks'),
+    (SMS_TYPE, True, 'send_sms', 'research-mode-tasks'),
+    (EMAIL_TYPE, False, 'send_email', 'database-tasks'),
+    (EMAIL_TYPE, True, 'send_email', 'research-mode-tasks'),
+    (LETTER_TYPE, False, 'persist_letter', 'database-tasks'),
+    (LETTER_TYPE, True, 'persist_letter', 'research-mode-tasks'),
 ])
 def test_process_row_sends_letter_task(template_type, research_mode, expected_function, expected_queue, mocker):
     mocker.patch('app.celery.tasks.create_uuid', return_value='noti_uuid')
@@ -420,7 +420,7 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
     assert persisted_notification.notification_type == 'sms'
     mocked_deliver_sms.assert_called_once_with(
         [str(persisted_notification.id)],
-        queue="send-sms"
+        queue="send-tasks"
     )
 
 
@@ -446,7 +446,7 @@ def test_should_put_send_sms_task_in_research_mode_queue_if_research_mode_servic
     persisted_notification = Notification.query.one()
     provider_tasks.deliver_sms.apply_async.assert_called_once_with(
         [str(persisted_notification.id)],
-        queue="research-mode"
+        queue="research-mode-tasks"
     )
     assert mocked_deliver_sms.called
 
@@ -481,7 +481,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
     assert persisted_notification.notification_type == 'sms'
     provider_tasks.deliver_sms.apply_async.assert_called_once_with(
         [str(persisted_notification.id)],
-        queue="send-sms"
+        queue="send-tasks"
     )
 
 
@@ -507,7 +507,7 @@ def test_should_send_sms_if_restricted_service_and_non_team_number_with_test_key
     persisted_notification = Notification.query.one()
     mocked_deliver_sms.assert_called_once_with(
         [str(persisted_notification.id)],
-        queue="send-sms"
+        queue="send-tasks"
     )
 
 
@@ -535,7 +535,7 @@ def test_should_send_email_if_restricted_service_and_non_team_email_address_with
     persisted_notification = Notification.query.one()
     mocked_deliver_email.assert_called_once_with(
         [str(persisted_notification.id)],
-        queue="send-email"
+        queue="send-tasks"
     )
 
 
@@ -602,7 +602,7 @@ def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_serv
     persisted_notification = Notification.query.one()
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
         [str(persisted_notification.id)],
-        queue="research-mode"
+        queue="research-mode-tasks"
     )
 
 
@@ -639,7 +639,7 @@ def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_
 
     provider_tasks.deliver_sms.apply_async.assert_called_once_with(
         [str(persisted_notification.id)],
-        queue="send-sms"
+        queue="send-tasks"
     )
 
 
@@ -736,7 +736,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     assert persisted_notification.notification_type == 'email'
 
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
-        [str(persisted_notification.id)], queue='send-email')
+        [str(persisted_notification.id)], queue='send-tasks')
 
 
 def test_send_email_should_use_template_version_from_job_not_latest(sample_email_template, mocker):
@@ -767,7 +767,7 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
     assert not persisted_notification.sent_by
     assert persisted_notification.notification_type == 'email'
     provider_tasks.deliver_email.apply_async.assert_called_once_with([str(persisted_notification.id)],
-                                                                     queue='send-email')
+                                                                     queue='send-tasks')
 
 
 def test_should_use_email_template_subject_placeholders(sample_email_template_with_placeholders, mocker):
@@ -793,7 +793,7 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
     assert not persisted_notification.reference
     assert persisted_notification.notification_type == 'email'
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
-        [str(persisted_notification.id)], queue='send-email'
+        [str(persisted_notification.id)], queue='send-tasks'
     )
 
 
@@ -821,7 +821,7 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
     assert not persisted_notification.reference
     assert persisted_notification.notification_type == 'email'
     provider_tasks.deliver_email.apply_async.assert_called_once_with([str(persisted_notification.id)],
-                                                                     queue='send-email')
+                                                                     queue='send-tasks')
 
 
 def test_send_sms_should_go_to_retry_queue_if_database_errors(sample_template, mocker):
@@ -844,7 +844,7 @@ def test_send_sms_should_go_to_retry_queue_if_database_errors(sample_template, m
             now.strftime(DATETIME_FORMAT)
         )
     assert provider_tasks.deliver_sms.apply_async.called is False
-    tasks.send_sms.retry.assert_called_with(exc=expected_exception, queue='retry')
+    tasks.send_sms.retry.assert_called_with(exc=expected_exception, queue="retry-tasks")
 
     assert Notification.query.count() == 0
 
@@ -869,7 +869,7 @@ def test_send_email_should_go_to_retry_queue_if_database_errors(sample_email_tem
             now.strftime(DATETIME_FORMAT)
         )
     assert not provider_tasks.deliver_email.apply_async.called
-    tasks.send_email.retry.assert_called_with(exc=expected_exception, queue='retry')
+    tasks.send_email.retry.assert_called_with(exc=expected_exception, queue="retry-tasks")
 
     assert Notification.query.count() == 0
 
@@ -1002,7 +1002,6 @@ def test_build_dvla_file(sample_letter_template, mocker):
         file_location="{}-dvla-job.text".format(job.id)
     )
     assert Job.query.get(job.id).job_status == 'ready to send'
-    mocked_send_task.assert_called_once_with("aggregrate-dvla-files", ([str(job.id)], ), queue='aggregate-dvla-files')
 
 
 def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_letter_template, mocker):
@@ -1016,7 +1015,7 @@ def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_let
         build_dvla_file(job.id)
     mocked.assert_not_called()
 
-    tasks.build_dvla_file.retry.assert_called_with(queue='retry',
+    tasks.build_dvla_file.retry.assert_called_with(queue="retry-tasks",
                                                    exc="All notifications for job {} are not persisted".format(job.id))
     assert Job.query.get(job.id).job_status == 'in progress'
     mocked_send_task.assert_not_called()

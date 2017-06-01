@@ -4,16 +4,21 @@ from flask import current_app
 
 from notifications_utils.recipients import (
     get_international_phone_info,
-    validate_and_format_phone_number
+    validate_and_format_phone_number,
+    format_email_address
 )
 
 from app import redis_store
 from app.celery import provider_tasks
 from notifications_utils.clients import redis
-from app.dao.notifications_dao import dao_create_notification, dao_delete_notifications_and_history_by_id
-from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE
+
+from app.config import QueueNames
+from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE, ScheduledNotification
+from app.dao.notifications_dao import (dao_create_notification,
+                                       dao_delete_notifications_and_history_by_id,
+                                       dao_created_scheduled_notification)
 from app.v2.errors import BadRequestError, SendNotificationToQueueError
-from app.utils import get_template_instance, cache_key_for_service_template_counter
+from app.utils import get_template_instance, cache_key_for_service_template_counter, convert_bst_to_utc
 
 
 def create_content_for_notification(template, personalisation):
@@ -70,9 +75,12 @@ def persist_notification(
     if notification_type == SMS_TYPE:
         formatted_recipient = validate_and_format_phone_number(recipient, international=True)
         recipient_info = get_international_phone_info(formatted_recipient)
+        notification.normalised_to = formatted_recipient
         notification.international = recipient_info.international
         notification.phone_prefix = recipient_info.country_prefix
         notification.rate_multiplier = recipient_info.billable_units
+    elif notification_type == EMAIL_TYPE:
+        notification.normalised_to = format_email_address(notification.to)
 
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
@@ -90,12 +98,9 @@ def persist_notification(
 
 def send_notification_to_queue(notification, research_mode, queue=None):
     if research_mode or notification.key_type == KEY_TYPE_TEST:
-        queue = 'research-mode'
+        queue = QueueNames.RESEARCH_MODE
     elif not queue:
-        if notification.notification_type == SMS_TYPE:
-            queue = 'send-sms'
-        if notification.notification_type == EMAIL_TYPE:
-            queue = 'send-email'
+        queue = QueueNames.SEND
 
     if notification.notification_type == SMS_TYPE:
         deliver_task = provider_tasks.deliver_sms
@@ -123,3 +128,10 @@ def simulated_recipient(to_address, notification_type):
         return to_address in formatted_simulated_numbers
     else:
         return to_address in current_app.config['SIMULATED_EMAIL_ADDRESSES']
+
+
+def persist_scheduled_notification(notification_id, scheduled_for):
+    scheduled_datetime = convert_bst_to_utc(datetime.strptime(scheduled_for, "%Y-%m-%d %H:%M"))
+    scheduled_notification = ScheduledNotification(notification_id=notification_id,
+                                                   scheduled_for=scheduled_datetime)
+    dao_created_scheduled_notification(scheduled_notification)

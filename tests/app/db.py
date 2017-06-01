@@ -1,11 +1,22 @@
 from datetime import datetime
 import uuid
 
+
 from app.dao.jobs_dao import dao_create_job
-from app.models import (Service, User, Template, Notification, EMAIL_TYPE, LETTER_TYPE,
-                        SMS_TYPE, KEY_TYPE_NORMAL, Job, ServicePermission)
+from app.models import (
+    Service,
+    User,
+    Template,
+    Notification,
+    ScheduledNotification,
+    ServicePermission,
+    Job,
+    EMAIL_TYPE,
+    SMS_TYPE,
+    KEY_TYPE_NORMAL,
+)
 from app.dao.users_dao import save_model_user
-from app.dao.notifications_dao import dao_create_notification
+from app.dao.notifications_dao import dao_create_notification, dao_created_scheduled_notification
 from app.dao.templates_dao import dao_create_template
 from app.dao.services_dao import dao_create_service
 from app.dao.service_permissions_dao import dao_add_service_permission
@@ -80,7 +91,9 @@ def create_notification(
     client_reference=None,
     rate_multiplier=None,
     international=False,
-    phone_prefix=None
+    phone_prefix=None,
+    scheduled_for=None,
+    normalised_to=None
 ):
     if created_at is None:
         created_at = datetime.utcnow()
@@ -114,10 +127,19 @@ def create_notification(
         'job_row_number': job_row_number,
         'rate_multiplier': rate_multiplier,
         'international': international,
-        'phone_prefix': phone_prefix
+        'phone_prefix': phone_prefix,
+        'normalised_to': normalised_to
     }
     notification = Notification(**data)
     dao_create_notification(notification)
+    if scheduled_for:
+        scheduled_notification = ScheduledNotification(id=uuid.uuid4(),
+                                                       notification_id=notification.id,
+                                                       scheduled_for=datetime.strptime(scheduled_for,
+                                                                                       "%Y-%m-%d %H:%M"))
+        if status != 'created':
+            scheduled_notification.pending = False
+        dao_created_scheduled_notification(scheduled_notification)
     return notification
 
 

@@ -16,6 +16,7 @@ from app import (
 )
 from app.aws import s3
 from app.celery import provider_tasks
+from app.config import QueueNames
 from app.dao.jobs_dao import (
     dao_update_job,
     dao_get_job_by_id,
@@ -80,7 +81,7 @@ def process_job(job_id):
         process_row(row_number, recipient, personalisation, template, job, service)
 
     if template.template_type == LETTER_TYPE:
-        build_dvla_file.apply_async([str(job.id)], queue='process-job')
+        build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
         # temporary logging
         current_app.logger.info("send job {} to build-dvla-file in the process-job queue".format(job_id))
     else:
@@ -112,12 +113,6 @@ def process_row(row_number, recipient, personalisation, template, job, service):
         LETTER_TYPE: persist_letter
     }
 
-    queues = {
-        SMS_TYPE: 'db-sms',
-        EMAIL_TYPE: 'db-email',
-        LETTER_TYPE: 'db-letter',
-    }
-
     send_fn = send_fns[template_type]
 
     send_fn.apply_async(
@@ -127,7 +122,7 @@ def process_row(row_number, recipient, personalisation, template, job, service):
             encrypted,
             datetime.utcnow().strftime(DATETIME_FORMAT)
         ),
-        queue=queues[template_type] if not service.research_mode else 'research-mode'
+        queue=QueueNames.DATABASE if not service.research_mode else QueueNames.RESEARCH_MODE
     )
 
 
@@ -165,23 +160,24 @@ def send_sms(self,
         return
 
     try:
-        saved_notification = persist_notification(template_id=notification['template'],
-                                                  template_version=notification['template_version'],
-                                                  recipient=notification['to'],
-                                                  service=service,
-                                                  personalisation=notification.get('personalisation'),
-                                                  notification_type=SMS_TYPE,
-                                                  api_key_id=api_key_id,
-                                                  key_type=key_type,
-                                                  created_at=created_at,
-                                                  job_id=notification.get('job', None),
-                                                  job_row_number=notification.get('row_number', None),
-                                                  notification_id=notification_id
-                                                  )
+        saved_notification = persist_notification(
+            template_id=notification['template'],
+            template_version=notification['template_version'],
+            recipient=notification['to'],
+            service=service,
+            personalisation=notification.get('personalisation'),
+            notification_type=SMS_TYPE,
+            api_key_id=api_key_id,
+            key_type=key_type,
+            created_at=created_at,
+            job_id=notification.get('job', None),
+            job_row_number=notification.get('row_number', None),
+            notification_id=notification_id
+        )
 
         provider_tasks.deliver_sms.apply_async(
             [str(saved_notification.id)],
-            queue='send-sms' if not service.research_mode else 'research-mode'
+            queue=QueueNames.SEND if not service.research_mode else QueueNames.RESEARCH_MODE
         )
 
         current_app.logger.info(
@@ -226,7 +222,7 @@ def send_email(self,
 
         provider_tasks.deliver_email.apply_async(
             [str(saved_notification.id)],
-            queue='send-email' if not service.research_mode else 'research-mode'
+            queue=QueueNames.SEND if not service.research_mode else QueueNames.RESEARCH_MODE
         )
 
         current_app.logger.info("Email {} created at {}".format(saved_notification.id, created_at))
@@ -284,10 +280,9 @@ def build_dvla_file(self, job_id):
                 file_location="{}-dvla-job.text".format(job_id)
             )
             dao_update_job_status(job_id, JOB_STATUS_READY_TO_SEND)
-            notify_celery.send_task("aggregrate-dvla-files", ([str(job_id)], ), queue='aggregate-dvla-files')
         else:
             current_app.logger.info("All notifications for job {} are not persisted".format(job_id))
-            self.retry(queue="retry", exc="All notifications for job {} are not persisted".format(job_id))
+            self.retry(queue=QueueNames.RETRY, exc="All notifications for job {} are not persisted".format(job_id))
     except Exception as e:
         current_app.logger.exception("build_dvla_file threw exception")
         raise e
@@ -341,7 +336,7 @@ def handle_exception(task, notification, notification_id, exc):
         # send to the retry queue.
         current_app.logger.exception('Retry' + retry_msg)
         try:
-            task.retry(queue="retry", exc=exc)
+            task.retry(queue=QueueNames.RETRY, exc=exc)
         except task.MaxRetriesExceededError:
             current_app.logger.exception('Retry' + retry_msg)
 

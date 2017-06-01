@@ -12,12 +12,15 @@ from app.models import (
     Job,
     NotificationStatistics,
     TemplateStatistics,
+    ScheduledNotification,
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_FAILED,
     NOTIFICATION_SENT,
+    NOTIFICATION_DELIVERED,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
-    KEY_TYPE_TEST)
+    KEY_TYPE_TEST
+)
 
 from app.dao.notifications_dao import (
     dao_create_notification,
@@ -26,7 +29,7 @@ from app.dao.notifications_dao import (
     dao_get_potential_notification_statistics_for_day,
     dao_get_template_usage,
     dao_update_notification,
-    delete_notifications_created_more_than_a_week_ago,
+    delete_notifications_created_more_than_a_week_ago_by_type,
     get_notification_by_id,
     get_notification_for_job,
     get_notification_billable_unit_count_per_month,
@@ -39,7 +42,9 @@ from app.dao.notifications_dao import (
     dao_delete_notifications_and_history_by_id,
     dao_timeout_notifications,
     is_delivery_slow_for_provider,
-    dao_update_notifications_sent_to_dvla, dao_get_notifications_by_to_field)
+    dao_update_notifications_sent_to_dvla,
+    dao_get_notifications_by_to_field,
+    dao_created_scheduled_notification, dao_get_scheduled_notifications, set_scheduled_notification_to_processed)
 
 from app.dao.services_dao import dao_update_service
 from tests.app.db import create_notification
@@ -49,8 +54,8 @@ from tests.app.conftest import (
     sample_email_template,
     sample_service,
     sample_job,
-    sample_notification_history as create_notification_history
-)
+    sample_notification_history as create_notification_history,
+    sample_letter_template)
 
 
 def test_should_have_decorated_notifications_dao_functions():
@@ -66,7 +71,7 @@ def test_should_have_decorated_notifications_dao_functions():
     assert get_notification_with_personalisation.__wrapped__.__name__ == 'get_notification_with_personalisation'  # noqa
     assert get_notifications_for_service.__wrapped__.__name__ == 'get_notifications_for_service'  # noqa
     assert get_notification_by_id.__wrapped__.__name__ == 'get_notification_by_id'  # noqa
-    assert delete_notifications_created_more_than_a_week_ago.__wrapped__.__name__ == 'delete_notifications_created_more_than_a_week_ago'  # noqa
+    assert delete_notifications_created_more_than_a_week_ago_by_type.__wrapped__.__name__ == 'delete_notifications_created_more_than_a_week_ago_by_type'  # noqa
     assert dao_delete_notifications_and_history_by_id.__wrapped__.__name__ == 'dao_delete_notifications_and_history_by_id'  # noqa
 
 
@@ -353,28 +358,45 @@ def test_should_update_status_by_id_if_created(notify_db, notify_db_session):
     assert updated.status == 'failed'
 
 
-def test_should_not_update_status_by_reference_if_in_sent_status(notify_db, notify_db_session):
-    notification = sample_notification(
-        notify_db,
-        notify_db_session,
+def test_should_not_update_status_by_reference_if_from_country_with_no_delivery_receipts(sample_template):
+    notification = create_notification(
+        sample_template,
         status=NOTIFICATION_SENT,
         reference='foo'
     )
 
-    update_notification_status_by_reference('foo', 'failed')
-    assert Notification.query.get(notification.id).status == NOTIFICATION_SENT
+    res = update_notification_status_by_reference('foo', 'failed')
+
+    assert res is None
+    assert notification.status == NOTIFICATION_SENT
 
 
-def test_should_not_update_status_by_id_if_in_sent_status(notify_db, notify_db_session):
-    notification = sample_notification(
-        notify_db,
-        notify_db_session,
-        status=NOTIFICATION_SENT
+def test_should_not_update_status_by_id_if_sent_to_country_with_no_delivery_receipts(sample_template):
+    notification = create_notification(
+        sample_template,
+        status=NOTIFICATION_SENT,
+        international=True,
+        phone_prefix='1'  # americans only have carrier delivery receipts
     )
 
-    update_notification_status_by_id(notification.id, 'failed')
+    res = update_notification_status_by_id(notification.id, 'delivered')
 
-    assert Notification.query.get(notification.id).status == NOTIFICATION_SENT
+    assert res is None
+    assert notification.status == NOTIFICATION_SENT
+
+
+def test_should_not_update_status_by_id_if_sent_to_country_with_no_delivery_receipts(sample_template):
+    notification = create_notification(
+        sample_template,
+        status=NOTIFICATION_SENT,
+        international=True,
+        phone_prefix='7'  # russians have full delivery receipts
+    )
+
+    res = update_notification_status_by_id(notification.id, 'delivered')
+
+    assert res == notification
+    assert notification.status == NOTIFICATION_DELIVERED
 
 
 def test_should_not_update_status_by_reference_if_not_sending(notify_db, notify_db_session):
@@ -713,13 +735,18 @@ def test_save_notification_with_no_job(sample_template, mmg_provider):
     assert notification_from_db.status == 'created'
 
 
-def test_get_notification_by_id(sample_notification):
+def test_get_notification_by_id(notify_db, notify_db_session, sample_template):
+    notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                       template=sample_template,
+                                       scheduled_for='2017-05-05 14:15',
+                                       status='created')
     notification_from_db = get_notification_with_personalisation(
-        sample_notification.service.id,
-        sample_notification.id,
+        sample_template.service.id,
+        notification.id,
         key_type=None
     )
-    assert sample_notification == notification_from_db
+    assert notification == notification_from_db
+    assert notification_from_db.scheduled_notification.scheduled_for == datetime(2017, 5, 5, 14, 15)
 
 
 def test_get_notifications_by_reference(notify_db, notify_db_session, sample_service):
@@ -868,63 +895,118 @@ def test_updating_notification_with_no_notification_status_updates_notification_
     assert hist_from_db._status_fkey == 'failed'
 
 
+@pytest.mark.parametrize('notification_type, expected_sms_count, expected_email_count, expected_letter_count', [
+    ('sms', 8, 10, 10), ('email', 10, 8, 10), ('letter', 10, 10, 8)
+])
 @freeze_time("2016-01-10 12:00:00.000000")
-def test_should_delete_notifications_after_seven_days(notify_db, notify_db_session):
+def test_should_delete_notifications_by_type_after_seven_days(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        notification_type,
+        expected_sms_count,
+        expected_email_count,
+        expected_letter_count
+):
     assert len(Notification.query.all()) == 0
 
-    # create one notification a day between 1st and 10th from 11:00 to 19:00
+    email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
+    sms_template = sample_template(notify_db, notify_db_session, service=sample_service)
+    letter_template = sample_letter_template(sample_service)
+
+    # create one notification a day between 1st and 10th from 11:00 to 19:00 of each type
     for i in range(1, 11):
         past_date = '2016-01-{0:02d}  {0:02d}:00:00.000000'.format(i)
         with freeze_time(past_date):
-            sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow(), status="failed")
+            sample_notification(
+                notify_db,
+                notify_db_session,
+                created_at=datetime.utcnow(),
+                status="failed",
+                service=sample_service,
+                template=email_template
+            )
+            sample_notification(
+                notify_db,
+                notify_db_session,
+                created_at=datetime.utcnow(),
+                status="failed",
+                service=sample_service,
+                template=sms_template
+            )
+            sample_notification(
+                notify_db,
+                notify_db_session,
+                created_at=datetime.utcnow(),
+                status="failed",
+                service=sample_service,
+                template=letter_template
+            )
 
     all_notifications = Notification.query.all()
-    assert len(all_notifications) == 10
+    assert len(all_notifications) == 30
 
     # Records from before 3rd should be deleted
-    delete_notifications_created_more_than_a_week_ago('failed')
-    remaining_notifications = Notification.query.all()
-    assert len(remaining_notifications) == 8
-    for notification in remaining_notifications:
+    delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
+    remaining_sms_notifications = Notification.query.filter_by(notification_type='sms').all()
+    remaining_letter_notifications = Notification.query.filter_by(notification_type='letter').all()
+    remaining_email_notifications = Notification.query.filter_by(notification_type='email').all()
+
+    assert len(remaining_sms_notifications) == expected_sms_count
+    assert len(remaining_email_notifications) == expected_email_count
+    assert len(remaining_letter_notifications) == expected_letter_count
+
+    if notification_type == 'sms':
+        notifications_to_check = remaining_sms_notifications
+    if notification_type == 'email':
+        notifications_to_check = remaining_email_notifications
+    if notification_type == 'letter':
+        notifications_to_check = remaining_letter_notifications
+
+    for notification in notifications_to_check:
         assert notification.created_at.date() >= date(2016, 1, 3)
 
 
+@pytest.mark.parametrize('notification_type', ['sms', 'email', 'letter'])
 @freeze_time("2016-01-10 12:00:00.000000")
-def test_should_not_delete_notification_history(notify_db, notify_db_session):
+def test_should_not_delete_notification_history(notify_db, notify_db_session, sample_service, notification_type):
     with freeze_time('2016-01-01 12:00'):
-        notification = sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow(), status="failed")
-        notification_id = notification.id
+        email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
+        sms_template = sample_template(notify_db, notify_db_session, service=sample_service)
+        letter_template = sample_letter_template(sample_service)
 
-    assert Notification.query.count() == 1
-    assert NotificationHistory.query.count() == 1
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            created_at=datetime.utcnow(),
+            status="failed",
+            service=sample_service,
+            template=email_template
+        )
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            created_at=datetime.utcnow(),
+            status="failed",
+            service=sample_service,
+            template=sms_template
+        )
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            created_at=datetime.utcnow(),
+            status="failed",
+            service=sample_service,
+            template=letter_template
+        )
 
-    delete_notifications_created_more_than_a_week_ago('failed')
+    assert Notification.query.count() == 3
+    assert NotificationHistory.query.count() == 3
 
-    assert Notification.query.count() == 0
-    assert NotificationHistory.query.count() == 1
-    assert NotificationHistory.query.one().id == notification_id
+    delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
 
-
-def test_should_not_delete_failed_notifications_before_seven_days(notify_db, notify_db_session):
-    should_delete = datetime.utcnow() - timedelta(days=8)
-    do_not_delete = datetime.utcnow() - timedelta(days=7)
-    sample_notification(notify_db, notify_db_session, created_at=should_delete, status="failed",
-                        to_field="should_delete")
-    sample_notification(notify_db, notify_db_session, created_at=do_not_delete, status="failed",
-                        to_field="do_not_delete")
-    assert len(Notification.query.all()) == 2
-    delete_notifications_created_more_than_a_week_ago('failed')
-    assert len(Notification.query.all()) == 1
-    assert Notification.query.first().to == 'do_not_delete'
-
-
-def test_should_delete_letter_notifications(sample_letter_template):
-    should_delete = datetime.utcnow() - timedelta(days=8)
-
-    create_notification(sample_letter_template, created_at=should_delete)
-
-    delete_notifications_created_more_than_a_week_ago('created')
-    assert len(Notification.query.all()) == 0
+    assert Notification.query.count() == 2
+    assert NotificationHistory.query.count() == 3
 
 
 @freeze_time("2016-01-10")
@@ -1664,30 +1746,160 @@ def test_dao_update_notifications_sent_to_dvla_does_update_history_if_test_key(
 
 
 def test_dao_get_notifications_by_to_field(sample_template):
-    notification1 = create_notification(template=sample_template, to_field='+447700900855')
-    notification2 = create_notification(template=sample_template, to_field='jack@gmail.com')
-    notification3 = create_notification(template=sample_template, to_field='jane@gmail.com')
+    notification1 = create_notification(
+        template=sample_template, to_field='+447700900855', normalised_to='447700900855'
+    )
+    create_notification(
+        template=sample_template, to_field='jack@gmail.com', normalised_to='jack@gmail.com'
+    )
+    create_notification(
+        template=sample_template, to_field='jane@gmail.com', normalised_to='jane@gmail.com'
+    )
     results = dao_get_notifications_by_to_field(notification1.service_id, "+447700900855")
+
     assert len(results) == 1
-    assert results[0].id == notification1.id
+    assert notification1.id == results[0].id
 
 
 def test_dao_get_notifications_by_to_field_search_is_not_case_sensitive(sample_template):
-    notification1 = create_notification(template=sample_template, to_field='+447700900855')
-    notification2 = create_notification(template=sample_template, to_field='jack@gmail.com')
-    notification3 = create_notification(template=sample_template, to_field='jane@gmail.com')
-    results = dao_get_notifications_by_to_field(notification1.service_id, 'JACK@gmail.com')
+    notification = create_notification(
+        template=sample_template, to_field='jack@gmail.com', normalised_to='jack@gmail.com'
+    )
+    results = dao_get_notifications_by_to_field(notification.service_id, 'JACK@gmail.com')
+    notification_ids = [notification.id for notification in results]
+
     assert len(results) == 1
-    assert results[0].id == notification2.id
+    assert notification.id in notification_ids
+
+
+@pytest.mark.parametrize('to', [
+    'not@email', '123'
+])
+def test_dao_get_notifications_by_to_field_accepts_invalid_phone_numbers_and_email_addresses(
+    sample_template,
+    to,
+):
+    notification = create_notification(
+        template=sample_template, to_field='test@example.com', normalised_to='test@example.com'
+    )
+    results = dao_get_notifications_by_to_field(notification.service_id, to)
+    assert len(results) == 0
 
 
 def test_dao_get_notifications_by_to_field_search_ignores_spaces(sample_template):
-    notification1 = create_notification(template=sample_template, to_field='+447700900855')
-    notification2 = create_notification(template=sample_template, to_field='+44 77 00900 855')
-    notification3 = create_notification(template=sample_template, to_field=' +4477009 00 855 ')
-    notification4 = create_notification(template=sample_template, to_field='jack@gmail.com')
+    notification1 = create_notification(
+        template=sample_template, to_field='+447700900855', normalised_to='447700900855'
+    )
+    notification2 = create_notification(
+        template=sample_template, to_field='+44 77 00900 855', normalised_to='447700900855'
+    )
+    notification3 = create_notification(
+        template=sample_template, to_field=' +4477009 00 855 ', normalised_to='447700900855'
+    )
+    create_notification(
+        template=sample_template, to_field='jaCK@gmail.com', normalised_to='jack@gmail.com'
+    )
+
     results = dao_get_notifications_by_to_field(notification1.service_id, '+447700900855')
+    notification_ids = [notification.id for notification in results]
+
     assert len(results) == 3
-    assert notification1.id in [r.id for r in results]
-    assert notification2.id in [r.id for r in results]
-    assert notification3.id in [r.id for r in results]
+    assert notification1.id in notification_ids
+    assert notification2.id in notification_ids
+    assert notification3.id in notification_ids
+
+
+def test_dao_created_scheduled_notification(sample_notification):
+
+    scheduled_notification = ScheduledNotification(notification_id=sample_notification.id,
+                                                   scheduled_for=datetime.strptime("2017-01-05 14:15",
+                                                                                   "%Y-%m-%d %H:%M"))
+    dao_created_scheduled_notification(scheduled_notification)
+    saved_notification = ScheduledNotification.query.all()
+    assert len(saved_notification) == 1
+    assert saved_notification[0].notification_id == sample_notification.id
+    assert saved_notification[0].scheduled_for == datetime(2017, 1, 5, 14, 15)
+
+
+def test_dao_get_scheduled_notifications(notify_db, notify_db_session, sample_template):
+    notification_1 = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                         template=sample_template, scheduled_for='2017-05-05 14:15',
+                                         status='created')
+    sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                        template=sample_template, scheduled_for='2017-05-04 14:15', status='delivered')
+    sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                        template=sample_template, status='created')
+    scheduled_notifications = dao_get_scheduled_notifications()
+    assert len(scheduled_notifications) == 1
+    assert scheduled_notifications[0].id == notification_1.id
+    assert scheduled_notifications[0].scheduled_notification.pending
+
+
+def test_set_scheduled_notification_to_processed(notify_db, notify_db_session, sample_template):
+    notification_1 = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
+                                         template=sample_template, scheduled_for='2017-05-05 14:15',
+                                         status='created')
+    scheduled_notifications = dao_get_scheduled_notifications()
+    assert len(scheduled_notifications) == 1
+    assert scheduled_notifications[0].id == notification_1.id
+    assert scheduled_notifications[0].scheduled_notification.pending
+
+    set_scheduled_notification_to_processed(notification_1.id)
+    scheduled_notifications = dao_get_scheduled_notifications()
+    assert not scheduled_notifications
+
+
+def test_dao_get_notifications_by_to_field_filters_status(sample_template):
+    notification = create_notification(
+        template=sample_template, to_field='+447700900855',
+        normalised_to='447700900855', status='delivered'
+    )
+    create_notification(
+        template=sample_template, to_field='+447700900855',
+        normalised_to='447700900855', status='temporary-failure'
+    )
+
+    notifications = dao_get_notifications_by_to_field(notification.service_id, "+447700900855", statuses=['delivered'])
+
+    assert len(notifications) == 1
+    assert notification.id == notifications[0].id
+
+
+def test_dao_get_notifications_by_to_field_filters_multiple_statuses(sample_template):
+    notification1 = create_notification(
+        template=sample_template, to_field='+447700900855',
+        normalised_to='447700900855', status='delivered'
+    )
+    notification2 = create_notification(
+        template=sample_template, to_field='+447700900855',
+        normalised_to='447700900855', status='sending'
+    )
+
+    notifications = dao_get_notifications_by_to_field(
+        notification1.service_id, "+447700900855", statuses=['delivered', 'sending']
+    )
+    notification_ids = [notification.id for notification in notifications]
+
+    assert len(notifications) == 2
+    assert notification1.id in notification_ids
+    assert notification2.id in notification_ids
+
+
+def test_dao_get_notifications_by_to_field_returns_all_if_no_status_filter(sample_template):
+    notification1 = create_notification(
+        template=sample_template, to_field='+447700900855',
+        normalised_to='447700900855', status='delivered'
+    )
+    notification2 = create_notification(
+        template=sample_template, to_field='+447700900855',
+        normalised_to='447700900855', status='temporary-failure'
+    )
+
+    notifications = dao_get_notifications_by_to_field(
+        notification1.service_id, "+447700900855"
+    )
+    notification_ids = [notification.id for notification in notifications]
+
+    assert len(notifications) == 2
+    assert notification1.id in notification_ids
+    assert notification2.id in notification_ids

@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify
 
+from app.config import QueueNames
 from app.delivery import send_to_providers
 from app.models import EMAIL_TYPE
 from app.celery import provider_tasks
@@ -23,18 +24,16 @@ def send_notification_to_provider(notification_id):
         send_response(
             send_to_providers.send_email_to_provider,
             provider_tasks.deliver_email,
-            notification,
-            'send-email')
+            notification)
     else:
         send_response(
             send_to_providers.send_sms_to_provider,
             provider_tasks.deliver_sms,
-            notification,
-            'send-sms')
+            notification)
     return jsonify({}), 204
 
 
-def send_response(send_call, task_call, notification, queue):
+def send_response(send_call, task_call, notification):
     try:
         send_call(notification)
     except Exception as e:
@@ -43,4 +42,4 @@ def send_response(send_call, task_call, notification, queue):
                 notification.id,
                 notification.notification_type),
             e)
-        task_call.apply_async((str(notification.id)), queue=queue)
+        task_call.apply_async((str(notification.id)), queue=QueueNames.SEND)

@@ -12,18 +12,21 @@ from app import performance_platform_client
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
 from app.dao.jobs_dao import dao_set_scheduled_jobs_to_pending, dao_get_jobs_older_than_limited_by
 from app.dao.notifications_dao import (
-    delete_notifications_created_more_than_a_week_ago,
     dao_timeout_notifications,
-    is_delivery_slow_for_provider
-)
+    is_delivery_slow_for_provider,
+    delete_notifications_created_more_than_a_week_ago_by_type,
+    dao_get_scheduled_notifications,
+    set_scheduled_notification_to_processed)
 from app.dao.statistics_dao import dao_timeout_job_statistics
 from app.dao.provider_details_dao import (
     get_current_provider,
     dao_toggle_sms_provider
 )
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
+from app.notifications.process_notifications import send_notification_to_queue
 from app.statsd_decorators import statsd
 from app.celery.tasks import process_job
+from app.config import QueueNames
 
 
 @notify_celery.task(name="remove_csv_files")
@@ -40,10 +43,25 @@ def remove_csv_files():
 def run_scheduled_jobs():
     try:
         for job in dao_set_scheduled_jobs_to_pending():
-            process_job.apply_async([str(job.id)], queue="process-job")
+            process_job.apply_async([str(job.id)], queue=QueueNames.JOBS)
             current_app.logger.info("Job ID {} added to process job queue".format(job.id))
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         current_app.logger.exception("Failed to run scheduled jobs")
+        raise
+
+
+@notify_celery.task(name='send-scheduled-notifications')
+@statsd(namespace="tasks")
+def send_scheduled_notifications():
+    try:
+        scheduled_notifications = dao_get_scheduled_notifications()
+        for notification in scheduled_notifications:
+            send_notification_to_queue(notification, notification.service.research_mode)
+            set_scheduled_notification_to_processed(notification.id)
+        current_app.logger.info(
+            "Sent {} scheduled notifications to the provider queue".format(len(scheduled_notifications)))
+    except SQLAlchemyError:
+        current_app.logger.exception("Failed to send scheduled notifications")
         raise
 
 
@@ -61,42 +79,60 @@ def delete_verify_codes():
         raise
 
 
-@notify_celery.task(name="delete-successful-notifications")
+@notify_celery.task(name="delete-sms-notifications")
 @statsd(namespace="tasks")
-def delete_successful_notifications():
+def delete_sms_notifications_older_than_seven_days():
     try:
         start = datetime.utcnow()
-        deleted = delete_notifications_created_more_than_a_week_ago('delivered')
+        deleted = delete_notifications_created_more_than_a_week_ago_by_type('sms')
         current_app.logger.info(
-            "Delete job started {} finished {} deleted {} successful notifications".format(
+            "Delete {} job started {} finished {} deleted {} sms notifications".format(
+                'sms',
                 start,
                 datetime.utcnow(),
                 deleted
             )
         )
     except SQLAlchemyError as e:
-        current_app.logger.exception("Failed to delete successful notifications")
+        current_app.logger.exception("Failed to delete sms notifications")
         raise
 
 
-@notify_celery.task(name="delete-failed-notifications")
+@notify_celery.task(name="delete-email-notifications")
 @statsd(namespace="tasks")
-def delete_failed_notifications():
+def delete_email_notifications_older_than_seven_days():
     try:
         start = datetime.utcnow()
-        deleted = delete_notifications_created_more_than_a_week_ago('failed')
-        deleted += delete_notifications_created_more_than_a_week_ago('technical-failure')
-        deleted += delete_notifications_created_more_than_a_week_ago('temporary-failure')
-        deleted += delete_notifications_created_more_than_a_week_ago('permanent-failure')
+        deleted = delete_notifications_created_more_than_a_week_ago_by_type('email')
         current_app.logger.info(
-            "Delete job started {} finished {} deleted {} failed notifications".format(
+            "Delete {} job started {} finished {} deleted {} email notifications".format(
+                'email',
                 start,
                 datetime.utcnow(),
                 deleted
             )
         )
     except SQLAlchemyError as e:
-        current_app.logger.exception("Failed to delete failed notifications")
+        current_app.logger.exception("Failed to delete sms notifications")
+        raise
+
+
+@notify_celery.task(name="delete-letter-notifications")
+@statsd(namespace="tasks")
+def delete_letter_notifications_older_than_seven_days():
+    try:
+        start = datetime.utcnow()
+        deleted = delete_notifications_created_more_than_a_week_ago_by_type('letter')
+        current_app.logger.info(
+            "Delete {} job started {} finished {} deleted {} letter notifications".format(
+                'letter',
+                start,
+                datetime.utcnow(),
+                deleted
+            )
+        )
+    except SQLAlchemyError as e:
+        current_app.logger.exception("Failed to delete sms notifications")
         raise
 
 

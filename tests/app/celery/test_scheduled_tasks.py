@@ -5,13 +5,14 @@ from functools import partial
 
 from flask import current_app
 from freezegun import freeze_time
-from app.celery.scheduled_tasks import s3, timeout_job_statistics
+from app.celery.scheduled_tasks import s3, timeout_job_statistics, delete_sms_notifications_older_than_seven_days, \
+    delete_letter_notifications_older_than_seven_days, delete_email_notifications_older_than_seven_days, \
+    send_scheduled_notifications
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
     delete_verify_codes,
     remove_csv_files,
-    delete_successful_notifications,
-    delete_failed_notifications,
+    delete_notifications_created_more_than_a_week_ago_by_type,
     delete_invitations,
     timeout_notifications,
     run_scheduled_jobs,
@@ -20,6 +21,7 @@ from app.celery.scheduled_tasks import (
 )
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.dao.jobs_dao import dao_get_job_by_id
+from app.dao.notifications_dao import dao_get_scheduled_notifications
 from app.dao.provider_details_dao import (
     dao_update_provider_details,
     get_current_provider
@@ -30,8 +32,7 @@ from tests.app.db import create_notification, create_service
 from tests.app.conftest import (
     sample_job as create_sample_job,
     sample_notification_history as create_notification_history,
-    create_custom_template
-)
+    create_custom_template)
 from tests.conftest import set_config_values
 from unittest.mock import call, patch, PropertyMock
 
@@ -70,8 +71,7 @@ def prepare_current_provider(restore_provider_details):
 
 def test_should_have_decorated_tasks_functions():
     assert delete_verify_codes.__wrapped__.__name__ == 'delete_verify_codes'
-    assert delete_successful_notifications.__wrapped__.__name__ == 'delete_successful_notifications'
-    assert delete_failed_notifications.__wrapped__.__name__ == 'delete_failed_notifications'
+    assert delete_notifications_created_more_than_a_week_ago_by_type.__wrapped__.__name__ == 'delete_notifications_created_more_than_a_week_ago_by_type'  # noqa
     assert timeout_notifications.__wrapped__.__name__ == 'timeout_notifications'
     assert delete_invitations.__wrapped__.__name__ == 'delete_invitations'
     assert run_scheduled_jobs.__wrapped__.__name__ == 'run_scheduled_jobs'
@@ -81,16 +81,22 @@ def test_should_have_decorated_tasks_functions():
         'switch_current_sms_provider_on_slow_delivery'
 
 
-def test_should_call_delete_successful_notifications_more_than_week_in_task(notify_api, mocker):
-    mocked = mocker.patch('app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago')
-    delete_successful_notifications()
-    mocked.assert_called_once_with('delivered')
+def test_should_call_delete_sms_notifications_more_than_week_in_task(notify_api, mocker):
+    mocked = mocker.patch('app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago_by_type')
+    delete_sms_notifications_older_than_seven_days()
+    mocked.assert_called_once_with('sms')
 
 
-def test_should_call_delete_failed_notifications_more_than_week_in_task(notify_api, mocker):
-    mocker.patch('app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago')
-    delete_failed_notifications()
-    assert scheduled_tasks.delete_notifications_created_more_than_a_week_ago.call_count == 4
+def test_should_call_delete_email_notifications_more_than_week_in_task(notify_api, mocker):
+    mocked = mocker.patch('app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago_by_type')
+    delete_email_notifications_older_than_seven_days()
+    mocked.assert_called_once_with('email')
+
+
+def test_should_call_delete_letter_notifications_more_than_week_in_task(notify_api, mocker):
+    mocked = mocker.patch('app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago_by_type')
+    delete_letter_notifications_older_than_seven_days()
+    mocked.assert_called_once_with('letter')
 
 
 def test_should_call_delete_codes_on_delete_verify_codes_task(notify_api, mocker):
@@ -160,7 +166,7 @@ def test_should_update_scheduled_jobs_and_put_on_queue(notify_db, notify_db_sess
 
     updated_job = dao_get_job_by_id(job.id)
     assert updated_job.job_status == 'pending'
-    mocked.assert_called_with([str(job.id)], queue='process-job')
+    mocked.assert_called_with([str(job.id)], queue="job-tasks")
 
 
 def test_should_update_all_scheduled_jobs_and_put_on_queue(notify_db, notify_db_session, mocker):
@@ -195,9 +201,9 @@ def test_should_update_all_scheduled_jobs_and_put_on_queue(notify_db, notify_db_
     assert dao_get_job_by_id(job_2.id).job_status == 'pending'
 
     mocked.assert_has_calls([
-        call([str(job_3.id)], queue='process-job'),
-        call([str(job_2.id)], queue='process-job'),
-        call([str(job_1.id)], queue='process-job')
+        call([str(job_3.id)], queue="job-tasks"),
+        call([str(job_2.id)], queue="job-tasks"),
+        call([str(job_1.id)], queue="job-tasks")
     ])
 
 
@@ -409,6 +415,24 @@ def test_switch_providers_on_slow_delivery_does_not_switch_based_on_older_notifi
         switch_current_sms_provider_on_slow_delivery()
         current_provider = get_current_provider('sms')
         assert starting_provider.identifier == current_provider.identifier
+
+
+@freeze_time("2017-05-01 14:00:00")
+def test_should_send_all_scheduled_notifications_to_deliver_queue(sample_template, mocker):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_sms')
+    message_to_deliver = create_notification(template=sample_template, scheduled_for="2017-05-01 13:15")
+    create_notification(template=sample_template, scheduled_for="2017-05-01 10:15", status='delivered')
+    create_notification(template=sample_template)
+    create_notification(template=sample_template, scheduled_for="2017-05-01 14:15")
+
+    scheduled_notifications = dao_get_scheduled_notifications()
+    assert len(scheduled_notifications) == 1
+
+    send_scheduled_notifications()
+
+    mocked.apply_async.assert_called_once_with([str(message_to_deliver.id)], queue='send-tasks')
+    scheduled_notifications = dao_get_scheduled_notifications()
+    assert not scheduled_notifications
 
 
 def test_timeout_job_statistics_called_with_notification_timeout(notify_api, mocker):
