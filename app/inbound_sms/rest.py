@@ -24,7 +24,7 @@ def get_inbound_sms_for_service(service_id):
 
     if user_number:
         # we use this to normalise to an international phone number
-        user_number = validate_and_format_phone_number(user_number)
+        user_number = validate_and_format_phone_number(user_number, international=True)
 
     results = dao_get_inbound_sms_for_service(service_id, limit, user_number)
 

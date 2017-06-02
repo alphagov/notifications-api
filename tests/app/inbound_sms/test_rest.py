@@ -67,6 +67,21 @@ def test_get_inbound_sms_filters_user_number(admin_request, sample_service, user
     assert sms['data'][0]['user_number'] == str(one.user_number)
 
 
+def test_get_inbound_sms_filters_international_user_number(admin_request, sample_service):
+    # user_number in the db is international and normalised
+    one = create_inbound_sms(sample_service, user_number='12025550104')
+    two = create_inbound_sms(sample_service)
+
+    sms = admin_request.get(
+        'inbound_sms.get_inbound_sms_for_service',
+        endpoint_kwargs={'service_id': sample_service.id, 'user_number': '+1 (202) 555-0104'}
+    )
+
+    assert len(sms['data']) == 1
+    assert sms['data'][0]['id'] == str(one.id)
+    assert sms['data'][0]['user_number'] == str(one.user_number)
+
+
 def test_get_inbound_sms_summary(admin_request, sample_service):
     other_service = create_service(service_name='other_service')
     with freeze_time('2017-01-01'):

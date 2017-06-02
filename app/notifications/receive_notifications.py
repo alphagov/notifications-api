@@ -64,8 +64,8 @@ def format_mmg_datetime(date):
 
 
 def create_inbound_mmg_sms_object(service, json):
-    message = format_message(json['Message'])
-    user_number = validate_and_format_phone_number(json['MSISDN'])
+    message = format_mmg_message(json['Message'])
+    user_number = validate_and_format_phone_number(json['MSISDN'], international=True)
 
     provider_date = json.get('DateRecieved')
     if provider_date:
