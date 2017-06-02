@@ -1,4 +1,4 @@
 ---
 
 inherit: manifest-delivery-base.yml
-memory: 256M
+memory: 1G
