@@ -3,7 +3,7 @@ from flask import (
     jsonify,
     request
 )
-from notifications_utils.recipients import normalise_phone_number
+from notifications_utils.recipients import validate_and_format_phone_number
 
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_for_service, dao_count_inbound_sms_for_service
 from app.errors import register_errors
@@ -23,7 +23,8 @@ def get_inbound_sms_for_service(service_id):
     user_number = request.args.get('user_number')
 
     if user_number:
-        user_number = normalise_phone_number(user_number)
+        # we use this to normalise to an international phone number
+        user_number = validate_and_format_phone_number(user_number)
 
     results = dao_get_inbound_sms_for_service(service_id, limit, user_number)
 

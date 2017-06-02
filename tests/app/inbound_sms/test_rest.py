@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import pytest
 from freezegun import freeze_time
 
 from tests.app.db import create_inbound_sms, create_service
@@ -46,14 +47,19 @@ def test_get_inbound_sms_limits(admin_request, sample_service):
     assert sms['data'][0]['id'] == str(two.id)
 
 
-def test_get_inbound_sms_filters_user_number(admin_request, sample_service):
-    # user_number in the db is normalised
-    one = create_inbound_sms(sample_service, user_number='7700900001')
-    two = create_inbound_sms(sample_service, user_number='7700900002')
+@pytest.mark.parametrize('user_number', [
+    '(07700) 900-001',
+    '+4407700900001',
+    '447700900001',
+])
+def test_get_inbound_sms_filters_user_number(admin_request, sample_service, user_number):
+    # user_number in the db is international and normalised
+    one = create_inbound_sms(sample_service, user_number='447700900001')
+    two = create_inbound_sms(sample_service, user_number='447700900002')
 
     sms = admin_request.get(
         'inbound_sms.get_inbound_sms_for_service',
-        endpoint_kwargs={'service_id': sample_service.id, 'user_number': '(07700) 900-001'}
+        endpoint_kwargs={'service_id': sample_service.id, 'user_number': user_number}
     )
 
     assert len(sms['data']) == 1

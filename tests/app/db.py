@@ -190,7 +190,7 @@ def create_service_permission(service_id, permission=EMAIL_TYPE):
 def create_inbound_sms(
     service,
     notify_number=None,
-    user_number='7700900111',
+    user_number='447700900111',
     provider_date=None,
     provider_reference=None,
     content='Hello'

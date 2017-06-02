@@ -2,7 +2,7 @@ from urllib.parse import unquote
 
 import iso8601
 from flask import jsonify, Blueprint, current_app, request
-from notifications_utils.recipients import normalise_phone_number
+from notifications_utils.recipients import validate_and_format_phone_number
 
 from app import statsd_client
 from app.dao.services_dao import dao_fetch_services_by_sms_sender
@@ -64,8 +64,8 @@ def format_mmg_datetime(date):
 
 
 def create_inbound_mmg_sms_object(service, json):
-    message = format_mmg_message(json['Message'])
-    user_number = normalise_phone_number(json['MSISDN'])
+    message = format_message(json['Message'])
+    user_number = validate_and_format_phone_number(json['MSISDN'])
 
     provider_date = json.get('DateRecieved')
     if provider_date:
