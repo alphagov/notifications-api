@@ -2,6 +2,7 @@ from datetime import timedelta
 from celery.schedules import crontab
 from kombu import Exchange, Queue
 import os
+
 from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 
 if os.environ.get('VCAP_SERVICES'):
@@ -166,6 +167,11 @@ class Config(object):
         'delete-letter-notifications': {
             'task': 'delete-letter-notifications',
             'schedule': crontab(minute=40, hour=0),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
+        'delete-inbound-sms': {
+            'task': 'delete-inbound-sms',
+            'schedule': crontab(minute=0, hour=1),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'send-daily-performance-platform-stats': {
