@@ -671,7 +671,6 @@ NOTIFICATION_STATUS_TYPES_BILLABLE = [
     NOTIFICATION_PERMANENT_FAILURE,
 ]
 
-
 NOTIFICATION_STATUS_TYPES = [
     NOTIFICATION_CREATED,
     NOTIFICATION_SENDING,
@@ -1175,3 +1174,20 @@ class InboundSms(db.Model):
     @content.setter
     def content(self, content):
         self._content = encryption.encrypt(content)
+
+
+class LetterRate(db.Model):
+    __tablename__ = 'letter_rates'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    valid_from = valid_from = db.Column(db.DateTime, nullable=False)
+
+
+class LetterRateDetail(db.Model):
+    __tablename__ = 'letter_rate_details'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    letter_rate_id = db.Column(UUID(as_uuid=True), db.ForeignKey('letter_rates.id'), index=True, nullable=False)
+    letter_rate = db.relationship('LetterRate', backref='letter_rates')
+    page_total = db.Column(db.Integer, nullable=False)
+    rate = db.Column(db.Numeric(), nullable=False)
