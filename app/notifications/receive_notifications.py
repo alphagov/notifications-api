@@ -86,7 +86,34 @@ def create_inbound_mmg_sms_object(service, json):
 @receive_notifications_blueprint.route('/notifications/sms/receive/firetext', methods=['POST'])
 def receive_firetext_sms():
     post_data = request.form
-    current_app.logger.info("Received Firetext notification form data: {}".format(post_data))
+
+    potential_services = dao_fetch_services_by_sms_sender(post_data['destination'])
+    if len(potential_services) != 1:
+        current_app.logger.error('Inbound number "{}" not associated with exactly one service'.format(
+            post_data['source']
+        ))
+        statsd_client.incr('inbound.firetext.failed')
+        return jsonify({
+            "status": "ok"
+        }), 200
+
+    service = potential_services[0]
+
+    user_number = normalise_phone_number(post_data['source'])
+    message = post_data['message']
+    timestamp = post_data['time']
+
+    dao_create_inbound_sms(
+        InboundSms(
+            service=service,
+            notify_number=service.sms_sender,
+            user_number=user_number,
+            provider_date=timestamp,
+            content=message
+        )
+    )
+
+    statsd_client.incr('inbound.firetext.successful')
 
     return jsonify({
         "status": "ok"
