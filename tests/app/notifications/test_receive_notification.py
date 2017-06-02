@@ -4,7 +4,8 @@ import pytest
 from flask import json
 
 from app.notifications.receive_notifications import (
-    format_message,
+    format_mmg_message,
+    format_mmg_datetime,
     create_inbound_mmg_sms_object
 )
 
@@ -36,8 +37,16 @@ def test_receive_notification_returns_received_to_mmg(client, sample_service):
     ('%F0%9F%93%A9+%F0%9F%93%A9+%F0%9F%93%A9', '📩 📩 📩'),
     ('x+%2B+y', 'x + y')
 ])
-def test_format_message(message, expected_output):
-    assert format_message(message) == expected_output
+def test_format_mmg_message(message, expected_output):
+    assert format_mmg_message(message) == expected_output
+
+
+@pytest.mark.parametrize('provider_date, expected_output', [
+    ('2017-01-21+11%3A56%3A11', datetime(2017, 1, 21, 11, 56, 11)),
+    ('2017-05-21+11%3A56%3A11', datetime(2017, 5, 21, 10, 56, 11))
+])
+def test_format_mmg_datetime(provider_date, expected_output):
+    assert format_mmg_datetime(provider_date) == expected_output
 
 
 def test_create_inbound_mmg_sms_object(sample_service):
@@ -46,7 +55,7 @@ def test_create_inbound_mmg_sms_object(sample_service):
         'Message': 'hello+there+%F0%9F%93%A9',
         'Number': 'foo',
         'MSISDN': '07700 900 001',
-        'DateRecieved': '2017-01-02 03:04:05',
+        'DateRecieved': '2017-01-02+03%3A04%3A05',
         'ID': 'bar',
     }
 
