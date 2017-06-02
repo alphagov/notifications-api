@@ -70,6 +70,7 @@ def test_create_inbound_mmg_sms_object(sample_service):
     assert inbound_sms.provider_reference == 'bar'
     assert inbound_sms._content != 'hello there 📩'
     assert inbound_sms.content == 'hello there 📩'
+    assert inbound_sms.provider == 'mmg'
 
 
 @pytest.mark.parametrize('notify_number', ['foo', 'baz'], ids=['two_matching_services', 'no_matching_services'])
@@ -136,6 +137,7 @@ def test_receive_notification_from_firetext_persists_message(notify_db_session, 
     assert persisted.user_number == '7999999999'
     assert persisted.service == service
     assert persisted.content == 'this is a message'
+    assert persisted.provider == 'firetext'
     assert persisted.provider_date == datetime(2017, 1, 1, 12, 0, 0, 0)
 
 

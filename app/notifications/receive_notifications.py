@@ -4,7 +4,7 @@ import iso8601
 from flask import jsonify, Blueprint, current_app, request
 from notifications_utils.recipients import normalise_phone_number
 
-from app import statsd_client
+from app import statsd_client, firetext_client, mmg_client
 from app.dao.services_dao import dao_fetch_services_by_sms_sender
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.models import InboundSms
@@ -78,6 +78,7 @@ def create_inbound_mmg_sms_object(service, json):
         provider_date=provider_date,
         provider_reference=json.get('ID'),
         content=message,
+        provider=mmg_client.name
     )
     dao_create_inbound_sms(inbound)
     return inbound
@@ -90,7 +91,7 @@ def receive_firetext_sms():
     potential_services = dao_fetch_services_by_sms_sender(post_data['destination'])
     if len(potential_services) != 1:
         current_app.logger.error('Inbound number "{}" not associated with exactly one service'.format(
-            post_data['source']
+            post_data['destination']
         ))
         statsd_client.incr('inbound.firetext.failed')
         return jsonify({
@@ -109,7 +110,8 @@ def receive_firetext_sms():
             notify_number=service.sms_sender,
             user_number=user_number,
             provider_date=timestamp,
-            content=message
+            content=message,
+            provider=firetext_client.name
         )
     )
 
