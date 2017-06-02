@@ -1,6 +1,13 @@
+from datetime import (
+    timedelta,
+    datetime
+)
+
+
 from app import db
 from app.dao.dao_utils import transactional
 from app.models import InboundSms
+from app.statsd_decorators import statsd
 
 
 @transactional
@@ -28,3 +35,15 @@ def dao_count_inbound_sms_for_service(service_id):
     return InboundSms.query.filter(
         InboundSms.service_id == service_id
     ).count()
+
+
+@statsd(namespace="dao")
+@transactional
+def delete_inbound_sms_created_more_than_a_week_ago():
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+
+    deleted = db.session.query(InboundSms).filter(
+        InboundSms.created_at < seven_days_ago
+    ).delete(synchronize_session='fetch')
+
+    return deleted
