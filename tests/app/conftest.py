@@ -1,11 +1,12 @@
-import requests_mock
-import pytest
+import json
 import uuid
 from datetime import (datetime, date, timedelta)
 
+import requests_mock
+import pytest
 from sqlalchemy import asc
 from sqlalchemy.orm.session import make_transient
-from flask import current_app
+from flask import current_app, url_for
 
 from app import db
 from app.models import (
@@ -35,6 +36,7 @@ from app.dao.invited_user_dao import save_invited_user
 from app.dao.provider_rates_dao import create_provider_rates
 from app.clients.sms.firetext import FiretextClient
 
+from tests import create_authorization_header
 from tests.app.db import create_user, create_template, create_notification
 
 
@@ -976,3 +978,41 @@ def restore_provider_details(notify_db, notify_db_session):
     notify_db.session.add_all(existing_provider_details)
     notify_db.session.add_all(existing_provider_details_history)
     notify_db.session.commit()
+
+
+@pytest.fixture
+def admin_request(client):
+    class AdminRequest:
+
+        @staticmethod
+        def get(endpoint, endpoint_kwargs=None, expected_status=200):
+            resp = client.get(
+                url_for(endpoint, **(endpoint_kwargs or {})),
+                headers=[create_authorization_header()]
+            )
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == expected_status
+            return json_resp
+
+        @staticmethod
+        def post(endpoint, endpoint_kwargs=None, data=None, expected_status=200):
+            resp = client.post(
+                url_for(endpoint, **(endpoint_kwargs or {})),
+                data=json.dumps(data),
+                headers=[('Content-Type', 'application/json'), create_authorization_header()]
+            )
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == expected_status
+            return json_resp
+
+        @staticmethod
+        def delete(endpoint, endpoint_kwargs=None, expected_status=204):
+            resp = client.delete(
+                url_for(endpoint, **(endpoint_kwargs or {})),
+                headers=[create_authorization_header()]
+            )
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == expected_status
+            return json_resp
+
+    return AdminRequest

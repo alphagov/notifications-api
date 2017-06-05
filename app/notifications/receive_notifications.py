@@ -2,7 +2,7 @@ from urllib.parse import unquote
 
 import iso8601
 from flask import jsonify, Blueprint, current_app, request
-from notifications_utils.recipients import normalise_phone_number
+from notifications_utils.recipients import validate_and_format_phone_number
 
 from app import statsd_client, firetext_client, mmg_client
 from app.dao.services_dao import dao_fetch_services_by_sms_sender
@@ -38,7 +38,7 @@ def receive_mmg_sms():
         # succesfully
         return 'RECEIVED', 200
 
-    statsd_client.incr('inbound.mmg.succesful')
+    statsd_client.incr('inbound.mmg.successful')
 
     service = potential_services[0]
 
@@ -65,7 +65,7 @@ def format_mmg_datetime(date):
 
 def create_inbound_mmg_sms_object(service, json):
     message = format_mmg_message(json['Message'])
-    user_number = normalise_phone_number(json['MSISDN'])
+    user_number = validate_and_format_phone_number(json['MSISDN'], international=True)
 
     provider_date = json.get('DateRecieved')
     if provider_date:
@@ -100,7 +100,7 @@ def receive_firetext_sms():
 
     service = potential_services[0]
 
-    user_number = normalise_phone_number(post_data['source'])
+    user_number = validate_and_format_phone_number(post_data['source'], international=True)
     message = post_data['message']
     timestamp = post_data['time']
 
