@@ -10,7 +10,12 @@ from freezegun import freeze_time
 
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
-from app.models import User, Organisation, DVLA_ORG_LAND_REGISTRY, Rate, ServicePermission
+from app.models import (
+    Organisation, Rate, Service, ServicePermission, User,
+    KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
+    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
+    DVLA_ORG_LAND_REGISTRY
+)
 from tests import create_authorization_header
 from tests.app.db import create_template
 from tests.app.conftest import (
@@ -19,11 +24,6 @@ from tests.app.conftest import (
     sample_notification as create_sample_notification,
     sample_notification_history as create_notification_history,
     sample_notification_with_job
-)
-from app.models import (
-    Service, ServicePermission,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
-    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE
 )
 
 from tests.app.db import create_user
@@ -1438,13 +1438,12 @@ def test_get_services_with_detailed_flag(client, notify_db, notify_db_session):
 
 
 def test_get_services_with_detailed_flag_excluding_from_test_key(notify_api, notify_db, notify_db_session):
-    notifications = [
-        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_NORMAL),
-        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEAM),
-        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST),
-        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST),
-        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST)
-    ]
+    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_NORMAL),
+    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEAM),
+    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST),
+    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST),
+    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST)
+
     with notify_api.test_request_context(), notify_api.test_client() as client:
         resp = client.get(
             '/service?detailed=True&include_from_test_key=False',
@@ -2051,3 +2050,34 @@ def test_search_for_notification_by_to_field_filters_by_statuses(client, notify_
     assert len(notifications) == 2
     assert str(notification1.id) in notification_ids
     assert str(notification2.id) in notification_ids
+
+
+def test_search_for_notification_by_to_field_returns_content(
+    client,
+    notify_db,
+    notify_db_session,
+    sample_template_with_placeholders
+):
+    notification = create_sample_notification(
+        notify_db,
+        notify_db_session,
+        to_field='+447700900855',
+        normalised_to='447700900855',
+        template=sample_template_with_placeholders,
+        personalisation={"name": "Foo"}
+    )
+
+    response = client.get(
+        '/service/{}/notifications?to={}'.format(
+            sample_template_with_placeholders.service_id, '+447700900855'
+        ),
+        headers=[create_authorization_header()]
+    )
+    notifications = json.loads(response.get_data(as_text=True))['notifications']
+
+    assert response.status_code == 200
+    assert len(notifications) == 1
+
+    assert notifications[0]['id'] == str(notification.id)
+    assert notifications[0]['to'] == '+447700900855'
+    assert notifications[0]['body'] == 'Hello Foo\nYour thing is due soon'
