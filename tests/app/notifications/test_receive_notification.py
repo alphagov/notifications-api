@@ -116,7 +116,7 @@ def test_receive_notification_returns_received_to_firetext(notify_db_session, cl
 
 
 def test_receive_notification_from_firetext_persists_message(notify_db_session, client, mocker):
-    mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
+    mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
     service = create_service(service_name='b', sms_sender='07111111111')
 
@@ -134,7 +134,7 @@ def test_receive_notification_from_firetext_persists_message(notify_db_session, 
 
     assert result['status'] == 'ok'
     assert persisted.notify_number == '07111111111'
-    assert persisted.user_number == '7999999999'
+    assert persisted.user_number == '447999999999'
     assert persisted.service == service
     assert persisted.content == 'this is a message'
     assert persisted.provider == 'firetext'

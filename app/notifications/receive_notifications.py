@@ -38,7 +38,7 @@ def receive_mmg_sms():
         # succesfully
         return 'RECEIVED', 200
 
-    statsd_client.incr('inbound.mmg.succesful')
+    statsd_client.incr('inbound.mmg.successful')
 
     service = potential_services[0]
 
@@ -100,7 +100,7 @@ def receive_firetext_sms():
 
     service = potential_services[0]
 
-    user_number = normalise_phone_number(post_data['source'])
+    user_number = validate_and_format_phone_number(post_data['source'], international=True)
     message = post_data['message']
     timestamp = post_data['time']
 
