@@ -193,7 +193,8 @@ def create_inbound_sms(
     user_number='447700900111',
     provider_date=None,
     provider_reference=None,
-    content='Hello'
+    content='Hello',
+    provider="mmg"
 ):
     inbound = InboundSms(
         service=service,
@@ -203,6 +204,7 @@ def create_inbound_sms(
         provider_date=provider_date or datetime.utcnow(),
         provider_reference=provider_reference or 'foo',
         content=content,
+        provider=provider
     )
     dao_create_inbound_sms(inbound)
     return inbound
