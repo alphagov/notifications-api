@@ -65,7 +65,7 @@ def test_create_inbound_mmg_sms_object(sample_service):
 
     assert inbound_sms.service_id == sample_service.id
     assert inbound_sms.notify_number == 'foo'
-    assert inbound_sms.user_number == '7700900001'
+    assert inbound_sms.user_number == '447700900001'
     assert inbound_sms.provider_date == datetime(2017, 1, 2, 3, 4, 5)
     assert inbound_sms.provider_reference == 'bar'
     assert inbound_sms._content != 'hello there 📩'
