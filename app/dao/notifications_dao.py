@@ -2,7 +2,8 @@ import functools
 from datetime import (
     datetime,
     timedelta,
-    date)
+    date
+)
 
 from flask import current_app
 
@@ -26,6 +27,7 @@ from app.models import (
     NotificationHistory,
     NotificationStatistics,
     Template,
+    ScheduledNotification,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
@@ -35,7 +37,8 @@ from app.models import (
     NOTIFICATION_PERMANENT_FAILURE,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST,
     LETTER_TYPE,
-    NOTIFICATION_SENT, ScheduledNotification)
+    NOTIFICATION_SENT,
+)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd

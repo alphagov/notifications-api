@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
 from app import notify_celery
 from app import performance_platform_client
+from app.dao.inbound_sms_dao import delete_inbound_sms_created_more_than_a_week_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
 from app.dao.jobs_dao import dao_set_scheduled_jobs_to_pending, dao_get_jobs_older_than_limited_by
 from app.dao.notifications_dao import (
@@ -226,3 +227,21 @@ def timeout_job_statistics():
     if updated:
         current_app.logger.info(
             "Timeout period reached for {} job statistics, failure count has been updated.".format(updated))
+
+
+@notify_celery.task(name="delete-inbound-sms")
+@statsd(namespace="tasks")
+def delete_inbound_sms_older_than_seven_days():
+    try:
+        start = datetime.utcnow()
+        deleted = delete_inbound_sms_created_more_than_a_week_ago()
+        current_app.logger.info(
+            "Delete inbound sms job started {} finished {} deleted {} inbound sms notifications".format(
+                start,
+                datetime.utcnow(),
+                deleted
+            )
+        )
+    except SQLAlchemyError as e:
+        current_app.logger.exception("Failed to delete inbound sms notifications")
+        raise

@@ -2,6 +2,7 @@ from datetime import datetime
 import uuid
 
 
+from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.dao.jobs_dao import dao_create_job
 from app.models import (
     InboundSms,
@@ -12,6 +13,7 @@ from app.models import (
     ScheduledNotification,
     ServicePermission,
     Job,
+    InboundSms,
     EMAIL_TYPE,
     SMS_TYPE,
     KEY_TYPE_NORMAL,
@@ -151,14 +153,15 @@ def create_notification(
     return notification
 
 
-def create_job(template,
-               notification_count=1,
-               created_at=None,
-               job_status='pending',
-               scheduled_for=None,
-               processing_started=None,
-               original_file_name='some.csv'):
-
+def create_job(
+    template,
+    notification_count=1,
+    created_at=None,
+    job_status='pending',
+    scheduled_for=None,
+    processing_started=None,
+    original_file_name='some.csv'
+):
     data = {
         'id': uuid.uuid4(),
         'service_id': template.service_id,
@@ -193,11 +196,12 @@ def create_inbound_sms(
     user_number='447700900111',
     provider_date=None,
     provider_reference=None,
-    content='Hello'
+    content='Hello',
+    created_at=None
 ):
     inbound = InboundSms(
         service=service,
-        created_at=datetime.utcnow(),
+        created_at=created_at or datetime.utcnow(),
         notify_number=notify_number or service.sms_sender,
         user_number=user_number,
         provider_date=provider_date or datetime.utcnow(),
