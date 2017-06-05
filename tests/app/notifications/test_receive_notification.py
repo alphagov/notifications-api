@@ -1,4 +1,5 @@
 from datetime import datetime
+from unittest.mock import call
 
 import pytest
 from flask import json
@@ -10,6 +11,7 @@ from app.notifications.receive_notifications import (
 )
 
 from app.models import InboundSms
+from tests.app.conftest import sample_service
 from tests.app.db import create_service
 
 
@@ -68,6 +70,7 @@ def test_create_inbound_mmg_sms_object(sample_service):
     assert inbound_sms.provider_reference == 'bar'
     assert inbound_sms._content != 'hello there 📩'
     assert inbound_sms.content == 'hello there 📩'
+    assert inbound_sms.provider == 'mmg'
 
 
 @pytest.mark.parametrize('notify_number', ['foo', 'baz'], ids=['two_matching_services', 'no_matching_services'])
@@ -92,7 +95,11 @@ def test_receive_notification_error_if_not_single_matching_service(client, notif
     assert InboundSms.query.count() == 0
 
 
-def test_receive_notification_returns_received_to_firetext(client):
+def test_receive_notification_returns_received_to_firetext(notify_db_session, client, mocker):
+    mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
+
+    create_service(service_name='b', sms_sender='07111111111')
+
     data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 
     response = client.post(
@@ -103,4 +110,74 @@ def test_receive_notification_returns_received_to_firetext(client):
     assert response.status_code == 200
     result = json.loads(response.get_data(as_text=True))
 
+    mock.assert_has_calls([call('inbound.firetext.successful')])
+
     assert result['status'] == 'ok'
+
+
+def test_receive_notification_from_firetext_persists_message(notify_db_session, client, mocker):
+    mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
+
+    service = create_service(service_name='b', sms_sender='07111111111')
+
+    data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
+
+    response = client.post(
+        path='/notifications/sms/receive/firetext',
+        data=data,
+        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+    assert response.status_code == 200
+    result = json.loads(response.get_data(as_text=True))
+
+    persisted = InboundSms.query.first()
+
+    assert result['status'] == 'ok'
+    assert persisted.notify_number == '07111111111'
+    assert persisted.user_number == '447999999999'
+    assert persisted.service == service
+    assert persisted.content == 'this is a message'
+    assert persisted.provider == 'firetext'
+    assert persisted.provider_date == datetime(2017, 1, 1, 12, 0, 0, 0)
+
+
+def test_receive_notification_from_firetext_persists_message_with_normalized_phone(notify_db_session, client, mocker):
+    mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
+
+    create_service(service_name='b', sms_sender='07111111111')
+
+    data = "source=(+44)7999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
+
+    response = client.post(
+        path='/notifications/sms/receive/firetext',
+        data=data,
+        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+    assert response.status_code == 200
+    result = json.loads(response.get_data(as_text=True))
+
+    persisted = InboundSms.query.first()
+
+    assert result['status'] == 'ok'
+    assert persisted.user_number == '447999999999'
+
+
+def test_returns_ok_to_firetext_if_mismatched_sms_sender(notify_db_session, client, mocker):
+
+    mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
+
+    create_service(service_name='b', sms_sender='07111111199')
+
+    data = "source=(+44)7999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
+
+    response = client.post(
+        path='/notifications/sms/receive/firetext',
+        data=data,
+        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+
+    assert response.status_code == 200
+    result = json.loads(response.get_data(as_text=True))
+
+    assert not InboundSms.query.all()
+    assert result['status'] == 'ok'
+    mock.assert_has_calls([call('inbound.firetext.failed')])

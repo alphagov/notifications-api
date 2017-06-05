@@ -1165,6 +1165,7 @@ class InboundSms(db.Model):
     user_number = db.Column(db.String, nullable=False)  # the end user's number, that the msg was sent from
     provider_date = db.Column(db.DateTime)
     provider_reference = db.Column(db.String)
+    provider = db.Column(db.String, nullable=True)
     _content = db.Column('content', db.String, nullable=False)
 
     @property
