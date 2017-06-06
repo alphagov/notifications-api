@@ -239,6 +239,8 @@ class Config(object):
         }
     }
 
+    FREE_SMS_TIER_FRAGMENT_COUNT = 250000
+
 
 ######################
 # Config overrides ###

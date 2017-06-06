@@ -217,6 +217,10 @@ class Service(db.Model, Versioned):
             self.can_send_letters = LETTER_TYPE in [p.permission for p in self.permissions]
             self.can_send_international_sms = INTERNATIONAL_SMS_TYPE in [p.permission for p in self.permissions]
 
+    @staticmethod
+    def free_sms_fragment_limit():
+        return current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
+
     @classmethod
     def from_json(cls, data):
         """
