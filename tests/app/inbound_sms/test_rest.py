@@ -112,3 +112,29 @@ def test_get_inbound_sms_summary_with_no_inbound(admin_request, sample_service):
         'count': 0,
         'most_recent': None
     }
+
+
+def test_get_inbound_sms_by_id_returns_200(admin_request, sample_service):
+    inbound = create_inbound_sms(sample_service, user_number='447700900001')
+
+    response = admin_request.get(
+        'inbound_sms.get_inbound_by_id',
+        endpoint_kwargs={
+            'service_id': sample_service.id,
+            'inbound_sms_id': inbound.id
+        }
+    )
+
+    assert response['user_number'] == '447700900001'
+    assert response['service_id'] == str(sample_service.id)
+
+
+def test_get_inbound_sms_by_id_invalid_id_returns_400(admin_request, sample_service):
+    assert admin_request.get(
+        'inbound_sms.get_inbound_by_id',
+        endpoint_kwargs={
+            'service_id': sample_service.id,
+            'inbound_sms_id': 'dsadsda'
+        },
+        expected_status=400
+    )
