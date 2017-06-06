@@ -1248,6 +1248,39 @@ def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notif
         assert response.status_code == 200
 
 
+def test_get_notification_for_service(client, notify_db, notify_db_session):
+
+    service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
+    service_2 = create_service(notify_db, notify_db_session, service_name="2", email_from='2')
+
+    service_1_notifications = [
+        create_sample_notification(notify_db, notify_db_session, service=service_1),
+        create_sample_notification(notify_db, notify_db_session, service=service_1),
+        create_sample_notification(notify_db, notify_db_session, service=service_1),
+    ]
+
+    service_2_notifications = [
+        create_sample_notification(notify_db, notify_db_session, service=service_2)
+    ]
+
+    for notification in service_1_notifications:
+        response = client.get(
+            path='/service/{}/notifications/{}'.format(service_1.id, notification.id),
+            headers=[create_authorization_header()]
+        )
+        resp = json.loads(response.get_data(as_text=True))
+        assert str(resp['id']) == str(notification.id)
+        assert response.status_code == 200
+
+        service_2_response = client.get(
+            path='/service/{}/notifications/{}'.format(service_2.id, notification.id),
+            headers=[create_authorization_header()]
+        )
+        assert service_2_response.status_code == 404
+        service_2_response = json.loads(service_2_response.get_data(as_text=True))
+        assert service_2_response == {'message': 'No result found', 'result': 'error'}
+
+
 @pytest.mark.parametrize(
     'include_from_test_key, expected_count_of_notifications',
     [
