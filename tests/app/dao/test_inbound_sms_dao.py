@@ -5,7 +5,8 @@ from freezegun import freeze_time
 from app.dao.inbound_sms_dao import (
     dao_get_inbound_sms_for_service,
     dao_count_inbound_sms_for_service,
-    delete_inbound_sms_created_more_than_a_week_ago
+    delete_inbound_sms_created_more_than_a_week_ago,
+    dao_get_inbound_sms_by_id
 )
 from tests.app.db import create_inbound_sms, create_service
 
@@ -86,3 +87,11 @@ def test_should_not_delete_inbound_sms_before_seven_days(sample_service):
     delete_inbound_sms_created_more_than_a_week_ago()
 
     assert len(InboundSms.query.all()) == 2
+
+
+def test_get_inbound_sms_by_id_returns(sample_service):
+    inbound = create_inbound_sms(sample_service)
+
+    inbound_from_db = dao_get_inbound_sms_by_id(inbound.id)
+
+    assert inbound == inbound_from_db
