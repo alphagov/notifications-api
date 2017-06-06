@@ -179,14 +179,15 @@ def get_total_billable_units_for_sent_sms_notifications_in_date_range(start_date
         )
         billable_units_by_rate_boundry = result.scalar()
         if billable_units_by_rate_boundry:
+            int_billable_units_by_rate_boundry = int(billable_units_by_rate_boundry)
             if billable_units >= free_sms_limit:
-                total_cost += int(billable_units_by_rate_boundry) * rate_boundary['rate']
-            elif billable_units + billable_units_by_rate_boundry > free_sms_limit:
+                total_cost += int_billable_units_by_rate_boundry * rate_boundary['rate']
+            elif billable_units + int_billable_units_by_rate_boundry > free_sms_limit:
                 remaining_free_allowance = abs(free_sms_limit - billable_units)
-                total_cost += ((billable_units_by_rate_boundry - remaining_free_allowance) * rate_boundary)
+                total_cost += ((int_billable_units_by_rate_boundry - remaining_free_allowance) * rate_boundary['rate'])
             else:
                 total_cost += 0
-            billable_units += int(billable_units_by_rate_boundry)
+            billable_units += int_billable_units_by_rate_boundry
     return billable_units, total_cost
 
 
