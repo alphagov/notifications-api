@@ -5,19 +5,23 @@ from functools import partial
 
 from flask import current_app
 from freezegun import freeze_time
-from app.celery.scheduled_tasks import s3, timeout_job_statistics, delete_sms_notifications_older_than_seven_days, \
-    delete_letter_notifications_older_than_seven_days, delete_email_notifications_older_than_seven_days, \
-    send_scheduled_notifications
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
+    delete_email_notifications_older_than_seven_days,
+    delete_inbound_sms_older_than_seven_days,
+    delete_invitations,
+    delete_notifications_created_more_than_a_week_ago_by_type,
+    delete_letter_notifications_older_than_seven_days,
+    delete_sms_notifications_older_than_seven_days,
     delete_verify_codes,
     remove_csv_files,
-    delete_notifications_created_more_than_a_week_ago_by_type,
-    delete_invitations,
-    timeout_notifications,
     run_scheduled_jobs,
+    s3,
     send_daily_performance_platform_stats,
-    switch_current_sms_provider_on_slow_delivery
+    send_scheduled_notifications,
+    switch_current_sms_provider_on_slow_delivery,
+    timeout_job_statistics,
+    timeout_notifications
 )
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -71,7 +75,8 @@ def prepare_current_provider(restore_provider_details):
 
 def test_should_have_decorated_tasks_functions():
     assert delete_verify_codes.__wrapped__.__name__ == 'delete_verify_codes'
-    assert delete_notifications_created_more_than_a_week_ago_by_type.__wrapped__.__name__ == 'delete_notifications_created_more_than_a_week_ago_by_type'  # noqa
+    assert delete_notifications_created_more_than_a_week_ago_by_type.__wrapped__.__name__ == \
+        'delete_notifications_created_more_than_a_week_ago_by_type'
     assert timeout_notifications.__wrapped__.__name__ == 'timeout_notifications'
     assert delete_invitations.__wrapped__.__name__ == 'delete_invitations'
     assert run_scheduled_jobs.__wrapped__.__name__ == 'run_scheduled_jobs'
@@ -79,6 +84,8 @@ def test_should_have_decorated_tasks_functions():
     assert send_daily_performance_platform_stats.__wrapped__.__name__ == 'send_daily_performance_platform_stats'
     assert switch_current_sms_provider_on_slow_delivery.__wrapped__.__name__ == \
         'switch_current_sms_provider_on_slow_delivery'
+    assert delete_inbound_sms_older_than_seven_days.__wrapped__.__name__ == \
+        'delete_inbound_sms_older_than_seven_days'
 
 
 def test_should_call_delete_sms_notifications_more_than_week_in_task(notify_api, mocker):
@@ -440,3 +447,9 @@ def test_timeout_job_statistics_called_with_notification_timeout(notify_api, moc
     dao_mock = mocker.patch('app.celery.scheduled_tasks.dao_timeout_job_statistics')
     timeout_job_statistics()
     dao_mock.assert_called_once_with(999)
+
+
+def test_should_call_delete_inbound_sms_older_than_seven_days(notify_api, mocker):
+    mocker.patch('app.celery.scheduled_tasks.delete_inbound_sms_created_more_than_a_week_ago')
+    delete_inbound_sms_older_than_seven_days()
+    assert scheduled_tasks.delete_inbound_sms_created_more_than_a_week_ago.call_count == 1
