@@ -181,7 +181,7 @@ def get_total_billable_units_for_sent_sms_notifications_in_date_range(start_date
             elif billable_units + billable_units_by_rate_boundry > 250000:
                 remaining_free_allowance = abs(250000 - billable_units)
                 total_cost += ((billable_units_by_rate_boundry - remaining_free_allowance) * rate_boundary)
-            else
+            else:
                 total_cost += 0
             billable_units += int(billable_units_by_rate_boundry)
 
