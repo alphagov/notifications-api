@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from flask import current_app
 from sqlalchemy import Float, Integer
 from sqlalchemy import func, case, cast
 from sqlalchemy import literal_column
@@ -11,7 +12,7 @@ from app.models import (NotificationHistory,
                         NOTIFICATION_STATUS_TYPES_BILLABLE,
                         KEY_TYPE_TEST,
                         SMS_TYPE,
-                        EMAIL_TYPE)
+                        EMAIL_TYPE, Service)
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column
 
@@ -158,6 +159,8 @@ def rate_multiplier():
 @statsd(namespace="dao")
 def get_total_billable_units_for_sent_sms_notifications_in_date_range(start_date, end_date, service_id):
 
+    free_sms_limit = Service.free_sms_fragment_limit()
+
     billable_units = 0
     total_cost = 0.0
 
@@ -176,15 +179,14 @@ def get_total_billable_units_for_sent_sms_notifications_in_date_range(start_date
         )
         billable_units_by_rate_boundry = result.scalar()
         if billable_units_by_rate_boundry:
-            if billable_units >= 250000:
+            if billable_units >= free_sms_limit:
                 total_cost += int(billable_units_by_rate_boundry) * rate_boundary['rate']
-            elif billable_units + billable_units_by_rate_boundry > 250000:
-                remaining_free_allowance = abs(250000 - billable_units)
+            elif billable_units + billable_units_by_rate_boundry > free_sms_limit:
+                remaining_free_allowance = abs(free_sms_limit - billable_units)
                 total_cost += ((billable_units_by_rate_boundry - remaining_free_allowance) * rate_boundary)
             else:
                 total_cost += 0
             billable_units += int(billable_units_by_rate_boundry)
-
     return billable_units, total_cost
 
 

@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 
 import pytest
+from flask import current_app
 
 from app.dao.date_util import get_financial_year
 from app.dao.notification_usage_dao import (
@@ -15,8 +16,7 @@ from app.models import (
     Rate,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_STATUS_TYPES_BILLABLE,
-    NOTIFICATION_STATUS_TYPES_NON_BILLABLE,
-    Notification)
+    NOTIFICATION_STATUS_TYPES_NON_BILLABLE)
 from tests.app.conftest import sample_notification, sample_email_template, sample_letter_template, sample_service
 from tests.app.db import create_notification
 from freezegun import freeze_time
@@ -266,6 +266,8 @@ def set_up_rate(notify_db, start_date, value):
 
 @freeze_time("2016-01-10 12:00:00.000000")
 def test_returns_total_billable_units_for_sms_notifications(notify_db, notify_db_session, sample_service):
+    current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT'] = 0
+
     set_up_rate(notify_db, datetime(2016, 1, 1), 0.016)
 
     sample_notification(
@@ -288,6 +290,8 @@ def test_returns_total_billable_units_for_sms_notifications(notify_db, notify_db
 def test_returns_total_billable_units_multiplied_by_multipler_for_sms_notifications(
         notify_db, notify_db_session, sample_service
 ):
+    current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT'] = 0
+
     set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
 
     sample_notification(
@@ -309,6 +313,8 @@ def test_returns_total_billable_units_multiplied_by_multipler_for_sms_notificati
 def test_returns_total_billable_units_multiplied_by_multipler_for_sms_notifications_for_several_rates(
         notify_db, notify_db_session, sample_service
 ):
+    current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT'] = 0
+
     set_up_rate(notify_db, datetime(2016, 1, 1), 2)
     set_up_rate(notify_db, datetime(2016, 10, 1), 4)
     set_up_rate(notify_db, datetime(2017, 1, 1), 6)
@@ -350,6 +356,8 @@ def test_returns_total_billable_units_multiplied_by_multipler_for_sms_notificati
 def test_returns_total_billable_units_for_sms_notifications_for_several_rates_where_dates_match_rate_boundary(
         notify_db, notify_db_session, sample_service
 ):
+    current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT'] = 0
+
     set_up_rate(notify_db, datetime(2016, 1, 1), 2)
     set_up_rate(notify_db, datetime(2016, 10, 1), 4)
     set_up_rate(notify_db, datetime(2017, 1, 1), 6)
@@ -388,6 +396,8 @@ def test_returns_total_billable_units_for_sms_notifications_for_several_rates_wh
 def test_returns_total_billable_units_for_sms_notifications_ignoring_letters_and_emails(
         notify_db, notify_db_session, sample_service
 ):
+    current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT'] = 0
+
     set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
 
     email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
@@ -426,6 +436,8 @@ def test_returns_total_billable_units_for_sms_notifications_ignoring_letters_and
 def test_returns_total_billable_units_for_sms_notifications_for_only_requested_service(
         notify_db, notify_db_session
 ):
+    current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT'] = 0
+
     set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
 
     service_1 = sample_service(notify_db, notify_db_session, service_name=str(uuid.uuid4()))
@@ -463,6 +475,8 @@ def test_returns_total_billable_units_for_sms_notifications_for_only_requested_s
 def test_returns_total_billable_units_for_sms_notifications_handling_null_values(
     notify_db, notify_db_session, sample_service
 ):
+    current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT'] = 0
+
     set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
 
     sample_notification(
@@ -488,6 +502,9 @@ def test_returns_total_billable_units_for_sms_notifications_handling_null_values
 def test_ignores_non_billable_states_when_returning_billable_units_for_sms_notifications(
     notify_db, notify_db_session, sample_service, billable_units, states
 ):
+
+    current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT'] = 0
+
     set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
 
     for state in states:
@@ -514,6 +531,8 @@ def test_ignores_non_billable_states_when_returning_billable_units_for_sms_notif
 def test_restricts_to_time_period_when_returning_billable_units_for_sms_notifications(
     notify_db, notify_db_session, sample_service
 ):
+    current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT'] = 0
+
     set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
 
     sample_notification(
