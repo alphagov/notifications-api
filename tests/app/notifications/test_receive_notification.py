@@ -7,11 +7,11 @@ from flask import json
 from app.notifications.receive_notifications import (
     format_mmg_message,
     format_mmg_datetime,
-    create_inbound_mmg_sms_object
+    create_inbound_mmg_sms_object,
+    strip_leading_forty_four
 )
 
 from app.models import InboundSms
-from tests.app.conftest import sample_service
 from tests.app.db import create_service
 
 
@@ -163,7 +163,6 @@ def test_receive_notification_from_firetext_persists_message_with_normalized_pho
 
 
 def test_returns_ok_to_firetext_if_mismatched_sms_sender(notify_db_session, client, mocker):
-
     mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
     create_service(service_name='b', sms_sender='07111111199')
@@ -181,3 +180,16 @@ def test_returns_ok_to_firetext_if_mismatched_sms_sender(notify_db_session, clie
     assert not InboundSms.query.all()
     assert result['status'] == 'ok'
     mock.assert_has_calls([call('inbound.firetext.failed')])
+
+
+@pytest.mark.parametrize(
+    'number, expected',
+    [
+        ('447123123123', '07123123123'),
+        ('447123123144', '07123123144'),
+        ('07123123123', '07123123123'),
+        ('447444444444', '07444444444')
+    ]
+)
+def test_strip_leading_country_code(number, expected):
+    assert strip_leading_forty_four(number) == expected
