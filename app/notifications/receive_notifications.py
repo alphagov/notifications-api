@@ -27,10 +27,13 @@ def receive_mmg_sms():
     }
     """
     post_data = request.get_json()
-    potential_services = dao_fetch_services_by_sms_sender(post_data['Number'])
+
+    inbound_number = strip_leading_forty_four(post_data['Number'])
+
+    potential_services = dao_fetch_services_by_sms_sender(inbound_number)
 
     if len(potential_services) != 1:
-        current_app.logger.error('Inbound number "{}" not associated with exactly one service'.format(
+        current_app.logger.error('Inbound number "{}" from MMG not associated with exactly one service'.format(
             post_data['Number']
         ))
         statsd_client.incr('inbound.mmg.failed')
@@ -88,9 +91,11 @@ def create_inbound_mmg_sms_object(service, json):
 def receive_firetext_sms():
     post_data = request.form
 
-    potential_services = dao_fetch_services_by_sms_sender(post_data['destination'])
+    inbound_number = strip_leading_forty_four(post_data['destination'])
+
+    potential_services = dao_fetch_services_by_sms_sender(inbound_number)
     if len(potential_services) != 1:
-        current_app.logger.error('Inbound number "{}" not associated with exactly one service'.format(
+        current_app.logger.error('Inbound number "{}" from firetext not associated with exactly one service'.format(
             post_data['destination']
         ))
         statsd_client.incr('inbound.firetext.failed')
@@ -120,3 +125,9 @@ def receive_firetext_sms():
     return jsonify({
         "status": "ok"
     }), 200
+
+
+def strip_leading_forty_four(number):
+    if number.startswith('44'):
+        return number.replace('44', '0', 1)
+    return number
