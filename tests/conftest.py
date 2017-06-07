@@ -115,7 +115,6 @@ def set_config(app, name, value):
     old_val = app.config.get(name)
     app.config[name] = value
     yield
-    print(app.config)
     app.config[name] = old_val
 
 
