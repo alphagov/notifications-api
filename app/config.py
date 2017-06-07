@@ -3,7 +3,10 @@ from celery.schedules import crontab
 from kombu import Exchange, Queue
 import os
 
-from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
+from app.models import (
+    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE,
+    KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
+)
 
 if os.environ.get('VCAP_SERVICES'):
     # on cloudfoundry, config is a json blob in VCAP_SERVICES - unpack it, and populate
@@ -189,10 +192,17 @@ class Config(object):
             'schedule': crontab(minute=0, hour=3),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'remove_csv_files': {
+        'remove_sms_email_jobs': {
             'task': 'remove_csv_files',
             'schedule': crontab(minute=0, hour=4),
-            'options': {'queue': QueueNames.PERIODIC}
+            'options': {'queue': QueueNames.PERIODIC},
+            'kwargs': {'job_types': [EMAIL_TYPE, SMS_TYPE]}
+        },
+        'remove_letter_jobs': {
+            'task': 'remove_csv_files',
+            'schedule': crontab(minute=20, hour=4),
+            'options': {'queue': QueueNames.PERIODIC},
+            'kwargs': {'job_types': [LETTER_TYPE]}
         },
         'timeout-job-statistics': {
             'task': 'timeout-job-statistics',
