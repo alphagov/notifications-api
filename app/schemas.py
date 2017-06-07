@@ -175,7 +175,7 @@ class ProviderDetailsHistorySchema(BaseSchema):
 
 class ServiceSchema(BaseSchema):
 
-    free_sms_fragment_limit = fields.Method('get_free_sms_fragment_limit')
+    free_sms_fragment_limit = fields.Method(method_name='get_free_sms_fragment_limit')
     created_by = field_for(models.Service, 'created_by', required=True)
     organisation = field_for(models.Service, 'organisation')
     branding = field_for(models.Service, 'branding')
@@ -191,6 +191,7 @@ class ServiceSchema(BaseSchema):
 
     class Meta:
         model = models.Service
+        dump_only = ['free_sms_fragment_limit']
         exclude = (
             'updated_at',
             'created_at',
