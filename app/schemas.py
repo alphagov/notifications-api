@@ -260,6 +260,11 @@ class ServiceSchema(BaseSchema):
 class DetailedServiceSchema(BaseSchema):
     statistics = fields.Dict()
 
+    free_sms_fragment_limit = fields.Method(method_name='get_free_sms_fragment_limit')
+
+    def get_free_sms_fragment_limit(selfs, service):
+        return service.free_sms_fragment_limit()
+
     class Meta:
         model = models.Service
         exclude = (
