@@ -129,12 +129,23 @@ def test_get_inbound_sms_by_id_returns_200(admin_request, sample_service):
     assert response['service_id'] == str(sample_service.id)
 
 
-def test_get_inbound_sms_by_id_invalid_id_returns_400(admin_request, sample_service):
+def test_get_inbound_sms_by_id_invalid_id_returns_404(admin_request, sample_service):
     assert admin_request.get(
         'inbound_sms.get_inbound_by_id',
         endpoint_kwargs={
             'service_id': sample_service.id,
-            'inbound_sms_id': 'dsadsda'
+            'inbound_sms_id': 'bar'
         },
-        expected_status=400
+        expected_status=404
+    )
+
+
+def test_get_inbound_sms_by_id_with_invalid_service_id_returns_404(admin_request, sample_service):
+    assert admin_request.get(
+        'inbound_sms.get_inbound_by_id',
+        endpoint_kwargs={
+            'service_id': 'foo',
+            'inbound_sms_id': '2cfbd6a1-1575-4664-8969-f27be0ea40d9'
+        },
+        expected_status=404
     )

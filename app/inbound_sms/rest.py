@@ -1,11 +1,8 @@
-import uuid
-
 from flask import (
     Blueprint,
     jsonify,
     request
 )
-from werkzeug.exceptions import abort
 
 from notifications_utils.recipients import validate_and_format_phone_number
 
@@ -19,7 +16,7 @@ from app.errors import register_errors
 inbound_sms = Blueprint(
     'inbound_sms',
     __name__,
-    url_prefix='/service/<service_id>/inbound-sms'
+    url_prefix='/service/<uuid:service_id>/inbound-sms'
 )
 
 register_errors(inbound_sms)
@@ -50,14 +47,8 @@ def get_inbound_sms_summary_for_service(service_id):
     )
 
 
-@inbound_sms.route('/<inbound_sms_id>', methods=['GET'])
+@inbound_sms.route('/<uuid:inbound_sms_id>', methods=['GET'])
 def get_inbound_by_id(service_id, inbound_sms_id):
-    # TODO: Add JSON Schema here
-    try:
-        validated_uuid = uuid.UUID(inbound_sms_id)
-    except (ValueError, AttributeError):
-        abort(400)
-
-    inbound_sms = dao_get_inbound_sms_by_id(validated_uuid)
+    inbound_sms = dao_get_inbound_sms_by_id(service_id, inbound_sms_id)
 
     return jsonify(inbound_sms.serialize()), 200

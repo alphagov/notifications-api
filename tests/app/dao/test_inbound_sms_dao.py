@@ -92,6 +92,6 @@ def test_should_not_delete_inbound_sms_before_seven_days(sample_service):
 def test_get_inbound_sms_by_id_returns(sample_service):
     inbound = create_inbound_sms(sample_service)
 
-    inbound_from_db = dao_get_inbound_sms_by_id(inbound.id)
+    inbound_from_db = dao_get_inbound_sms_by_id(sample_service.id, inbound.id)
 
     assert inbound == inbound_from_db
