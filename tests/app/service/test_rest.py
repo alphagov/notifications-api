@@ -1248,6 +1248,15 @@ def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notif
         assert response.status_code == 200
 
 
+def test_get_notification_for_service_without_uuid(client, notify_db, notify_db_session):
+    service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
+    response = client.get(
+        path='/service/{}/notifications/{}'.format(service_1.id, 'foo'),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 404
+
+
 def test_get_notification_for_service(client, notify_db, notify_db_session):
 
     service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
