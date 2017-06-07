@@ -206,7 +206,7 @@ def send_user_confirm_new_email(user_id):
         personalisation={
             'name': user_to_send_to.name,
             'url': _create_confirmation_url(user=user_to_send_to, email_address=email['email']),
-            'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/feedback'
+            'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/support'
         },
         notification_type=EMAIL_TYPE,
         api_key_id=None,
@@ -259,7 +259,7 @@ def send_already_registered_email(user_id):
         personalisation={
             'signin_url': current_app.config['ADMIN_BASE_URL'] + '/sign-in',
             'forgot_password_url': current_app.config['ADMIN_BASE_URL'] + '/forgot-password',
-            'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/feedback'
+            'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/support'
         },
         notification_type=EMAIL_TYPE,
         api_key_id=None,
