@@ -2,8 +2,10 @@ from datetime import datetime
 import uuid
 
 
+from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.dao.jobs_dao import dao_create_job
 from app.models import (
+    InboundSms,
     Service,
     User,
     Template,
@@ -11,6 +13,7 @@ from app.models import (
     ScheduledNotification,
     ServicePermission,
     Job,
+    InboundSms,
     EMAIL_TYPE,
     SMS_TYPE,
     KEY_TYPE_NORMAL,
@@ -20,6 +23,7 @@ from app.dao.notifications_dao import dao_create_notification, dao_created_sched
 from app.dao.templates_dao import dao_create_template
 from app.dao.services_dao import dao_create_service
 from app.dao.service_permissions_dao import dao_add_service_permission
+from app.dao.inbound_sms_dao import dao_create_inbound_sms
 
 
 def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk", state='active'):
@@ -39,14 +43,20 @@ def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-off
 
 
 def create_service(
-        user=None, service_name="Sample service", service_id=None, restricted=False,
-        service_permissions=[EMAIL_TYPE, SMS_TYPE]):
+    user=None,
+    service_name="Sample service",
+    service_id=None,
+    restricted=False,
+    service_permissions=[EMAIL_TYPE, SMS_TYPE],
+    sms_sender='testing'
+):
     service = Service(
         name=service_name,
         message_limit=1000,
         restricted=restricted,
         email_from=service_name.lower().replace(' ', '.'),
-        created_by=user or create_user()
+        created_by=user or create_user(),
+        sms_sender=sms_sender
     )
     dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
     return service
@@ -143,14 +153,15 @@ def create_notification(
     return notification
 
 
-def create_job(template,
-               notification_count=1,
-               created_at=None,
-               job_status='pending',
-               scheduled_for=None,
-               processing_started=None,
-               original_file_name='some.csv'):
-
+def create_job(
+    template,
+    notification_count=1,
+    created_at=None,
+    job_status='pending',
+    scheduled_for=None,
+    processing_started=None,
+    original_file_name='some.csv'
+):
     data = {
         'id': uuid.uuid4(),
         'service_id': template.service_id,
@@ -177,3 +188,25 @@ def create_service_permission(service_id, permission=EMAIL_TYPE):
     service_permissions = ServicePermission.query.all()
 
     return service_permissions
+
+
+def create_inbound_sms(
+    service,
+    notify_number=None,
+    user_number='447700900111',
+    provider_date=None,
+    provider_reference=None,
+    content='Hello',
+    created_at=None
+):
+    inbound = InboundSms(
+        service=service,
+        created_at=created_at or datetime.utcnow(),
+        notify_number=notify_number or service.sms_sender,
+        user_number=user_number,
+        provider_date=provider_date or datetime.utcnow(),
+        provider_reference=provider_reference or 'foo',
+        content=content,
+    )
+    dao_create_inbound_sms(inbound)
+    return inbound

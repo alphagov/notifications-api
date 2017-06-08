@@ -2,7 +2,8 @@ from flask import request, jsonify, current_app
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import api_user, authenticated_service
-from app.dao import services_dao, templates_dao
+from app.config import QueueNames
+from app.dao import templates_dao
 from app.models import SMS_TYPE, EMAIL_TYPE, PRIORITY
 from app.notifications.process_notifications import (
     create_content_for_notification,
@@ -34,9 +35,8 @@ def post_notification(notification_type):
         form = validate(request.get_json(), post_sms_request)
 
     scheduled_for = form.get("scheduled_for", None)
-    if scheduled_for:
-        if not service_can_schedule_notification(authenticated_service):
-            return
+    service_can_schedule_notification(authenticated_service, scheduled_for)
+
     check_rate_limiting(authenticated_service, api_user)
 
     form_send_to = form['phone_number'] if notification_type == SMS_TYPE else form['email_address']
@@ -65,13 +65,12 @@ def post_notification(notification_type):
         persist_scheduled_notification(notification.id, form["scheduled_for"])
     else:
         if not simulated:
-            queue_name = 'priority' if template.process_type == PRIORITY else None
+            queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
             send_notification_to_queue(
                 notification=notification,
                 research_mode=authenticated_service.research_mode,
                 queue=queue_name
             )
-
         else:
             current_app.logger.info("POST simulated notification for id: {}".format(notification.id))
 

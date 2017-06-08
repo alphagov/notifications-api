@@ -11,10 +11,12 @@ from notifications_utils.recipients import (
 from app import redis_store
 from app.celery import provider_tasks
 from notifications_utils.clients import redis
+
+from app.config import QueueNames
+from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE, ScheduledNotification
 from app.dao.notifications_dao import (dao_create_notification,
                                        dao_delete_notifications_and_history_by_id,
                                        dao_created_scheduled_notification)
-from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE, ScheduledNotification
 from app.v2.errors import BadRequestError, SendNotificationToQueueError
 from app.utils import get_template_instance, cache_key_for_service_template_counter, convert_bst_to_utc
 
@@ -96,12 +98,9 @@ def persist_notification(
 
 def send_notification_to_queue(notification, research_mode, queue=None):
     if research_mode or notification.key_type == KEY_TYPE_TEST:
-        queue = 'research-mode'
+        queue = QueueNames.RESEARCH_MODE
     elif not queue:
-        if notification.notification_type == SMS_TYPE:
-            queue = 'send-sms'
-        if notification.notification_type == EMAIL_TYPE:
-            queue = 'send-email'
+        queue = QueueNames.SEND
 
     if notification.notification_type == SMS_TYPE:
         deliver_task = provider_tasks.deliver_sms

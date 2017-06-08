@@ -2,7 +2,11 @@ from datetime import timedelta
 from celery.schedules import crontab
 from kombu import Exchange, Queue
 import os
-from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
+
+from app.models import (
+    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE,
+    KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
+)
 
 if os.environ.get('VCAP_SERVICES'):
     # on cloudfoundry, config is a json blob in VCAP_SERVICES - unpack it, and populate
@@ -10,6 +14,34 @@ if os.environ.get('VCAP_SERVICES'):
     from app.cloudfoundry_config import extract_cloudfoundry_config
 
     extract_cloudfoundry_config()
+
+
+class QueueNames(object):
+    PERIODIC = 'periodic-tasks'
+    PRIORITY = 'priority-tasks'
+    DATABASE = 'database-tasks'
+    SEND = 'send-tasks'
+    RESEARCH_MODE = 'research-mode-tasks'
+    STATISTICS = 'statistics-tasks'
+    JOBS = 'job-tasks'
+    RETRY = 'retry-tasks'
+    NOTIFY = 'notify-internal-tasks'
+    PROCESS_FTP = 'process-ftp-tasks'
+
+    @staticmethod
+    def all_queues():
+        return [
+            QueueNames.PRIORITY,
+            QueueNames.PERIODIC,
+            QueueNames.DATABASE,
+            QueueNames.SEND,
+            QueueNames.RESEARCH_MODE,
+            QueueNames.STATISTICS,
+            QueueNames.JOBS,
+            QueueNames.RETRY,
+            QueueNames.NOTIFY,
+            QueueNames.PROCESS_FTP
+        ]
 
 
 class Config(object):
@@ -79,6 +111,7 @@ class Config(object):
     SMS_CHAR_COUNT_LIMIT = 495
     BRANDING_PATH = '/images/email-template/crests/'
     TEST_MESSAGE_FILENAME = 'Test message'
+    ONE_OFF_MESSAGE_FILENAME = 'Report'
     MAX_VERIFY_CODE_COUNT = 10
 
     NOTIFY_SERVICE_ID = 'd6aa2c68-a2d9-4437-ab19-3ae8eb202553'
@@ -95,7 +128,7 @@ class Config(object):
     BROKER_TRANSPORT_OPTIONS = {
         'region': AWS_REGION,
         'polling_interval': 1,  # 1 second
-        'visibility_timeout': 14410,  # 4 hours 10 seconds. 10 seconds longer than max retry
+        'visibility_timeout': 310,
         'queue_name_prefix': NOTIFICATION_QUEUE_PREFIX
     }
     CELERY_ENABLE_UTC = True,
@@ -107,7 +140,7 @@ class Config(object):
         'run-scheduled-jobs': {
             'task': 'run-scheduled-jobs',
             'schedule': crontab(minute=1),
-            'options': {'queue': 'periodic'}
+            'options': {'queue': QueueNames.PERIODIC}
         },
         # 'send-scheduled-notifications': {
         #     'task': 'send-scheduled-notifications',
@@ -117,59 +150,67 @@ class Config(object):
         'delete-verify-codes': {
             'task': 'delete-verify-codes',
             'schedule': timedelta(minutes=63),
-            'options': {'queue': 'periodic'}
+            'options': {'queue': QueueNames.PERIODIC}
         },
         'delete-invitations': {
             'task': 'delete-invitations',
             'schedule': timedelta(minutes=66),
-            'options': {'queue': 'periodic'}
+            'options': {'queue': QueueNames.PERIODIC}
         },
         'delete-sms-notifications': {
             'task': 'delete-sms-notifications',
             'schedule': crontab(minute=0, hour=0),
-            'options': {'queue': 'periodic'}
+            'options': {'queue': QueueNames.PERIODIC}
         },
         'delete-email-notifications': {
             'task': 'delete-email-notifications',
             'schedule': crontab(minute=20, hour=0),
-            'options': {'queue': 'periodic'}
+            'options': {'queue': QueueNames.PERIODIC}
         },
         'delete-letter-notifications': {
             'task': 'delete-letter-notifications',
             'schedule': crontab(minute=40, hour=0),
-            'options': {'queue': 'periodic'}
+            'options': {'queue': QueueNames.PERIODIC}
+        },
+        'delete-inbound-sms': {
+            'task': 'delete-inbound-sms',
+            'schedule': crontab(minute=0, hour=1),
+            'options': {'queue': QueueNames.PERIODIC}
         },
         'send-daily-performance-platform-stats': {
             'task': 'send-daily-performance-platform-stats',
             'schedule': crontab(minute=0, hour=2),
-            'options': {'queue': 'periodic'}
+            'options': {'queue': QueueNames.PERIODIC}
         },
         'switch-current-sms-provider-on-slow-delivery': {
             'task': 'switch-current-sms-provider-on-slow-delivery',
             'schedule': crontab(),  # Every minute
-            'options': {'queue': 'periodic'}
+            'options': {'queue': QueueNames.PERIODIC}
         },
         'timeout-sending-notifications': {
             'task': 'timeout-sending-notifications',
             'schedule': crontab(minute=0, hour=3),
-            'options': {'queue': 'periodic'}
+            'options': {'queue': QueueNames.PERIODIC}
         },
-        'remove_csv_files': {
+        'remove_sms_email_jobs': {
             'task': 'remove_csv_files',
             'schedule': crontab(minute=0, hour=4),
-            'options': {'queue': 'periodic'}
+            'options': {'queue': QueueNames.PERIODIC},
+            'kwargs': {'job_types': [EMAIL_TYPE, SMS_TYPE]}
+        },
+        'remove_letter_jobs': {
+            'task': 'remove_csv_files',
+            'schedule': crontab(minute=20, hour=4),
+            'options': {'queue': QueueNames.PERIODIC},
+            'kwargs': {'job_types': [LETTER_TYPE]}
         },
         'timeout-job-statistics': {
             'task': 'timeout-job-statistics',
             'schedule': crontab(minute=0, hour=5),
-            'options': {'queue': 'periodic'}
+            'options': {'queue': QueueNames.PERIODIC}
         }
     }
-    CELERY_QUEUES = [
-        Queue('process-job', Exchange('default'), routing_key='process-job'),
-        Queue('retry', Exchange('default'), routing_key='retry'),
-        Queue('notify', Exchange('default'), routing_key='notify')
-    ]
+    CELERY_QUEUES = []
 
     NOTIFICATIONS_ALERT = 5  # five mins
     FROM_NUMBER = 'development'
@@ -208,6 +249,8 @@ class Config(object):
         }
     }
 
+    FREE_SMS_TIER_FRAGMENT_COUNT = 250000
+
 
 ######################
 # Config overrides ###
@@ -220,17 +263,12 @@ class Development(Config):
     NOTIFY_ENVIRONMENT = 'development'
     NOTIFICATION_QUEUE_PREFIX = 'development'
     DEBUG = True
-    CELERY_QUEUES = Config.CELERY_QUEUES + [
-        Queue('db-sms', Exchange('default'), routing_key='db-sms'),
-        Queue('priority', Exchange('default'), routing_key='priority'),
-        Queue('periodic', Exchange('default'), routing_key='periodic'),
-        Queue('db-email', Exchange('default'), routing_key='db-email'),
-        Queue('db-letter', Exchange('default'), routing_key='db-letter'),
-        Queue('send-sms', Exchange('default'), routing_key='send-sms'),
-        Queue('send-email', Exchange('default'), routing_key='send-email'),
-        Queue('research-mode', Exchange('default'), routing_key='research-mode'),
-        Queue('statistics', Exchange('default'), routing_key='statistics')
-    ]
+
+    for queue in QueueNames.all_queues():
+        Config.CELERY_QUEUES.append(
+            Queue(queue, Exchange('default'), routing_key=queue)
+        )
+
     API_HOST_NAME = "http://localhost:6011"
     API_RATE_LIMIT_ENABLED = True
 
@@ -244,17 +282,11 @@ class Test(Config):
     STATSD_ENABLED = True
     STATSD_HOST = "localhost"
     STATSD_PORT = 1000
-    CELERY_QUEUES = Config.CELERY_QUEUES + [
-        Queue('periodic', Exchange('default'), routing_key='periodic'),
-        Queue('priority', Exchange('default'), routing_key='priority'),
-        Queue('db-sms', Exchange('default'), routing_key='db-sms'),
-        Queue('db-email', Exchange('default'), routing_key='db-email'),
-        Queue('db-letter', Exchange('default'), routing_key='db-letter'),
-        Queue('send-sms', Exchange('default'), routing_key='send-sms'),
-        Queue('send-email', Exchange('default'), routing_key='send-email'),
-        Queue('research-mode', Exchange('default'), routing_key='research-mode'),
-        Queue('statistics', Exchange('default'), routing_key='statistics')
-    ]
+
+    for queue in QueueNames.all_queues():
+        Config.CELERY_QUEUES.append(
+            Queue(queue, Exchange('default'), routing_key=queue)
+        )
 
     API_RATE_LIMIT_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"

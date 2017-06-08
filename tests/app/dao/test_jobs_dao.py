@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from functools import partial
+import pytest
 import uuid
 
 from freezegun import freeze_time
@@ -16,7 +17,10 @@ from app.dao.jobs_dao import (
     dao_update_job_status,
     dao_get_all_notifications_for_job,
     dao_get_jobs_older_than_limited_by)
-from app.models import Job, JobStatistics
+from app.models import (
+    Job, JobStatistics,
+    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
+)
 
 from tests.app.conftest import sample_notification as create_notification
 from tests.app.conftest import sample_job as create_job
@@ -284,33 +288,30 @@ def test_get_future_scheduled_job_gets_a_job_yet_to_send(sample_scheduled_job):
     assert result.id == sample_scheduled_job.id
 
 
-def test_should_get_jobs_seven_days_old(notify_db, notify_db_session):
-    # job runs at some point on each day
-    # shouldn't matter when, we are deleting things 7 days ago
-    job_run_time = '2016-10-31T10:00:00'
+@freeze_time('2016-10-31 10:00:00')
+def test_should_get_jobs_seven_days_old(notify_db, notify_db_session, sample_template):
+    """
+    Jobs older than seven days are deleted, but only two day's worth (two-day window)
+    """
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    within_seven_days = seven_days_ago + timedelta(seconds=1)
 
-    # running on the 31st means the previous 7 days are ignored
+    eight_days_ago = seven_days_ago - timedelta(days=1)
 
-    # 2 day window for delete jobs
-    # 7 days of files to skip includes the 30,29,28,27,26,25,24th, so the....
-    last_possible_time_for_eligible_job = '2016-10-23T23:59:59'
-    first_possible_time_for_eligible_job = '2016-10-22T00:00:00'
+    nine_days_ago = eight_days_ago - timedelta(days=2)
+    nine_days_one_second_ago = nine_days_ago - timedelta(seconds=1)
 
-    job_1 = create_job(notify_db, notify_db_session, created_at=last_possible_time_for_eligible_job)
-    job_2 = create_job(notify_db, notify_db_session, created_at=first_possible_time_for_eligible_job)
+    job = partial(create_job, notify_db, notify_db_session)
+    job(created_at=seven_days_ago)
+    job(created_at=within_seven_days)
+    job_to_delete = job(created_at=eight_days_ago)
+    job(created_at=nine_days_ago)
+    job(created_at=nine_days_one_second_ago)
 
-    # bookmarks for jobs that should be ignored
-    last_possible_time_for_ineligible_job = '2016-10-24T00:00:00'
-    create_job(notify_db, notify_db_session, created_at=last_possible_time_for_ineligible_job)
+    jobs = dao_get_jobs_older_than_limited_by(job_types=[sample_template.template_type])
 
-    first_possible_time_for_ineligible_job = '2016-10-21T23:59:59'
-    create_job(notify_db, notify_db_session, created_at=first_possible_time_for_ineligible_job)
-
-    with freeze_time(job_run_time):
-        jobs = dao_get_jobs_older_than_limited_by()
-        assert len(jobs) == 2
-        assert jobs[0].id == job_1.id
-        assert jobs[1].id == job_2.id
+    assert len(jobs) == 1
+    assert jobs[0].id == job_to_delete.id
 
 
 def test_get_jobs_for_service_is_paginated(notify_db, notify_db_session, sample_service, sample_template):
@@ -334,13 +335,24 @@ def test_get_jobs_for_service_is_paginated(notify_db, notify_db_session, sample_
     assert res.items[1].created_at == datetime(2015, 1, 1, 7)
 
 
-def test_get_jobs_for_service_doesnt_return_test_messages(notify_db, notify_db_session, sample_template, sample_job):
+@pytest.mark.parametrize('file_name', [
+    'Test message',
+    'Report',
+])
+def test_get_jobs_for_service_doesnt_return_test_messages(
+    notify_db,
+    notify_db_session,
+    sample_template,
+    sample_job,
+    file_name,
+):
     test_job = create_job(
         notify_db,
         notify_db_session,
         sample_template.service,
         sample_template,
-        original_file_name='Test message')
+        original_file_name=file_name,
+    )
 
     jobs = dao_get_jobs_by_service_id(sample_job.service_id).items
 
@@ -379,3 +391,23 @@ def test_dao_update_job_status(sample_job):
     updated_job = Job.query.get(sample_job.id)
     assert updated_job.job_status == 'sent to dvla'
     assert updated_job.updated_at
+
+
+@freeze_time('2016-10-31 10:00:00')
+def test_should_get_jobs_seven_days_old_filters_type(notify_db, notify_db_session):
+    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+    letter_template = create_template(notify_db, notify_db_session, template_type=LETTER_TYPE)
+    sms_template = create_template(notify_db, notify_db_session, template_type=SMS_TYPE)
+    email_template = create_template(notify_db, notify_db_session, template_type=EMAIL_TYPE)
+
+    job = partial(create_job, notify_db, notify_db_session, created_at=eight_days_ago)
+    job_to_remain = job(template=letter_template)
+    job(template=sms_template)
+    job(template=email_template)
+
+    jobs = dao_get_jobs_older_than_limited_by(
+        job_types=[EMAIL_TYPE, SMS_TYPE]
+    )
+
+    assert len(jobs) == 2
+    assert job_to_remain.id not in [job.id for job in jobs]

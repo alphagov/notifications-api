@@ -25,9 +25,8 @@ from notifications_utils.recipients import (
 
 from app import ma
 from app import models
-from app.models import ServicePermission, INTERNATIONAL_SMS_TYPE, SMS_TYPE, LETTER_TYPE, EMAIL_TYPE
+from app.models import ServicePermission, INTERNATIONAL_SMS_TYPE, LETTER_TYPE
 from app.dao.permissions_dao import permission_dao
-from app.dao.service_permissions_dao import dao_fetch_service_permissions
 from app.utils import get_template_instance
 
 
@@ -176,6 +175,7 @@ class ProviderDetailsHistorySchema(BaseSchema):
 
 class ServiceSchema(BaseSchema):
 
+    free_sms_fragment_limit = fields.Method(method_name='get_free_sms_fragment_limit')
     created_by = field_for(models.Service, 'created_by', required=True)
     organisation = field_for(models.Service, 'organisation')
     branding = field_for(models.Service, 'branding')
@@ -183,43 +183,15 @@ class ServiceSchema(BaseSchema):
     permissions = fields.Method("service_permissions")
     override_flag = False
 
+    def get_free_sms_fragment_limit(selfs, service):
+        return service.free_sms_fragment_limit()
+
     def service_permissions(self, service):
-        permissions = []
-        str_permissions = []
-
-        perms = dao_fetch_service_permissions(service.id)
-        for p in perms:
-            permission = {
-                "service_id": service.id,
-                "permission": p.permission
-            }
-            permissions.append(permission)
-            str_permissions.append(p.permission)
-
-        def deprecate_convert_flags_to_permissions():
-            def convert_flags(flag, notify_type):
-                if flag and notify_type not in str_permissions:
-                    permission = {
-                        "service_id": service.id,
-                        "permission": notify_type
-                    }
-                    permissions.append(permission)
-                elif flag is False and notify_type in str_permissions:
-                    permission = {
-                        "service_id": service.id,
-                        "permission": notify_type
-                    }
-                    permissions.remove(permission)
-
-            convert_flags(service.can_send_international_sms, INTERNATIONAL_SMS_TYPE)
-            convert_flags(service.can_send_letters, LETTER_TYPE)
-
-        deprecate_convert_flags_to_permissions()
-
-        return permissions
+        return [p.permission for p in service.permissions]
 
     class Meta:
         model = models.Service
+        dump_only = ['free_sms_fragment_limit']
         exclude = (
             'updated_at',
             'created_at',
@@ -254,14 +226,13 @@ class ServiceSchema(BaseSchema):
         if isinstance(in_data, dict) and 'permissions' in in_data:
             str_permissions = in_data['permissions']
             permissions = []
-            for p in in_data['permissions']:
+            for p in str_permissions:
                 permission = ServicePermission(service_id=in_data["id"], permission=p)
                 permissions.append(permission)
-            in_data['permissions'] = permissions
 
             def deprecate_override_flags():
-                in_data['can_send_letters'] = LETTER_TYPE in [p.permission for p in permissions]
-                in_data['can_send_international_sms'] = INTERNATIONAL_SMS_TYPE in [p.permission for p in permissions]
+                in_data['can_send_letters'] = LETTER_TYPE in str_permissions
+                in_data['can_send_international_sms'] = INTERNATIONAL_SMS_TYPE in str_permissions
 
             def deprecate_convert_flags_to_permissions():
                 def convert_flags(flag, notify_type):
@@ -280,12 +251,7 @@ class ServiceSchema(BaseSchema):
                 deprecate_override_flags()
             else:
                 deprecate_convert_flags_to_permissions()
-
-    @post_dump
-    def format_as_string_array(self, in_data):
-        if isinstance(in_data, dict) and 'permissions' in in_data:
-            in_data['permissions'] = [p.get("permission") for p in in_data['permissions']]
-        return in_data
+            in_data['permissions'] = permissions
 
     def set_override_flag(self, flag):
         self.override_flag = flag
@@ -293,6 +259,11 @@ class ServiceSchema(BaseSchema):
 
 class DetailedServiceSchema(BaseSchema):
     statistics = fields.Dict()
+
+    free_sms_fragment_limit = fields.Method(method_name='get_free_sms_fragment_limit')
+
+    def get_free_sms_fragment_limit(selfs, service):
+        return service.free_sms_fragment_limit()
 
     class Meta:
         model = models.Service

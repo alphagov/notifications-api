@@ -17,7 +17,7 @@ def test_should_create_initial_job_task_if_notification_is_related_to_a_job(
     mock = mocker.patch("app.celery.statistics_tasks.record_initial_job_statistics.apply_async")
     notification = sample_notification(notify_db, notify_db_session, job=sample_job)
     create_initial_notification_statistic_tasks(notification)
-    mock.assert_called_once_with((str(notification.id), ), queue="statistics")
+    mock.assert_called_once_with((str(notification.id), ), queue="statistics-tasks")
 
 
 @pytest.mark.parametrize('status', [
@@ -29,7 +29,7 @@ def test_should_create_intial_job_task_if_notification_is_not_in_completed_state
     mock = mocker.patch("app.celery.statistics_tasks.record_initial_job_statistics.apply_async")
     notification = sample_notification(notify_db, notify_db_session, job=sample_job, status=status)
     create_initial_notification_statistic_tasks(notification)
-    mock.assert_called_once_with((str(notification.id), ), queue="statistics")
+    mock.assert_called_once_with((str(notification.id), ), queue="statistics-tasks")
 
 
 def test_should_not_create_initial_job_task_if_notification_is_not_related_to_a_job(
@@ -47,7 +47,7 @@ def test_should_create_outcome_job_task_if_notification_is_related_to_a_job(
     mock = mocker.patch("app.celery.statistics_tasks.record_outcome_job_statistics.apply_async")
     notification = sample_notification(notify_db, notify_db_session, job=sample_job, status=NOTIFICATION_DELIVERED)
     create_outcome_notification_statistic_tasks(notification)
-    mock.assert_called_once_with((str(notification.id), ), queue="statistics")
+    mock.assert_called_once_with((str(notification.id), ), queue="statistics-tasks")
 
 
 @pytest.mark.parametrize('status', NOTIFICATION_STATUS_TYPES_COMPLETED)
@@ -57,7 +57,7 @@ def test_should_create_outcome_job_task_if_notification_is_in_completed_state(
     mock = mocker.patch("app.celery.statistics_tasks.record_outcome_job_statistics.apply_async")
     notification = sample_notification(notify_db, notify_db_session, job=sample_job, status=status)
     create_outcome_notification_statistic_tasks(notification)
-    mock.assert_called_once_with((str(notification.id), ), queue='statistics')
+    mock.assert_called_once_with((str(notification.id), ), queue="statistics-tasks")
 
 
 @pytest.mark.parametrize('status', [
@@ -100,7 +100,7 @@ def test_should_retry_if_persisting_the_job_stats_has_a_sql_alchemy_exception(
 
     record_initial_job_statistics(str(sample_notification.id))
     dao_mock.assert_called_once_with(sample_notification)
-    retry_mock.assert_called_with(queue="retry")
+    retry_mock.assert_called_with(queue="retry-tasks")
 
 
 def test_should_call_update_job_stats_dao_outcome_methods(notify_db, notify_db_session, sample_notification, mocker):
@@ -123,7 +123,7 @@ def test_should_retry_if_persisting_the_job_outcome_stats_has_a_sql_alchemy_exce
 
     record_outcome_job_statistics(str(sample_notification.id))
     dao_mock.assert_called_once_with(sample_notification)
-    retry_mock.assert_called_with(queue="retry")
+    retry_mock.assert_called_with(queue="retry-tasks")
 
 
 def test_should_retry_if_persisting_the_job_outcome_stats_updates_zero_rows(
@@ -136,7 +136,7 @@ def test_should_retry_if_persisting_the_job_outcome_stats_updates_zero_rows(
 
     record_outcome_job_statistics(str(sample_notification.id))
     dao_mock.assert_called_once_with(sample_notification)
-    retry_mock.assert_called_with(queue="retry")
+    retry_mock.assert_called_with(queue="retry-tasks")
 
 
 def test_should_retry_if_persisting_the_job_stats_creation_cant_find_notification_by_id(
@@ -148,7 +148,7 @@ def test_should_retry_if_persisting_the_job_stats_creation_cant_find_notificatio
 
     record_initial_job_statistics(str(create_uuid()))
     dao_mock.assert_not_called()
-    retry_mock.assert_called_with(queue="retry")
+    retry_mock.assert_called_with(queue="retry-tasks")
 
 
 def test_should_retry_if_persisting_the_job_stats_outcome_cant_find_notification_by_id(
@@ -161,4 +161,4 @@ def test_should_retry_if_persisting_the_job_stats_outcome_cant_find_notification
 
     record_outcome_job_statistics(str(create_uuid()))
     dao_mock.assert_not_called()
-    retry_mock.assert_called_with(queue="retry")
+    retry_mock.assert_called_with(queue="retry-tasks")

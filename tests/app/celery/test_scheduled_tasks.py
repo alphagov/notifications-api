@@ -5,19 +5,23 @@ from functools import partial
 
 from flask import current_app
 from freezegun import freeze_time
-from app.celery.scheduled_tasks import s3, timeout_job_statistics, delete_sms_notifications_older_than_seven_days, \
-    delete_letter_notifications_older_than_seven_days, delete_email_notifications_older_than_seven_days, \
-    send_scheduled_notifications
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
+    delete_email_notifications_older_than_seven_days,
+    delete_inbound_sms_older_than_seven_days,
+    delete_invitations,
+    delete_notifications_created_more_than_a_week_ago_by_type,
+    delete_letter_notifications_older_than_seven_days,
+    delete_sms_notifications_older_than_seven_days,
     delete_verify_codes,
     remove_csv_files,
-    delete_notifications_created_more_than_a_week_ago_by_type,
-    delete_invitations,
-    timeout_notifications,
     run_scheduled_jobs,
+    s3,
     send_daily_performance_platform_stats,
-    switch_current_sms_provider_on_slow_delivery
+    send_scheduled_notifications,
+    switch_current_sms_provider_on_slow_delivery,
+    timeout_job_statistics,
+    timeout_notifications
 )
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -26,9 +30,12 @@ from app.dao.provider_details_dao import (
     dao_update_provider_details,
     get_current_provider
 )
-from app.models import Service, Template
+from app.models import (
+    Service, Template,
+    SMS_TYPE, LETTER_TYPE
+)
 from app.utils import get_london_midnight_in_utc
-from tests.app.db import create_notification, create_service
+from tests.app.db import create_notification, create_service, create_template, create_job
 from tests.app.conftest import (
     sample_job as create_sample_job,
     sample_notification_history as create_notification_history,
@@ -71,7 +78,8 @@ def prepare_current_provider(restore_provider_details):
 
 def test_should_have_decorated_tasks_functions():
     assert delete_verify_codes.__wrapped__.__name__ == 'delete_verify_codes'
-    assert delete_notifications_created_more_than_a_week_ago_by_type.__wrapped__.__name__ == 'delete_notifications_created_more_than_a_week_ago_by_type'  # noqa
+    assert delete_notifications_created_more_than_a_week_ago_by_type.__wrapped__.__name__ == \
+        'delete_notifications_created_more_than_a_week_ago_by_type'
     assert timeout_notifications.__wrapped__.__name__ == 'timeout_notifications'
     assert delete_invitations.__wrapped__.__name__ == 'delete_invitations'
     assert run_scheduled_jobs.__wrapped__.__name__ == 'run_scheduled_jobs'
@@ -79,6 +87,8 @@ def test_should_have_decorated_tasks_functions():
     assert send_daily_performance_platform_stats.__wrapped__.__name__ == 'send_daily_performance_platform_stats'
     assert switch_current_sms_provider_on_slow_delivery.__wrapped__.__name__ == \
         'switch_current_sms_provider_on_slow_delivery'
+    assert delete_inbound_sms_older_than_seven_days.__wrapped__.__name__ == \
+        'delete_inbound_sms_older_than_seven_days'
 
 
 def test_should_call_delete_sms_notifications_more_than_week_in_task(notify_api, mocker):
@@ -166,7 +176,7 @@ def test_should_update_scheduled_jobs_and_put_on_queue(notify_db, notify_db_sess
 
     updated_job = dao_get_job_by_id(job.id)
     assert updated_job.job_status == 'pending'
-    mocked.assert_called_with([str(job.id)], queue='process-job')
+    mocked.assert_called_with([str(job.id)], queue="job-tasks")
 
 
 def test_should_update_all_scheduled_jobs_and_put_on_queue(notify_db, notify_db_session, mocker):
@@ -201,28 +211,39 @@ def test_should_update_all_scheduled_jobs_and_put_on_queue(notify_db, notify_db_
     assert dao_get_job_by_id(job_2.id).job_status == 'pending'
 
     mocked.assert_has_calls([
-        call([str(job_3.id)], queue='process-job'),
-        call([str(job_2.id)], queue='process-job'),
-        call([str(job_1.id)], queue='process-job')
+        call([str(job_3.id)], queue="job-tasks"),
+        call([str(job_2.id)], queue="job-tasks"),
+        call([str(job_1.id)], queue="job-tasks")
     ])
 
 
-def test_will_remove_csv_files_for_jobs_older_than_seven_days(notify_db, notify_db_session, mocker):
+@freeze_time('2016-10-18T10:00:00')
+def test_will_remove_csv_files_for_jobs_older_than_seven_days(
+    notify_db, notify_db_session, mocker, sample_template
+):
     mocker.patch('app.celery.scheduled_tasks.s3.remove_job_from_s3')
+    """
+    Jobs older than seven days are deleted, but only two day's worth (two-day window)
+    """
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    just_under_seven_days = seven_days_ago + timedelta(seconds=1)
+    eight_days_ago = seven_days_ago - timedelta(days=1)
+    nine_days_ago = eight_days_ago - timedelta(days=1)
+    just_under_nine_days = nine_days_ago + timedelta(seconds=1)
+    nine_days_one_second_ago = nine_days_ago - timedelta(seconds=1)
 
-    eligible_job_1 = datetime(2016, 10, 10, 23, 59, 59, 000)
-    eligible_job_2 = datetime(2016, 10, 9, 00, 00, 00, 000)
-    in_eligible_job_too_new = datetime(2016, 10, 11, 00, 00, 00, 000)
-    in_eligible_job_too_old = datetime(2016, 10, 8, 23, 59, 59, 999)
+    create_sample_job(notify_db, notify_db_session, created_at=nine_days_one_second_ago)
+    job1_to_delete = create_sample_job(notify_db, notify_db_session, created_at=eight_days_ago)
+    job2_to_delete = create_sample_job(notify_db, notify_db_session, created_at=just_under_nine_days)
+    create_sample_job(notify_db, notify_db_session, created_at=seven_days_ago)
+    create_sample_job(notify_db, notify_db_session, created_at=just_under_seven_days)
 
-    job_1 = create_sample_job(notify_db, notify_db_session, created_at=eligible_job_1)
-    job_2 = create_sample_job(notify_db, notify_db_session, created_at=eligible_job_2)
-    create_sample_job(notify_db, notify_db_session, created_at=in_eligible_job_too_new)
-    create_sample_job(notify_db, notify_db_session, created_at=in_eligible_job_too_old)
+    remove_csv_files(job_types=[sample_template.template_type])
 
-    with freeze_time('2016-10-18T10:00:00'):
-        remove_csv_files()
-    assert s3.remove_job_from_s3.call_args_list == [call(job_1.service_id, job_1.id), call(job_2.service_id, job_2.id)]
+    assert s3.remove_job_from_s3.call_args_list == [
+        call(job1_to_delete.service_id, job1_to_delete.id),
+        call(job2_to_delete.service_id, job2_to_delete.id)
+    ]
 
 
 def test_send_daily_performance_stats_calls_does_not_send_if_inactive(
@@ -430,7 +451,7 @@ def test_should_send_all_scheduled_notifications_to_deliver_queue(sample_templat
 
     send_scheduled_notifications()
 
-    mocked.apply_async.assert_called_once_with([str(message_to_deliver.id)], queue='send-sms')
+    mocked.apply_async.assert_called_once_with([str(message_to_deliver.id)], queue='send-tasks')
     scheduled_notifications = dao_get_scheduled_notifications()
     assert not scheduled_notifications
 
@@ -440,3 +461,30 @@ def test_timeout_job_statistics_called_with_notification_timeout(notify_api, moc
     dao_mock = mocker.patch('app.celery.scheduled_tasks.dao_timeout_job_statistics')
     timeout_job_statistics()
     dao_mock.assert_called_once_with(999)
+
+
+def test_should_call_delete_inbound_sms_older_than_seven_days(notify_api, mocker):
+    mocker.patch('app.celery.scheduled_tasks.delete_inbound_sms_created_more_than_a_week_ago')
+    delete_inbound_sms_older_than_seven_days()
+    assert scheduled_tasks.delete_inbound_sms_created_more_than_a_week_ago.call_count == 1
+
+
+@freeze_time('2017-01-01 10:00:00')
+def test_remove_csv_files_filters_by_type(mocker, sample_service):
+    mocker.patch('app.celery.scheduled_tasks.s3.remove_job_from_s3')
+    """
+    Jobs older than seven days are deleted, but only two day's worth (two-day window)
+    """
+    letter_template = create_template(service=sample_service, template_type=LETTER_TYPE)
+    sms_template = create_template(service=sample_service, template_type=SMS_TYPE)
+
+    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+
+    job_to_delete = create_job(template=letter_template, created_at=eight_days_ago)
+    create_job(template=sms_template, created_at=eight_days_ago)
+
+    remove_csv_files(job_types=[LETTER_TYPE])
+
+    assert s3.remove_job_from_s3.call_args_list == [
+        call(job_to_delete.service_id, job_to_delete.id),
+    ]

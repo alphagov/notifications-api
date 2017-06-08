@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from flask import current_app
 from sqlalchemy import Float, Integer
 from sqlalchemy import func, case, cast
 from sqlalchemy import literal_column
@@ -11,7 +12,7 @@ from app.models import (NotificationHistory,
                         NOTIFICATION_STATUS_TYPES_BILLABLE,
                         KEY_TYPE_TEST,
                         SMS_TYPE,
-                        EMAIL_TYPE)
+                        EMAIL_TYPE, Service)
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column
 
@@ -153,3 +154,78 @@ def rate_multiplier():
         (NotificationHistory.rate_multiplier == None, literal_column("'1'")),  # noqa
         (NotificationHistory.rate_multiplier != None, NotificationHistory.rate_multiplier),  # noqa
     ]), Integer())
+
+
+@statsd(namespace="dao")
+def get_total_billable_units_for_sent_sms_notifications_in_date_range(start_date, end_date, service_id):
+
+    free_sms_limit = Service.free_sms_fragment_limit()
+
+    billable_units = 0
+    total_cost = 0.0
+
+    rate_boundaries = discover_rate_bounds_for_billing_query(start_date, end_date)
+    for rate_boundary in rate_boundaries:
+        result = db.session.query(
+            func.sum(
+                NotificationHistory.billable_units * func.coalesce(NotificationHistory.rate_multiplier, 1)
+            ).label('billable_units')
+        ).filter(
+            NotificationHistory.service_id == service_id,
+            NotificationHistory.notification_type == 'sms',
+            NotificationHistory.created_at >= rate_boundary['start_date'],
+            NotificationHistory.created_at < rate_boundary['end_date'],
+            NotificationHistory.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE)
+        )
+        billable_units_by_rate_boundry = result.scalar()
+        if billable_units_by_rate_boundry:
+            int_billable_units_by_rate_boundry = int(billable_units_by_rate_boundry)
+            if billable_units >= free_sms_limit:
+                total_cost += int_billable_units_by_rate_boundry * rate_boundary['rate']
+            elif billable_units + int_billable_units_by_rate_boundry > free_sms_limit:
+                remaining_free_allowance = abs(free_sms_limit - billable_units)
+                total_cost += ((int_billable_units_by_rate_boundry - remaining_free_allowance) * rate_boundary['rate'])
+            else:
+                total_cost += 0
+            billable_units += int_billable_units_by_rate_boundry
+    return billable_units, total_cost
+
+
+def discover_rate_bounds_for_billing_query(start_date, end_date):
+    bounds = []
+    rates = get_rates_for_year(start_date, end_date, SMS_TYPE)
+
+    def current_valid_from(index):
+        return rates[index].valid_from
+
+    def next_valid_from(index):
+        return rates[index + 1].valid_from
+
+    def current_rate(index):
+        return rates[index].rate
+
+    def append_rate(rate_start_date, rate_end_date, rate):
+        bounds.append({
+            'start_date': rate_start_date,
+            'end_date': rate_end_date,
+            'rate': rate
+        })
+
+    if len(rates) == 1:
+        append_rate(start_date, end_date, current_rate(0))
+        return bounds
+
+    for i in range(len(rates)):
+        # first boundary
+        if i == 0:
+            append_rate(start_date, next_valid_from(i), current_rate(i))
+
+        # last boundary
+        elif i == (len(rates) - 1):
+            append_rate(current_valid_from(i), end_date, current_rate(i))
+
+        # other boundaries
+        else:
+            append_rate(current_valid_from(i), next_valid_from(i), current_rate(i))
+
+    return bounds

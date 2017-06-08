@@ -146,8 +146,10 @@ class DVLAOrganisation(db.Model):
 
 INTERNATIONAL_SMS_TYPE = 'international_sms'
 INBOUND_SMS_TYPE = 'inbound_sms'
+SCHEDULE_NOTIFICATIONS = 'schedule_notifications'
 
-SERVICE_PERMISSION_TYPES = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE]
+SERVICE_PERMISSION_TYPES = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
+                            SCHEDULE_NOTIFICATIONS]
 
 
 class ServicePermissionTypes(db.Model):
@@ -188,7 +190,7 @@ class Service(db.Model, Versioned):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     reply_to_email_address = db.Column(db.Text, index=False, unique=False, nullable=True)
     letter_contact_block = db.Column(db.Text, index=False, unique=False, nullable=True)
-    sms_sender = db.Column(db.String(11), nullable=True, default=lambda: current_app.config['FROM_NUMBER'])
+    sms_sender = db.Column(db.String(11), nullable=False, default=lambda: current_app.config['FROM_NUMBER'])
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
     organisation = db.relationship('Organisation')
     dvla_organisation_id = db.Column(
@@ -214,6 +216,10 @@ class Service(db.Model, Versioned):
         if self.permissions:
             self.can_send_letters = LETTER_TYPE in [p.permission for p in self.permissions]
             self.can_send_international_sms = INTERNATIONAL_SMS_TYPE in [p.permission for p in self.permissions]
+
+    @staticmethod
+    def free_sms_fragment_limit():
+        return current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
     @classmethod
     def from_json(cls, data):
@@ -681,6 +687,8 @@ NOTIFICATION_STATUS_TYPES = [
     NOTIFICATION_PERMANENT_FAILURE,
 ]
 
+NOTIFICATION_STATUS_TYPES_NON_BILLABLE = list(set(NOTIFICATION_STATUS_TYPES) - set(NOTIFICATION_STATUS_TYPES_BILLABLE))
+
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
 
@@ -977,7 +985,7 @@ INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
 class ScheduledNotification(db.Model):
     __tablename__ = 'scheduled_notifications'
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4())
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     notification_id = db.Column(UUID(as_uuid=True), db.ForeignKey('notifications.id'), index=True, nullable=False)
     notification = db.relationship('Notification', uselist=False)
     scheduled_for = db.Column(db.DateTime, index=False, nullable=False)
@@ -1097,6 +1105,12 @@ class Rate(db.Model):
     rate = db.Column(db.Float(asdecimal=False), nullable=False)
     notification_type = db.Column(notification_types, index=True, nullable=False)
 
+    def __str__(self):
+        the_string = "{}".format(self.rate)
+        the_string += " {}".format(self.notification_type)
+        the_string += " {}".format(self.valid_from)
+        return the_string
+
 
 class JobStatistics(db.Model):
     __tablename__ = 'job_statistics'
@@ -1112,6 +1126,9 @@ class JobStatistics(db.Model):
     sms_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     letters_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     letters_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sent = db.Column(db.BigInteger, index=False, unique=False, nullable=True, default=0)
+    delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=True, default=0)
+    failed = db.Column(db.BigInteger, index=False, unique=False, nullable=True, default=0)
     created_at = db.Column(
         db.DateTime,
         index=False,
@@ -1141,3 +1158,56 @@ class JobStatistics(db.Model):
         )
         the_string += "created at {}".format(self.created_at)
         return the_string
+
+
+class InboundSms(db.Model):
+    __tablename__ = 'inbound_sms'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
+    service = db.relationship('Service', backref='inbound_sms')
+
+    notify_number = db.Column(db.String, nullable=False)  # the service's number, that the msg was sent to
+    user_number = db.Column(db.String, nullable=False)  # the end user's number, that the msg was sent from
+    provider_date = db.Column(db.DateTime)
+    provider_reference = db.Column(db.String)
+    provider = db.Column(db.String, nullable=True)
+    _content = db.Column('content', db.String, nullable=False)
+
+    @property
+    def content(self):
+        return encryption.decrypt(self._content)
+
+    @content.setter
+    def content(self, content):
+        self._content = encryption.encrypt(content)
+
+    def serialize(self):
+        return {
+            'id': str(self.id),
+            'created_at': self.created_at.isoformat(),
+            'service_id': str(self.service_id),
+            'notify_number': self.notify_number,
+            'user_number': self.user_number,
+            'content': self.content,
+            'provider_date': self.provider_date and self.provider_date.isoformat(),
+            'provider_reference': self.provider_reference
+        }
+
+
+class LetterRate(db.Model):
+    __tablename__ = 'letter_rates'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    valid_from = valid_from = db.Column(db.DateTime, nullable=False)
+
+
+class LetterRateDetail(db.Model):
+    __tablename__ = 'letter_rate_details'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    letter_rate_id = db.Column(UUID(as_uuid=True), db.ForeignKey('letter_rates.id'), index=True, nullable=False)
+    letter_rate = db.relationship('LetterRate', backref='letter_rates')
+    page_total = db.Column(db.Integer, nullable=False)
+    rate = db.Column(db.Numeric(), nullable=False)

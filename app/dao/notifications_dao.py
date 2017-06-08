@@ -2,14 +2,16 @@ import functools
 from datetime import (
     datetime,
     timedelta,
-    date)
+    date
+)
 
 from flask import current_app
 
 from notifications_utils.recipients import (
     validate_and_format_phone_number,
     validate_and_format_email_address,
-    InvalidPhoneError
+    InvalidPhoneError,
+    InvalidEmailError,
 )
 from werkzeug.datastructures import MultiDict
 from sqlalchemy import (desc, func, or_, and_, asc)
@@ -25,6 +27,7 @@ from app.models import (
     NotificationHistory,
     NotificationStatistics,
     Template,
+    ScheduledNotification,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
@@ -34,7 +37,8 @@ from app.models import (
     NOTIFICATION_PERMANENT_FAILURE,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST,
     LETTER_TYPE,
-    NOTIFICATION_SENT, ScheduledNotification)
+    NOTIFICATION_SENT,
+)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
@@ -477,7 +481,10 @@ def dao_get_notifications_by_to_field(service_id, search_term, statuses=None):
     try:
         normalised = validate_and_format_phone_number(search_term)
     except InvalidPhoneError:
-        normalised = validate_and_format_email_address(search_term)
+        try:
+            normalised = validate_and_format_email_address(search_term)
+        except InvalidEmailError:
+            normalised = search_term
 
     filters = [
         Notification.service_id == service_id,

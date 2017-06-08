@@ -3,13 +3,14 @@ import uuid
 import pytest
 from freezegun import freeze_time
 
-from app.models import Notification, ScheduledNotification
+from app.models import Notification, ScheduledNotification, SCHEDULE_NOTIFICATIONS, EMAIL_TYPE, SMS_TYPE
 from flask import json, current_app
 
 from app.models import Notification
 from app.v2.errors import RateLimitError
 from tests import create_authorization_header
 from tests.app.conftest import sample_template as create_sample_template, sample_service
+from tests.app.db import create_service, create_template
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -231,7 +232,7 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
     notification_id = json.loads(response.data)['id']
 
     assert response.status_code == 201
-    mocked.assert_called_once_with([notification_id], queue='priority')
+    mocked.assert_called_once_with([notification_id], queue='priority-tasks')
 
 
 @pytest.mark.parametrize(
@@ -350,26 +351,28 @@ def test_post_sms_should_persist_supplied_sms_number(client, sample_template_wit
     assert mocked.called
 
 
-@pytest.mark.skip("Once the service can be invited to schedule notifications we can add this test.")
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
                          [("sms", "phone_number", "07700 900 855"),
                           ("email", "email_address", "sample@email.com")])
 @freeze_time("2017-05-14 14:00:00")
-def test_post_notification_with_scheduled_for(client, sample_template, sample_email_template,
+def test_post_notification_with_scheduled_for(client, notify_db, notify_db_session,
                                               notification_type, key_send_to, send_to):
+    service = create_service(service_name=str(uuid.uuid4()),
+                             service_permissions=[EMAIL_TYPE, SMS_TYPE, SCHEDULE_NOTIFICATIONS])
+    template = create_template(service=service, template_type=notification_type)
     data = {
         key_send_to: send_to,
-        'template_id': str(sample_email_template.id) if notification_type == 'email' else str(sample_template.id),
+        'template_id': str(template.id) if notification_type == 'email' else str(template.id),
         'scheduled_for': '2017-05-14 14:15'
     }
-    auth_header = create_authorization_header(service_id=sample_template.service_id)
+    auth_header = create_authorization_header(service_id=service.id)
 
     response = client.post('/v2/notifications/{}'.format(notification_type),
                            data=json.dumps(data),
                            headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 201
     resp_json = json.loads(response.get_data(as_text=True))
-    scheduled_notification = ScheduledNotification.query.all()
+    scheduled_notification = ScheduledNotification.query.filter_by(notification_id=resp_json["id"]).all()
     assert len(scheduled_notification) == 1
     assert resp_json["id"] == str(scheduled_notification[0].notification_id)
     assert resp_json["scheduled_for"] == '2017-05-14 14:15'
@@ -379,8 +382,8 @@ def test_post_notification_with_scheduled_for(client, sample_template, sample_em
                          [("sms", "phone_number", "07700 900 855"),
                           ("email", "email_address", "sample@email.com")])
 @freeze_time("2017-05-14 14:00:00")
-def test_post_notification_with_scheduled_for_raises_bad_request(client, sample_template, sample_email_template,
-                                                                 notification_type, key_send_to, send_to):
+def test_post_notification_raises_bad_request_if_service_not_invited_to_schedule(
+        client, sample_template, sample_email_template, notification_type, key_send_to, send_to):
     data = {
         key_send_to: send_to,
         'template_id': str(sample_email_template.id) if notification_type == 'email' else str(sample_template.id),
@@ -394,4 +397,4 @@ def test_post_notification_with_scheduled_for_raises_bad_request(client, sample_
     assert response.status_code == 400
     error_json = json.loads(response.get_data(as_text=True))
     assert error_json['errors'] == [
-        {"error": "BadRequestError", "message": 'Your service must be invited to schedule notifications via the API.'}]
+        {"error": "BadRequestError", "message": 'Cannot schedule notifications (this feature is invite-only)'}]

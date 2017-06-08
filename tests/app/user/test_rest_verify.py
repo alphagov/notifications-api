@@ -218,7 +218,7 @@ def test_send_user_sms_code(client,
 
     app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
         ([str(notification.id)]),
-        queue="notify"
+        queue="notify-internal-tasks"
     )
 
 
@@ -246,7 +246,7 @@ def test_send_user_code_for_sms_with_optional_to_field(client,
     assert notification.to == to_number
     app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
         ([str(notification.id)]),
-        queue="notify"
+        queue="notify-internal-tasks"
     )
 
 
@@ -294,7 +294,7 @@ def test_send_user_email_verification(client,
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 204
     notification = Notification.query.first()
-    mocked.assert_called_once_with(([str(notification.id)]), queue="notify")
+    mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
 
 
 def test_send_email_verification_returns_404_for_bad_input_data(client, notify_db_session, mocker):

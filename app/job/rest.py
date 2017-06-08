@@ -34,6 +34,8 @@ from app.models import JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING, JOB_STATUS_CANC
 
 from app.utils import pagination_links
 
+from app.config import QueueNames
+
 job_blueprint = Blueprint('job', __name__, url_prefix='/service/<uuid:service_id>/job')
 
 from app.errors import (
@@ -143,7 +145,7 @@ def create_job(service_id):
     dao_create_job(job)
 
     if job.job_status == JOB_STATUS_PENDING:
-        process_job.apply_async([str(job.id)], queue="process-job")
+        process_job.apply_async([str(job.id)], queue=QueueNames.JOBS)
 
     job_json = job_schema.dump(job).data
     job_json['statistics'] = []

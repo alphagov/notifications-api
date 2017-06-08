@@ -374,7 +374,7 @@ def test_send_user_reset_password_should_send_reset_password_link(client,
 
     assert resp.status_code == 204
     notification = Notification.query.first()
-    mocked.assert_called_once_with([str(notification.id)], queue="notify")
+    mocked.assert_called_once_with([str(notification.id)], queue="notify-internal-tasks")
 
 
 def test_send_user_reset_password_should_return_400_when_email_is_missing(client, mocker):
@@ -436,7 +436,7 @@ def test_send_already_registered_email(client, sample_user, already_registered_t
     assert resp.status_code == 204
 
     notification = Notification.query.first()
-    mocked.assert_called_once_with(([str(notification.id)]), queue="notify")
+    mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
 
 
 def test_send_already_registered_email_returns_400_when_data_is_missing(client, sample_user):
@@ -464,7 +464,7 @@ def test_send_user_confirm_new_email_returns_204(client, sample_user, change_ema
     notification = Notification.query.first()
     mocked.assert_called_once_with(
         ([str(notification.id)]),
-        queue="notify")
+        queue="notify-internal-tasks")
 
 
 def test_send_user_confirm_new_email_returns_400_when_email_missing(client, sample_user, mocker):

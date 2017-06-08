@@ -11,34 +11,6 @@ def test_should_have_decorated_tasks_functions():
     assert deliver_email.__wrapped__.__name__ == 'deliver_email'
 
 
-def test_should_by_10_second_delay_as_default():
-    assert provider_tasks.retry_iteration_to_delay() == 10
-
-
-def test_should_by_10_second_delay_on_unmapped_retry_iteration():
-    assert provider_tasks.retry_iteration_to_delay(99) == 10
-
-
-def test_should_by_10_second_delay_on_retry_one():
-    assert provider_tasks.retry_iteration_to_delay(0) == 10
-
-
-def test_should_by_1_minute_delay_on_retry_two():
-    assert provider_tasks.retry_iteration_to_delay(1) == 60
-
-
-def test_should_by_5_minute_delay_on_retry_two():
-    assert provider_tasks.retry_iteration_to_delay(2) == 300
-
-
-def test_should_by_60_minute_delay_on_retry_two():
-    assert provider_tasks.retry_iteration_to_delay(3) == 3600
-
-
-def test_should_by_240_minute_delay_on_retry_two():
-    assert provider_tasks.retry_iteration_to_delay(4) == 14400
-
-
 def test_should_call_send_sms_to_provider_from_deliver_sms_task(
         notify_db,
         notify_db_session,
@@ -61,7 +33,7 @@ def test_should_add_to_retry_queue_if_notification_not_found_in_deliver_sms_task
 
     deliver_sms(notification_id)
     app.delivery.send_to_providers.send_sms_to_provider.assert_not_called()
-    app.celery.provider_tasks.deliver_sms.retry.assert_called_with(queue="retry", countdown=10)
+    app.celery.provider_tasks.deliver_sms.retry.assert_called_with(queue="retry-tasks")
 
 
 def test_should_call_send_email_to_provider_from_deliver_email_task(
@@ -83,7 +55,7 @@ def test_should_add_to_retry_queue_if_notification_not_found_in_deliver_email_ta
 
     deliver_email(notification_id)
     app.delivery.send_to_providers.send_email_to_provider.assert_not_called()
-    app.celery.provider_tasks.deliver_email.retry.assert_called_with(queue="retry", countdown=10)
+    app.celery.provider_tasks.deliver_email.retry.assert_called_with(queue="retry-tasks")
 
 
 # DO THESE FOR THE 4 TYPES OF TASK
@@ -94,7 +66,7 @@ def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_sms_task(s
 
     deliver_sms(sample_notification.id)
 
-    provider_tasks.deliver_sms.retry.assert_called_with(queue='retry', countdown=10)
+    provider_tasks.deliver_sms.retry.assert_called_with(queue="retry-tasks")
 
     assert sample_notification.status == 'technical-failure'
 
@@ -105,7 +77,7 @@ def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_email_task
 
     deliver_email(sample_notification.id)
 
-    provider_tasks.deliver_email.retry.assert_called_with(queue='retry', countdown=10)
+    provider_tasks.deliver_email.retry.assert_called_with(queue="retry-tasks")
     assert sample_notification.status == 'technical-failure'
 
 

@@ -21,7 +21,7 @@ def test_send_letter_jobs(client, mocker):
 
     mock_celery.assert_called_once_with(name="send-files-to-dvla",
                                         args=(job_ids['job_ids'],),
-                                        queue="process-ftp")
+                                        queue="process-ftp-tasks")
 
 
 def test_send_letter_jobs_throws_validation_error(client, mocker):

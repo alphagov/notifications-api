@@ -4,6 +4,7 @@ from flask import (
     jsonify,
     current_app)
 
+from app.config import QueueNames
 from app.dao.invited_user_dao import (
     save_invited_user,
     get_invited_user,
@@ -44,7 +45,7 @@ def create_invited_user(service_id):
         key_type=KEY_TYPE_NORMAL
     )
 
-    send_notification_to_queue(saved_notification, False, queue="notify")
+    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
 
     return jsonify(data=invited_user_schema.dump(invited_user).data), 201
 

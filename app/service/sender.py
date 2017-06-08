@@ -1,5 +1,6 @@
 from flask import current_app
 
+from app.config import QueueNames
 from app.dao.services_dao import dao_fetch_service_by_id, dao_fetch_active_users_for_service
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import EMAIL_TYPE, KEY_TYPE_NORMAL
@@ -24,7 +25,7 @@ def send_notification_to_service_users(service_id, template_id, personalisation=
             api_key_id=None,
             key_type=KEY_TYPE_NORMAL
         )
-        send_notification_to_queue(notification, False, queue='notify')
+        send_notification_to_queue(notification, False, queue=QueueNames.NOTIFY)
 
 
 def _add_user_fields(user, personalisation, fields):

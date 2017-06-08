@@ -4,6 +4,7 @@ from datetime import datetime
 
 from flask import (jsonify, request, Blueprint, current_app)
 
+from app.config import QueueNames
 from app.dao.users_dao import (
     get_user_by_id,
     save_model_user,
@@ -182,7 +183,7 @@ def send_user_sms_code(user_id):
     # Assume that we never want to observe the Notify service's research mode
     # setting for this notification - we still need to be able to log into the
     # admin even if we're doing user research using this service:
-    send_notification_to_queue(saved_notification, False, queue='notify')
+    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
 
     return jsonify({}), 204
 
@@ -205,14 +206,14 @@ def send_user_confirm_new_email(user_id):
         personalisation={
             'name': user_to_send_to.name,
             'url': _create_confirmation_url(user=user_to_send_to, email_address=email['email']),
-            'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/feedback'
+            'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/support'
         },
         notification_type=EMAIL_TYPE,
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL
     )
 
-    send_notification_to_queue(saved_notification, False, queue='notify')
+    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
     return jsonify({}), 204
 
 
@@ -239,7 +240,7 @@ def send_user_email_verification(user_id):
         key_type=KEY_TYPE_NORMAL
     )
 
-    send_notification_to_queue(saved_notification, False, queue="notify")
+    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
 
     return jsonify({}), 204
 
@@ -258,14 +259,14 @@ def send_already_registered_email(user_id):
         personalisation={
             'signin_url': current_app.config['ADMIN_BASE_URL'] + '/sign-in',
             'forgot_password_url': current_app.config['ADMIN_BASE_URL'] + '/forgot-password',
-            'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/feedback'
+            'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/support'
         },
         notification_type=EMAIL_TYPE,
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL
     )
 
-    send_notification_to_queue(saved_notification, False, queue="notify")
+    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
 
     return jsonify({}), 204
 
@@ -327,7 +328,7 @@ def send_user_reset_password():
         key_type=KEY_TYPE_NORMAL
     )
 
-    send_notification_to_queue(saved_notification, False, queue="notify")
+    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
 
     return jsonify({}), 204
 
