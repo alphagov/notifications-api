@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0088_migrate_existing_svc_perms
-Revises: 0087_scheduled_notifications
+Revision ID: 0095_migrate_existing_svc_perms
+Revises: 0094_job_stats_update
 Create Date: 2017-05-23 18:13:03.532095
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0088_migrate_existing_svc_perms'
-down_revision = '0087_scheduled_notifications'
+revision = '0095_migrate_existing_svc_perms'
+down_revision = '0094_job_stats_update'
 
 from alembic import op
 import sqlalchemy as sa
