@@ -109,7 +109,9 @@ def dao_get_template_usage(service_id, limit_days=None):
         table = Notification
 
     query_filter = [table.service_id == service_id, table.key_type != KEY_TYPE_TEST]
-    if limit_days is not None:
+
+    # only limit days if it's not seven days, as 7 days == the whole of Notifications table.
+    if limit_days is not None and limit_days != 7:
         query_filter.append(table.created_at >= days_ago(limit_days))
 
     notifications_aggregate_query = db.session.query(
