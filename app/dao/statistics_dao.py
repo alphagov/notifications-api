@@ -60,7 +60,10 @@ def timeout_job_counts(notifications_type, timeout_start):
         ).update({
             sent: sent_count,
             failed: failed_count,
-            delivered: delivered_count
+            delivered: delivered_count,
+            'sent': sent_count,
+            'delivered': delivered_count,
+            'failed': failed_count
         }, synchronize_session=False)
     return total_updated
 
@@ -87,11 +90,13 @@ def create_or_update_job_sending_statistics(notification):
 @transactional
 def __update_job_stats_sent_count(notification):
     column = columns(notification.notification_type, 'sent')
+    new_column = 'sent'
 
     return db.session.query(JobStatistics).filter_by(
         job_id=notification.job_id,
     ).update({
-        column: column + 1
+        column: column + 1,
+        new_column: column + 1
     })
 
 
@@ -102,7 +107,8 @@ def __insert_job_stats(notification):
         emails_sent=1 if notification.notification_type == EMAIL_TYPE else 0,
         sms_sent=1 if notification.notification_type == SMS_TYPE else 0,
         letters_sent=1 if notification.notification_type == LETTER_TYPE else 0,
-        updated_at=datetime.utcnow()
+        updated_at=datetime.utcnow(),
+        sent=1
     )
     db.session.add(stats)
 
@@ -131,10 +137,12 @@ def columns(notification_type, status):
 def update_job_stats_outcome_count(notification):
     if notification.status in NOTIFICATION_STATUS_TYPES_FAILED:
         column = columns(notification.notification_type, 'failed')
+        new_column = 'failed'
 
     elif notification.status in [NOTIFICATION_DELIVERED,
                                  NOTIFICATION_SENT] and notification.notification_type != LETTER_TYPE:
         column = columns(notification.notification_type, 'delivered')
+        new_column = 'delivered'
 
     else:
         column = None
@@ -143,7 +151,8 @@ def update_job_stats_outcome_count(notification):
         return db.session.query(JobStatistics).filter_by(
             job_id=notification.job_id,
         ).update({
-            column: column + 1
+            column: column + 1,
+            new_column: column + 1
         })
     else:
         return 0
