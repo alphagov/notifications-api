@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 
 import pytest
+from flask import current_app
 
 from app.dao.date_util import get_financial_year
 from app.dao.notification_usage_dao import (
@@ -15,11 +16,12 @@ from app.models import (
     Rate,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_STATUS_TYPES_BILLABLE,
-    NOTIFICATION_STATUS_TYPES_NON_BILLABLE,
-    Notification)
+    NOTIFICATION_STATUS_TYPES_NON_BILLABLE)
 from tests.app.conftest import sample_notification, sample_email_template, sample_letter_template, sample_service
 from tests.app.db import create_notification
 from freezegun import freeze_time
+
+from tests.conftest import set_config
 
 
 def test_get_rates_for_year(notify_db, notify_db_session):
@@ -266,218 +268,235 @@ def set_up_rate(notify_db, start_date, value):
 
 @freeze_time("2016-01-10 12:00:00.000000")
 def test_returns_total_billable_units_for_sms_notifications(notify_db, notify_db_session, sample_service):
-    set_up_rate(notify_db, datetime(2016, 1, 1), 0.016)
+    with set_config(current_app, 'FREE_SMS_TIER_FRAGMENT_COUNT', 0):
 
-    sample_notification(
-        notify_db, notify_db_session, service=sample_service, billable_units=1, status=NOTIFICATION_DELIVERED)
-    sample_notification(
-        notify_db, notify_db_session, service=sample_service, billable_units=2, status=NOTIFICATION_DELIVERED)
-    sample_notification(
-        notify_db, notify_db_session, service=sample_service, billable_units=3, status=NOTIFICATION_DELIVERED)
-    sample_notification(
-        notify_db, notify_db_session, service=sample_service, billable_units=4, status=NOTIFICATION_DELIVERED)
+        set_up_rate(notify_db, datetime(2016, 1, 1), 0.016)
 
-    start = datetime.utcnow() - timedelta(minutes=10)
-    end = datetime.utcnow() + timedelta(minutes=10)
+        sample_notification(
+            notify_db, notify_db_session, service=sample_service, billable_units=1, status=NOTIFICATION_DELIVERED)
+        sample_notification(
+            notify_db, notify_db_session, service=sample_service, billable_units=2, status=NOTIFICATION_DELIVERED)
+        sample_notification(
+            notify_db, notify_db_session, service=sample_service, billable_units=3, status=NOTIFICATION_DELIVERED)
+        sample_notification(
+            notify_db, notify_db_session, service=sample_service, billable_units=4, status=NOTIFICATION_DELIVERED)
 
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[0] == 10
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[1] == 0.16
+        start = datetime.utcnow() - timedelta(minutes=10)
+        end = datetime.utcnow() + timedelta(minutes=10)
+
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(
+            start, end, sample_service.id)[0] == 10
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(
+            start, end, sample_service.id)[1] == 0.16
 
 
 @freeze_time("2016-01-10 12:00:00.000000")
 def test_returns_total_billable_units_multiplied_by_multipler_for_sms_notifications(
         notify_db, notify_db_session, sample_service
 ):
-    set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
+    with set_config(current_app, 'FREE_SMS_TIER_FRAGMENT_COUNT', 0):
+        set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
 
-    sample_notification(
-        notify_db, notify_db_session, service=sample_service, rate_multiplier=1.0, status=NOTIFICATION_DELIVERED)
-    sample_notification(
-        notify_db, notify_db_session, service=sample_service, rate_multiplier=2.0, status=NOTIFICATION_DELIVERED)
-    sample_notification(
-        notify_db, notify_db_session, service=sample_service, rate_multiplier=5.0, status=NOTIFICATION_DELIVERED)
-    sample_notification(
-        notify_db, notify_db_session, service=sample_service, rate_multiplier=10.0, status=NOTIFICATION_DELIVERED)
+        sample_notification(
+            notify_db, notify_db_session, service=sample_service, rate_multiplier=1.0, status=NOTIFICATION_DELIVERED)
+        sample_notification(
+            notify_db, notify_db_session, service=sample_service, rate_multiplier=2.0, status=NOTIFICATION_DELIVERED)
+        sample_notification(
+            notify_db, notify_db_session, service=sample_service, rate_multiplier=5.0, status=NOTIFICATION_DELIVERED)
+        sample_notification(
+            notify_db, notify_db_session, service=sample_service, rate_multiplier=10.0, status=NOTIFICATION_DELIVERED)
 
-    start = datetime.utcnow() - timedelta(minutes=10)
-    end = datetime.utcnow() + timedelta(minutes=10)
+        start = datetime.utcnow() - timedelta(minutes=10)
+        end = datetime.utcnow() + timedelta(minutes=10)
 
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[0] == 18
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[1] == 45
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[0] == 18
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[1] == 45
 
 
 def test_returns_total_billable_units_multiplied_by_multipler_for_sms_notifications_for_several_rates(
         notify_db, notify_db_session, sample_service
 ):
-    set_up_rate(notify_db, datetime(2016, 1, 1), 2)
-    set_up_rate(notify_db, datetime(2016, 10, 1), 4)
-    set_up_rate(notify_db, datetime(2017, 1, 1), 6)
+    with set_config(current_app, 'FREE_SMS_TIER_FRAGMENT_COUNT', 0):
 
-    eligble_rate_1 = datetime(2016, 2, 1)
-    eligble_rate_2 = datetime(2016, 11, 1)
-    eligble_rate_3 = datetime(2017, 2, 1)
+        set_up_rate(notify_db, datetime(2016, 1, 1), 2)
+        set_up_rate(notify_db, datetime(2016, 10, 1), 4)
+        set_up_rate(notify_db, datetime(2017, 1, 1), 6)
 
-    sample_notification(
-        notify_db,
-        notify_db_session,
-        service=sample_service,
-        rate_multiplier=1.0,
-        status=NOTIFICATION_DELIVERED,
-        created_at=eligble_rate_1)
+        eligble_rate_1 = datetime(2016, 2, 1)
+        eligble_rate_2 = datetime(2016, 11, 1)
+        eligble_rate_3 = datetime(2017, 2, 1)
 
-    sample_notification(
-        notify_db,
-        notify_db_session,
-        service=sample_service,
-        rate_multiplier=2.0,
-        status=NOTIFICATION_DELIVERED,
-        created_at=eligble_rate_2)
-
-    sample_notification(
-        notify_db,
-        notify_db_session,
-        service=sample_service,
-        rate_multiplier=5.0,
-        status=NOTIFICATION_DELIVERED,
-        created_at=eligble_rate_3)
-
-    start = datetime(2016, 1, 1)
-    end = datetime(2018, 1, 1)
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[0] == 8
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[1] == 40
-
-
-def test_returns_total_billable_units_for_sms_notifications_for_several_rates_where_dates_match_rate_boundary(
-        notify_db, notify_db_session, sample_service
-):
-    set_up_rate(notify_db, datetime(2016, 1, 1), 2)
-    set_up_rate(notify_db, datetime(2016, 10, 1), 4)
-    set_up_rate(notify_db, datetime(2017, 1, 1), 6)
-
-    eligble_rate_1_start = datetime(2016, 1, 1, 0, 0, 0, 0)
-    eligble_rate_1_end = datetime(2016, 9, 30, 23, 59, 59, 999)
-    eligble_rate_2_start = datetime(2016, 10, 1, 0, 0, 0, 0)
-    eligble_rate_2_end = datetime(2016, 12, 31, 23, 59, 59, 999)
-    eligble_rate_3_start = datetime(2017, 1, 1, 0, 0, 0, 0)
-    eligble_rate_3_whenever = datetime(2017, 12, 12, 0, 0, 0, 0)
-
-    def make_notification(created_at):
         sample_notification(
             notify_db,
             notify_db_session,
             service=sample_service,
             rate_multiplier=1.0,
             status=NOTIFICATION_DELIVERED,
-            created_at=created_at)
+            created_at=eligble_rate_1)
 
-    make_notification(eligble_rate_1_start)
-    make_notification(eligble_rate_1_end)
-    make_notification(eligble_rate_2_start)
-    make_notification(eligble_rate_2_end)
-    make_notification(eligble_rate_3_start)
-    make_notification(eligble_rate_3_whenever)
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            service=sample_service,
+            rate_multiplier=2.0,
+            status=NOTIFICATION_DELIVERED,
+            created_at=eligble_rate_2)
 
-    start = datetime(2016, 1, 1)
-    end = datetime(2018, 1, 1)
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            service=sample_service,
+            rate_multiplier=5.0,
+            status=NOTIFICATION_DELIVERED,
+            created_at=eligble_rate_3)
 
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[0] == 6
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[1] == 24.0
+        start = datetime(2016, 1, 1)
+        end = datetime(2018, 1, 1)
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[0] == 8
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[1] == 40
+
+
+def test_returns_total_billable_units_for_sms_notifications_for_several_rates_where_dates_match_rate_boundary(
+        notify_db, notify_db_session, sample_service
+):
+    with set_config(current_app, 'FREE_SMS_TIER_FRAGMENT_COUNT', 0):
+
+        set_up_rate(notify_db, datetime(2016, 1, 1), 2)
+        set_up_rate(notify_db, datetime(2016, 10, 1), 4)
+        set_up_rate(notify_db, datetime(2017, 1, 1), 6)
+
+        eligble_rate_1_start = datetime(2016, 1, 1, 0, 0, 0, 0)
+        eligble_rate_1_end = datetime(2016, 9, 30, 23, 59, 59, 999)
+        eligble_rate_2_start = datetime(2016, 10, 1, 0, 0, 0, 0)
+        eligble_rate_2_end = datetime(2016, 12, 31, 23, 59, 59, 999)
+        eligble_rate_3_start = datetime(2017, 1, 1, 0, 0, 0, 0)
+        eligble_rate_3_whenever = datetime(2017, 12, 12, 0, 0, 0, 0)
+
+        def make_notification(created_at):
+            sample_notification(
+                notify_db,
+                notify_db_session,
+                service=sample_service,
+                rate_multiplier=1.0,
+                status=NOTIFICATION_DELIVERED,
+                created_at=created_at)
+
+        make_notification(eligble_rate_1_start)
+        make_notification(eligble_rate_1_end)
+        make_notification(eligble_rate_2_start)
+        make_notification(eligble_rate_2_end)
+        make_notification(eligble_rate_3_start)
+        make_notification(eligble_rate_3_whenever)
+
+        start = datetime(2016, 1, 1)
+        end = datetime(2018, 1, 1)
+
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(
+            start, end, sample_service.id)[0] == 6
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(
+            start, end, sample_service.id)[1] == 24.0
 
 
 @freeze_time("2016-01-10 12:00:00.000000")
 def test_returns_total_billable_units_for_sms_notifications_ignoring_letters_and_emails(
         notify_db, notify_db_session, sample_service
 ):
-    set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
+    with set_config(current_app, 'FREE_SMS_TIER_FRAGMENT_COUNT', 0):
 
-    email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
-    letter_template = sample_letter_template(sample_service)
+        set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
 
-    sample_notification(
-        notify_db,
-        notify_db_session,
-        service=sample_service,
-        billable_units=2,
-        status=NOTIFICATION_DELIVERED)
-    sample_notification(
-        notify_db,
-        notify_db_session,
-        template=email_template,
-        service=sample_service,
-        billable_units=2,
-        status=NOTIFICATION_DELIVERED)
-    sample_notification(
-        notify_db,
-        notify_db_session,
-        template=letter_template,
-        service=sample_service,
-        billable_units=2,
-        status=NOTIFICATION_DELIVERED
-    )
+        email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
+        letter_template = sample_letter_template(sample_service)
 
-    start = datetime.utcnow() - timedelta(minutes=10)
-    end = datetime.utcnow() + timedelta(minutes=10)
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            service=sample_service,
+            billable_units=2,
+            status=NOTIFICATION_DELIVERED)
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            template=email_template,
+            service=sample_service,
+            billable_units=2,
+            status=NOTIFICATION_DELIVERED)
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            template=letter_template,
+            service=sample_service,
+            billable_units=2,
+            status=NOTIFICATION_DELIVERED
+        )
 
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[0] == 2
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[1] == 5
+        start = datetime.utcnow() - timedelta(minutes=10)
+        end = datetime.utcnow() + timedelta(minutes=10)
+
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[0] == 2
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[1] == 5
 
 
 @freeze_time("2016-01-10 12:00:00.000000")
 def test_returns_total_billable_units_for_sms_notifications_for_only_requested_service(
         notify_db, notify_db_session
 ):
-    set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
+    with set_config(current_app, 'FREE_SMS_TIER_FRAGMENT_COUNT', 0):
 
-    service_1 = sample_service(notify_db, notify_db_session, service_name=str(uuid.uuid4()))
-    service_2 = sample_service(notify_db, notify_db_session, service_name=str(uuid.uuid4()))
-    service_3 = sample_service(notify_db, notify_db_session, service_name=str(uuid.uuid4()))
+        set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
 
-    sample_notification(
-        notify_db,
-        notify_db_session,
-        service=service_1,
-        billable_units=2,
-        status=NOTIFICATION_DELIVERED)
-    sample_notification(
-        notify_db,
-        notify_db_session,
-        service=service_2,
-        billable_units=2,
-        status=NOTIFICATION_DELIVERED)
-    sample_notification(
-        notify_db,
-        notify_db_session,
-        service=service_3,
-        billable_units=2,
-        status=NOTIFICATION_DELIVERED
-    )
+        service_1 = sample_service(notify_db, notify_db_session, service_name=str(uuid.uuid4()))
+        service_2 = sample_service(notify_db, notify_db_session, service_name=str(uuid.uuid4()))
+        service_3 = sample_service(notify_db, notify_db_session, service_name=str(uuid.uuid4()))
 
-    start = datetime.utcnow() - timedelta(minutes=10)
-    end = datetime.utcnow() + timedelta(minutes=10)
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            service=service_1,
+            billable_units=2,
+            status=NOTIFICATION_DELIVERED)
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            service=service_2,
+            billable_units=2,
+            status=NOTIFICATION_DELIVERED)
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            service=service_3,
+            billable_units=2,
+            status=NOTIFICATION_DELIVERED
+        )
 
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, service_1.id)[0] == 2
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, service_1.id)[1] == 5
+        start = datetime.utcnow() - timedelta(minutes=10)
+        end = datetime.utcnow() + timedelta(minutes=10)
+
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, service_1.id)[0] == 2
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, service_1.id)[1] == 5
 
 
 @freeze_time("2016-01-10 12:00:00.000000")
 def test_returns_total_billable_units_for_sms_notifications_handling_null_values(
     notify_db, notify_db_session, sample_service
 ):
-    set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
+    with set_config(current_app, 'FREE_SMS_TIER_FRAGMENT_COUNT', 0):
 
-    sample_notification(
-        notify_db,
-        notify_db_session,
-        service=sample_service,
-        billable_units=2,
-        rate_multiplier=None,
-        status=NOTIFICATION_DELIVERED)
+        set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
 
-    start = datetime.utcnow() - timedelta(minutes=10)
-    end = datetime.utcnow() + timedelta(minutes=10)
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            service=sample_service,
+            billable_units=2,
+            rate_multiplier=None,
+            status=NOTIFICATION_DELIVERED)
 
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[0] == 2
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[1] == 5
+        start = datetime.utcnow() - timedelta(minutes=10)
+        end = datetime.utcnow() + timedelta(minutes=10)
+
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[0] == 2
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[1] == 5
 
 
 @pytest.mark.parametrize('billable_units, states', ([
@@ -488,57 +507,61 @@ def test_returns_total_billable_units_for_sms_notifications_handling_null_values
 def test_ignores_non_billable_states_when_returning_billable_units_for_sms_notifications(
     notify_db, notify_db_session, sample_service, billable_units, states
 ):
-    set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
+    with set_config(current_app, 'FREE_SMS_TIER_FRAGMENT_COUNT', 0):
+        set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
 
-    for state in states:
-        sample_notification(
-            notify_db,
-            notify_db_session,
-            service=sample_service,
-            billable_units=1,
-            rate_multiplier=None,
-            status=state)
+        for state in states:
+            sample_notification(
+                notify_db,
+                notify_db_session,
+                service=sample_service,
+                billable_units=1,
+                rate_multiplier=None,
+                status=state)
 
-    start = datetime.utcnow() - timedelta(minutes=10)
-    end = datetime.utcnow() + timedelta(minutes=10)
+        start = datetime.utcnow() - timedelta(minutes=10)
+        end = datetime.utcnow() + timedelta(minutes=10)
 
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(
-        start, end, sample_service.id
-    )[0] == billable_units
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(
-        start, end, sample_service.id
-    )[1] == billable_units * 2.5
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(
+            start, end, sample_service.id
+        )[0] == billable_units
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(
+            start, end, sample_service.id
+        )[1] == billable_units * 2.5
 
 
 @freeze_time("2016-01-10 12:00:00.000000")
 def test_restricts_to_time_period_when_returning_billable_units_for_sms_notifications(
     notify_db, notify_db_session, sample_service
 ):
-    set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
+    with set_config(current_app, 'FREE_SMS_TIER_FRAGMENT_COUNT', 0):
+        set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
 
-    sample_notification(
-        notify_db,
-        notify_db_session,
-        service=sample_service,
-        billable_units=1,
-        rate_multiplier=1.0,
-        created_at=datetime.utcnow() - timedelta(minutes=100),
-        status=NOTIFICATION_DELIVERED)
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            service=sample_service,
+            billable_units=1,
+            rate_multiplier=1.0,
+            created_at=datetime.utcnow() - timedelta(minutes=100),
+            status=NOTIFICATION_DELIVERED)
 
-    sample_notification(
-        notify_db,
-        notify_db_session,
-        service=sample_service,
-        billable_units=1,
-        rate_multiplier=1.0,
-        created_at=datetime.utcnow() - timedelta(minutes=5),
-        status=NOTIFICATION_DELIVERED)
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            service=sample_service,
+            billable_units=1,
+            rate_multiplier=1.0,
+            created_at=datetime.utcnow() - timedelta(minutes=5),
+            status=NOTIFICATION_DELIVERED)
 
-    start = datetime.utcnow() - timedelta(minutes=10)
-    end = datetime.utcnow() + timedelta(minutes=10)
+        start = datetime.utcnow() - timedelta(minutes=10)
+        end = datetime.utcnow() + timedelta(minutes=10)
 
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[0] == 1
-    assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[1] == 2.5
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(
+            start, end, sample_service.id)[0] == 1
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(
+            start, end, sample_service.id)[1] == 2.5
 
 
 def test_returns_zero_if_no_matching_rows_when_returning_billable_units_for_sms_notifications(
@@ -604,3 +627,86 @@ def test_should_calculate_rate_boundaries_for_billing_query_for_three_relevant_r
     assert rate_boundaries[2]['start_date'] == rate_3_valid_from
     assert rate_boundaries[2]['end_date'] == end_date
     assert rate_boundaries[2]['rate'] == 0.06
+
+
+@freeze_time("2016-01-10 12:00:00.000000")
+def test_deducts_free_tier_from_bill(
+        notify_db, notify_db_session
+):
+    start_value = current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
+    try:
+        current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT'] = 1
+
+        set_up_rate(notify_db, datetime(2016, 1, 1), 2.5)
+
+        service_1 = sample_service(notify_db, notify_db_session, service_name=str(uuid.uuid4()))
+
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            service=service_1,
+            billable_units=1,
+            status=NOTIFICATION_DELIVERED)
+        sample_notification(
+            notify_db,
+            notify_db_session,
+            service=service_1,
+            billable_units=1,
+            status=NOTIFICATION_DELIVERED)
+
+        start = datetime.utcnow() - timedelta(minutes=10)
+        end = datetime.utcnow() + timedelta(minutes=10)
+
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, service_1.id)[0] == 2
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, service_1.id)[1] == 2.5
+    finally:
+        current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT'] = start_value
+
+
+@freeze_time("2016-01-10 12:00:00.000000")
+@pytest.mark.parametrize(
+    'free_tier, expected_cost',
+    [(0, 24.0), (1, 22.0), (2, 20.0), (3, 16.0), (4, 12.0), (5, 6.0), (6, 0.0)]
+)
+def test_deducts_free_tier_from_bill_across_rate_boundaries(
+        notify_db, notify_db_session, sample_service, free_tier, expected_cost
+):
+    start_value = current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
+    try:
+        current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT'] = free_tier
+        set_up_rate(notify_db, datetime(2016, 1, 1), 2)
+        set_up_rate(notify_db, datetime(2016, 10, 1), 4)
+        set_up_rate(notify_db, datetime(2017, 1, 1), 6)
+
+        eligble_rate_1_start = datetime(2016, 1, 1, 0, 0, 0, 0)
+        eligble_rate_1_end = datetime(2016, 9, 30, 23, 59, 59, 999)
+        eligble_rate_2_start = datetime(2016, 10, 1, 0, 0, 0, 0)
+        eligble_rate_2_end = datetime(2016, 12, 31, 23, 59, 59, 999)
+        eligble_rate_3_start = datetime(2017, 1, 1, 0, 0, 0, 0)
+        eligble_rate_3_whenever = datetime(2017, 12, 12, 0, 0, 0, 0)
+
+        def make_notification(created_at):
+            sample_notification(
+                notify_db,
+                notify_db_session,
+                service=sample_service,
+                rate_multiplier=1.0,
+                status=NOTIFICATION_DELIVERED,
+                created_at=created_at)
+
+        make_notification(eligble_rate_1_start)
+        make_notification(eligble_rate_1_end)
+        make_notification(eligble_rate_2_start)
+        make_notification(eligble_rate_2_end)
+        make_notification(eligble_rate_3_start)
+        make_notification(eligble_rate_3_whenever)
+
+        start = datetime(2016, 1, 1)
+        end = datetime(2018, 1, 1)
+
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(start, end, sample_service.id)[0] == 6
+        assert get_total_billable_units_for_sent_sms_notifications_in_date_range(
+            start, end, sample_service.id
+        )[1] == expected_cost
+    finally:
+        current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT'] = start_value

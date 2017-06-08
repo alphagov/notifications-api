@@ -27,6 +27,7 @@ from app.models import (
 )
 
 from tests.app.db import create_user
+from tests.conftest import set_config_values
 
 
 def test_get_service_list(client, service_factory):
@@ -147,7 +148,32 @@ def test_get_service_by_id(client, sample_service):
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
 
 
+def test_get_service_by_id_returns_free_sms_limit(client, sample_service):
+
+    auth_header = create_authorization_header()
+    resp = client.get(
+        '/service/{}'.format(sample_service.id),
+        headers=[auth_header]
+    )
+    assert resp.status_code == 200
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert json_resp['data']['free_sms_fragment_limit'] == 250000
+
+
+def test_get_detailed_service_by_id_returns_free_sms_limit(client, sample_service):
+
+    auth_header = create_authorization_header()
+    resp = client.get(
+        '/service/{}?detailed=True'.format(sample_service.id),
+        headers=[auth_header]
+    )
+    assert resp.status_code == 200
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert json_resp['data']['free_sms_fragment_limit'] == 250000
+
+
 def test_get_service_list_has_default_permissions(client, service_factory):
+    service_factory.get('one')
     service_factory.get('one')
     service_factory.get('two')
     service_factory.get('three')
@@ -2032,7 +2058,7 @@ def test_get_yearly_billing_usage_count_returns_from_cache_if_present(client, sa
         '/service/{}/yearly-sms-billable-units?year=2016'.format(sample_service.id),
         headers=[create_authorization_header()]
     )
-    print(response.get_data(as_text=True))
+    response.get_data(as_text=True)
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == {
         'billable_sms_units': 50,
