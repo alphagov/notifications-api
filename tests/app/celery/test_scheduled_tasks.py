@@ -526,3 +526,25 @@ def test_remove_dvla_transformed_files_removes_expected_files(mocker, sample_ser
         call(job_to_delete_3.id),
         call(job_to_delete_4.id),
     ], any_order=True)
+
+
+def test_remove_dvla_transformed_files_does_not_remove_files(mocker, sample_service):
+    mocker.patch('app.celery.scheduled_tasks.s3.remove_transformed_dvla_file')
+
+    letter_template = create_template(service=sample_service, template_type=LETTER_TYPE)
+
+    job = partial(create_job, template=letter_template)
+
+    yesterday = datetime.utcnow() - timedelta(days=1)
+    six_days_ago = datetime.utcnow() - timedelta(days=6)
+    seven_days_ago = six_days_ago - timedelta(days=1)
+    just_over_nine_days = seven_days_ago - timedelta(days=2, seconds=1)
+
+    job(created_at=yesterday)
+    job(created_at=six_days_ago)
+    job(created_at=seven_days_ago)
+    job(created_at=just_over_nine_days)
+
+    remove_transformed_dvla_files()
+
+    s3.remove_transformed_dvla_file.assert_has_calls([])
