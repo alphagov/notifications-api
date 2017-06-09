@@ -11,14 +11,12 @@ def _remove_values_for_keys_if_present(dict, keys):
 
 
 def create_secret_code():
-    '''
     L1 = []
     for i in range(0, 5):
         L1.append(secrets.randbelow(10))    #return cryptographically strong random number using secrets module
     L2 = ''.join(map(str, L1))
     return L2
-    '''
-    return ''.join(map(str, random.sample(range(9), 5)))
+
 
 
 def save_user_attribute(usr, update_dict={}):
