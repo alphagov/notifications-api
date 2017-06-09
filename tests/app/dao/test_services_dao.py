@@ -47,6 +47,9 @@ from app.models import (
     Service,
     ServicePermission,
     ServicePermissionTypes,
+    SERVICE_PERMISSION_TYPES
+)
+from app.definitions import (
     BRANDING_GOVUK,
     DVLA_ORG_HM_GOVERNMENT,
     KEY_TYPE_NORMAL,
@@ -55,8 +58,7 @@ from app.models import (
     EMAIL_TYPE,
     SMS_TYPE,
     LETTER_TYPE,
-    INTERNATIONAL_SMS_TYPE,
-    SERVICE_PERMISSION_TYPES
+    INTERNATIONAL_SMS_TYPE
 )
 
 from tests.app.db import create_user, create_service

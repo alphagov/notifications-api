@@ -1,12 +1,12 @@
 from sqlalchemy import func
 
 from app import db
+from app.definitions import KEY_TYPE_TEST
 from app.models import (
     NotificationHistory,
     SMS_TYPE,
     EMAIL_TYPE,
-    NOTIFICATION_STATUS_TYPES_BILLABLE,
-    KEY_TYPE_TEST
+    NOTIFICATION_STATUS_TYPES_BILLABLE
 )
 from app.dao.notifications_dao import get_financial_year
 

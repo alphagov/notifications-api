@@ -30,13 +30,15 @@ from app.celery.tasks import (
 from app.dao import jobs_dao, services_dao
 from app.models import (
     Notification,
+    Job)
+from app.definitions import (
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
     KEY_TYPE_NORMAL,
     SMS_TYPE,
     EMAIL_TYPE,
-    LETTER_TYPE,
-    Job)
+    LETTER_TYPE
+)
 
 from tests.app import load_example_csv
 from tests.conftest import set_config

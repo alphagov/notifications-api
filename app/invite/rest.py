@@ -4,14 +4,15 @@ from flask import (
     jsonify,
     current_app)
 
-from app.config import QueueNames
+from app.celery import QueueNames
 from app.dao.invited_user_dao import (
     save_invited_user,
     get_invited_user,
     get_invited_users_for_service
 )
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import EMAIL_TYPE, KEY_TYPE_NORMAL, Service
+from app.models import Service
+from app.definitions import (EMAIL_TYPE, KEY_TYPE_NORMAL)
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.schemas import invited_user_schema
 

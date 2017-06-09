@@ -9,14 +9,19 @@ from app import db
 from app.dao.dao_utils import transactional
 from app.models import (
     JobStatistics,
-    Notification,
+    Notification
+)
+
+from app.definitions import (
     EMAIL_TYPE,
     SMS_TYPE,
     LETTER_TYPE,
     NOTIFICATION_STATUS_TYPES_FAILED,
     NOTIFICATION_STATUS_SUCCESS,
     NOTIFICATION_DELIVERED,
-    NOTIFICATION_SENT)
+    NOTIFICATION_SENT
+)
+
 from app.statsd_decorators import statsd
 
 

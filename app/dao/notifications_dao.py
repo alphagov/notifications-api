@@ -21,13 +21,7 @@ from notifications_utils.international_billing_rates import INTERNATIONAL_BILLIN
 from app import db, create_uuid
 from app.dao import days_ago
 from app.dao.date_util import get_financial_year
-from app.models import (
-    Service,
-    Notification,
-    NotificationHistory,
-    NotificationStatistics,
-    Template,
-    ScheduledNotification,
+from app.definitions import (
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
@@ -37,7 +31,16 @@ from app.models import (
     NOTIFICATION_PERMANENT_FAILURE,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST,
     LETTER_TYPE,
-    NOTIFICATION_SENT,
+    NOTIFICATION_SENT
+)
+
+from app.models import (
+    Service,
+    Notification,
+    NotificationHistory,
+    NotificationStatistics,
+    Template,
+    ScheduledNotification
 )
 
 from app.dao.dao_utils import transactional

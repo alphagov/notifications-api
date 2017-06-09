@@ -16,7 +16,7 @@ from app import (
 )
 from app.aws import s3
 from app.celery import provider_tasks
-from app.config import QueueNames
+from app.celery import QueueNames
 from app.dao.jobs_dao import (
     dao_update_job,
     dao_get_job_by_id,
@@ -27,7 +27,8 @@ from app.dao.notifications_dao import get_notification_by_id, dao_update_notific
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import (
+
+from app.definitions import (
     EMAIL_TYPE,
     SMS_TYPE,
     LETTER_TYPE,
@@ -37,7 +38,8 @@ from app.models import (
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_FINISHED,
     JOB_STATUS_READY_TO_SEND,
-    JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_ERROR)
+    JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_ERROR
+)
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd

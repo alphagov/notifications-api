@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 
-from flask import current_app
 from sqlalchemy import Float, Integer
 from sqlalchemy import func, case, cast
 from sqlalchemy import literal_column
@@ -10,9 +9,9 @@ from app.dao.date_util import get_financial_year
 from app.models import (NotificationHistory,
                         Rate,
                         NOTIFICATION_STATUS_TYPES_BILLABLE,
-                        KEY_TYPE_TEST,
                         SMS_TYPE,
                         EMAIL_TYPE, Service)
+from app.definitions import KEY_TYPE_TEST
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column
 

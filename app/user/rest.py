@@ -4,7 +4,7 @@ from datetime import datetime
 
 from flask import (jsonify, request, Blueprint, current_app)
 
-from app.config import QueueNames
+from app.celery import QueueNames
 from app.dao.users_dao import (
     get_user_by_id,
     save_model_user,
@@ -22,7 +22,12 @@ from app.dao.users_dao import (
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import SMS_TYPE, KEY_TYPE_NORMAL, EMAIL_TYPE, Service
+from app.definitions import (
+    SMS_TYPE,
+    KEY_TYPE_NORMAL,
+    EMAIL_TYPE
+)
+from app.models import Service
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue

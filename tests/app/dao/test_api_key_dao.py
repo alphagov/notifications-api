@@ -10,7 +10,10 @@ from app.dao.api_key_dao import (save_model_api_key,
                                  get_unsigned_secrets,
                                  get_unsigned_secret,
                                  expire_api_key)
-from app.models import ApiKey, KEY_TYPE_NORMAL
+from app.models import ApiKey
+from app.definitions import (
+    KEY_TYPE_NORMAL
+)
 
 
 def test_save_api_key_should_create_new_api_key_and_history(sample_service):

@@ -10,7 +10,6 @@ from freezegun import freeze_time
 
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
-from app.models import User, Organisation, DVLA_ORG_LAND_REGISTRY, Rate, ServicePermission
 from tests import create_authorization_header
 from tests.app.db import create_template
 from tests.app.conftest import (
@@ -21,9 +20,22 @@ from tests.app.conftest import (
     sample_notification_with_job
 )
 from app.models import (
-    Service, ServicePermission,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
-    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE
+    Service,
+    ServicePermission,
+    User,
+    Organisation,
+    Rate
+)
+from app.definitions import (
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST,
+    EMAIL_TYPE,
+    SMS_TYPE,
+    LETTER_TYPE,
+    INTERNATIONAL_SMS_TYPE,
+    INBOUND_SMS_TYPE,
+    DVLA_ORG_LAND_REGISTRY
 )
 
 from tests.app.db import create_user

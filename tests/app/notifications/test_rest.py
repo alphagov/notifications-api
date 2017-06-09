@@ -8,7 +8,12 @@ from freezegun import freeze_time
 from app.dao.notifications_dao import dao_update_notification
 from app.dao.api_key_dao import save_model_api_key
 from app.dao.templates_dao import dao_update_template
-from app.models import ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
+from app.models import ApiKey
+from app.definitions import (
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST
+)
 from tests import create_authorization_header
 from tests.app.conftest import sample_notification as create_sample_notification
 

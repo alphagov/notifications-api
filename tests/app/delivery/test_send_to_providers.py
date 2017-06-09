@@ -14,12 +14,15 @@ from app.dao.provider_details_dao import dao_switch_sms_provider_to_provider_wit
 from app.delivery import send_to_providers
 from app.models import (
     Notification,
-    Organisation,
+    Organisation
+)
+from app.definitions import (
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     KEY_TYPE_TEAM,
     BRANDING_ORG,
-    BRANDING_BOTH)
+    BRANDING_BOTH
+)
 
 from tests.app.db import create_service, create_template, create_notification
 

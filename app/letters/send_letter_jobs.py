@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify
 from flask import request
 
 from app import notify_celery
-from app.config import QueueNames
+from app.celery import QueueNames
 from app.dao.jobs_dao import dao_get_all_letter_jobs
 from app.schemas import job_schema
 from app.v2.errors import register_errors
