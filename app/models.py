@@ -217,6 +217,10 @@ class Service(db.Model, Versioned):
             self.can_send_letters = LETTER_TYPE in [p.permission for p in self.permissions]
             self.can_send_international_sms = INTERNATIONAL_SMS_TYPE in [p.permission for p in self.permissions]
 
+    @staticmethod
+    def free_sms_fragment_limit():
+        return current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
+
     @classmethod
     def from_json(cls, data):
         """
@@ -1122,6 +1126,9 @@ class JobStatistics(db.Model):
     sms_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     letters_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     letters_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sent = db.Column(db.BigInteger, index=False, unique=False, nullable=True, default=0)
+    delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=True, default=0)
+    failed = db.Column(db.BigInteger, index=False, unique=False, nullable=True, default=0)
     created_at = db.Column(
         db.DateTime,
         index=False,

@@ -280,16 +280,18 @@ def sample_team_api_key(notify_db, notify_db_session, service=None):
 
 
 @pytest.fixture(scope='function')
-def sample_job(notify_db,
-               notify_db_session,
-               service=None,
-               template=None,
-               notification_count=1,
-               created_at=None,
-               job_status='pending',
-               scheduled_for=None,
-               processing_started=None,
-               original_file_name='some.csv'):
+def sample_job(
+    notify_db,
+    notify_db_session,
+    service=None,
+    template=None,
+    notification_count=1,
+    created_at=None,
+    job_status='pending',
+    scheduled_for=None,
+    processing_started=None,
+    original_file_name='some.csv'
+):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
     if template is None:

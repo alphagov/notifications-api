@@ -3,15 +3,20 @@ from flask import (
     jsonify,
     request
 )
+
 from notifications_utils.recipients import validate_and_format_phone_number
 
-from app.dao.inbound_sms_dao import dao_get_inbound_sms_for_service, dao_count_inbound_sms_for_service
+from app.dao.inbound_sms_dao import (
+    dao_get_inbound_sms_for_service,
+    dao_count_inbound_sms_for_service,
+    dao_get_inbound_sms_by_id
+)
 from app.errors import register_errors
 
 inbound_sms = Blueprint(
     'inbound_sms',
     __name__,
-    url_prefix='/service/<service_id>/inbound-sms'
+    url_prefix='/service/<uuid:service_id>/inbound-sms'
 )
 
 register_errors(inbound_sms)
@@ -40,3 +45,10 @@ def get_inbound_sms_summary_for_service(service_id):
         count=count,
         most_recent=most_recent[0].created_at.isoformat() if most_recent else None
     )
+
+
+@inbound_sms.route('/<uuid:inbound_sms_id>', methods=['GET'])
+def get_inbound_by_id(service_id, inbound_sms_id):
+    inbound_sms = dao_get_inbound_sms_by_id(service_id, inbound_sms_id)
+
+    return jsonify(inbound_sms.serialize()), 200
