@@ -4,7 +4,12 @@ import uuid
 import pytest
 from freezegun import freeze_time
 
-from app.models import NotificationHistory, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, NOTIFICATION_STATUS_TYPES
+from app.models import NotificationHistory, NOTIFICATION_STATUS_TYPES
+from app.definitions import (
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST
+)
 from app.dao.provider_statistics_dao import get_fragment_count
 
 

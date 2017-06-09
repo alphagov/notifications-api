@@ -24,8 +24,18 @@ from app.models import (
     ProviderRates,
     NotificationStatistics,
     ServiceWhitelist,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM,
-    MOBILE_TYPE, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED, ScheduledNotification)
+    ScheduledNotification,
+    NOTIFICATION_STATUS_TYPES_COMPLETED
+)
+from app.definitions import (
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEST,
+    KEY_TYPE_TEAM,
+    MOBILE_TYPE,
+    EMAIL_TYPE,
+    SMS_TYPE,
+    LETTER_TYPE
+)
 from app.dao.users_dao import (create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template

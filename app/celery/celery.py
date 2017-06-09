@@ -18,7 +18,7 @@ class CeleryConfig(object):
         'region': 'sqs.eu-west-1',
         'polling_interval': 1,  # 1 second
         'visibility_timeout': 310,
-        'queue_name_prefix': 'martyn' # FIXME
+        'queue_name_prefix': 'martyn'  # FIXME
     }
     enable_utc = True,
     timezone = 'Europe/London'

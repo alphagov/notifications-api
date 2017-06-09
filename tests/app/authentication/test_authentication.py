@@ -10,7 +10,8 @@ from notifications_python_client.authentication import create_jwt_token
 
 from app import api_user
 from app.dao.api_key_dao import get_unsigned_secrets, save_model_api_key, get_unsigned_secret, expire_api_key
-from app.models import ApiKey, KEY_TYPE_NORMAL
+from app.models import ApiKey
+from app.definitions import KEY_TYPE_NORMAL
 
 
 # Test the require_admin_auth and require_auth methods

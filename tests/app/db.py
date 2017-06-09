@@ -2,10 +2,8 @@ from datetime import datetime
 import uuid
 
 
-from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.dao.jobs_dao import dao_create_job
 from app.models import (
-    InboundSms,
     Service,
     User,
     Template,
@@ -13,10 +11,12 @@ from app.models import (
     ScheduledNotification,
     ServicePermission,
     Job,
-    InboundSms,
+    InboundSms
+)
+from app.definitions import (
     EMAIL_TYPE,
     SMS_TYPE,
-    KEY_TYPE_NORMAL,
+    KEY_TYPE_NORMAL
 )
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import dao_create_notification, dao_created_scheduled_notification

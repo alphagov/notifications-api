@@ -14,12 +14,15 @@ from app.models import (
     TemplateStatistics,
     ScheduledNotification,
     NOTIFICATION_STATUS_TYPES,
-    NOTIFICATION_STATUS_TYPES_FAILED,
-    NOTIFICATION_SENT,
-    NOTIFICATION_DELIVERED,
+    NOTIFICATION_STATUS_TYPES_FAILED
+)
+
+from app.definitions import (
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
-    KEY_TYPE_TEST
+    KEY_TYPE_TEST,
+    NOTIFICATION_SENT,
+    NOTIFICATION_DELIVERED,
 )
 
 from app.dao.notifications_dao import (
