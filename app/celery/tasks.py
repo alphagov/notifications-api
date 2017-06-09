@@ -16,7 +16,7 @@ from app import (
 )
 from app.aws import s3
 from app.celery import provider_tasks
-from app.config import QueueNames
+from app.celery import QueueNames
 from app.dao.jobs_dao import (
     dao_update_job,
     dao_get_job_by_id,

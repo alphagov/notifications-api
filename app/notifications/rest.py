@@ -6,7 +6,7 @@ from flask import (
 )
 
 from app import api_user, authenticated_service
-from app.config import QueueNames
+from app.celery import QueueNames
 from app.dao import (
     templates_dao,
     notifications_dao

@@ -1,40 +1,12 @@
 from datetime import timedelta
 
+from app.celery import QueueNames
 from celery import Celery
 from celery.schedules import crontab
 from kombu import Queue, Exchange
 
 
-class QueueNames(object):
-    PERIODIC = 'periodic-tasks'
-    PRIORITY = 'priority-tasks'
-    DATABASE = 'database-tasks'
-    SEND = 'send-tasks'
-    RESEARCH_MODE = 'research-mode-tasks'
-    STATISTICS = 'statistics-tasks'
-    JOBS = 'job-tasks'
-    RETRY = 'retry-tasks'
-    NOTIFY = 'notify-internal-tasks'
-    PROCESS_FTP = 'process-ftp-tasks'
-
-    @staticmethod
-    def all_queues():
-        return [
-            QueueNames.PRIORITY,
-            QueueNames.PERIODIC,
-            QueueNames.DATABASE,
-            QueueNames.SEND,
-            QueueNames.RESEARCH_MODE,
-            QueueNames.STATISTICS,
-            QueueNames.JOBS,
-            QueueNames.RETRY,
-            QueueNames.NOTIFY,
-            QueueNames.PROCESS_FTP
-        ]
-
-
 class CeleryConfig(object):
-
     broker_url = 'sqs://'
     broker_transport_options = {
         'region': 'sqs.eu-west-1',
@@ -111,16 +83,11 @@ class CeleryConfig(object):
     }
     task_queues = []
 
-    for queue in QueueNames.all_queues():
-        task_queues.append(
-            Queue(queue, Exchange('default'), routing_key=queue)
-        )
-
 
 class NotifyCelery(Celery):
-
     def init_app(self, app):
         super().__init__(app.import_name, broker=CeleryConfig.broker_url)
+        self.init_queues_if_needed(app.config['NOTIFY_ENVIRONMENT'])
         self.config_from_object(CeleryConfig())
         TaskBase = self.Task
 
@@ -130,4 +97,12 @@ class NotifyCelery(Celery):
             def __call__(self, *args, **kwargs):
                 with app.app_context():
                     return TaskBase.__call__(self, *args, **kwargs)
+
         self.Task = ContextTask
+
+    def init_queues_if_needed(self, environment):
+        if environment in ['development', 'test']:
+            for queue in QueueNames.all_queues():
+                CeleryConfig.task_queues.append(
+                    Queue(queue, Exchange('default'), routing_key=queue)
+                )

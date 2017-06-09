@@ -26,7 +26,7 @@ from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.notifications.process_notifications import send_notification_to_queue
 from app.statsd_decorators import statsd
 from app.celery.tasks import process_job
-from app.config import QueueNames
+from app.celery import QueueNames
 
 
 @notify_celery.task(name="remove_csv_files")

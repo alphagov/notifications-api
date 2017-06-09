@@ -2,7 +2,7 @@ from flask import request, jsonify, current_app
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import api_user, authenticated_service
-from app.config import QueueNames
+from app.celery import QueueNames
 from app.dao import templates_dao
 from app.models import SMS_TYPE, EMAIL_TYPE, PRIORITY
 from app.notifications.process_notifications import (
