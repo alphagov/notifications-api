@@ -132,6 +132,7 @@ class Config(object):
     }
 
     FREE_SMS_TIER_FRAGMENT_COUNT = 250000
+    INITIALISE_QUEUES = False
 
     SMS_INBOUND_WHITELIST = json.loads(os.environ.get('SMS_INBOUND_WHITELIST', '[]'))
 
@@ -141,12 +142,12 @@ class Config(object):
 ######################
 
 class Development(Config):
+    INITIALISE_QUEUES = True
     SQLALCHEMY_ECHO = False
     NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.tools-ftp'
     NOTIFY_ENVIRONMENT = 'development'
-    NOTIFICATION_QUEUE_PREFIX = 'development'
     DEBUG = True
 
     API_HOST_NAME = "http://localhost:6011"
@@ -154,6 +155,7 @@ class Development(Config):
 
 
 class Test(Config):
+    INITIALISE_QUEUES = True
     NOTIFY_EMAIL_DOMAIN = 'test.notify.com'
     FROM_NUMBER = 'testing'
     NOTIFY_ENVIRONMENT = 'test'
@@ -164,6 +166,8 @@ class Test(Config):
     STATSD_ENABLED = True
     STATSD_HOST = "localhost"
     STATSD_PORT = 1000
+
+    BROKER_URL = 'you-forgot-to-mock-celery-in-your-tests://'
 
     API_RATE_LIMIT_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"
