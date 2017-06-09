@@ -25,9 +25,8 @@ from notifications_utils.recipients import (
 
 from app import ma
 from app import models
-from app.models import ServicePermission, INTERNATIONAL_SMS_TYPE, SMS_TYPE, LETTER_TYPE, EMAIL_TYPE
+from app.models import ServicePermission, INTERNATIONAL_SMS_TYPE, LETTER_TYPE
 from app.dao.permissions_dao import permission_dao
-from app.dao.service_permissions_dao import dao_fetch_service_permissions
 from app.utils import get_template_instance
 
 
@@ -176,6 +175,7 @@ class ProviderDetailsHistorySchema(BaseSchema):
 
 class ServiceSchema(BaseSchema):
 
+    free_sms_fragment_limit = fields.Method(method_name='get_free_sms_fragment_limit')
     created_by = field_for(models.Service, 'created_by', required=True)
     organisation = field_for(models.Service, 'organisation')
     branding = field_for(models.Service, 'branding')
@@ -183,11 +183,15 @@ class ServiceSchema(BaseSchema):
     permissions = fields.Method("service_permissions")
     override_flag = False
 
+    def get_free_sms_fragment_limit(selfs, service):
+        return service.free_sms_fragment_limit()
+
     def service_permissions(self, service):
         return [p.permission for p in service.permissions]
 
     class Meta:
         model = models.Service
+        dump_only = ['free_sms_fragment_limit']
         exclude = (
             'updated_at',
             'created_at',
@@ -255,6 +259,11 @@ class ServiceSchema(BaseSchema):
 
 class DetailedServiceSchema(BaseSchema):
     statistics = fields.Dict()
+
+    free_sms_fragment_limit = fields.Method(method_name='get_free_sms_fragment_limit')
+
+    def get_free_sms_fragment_limit(selfs, service):
+        return service.free_sms_fragment_limit()
 
     class Meta:
         model = models.Service
