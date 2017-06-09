@@ -27,6 +27,7 @@ from app.models import (
 )
 
 from tests.app.db import create_user
+from tests.conftest import set_config_values
 
 
 def test_get_service_list(client, service_factory):
@@ -64,9 +65,9 @@ def test_get_service_list_with_only_active_flag(client, service_factory):
 
 
 def test_get_service_list_with_user_id_and_only_active_flag(
-    client,
-    sample_user,
-    service_factory
+        client,
+        sample_user,
+        service_factory
 ):
     other_user = create_user(email='foo@bar.gov.uk')
 
@@ -147,7 +148,32 @@ def test_get_service_by_id(client, sample_service):
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
 
 
+def test_get_service_by_id_returns_free_sms_limit(client, sample_service):
+
+    auth_header = create_authorization_header()
+    resp = client.get(
+        '/service/{}'.format(sample_service.id),
+        headers=[auth_header]
+    )
+    assert resp.status_code == 200
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert json_resp['data']['free_sms_fragment_limit'] == 250000
+
+
+def test_get_detailed_service_by_id_returns_free_sms_limit(client, sample_service):
+
+    auth_header = create_authorization_header()
+    resp = client.get(
+        '/service/{}?detailed=True'.format(sample_service.id),
+        headers=[auth_header]
+    )
+    assert resp.status_code == 200
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert json_resp['data']['free_sms_fragment_limit'] == 250000
+
+
 def test_get_service_list_has_default_permissions(client, service_factory):
+    service_factory.get('one')
     service_factory.get('one')
     service_factory.get('two')
     service_factory.get('three')
@@ -850,7 +876,6 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
                                                                    sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             # check which users part of service
             user_already_in_service = sample_service.users[0]
             auth_header = create_authorization_header()
@@ -925,7 +950,6 @@ def test_add_existing_user_to_another_service_with_send_permissions(notify_api,
                                                                     sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             # they must exist in db first
             user_to_add = User(
                 name='Invited User',
@@ -969,7 +993,6 @@ def test_add_existing_user_to_another_service_with_manage_permissions(notify_api
                                                                       sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             # they must exist in db first
             user_to_add = User(
                 name='Invited User',
@@ -1013,7 +1036,6 @@ def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
                                                                    sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             # they must exist in db first
             user_to_add = User(
                 name='Invited User',
@@ -1054,7 +1076,6 @@ def test_add_existing_user_to_non_existing_service_returns404(notify_api,
                                                               sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             user_to_add = User(
                 name='Invited User',
                 email_address='invited@digital.cabinet-office.gov.uk',
@@ -1085,7 +1106,6 @@ def test_add_existing_user_to_non_existing_service_returns404(notify_api,
 def test_add_existing_user_of_service_to_service_returns400(notify_api, notify_db, notify_db_session, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             existing_user_id = sample_service.users[0].id
 
             data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
@@ -1108,7 +1128,6 @@ def test_add_existing_user_of_service_to_service_returns400(notify_api, notify_d
 def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db_session, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             incorrect_id = 9876
 
             data = {'permissions': ['send_messages', 'manage_service', 'manage_api_keys']}
@@ -1129,7 +1148,7 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db
 
 
 def test_remove_user_from_service(
-    notify_db, notify_db_session, client, sample_user_service_permission
+        notify_db, notify_db_session, client, sample_user_service_permission
 ):
     second_user = create_user(email="new@digital.cabinet-office.gov.uk")
     # Simulates successfully adding a user to the service
@@ -1149,7 +1168,7 @@ def test_remove_user_from_service(
 
 
 def test_remove_non_existant_user_from_service(
-    client, sample_user_service_permission
+        client, sample_user_service_permission
 ):
     second_user = create_user(email="new@digital.cabinet-office.gov.uk")
     endpoint = url_for(
@@ -1185,13 +1204,11 @@ def test_cannot_remove_only_user_from_service(notify_api,
 # This test is just here verify get_service_and_api_key_history that is a temp solution
 # until proper ui is sorted out on admin app
 def test_get_service_and_api_key_history(notify_api, notify_db, notify_db_session, sample_service):
-
     from tests.app.conftest import sample_api_key as create_sample_api_key
     api_key = create_sample_api_key(notify_db, notify_db_session, service=sample_service)
 
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
-
             auth_header = create_authorization_header()
             response = client.get(
                 path='/service/{}/history'.format(sample_service.id),
@@ -1257,6 +1274,48 @@ def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notif
         assert response.status_code == 200
 
 
+def test_get_notification_for_service_without_uuid(client, notify_db, notify_db_session):
+    service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
+    response = client.get(
+        path='/service/{}/notifications/{}'.format(service_1.id, 'foo'),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 404
+
+
+def test_get_notification_for_service(client, notify_db, notify_db_session):
+
+    service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
+    service_2 = create_service(notify_db, notify_db_session, service_name="2", email_from='2')
+
+    service_1_notifications = [
+        create_sample_notification(notify_db, notify_db_session, service=service_1),
+        create_sample_notification(notify_db, notify_db_session, service=service_1),
+        create_sample_notification(notify_db, notify_db_session, service=service_1),
+    ]
+
+    service_2_notifications = [
+        create_sample_notification(notify_db, notify_db_session, service=service_2)
+    ]
+
+    for notification in service_1_notifications:
+        response = client.get(
+            path='/service/{}/notifications/{}'.format(service_1.id, notification.id),
+            headers=[create_authorization_header()]
+        )
+        resp = json.loads(response.get_data(as_text=True))
+        assert str(resp['id']) == str(notification.id)
+        assert response.status_code == 200
+
+        service_2_response = client.get(
+            path='/service/{}/notifications/{}'.format(service_2.id, notification.id),
+            headers=[create_authorization_header()]
+        )
+        assert service_2_response.status_code == 404
+        service_2_response = json.loads(service_2_response.get_data(as_text=True))
+        assert service_2_response == {'message': 'No result found', 'result': 'error'}
+
+
 @pytest.mark.parametrize(
     'include_from_test_key, expected_count_of_notifications',
     [
@@ -1265,12 +1324,12 @@ def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notif
     ]
 )
 def test_get_all_notifications_for_service_including_ones_made_by_jobs(
-    client,
-    notify_db,
-    notify_db_session,
-    sample_service,
-    include_from_test_key,
-    expected_count_of_notifications
+        client,
+        notify_db,
+        notify_db_session,
+        sample_service,
+        include_from_test_key,
+        expected_count_of_notifications
 ):
     with_job = sample_notification_with_job(notify_db, notify_db_session, service=sample_service)
     without_job = create_sample_notification(notify_db, notify_db_session, service=sample_service)
@@ -1295,10 +1354,10 @@ def test_get_all_notifications_for_service_including_ones_made_by_jobs(
 
 
 def test_get_only_api_created_notifications_for_service(
-    client,
-    notify_db,
-    notify_db_session,
-    sample_service
+        client,
+        notify_db,
+        notify_db_session,
+        sample_service
 ):
     with_job = sample_notification_with_job(notify_db, notify_db_session, service=sample_service)
     without_job = create_sample_notification(notify_db, notify_db_session, service=sample_service)
@@ -1635,11 +1694,11 @@ def test_get_notification_billable_unit_count_missing_year(client, sample_servic
     ('?year=abcd', 400, {'message': 'Year must be a number', 'result': 'error'}),
 ])
 def test_get_service_provider_aggregate_statistics(
-    client,
-    sample_service,
-    query_string,
-    expected_status,
-    expected_json,
+        client,
+        sample_service,
+        query_string,
+        expected_status,
+        expected_json,
 ):
     response = client.get(
         '/service/{}/fragment/aggregate_statistics{}'.format(sample_service.id, query_string),
@@ -1680,11 +1739,11 @@ def test_get_template_stats_by_month_returns_correct_data(notify_db, notify_db_s
     ('?year=abcd', 400, {'message': 'Year must be a number', 'result': 'error'}),
 ])
 def test_get_template_stats_by_month_returns_error_for_incorrect_year(
-    client,
-    sample_service,
-    query_string,
-    expected_status,
-    expected_json
+        client,
+        sample_service,
+        query_string,
+        expected_status,
+        expected_json
 ):
     response = client.get(
         '/service/{}/notifications/templates/monthly{}'.format(sample_service.id, query_string),
@@ -1923,6 +1982,92 @@ def test_update_service_does_not_call_send_notification_when_restricted_not_chan
 
     assert resp.status_code == 200
     assert not send_notification_mock.called
+
+
+def test_get_yearly_billing_usage_count_returns_400_if_missing_year(client, sample_service):
+    response = client.get(
+        '/service/{}/yearly-sms-billable-units'.format(sample_service.id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True)) == {
+        'message': 'No valid year provided', 'result': 'error'
+    }
+
+
+def test_get_yearly_billing_usage_count_returns_400_if_invalid_year(client, sample_service, mocker):
+    redis_get_mock = mocker.patch('app.service.rest.redis_store.get_all_from_hash', return_value=None)
+    redis_set_mock = mocker.patch('app.service.rest.redis_store.set_hash_and_expire')
+
+    response = client.get(
+        '/service/{}/yearly-sms-billable-units?year=HAHAHAHAH'.format(sample_service.id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True)) == {
+        'message': 'No valid year provided', 'result': 'error'
+    }
+    redis_get_mock.assert_called_once_with("{}-sms_billable_units".format(str(sample_service.id)))
+    redis_set_mock.assert_not_called()
+
+
+def test_get_yearly_billing_usage_count_returns_200_if_year_provided(client, sample_service, mocker):
+    redis_get_mock = mocker.patch('app.service.rest.redis_store.get_all_from_hash', return_value=None)
+    redis_set_mock = mocker.patch('app.service.rest.redis_store.set_hash_and_expire')
+
+    start = datetime.utcnow()
+    end = datetime.utcnow() + timedelta(minutes=10)
+    mock_query = mocker.patch(
+        'app.service.rest.get_total_billable_units_for_sent_sms_notifications_in_date_range', return_value=(100, 200.0)
+    )
+    mock_year = mocker.patch('app.service.rest.get_financial_year', return_value=(start, end))
+    response = client.get(
+        '/service/{}/yearly-sms-billable-units?year=2016'.format(sample_service.id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == {
+        'billable_sms_units': 100,
+        'total_cost': 200.0
+    }
+    mock_query.assert_called_once_with(start, end, sample_service.id)
+    mock_year.assert_called_once_with(2016)
+    redis_get_mock.assert_called_once_with("{}-sms_billable_units".format(str(sample_service.id)))
+    redis_set_mock.assert_called_once_with(
+        "{}-sms_billable_units".format(str(sample_service.id)),
+        {'billable_units': 100, 'total_cost': 200.0},
+        expire_in_seconds=60
+    )
+
+
+def test_get_yearly_billing_usage_count_returns_from_cache_if_present(client, sample_service, mocker):
+    redis_get_mock = mocker.patch(
+        'app.service.rest.redis_store.get_all_from_hash',
+        return_value={b'total_cost': 100.0, b'billable_units': 50}
+    )
+    redis_set_mock = mocker.patch('app.service.rest.redis_store.set_hash_and_expire')
+    mock_query = mocker.patch(
+        'app.service.rest.get_total_billable_units_for_sent_sms_notifications_in_date_range', return_value=(50, 100.0)
+    )
+
+    start = datetime.utcnow()
+    end = datetime.utcnow() + timedelta(minutes=10)
+    mock_year = mocker.patch('app.service.rest.get_financial_year', return_value=(start, end))
+
+    response = client.get(
+        '/service/{}/yearly-sms-billable-units?year=2016'.format(sample_service.id),
+        headers=[create_authorization_header()]
+    )
+    response.get_data(as_text=True)
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == {
+        'billable_sms_units': 50,
+        'total_cost': 100.0
+    }
+    redis_get_mock.assert_called_once_with("{}-sms_billable_units".format(str(sample_service.id)))
+    mock_year.assert_not_called()
+    mock_query.assert_not_called()
+    redis_set_mock.assert_not_called()
 
 
 def test_search_for_notification_by_to_field_filters_by_status(client, notify_db, notify_db_session):

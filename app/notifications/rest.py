@@ -11,8 +11,11 @@ from app.dao import (
     templates_dao,
     notifications_dao
 )
-from app.models import KEY_TYPE_TEAM, PRIORITY
-from app.models import SMS_TYPE
+from app.definitions import (
+    KEY_TYPE_TEAM,
+    PRIORITY,
+    SMS_TYPE
+)
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,

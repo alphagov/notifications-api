@@ -1,17 +1,15 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import current_app
 from sqlalchemy import func, desc, asc, cast, Date as sql_date
 
 from app import db
 from app.dao import days_ago
-from app.models import (Job,
-                        Notification,
-                        NotificationHistory,
-                        Template,
-                        JOB_STATUS_SCHEDULED,
-                        JOB_STATUS_PENDING,
-                        LETTER_TYPE, JobStatistics)
+from app.models import (
+    Job, JobStatistics, Notification, NotificationHistory, Template,
+    JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING,
+    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
+)
 from app.statsd_decorators import statsd
 
 
@@ -53,7 +51,8 @@ def dao_get_job_by_service_id_and_job_id(service_id, job_id):
 def dao_get_jobs_by_service_id(service_id, limit_days=None, page=1, page_size=50, statuses=None):
     query_filter = [
         Job.service_id == service_id,
-        Job.original_file_name != current_app.config['TEST_MESSAGE_FILENAME']
+        Job.original_file_name != current_app.config['TEST_MESSAGE_FILENAME'],
+        Job.original_file_name != current_app.config['ONE_OFF_MESSAGE_FILENAME'],
     ]
     if limit_days is not None:
         query_filter.append(cast(Job.created_at, sql_date) >= days_ago(limit_days))
@@ -128,10 +127,14 @@ def dao_update_job_status(job_id, status):
     db.session.commit()
 
 
-def dao_get_jobs_older_than_limited_by(older_than=7, limit_days=2):
-    return Job.query.filter(
-        cast(Job.created_at, sql_date) < days_ago(older_than),
-        cast(Job.created_at, sql_date) >= days_ago(older_than + limit_days)
+def dao_get_jobs_older_than_limited_by(job_types, older_than=7, limit_days=2):
+    end_date = datetime.utcnow() - timedelta(days=older_than)
+    start_date = end_date - timedelta(days=limit_days)
+
+    return Job.query.join(Template).filter(
+        Job.created_at < end_date,
+        Job.created_at >= start_date,
+        Template.template_type.in_(job_types)
     ).order_by(desc(Job.created_at)).all()
 
 

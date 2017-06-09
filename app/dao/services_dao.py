@@ -27,15 +27,18 @@ from app.models import (
     InvitedUser,
     Service,
     ServicePermission,
-    KEY_TYPE_TEST,
     NOTIFICATION_STATUS_TYPES,
     TEMPLATE_TYPES,
-    JobStatistics,
+    JobStatistics
+)
+
+from app.definitions import (
     SMS_TYPE,
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
-    LETTER_TYPE
-)
+    LETTER_TYPE,
+    KEY_TYPE_TEST)
+
 from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
@@ -65,6 +68,12 @@ def dao_fetch_service_by_id(service_id, only_active=False):
         query = query.filter(Service.active)
 
     return query.one()
+
+
+def dao_fetch_services_by_sms_sender(sms_sender):
+    return Service.query.filter(
+        Service.sms_sender == sms_sender
+    ).all()
 
 
 def dao_fetch_service_by_id_with_api_keys(service_id, only_active=False):

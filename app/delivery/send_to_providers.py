@@ -15,8 +15,15 @@ from app.dao.provider_details_dao import (
 )
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE, NOTIFICATION_TECHNICAL_FAILURE, \
-    NOTIFICATION_SENT, NOTIFICATION_SENDING
+from app.definitions import (
+    SMS_TYPE,
+    KEY_TYPE_TEST,
+    BRANDING_ORG,
+    EMAIL_TYPE,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_SENT,
+    NOTIFICATION_SENDING
+)
 
 from app.celery.statistics_tasks import record_initial_job_statistics, create_initial_notification_statistic_tasks
 

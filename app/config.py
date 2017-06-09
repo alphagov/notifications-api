@@ -1,5 +1,10 @@
 import os
-from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
+
+from app.definitions import (
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST
+)
 
 if os.environ.get('VCAP_SERVICES'):
     # on cloudfoundry, config is a json blob in VCAP_SERVICES - unpack it, and populate
@@ -76,6 +81,7 @@ class Config(object):
     SMS_CHAR_COUNT_LIMIT = 495
     BRANDING_PATH = '/images/email-template/crests/'
     TEST_MESSAGE_FILENAME = 'Test message'
+    ONE_OFF_MESSAGE_FILENAME = 'Report'
     MAX_VERIFY_CODE_COUNT = 10
 
     NOTIFY_SERVICE_ID = 'd6aa2c68-a2d9-4437-ab19-3ae8eb202553'
@@ -124,6 +130,8 @@ class Config(object):
             "interval": 60
         }
     }
+
+    FREE_SMS_TIER_FRAGMENT_COUNT = 250000
 
 
 ######################

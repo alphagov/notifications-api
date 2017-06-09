@@ -13,7 +13,12 @@ from app.celery import provider_tasks
 from notifications_utils.clients import redis
 
 from app.celery import QueueNames
-from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE, ScheduledNotification
+from app.models import Notification, ScheduledNotification
+from app.definitions import (
+    SMS_TYPE,
+    KEY_TYPE_TEST,
+    EMAIL_TYPE
+)
 from app.dao.notifications_dao import (dao_create_notification,
                                        dao_delete_notifications_and_history_by_id,
                                        dao_created_scheduled_notification)

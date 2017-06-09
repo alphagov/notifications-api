@@ -32,17 +32,25 @@ from app import (
 from app.history_meta import Versioned
 from app.utils import convert_utc_time_in_bst, convert_bst_to_utc
 
-SMS_TYPE = 'sms'
-EMAIL_TYPE = 'email'
-LETTER_TYPE = 'letter'
+from app.definitions import (
+    SMS_TYPE,
+    EMAIL_TYPE,
+    LETTER_TYPE,
+    NORMAL,
+    PRIORITY,
+    INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE, SCHEDULE_NOTIFICATIONS, DVLA_ORG_HM_GOVERNMENT, BRANDING_GOVUK,
+    MOBILE_TYPE, FIRETEXT_PROVIDER, MMG_PROVIDER, SES_PROVIDER, JOB_STATUS_FINISHED, JOB_STATUS_IN_PROGRESS,
+    JOB_STATUS_PENDING, JOB_STATUS_SCHEDULED, JOB_STATUS_CANCELLED, JOB_STATUS_ERROR,
+    JOB_STATUS_SENDING_LIMITS_EXCEEDED, JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_READY_TO_SEND, NOTIFICATION_DELIVERED,
+    NOTIFICATION_TECHNICAL_FAILURE, NOTIFICATION_TEMPORARY_FAILURE, NOTIFICATION_PERMANENT_FAILURE, NOTIFICATION_FAILED,
+    NOTIFICATION_SENT, NOTIFICATION_SENDING, NOTIFICATION_PENDING, NOTIFICATION_CREATED, INVITED_USER_STATUS_TYPES,
+    MANAGE_TEMPLATES, MANAGE_USERS, MANAGE_SETTINGS, SEND_LETTERS, VIEW_ACTIVITY, SEND_TEXTS, PLATFORM_ADMIN,
+    MANAGE_API_KEYS, SEND_EMAILS)
 
 TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
+TEMPLATE_PROCESS_TYPE = [NORMAL, PRIORITY]
 
 template_types = db.Enum(*TEMPLATE_TYPES, name='template_type')
-
-NORMAL = 'normal'
-PRIORITY = 'priority'
-TEMPLATE_PROCESS_TYPE = [NORMAL, PRIORITY]
 
 
 def filter_null_value_fields(obj):
@@ -116,10 +124,6 @@ user_to_service = db.Table(
     UniqueConstraint('user_id', 'service_id', name='uix_user_to_service')
 )
 
-BRANDING_GOVUK = 'govuk'
-BRANDING_ORG = 'org'
-BRANDING_BOTH = 'both'
-
 
 class BrandingTypes(db.Model):
     __tablename__ = 'branding_type'
@@ -134,22 +138,20 @@ class Organisation(db.Model):
     name = db.Column(db.String(255), nullable=True)
 
 
-DVLA_ORG_HM_GOVERNMENT = '001'
-DVLA_ORG_LAND_REGISTRY = '500'
-
-
 class DVLAOrganisation(db.Model):
     __tablename__ = 'dvla_organisation'
     id = db.Column(db.String, primary_key=True)
     name = db.Column(db.String(255), nullable=True)
 
 
-INTERNATIONAL_SMS_TYPE = 'international_sms'
-INBOUND_SMS_TYPE = 'inbound_sms'
-SCHEDULE_NOTIFICATIONS = 'schedule_notifications'
-
-SERVICE_PERMISSION_TYPES = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
-                            SCHEDULE_NOTIFICATIONS]
+SERVICE_PERMISSION_TYPES = [
+    EMAIL_TYPE,
+    SMS_TYPE,
+    LETTER_TYPE,
+    INTERNATIONAL_SMS_TYPE,
+    INBOUND_SMS_TYPE,
+    SCHEDULE_NOTIFICATIONS
+]
 
 
 class ServicePermissionTypes(db.Model):
@@ -217,6 +219,10 @@ class Service(db.Model, Versioned):
             self.can_send_letters = LETTER_TYPE in [p.permission for p in self.permissions]
             self.can_send_international_sms = INTERNATIONAL_SMS_TYPE in [p.permission for p in self.permissions]
 
+    @staticmethod
+    def free_sms_fragment_limit():
+        return current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
+
     @classmethod
     def from_json(cls, data):
         """
@@ -250,12 +256,8 @@ class ServicePermission(db.Model):
         return '<{} has service permission: {}>'.format(self.service_id, self.permission)
 
 
-MOBILE_TYPE = 'mobile'
-EMAIL_TYPE = 'email'
-
 WHITELIST_RECIPIENT_TYPE = [MOBILE_TYPE, EMAIL_TYPE]
 whitelist_recipient_types = db.Enum(*WHITELIST_RECIPIENT_TYPE, name='recipient_type')
-
 
 class ServiceWhitelist(db.Model):
     __tablename__ = 'service_whitelist'
@@ -323,11 +325,6 @@ class ApiKey(db.Model, Versioned):
     @property
     def unsigned_secret(self):
         return get_secret(self.secret)
-
-
-KEY_TYPE_NORMAL = 'normal'
-KEY_TYPE_TEAM = 'team'
-KEY_TYPE_TEST = 'test'
 
 
 class KeyTypes(db.Model):
@@ -453,10 +450,6 @@ class TemplateHistory(db.Model):
         return serialized
 
 
-MMG_PROVIDER = "mmg"
-FIRETEXT_PROVIDER = "firetext"
-SES_PROVIDER = 'ses'
-
 SMS_PROVIDERS = [MMG_PROVIDER, FIRETEXT_PROVIDER]
 EMAIL_PROVIDERS = [SES_PROVIDER]
 PROVIDERS = SMS_PROVIDERS + EMAIL_PROVIDERS
@@ -521,15 +514,6 @@ class ProviderDetailsHistory(db.Model, HistoryModel):
     supports_international = db.Column(db.Boolean, nullable=False, default=False)
 
 
-JOB_STATUS_PENDING = 'pending'
-JOB_STATUS_IN_PROGRESS = 'in progress'
-JOB_STATUS_FINISHED = 'finished'
-JOB_STATUS_SENDING_LIMITS_EXCEEDED = 'sending limits exceeded'
-JOB_STATUS_SCHEDULED = 'scheduled'
-JOB_STATUS_CANCELLED = 'cancelled'
-JOB_STATUS_READY_TO_SEND = 'ready to send'
-JOB_STATUS_SENT_TO_DVLA = 'sent to dvla'
-JOB_STATUS_ERROR = 'error'
 JOB_STATUS_TYPES = [
     JOB_STATUS_PENDING,
     JOB_STATUS_IN_PROGRESS,
@@ -631,16 +615,6 @@ class VerifyCode(db.Model):
         return check_hash(cde, self._code)
 
 
-NOTIFICATION_CREATED = 'created'
-NOTIFICATION_SENDING = 'sending'
-NOTIFICATION_SENT = 'sent'
-NOTIFICATION_DELIVERED = 'delivered'
-NOTIFICATION_PENDING = 'pending'
-NOTIFICATION_FAILED = 'failed'
-NOTIFICATION_TECHNICAL_FAILURE = 'technical-failure'
-NOTIFICATION_TEMPORARY_FAILURE = 'temporary-failure'
-NOTIFICATION_PERMANENT_FAILURE = 'permanent-failure'
-
 NOTIFICATION_STATUS_TYPES_FAILED = [
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
@@ -682,6 +656,8 @@ NOTIFICATION_STATUS_TYPES = [
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
 ]
+
+NOTIFICATION_STATUS_TYPES_NON_BILLABLE = list(set(NOTIFICATION_STATUS_TYPES) - set(NOTIFICATION_STATUS_TYPES_BILLABLE))
 
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
@@ -973,9 +949,6 @@ class NotificationHistory(db.Model, HistoryModel):
         self._status_enum = status
 
 
-INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
-
-
 class ScheduledNotification(db.Model):
     __tablename__ = 'scheduled_notifications'
 
@@ -1011,17 +984,6 @@ class InvitedUser(db.Model):
         return self.permissions.split(',')
 
 
-# Service Permissions
-MANAGE_USERS = 'manage_users'
-MANAGE_TEMPLATES = 'manage_templates'
-MANAGE_SETTINGS = 'manage_settings'
-SEND_TEXTS = 'send_texts'
-SEND_EMAILS = 'send_emails'
-SEND_LETTERS = 'send_letters'
-MANAGE_API_KEYS = 'manage_api_keys'
-PLATFORM_ADMIN = 'platform_admin'
-VIEW_ACTIVITY = 'view_activity'
-
 # List of permissions
 PERMISSION_LIST = [
     MANAGE_USERS,
@@ -1032,7 +994,8 @@ PERMISSION_LIST = [
     SEND_LETTERS,
     MANAGE_API_KEYS,
     PLATFORM_ADMIN,
-    VIEW_ACTIVITY]
+    VIEW_ACTIVITY
+]
 
 
 class Permission(db.Model):
@@ -1099,6 +1062,12 @@ class Rate(db.Model):
     rate = db.Column(db.Float(asdecimal=False), nullable=False)
     notification_type = db.Column(notification_types, index=True, nullable=False)
 
+    def __str__(self):
+        the_string = "{}".format(self.rate)
+        the_string += " {}".format(self.notification_type)
+        the_string += " {}".format(self.valid_from)
+        return the_string
+
 
 class JobStatistics(db.Model):
     __tablename__ = 'job_statistics'
@@ -1114,6 +1083,9 @@ class JobStatistics(db.Model):
     sms_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     letters_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
     letters_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
+    sent = db.Column(db.BigInteger, index=False, unique=False, nullable=True, default=0)
+    delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=True, default=0)
+    failed = db.Column(db.BigInteger, index=False, unique=False, nullable=True, default=0)
     created_at = db.Column(
         db.DateTime,
         index=False,
@@ -1143,3 +1115,56 @@ class JobStatistics(db.Model):
         )
         the_string += "created at {}".format(self.created_at)
         return the_string
+
+
+class InboundSms(db.Model):
+    __tablename__ = 'inbound_sms'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
+    service = db.relationship('Service', backref='inbound_sms')
+
+    notify_number = db.Column(db.String, nullable=False)  # the service's number, that the msg was sent to
+    user_number = db.Column(db.String, nullable=False)  # the end user's number, that the msg was sent from
+    provider_date = db.Column(db.DateTime)
+    provider_reference = db.Column(db.String)
+    provider = db.Column(db.String, nullable=True)
+    _content = db.Column('content', db.String, nullable=False)
+
+    @property
+    def content(self):
+        return encryption.decrypt(self._content)
+
+    @content.setter
+    def content(self, content):
+        self._content = encryption.encrypt(content)
+
+    def serialize(self):
+        return {
+            'id': str(self.id),
+            'created_at': self.created_at.isoformat(),
+            'service_id': str(self.service_id),
+            'notify_number': self.notify_number,
+            'user_number': self.user_number,
+            'content': self.content,
+            'provider_date': self.provider_date and self.provider_date.isoformat(),
+            'provider_reference': self.provider_reference
+        }
+
+
+class LetterRate(db.Model):
+    __tablename__ = 'letter_rates'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    valid_from = valid_from = db.Column(db.DateTime, nullable=False)
+
+
+class LetterRateDetail(db.Model):
+    __tablename__ = 'letter_rate_details'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    letter_rate_id = db.Column(UUID(as_uuid=True), db.ForeignKey('letter_rates.id'), index=True, nullable=False)
+    letter_rate = db.relationship('LetterRate', backref='letter_rates')
+    page_total = db.Column(db.Integer, nullable=False)
+    rate = db.Column(db.Numeric(), nullable=False)

@@ -1,0 +1,79 @@
+
+# NOTIFICATION TYPES
+SMS_TYPE = 'sms'
+EMAIL_TYPE = 'email'
+LETTER_TYPE = 'letter'
+
+# NOTIFICATION PRIORITIES
+NORMAL = 'normal'
+PRIORITY = 'priority'
+
+
+# BRANDING DEFINITIONS
+BRANDING_GOVUK = 'govuk'
+BRANDING_ORG = 'org'
+BRANDING_BOTH = 'both'
+
+
+# DVLA IDs
+DVLA_ORG_HM_GOVERNMENT = '001'
+DVLA_ORG_LAND_REGISTRY = '500'
+
+
+# PERMISSIONS
+INTERNATIONAL_SMS_TYPE = 'international_sms'
+INBOUND_SMS_TYPE = 'inbound_sms'
+SCHEDULE_NOTIFICATIONS = 'schedule_notifications'
+
+# WHITELIST TYPES
+MOBILE_TYPE = 'mobile'
+EMAIL_TYPE = 'email'
+
+
+# API KEY TYPEs
+KEY_TYPE_NORMAL = 'normal'
+KEY_TYPE_TEAM = 'team'
+KEY_TYPE_TEST = 'test'
+
+# PROVIDERS
+MMG_PROVIDER = "mmg"
+FIRETEXT_PROVIDER = "firetext"
+SES_PROVIDER = 'ses'
+
+
+# JOB STATUSES
+JOB_STATUS_PENDING = 'pending'
+JOB_STATUS_IN_PROGRESS = 'in progress'
+JOB_STATUS_FINISHED = 'finished'
+JOB_STATUS_SENDING_LIMITS_EXCEEDED = 'sending limits exceeded'
+JOB_STATUS_SCHEDULED = 'scheduled'
+JOB_STATUS_CANCELLED = 'cancelled'
+JOB_STATUS_READY_TO_SEND = 'ready to send'
+JOB_STATUS_SENT_TO_DVLA = 'sent to dvla'
+JOB_STATUS_ERROR = 'error'
+
+# NOTIFICATIONS STATUSES
+NOTIFICATION_CREATED = 'created'
+NOTIFICATION_SENDING = 'sending'
+NOTIFICATION_SENT = 'sent'
+NOTIFICATION_DELIVERED = 'delivered'
+NOTIFICATION_PENDING = 'pending'
+NOTIFICATION_FAILED = 'failed'
+NOTIFICATION_TECHNICAL_FAILURE = 'technical-failure'
+NOTIFICATION_TEMPORARY_FAILURE = 'temporary-failure'
+NOTIFICATION_PERMANENT_FAILURE = 'permanent-failure'
+
+
+# USES STATUSES
+INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
+
+# SERVICE PERMISSIONS
+MANAGE_USERS = 'manage_users'
+MANAGE_TEMPLATES = 'manage_templates'
+MANAGE_SETTINGS = 'manage_settings'
+SEND_TEXTS = 'send_texts'
+SEND_EMAILS = 'send_emails'
+SEND_LETTERS = 'send_letters'
+MANAGE_API_KEYS = 'manage_api_keys'
+PLATFORM_ADMIN = 'platform_admin'
+VIEW_ACTIVITY = 'view_activity'

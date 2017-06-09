@@ -4,15 +4,21 @@ from app.celery import QueueNames
 from celery import Celery
 from celery.schedules import crontab
 from kombu import Queue, Exchange
+from app.definitions import (
+    EMAIL_TYPE,
+    SMS_TYPE,
+    LETTER_TYPE
+)
 
 
 class CeleryConfig(object):
+
     broker_url = 'sqs://'
     broker_transport_options = {
         'region': 'sqs.eu-west-1',
         'polling_interval': 1,  # 1 second
         'visibility_timeout': 310,
-        'queue_name_prefix': 'martyn-'
+        'queue_name_prefix': 'martyn' # FIXME
     }
     enable_utc = True,
     timezone = 'Europe/London'
@@ -55,6 +61,11 @@ class CeleryConfig(object):
             'schedule': crontab(minute=40, hour=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
+        'delete-inbound-sms': {
+            'task': 'delete-inbound-sms',
+            'schedule': crontab(minute=0, hour=1),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
         'send-daily-performance-platform-stats': {
             'task': 'send-daily-performance-platform-stats',
             'schedule': crontab(minute=0, hour=2),
@@ -70,10 +81,17 @@ class CeleryConfig(object):
             'schedule': crontab(minute=0, hour=3),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'remove_csv_files': {
+        'remove_sms_email_jobs': {
             'task': 'remove_csv_files',
             'schedule': crontab(minute=0, hour=4),
-            'options': {'queue': QueueNames.PERIODIC}
+            'options': {'queue': QueueNames.PERIODIC},
+            'kwargs': {'job_types': [EMAIL_TYPE, SMS_TYPE]}
+        },
+        'remove_letter_jobs': {
+            'task': 'remove_csv_files',
+            'schedule': crontab(minute=20, hour=4),
+            'options': {'queue': QueueNames.PERIODIC},
+            'kwargs': {'job_types': [LETTER_TYPE]}
         },
         'timeout-job-statistics': {
             'task': 'timeout-job-statistics',

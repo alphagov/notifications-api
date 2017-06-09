@@ -2,8 +2,12 @@ import itertools
 
 from app.models import (
     ServiceWhitelist,
-    MOBILE_TYPE, EMAIL_TYPE,
-    KEY_TYPE_TEST, KEY_TYPE_TEAM, KEY_TYPE_NORMAL)
+    MOBILE_TYPE, EMAIL_TYPE
+)
+from app.definitions import (
+    KEY_TYPE_TEST,
+    KEY_TYPE_NORMAL
+)
 
 from notifications_utils.recipients import allowed_to_send_to
 
