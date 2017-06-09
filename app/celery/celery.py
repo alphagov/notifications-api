@@ -11,14 +11,16 @@ from app.definitions import (
 )
 
 
-class CeleryConfig(object):
+class CeleryConfig:
+    def __init__(self, config):
+        self.broker_transport_options['queue_name_prefix'] = config['NOTIFICATION_QUEUE_PREFIX']
 
     broker_url = 'sqs://'
     broker_transport_options = {
         'region': 'sqs.eu-west-1',
         'polling_interval': 1,  # 1 second
         'visibility_timeout': 310,
-        'queue_name_prefix': 'martyn'  # FIXME
+        'queue_name_prefix': None
     }
     enable_utc = True,
     timezone = 'Europe/London'
@@ -105,8 +107,14 @@ class CeleryConfig(object):
 class NotifyCelery(Celery):
     def init_app(self, app):
         super().__init__(app.import_name, broker=CeleryConfig.broker_url)
-        self.init_queues_if_needed(app.config['NOTIFY_ENVIRONMENT'])
-        self.config_from_object(CeleryConfig())
+
+        if app.config['INITIALISE_QUEUES']:
+            for queue in QueueNames.all_queues():
+                CeleryConfig.task_queues.append(
+                    Queue(queue, Exchange('default'), routing_key=queue)
+                )
+
+        self.config_from_object(CeleryConfig(app.config))
         TaskBase = self.Task
 
         class ContextTask(TaskBase):
@@ -117,10 +125,3 @@ class NotifyCelery(Celery):
                     return TaskBase.__call__(self, *args, **kwargs)
 
         self.Task = ContextTask
-
-    def init_queues_if_needed(self, environment):
-        if environment in ['development', 'test']:
-            for queue in QueueNames.all_queues():
-                CeleryConfig.task_queues.append(
-                    Queue(queue, Exchange('default'), routing_key=queue)
-                )

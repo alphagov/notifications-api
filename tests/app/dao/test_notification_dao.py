@@ -12,9 +12,7 @@ from app.models import (
     Job,
     NotificationStatistics,
     TemplateStatistics,
-    ScheduledNotification,
-    NOTIFICATION_STATUS_TYPES,
-    NOTIFICATION_STATUS_TYPES_FAILED
+    ScheduledNotification
 )
 
 from app.definitions import (
@@ -23,6 +21,8 @@ from app.definitions import (
     KEY_TYPE_TEST,
     NOTIFICATION_SENT,
     NOTIFICATION_DELIVERED,
+    NOTIFICATION_STATUS_TYPES,
+    NOTIFICATION_STATUS_TYPES_FAILED
 )
 
 from app.dao.notifications_dao import (

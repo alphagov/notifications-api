@@ -132,6 +132,7 @@ class Config(object):
     }
 
     FREE_SMS_TIER_FRAGMENT_COUNT = 250000
+    INITIALISE_QUEUES = False
 
 
 ######################
@@ -139,11 +140,11 @@ class Config(object):
 ######################
 
 class Development(Config):
+    INITIALISE_QUEUES = True
     SQLALCHEMY_ECHO = False
     NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
     NOTIFY_ENVIRONMENT = 'development'
-    NOTIFICATION_QUEUE_PREFIX = 'development'
     DEBUG = True
 
     API_HOST_NAME = "http://localhost:6011"
@@ -151,6 +152,7 @@ class Development(Config):
 
 
 class Test(Config):
+    INITIALISE_QUEUES = True
     NOTIFY_EMAIL_DOMAIN = 'test.notify.com'
     FROM_NUMBER = 'testing'
     NOTIFY_ENVIRONMENT = 'test'
