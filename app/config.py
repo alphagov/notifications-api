@@ -1,7 +1,8 @@
 from datetime import timedelta
+import os
+
 from celery.schedules import crontab
 from kombu import Exchange, Queue
-import os
 
 from app.models import (
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE,
@@ -209,6 +210,11 @@ class Config(object):
             'schedule': crontab(minute=40, hour=4),
             'options': {'queue': QueueNames.PERIODIC}
         },
+        'delete_dvla_response_files': {
+            'task': 'delete_dvla_response_files',
+            'schedule': crontab(minute=10, hour=5),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
         'timeout-job-statistics': {
             'task': 'timeout-job-statistics',
             'schedule': crontab(minute=0, hour=5),
@@ -265,6 +271,7 @@ class Development(Config):
     SQLALCHEMY_ECHO = False
     NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
+    DVLA_RESPONSE_BUCKET_NAME = 'notify.tools-ftp'
     NOTIFY_ENVIRONMENT = 'development'
     NOTIFICATION_QUEUE_PREFIX = 'development'
     DEBUG = True
@@ -284,6 +291,7 @@ class Test(Config):
     NOTIFY_ENVIRONMENT = 'test'
     DEBUG = True
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
+    DVLA_RESPONSE_BUCKET_NAME = 'test.notify.com-ftp'
     STATSD_ENABLED = True
     STATSD_HOST = "localhost"
     STATSD_PORT = 1000
@@ -316,6 +324,7 @@ class Preview(Config):
     NOTIFY_EMAIL_DOMAIN = 'notify.works'
     NOTIFY_ENVIRONMENT = 'preview'
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
+    DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
     FROM_NUMBER = 'preview'
     API_RATE_LIMIT_ENABLED = True
 
@@ -324,6 +333,7 @@ class Staging(Config):
     NOTIFY_EMAIL_DOMAIN = 'staging-notify.works'
     NOTIFY_ENVIRONMENT = 'staging'
     CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
+    DVLA_RESPONSE_BUCKET_NAME = 'staging-notify.works-ftp'
     STATSD_ENABLED = True
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
@@ -333,6 +343,7 @@ class Live(Config):
     NOTIFY_EMAIL_DOMAIN = 'notifications.service.gov.uk'
     NOTIFY_ENVIRONMENT = 'live'
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
+    DVLA_RESPONSE_BUCKET_NAME = 'notifications.service.gov.uk-ftp'
     STATSD_ENABLED = True
     FROM_NUMBER = 'GOVUK'
     FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = '6c1d81bb-dae2-4ee9-80b0-89a4aae9f649'
@@ -350,6 +361,7 @@ class Sandbox(CloudFoundryConfig):
     NOTIFY_EMAIL_DOMAIN = 'notify.works'
     NOTIFY_ENVIRONMENT = 'sandbox'
     CSV_UPLOAD_BUCKET_NAME = 'cf-sandbox-notifications-csv-upload'
+    DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
     FROM_NUMBER = 'sandbox'
     REDIS_ENABLED = False
 

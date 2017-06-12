@@ -9,6 +9,7 @@ from freezegun import freeze_time
 
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
+    delete_dvla_response_files_older_than_seven_days,
     delete_email_notifications_older_than_seven_days,
     delete_inbound_sms_older_than_seven_days,
     delete_invitations,
@@ -42,8 +43,10 @@ from tests.app.db import create_notification, create_service, create_template, c
 from tests.app.conftest import (
     sample_job as create_sample_job,
     sample_notification_history as create_notification_history,
-    create_custom_template)
-from tests.conftest import set_config_values
+    create_custom_template,
+    set_config_values
+)
+from tests.app.aws.test_s3 import single_s3_object_stub, datetime_in_past
 
 
 def _create_slow_delivery_notification(provider='mmg'):
@@ -93,6 +96,8 @@ def test_should_have_decorated_tasks_functions():
         'delete_inbound_sms_older_than_seven_days'
     assert remove_transformed_dvla_files.__wrapped__.__name__ == \
         'remove_transformed_dvla_files'
+    assert delete_dvla_response_files_older_than_seven_days.__wrapped__.__name__ == \
+        'delete_dvla_response_files_older_than_seven_days'
 
 
 def test_should_call_delete_sms_notifications_more_than_week_in_task(notify_api, mocker):
@@ -548,3 +553,40 @@ def test_remove_dvla_transformed_files_does_not_remove_files(mocker, sample_serv
     remove_transformed_dvla_files()
 
     s3.remove_transformed_dvla_file.assert_has_calls([])
+
+
+def test_delete_dvla_response_files_older_than_seven_days_removes_old_files(notify_api, mocker):
+    single_page_s3_objects = [{
+        "Contents": [
+            single_s3_object_stub('bar/foo1.txt', datetime_in_past(days=8)),
+            single_s3_object_stub('bar/foo2.txt', datetime_in_past(days=8)),
+        ]
+    }]
+    mocker.patch(
+        'app.celery.scheduled_tasks.s3.get_s3_bucket_objects', return_value=single_page_s3_objects[0]["Contents"]
+    )
+    remove_s3_mock = mocker.patch('app.celery.scheduled_tasks.s3.remove_s3_object')
+
+    delete_dvla_response_files_older_than_seven_days()
+
+    remove_s3_mock.assert_has_calls([
+        call(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], single_page_s3_objects[0]["Contents"][0]["Key"]),
+        call(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], single_page_s3_objects[0]["Contents"][1]["Key"])
+    ])
+
+
+def test_delete_dvla_response_files_older_than_seven_days_does_not_remove_files(notify_api, mocker):
+    single_page_s3_objects = [{
+        "Contents": [
+            single_s3_object_stub('bar/foo1.txt', datetime_in_past(days=6)),
+            single_s3_object_stub('bar/foo2.txt', datetime_in_past(days=9)),
+        ]
+    }]
+    mocker.patch(
+        'app.celery.scheduled_tasks.s3.get_s3_bucket_objects', return_value=single_page_s3_objects[0]["Contents"]
+    )
+    remove_s3_mock = mocker.patch('app.celery.scheduled_tasks.s3.remove_s3_object')
+
+    delete_dvla_response_files_older_than_seven_days()
+
+    remove_s3_mock.assert_not_called()
