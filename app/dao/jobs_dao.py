@@ -8,7 +8,7 @@ from app.dao import days_ago
 from app.models import (
     Job, JobStatistics, Notification, NotificationHistory, Template,
     JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING,
-    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
+    LETTER_TYPE
 )
 from app.statsd_decorators import statsd
 
@@ -142,3 +142,36 @@ def dao_get_all_letter_jobs():
     return db.session.query(Job).join(Job.template).filter(
         Template.template_type == LETTER_TYPE
     ).order_by(desc(Job.created_at)).all()
+
+
+@statsd(namespace="dao")
+def dao_get_job_statistics_for_job(job_id):
+    query = db.session.query(
+        JobStatistics.job_id,
+        Job.original_file_name,
+        Job.created_at,
+        JobStatistics.sent,
+        JobStatistics.delivered,
+        JobStatistics.failed
+    ).filter(JobStatistics.job_id == job_id).filter(Job.id == JobStatistics.job_id)
+    return query.one()
+
+
+@statsd(namespace="dao")
+def dao_get_job_stats_for_service(service_id, page=1, page_size=50, limit_days=None):
+    query = Job.query.join(
+        JobStatistics, Job.id == JobStatistics.job_id
+    ).filter(
+        Job.service_id == service_id
+    ).add_columns(
+        JobStatistics.job_id,
+        Job.original_file_name,
+        Job.created_at,
+        JobStatistics.sent,
+        JobStatistics.delivered,
+        JobStatistics.failed
+    )
+    if limit_days:
+        query = query.filter(Job.created_at >= days_ago(limit_days))
+    query = query.order_by(Job.created_at.desc())
+    return query.paginate(page=page, per_page=page_size).items
