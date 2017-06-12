@@ -11,8 +11,8 @@ from app.dao.jobs_dao import (
     dao_get_job_by_service_id_and_job_id,
     dao_get_jobs_by_service_id,
     dao_get_future_scheduled_job_by_id_and_service_id,
-    dao_get_notification_outcomes_for_job
-)
+    dao_get_notification_outcomes_for_job,
+    dao_get_job_stats_for_service)
 
 from app.dao.services_dao import (
     dao_fetch_service_by_id
@@ -115,6 +115,52 @@ def get_jobs_by_service(service_id):
 
     page = int(request.args.get('page', 1))
     return jsonify(**get_paginated_jobs(service_id, limit_days, statuses, page))
+
+
+@job_blueprint.route('/job-stats', methods=['GET'])
+def get_jobs_for_service(service_id):
+    if request.args.get('limit_days'):
+        try:
+            limit_days = int(request.args['limit_days'])
+        except ValueError:
+            errors = {'limit_days': ['{} is not an integer'.format(request.args['limit_days'])]}
+            raise InvalidRequest(errors, status_code=400)
+    else:
+        limit_days = None
+    statuses = _parse_statuses(request.args.get('statuses', ''))
+    page = int(request.args.get('page', 1))
+
+    pagination = dao_get_job_stats_for_service(service_id=service_id,
+                                               page=page,
+                                               page_size=current_app.config['PAGE_SIZE'],
+                                               limit_days=limit_days,
+                                               statuses=statuses)
+    return jsonify({
+        'data': [_serialize_job_stats(x) for x in pagination.items],
+        'page_size': pagination.per_page,
+        'total': pagination.total,
+        'links': pagination_links(
+            pagination,
+            '.get_jobs_by_service',
+            service_id=service_id
+        )
+    })
+
+
+def _parse_statuses(statuses):
+    return [x.strip() for x in statuses.split(',')]
+
+
+def _serialize_job_stats(stat):
+    return {
+        "job_id": stat.job_id,
+        "original_file_name": stat.original_file_name,
+        "created_at": stat.created_at,
+        "scheduled_for": stat.scheduled_for,
+        "sent": stat.sent,
+        "delivered": stat.delivered,
+        "failed": stat.failed
+    }
 
 
 @job_blueprint.route('', methods=['POST'])

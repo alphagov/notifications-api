@@ -762,3 +762,46 @@ def test_get_all_notifications_for_job_returns_csv_format(
     notification = resp['notifications'][0]
     assert set(notification.keys()) == \
         set(['created_at', 'template_type', 'template_name', 'job_name', 'status', 'row_number', 'recipient'])
+
+
+# New endpoint to get job statistics the old tests will be refactored away.
+def test_get_jobs_for_service_new_endpoint(client, notify_db, notify_db_session, sample_template):
+    _setup_jobs(notify_db, notify_db_session, sample_template)
+
+    service_id = sample_template.service.id
+
+    path = '/service/{}/job/job-stats'.format(service_id)
+    auth_header = create_authorization_header()
+    response = client.get(path, headers=[auth_header])
+    assert response.status_code == 200
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert len(resp_json['data']) == 5
+    assert resp_json['data'][0]["job_id"]
+    assert resp_json['data'][0]["created_at"]
+    assert not resp_json['data'][0]["scheduled_for"]
+    assert resp_json['data'][0]["sent"] == 0
+    assert resp_json['data'][0]["delivered"] == 0
+    assert resp_json['data'][0]["failed"] == 0
+
+
+def test_get_jobs_raises_for_bad_limit_days(client, sample_service):
+    path = '/service/{}/job/job-stats'.format(sample_service.id)
+    auth_header = create_authorization_header()
+    response = client.get(path,
+                          query_string={'limit_days': 'bad_number'},
+                          headers=[auth_header])
+    assert response.status_code == 400
+    assert response.get_data(as_text=True) == '{\n  "message": {\n    "limit_days": [\n      ' \
+                                              '"bad_number is not an integer"\n    ]\n  },\n  "result": "error"\n}'
+
+
+def test_parse_status_turns_comma_sep_strings_into_list():
+    statuses = "started, finished, pending"
+    from app.job.rest import _parse_statuses
+    assert _parse_statuses(statuses) == ["started", "finished", "pending"]
+
+
+def test_parse_status_turns_empty_string_into_empty_list():
+    statuses = ""
+    from app.job.rest import _parse_statuses
+    assert _parse_statuses(statuses) == ['']

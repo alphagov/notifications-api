@@ -145,20 +145,31 @@ def dao_get_all_letter_jobs():
 
 
 @statsd(namespace="dao")
-def dao_get_job_statistics_for_job(job_id):
-    query = db.session.query(
+def dao_get_job_statistics_for_job(service_id, job_id):
+    query = Job.query.join(
+        JobStatistics, Job.id == JobStatistics.job_id
+    ).filter(
+        Job.id == job_id
+    ).join(
+        Template, Template.id == Job.template_id and Template.version == Job.template_version
+    ).add_columns(
         JobStatistics.job_id,
         Job.original_file_name,
         Job.created_at,
+        Job.scheduled_for,
+        Job.template_id,
+        Job.template_version,
         JobStatistics.sent,
         JobStatistics.delivered,
         JobStatistics.failed
-    ).filter(JobStatistics.job_id == job_id).filter(Job.id == JobStatistics.job_id)
+    ).filter(
+        Job.service_id == service_id
+    )
     return query.one()
 
 
 @statsd(namespace="dao")
-def dao_get_job_stats_for_service(service_id, page=1, page_size=50, limit_days=None):
+def dao_get_job_stats_for_service(service_id, page=1, page_size=50, limit_days=None, statuses=None):
     query = Job.query.join(
         JobStatistics, Job.id == JobStatistics.job_id
     ).filter(
@@ -167,11 +178,15 @@ def dao_get_job_stats_for_service(service_id, page=1, page_size=50, limit_days=N
         JobStatistics.job_id,
         Job.original_file_name,
         Job.created_at,
+        Job.scheduled_for,
         JobStatistics.sent,
         JobStatistics.delivered,
         JobStatistics.failed
     )
     if limit_days:
         query = query.filter(Job.created_at >= days_ago(limit_days))
+    if statuses is not None and statuses != ['']:
+        query = query.filter(Job.job_status.in_(statuses))
+
     query = query.order_by(Job.created_at.desc())
-    return query.paginate(page=page, per_page=page_size).items
+    return query.paginate(page=page, per_page=page_size)
