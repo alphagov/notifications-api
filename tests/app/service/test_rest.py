@@ -1316,6 +1316,25 @@ def test_get_notification_for_service(client, notify_db, notify_db_session):
         assert service_2_response == {'message': 'No result found', 'result': 'error'}
 
 
+def test_get_notification_for_service_includes_created_by(admin_request, sample_notification):
+    user = sample_notification.created_by = sample_notification.service.created_by
+
+    resp = admin_request.get(
+        'service.get_notification_for_service',
+        endpoint_kwargs={
+            'service_id': sample_notification.service_id,
+            'notification_id': sample_notification.id
+        }
+    )
+
+    assert resp['id'] == str(sample_notification.id)
+    assert resp['created_by'] == {
+        'id': str(user.id),
+        'name': user.name,
+        'email_address': user.email_address
+    }
+
+
 @pytest.mark.parametrize(
     'include_from_test_key, expected_count_of_notifications',
     [

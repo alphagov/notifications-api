@@ -444,6 +444,7 @@ class NotificationWithTemplateSchema(BaseSchema):
         dump_only=True
     )
     job = fields.Nested(JobSchema, only=["id", "original_file_name"], dump_only=True)
+    created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
     status = fields.String(required=False)
     personalisation = fields.Dict(required=False)
     key_type = field_for(models.Notification, 'key_type', required=True)
