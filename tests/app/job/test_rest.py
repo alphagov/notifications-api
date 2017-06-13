@@ -832,7 +832,7 @@ def test_get_job_stats_by_service_id_and_job_id(client, sample_job):
 
 
 def test_get_job_stats_with_invalid_job_id_returns404(client, sample_template):
-    path = '/service/{}/job/job-stats{}'.format(sample_template.service.id, uuid.uuid4())
+    path = '/service/{}/job/job-stats/{}'.format(sample_template.service.id, uuid.uuid4())
     auth_header = create_authorization_header()
     response = client.get(path, headers=[auth_header])
     assert response.status_code == 404
@@ -842,7 +842,7 @@ def test_get_job_stats_with_invalid_job_id_returns404(client, sample_template):
 
 
 def test_get_job_stats_with_invalid_service_id_returns404(client, sample_job):
-    path = '/service/{}/job/job-stats{}'.format(uuid.uuid4(), sample_job.id)
+    path = '/service/{}/job/job-stats/{}'.format(uuid.uuid4(), sample_job.id)
     auth_header = create_authorization_header()
     response = client.get(path, headers=[auth_header])
     assert response.status_code == 404
