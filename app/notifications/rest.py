@@ -11,6 +11,10 @@ from app.dao import (
     templates_dao,
     notifications_dao
 )
+from app.errors import (
+    register_errors,
+    InvalidRequest
+)
 from app.models import KEY_TYPE_TEAM, PRIORITY
 from app.models import SMS_TYPE
 from app.notifications.process_notifications import (
@@ -37,12 +41,6 @@ from app.utils import pagination_links, get_template_instance
 from notifications_utils.recipients import get_international_phone_info
 
 notifications = Blueprint('notifications', __name__)
-
-from app.errors import (
-    register_errors,
-    InvalidRequest
-)
-
 
 register_errors(notifications)
 

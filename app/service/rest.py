@@ -59,6 +59,7 @@ from app.schemas import (
     user_schema,
     permission_schema,
     notification_with_template_schema,
+    notification_with_personalisation_schema,
     notifications_filter_schema,
     detailed_service_schema
 )
@@ -316,7 +317,7 @@ def get_notification_for_service(service_id, notification_id):
 def search_for_notification_by_to_field(service_id, search_term, statuses):
     results = notifications_dao.dao_get_notifications_by_to_field(service_id, search_term, statuses)
     return jsonify(
-        notifications=notification_with_template_schema.dump(results, many=True).data
+        notifications=notification_with_personalisation_schema.dump(results, many=True).data
     ), 200
 
 

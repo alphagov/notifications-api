@@ -1903,3 +1903,24 @@ def test_dao_get_notifications_by_to_field_returns_all_if_no_status_filter(sampl
     assert len(notifications) == 2
     assert notification1.id in notification_ids
     assert notification2.id in notification_ids
+
+
+@freeze_time('2016-01-01 11:10:00')
+def test_dao_get_notifications_by_to_field_orders_by_created_at_desc(sample_template):
+    notification = partial(
+        create_notification,
+        template=sample_template,
+        to_field='+447700900855',
+        normalised_to='447700900855'
+    )
+
+    notification_a_minute_ago = notification(created_at=datetime.utcnow() - timedelta(minutes=1))
+    notification = notification(created_at=datetime.utcnow())
+
+    notifications = dao_get_notifications_by_to_field(
+        sample_template.service_id, '+447700900855'
+    )
+
+    assert len(notifications) == 2
+    assert notifications[0].id == notification.id
+    assert notifications[1].id == notification_a_minute_ago.id

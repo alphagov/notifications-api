@@ -494,7 +494,7 @@ def dao_get_notifications_by_to_field(service_id, search_term, statuses=None):
     if statuses:
         filters.append(Notification.status.in_(statuses))
 
-    results = db.session.query(Notification).filter(*filters).all()
+    results = db.session.query(Notification).filter(*filters).order_by(desc(Notification.created_at)).all()
     return results
 
 
