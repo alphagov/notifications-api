@@ -429,16 +429,16 @@ def test_dao_get_job_statistics_for_job(notify_db, notify_db_session, sample_job
     update_job_stats_outcome_count(notification_delivered)
     update_job_stats_outcome_count(notification_failed)
     result = dao_get_job_statistics_for_job(sample_job.service_id, sample_job.id)
-    assert_job_stat(job=sample_job, result=result, sent=3, delivered=1, failed=1, with_template=True)
+    assert_job_stat(job=sample_job, result=result, sent=3, delivered=1, failed=1)
 
 
 def test_dao_get_job_statistics_for_job(notify_db, notify_db_session, sample_service):
     job_1, job_2 = stats_set_up(notify_db, notify_db_session, sample_service)
     result = dao_get_job_statistics_for_job(sample_service.id, job_1.id)
-    assert_job_stat(job=job_1, result=result, sent=2, delivered=1, failed=0, with_template=True)
+    assert_job_stat(job=job_1, result=result, sent=2, delivered=1, failed=0)
 
     result_2 = dao_get_job_statistics_for_job(sample_service.id, job_2.id)
-    assert_job_stat(job=job_2, result=result_2, sent=1, delivered=0, failed=1, with_template=True)
+    assert_job_stat(job=job_2, result=result_2, sent=1, delivered=0, failed=1)
 
 
 def test_dao_get_job_stats_for_service(notify_db, notify_db_session, sample_service):
@@ -508,17 +508,19 @@ def test_dao_get_job_returns_jobs_for_status(
     assert results_2.total == 2
 
 
-def assert_job_stat(job, result, sent, delivered, failed, with_template=False):
+def assert_job_stat(job, result, sent, delivered, failed):
     assert result.job_id == job.id
     assert result.original_file_name == job.original_file_name
     assert result.created_at == job.created_at
     assert result.scheduled_for == job.scheduled_for
+    assert result.template_id == job.template_id
+    assert result.template_version == job.template_version
+    assert result.job_status == job.job_status
+    assert result.service_id == job.service_id
+    assert result.notification_count == job.notification_count
     assert result.sent == sent
     assert result.delivered == delivered
     assert result.failed == failed
-    if with_template:
-        assert result.template_id == job.template_id
-        assert result.template_version == job.template_version
 
 
 def stats_set_up(notify_db, notify_db_session, service):

@@ -159,6 +159,9 @@ def dao_get_job_statistics_for_job(service_id, job_id):
         Job.scheduled_for,
         Job.template_id,
         Job.template_version,
+        Job.job_status,
+        Job.service_id,
+        Job.notification_count,
         JobStatistics.sent,
         JobStatistics.delivered,
         JobStatistics.failed
@@ -179,6 +182,11 @@ def dao_get_job_stats_for_service(service_id, page=1, page_size=50, limit_days=N
         Job.original_file_name,
         Job.created_at,
         Job.scheduled_for,
+        Job.template_id,
+        Job.template_version,
+        Job.job_status,
+        Job.service_id,
+        Job.notification_count,
         JobStatistics.sent,
         JobStatistics.delivered,
         JobStatistics.failed

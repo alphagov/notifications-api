@@ -6,6 +6,7 @@ from freezegun import freeze_time
 import pytest
 import pytz
 import app.celery.tasks
+from app import DATETIME_FORMAT
 
 from tests import create_authorization_header
 from tests.conftest import set_config
@@ -779,6 +780,10 @@ def test_get_jobs_for_service_new_endpoint(client, notify_db, notify_db_session,
     assert resp_json['data'][0]["job_id"]
     assert resp_json['data'][0]["created_at"]
     assert not resp_json['data'][0]["scheduled_for"]
+    assert resp_json['data'][0]["template_id"]
+    assert resp_json['data'][0]["template_version"]
+    assert resp_json['data'][0]["service_id"]
+    assert resp_json['data'][0]["requested"]
     assert resp_json['data'][0]["sent"] == 0
     assert resp_json['data'][0]["delivered"] == 0
     assert resp_json['data'][0]["failed"] == 0
@@ -805,3 +810,42 @@ def test_parse_status_turns_empty_string_into_empty_list():
     statuses = ""
     from app.job.rest import _parse_statuses
     assert _parse_statuses(statuses) == ['']
+
+
+def test_get_job_stats_by_service_id_and_job_id(client, sample_job):
+    auth_header = create_authorization_header()
+    response = client.get("/service/{}/job/job-stats/{}".format(sample_job.service_id, sample_job.id),
+                          headers=[auth_header])
+    assert response.status_code == 200
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert resp_json["job_id"] == str(sample_job.id)
+    assert resp_json["created_at"] == sample_job.created_at.strftime(DATETIME_FORMAT)
+    assert not resp_json["scheduled_for"]
+    assert resp_json["template_id"] == str(sample_job.template_id)
+    assert resp_json["template_version"] == sample_job.template_version
+    assert resp_json["service_id"] == str(sample_job.service_id)
+    assert resp_json["requested"] == sample_job.notification_count
+    assert resp_json["sent"] == 0
+    assert resp_json["delivered"] == 0
+    assert resp_json["failed"] == 0
+
+
+def test_get_job_stats_with_invalid_job_id_returns404(client, sample_template):
+    service_id = sample_template.service.id
+    path = '/service/{}/job/job-=stats{}'.format(service_id, "bad-id")
+    auth_header = create_authorization_header()
+    response = client.get(path, headers=[auth_header])
+    assert response.status_code == 404
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert resp_json['result'] == 'error'
+    assert resp_json['message'] == 'No result found'
+
+
+def test_get_job_stats_with_invalid_service_id_returns404(client, sample_job):
+    path = '/service/{}/job/job-=stats{}'.format(uuid.uuid4(), sample_job.id)
+    auth_header = create_authorization_header()
+    response = client.get(path, headers=[auth_header])
+    assert response.status_code == 404
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert resp_json['result'] == 'error'
+    assert resp_json['message'] == 'No result found'

@@ -5,6 +5,7 @@ from flask import (
     current_app
 )
 
+from app import DATETIME_FORMAT
 from app.dao.jobs_dao import (
     dao_create_job,
     dao_update_job,
@@ -12,7 +13,8 @@ from app.dao.jobs_dao import (
     dao_get_jobs_by_service_id,
     dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job,
-    dao_get_job_stats_for_service)
+    dao_get_job_stats_for_service,
+    dao_get_job_statistics_for_job)
 
 from app.dao.services_dao import (
     dao_fetch_service_by_id
@@ -55,6 +57,13 @@ def get_job_by_service_and_job_id(service_id, job_id):
     data['statistics'] = [{'status': statistic[1], 'count': statistic[0]} for statistic in statistics]
 
     return jsonify(data=data)
+
+
+@job_blueprint.route('/job-stats/<job_id>', methods=['GET'])
+def get_job_stats_by_service_and_job_id(service_id, job_id):
+    statistic = dao_get_job_statistics_for_job(service_id=service_id, job_id=job_id)
+
+    return jsonify(_serialize_job_stats(statistic))
 
 
 @job_blueprint.route('/<job_id>/cancel', methods=['POST'])
@@ -155,8 +164,13 @@ def _serialize_job_stats(stat):
     return {
         "job_id": stat.job_id,
         "original_file_name": stat.original_file_name,
-        "created_at": stat.created_at,
+        "created_at": stat.created_at.strftime(DATETIME_FORMAT),
         "scheduled_for": stat.scheduled_for,
+        "template_id": stat.template_id,
+        "template_version": stat.template_version,
+        "job_status": stat.job_status,
+        "service_id": stat.service_id,
+        "requested": stat.notification_count,
         "sent": stat.sent,
         "delivered": stat.delivered,
         "failed": stat.failed
