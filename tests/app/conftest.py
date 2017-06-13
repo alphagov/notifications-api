@@ -1,12 +1,14 @@
+from datetime import (datetime, date, timedelta)
 import json
 import uuid
-from datetime import (datetime, date, timedelta)
 
-import requests_mock
+from flask import current_app, url_for
+
 import pytest
+import pytz
+import requests_mock
 from sqlalchemy import asc
 from sqlalchemy.orm.session import make_transient
-from flask import current_app, url_for
 
 from app import db
 from app.models import (
@@ -35,7 +37,6 @@ from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
 from app.dao.provider_rates_dao import create_provider_rates
 from app.clients.sms.firetext import FiretextClient
-
 from tests import create_authorization_header
 from tests.app.db import create_user, create_template, create_notification
 
@@ -1018,3 +1019,7 @@ def admin_request(client):
             return json_resp
 
     return AdminRequest
+
+
+def datetime_in_past(days=0, seconds=0):
+    return datetime.now(tz=pytz.utc) - timedelta(days=days, seconds=seconds)

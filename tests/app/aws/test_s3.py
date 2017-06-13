@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from flask import current_app
 
 from freezegun import freeze_time
-import pytz
 
 from app.aws.s3 import (
     get_s3_bucket_objects,
@@ -12,10 +11,7 @@ from app.aws.s3 import (
     filter_s3_bucket_objects_within_date_range,
     remove_transformed_dvla_file
 )
-
-
-def datetime_in_past(days=0, seconds=0):
-    return datetime.now(tz=pytz.utc) - timedelta(days=days, seconds=seconds)
+from tests.app.conftest import datetime_in_past
 
 
 def single_s3_object_stub(key='foo', last_modified=datetime.utcnow()):
@@ -59,16 +55,17 @@ def test_get_s3_bucket_objects_make_correct_pagination_call(notify_api, mocker):
 
 
 def test_get_s3_bucket_objects_builds_objects_list_from_paginator(notify_api, mocker):
+    AFTER_SEVEN_DAYS = datetime_in_past(days=8)
     paginator_mock = mocker.patch('app.aws.s3.client')
     multiple_pages_s3_object = [
         {
             "Contents": [
-                single_s3_object_stub('bar/foo.txt', datetime_in_past(days=8)),
+                single_s3_object_stub('bar/foo.txt', AFTER_SEVEN_DAYS),
             ]
         },
         {
             "Contents": [
-                single_s3_object_stub('bar/foo1.txt', datetime_in_past(days=8)),
+                single_s3_object_stub('bar/foo1.txt', AFTER_SEVEN_DAYS),
             ]
         }
     ]
@@ -82,9 +79,10 @@ def test_get_s3_bucket_objects_builds_objects_list_from_paginator(notify_api, mo
 
 @freeze_time("2016-01-01 11:00:00")
 def test_get_s3_bucket_objects_removes_redundant_root_object(notify_api, mocker):
+    AFTER_SEVEN_DAYS = datetime_in_past(days=8)
     s3_objects_stub = [
-        single_s3_object_stub('bar/', datetime_in_past(days=8)),
-        single_s3_object_stub('bar/foo.txt', datetime_in_past(days=8)),
+        single_s3_object_stub('bar/', AFTER_SEVEN_DAYS),
+        single_s3_object_stub('bar/foo.txt', AFTER_SEVEN_DAYS),
     ]
 
     filtered_items = filter_s3_bucket_objects_within_date_range(s3_objects_stub)
@@ -97,30 +95,45 @@ def test_get_s3_bucket_objects_removes_redundant_root_object(notify_api, mocker)
 
 @freeze_time("2016-01-01 11:00:00")
 def test_filter_s3_bucket_objects_within_date_range_filters_by_date_range(notify_api, mocker):
+    START_DATE = datetime_in_past(days=9)
+    JUST_BEFORE_START_DATE = START_DATE - timedelta(seconds=1)
+    JUST_AFTER_START_DATE = START_DATE + timedelta(seconds=1)
+    END_DATE = datetime_in_past(days=7)
+    JUST_BEFORE_END_DATE = END_DATE - timedelta(seconds=1)
+    JUST_AFTER_END_DATE = END_DATE + timedelta(seconds=1)
+
     s3_objects_stub = [
-        single_s3_object_stub('bar/', datetime_in_past(days=8)),
-        single_s3_object_stub('bar/foo.txt', datetime_in_past(days=8)),
-        single_s3_object_stub('bar/foo1.txt', datetime_in_past(days=8)),
+        single_s3_object_stub('bar/', JUST_BEFORE_START_DATE),
+        single_s3_object_stub('bar/foo.txt', START_DATE),
+        single_s3_object_stub('bar/foo2.txt', JUST_AFTER_START_DATE),
+        single_s3_object_stub('bar/foo3.txt', JUST_BEFORE_END_DATE),
+        single_s3_object_stub('bar/foo4.txt', END_DATE),
+        single_s3_object_stub('bar/foo5.txt', JUST_AFTER_END_DATE),
     ]
 
     filtered_items = filter_s3_bucket_objects_within_date_range(s3_objects_stub)
 
     assert len(filtered_items) == 2
 
-    assert filtered_items[0]["Key"] == 'bar/foo.txt'
-    assert filtered_items[0]["LastModified"] == datetime_in_past(days=8)
+    assert filtered_items[0]["Key"] == 'bar/foo2.txt'
+    assert filtered_items[0]["LastModified"] == JUST_AFTER_START_DATE
 
-    assert filtered_items[1]["Key"] == 'bar/foo1.txt'
-    assert filtered_items[1]["LastModified"] == datetime_in_past(days=8)
+    assert filtered_items[1]["Key"] == 'bar/foo3.txt'
+    assert filtered_items[1]["LastModified"] == JUST_BEFORE_END_DATE
 
 
 @freeze_time("2016-01-01 11:00:00")
 def test_get_s3_bucket_objects_does_not_return_outside_of_date_range(notify_api, mocker):
+    START_DATE = datetime_in_past(days=9)
+    JUST_BEFORE_START_DATE = START_DATE - timedelta(seconds=1)
+    END_DATE = datetime_in_past(days=7)
+    JUST_AFTER_END_DATE = END_DATE + timedelta(seconds=1)
+
     s3_objects_stub = [
-        single_s3_object_stub('bar/', datetime_in_past(days=7)),
-        single_s3_object_stub('bar/foo.txt', datetime_in_past(days=7)),
-        single_s3_object_stub('bar/foo2.txt', datetime_in_past(days=9)),
-        single_s3_object_stub('bar/foo2.txt', datetime_in_past(days=9, seconds=1)),
+        single_s3_object_stub('bar/', JUST_BEFORE_START_DATE),
+        single_s3_object_stub('bar/foo1.txt', START_DATE),
+        single_s3_object_stub('bar/foo2.txt', END_DATE),
+        single_s3_object_stub('bar/foo3.txt', JUST_AFTER_END_DATE)
     ]
 
     filtered_items = filter_s3_bucket_objects_within_date_range(s3_objects_stub)
