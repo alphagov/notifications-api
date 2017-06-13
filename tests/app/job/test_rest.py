@@ -796,8 +796,9 @@ def test_get_jobs_raises_for_bad_limit_days(client, sample_service):
                           query_string={'limit_days': 'bad_number'},
                           headers=[auth_header])
     assert response.status_code == 400
-    assert response.get_data(as_text=True) == '{\n  "message": {\n    "limit_days": [\n      ' \
-                                              '"bad_number is not an integer"\n    ]\n  },\n  "result": "error"\n}'
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert resp_json["result"] == "error"
+    assert resp_json["message"] == {'limit_days': ['bad_number is not an integer']}
 
 
 def test_parse_status_turns_comma_sep_strings_into_list():
@@ -831,8 +832,7 @@ def test_get_job_stats_by_service_id_and_job_id(client, sample_job):
 
 
 def test_get_job_stats_with_invalid_job_id_returns404(client, sample_template):
-    service_id = sample_template.service.id
-    path = '/service/{}/job/job-=stats{}'.format(service_id, "bad-id")
+    path = '/service/{}/job/job-stats{}'.format(sample_template.service.id, uuid.uuid4())
     auth_header = create_authorization_header()
     response = client.get(path, headers=[auth_header])
     assert response.status_code == 404
@@ -842,7 +842,7 @@ def test_get_job_stats_with_invalid_job_id_returns404(client, sample_template):
 
 
 def test_get_job_stats_with_invalid_service_id_returns404(client, sample_job):
-    path = '/service/{}/job/job-=stats{}'.format(uuid.uuid4(), sample_job.id)
+    path = '/service/{}/job/job-stats{}'.format(uuid.uuid4(), sample_job.id)
     auth_header = create_authorization_header()
     response = client.get(path, headers=[auth_header])
     assert response.status_code == 404

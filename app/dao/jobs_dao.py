@@ -149,9 +149,8 @@ def dao_get_job_statistics_for_job(service_id, job_id):
     query = Job.query.join(
         JobStatistics, Job.id == JobStatistics.job_id
     ).filter(
-        Job.id == job_id
-    ).join(
-        Template, Template.id == Job.template_id and Template.version == Job.template_version
+        Job.id == job_id,
+        Job.service_id == service_id
     ).add_columns(
         JobStatistics.job_id,
         Job.original_file_name,
@@ -165,8 +164,6 @@ def dao_get_job_statistics_for_job(service_id, job_id):
         JobStatistics.sent,
         JobStatistics.delivered,
         JobStatistics.failed
-    ).filter(
-        Job.service_id == service_id
     )
     return query.one()
 
