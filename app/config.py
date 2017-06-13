@@ -204,6 +204,11 @@ class Config(object):
             'options': {'queue': QueueNames.PERIODIC},
             'kwargs': {'job_types': [LETTER_TYPE]}
         },
+        'remove_transformed_dvla_files': {
+            'task': 'remove_transformed_dvla_files',
+            'schedule': crontab(minute=40, hour=4),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
         'timeout-job-statistics': {
             'task': 'timeout-job-statistics',
             'schedule': crontab(minute=0, hour=5),
