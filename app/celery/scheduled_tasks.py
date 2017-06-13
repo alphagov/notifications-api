@@ -255,3 +255,29 @@ def remove_transformed_dvla_files():
     for job in jobs:
         s3.remove_transformed_dvla_file(job.id)
         current_app.logger.info("Transformed dvla file for job {} has been removed from s3.".format(job.id))
+
+
+@notify_celery.task(name="delete_dvla_response_files")
+@statsd(namespace="tasks")
+def delete_dvla_response_files_older_than_seven_days():
+    try:
+        start = datetime.utcnow()
+        bucket_objects = s3.get_s3_bucket_objects(
+            current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
+            'root/dispatch'
+        )
+        older_than_seven_days = s3.filter_s3_bucket_objects_within_date_range(bucket_objects)
+
+        for f in older_than_seven_days:
+            s3.remove_s3_object(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], f['Key'])
+
+        current_app.logger.info(
+            "Delete dvla response files started {} finished {} deleted {} files".format(
+                start,
+                datetime.utcnow(),
+                len(older_than_seven_days)
+            )
+        )
+    except SQLAlchemyError as e:
+        current_app.logger.exception("Failed to delete dvla response files")
+        raise
