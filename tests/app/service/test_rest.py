@@ -14,8 +14,8 @@ from app.models import (
     Organisation, Rate, Service, ServicePermission, User,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
-    DVLA_ORG_LAND_REGISTRY
-)
+    DVLA_ORG_LAND_REGISTRY,
+    ServiceInboundApi)
 from tests import create_authorization_header
 from tests.app.db import create_template
 from tests.app.conftest import (
@@ -27,7 +27,6 @@ from tests.app.conftest import (
 )
 
 from tests.app.db import create_user
-from tests.conftest import set_config_values
 
 
 def test_get_service_list(client, service_factory):
@@ -2149,3 +2148,23 @@ def test_search_for_notification_by_to_field_returns_content(
     assert notifications[0]['id'] == str(notification.id)
     assert notifications[0]['to'] == '+447700900855'
     assert notifications[0]['body'] == 'Hello Foo\nYour thing is due soon'
+
+
+def test_set_service_inbound_api(client, sample_service):
+    data = {
+        "url": "https://some_service/inbound-sms",
+        "bearer_token": "some-unique-string"
+    }
+    response = client.post(
+        '/service/{}/inbound-api'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    assert response.status_code == 201
+
+    api_data = ServiceInboundApi.query.all()
+    assert len(api_data) == 1
+    assert api_data[0].service_id == sample_service.id
+    assert api_data[0].url == "https://some_service/inbound-sms"
+    assert api_data[0].unsigned_bearer_token == "some-unique-string"
+    assert api_data[0].bearer_token != "some-unique-string"

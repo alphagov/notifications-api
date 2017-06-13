@@ -20,6 +20,7 @@ from app.dao.api_key_dao import (
     expire_api_key)
 from app.dao.date_util import get_financial_year
 from app.dao.notification_usage_dao import get_total_billable_units_for_sent_sms_notifications_in_date_range
+from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.dao.services_dao import (
     dao_fetch_service_by_id,
     dao_fetch_all_services,
@@ -49,7 +50,7 @@ from app.errors import (
     InvalidRequest,
     register_errors
 )
-from app.models import Service
+from app.models import Service, ServiceInboundApi
 from app.service import statistics
 from app.service.utils import get_whitelist_objects
 from app.service.sender import send_notification_to_service_users
@@ -531,3 +532,12 @@ def get_yearly_monthly_usage(service_id):
         return json.dumps(json_results)
     except TypeError:
         return jsonify(result='error', message='No valid year provided'), 400
+
+
+@service_blueprint.route('/<uuid:service_id>/inbound-api', methods=['POST'])
+def set_service_inbound_api(service_id):
+    data = request.get_json()
+    data["service_id"] = service_id
+    save_service_inbound_api(ServiceInboundApi(**data))
+
+    return jsonify(data="Service inbound api data saved"), 201
