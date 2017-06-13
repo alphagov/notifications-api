@@ -26,3 +26,10 @@ def remove_job_from_s3(service_id, job_id):
     file_location = FILE_LOCATION_STRUCTURE.format(service_id, job_id)
     obj = get_s3_object(bucket_name, file_location)
     return obj.delete()
+
+
+def remove_transformed_dvla_file(job_id):
+    bucket_name = current_app.config['DVLA_UPLOAD_BUCKET_NAME']
+    file_location = '{}-dvla-job.text'.format(job_id)
+    obj = get_s3_object(bucket_name, file_location)
+    return obj.delete()
