@@ -12,13 +12,14 @@ from app import encryption
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
 from app.models import (
-    Organisation, Rate, Service, ServicePermission, User,
+    User, Organisation, Rate, Service, ServicePermission,
+    DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
-    DVLA_ORG_LAND_REGISTRY
 )
+
 from tests import create_authorization_header
-from tests.app.db import create_template, create_service_inbound_api
+from tests.app.db import create_template, create_service_inbound_api, create_user
 from tests.app.conftest import (
     sample_service as create_service,
     sample_user_service_permission as create_user_service_permission,
@@ -26,8 +27,6 @@ from tests.app.conftest import (
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
-
-from tests.app.db import create_user
 
 
 def test_get_service_list(client, service_factory):

@@ -61,6 +61,7 @@ from app.service import statistics
 from app.service.service_inbound_api_schema import service_inbound_api, update_service_inbound_api_schema
 from app.service.utils import get_whitelist_objects
 from app.service.sender import send_notification_to_service_users
+from app.service.send_notification import send_one_off_notification
 from app.schemas import (
     service_schema,
     api_key_schema,
@@ -591,3 +592,9 @@ def handle_sql_errror(e):
         return jsonify(result='error', message="No result found"), 404
     else:
         raise e
+
+
+@service_blueprint.route('/<uuid:service_id>/send-notification', methods=['POST'])
+def post_notification(service_id):
+    resp = send_one_off_notification(service_id, request.get_json())
+    return jsonify(resp), 201
