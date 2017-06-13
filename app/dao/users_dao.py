@@ -1,9 +1,9 @@
-import random
+from random import (SystemRandom)
 from datetime import (datetime, timedelta)
 from sqlalchemy import func
 from app import db
 from app.models import (User, VerifyCode)
-from app import secrets
+
 
 def _remove_values_for_keys_if_present(dict, keys):
     for key in keys:
@@ -11,12 +11,7 @@ def _remove_values_for_keys_if_present(dict, keys):
 
 
 def create_secret_code():
-    L1 = []
-    for i in range(0, 5):
-        L1.append(secrets.randbelow(10))    #return cryptographically strong random number using secrets module
-    L2 = ''.join(map(str, L1))
-    return L2
-
+    return ''.join(map(str, [SystemRandom().randrange(10) for i in range(5)]))
 
 
 def save_user_attribute(usr, update_dict={}):
