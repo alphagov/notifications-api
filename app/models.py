@@ -295,6 +295,19 @@ class ServiceWhitelist(db.Model):
         return 'Recipient {} of type: {}'.format(self.recipient, self.recipient_type)
 
 
+class ServiceInboundApi(db.Model):
+    __tablename__ = 'service_inbound_api'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
+    service = db.relationship('Service')
+    url = db.Column(db.String(255), nullable=False)
+    bearer_token = db.Column(db.String(255), nullable=False)
+
+    @property
+    def unsigned_bearer_token(self):
+        return get_secret(self.bearer_token)
+
+
 class ApiKey(db.Model, Versioned):
     __tablename__ = 'api_keys'
 
