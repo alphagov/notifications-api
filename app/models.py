@@ -295,17 +295,32 @@ class ServiceWhitelist(db.Model):
         return 'Recipient {} of type: {}'.format(self.recipient, self.recipient_type)
 
 
-class ServiceInboundApi(db.Model):
+class ServiceInboundApi(db.Model, Versioned):
     __tablename__ = 'service_inbound_api'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service')
     url = db.Column(db.String(255), nullable=False)
     bearer_token = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True)
+    updated_by = db.relationship('User')
+    updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
 
     @property
     def unsigned_bearer_token(self):
         return get_secret(self.bearer_token)
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "service_id": self.service_id,
+            "url": self.url,
+            "bearer_token": self.bearer_token,
+            "updated_by_id": self.updated_by_id,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
+        }
 
 
 class ApiKey(db.Model, Versioned):

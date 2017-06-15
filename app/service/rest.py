@@ -11,6 +11,7 @@ from flask import (
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import redis_store
+from app.authentication.utils import generate_secret
 from app.dao import notification_usage_dao, notifications_dao
 from app.dao.dao_utils import dao_rollback
 from app.dao.api_key_dao import (
@@ -20,7 +21,11 @@ from app.dao.api_key_dao import (
     expire_api_key)
 from app.dao.date_util import get_financial_year
 from app.dao.notification_usage_dao import get_total_billable_units_for_sent_sms_notifications_in_date_range
-from app.dao.service_inbound_api_dao import save_service_inbound_api
+from app.dao.service_inbound_api_dao import (
+    save_service_inbound_api,
+    reset_service_inbound_api,
+    get_service_inbound_api
+)
 from app.dao.services_dao import (
     dao_fetch_service_by_id,
     dao_fetch_all_services,
@@ -51,7 +56,9 @@ from app.errors import (
     register_errors
 )
 from app.models import Service, ServiceInboundApi
+from app.schema_validation import validate
 from app.service import statistics
+from app.service.service_inbound_api_schema import service_inbound_api, update_service_inbound_api_schema
 from app.service.utils import get_whitelist_objects
 from app.service.sender import send_notification_to_service_users
 from app.schemas import (
@@ -535,9 +542,29 @@ def get_yearly_monthly_usage(service_id):
 
 
 @service_blueprint.route('/<uuid:service_id>/inbound-api', methods=['POST'])
-def set_service_inbound_api(service_id):
+def create_service_inbound_api(service_id):
     data = request.get_json()
+    validate(data, service_inbound_api)
     data["service_id"] = service_id
-    save_service_inbound_api(ServiceInboundApi(**data))
+    inbound_api = ServiceInboundApi(**data)
+    save_service_inbound_api(inbound_api)
 
-    return jsonify(data="Service inbound api data saved"), 201
+    return jsonify(data=inbound_api.serialize()), 201
+
+
+@service_blueprint.route('/<uuid:service_id>/inbound-api/<uuid:id>', methods=['POST'])
+def update_service_inbound_api(service_id, id):
+    data = request.get_json()
+    validate(data, update_service_inbound_api_schema)
+
+    to_update = get_service_inbound_api(id, service_id)
+
+    if data.get("url", None):
+        to_update.url = data["url"]
+    if data.get("bearer_token", None):
+        to_update.bearer_token = generate_secret(data["bearer_token"])
+    to_update.updated_by_id = data["updated_by_id"]
+    to_update.updated_at = datetime.utcnow()
+
+    reset_service_inbound_api(to_update)
+    return jsonify(data=to_update.serialize()), 200

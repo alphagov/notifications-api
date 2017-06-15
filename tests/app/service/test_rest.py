@@ -8,16 +8,17 @@ import pytest
 from flask import url_for, current_app
 from freezegun import freeze_time
 
+from app.authentication.utils import get_secret
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
 from app.models import (
     Organisation, Rate, Service, ServicePermission, User,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
-    DVLA_ORG_LAND_REGISTRY,
-    ServiceInboundApi)
+    DVLA_ORG_LAND_REGISTRY
+)
 from tests import create_authorization_header
-from tests.app.db import create_template
+from tests.app.db import create_template, create_service_inbound_api
 from tests.app.conftest import (
     sample_service as create_service,
     sample_user_service_permission as create_user_service_permission,
@@ -2150,10 +2151,11 @@ def test_search_for_notification_by_to_field_returns_content(
     assert notifications[0]['body'] == 'Hello Foo\nYour thing is due soon'
 
 
-def test_set_service_inbound_api(client, sample_service):
+def test_create_service_inbound_api(client, sample_service):
     data = {
         "url": "https://some_service/inbound-sms",
-        "bearer_token": "some-unique-string"
+        "bearer_token": "some-unique-string",
+        "updated_by_id": str(sample_service.users[0].id)
     }
     response = client.post(
         '/service/{}/inbound-api'.format(sample_service.id),
@@ -2162,9 +2164,58 @@ def test_set_service_inbound_api(client, sample_service):
     )
     assert response.status_code == 201
 
-    api_data = ServiceInboundApi.query.all()
-    assert len(api_data) == 1
-    assert api_data[0].service_id == sample_service.id
-    assert api_data[0].url == "https://some_service/inbound-sms"
-    assert api_data[0].unsigned_bearer_token == "some-unique-string"
-    assert api_data[0].bearer_token != "some-unique-string"
+    resp_json = json.loads(response.get_data(as_text=True))["data"]
+    assert resp_json["id"]
+    assert resp_json["service_id"] == str(sample_service.id)
+    assert resp_json["url"] == "https://some_service/inbound-sms"
+    assert resp_json["bearer_token"] != "some-unique-string"  # returned encrypted
+    assert resp_json["updated_by_id"] == str(sample_service.users[0].id)
+    assert resp_json["created_at"]
+    assert not resp_json["updated_at"]
+
+
+def test_set_service_inbound_api_raises_500_when_service_does_not_exist(client):
+    data = {
+        "url": "https://some_service/inbound-sms",
+        "bearer_token": "some-unique-string",
+        "updated_by_id": str(uuid.uuid4())
+    }
+    response = client.post(
+        '/service/{}/inbound-api'.format(uuid.uuid4()),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    assert response.status_code == 500
+
+
+def test_update_service_inbound_api_updates_url(client, sample_service):
+    service_inbound_api = create_service_inbound_api(service=sample_service,
+                                                     url="https://original_url.com")
+
+    data = {
+        "url": "https://another_url.com",
+        "updated_by_id": str(sample_service.users[0].id)
+    }
+    response = client.post("/service/{}/inbound-api/{}".format(sample_service.id, service_inbound_api.id),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    assert response.status_code == 200
+    resp_json = json.loads(response.get_data(as_text=True))["data"]
+    assert resp_json["url"] == "https://another_url.com"
+    assert service_inbound_api.url == "https://another_url.com"
+
+
+def test_update_service_inbound_api_updates_bearer_token(client, sample_service):
+    service_inbound_api = create_service_inbound_api(service=sample_service,
+                                                     bearer_token="some_super_secret")
+    data = {
+        "bearer_token": "different_token",
+        "updated_by_id": str(sample_service.users[0].id)
+    }
+    response = client.post("/service/{}/inbound-api/{}".format(sample_service.id, service_inbound_api.id),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    assert response.status_code == 200
+    resp_json = json.loads(response.get_data(as_text=True))["data"]
+    assert get_secret(resp_json["bearer_token"]) == "different_token"
+    assert service_inbound_api.unsigned_bearer_token == "different_token"

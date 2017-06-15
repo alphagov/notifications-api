@@ -18,3 +18,13 @@ personalisation = {
     "code": "1001",  # yet to be implemented
     "link": "link to our error documentation not yet implemented"
 }
+
+
+https_url = {
+    "type": "string",
+    "format": "uri",
+    "pattern": "^https.*",
+    "validationMessage": "is not a valid https url",
+    "code": "1001",  # yet to be implemented
+    "link": "link to our error documentation not yet implemented"
+}
