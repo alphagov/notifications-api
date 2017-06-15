@@ -23,4 +23,4 @@ def reset_service_inbound_api(service_inbound_api):
 
 def get_service_inbound_api(service_inbound_api_id, service_id):
     return ServiceInboundApi.query.filter_by(id=service_inbound_api_id,
-                                             service_id=service_id).one()
+                                             service_id=service_id).first()

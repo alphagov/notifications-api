@@ -298,8 +298,8 @@ class ServiceWhitelist(db.Model):
 class ServiceInboundApi(db.Model, Versioned):
     __tablename__ = 'service_inbound_api'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
-    service = db.relationship('Service')
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False, unique=True)
+    service = db.relationship('Service', backref='inbound_api')
     url = db.Column(db.String(255), nullable=False)
     bearer_token = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
@@ -313,11 +313,11 @@ class ServiceInboundApi(db.Model, Versioned):
 
     def serialize(self):
         return {
-            "id": self.id,
-            "service_id": self.service_id,
+            "id": str(self.id),
+            "service_id": str(self.service_id),
             "url": self.url,
             "bearer_token": self.bearer_token,
-            "updated_by_id": self.updated_by_id,
+            "updated_by_id": str(self.updated_by_id),
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
         }

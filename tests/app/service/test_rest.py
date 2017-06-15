@@ -2219,3 +2219,13 @@ def test_update_service_inbound_api_updates_bearer_token(client, sample_service)
     resp_json = json.loads(response.get_data(as_text=True))["data"]
     assert get_secret(resp_json["bearer_token"]) == "different_token"
     assert service_inbound_api.unsigned_bearer_token == "different_token"
+
+
+def test_fetch_service_inbound_api(client, sample_service):
+    service_inbound_api = create_service_inbound_api(service=sample_service)
+
+    response = client.get("/service/{}/inbound-api/{}".format(sample_service.id, service_inbound_api.id),
+                          headers=[create_authorization_header()])
+
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True))["data"] == service_inbound_api.serialize()

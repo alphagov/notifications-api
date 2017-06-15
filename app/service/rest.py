@@ -8,6 +8,7 @@ from flask import (
     current_app,
     Blueprint
 )
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import redis_store
@@ -547,17 +548,28 @@ def create_service_inbound_api(service_id):
     validate(data, service_inbound_api)
     data["service_id"] = service_id
     inbound_api = ServiceInboundApi(**data)
-    save_service_inbound_api(inbound_api)
+    try:
+        save_service_inbound_api(inbound_api)
+    except SQLAlchemyError as e:
+        if hasattr(e, 'orig') and hasattr(e.orig, 'pgerror')and e.orig.pgerror\
+                and ('duplicate key value violates unique constraint "ix_service_inbound_api_service_id"'
+                     in e.orig.pgerror):
+            return jsonify(
+                result='error',
+                message={'name': ["You can only have one URL and bearer token for your service."]}
+            ), 400
+        else:
+            raise e
 
     return jsonify(data=inbound_api.serialize()), 201
 
 
-@service_blueprint.route('/<uuid:service_id>/inbound-api/<uuid:id>', methods=['POST'])
-def update_service_inbound_api(service_id, id):
+@service_blueprint.route('/<uuid:service_id>/inbound-api/<uuid:inbound_api_id>', methods=['POST'])
+def update_service_inbound_api(service_id, inbound_api_id):
     data = request.get_json()
     validate(data, update_service_inbound_api_schema)
 
-    to_update = get_service_inbound_api(id, service_id)
+    to_update = get_service_inbound_api(inbound_api_id, service_id)
 
     if data.get("url", None):
         to_update.url = data["url"]
@@ -568,3 +580,10 @@ def update_service_inbound_api(service_id, id):
 
     reset_service_inbound_api(to_update)
     return jsonify(data=to_update.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/inbound-api/<uuid:inbound_api_id>', methods=["GET"])
+def fetch_service_inbound_api(service_id, inbound_api_id):
+    inbound_api = get_service_inbound_api(inbound_api_id, service_id)
+
+    return jsonify(data=inbound_api.serialize()), 200
