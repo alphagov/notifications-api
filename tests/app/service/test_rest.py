@@ -12,7 +12,7 @@ from app import encryption
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
 from app.models import (
-    User, Organisation, Rate, Service, ServicePermission,
+    User, Organisation, Rate, Service, ServicePermission, Notification,
     DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
@@ -27,6 +27,8 @@ from tests.app.conftest import (
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
+from tests.app.db import create_user
+from tests.conftest import set_config_values
 
 
 def test_get_service_list(client, service_factory):
@@ -2245,3 +2247,20 @@ def test_fetch_service_inbound_api(client, sample_service):
 
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True))["data"] == service_inbound_api.serialize()
+
+
+def test_send_one_off_notification(admin_request, sample_template):
+    response = admin_request.post(
+        'service.create_one_off_notification',
+        endpoint_kwargs={
+            'service_id': sample_template.service_id
+        },
+        data={
+            'template_id': str(sample_template.id),
+            'to': '07700900001'
+        },
+        expected_status=201
+    )
+
+    noti = Notification.query.one()
+    assert response['id'] == str(noti.id)

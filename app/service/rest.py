@@ -595,6 +595,6 @@ def handle_sql_errror(e):
 
 
 @service_blueprint.route('/<uuid:service_id>/send-notification', methods=['POST'])
-def post_notification(service_id):
+def create_one_off_notification(service_id):
     resp = send_one_off_notification(service_id, request.get_json())
     return jsonify(resp), 201

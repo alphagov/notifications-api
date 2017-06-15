@@ -1,8 +1,8 @@
 from app.config import QueueNames
 from app.notifications.validators import (
     check_service_over_daily_message_limit,
-    check_sms_content_char_count,
     validate_and_format_recipient,
+    validate_template,
 )
 from app.notifications.process_notifications import (
     create_content_for_notification,
@@ -27,9 +27,7 @@ def send_one_off_notification(service_id, post_data):
 
     personalisation = post_data.get('personalisation', None)
 
-    if template.template_type == SMS_TYPE:
-        template_with_content = create_content_for_notification(template, personalisation)
-        check_sms_content_char_count(template_with_content.content_count)
+    validate_template(template.id, personalisation, service, template.template_type)
 
     check_service_over_daily_message_limit(KEY_TYPE_NORMAL, service)
 
