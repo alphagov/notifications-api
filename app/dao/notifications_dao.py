@@ -103,13 +103,26 @@ def create_notification_statistics_dict(service_id, day):
 
 @statsd(namespace="dao")
 def dao_get_template_usage(service_id, limit_days=None):
+    query_filter = []
+
     table = NotificationHistory
 
-    if limit_days and limit_days <= 7:  # can get this data from notifications table
+    if limit_days is not None and limit_days <= 7:
         table = Notification
 
-    query_filter = [table.service_id == service_id, table.key_type != KEY_TYPE_TEST]
-    if limit_days is not None:
+        # only limit days if it's not seven days, as 7 days == the whole of Notifications table.
+        if limit_days != 7:
+            query_filter.append(table.created_at >= days_ago(limit_days))
+
+    elif limit_days is not None:
+        # case where not under 7 days, so using NotificationsHistory so limit allowed
+        query_filter.append(table.created_at >= days_ago(limit_days))
+
+    query_filter.append(table.service_id == service_id)
+    query_filter.append(table.key_type != KEY_TYPE_TEST)
+
+    # only limit days if it's not seven days, as 7 days == the whole of Notifications table.
+    if limit_days is not None and limit_days != 7:
         query_filter.append(table.created_at >= days_ago(limit_days))
 
     notifications_aggregate_query = db.session.query(

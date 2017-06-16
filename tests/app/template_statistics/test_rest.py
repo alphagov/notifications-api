@@ -87,8 +87,8 @@ def test_get_template_statistics_for_service_limit_7_days(notify_db, notify_db_s
                                                           mocker,
                                                           cache_values):
     email, sms = set_up_notifications(notify_db, notify_db_session)
-    mock_cache_values = {str.encode(str(sms.id)): str.encode('2'),
-                         str.encode(str(email.id)): str.encode('2')} if cache_values else None
+    mock_cache_values = {str.encode(str(sms.id)): str.encode('3'),
+                         str.encode(str(email.id)): str.encode('3')} if cache_values else None
     mocked_redis_get = mocker.patch('app.redis_store.get_all_from_hash', return_value=mock_cache_values)
     mocked_redis_set = mocker.patch('app.redis_store.set_hash_and_expire')
 
@@ -102,9 +102,9 @@ def test_get_template_statistics_for_service_limit_7_days(notify_db, notify_db_s
     assert response_for_a_week.status_code == 200
     json_resp = json.loads(response_for_a_week.get_data(as_text=True))
     assert len(json_resp['data']) == 2
-    assert json_resp['data'][0]['count'] == 2
+    assert json_resp['data'][0]['count'] == 3
     assert json_resp['data'][0]['template_name'] == 'Email Template Name'
-    assert json_resp['data'][1]['count'] == 2
+    assert json_resp['data'][1]['count'] == 3
     assert json_resp['data'][1]['template_name'] == 'Template Name'
 
     mocked_redis_get.assert_called_once_with("{}-template-counter-limit-7-days".format(email.service_id))
@@ -112,7 +112,7 @@ def test_get_template_statistics_for_service_limit_7_days(notify_db, notify_db_s
         mocked_redis_set.assert_not_called()
     else:
         mocked_redis_set.assert_called_once_with("{}-template-counter-limit-7-days".format(email.service_id),
-                                                 {sms.id: 2, email.id: 2}, 600)
+                                                 {sms.id: 3, email.id: 3}, 600)
 
 
 @freeze_time('2016-08-18')
