@@ -2257,7 +2257,8 @@ def test_send_one_off_notification(admin_request, sample_template):
         },
         data={
             'template_id': str(sample_template.id),
-            'to': '07700900001'
+            'to': '07700900001',
+            'created_by': str(sample_template.service.created_by_id)
         },
         expected_status=201
     )

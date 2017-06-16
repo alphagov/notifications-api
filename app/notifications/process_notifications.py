@@ -49,7 +49,8 @@ def persist_notification(
     reference=None,
     client_reference=None,
     notification_id=None,
-    simulated=False
+    simulated=False,
+    created_by_id=None
 ):
 
     notification_created_at = created_at or datetime.utcnow()

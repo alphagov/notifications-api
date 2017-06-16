@@ -95,6 +95,11 @@ class User(db.Model):
     platform_admin = db.Column(db.Boolean, nullable=False, default=False)
     current_session_id = db.Column(UUID(as_uuid=True), nullable=True)
 
+    services = db.relationship(
+        'Service',
+        secondary='user_to_service',
+        backref=db.backref('user_to_service', lazy='dynamic'))
+
     @property
     def password(self):
         raise AttributeError("Password not readable")

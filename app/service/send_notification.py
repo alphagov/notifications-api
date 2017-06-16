@@ -16,6 +16,18 @@ from app.models import (
 )
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id
+from app.dao.users_dao import get_user_by_id
+from app.v2.errors import BadRequestError
+
+
+def validate_created_by(service, created_by_id):
+    user = get_user_by_id(created_by_id)
+    if service not in user.services:
+        message = 'Can’t create notification - {} is not part of the "{}" service'.format(
+            user.name,
+            service.name
+        )
+        raise BadRequestError(message=message)
 
 
 def send_one_off_notification(service_id, post_data):
@@ -38,6 +50,8 @@ def send_one_off_notification(service_id, post_data):
         notification_type=template.template_type
     )
 
+    validate_created_by(service, post_data['created_by'])
+
     notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
@@ -46,7 +60,8 @@ def send_one_off_notification(service_id, post_data):
         personalisation=personalisation,
         notification_type=template.template_type,
         api_key_id=None,
-        key_type=KEY_TYPE_NORMAL
+        key_type=KEY_TYPE_NORMAL,
+        created_by_id=post_data['created_by']
     )
 
     queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
