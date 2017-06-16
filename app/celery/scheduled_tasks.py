@@ -24,6 +24,7 @@ from app.dao.provider_details_dao import (
     dao_toggle_sms_provider
 )
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
+from app.models import LETTER_TYPE
 from app.notifications.process_notifications import send_notification_to_queue
 from app.statsd_decorators import statsd
 from app.celery.tasks import process_job
@@ -32,8 +33,8 @@ from app.config import QueueNames
 
 @notify_celery.task(name="remove_csv_files")
 @statsd(namespace="tasks")
-def remove_csv_files():
-    jobs = dao_get_jobs_older_than_limited_by()
+def remove_csv_files(job_types):
+    jobs = dao_get_jobs_older_than_limited_by(job_types=job_types)
     for job in jobs:
         s3.remove_job_from_s3(job.service_id, job.id)
         current_app.logger.info("Job ID {} has been removed from s3.".format(job.id))
@@ -244,4 +245,39 @@ def delete_inbound_sms_older_than_seven_days():
         )
     except SQLAlchemyError as e:
         current_app.logger.exception("Failed to delete inbound sms notifications")
+        raise
+
+
+@notify_celery.task(name="remove_transformed_dvla_files")
+@statsd(namespace="tasks")
+def remove_transformed_dvla_files():
+    jobs = dao_get_jobs_older_than_limited_by(job_types=[LETTER_TYPE])
+    for job in jobs:
+        s3.remove_transformed_dvla_file(job.id)
+        current_app.logger.info("Transformed dvla file for job {} has been removed from s3.".format(job.id))
+
+
+@notify_celery.task(name="delete_dvla_response_files")
+@statsd(namespace="tasks")
+def delete_dvla_response_files_older_than_seven_days():
+    try:
+        start = datetime.utcnow()
+        bucket_objects = s3.get_s3_bucket_objects(
+            current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
+            'root/dispatch'
+        )
+        older_than_seven_days = s3.filter_s3_bucket_objects_within_date_range(bucket_objects)
+
+        for f in older_than_seven_days:
+            s3.remove_s3_object(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], f['Key'])
+
+        current_app.logger.info(
+            "Delete dvla response files started {} finished {} deleted {} files".format(
+                start,
+                datetime.utcnow(),
+                len(older_than_seven_days)
+            )
+        )
+    except SQLAlchemyError as e:
+        current_app.logger.exception("Failed to delete dvla response files")
         raise

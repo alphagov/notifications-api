@@ -1,12 +1,15 @@
-import pytest
-
 from datetime import datetime, timedelta
 from functools import partial
+from unittest.mock import call, patch, PropertyMock
 
 from flask import current_app
+
+import pytest
 from freezegun import freeze_time
+
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
+    delete_dvla_response_files_older_than_seven_days,
     delete_email_notifications_older_than_seven_days,
     delete_inbound_sms_older_than_seven_days,
     delete_invitations,
@@ -15,6 +18,7 @@ from app.celery.scheduled_tasks import (
     delete_sms_notifications_older_than_seven_days,
     delete_verify_codes,
     remove_csv_files,
+    remove_transformed_dvla_files,
     run_scheduled_jobs,
     s3,
     send_daily_performance_platform_stats,
@@ -30,15 +34,20 @@ from app.dao.provider_details_dao import (
     dao_update_provider_details,
     get_current_provider
 )
-from app.models import Service, Template
+from app.models import (
+    Service, Template,
+    SMS_TYPE, LETTER_TYPE
+)
 from app.utils import get_london_midnight_in_utc
-from tests.app.db import create_notification, create_service
+from tests.app.db import create_notification, create_service, create_template, create_job
 from tests.app.conftest import (
     sample_job as create_sample_job,
     sample_notification_history as create_notification_history,
-    create_custom_template)
+    create_custom_template,
+    datetime_in_past
+)
+from tests.app.aws.test_s3 import single_s3_object_stub
 from tests.conftest import set_config_values
-from unittest.mock import call, patch, PropertyMock
 
 
 def _create_slow_delivery_notification(provider='mmg'):
@@ -66,14 +75,13 @@ def _create_slow_delivery_notification(provider='mmg'):
     )
 
 
-@pytest.fixture(scope='function')
-def prepare_current_provider(restore_provider_details):
-    initial_provider = get_current_provider('sms')
-    initial_provider.updated_at = datetime.utcnow() - timedelta(minutes=30)
-    dao_update_provider_details(initial_provider)
-
-
+@pytest.mark.skip(reason="This doesn't actually test the celery task wraps the function")
 def test_should_have_decorated_tasks_functions():
+    """
+    TODO: This test needs to be reviewed as this doesn't actually
+    test that the celery task is wrapping the function. We're also
+    running similar tests elsewhere which also need review.
+    """
     assert delete_verify_codes.__wrapped__.__name__ == 'delete_verify_codes'
     assert delete_notifications_created_more_than_a_week_ago_by_type.__wrapped__.__name__ == \
         'delete_notifications_created_more_than_a_week_ago_by_type'
@@ -86,6 +94,17 @@ def test_should_have_decorated_tasks_functions():
         'switch_current_sms_provider_on_slow_delivery'
     assert delete_inbound_sms_older_than_seven_days.__wrapped__.__name__ == \
         'delete_inbound_sms_older_than_seven_days'
+    assert remove_transformed_dvla_files.__wrapped__.__name__ == \
+        'remove_transformed_dvla_files'
+    assert delete_dvla_response_files_older_than_seven_days.__wrapped__.__name__ == \
+        'delete_dvla_response_files_older_than_seven_days'
+
+
+@pytest.fixture(scope='function')
+def prepare_current_provider(restore_provider_details):
+    initial_provider = get_current_provider('sms')
+    initial_provider.updated_at = datetime.utcnow() - timedelta(minutes=30)
+    dao_update_provider_details(initial_provider)
 
 
 def test_should_call_delete_sms_notifications_more_than_week_in_task(notify_api, mocker):
@@ -214,22 +233,33 @@ def test_should_update_all_scheduled_jobs_and_put_on_queue(notify_db, notify_db_
     ])
 
 
-def test_will_remove_csv_files_for_jobs_older_than_seven_days(notify_db, notify_db_session, mocker):
+@freeze_time('2016-10-18T10:00:00')
+def test_will_remove_csv_files_for_jobs_older_than_seven_days(
+    notify_db, notify_db_session, mocker, sample_template
+):
     mocker.patch('app.celery.scheduled_tasks.s3.remove_job_from_s3')
+    """
+    Jobs older than seven days are deleted, but only two day's worth (two-day window)
+    """
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    just_under_seven_days = seven_days_ago + timedelta(seconds=1)
+    eight_days_ago = seven_days_ago - timedelta(days=1)
+    nine_days_ago = eight_days_ago - timedelta(days=1)
+    just_under_nine_days = nine_days_ago + timedelta(seconds=1)
+    nine_days_one_second_ago = nine_days_ago - timedelta(seconds=1)
 
-    eligible_job_1 = datetime(2016, 10, 10, 23, 59, 59, 000)
-    eligible_job_2 = datetime(2016, 10, 9, 00, 00, 00, 000)
-    in_eligible_job_too_new = datetime(2016, 10, 11, 00, 00, 00, 000)
-    in_eligible_job_too_old = datetime(2016, 10, 8, 23, 59, 59, 999)
+    create_sample_job(notify_db, notify_db_session, created_at=nine_days_one_second_ago)
+    job1_to_delete = create_sample_job(notify_db, notify_db_session, created_at=eight_days_ago)
+    job2_to_delete = create_sample_job(notify_db, notify_db_session, created_at=just_under_nine_days)
+    create_sample_job(notify_db, notify_db_session, created_at=seven_days_ago)
+    create_sample_job(notify_db, notify_db_session, created_at=just_under_seven_days)
 
-    job_1 = create_sample_job(notify_db, notify_db_session, created_at=eligible_job_1)
-    job_2 = create_sample_job(notify_db, notify_db_session, created_at=eligible_job_2)
-    create_sample_job(notify_db, notify_db_session, created_at=in_eligible_job_too_new)
-    create_sample_job(notify_db, notify_db_session, created_at=in_eligible_job_too_old)
+    remove_csv_files(job_types=[sample_template.template_type])
 
-    with freeze_time('2016-10-18T10:00:00'):
-        remove_csv_files()
-    assert s3.remove_job_from_s3.call_args_list == [call(job_1.service_id, job_1.id), call(job_2.service_id, job_2.id)]
+    assert s3.remove_job_from_s3.call_args_list == [
+        call(job1_to_delete.service_id, job1_to_delete.id),
+        call(job2_to_delete.service_id, job2_to_delete.id)
+    ]
 
 
 def test_send_daily_performance_stats_calls_does_not_send_if_inactive(
@@ -453,3 +483,126 @@ def test_should_call_delete_inbound_sms_older_than_seven_days(notify_api, mocker
     mocker.patch('app.celery.scheduled_tasks.delete_inbound_sms_created_more_than_a_week_ago')
     delete_inbound_sms_older_than_seven_days()
     assert scheduled_tasks.delete_inbound_sms_created_more_than_a_week_ago.call_count == 1
+
+
+@freeze_time('2017-01-01 10:00:00')
+def test_remove_csv_files_filters_by_type(mocker, sample_service):
+    mocker.patch('app.celery.scheduled_tasks.s3.remove_job_from_s3')
+    """
+    Jobs older than seven days are deleted, but only two day's worth (two-day window)
+    """
+    letter_template = create_template(service=sample_service, template_type=LETTER_TYPE)
+    sms_template = create_template(service=sample_service, template_type=SMS_TYPE)
+
+    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+
+    job_to_delete = create_job(template=letter_template, created_at=eight_days_ago)
+    create_job(template=sms_template, created_at=eight_days_ago)
+
+    remove_csv_files(job_types=[LETTER_TYPE])
+
+    assert s3.remove_job_from_s3.call_args_list == [
+        call(job_to_delete.service_id, job_to_delete.id),
+    ]
+
+
+@freeze_time('2017-01-01 10:00:00')
+def test_remove_dvla_transformed_files_removes_expected_files(mocker, sample_service):
+    mocker.patch('app.celery.scheduled_tasks.s3.remove_transformed_dvla_file')
+
+    letter_template = create_template(service=sample_service, template_type=LETTER_TYPE)
+
+    job = partial(create_job, template=letter_template)
+
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    just_under_seven_days = seven_days_ago + timedelta(seconds=1)
+    just_over_seven_days = seven_days_ago - timedelta(seconds=1)
+    eight_days_ago = seven_days_ago - timedelta(days=1)
+    nine_days_ago = eight_days_ago - timedelta(days=1)
+    just_under_nine_days = nine_days_ago + timedelta(seconds=1)
+    just_over_nine_days = nine_days_ago - timedelta(seconds=1)
+
+    job(created_at=seven_days_ago)
+    job(created_at=just_under_seven_days)
+    job_to_delete_1 = job(created_at=just_over_seven_days)
+    job_to_delete_2 = job(created_at=eight_days_ago)
+    job_to_delete_3 = job(created_at=nine_days_ago)
+    job_to_delete_4 = job(created_at=just_under_nine_days)
+    job(created_at=just_over_nine_days)
+
+    remove_transformed_dvla_files()
+
+    s3.remove_transformed_dvla_file.assert_has_calls([
+        call(job_to_delete_1.id),
+        call(job_to_delete_2.id),
+        call(job_to_delete_3.id),
+        call(job_to_delete_4.id),
+    ], any_order=True)
+
+
+def test_remove_dvla_transformed_files_does_not_remove_files(mocker, sample_service):
+    mocker.patch('app.celery.scheduled_tasks.s3.remove_transformed_dvla_file')
+
+    letter_template = create_template(service=sample_service, template_type=LETTER_TYPE)
+
+    job = partial(create_job, template=letter_template)
+
+    yesterday = datetime.utcnow() - timedelta(days=1)
+    six_days_ago = datetime.utcnow() - timedelta(days=6)
+    seven_days_ago = six_days_ago - timedelta(days=1)
+    just_over_nine_days = seven_days_ago - timedelta(days=2, seconds=1)
+
+    job(created_at=yesterday)
+    job(created_at=six_days_ago)
+    job(created_at=seven_days_ago)
+    job(created_at=just_over_nine_days)
+
+    remove_transformed_dvla_files()
+
+    s3.remove_transformed_dvla_file.assert_has_calls([])
+
+
+@freeze_time("2016-01-01 11:00:00")
+def test_delete_dvla_response_files_older_than_seven_days_removes_old_files(notify_api, mocker):
+    AFTER_SEVEN_DAYS = datetime_in_past(days=8)
+    single_page_s3_objects = [{
+        "Contents": [
+            single_s3_object_stub('bar/foo1.txt', AFTER_SEVEN_DAYS),
+            single_s3_object_stub('bar/foo2.txt', AFTER_SEVEN_DAYS),
+        ]
+    }]
+    mocker.patch(
+        'app.celery.scheduled_tasks.s3.get_s3_bucket_objects', return_value=single_page_s3_objects[0]["Contents"]
+    )
+    remove_s3_mock = mocker.patch('app.celery.scheduled_tasks.s3.remove_s3_object')
+
+    delete_dvla_response_files_older_than_seven_days()
+
+    remove_s3_mock.assert_has_calls([
+        call(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], single_page_s3_objects[0]["Contents"][0]["Key"]),
+        call(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], single_page_s3_objects[0]["Contents"][1]["Key"])
+    ])
+
+
+@freeze_time("2016-01-01 11:00:00")
+def test_delete_dvla_response_files_older_than_seven_days_does_not_remove_files(notify_api, mocker):
+    START_DATE = datetime_in_past(days=9)
+    JUST_BEFORE_START_DATE = datetime_in_past(days=9, seconds=1)
+    END_DATE = datetime_in_past(days=7)
+    JUST_AFTER_END_DATE = END_DATE + timedelta(seconds=1)
+
+    single_page_s3_objects = [{
+        "Contents": [
+            single_s3_object_stub('bar/foo1.txt', JUST_BEFORE_START_DATE),
+            single_s3_object_stub('bar/foo2.txt', START_DATE),
+            single_s3_object_stub('bar/foo3.txt', END_DATE),
+            single_s3_object_stub('bar/foo4.txt', JUST_AFTER_END_DATE),
+        ]
+    }]
+    mocker.patch(
+        'app.celery.scheduled_tasks.s3.get_s3_bucket_objects', return_value=single_page_s3_objects[0]["Contents"]
+    )
+    remove_s3_mock = mocker.patch('app.celery.scheduled_tasks.s3.remove_s3_object')
+    delete_dvla_response_files_older_than_seven_days()
+
+    remove_s3_mock.assert_not_called()

@@ -199,6 +199,10 @@ def test_should_update_a_stats_entry_with_its_success_outcome_for_a_job(
     assert stat.sms_failed == 0
     assert stat.letters_failed == 0
 
+    assert stat.sent == email_count + sms_count + letter_count
+    assert stat.delivered == email_count + sms_count
+    assert stat.failed == 0
+
 
 @pytest.mark.parametrize('notification_type, sms_count, email_count, letter_count, status', [
     (SMS_TYPE, 1, 0, 0, NOTIFICATION_TECHNICAL_FAILURE),
@@ -264,6 +268,10 @@ def test_should_update_a_stats_entry_with_its_error_outcomes_for_a_job(
     assert stat.emails_delivered == 0
     assert stat.sms_delivered == 0
 
+    assert stat.sent == email_count + sms_count + letter_count
+    assert stat.delivered == 0
+    assert stat.failed == email_count + sms_count + letter_count
+
 
 @pytest.mark.parametrize('notification_type, sms_count, email_count, letter_count, status', [
     (SMS_TYPE, 1, 0, 0, NOTIFICATION_DELIVERED),
@@ -325,6 +333,10 @@ def test_should_update_a_stats_entry_with_its_success_outcomes_for_a_job(
 
     assert stat.emails_delivered == email_count
     assert stat.sms_delivered == sms_count
+
+    assert stat.sent == email_count + sms_count + letter_count
+    assert stat.delivered == 0 if notification_type == LETTER_TYPE else 1
+    assert stat.failed == 0
 
 
 @pytest.mark.parametrize('notification_type, sms_count, email_count, letter_count, status', [
@@ -393,6 +405,10 @@ def test_should_not_update_job_stats_if_irrelevant_status(
 
     assert stat.emails_delivered == 0
     assert stat.sms_delivered == 0
+
+    assert stat.sent == email_count + sms_count + letter_count
+    assert stat.delivered == 0
+    assert stat.failed == 0
 
 
 @pytest.mark.parametrize('notification_type, sms_count, email_count, letter_count', [
@@ -480,41 +496,52 @@ def test_inserting_one_type_of_notification_maintains_other_counts(
     assert updated_stats[0].sms_sent == sms_count
     assert updated_stats[0].letters_sent == letter_count
 
+    if notification_type == EMAIL_TYPE:
+        assert updated_stats[0].sent == email_count
+    elif notification_type == SMS_TYPE:
+        assert updated_stats[0].sent == sms_count
+    elif notification_type == LETTER_TYPE:
+        assert updated_stats[0].sent == letter_count
+
 
 def test_updating_one_type_of_notification_to_success_maintains_other_counts(
         notify_db,
         notify_db_session,
-        sample_job,
+        sample_service,
         sample_letter_template
 ):
-    sms_template = sample_template(notify_db, notify_db_session, service=sample_job.service)
-    email_template = sample_email_template(notify_db, notify_db_session, service=sample_job.service)
+    job_1 = sample_job(notify_db, notify_db_session, service=sample_service)
+    job_2 = sample_job(notify_db, notify_db_session, service=sample_service)
+    job_3 = sample_job(notify_db, notify_db_session, service=sample_service)
+
+    sms_template = sample_template(notify_db, notify_db_session, service=sample_service)
+    email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
     letter_template = sample_letter_template
 
     letter = sample_notification(
         notify_db,
         notify_db_session,
-        service=sample_job.service,
+        service=sample_service,
         template=letter_template,
-        job=sample_job,
+        job=job_1,
         status=NOTIFICATION_CREATED
     )
 
     email = sample_notification(
         notify_db,
         notify_db_session,
-        service=sample_job.service,
+        service=sample_service,
         template=email_template,
-        job=sample_job,
+        job=job_2,
         status=NOTIFICATION_CREATED
     )
 
     sms = sample_notification(
         notify_db,
         notify_db_session,
-        service=sample_job.service,
+        service=sample_service,
         template=sms_template,
-        job=sample_job,
+        job=job_3,
         status=NOTIFICATION_CREATED
     )
 
@@ -530,49 +557,76 @@ def test_updating_one_type_of_notification_to_success_maintains_other_counts(
     update_job_stats_outcome_count(email)
     update_job_stats_outcome_count(sms)
 
-    stats = JobStatistics.query.all()
-    assert len(stats) == 1
-    assert stats[0].emails_sent == 1
-    assert stats[0].sms_sent == 1
+    stats = JobStatistics.query.order_by(JobStatistics.created_at).all()
+    assert len(stats) == 3
     assert stats[0].letters_sent == 1
-    assert stats[0].emails_delivered == 1
-    assert stats[0].sms_delivered == 1
+    assert stats[0].emails_sent == 0
+    assert stats[0].sms_sent == 0
+    assert stats[0].emails_delivered == 0
+    assert stats[0].sms_delivered == 0
+
+    assert stats[1].letters_sent == 0
+    assert stats[1].emails_sent == 1
+    assert stats[1].sms_sent == 0
+    assert stats[1].emails_delivered == 1
+    assert stats[1].sms_delivered == 0
+
+    assert stats[2].letters_sent == 0
+    assert stats[2].emails_sent == 0
+    assert stats[2].sms_sent == 1
+    assert stats[2].emails_delivered == 0
+    assert stats[2].sms_delivered == 1
+
+    assert stats[0].sent == 1
+    assert stats[0].delivered == 0
+    assert stats[0].failed == 0
+
+    assert stats[1].sent == 1
+    assert stats[1].delivered == 1
+    assert stats[1].failed == 0
+
+    assert stats[2].sent == 1
+    assert stats[2].delivered == 1
+    assert stats[2].failed == 0
 
 
 def test_updating_one_type_of_notification_to_error_maintains_other_counts(
         notify_db,
         notify_db_session,
-        sample_job,
+        sample_service,
         sample_letter_template
 ):
-    sms_template = sample_template(notify_db, notify_db_session, service=sample_job.service)
-    email_template = sample_email_template(notify_db, notify_db_session, service=sample_job.service)
+    job_1 = sample_job(notify_db, notify_db_session, service=sample_service)
+    job_2 = sample_job(notify_db, notify_db_session, service=sample_service)
+    job_3 = sample_job(notify_db, notify_db_session, service=sample_service)
+    sms_template = sample_template(notify_db, notify_db_session, service=sample_service)
+    email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
     letter_template = sample_letter_template
 
     letter = sample_notification(
         notify_db,
         notify_db_session,
-        service=sample_job.service,
+        service=sample_service,
         template=letter_template,
-        job=sample_job,
+        job=job_1,
         status=NOTIFICATION_CREATED
     )
 
     email = sample_notification(
         notify_db,
         notify_db_session,
-        service=sample_job.service,
+        service=sample_service,
         template=email_template,
-        job=sample_job,
+        job=job_2,
         status=NOTIFICATION_CREATED
     )
 
     sms = sample_notification(
         notify_db,
         notify_db_session,
-        service=sample_job.service,
+        service=sample_service,
         template=sms_template,
-        job=sample_job,
+        job=job_3,
         status=NOTIFICATION_CREATED
     )
 
@@ -588,20 +642,50 @@ def test_updating_one_type_of_notification_to_error_maintains_other_counts(
     update_job_stats_outcome_count(email)
     update_job_stats_outcome_count(sms)
 
-    stats = JobStatistics.query.all()
-    assert len(stats) == 1
-    assert stats[0].emails_sent == 1
-    assert stats[0].sms_sent == 1
+    stats = JobStatistics.query.order_by(JobStatistics.created_at).all()
+    assert len(stats) == 3
+    assert stats[0].emails_sent == 0
+    assert stats[0].sms_sent == 0
     assert stats[0].letters_sent == 1
     assert stats[0].emails_delivered == 0
     assert stats[0].sms_delivered == 0
-    assert stats[0].sms_failed == 1
-    assert stats[0].emails_failed == 1
+    assert stats[0].sms_failed == 0
+    assert stats[0].emails_failed == 0
+    assert stats[0].letters_failed == 1
+
+    assert stats[1].emails_sent == 1
+    assert stats[1].sms_sent == 0
+    assert stats[1].letters_sent == 0
+    assert stats[1].emails_delivered == 0
+    assert stats[1].sms_delivered == 0
+    assert stats[1].sms_failed == 0
+    assert stats[1].emails_failed == 1
+    assert stats[1].letters_failed == 0
+
+    assert stats[2].emails_sent == 0
+    assert stats[2].sms_sent == 1
+    assert stats[2].letters_sent == 0
+    assert stats[2].emails_delivered == 0
+    assert stats[2].sms_delivered == 0
+    assert stats[2].sms_failed == 1
+    assert stats[2].emails_failed == 0
+    assert stats[1].letters_failed == 0
+
+    assert stats[0].sent == 1
+    assert stats[0].delivered == 0
+    assert stats[0].failed == 1
+
+    assert stats[1].sent == 1
+    assert stats[1].delivered == 0
+    assert stats[1].failed == 1
+
+    assert stats[2].sent == 1
+    assert stats[2].delivered == 0
+    assert stats[2].failed == 1
 
 
-def test_will_not_timeout_job_counts_before_notification_timeouts(notify_db, notify_db_session, sample_job):
-    sms_template = sample_template(notify_db, notify_db_session, service=sample_job.service)
-    email_template = sample_email_template(notify_db, notify_db_session, service=sample_job.service)
+def test_will_not_timeout_job_counts_before_notification_timeouts(notify_db, notify_db_session,
+                                                                  sample_job, sample_template):
 
     one_minute_ago = datetime.utcnow() - timedelta(minutes=1)
 
@@ -609,42 +693,50 @@ def test_will_not_timeout_job_counts_before_notification_timeouts(notify_db, not
         notify_db,
         notify_db_session,
         service=sample_job.service,
-        template=sms_template,
+        template=sample_template,
         job=sample_job,
         status=NOTIFICATION_CREATED
     )
 
-    email = sample_notification(
+    sms_2 = sample_notification(
         notify_db,
         notify_db_session,
         service=sample_job.service,
-        template=email_template,
+        template=sample_template,
         job=sample_job,
         status=NOTIFICATION_CREATED
     )
 
-    create_or_update_job_sending_statistics(email)
     create_or_update_job_sending_statistics(sms)
+    create_or_update_job_sending_statistics(sms_2)
 
     JobStatistics.query.update({JobStatistics.created_at: one_minute_ago})
 
-    intial_stats = JobStatistics.query.all()
+    initial_stats = JobStatistics.query.all()
 
-    assert intial_stats[0].emails_sent == 1
-    assert intial_stats[0].sms_sent == 1
-    assert intial_stats[0].emails_delivered == 0
-    assert intial_stats[0].sms_delivered == 0
-    assert intial_stats[0].sms_failed == 0
-    assert intial_stats[0].emails_failed == 0
+    assert initial_stats[0].emails_sent == 0
+    assert initial_stats[0].sms_sent == 2
+    assert initial_stats[0].emails_delivered == 0
+    assert initial_stats[0].sms_delivered == 0
+    assert initial_stats[0].sms_failed == 0
+    assert initial_stats[0].emails_failed == 0
+
+    assert initial_stats[0].sent == 2
+    assert initial_stats[0].delivered == 0
+    assert initial_stats[0].failed == 0
 
     dao_timeout_job_statistics(61)
     updated_stats = JobStatistics.query.all()
-    assert updated_stats[0].emails_sent == 1
-    assert updated_stats[0].sms_sent == 1
+    assert updated_stats[0].emails_sent == 0
+    assert updated_stats[0].sms_sent == 2
     assert updated_stats[0].emails_delivered == 0
     assert updated_stats[0].sms_delivered == 0
     assert updated_stats[0].sms_failed == 0
     assert updated_stats[0].emails_failed == 0
+
+    assert initial_stats[0].sent == 2
+    assert initial_stats[0].delivered == 0
+    assert initial_stats[0].failed == 0
 
 
 @pytest.mark.parametrize('notification_type, sms_count, email_count', [
@@ -688,6 +780,9 @@ def test_timeout_job_counts_timesout_multiple_jobs(
         assert stats.sms_delivered == 0
         assert stats.sms_failed == 0
         assert stats.emails_failed == 0
+        assert stats.sent == email_count + sms_count
+        assert stats.delivered == 0
+        assert stats.failed == 0
 
     dao_timeout_job_statistics(1)
     updated_stats = JobStatistics.query.all()
@@ -698,6 +793,9 @@ def test_timeout_job_counts_timesout_multiple_jobs(
         assert stats.sms_delivered == 0
         assert stats.sms_failed == sms_count
         assert stats.emails_failed == email_count
+        assert stats.sent == email_count + sms_count
+        assert stats.delivered == 0
+        assert stats.failed == email_count + sms_count
 
 
 count_notifications = len(NOTIFICATION_STATUS_TYPES)
@@ -754,16 +852,12 @@ def test_timeout_job_sets_all_non_delivered_emails_to_error_and_doesnt_affect_sm
     assert initial_stats[0].sms_failed == 0
     assert initial_stats[0].emails_failed == 0
 
-    all = JobStatistics.query.all()
-    for a in all:
-        print(a)
+    assert initial_stats[0].sent == count_notifications
+    assert initial_stats[0].delivered == 0
+    assert initial_stats[0].failed == 0
 
     # timeout the notifications
     dao_timeout_job_statistics(1)
-
-    all = JobStatistics.query.all()
-    for a in all:
-        print(a)
 
     # after timeout all delivered states are success and ALL other states are failed
     updated_stats = JobStatistics.query.filter_by(job_id=email_job.id).all()
@@ -774,6 +868,10 @@ def test_timeout_job_sets_all_non_delivered_emails_to_error_and_doesnt_affect_sm
     assert updated_stats[0].sms_failed == 0
     assert updated_stats[0].emails_failed == count_error_notifications
 
+    assert initial_stats[0].sent == count_notifications
+    assert initial_stats[0].delivered == count_success_notifications
+    assert initial_stats[0].failed == count_error_notifications
+
     sms_stats = JobStatistics.query.filter_by(job_id=sms_job.id).all()
     assert sms_stats[0].emails_sent == 0
     assert sms_stats[0].sms_sent == 1
@@ -781,6 +879,9 @@ def test_timeout_job_sets_all_non_delivered_emails_to_error_and_doesnt_affect_sm
     assert sms_stats[0].sms_delivered == 0
     assert sms_stats[0].sms_failed == 1
     assert sms_stats[0].emails_failed == 0
+    assert sms_stats[0].sent == 1
+    assert sms_stats[0].delivered == 0
+    assert sms_stats[0].failed == 1
 
 
 # this test is as above, but for SMS not email
@@ -810,6 +911,10 @@ def test_timeout_job_sets_all_non_delivered_states_to_error(
         assert stats.sms_failed == 0
         assert stats.emails_failed == 0
 
+        assert stats.sent == count_notifications
+        assert stats.delivered == 0
+        assert stats.failed == 0
+
     dao_timeout_job_statistics(1)
     updated_stats = JobStatistics.query.all()
 
@@ -820,3 +925,7 @@ def test_timeout_job_sets_all_non_delivered_states_to_error(
         assert stats.sms_delivered == count_success_notifications
         assert stats.sms_failed == count_error_notifications
         assert stats.emails_failed == 0
+
+        assert stats.sent == count_notifications
+        assert stats.delivered == count_success_notifications
+        assert stats.failed == count_error_notifications

@@ -47,3 +47,10 @@ def delete_inbound_sms_created_more_than_a_week_ago():
     ).delete(synchronize_session='fetch')
 
     return deleted
+
+
+def dao_get_inbound_sms_by_id(service_id, inbound_id):
+    return InboundSms.query.filter_by(
+        id=inbound_id,
+        service_id=service_id
+    ).one()

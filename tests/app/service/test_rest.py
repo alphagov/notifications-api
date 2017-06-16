@@ -10,7 +10,12 @@ from freezegun import freeze_time
 
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
-from app.models import User, Organisation, DVLA_ORG_LAND_REGISTRY, Rate, ServicePermission
+from app.models import (
+    Organisation, Rate, Service, ServicePermission, User,
+    KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
+    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
+    DVLA_ORG_LAND_REGISTRY
+)
 from tests import create_authorization_header
 from tests.app.db import create_template
 from tests.app.conftest import (
@@ -20,13 +25,9 @@ from tests.app.conftest import (
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
-from app.models import (
-    Service, ServicePermission,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
-    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE
-)
 
 from tests.app.db import create_user
+from tests.conftest import set_config_values
 
 
 def test_get_service_list(client, service_factory):
@@ -147,7 +148,32 @@ def test_get_service_by_id(client, sample_service):
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
 
 
+def test_get_service_by_id_returns_free_sms_limit(client, sample_service):
+
+    auth_header = create_authorization_header()
+    resp = client.get(
+        '/service/{}'.format(sample_service.id),
+        headers=[auth_header]
+    )
+    assert resp.status_code == 200
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert json_resp['data']['free_sms_fragment_limit'] == 250000
+
+
+def test_get_detailed_service_by_id_returns_free_sms_limit(client, sample_service):
+
+    auth_header = create_authorization_header()
+    resp = client.get(
+        '/service/{}?detailed=True'.format(sample_service.id),
+        headers=[auth_header]
+    )
+    assert resp.status_code == 200
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert json_resp['data']['free_sms_fragment_limit'] == 250000
+
+
 def test_get_service_list_has_default_permissions(client, service_factory):
+    service_factory.get('one')
     service_factory.get('one')
     service_factory.get('two')
     service_factory.get('three')
@@ -1248,6 +1274,48 @@ def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notif
         assert response.status_code == 200
 
 
+def test_get_notification_for_service_without_uuid(client, notify_db, notify_db_session):
+    service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
+    response = client.get(
+        path='/service/{}/notifications/{}'.format(service_1.id, 'foo'),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 404
+
+
+def test_get_notification_for_service(client, notify_db, notify_db_session):
+
+    service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
+    service_2 = create_service(notify_db, notify_db_session, service_name="2", email_from='2')
+
+    service_1_notifications = [
+        create_sample_notification(notify_db, notify_db_session, service=service_1),
+        create_sample_notification(notify_db, notify_db_session, service=service_1),
+        create_sample_notification(notify_db, notify_db_session, service=service_1),
+    ]
+
+    service_2_notifications = [
+        create_sample_notification(notify_db, notify_db_session, service=service_2)
+    ]
+
+    for notification in service_1_notifications:
+        response = client.get(
+            path='/service/{}/notifications/{}'.format(service_1.id, notification.id),
+            headers=[create_authorization_header()]
+        )
+        resp = json.loads(response.get_data(as_text=True))
+        assert str(resp['id']) == str(notification.id)
+        assert response.status_code == 200
+
+        service_2_response = client.get(
+            path='/service/{}/notifications/{}'.format(service_2.id, notification.id),
+            headers=[create_authorization_header()]
+        )
+        assert service_2_response.status_code == 404
+        service_2_response = json.loads(service_2_response.get_data(as_text=True))
+        assert service_2_response == {'message': 'No result found', 'result': 'error'}
+
+
 @pytest.mark.parametrize(
     'include_from_test_key, expected_count_of_notifications',
     [
@@ -1438,13 +1506,12 @@ def test_get_services_with_detailed_flag(client, notify_db, notify_db_session):
 
 
 def test_get_services_with_detailed_flag_excluding_from_test_key(notify_api, notify_db, notify_db_session):
-    notifications = [
-        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_NORMAL),
-        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEAM),
-        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST),
-        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST),
-        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST)
-    ]
+    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_NORMAL),
+    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEAM),
+    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST),
+    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST),
+    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST)
+
     with notify_api.test_request_context(), notify_api.test_client() as client:
         resp = client.get(
             '/service?detailed=True&include_from_test_key=False',
@@ -1990,7 +2057,7 @@ def test_get_yearly_billing_usage_count_returns_from_cache_if_present(client, sa
         '/service/{}/yearly-sms-billable-units?year=2016'.format(sample_service.id),
         headers=[create_authorization_header()]
     )
-    print(response.get_data(as_text=True))
+    response.get_data(as_text=True)
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == {
         'billable_sms_units': 50,
@@ -2051,3 +2118,34 @@ def test_search_for_notification_by_to_field_filters_by_statuses(client, notify_
     assert len(notifications) == 2
     assert str(notification1.id) in notification_ids
     assert str(notification2.id) in notification_ids
+
+
+def test_search_for_notification_by_to_field_returns_content(
+    client,
+    notify_db,
+    notify_db_session,
+    sample_template_with_placeholders
+):
+    notification = create_sample_notification(
+        notify_db,
+        notify_db_session,
+        to_field='+447700900855',
+        normalised_to='447700900855',
+        template=sample_template_with_placeholders,
+        personalisation={"name": "Foo"}
+    )
+
+    response = client.get(
+        '/service/{}/notifications?to={}'.format(
+            sample_template_with_placeholders.service_id, '+447700900855'
+        ),
+        headers=[create_authorization_header()]
+    )
+    notifications = json.loads(response.get_data(as_text=True))['notifications']
+
+    assert response.status_code == 200
+    assert len(notifications) == 1
+
+    assert notifications[0]['id'] == str(notification.id)
+    assert notifications[0]['to'] == '+447700900855'
+    assert notifications[0]['body'] == 'Hello Foo\nYour thing is due soon'

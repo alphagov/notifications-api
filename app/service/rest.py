@@ -59,6 +59,7 @@ from app.schemas import (
     user_schema,
     permission_schema,
     notification_with_template_schema,
+    notification_with_personalisation_schema,
     notifications_filter_schema,
     detailed_service_schema
 )
@@ -300,10 +301,23 @@ def get_all_notifications_for_service(service_id):
     ), 200
 
 
+@service_blueprint.route('/<uuid:service_id>/notifications/<uuid:notification_id>', methods=['GET'])
+def get_notification_for_service(service_id, notification_id):
+
+    notification = notifications_dao.get_notification_with_personalisation(
+        service_id,
+        notification_id,
+        key_type=None,
+    )
+    return jsonify(
+        notification_with_template_schema.dump(notification).data,
+    ), 200
+
+
 def search_for_notification_by_to_field(service_id, search_term, statuses):
     results = notifications_dao.dao_get_notifications_by_to_field(service_id, search_term, statuses)
     return jsonify(
-        notifications=notification_with_template_schema.dump(results, many=True).data
+        notifications=notification_with_personalisation_schema.dump(results, many=True).data
     ), 200
 
 
