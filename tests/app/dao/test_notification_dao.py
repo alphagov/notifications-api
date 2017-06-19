@@ -141,7 +141,7 @@ def test_should_be_able_to_get_no_template_usage_history_if_no_notifications_usi
     assert not results
 
 
-def test_should_by_able_to_get_template_count_from_notifications_history(notify_db, notify_db_session, sample_service):
+def test_should_by_able_to_get_template_count(notify_db, notify_db_session, sample_service):
     sms = sample_template(notify_db, notify_db_session)
     email = sample_email_template(notify_db, notify_db_session)
     sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
@@ -184,7 +184,7 @@ def test_template_history_should_ignore_test_keys(
     assert results[0].count == 3
 
 
-def test_should_by_able_to_get_template_count_from_notifications_history_for_service(
+def test_should_by_able_to_get_template_count_limited_for_service(
         notify_db,
         notify_db_session):
     service_1 = sample_service(notify_db, notify_db_session, service_name="test1", email_from="test1")
@@ -212,7 +212,7 @@ def test_should_by_able_to_get_zero_count_from_notifications_history_if_no_servi
     assert len(results) == 0
 
 
-def test_should_by_able_to_get_template_count_from_notifications_history_across_days(
+def test_should_by_able_to_get_template_count_across_days(
         notify_db,
         notify_db_session,
         sample_service):
@@ -243,6 +243,100 @@ def test_should_by_able_to_get_template_count_from_notifications_history_across_
     assert [(row.name, row.template_type, row.count) for row in results] == [
         ('Email Template Name', 'email', 5),
         ('Template Name', 'sms', 5)
+    ]
+
+
+def test_should_by_able_to_get_template_count_for_under_seven_days(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        sample_template):
+
+    yesterday = datetime.now() - timedelta(days=1)
+    six_days_ago = datetime.now() - timedelta(days=6)
+    seven_days_ago = datetime.now() - timedelta(days=7)
+    eight_days_ago = datetime.now() - timedelta(days=8)
+
+    sample_notification(
+        notify_db, notify_db_session, created_at=yesterday, service=sample_service, template=sample_template
+    )
+    sample_notification(
+        notify_db, notify_db_session, created_at=six_days_ago, service=sample_service, template=sample_template
+    )
+    sample_notification(
+        notify_db, notify_db_session, created_at=seven_days_ago, service=sample_service, template=sample_template
+    )
+    sample_notification(
+        notify_db, notify_db_session, created_at=eight_days_ago, service=sample_service, template=sample_template
+    )
+
+    results = dao_get_template_usage(sample_service.id, limit_days=6)
+    assert len(results) == 1
+    assert [(row.name, row.template_type, row.count) for row in results] == [
+        ('Template Name', 'sms', 2)
+    ]
+
+
+def test_should_by_able_to_get_template_count_for_whole_of_notifications_table_if_seven_days_exactly(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        sample_template):
+    yesterday = datetime.now() - timedelta(days=1)
+    six_days_ago = datetime.now() - timedelta(days=6)
+    seven_days_ago = datetime.now() - timedelta(days=7)
+    eight_days_ago = datetime.now() - timedelta(days=8)
+
+    sample_notification(
+        notify_db, notify_db_session, created_at=yesterday, service=sample_service, template=sample_template
+    )
+    sample_notification(
+        notify_db, notify_db_session, created_at=six_days_ago, service=sample_service, template=sample_template
+    )
+    sample_notification(
+        notify_db, notify_db_session, created_at=seven_days_ago, service=sample_service, template=sample_template
+    )
+    sample_notification(
+        notify_db, notify_db_session, created_at=eight_days_ago, service=sample_service, template=sample_template
+    )
+
+    results = dao_get_template_usage(sample_service.id, limit_days=7)
+    assert len(results) == 1
+    # note as we haven't run the delete task they'll ALL be in the notifications table.
+    assert [(row.name, row.template_type, row.count) for row in results] == [
+        ('Template Name', 'sms', 4)
+    ]
+
+
+def test_should_by_able_to_get_all_template_count_for_more_than_seven_days(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        sample_template):
+    yesterday = datetime.now() - timedelta(days=1)
+    six_days_ago = datetime.now() - timedelta(days=6)
+    seven_days_ago = datetime.now() - timedelta(days=7)
+    eight_days_ago = datetime.now() - timedelta(days=8)
+
+    sample_notification(
+        notify_db, notify_db_session, created_at=yesterday, service=sample_service, template=sample_template
+    )
+    sample_notification(
+        notify_db, notify_db_session, created_at=six_days_ago, service=sample_service, template=sample_template
+    )
+    sample_notification(
+        notify_db, notify_db_session, created_at=seven_days_ago, service=sample_service, template=sample_template
+    )
+    sample_notification(
+        notify_db, notify_db_session, created_at=eight_days_ago, service=sample_service, template=sample_template
+    )
+
+    Notification.query.delete()
+    # gets all from history table
+    results = dao_get_template_usage(sample_service.id, limit_days=10)
+    assert len(results) == 1
+    assert [(row.name, row.template_type, row.count) for row in results] == [
+        ('Template Name', 'sms', 4)
     ]
 
 
