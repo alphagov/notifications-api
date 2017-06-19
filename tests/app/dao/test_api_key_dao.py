@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
-from app.authentication.utils import get_secret
+from app import encryption
 from app.dao.api_key_dao import (save_model_api_key,
                                  get_model_api_keys,
                                  get_unsigned_secrets,
@@ -63,14 +63,14 @@ def test_should_return_api_key_for_service(notify_api, notify_db, notify_db_sess
 def test_should_return_unsigned_api_keys_for_service_id(sample_api_key):
     unsigned_api_key = get_unsigned_secrets(sample_api_key.service_id)
     assert len(unsigned_api_key) == 1
-    assert sample_api_key.secret != unsigned_api_key[0]
-    assert unsigned_api_key[0] == get_secret(sample_api_key.secret)
+    assert sample_api_key._secret != unsigned_api_key[0]
+    assert unsigned_api_key[0] == sample_api_key.secret
 
 
 def test_get_unsigned_secret_returns_key(sample_api_key):
     unsigned_api_key = get_unsigned_secret(sample_api_key.id)
-    assert sample_api_key.secret != unsigned_api_key
-    assert unsigned_api_key == get_secret(sample_api_key.secret)
+    assert sample_api_key._secret != unsigned_api_key
+    assert unsigned_api_key == sample_api_key.secret
 
 
 def test_should_not_allow_duplicate_key_names_per_service(sample_api_key, fake_uuid):

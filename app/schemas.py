@@ -338,7 +338,7 @@ class ApiKeySchema(BaseSchema):
 
     class Meta:
         model = models.ApiKey
-        exclude = ("service", "secret")
+        exclude = ("service", "_secret")
         strict = True
 
 

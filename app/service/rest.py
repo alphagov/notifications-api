@@ -12,7 +12,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import redis_store
-from app.authentication.utils import generate_secret
 from app.dao import notification_usage_dao, notifications_dao
 from app.dao.dao_utils import dao_rollback
 from app.dao.api_key_dao import (

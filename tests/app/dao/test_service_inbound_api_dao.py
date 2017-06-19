@@ -3,7 +3,7 @@ import uuid
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.authentication.utils import get_secret
+from app import encryption
 from app.dao.service_inbound_api_dao import (
     save_service_inbound_api,
     reset_service_inbound_api,
@@ -29,8 +29,8 @@ def test_save_service_inbound_api(sample_service):
     assert inbound_api.service_id == sample_service.id
     assert inbound_api.updated_by_id == sample_service.users[0].id
     assert inbound_api.url == "https://some_service/inbound_messages"
-    assert inbound_api.unsigned_bearer_token == "some_unique_string"
-    assert inbound_api.bearer_token != "some_unique_string"
+    assert inbound_api.bearer_token == "some_unique_string"
+    assert inbound_api._bearer_token != "some_unique_string"
     assert inbound_api.updated_at is None
 
     versioned = ServiceInboundApi.get_history_model().query.filter_by(id=inbound_api.id).one()
@@ -38,7 +38,7 @@ def test_save_service_inbound_api(sample_service):
     assert versioned.service_id == sample_service.id
     assert versioned.updated_by_id == sample_service.users[0].id
     assert versioned.url == "https://some_service/inbound_messages"
-    assert versioned.bearer_token != "some_unique_string"
+    assert encryption.decrypt(versioned._bearer_token) == "some_unique_string"
     assert versioned.updated_at is None
     assert versioned.version == 1
 
@@ -77,8 +77,8 @@ def test_update_service_inbound_api(sample_service):
     assert updated.service_id == sample_service.id
     assert updated.updated_by_id == sample_service.users[0].id
     assert updated.url == "https://some_service/changed_url"
-    assert updated.unsigned_bearer_token == "some_unique_string"
-    assert updated.bearer_token != "some_unique_string"
+    assert updated.bearer_token == "some_unique_string"
+    assert updated._bearer_token != "some_unique_string"
     assert updated.updated_at is not None
 
     versioned_results = ServiceInboundApi.get_history_model().query.filter_by(id=saved_inbound_api.id).all()
@@ -95,7 +95,7 @@ def test_update_service_inbound_api(sample_service):
         assert x.id is not None
         assert x.service_id == sample_service.id
         assert x.updated_by_id == sample_service.users[0].id
-        assert get_secret(x.bearer_token) == "some_unique_string"
+        assert encryption.decrypt(x._bearer_token) == "some_unique_string"
 
 
 def test_get_service_inbound_api(sample_service):
@@ -112,6 +112,6 @@ def test_get_service_inbound_api(sample_service):
     assert inbound_api.service_id == sample_service.id
     assert inbound_api.updated_by_id == sample_service.users[0].id
     assert inbound_api.url == "https://some_service/inbound_messages"
-    assert inbound_api.unsigned_bearer_token == "some_unique_string"
-    assert inbound_api.bearer_token != "some_unique_string"
+    assert inbound_api.bearer_token == "some_unique_string"
+    assert inbound_api._bearer_token != "some_unique_string"
     assert inbound_api.updated_at is None

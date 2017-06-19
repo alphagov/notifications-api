@@ -8,7 +8,7 @@ import pytest
 from flask import url_for, current_app
 from freezegun import freeze_time
 
-from app.authentication.utils import get_secret
+from app import encryption
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
 from app.models import (
@@ -2168,7 +2168,6 @@ def test_create_service_inbound_api(client, sample_service):
     assert resp_json["id"]
     assert resp_json["service_id"] == str(sample_service.id)
     assert resp_json["url"] == "https://some_service/inbound-sms"
-    assert resp_json["bearer_token"] != "some-unique-string"  # returned encrypted
     assert resp_json["updated_by_id"] == str(sample_service.users[0].id)
     assert resp_json["created_at"]
     assert not resp_json["updated_at"]
@@ -2217,9 +2216,7 @@ def test_update_service_inbound_api_updates_bearer_token(client, sample_service)
                            data=json.dumps(data),
                            headers=[('Content-Type', 'application/json'), create_authorization_header()])
     assert response.status_code == 200
-    resp_json = json.loads(response.get_data(as_text=True))["data"]
-    assert get_secret(resp_json["bearer_token"]) == "different_token"
-    assert service_inbound_api.unsigned_bearer_token == "different_token"
+    assert service_inbound_api.bearer_token == "different_token"
 
 
 def test_fetch_service_inbound_api(client, sample_service):

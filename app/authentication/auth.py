@@ -73,7 +73,7 @@ def requires_auth():
 
     for api_key in service.api_keys:
         try:
-            get_decode_errors(auth_token, api_key.unsigned_secret)
+            get_decode_errors(auth_token, api_key.secret)
         except TokenDecodeError:
             continue
 
