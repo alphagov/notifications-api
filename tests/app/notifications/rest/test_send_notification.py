@@ -755,13 +755,15 @@ def test_should_delete_notification_and_return_error_if_sqs_fails(
     save_model_api_key(api_key)
     auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
-    response = client.post(
-        path='/notifications/{}'.format(template_type),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+    with pytest.raises(Exception) as e:
+        client.post(
+            path='/notifications/{}'.format(template_type),
+            data=json.dumps(data),
+            headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))]
+        )
+    assert str(e.value) == 'failed to talk to SQS'
 
     mocked.assert_called_once_with([fake_uuid], queue='send-tasks')
-    assert response.status_code == 500
     assert not notifications_dao.get_notification_by_id(fake_uuid)
     assert not NotificationHistory.query.get(fake_uuid)
 

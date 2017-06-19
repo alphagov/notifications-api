@@ -297,6 +297,8 @@ class Test(Config):
     STATSD_HOST = "localhost"
     STATSD_PORT = 1000
 
+    BROKER_URL = 'you-forgot-to-mock-celery-in-your-tests://'
+
     for queue in QueueNames.all_queues():
         Config.CELERY_QUEUES.append(
             Queue(queue, Exchange('default'), routing_key=queue)

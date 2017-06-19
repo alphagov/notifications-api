@@ -7,7 +7,6 @@ from sqlalchemy.orm.exc import NoResultFound
 from marshmallow import ValidationError
 from jsonschema import ValidationError as JsonSchemaValidationError
 from app.authentication.auth import AuthError
-from app.notifications import SendNotificationToQueueError
 
 
 class InvalidRequest(Exception):
@@ -89,11 +88,6 @@ def register_errors(blueprint):
     def no_result_found(e):
         current_app.logger.exception(e)
         return jsonify(result='error', message="No result found"), 404
-
-    @blueprint.errorhandler(SendNotificationToQueueError)
-    def failed_to_create_notification(e):
-        current_app.logger.exception(e)
-        return jsonify(result='error', message=e.message), 500
 
     @blueprint.errorhandler(SQLAlchemyError)
     def db_error(e):
