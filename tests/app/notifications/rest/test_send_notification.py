@@ -321,7 +321,6 @@ def test_should_allow_valid_sms_notification(notify_api, sample_template, mocker
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             data = {
                 'to': '07700 900 855',
@@ -374,7 +373,6 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             data = {
                 'to': 'ok@ok.com',
@@ -411,7 +409,6 @@ def test_should_block_api_call_if_over_day_limit_for_live_service(
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=False)
             email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
@@ -443,7 +440,6 @@ def test_should_block_api_call_if_over_day_limit_for_restricted_service(
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=True)
             email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
@@ -479,7 +475,6 @@ def test_should_allow_api_call_if_under_day_limit_regardless_of_type(
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-            mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
             service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=restricted)
             email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
@@ -586,7 +581,7 @@ def test_should_send_email_if_team_api_key_and_a_service_user(notify_api, sample
                          created_by=sample_email_template.created_by,
                          key_type=KEY_TYPE_TEAM)
         save_model_api_key(api_key)
-        auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
+        auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
         response = client.post(
             path='/notifications/email',
@@ -619,7 +614,7 @@ def test_should_send_sms_to_anyone_with_test_key(
             key_type=KEY_TYPE_TEST
         )
         save_model_api_key(api_key)
-        auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
+        auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
         response = client.post(
             path='/notifications/sms',
@@ -654,7 +649,7 @@ def test_should_send_email_to_anyone_with_test_key(
             key_type=KEY_TYPE_TEST
         )
         save_model_api_key(api_key)
-        auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
+        auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
         response = client.post(
             path='/notifications/email',
@@ -682,7 +677,7 @@ def test_should_send_sms_if_team_api_key_and_a_service_user(notify_api, sample_t
                          created_by=sample_template.created_by,
                          key_type=KEY_TYPE_TEAM)
         save_model_api_key(api_key)
-        auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
+        auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
         response = client.post(
             path='/notifications/sms',
@@ -715,7 +710,7 @@ def test_should_persist_notification(notify_api, sample_template,
             created_by=template.created_by,
             key_type=KEY_TYPE_TEAM)
         save_model_api_key(api_key)
-        auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
+        auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
         response = client.post(
             path='/notifications/{}'.format(template_type),
@@ -758,7 +753,7 @@ def test_should_delete_notification_and_return_error_if_sqs_fails(
         created_by=template.created_by,
         key_type=KEY_TYPE_TEAM)
     save_model_api_key(api_key)
-    auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
+    auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
     response = client.post(
         path='/notifications/{}'.format(template_type),
@@ -862,7 +857,7 @@ def test_should_not_send_notification_to_non_whitelist_recipient_in_trial_mode(
     }
 
     api_key = create_sample_api_key(notify_db, notify_db_session, service, key_type=key_type)
-    auth_header = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
+    auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
     response = client.post(
         path='/notifications/{}'.format(notification_type),
@@ -923,7 +918,7 @@ def test_should_send_notification_to_whitelist_recipient(
     }
 
     sample_key = create_sample_api_key(notify_db, notify_db_session, service, key_type=key_type)
-    auth_header = create_jwt_token(secret=sample_key.unsigned_secret, client_id=str(sample_key.service_id))
+    auth_header = create_jwt_token(secret=sample_key.secret, client_id=str(sample_key.service_id))
 
     response = client.post(
         path='/notifications/{}'.format(notification_type),
@@ -1101,7 +1096,6 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
 
 def test_should_allow_store_original_number_on_sms_notification(client, sample_template, mocker):
         mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-        mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
         data = {
             'to': '+(44) 7700-900 855',
@@ -1128,7 +1122,6 @@ def test_should_allow_store_original_number_on_sms_notification(client, sample_t
 
 def test_should_not_allow_international_number_on_sms_notification(client, sample_template, mocker):
         mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-        mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
         data = {
             'to': '20-12-1234-1234',
@@ -1151,7 +1144,6 @@ def test_should_not_allow_international_number_on_sms_notification(client, sampl
 
 def test_should_allow_international_number_on_sms_notification(client, notify_db, notify_db_session, mocker):
         mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-        mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
         service = sample_service(notify_db, notify_db_session, can_send_international_sms=True)
         template = create_sample_template(notify_db, notify_db_session, service=service)

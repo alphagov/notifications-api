@@ -53,10 +53,18 @@ def build_error_message(errors):
         fields.append({"error": "ValidationError", "message": field})
     message = {
         "status_code": 400,
-        "errors": fields
+        "errors": unique_errors(fields)
     }
 
     return json.dumps(message)
+
+
+def unique_errors(dups):
+    unique = []
+    for x in dups:
+        if x not in unique:
+            unique.append(x)
+    return unique
 
 
 def __format_message(e):

@@ -741,5 +741,5 @@ def test_get_notification_selects_correct_template_for_personalisation(client,
 
 
 def _create_auth_header_from_key(api_key):
-    token = create_jwt_token(secret=api_key.unsigned_secret, client_id=str(api_key.service_id))
+    token = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
     return [('Authorization', 'Bearer {}'.format(token))]

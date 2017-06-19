@@ -22,7 +22,6 @@ from app.encryption import (
     hashpw,
     check_hash
 )
-from app.authentication.utils import get_secret
 from app import (
     db,
     encryption,
@@ -295,12 +294,46 @@ class ServiceWhitelist(db.Model):
         return 'Recipient {} of type: {}'.format(self.recipient, self.recipient_type)
 
 
+class ServiceInboundApi(db.Model, Versioned):
+    __tablename__ = 'service_inbound_api'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False, unique=True)
+    service = db.relationship('Service', backref='inbound_api')
+    url = db.Column(db.String(), nullable=False)
+    _bearer_token = db.Column("bearer_token", db.String(), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True)
+    updated_by = db.relationship('User')
+    updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+
+    @property
+    def bearer_token(self):
+        if self._bearer_token:
+            return encryption.decrypt(self._bearer_token)
+        return None
+
+    @bearer_token.setter
+    def bearer_token(self, bearer_token):
+        if bearer_token:
+            self._bearer_token = encryption.encrypt(str(bearer_token))
+
+    def serialize(self):
+        return {
+            "id": str(self.id),
+            "service_id": str(self.service_id),
+            "url": self.url,
+            "updated_by_id": str(self.updated_by_id),
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
+        }
+
+
 class ApiKey(db.Model, Versioned):
     __tablename__ = 'api_keys'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), nullable=False)
-    secret = db.Column(db.String(255), unique=True, nullable=False)
+    _secret = db.Column("secret", db.String(255), unique=True, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service', backref='api_keys')
     key_type = db.Column(db.String(255), db.ForeignKey('key_types.name'), index=True, nullable=False)
@@ -325,8 +358,15 @@ class ApiKey(db.Model, Versioned):
     )
 
     @property
-    def unsigned_secret(self):
-        return get_secret(self.secret)
+    def secret(self):
+        if self._secret:
+            return encryption.decrypt(self._secret)
+        return None
+
+    @secret.setter
+    def secret(self, secret):
+        if secret:
+            self._secret = encryption.encrypt(str(secret))
 
 
 KEY_TYPE_NORMAL = 'normal'
