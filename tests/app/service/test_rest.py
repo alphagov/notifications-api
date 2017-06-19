@@ -2174,7 +2174,7 @@ def test_create_service_inbound_api(client, sample_service):
     assert not resp_json["updated_at"]
 
 
-def test_set_service_inbound_api_raises_500_when_service_does_not_exist(client):
+def test_set_service_inbound_api_raises_404_when_service_does_not_exist(client):
     data = {
         "url": "https://some_service/inbound-sms",
         "bearer_token": "some-unique-string",
@@ -2185,7 +2185,8 @@ def test_set_service_inbound_api_raises_500_when_service_does_not_exist(client):
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
-    assert response.status_code == 500
+    assert response.status_code == 404
+    assert json.loads(response.get_data(as_text=True))['message'] == 'No result found'
 
 
 def test_update_service_inbound_api_updates_url(client, sample_service):

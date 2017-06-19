@@ -17,7 +17,14 @@ def save_service_inbound_api(service_inbound_api):
 
 @transactional
 @version_class(ServiceInboundApi)
-def reset_service_inbound_api(service_inbound_api):
+def reset_service_inbound_api(service_inbound_api, updated_by_id, url=None, bearer_token=None):
+    if url:
+        service_inbound_api.url = url
+    if bearer_token:
+        service_inbound_api.bearer_token = generate_secret(bearer_token)
+    service_inbound_api.updated_by_id = updated_by_id
+    service_inbound_api.updated_at = datetime.utcnow()
+
     db.session.add(service_inbound_api)
 
 
