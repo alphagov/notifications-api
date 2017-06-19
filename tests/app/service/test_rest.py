@@ -1322,10 +1322,8 @@ def test_get_notification_for_service_includes_created_by(admin_request, sample_
 
     resp = admin_request.get(
         'service.get_notification_for_service',
-        endpoint_kwargs={
-            'service_id': sample_notification.service_id,
-            'notification_id': sample_notification.id
-        }
+        service_id=sample_notification.service_id,
+        notification_id=sample_notification.id
     )
 
     assert resp['id'] == str(sample_notification.id)
@@ -2252,15 +2250,13 @@ def test_fetch_service_inbound_api(client, sample_service):
 def test_send_one_off_notification(admin_request, sample_template):
     response = admin_request.post(
         'service.create_one_off_notification',
-        endpoint_kwargs={
-            'service_id': sample_template.service_id
-        },
-        data={
+        service_id=sample_template.service_id,
+        _data={
             'template_id': str(sample_template.id),
             'to': '07700900001',
             'created_by': str(sample_template.service.created_by_id)
         },
-        expected_status=201
+        _expected_status=201
     )
 
     noti = Notification.query.one()

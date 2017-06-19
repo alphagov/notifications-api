@@ -290,6 +290,7 @@ class Test(Config):
     FROM_NUMBER = 'testing'
     NOTIFY_ENVIRONMENT = 'test'
     DEBUG = True
+    TESTING = True
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
     DVLA_RESPONSE_BUCKET_NAME = 'test.notify.com-ftp'
     STATSD_ENABLED = True

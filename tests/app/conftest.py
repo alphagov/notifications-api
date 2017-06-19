@@ -988,34 +988,34 @@ def admin_request(client):
     class AdminRequest:
 
         @staticmethod
-        def get(endpoint, endpoint_kwargs=None, expected_status=200):
+        def get(endpoint, _expected_status=200, **endpoint_kwargs):
             resp = client.get(
                 url_for(endpoint, **(endpoint_kwargs or {})),
                 headers=[create_authorization_header()]
             )
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == expected_status
+            assert resp.status_code == _expected_status
             return json_resp
 
         @staticmethod
-        def post(endpoint, endpoint_kwargs=None, data=None, expected_status=200):
+        def post(endpoint, _data=None, _expected_status=200, **endpoint_kwargs):
             resp = client.post(
                 url_for(endpoint, **(endpoint_kwargs or {})),
-                data=json.dumps(data),
+                data=json.dumps(_data),
                 headers=[('Content-Type', 'application/json'), create_authorization_header()]
             )
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == expected_status
+            assert resp.status_code == _expected_status
             return json_resp
 
         @staticmethod
-        def delete(endpoint, endpoint_kwargs=None, expected_status=204):
+        def delete(endpoint, _expected_status=204, **endpoint_kwargs):
             resp = client.delete(
                 url_for(endpoint, **(endpoint_kwargs or {})),
                 headers=[create_authorization_header()]
             )
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == expected_status
+            assert resp.status_code == _expected_status
             return json_resp
 
     return AdminRequest
