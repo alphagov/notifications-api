@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0098_tfl_dar
-Revises: 0097_notnull_inbound_provider
+Revision ID: 0099_tfl_dar
+Revises: 0098_service_inbound_api
 Create Date: 2017-06-05 16:15:17.744908
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0098_tfl_dar'
-down_revision = '0097_notnull_inbound_provider'
+revision = '0099_tfl_dar'
+down_revision = '0098_service_inbound_api'
 
 from alembic import op
 import sqlalchemy as sa
