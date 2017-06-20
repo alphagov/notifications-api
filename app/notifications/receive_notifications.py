@@ -5,6 +5,8 @@ from flask import jsonify, Blueprint, current_app, request
 from notifications_utils.recipients import validate_and_format_phone_number
 
 from app import statsd_client, firetext_client, mmg_client
+from app.celery import tasks
+from app.config import QueueNames
 from app.dao.services_dao import dao_fetch_services_by_sms_sender
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.models import InboundSms
@@ -30,26 +32,57 @@ def receive_mmg_sms():
 
     inbound_number = strip_leading_forty_four(post_data['Number'])
 
-    potential_services = dao_fetch_services_by_sms_sender(inbound_number)
-
-    if len(potential_services) != 1:
-        current_app.logger.error('Inbound number "{}" from MMG not associated with exactly one service'.format(
-            post_data['Number']
-        ))
-        statsd_client.incr('inbound.mmg.failed')
+    potential_services = fetch_potential_services(inbound_number, 'mmg')
+    if not potential_services:
         # since this is an issue with our service <-> number mapping, we should still tell MMG that we received
-        # succesfully
+        # successfully
         return 'RECEIVED', 200
 
     statsd_client.incr('inbound.mmg.successful')
 
     service = potential_services[0]
 
-    inbound = create_inbound_mmg_sms_object(service, post_data)
+    inbound = create_inbound_sms_object(service,
+                                        content=format_mmg_message(post_data["Message"]),
+                                        from_number=post_data['MSISDN'],
+                                        provider_ref=post_data["ID"],
+                                        date_received=post_data.get('DateRecieved'),
+                                        provider_name="mmg")
 
+    tasks.send_inbound_sms_to_service.apply_async([str(inbound.id), str(service.id)], queue=QueueNames.NOTIFY)
     current_app.logger.info('{} received inbound SMS with reference {}'.format(service.id, inbound.provider_reference))
 
     return 'RECEIVED', 200
+
+
+@receive_notifications_blueprint.route('/notifications/sms/receive/firetext', methods=['POST'])
+def receive_firetext_sms():
+    post_data = request.form
+
+    inbound_number = strip_leading_forty_four(post_data['destination'])
+
+    potential_services = fetch_potential_services(inbound_number, 'firetext')
+    if not potential_services:
+        return jsonify({
+            "status": "ok"
+        }), 200
+
+    service = potential_services[0]
+
+    inbound = create_inbound_sms_object(service=service,
+                                        content=post_data["message"],
+                                        from_number=post_data['source'],
+                                        provider_ref=None,
+                                        date_received=post_data['time'],
+                                        provider_name="firetext")
+
+    statsd_client.incr('inbound.firetext.successful')
+
+    tasks.send_inbound_sms_to_service.apply_async([str(inbound.id), str(service.id)], queue=QueueNames.NOTIFY)
+
+    return jsonify({
+        "status": "ok"
+    }), 200
 
 
 def format_mmg_message(message):
@@ -66,11 +99,10 @@ def format_mmg_datetime(date):
     return convert_bst_to_utc(parsed_datetime)
 
 
-def create_inbound_mmg_sms_object(service, json):
-    message = format_mmg_message(json['Message'])
-    user_number = validate_and_format_phone_number(json['MSISDN'], international=True)
+def create_inbound_sms_object(service, content, from_number, provider_ref, date_received, provider_name):
+    user_number = validate_and_format_phone_number(from_number, international=True)
 
-    provider_date = json.get('DateRecieved')
+    provider_date = date_received
     if provider_date:
         provider_date = format_mmg_datetime(provider_date)
 
@@ -79,52 +111,24 @@ def create_inbound_mmg_sms_object(service, json):
         notify_number=service.sms_sender,
         user_number=user_number,
         provider_date=provider_date,
-        provider_reference=json.get('ID'),
-        content=message,
-        provider=mmg_client.name
+        provider_reference=provider_ref,
+        content=content,
+        provider=provider_name
     )
     dao_create_inbound_sms(inbound)
     return inbound
 
 
-@receive_notifications_blueprint.route('/notifications/sms/receive/firetext', methods=['POST'])
-def receive_firetext_sms():
-    post_data = request.form
-
-    inbound_number = strip_leading_forty_four(post_data['destination'])
-
+def fetch_potential_services(inbound_number, provider_name):
     potential_services = dao_fetch_services_by_sms_sender(inbound_number)
+
     if len(potential_services) != 1:
-        current_app.logger.error('Inbound number "{}" from firetext not associated with exactly one service'.format(
-            post_data['destination']
+        current_app.logger.error('Inbound number "{}" from {} not associated with exactly one service'.format(
+            inbound_number, provider_name
         ))
-        statsd_client.incr('inbound.firetext.failed')
-        return jsonify({
-            "status": "ok"
-        }), 200
-
-    service = potential_services[0]
-
-    user_number = validate_and_format_phone_number(post_data['source'], international=True)
-    message = post_data['message']
-    timestamp = post_data['time']
-
-    dao_create_inbound_sms(
-        InboundSms(
-            service=service,
-            notify_number=service.sms_sender,
-            user_number=user_number,
-            provider_date=timestamp,
-            content=message,
-            provider=firetext_client.name
-        )
-    )
-
-    statsd_client.incr('inbound.firetext.successful')
-
-    return jsonify({
-        "status": "ok"
-    }), 200
+        statsd_client.incr('inbound.{}.failed'.format(provider_name))
+        return False
+    return potential_services
 
 
 def strip_leading_forty_four(number):

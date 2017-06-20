@@ -1,8 +1,10 @@
+import json
 import uuid
 from datetime import datetime
 from unittest.mock import Mock
 
 import pytest
+import requests_mock
 from flask import current_app
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
@@ -25,8 +27,8 @@ from app.celery.tasks import (
     get_template_class,
     update_job_to_sent_to_dvla,
     update_letter_notifications_statuses,
-    process_updates_from_file
-)
+    process_updates_from_file,
+    send_inbound_sms_to_service)
 from app.dao import jobs_dao, services_dao
 from app.models import (
     Notification,
@@ -47,7 +49,7 @@ from tests.app.conftest import (
     sample_email_template,
     sample_notification
 )
-from tests.app.db import create_user, create_notification, create_job
+from tests.app.db import create_user, create_notification, create_job, create_service_inbound_api, create_inbound_sms
 
 
 class AnyStringWith(str):
@@ -1119,3 +1121,97 @@ def test_update_letter_notifications_statuses_builds_updates_list(notify_api, mo
     assert updates[1].status == 'Sent'
     assert updates[1].page_count == '2'
     assert updates[1].cost_threshold == 'Sorted'
+
+
+def test_send_inbound_sms_to_service_post_https_request_to_service(notify_api, sample_service):
+    inbound_api = create_service_inbound_api(service=sample_service, url="https://some.service.gov.uk/",
+                                             bearer_token="something_unique")
+    inbound_sms = create_inbound_sms(service=sample_service, notify_number="0751421", user_number="447700900111",
+                                     provider_date=datetime(2017, 6, 20), content="Here is some content")
+    data = {
+        "id": str(inbound_sms.id),
+        "from_number": inbound_sms.user_number,
+        "content": inbound_sms.content,
+        "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT)
+    }
+
+    with requests_mock.Mocker() as request_mock:
+        request_mock.post(inbound_api.url,
+                          json={},
+                          status_code=200)
+        send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
+    assert request_mock.call_count == 1
+    assert request_mock.request_history[0].url == inbound_api.url
+    assert request_mock.request_history[0].method == 'POST'
+    assert request_mock.request_history[0].text == json.dumps(data)
+    assert request_mock.request_history[0].headers["Content-type"] == "application/json"
+    assert request_mock.request_history[0].headers["Authorization"] == "Bearer {}".format(inbound_api.bearer_token)
+
+
+def test_send_inbound_sms_to_service_does_not_send_request_when_inbound_sms_does_not_exist(notify_api, sample_service):
+    inbound_api = create_service_inbound_api(service=sample_service)
+    with requests_mock.Mocker() as request_mock:
+        request_mock.post(inbound_api.url,
+                          json={},
+                          status_code=200)
+        with pytest.raises(SQLAlchemyError):
+            send_inbound_sms_to_service(inbound_sms_id=uuid.uuid4(), service_id=sample_service.id)
+
+    assert request_mock.call_count == 0
+
+
+def test_send_inbound_sms_to_service_does_not_sent_request_when_inbound_api_does_not_exist(
+        notify_api, sample_service, mocker):
+    inbound_sms = create_inbound_sms(service=sample_service, notify_number="0751421", user_number="447700900111",
+                                     provider_date=datetime(2017, 6, 20), content="Here is some content")
+    mocked = mocker.patch("requests.request")
+    send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
+
+    mocked.call_count == 0
+
+
+def test_send_inbound_sms_to_service_retries_if_request_returns_500(notify_api, sample_service, mocker):
+    inbound_api = create_service_inbound_api(service=sample_service, url="https://some.service.gov.uk/",
+                                             bearer_token="something_unique")
+    inbound_sms = create_inbound_sms(service=sample_service, notify_number="0751421", user_number="447700900111",
+                                     provider_date=datetime(2017, 6, 20), content="Here is some content")
+    data = {
+        "id": str(inbound_sms.id),
+        "from_number": inbound_sms.user_number,
+        "content": inbound_sms.content,
+        "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT)
+    }
+
+    mocked = mocker.patch('app.celery.tasks.send_inbound_sms_to_service.retry')
+    with requests_mock.Mocker() as request_mock:
+        request_mock.post(inbound_api.url,
+                          json={},
+                          status_code=500)
+        send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
+
+    mocked.assert_called_with(
+        exc='Unable to send_inbound_sms_to_service for service_id: {} '
+            'and url: {}. \n500 Server Error: None'.format(sample_service.id, inbound_api.url),
+        queue="retry-tasks")
+
+
+def test_send_inbound_sms_to_service_does_not_retries_if_request_returns_404(notify_api, sample_service, mocker):
+    inbound_api = create_service_inbound_api(service=sample_service, url="https://some.service.gov.uk/",
+                                             bearer_token="something_unique")
+    inbound_sms = create_inbound_sms(service=sample_service, notify_number="0751421", user_number="447700900111",
+                                     provider_date=datetime(2017, 6, 20), content="Here is some content")
+    data = {
+        "id": str(inbound_sms.id),
+        "from_number": inbound_sms.user_number,
+        "content": inbound_sms.content,
+        "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT)
+    }
+
+    mocked = mocker.patch('app.celery.tasks.send_inbound_sms_to_service.retry')
+    with requests_mock.Mocker() as request_mock:
+        request_mock.post(inbound_api.url,
+                          json={},
+                          status_code=404)
+        send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
+
+    mocked.call_count == 0

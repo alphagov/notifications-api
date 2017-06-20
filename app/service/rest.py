@@ -591,9 +591,3 @@ def handle_sql_errror(e):
         return jsonify(result='error', message="No result found"), 404
     else:
         raise e
-
-
-@service_blueprint.route('/<uuid:service_id>/inbound-sms', methods=["POST"])
-def push_inbound_sms_to_service(service_id):
-
-    pass
