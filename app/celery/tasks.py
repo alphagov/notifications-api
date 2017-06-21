@@ -411,8 +411,9 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
         current_app.logger.exception("Exception raised in send_inbound_sms_to_service for service_id: {} and url: {}. "
                                      "\n{}".format(service_id, inbound_api.url, e))
         if e.response.status_code >= 500:
-            self.retry(queue=QueueNames.RETRY,
-                       exc='Unable to send_inbound_sms_to_service for service_id: {} and url: {}. \n{}'.format(
-                           service_id, inbound_api.url, e))
-    except self.MaxRetriesExceededError:
-        current_app.logger.exception('Retry: send_inbound_sms_to_service has retried the max number of times')
+            try:
+                self.retry(queue=QueueNames.RETRY,
+                           exc='Unable to send_inbound_sms_to_service for service_id: {} and url: {}. \n{}'.format(
+                               service_id, inbound_api.url, e))
+            except self.MaxRetriesExceededError:
+                current_app.logger.exception('Retry: send_inbound_sms_to_service has retried the max number of times')
