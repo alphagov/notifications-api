@@ -164,7 +164,7 @@ def test_get_inbound_sms(admin_request, sample_service):
 
     json_resp = admin_request.get(
         'inbound_sms.get_inbound_sms_for_service',
-        endpoint_kwargs={'service_id': sample_service.id}
+        service_id=sample_service.id
     )
 
     sms = json_resp['data']
@@ -192,7 +192,8 @@ def test_get_inbound_sms_limits(admin_request, sample_service):
 
     sms = admin_request.get(
         'inbound_sms.get_inbound_sms_for_service',
-        endpoint_kwargs={'service_id': sample_service.id, 'limit': 1}
+        service_id=sample_service.id,
+        limit=1,
     )
 
     assert len(sms['data']) == 1
@@ -211,7 +212,8 @@ def test_get_inbound_sms_filters_user_number(admin_request, sample_service, user
 
     sms = admin_request.get(
         'inbound_sms.get_inbound_sms_for_service',
-        endpoint_kwargs={'service_id': sample_service.id, 'user_number': user_number}
+        service_id=sample_service.id,
+        user_number=user_number,
     )
 
     assert len(sms['data']) == 1
@@ -226,7 +228,8 @@ def test_get_inbound_sms_filters_international_user_number(admin_request, sample
 
     sms = admin_request.get(
         'inbound_sms.get_inbound_sms_for_service',
-        endpoint_kwargs={'service_id': sample_service.id, 'user_number': '+1 (202) 555-0104'}
+        service_id=sample_service.id,
+        user_number='+1 (202) 555-0104',
     )
 
     assert len(sms['data']) == 1
@@ -249,7 +252,7 @@ def test_get_inbound_sms_summary(admin_request, sample_service):
 
     summary = admin_request.get(
         'inbound_sms.get_inbound_sms_summary_for_service',
-        endpoint_kwargs={'service_id': sample_service.id}
+        service_id=sample_service.id
     )
 
     assert summary == {
@@ -261,7 +264,7 @@ def test_get_inbound_sms_summary(admin_request, sample_service):
 def test_get_inbound_sms_summary_with_no_inbound(admin_request, sample_service):
     summary = admin_request.get(
         'inbound_sms.get_inbound_sms_summary_for_service',
-        endpoint_kwargs={'service_id': sample_service.id}
+        service_id=sample_service.id
     )
 
     assert summary == {
@@ -275,10 +278,8 @@ def test_get_inbound_sms_by_id_returns_200(admin_request, sample_service):
 
     response = admin_request.get(
         'inbound_sms.get_inbound_by_id',
-        endpoint_kwargs={
-            'service_id': sample_service.id,
-            'inbound_sms_id': inbound.id
-        }
+        service_id=sample_service.id,
+        inbound_sms_id=inbound.id,
     )
 
     assert response['user_number'] == '447700900001'
@@ -288,20 +289,16 @@ def test_get_inbound_sms_by_id_returns_200(admin_request, sample_service):
 def test_get_inbound_sms_by_id_invalid_id_returns_404(admin_request, sample_service):
     assert admin_request.get(
         'inbound_sms.get_inbound_by_id',
-        endpoint_kwargs={
-            'service_id': sample_service.id,
-            'inbound_sms_id': 'bar'
-        },
-        expected_status=404
+        service_id=sample_service.id,
+        inbound_sms_id='bar',
+        _expected_status=404
     )
 
 
 def test_get_inbound_sms_by_id_with_invalid_service_id_returns_404(admin_request, sample_service):
     assert admin_request.get(
         'inbound_sms.get_inbound_by_id',
-        endpoint_kwargs={
-            'service_id': 'foo',
-            'inbound_sms_id': '2cfbd6a1-1575-4664-8969-f27be0ea40d9'
-        },
-        expected_status=404
+        service_id='foo',
+        inbound_sms_id='2cfbd6a1-1575-4664-8969-f27be0ea40d9',
+        _expected_status=404
     )

@@ -95,6 +95,11 @@ class User(db.Model):
     platform_admin = db.Column(db.Boolean, nullable=False, default=False)
     current_session_id = db.Column(UUID(as_uuid=True), nullable=True)
 
+    services = db.relationship(
+        'Service',
+        secondary='user_to_service',
+        backref=db.backref('user_to_service', lazy='dynamic'))
+
     @property
     def password(self):
         raise AttributeError("Password not readable")
@@ -799,6 +804,9 @@ class Notification(db.Model):
     international = db.Column(db.Boolean, nullable=False, default=False)
     phone_prefix = db.Column(db.String, nullable=True)
     rate_multiplier = db.Column(db.Float(asdecimal=False), nullable=True)
+
+    created_by = db.relationship('User')
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
 
     @hybrid_property
     def status(self):

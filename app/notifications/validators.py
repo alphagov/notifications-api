@@ -1,16 +1,18 @@
+from sqlalchemy.orm.exc import NoResultFound
 from flask import current_app
 from notifications_utils.recipients import (
     validate_and_format_phone_number,
     validate_and_format_email_address,
     get_international_phone_info
 )
+from notifications_utils.clients.redis import rate_limit_cache_key, daily_limit_cache_key
 
-from app.dao import services_dao
+from app.dao import services_dao, templates_dao
 from app.models import KEY_TYPE_TEST, KEY_TYPE_TEAM, SMS_TYPE, SCHEDULE_NOTIFICATIONS
 from app.service.utils import service_allowed_to_send_to
 from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
 from app import redis_store
-from notifications_utils.clients.redis import rate_limit_cache_key, daily_limit_cache_key
+from app.notifications.process_notifications import create_content_for_notification
 
 
 def check_service_over_api_rate_limit(service, api_key):
@@ -96,3 +98,22 @@ def service_can_schedule_notification(service, scheduled_for):
     if scheduled_for:
         if SCHEDULE_NOTIFICATIONS not in [p.permission for p in service.permissions]:
             raise BadRequestError(message="Cannot schedule notifications (this feature is invite-only)")
+
+
+def validate_template(template_id, personalisation, service, notification_type):
+    try:
+        template = templates_dao.dao_get_template_by_id_and_service_id(
+            template_id=template_id,
+            service_id=service.id
+        )
+    except NoResultFound:
+        message = 'Template not found'
+        raise BadRequestError(message=message,
+                              fields=[{'template': message}])
+
+    check_template_is_for_notification_type(notification_type, template.template_type)
+    check_template_is_active(template)
+    template_with_content = create_content_for_notification(template, personalisation)
+    if template.template_type == SMS_TYPE:
+        check_sms_content_char_count(template_with_content.content_count)
+    return template, template_with_content

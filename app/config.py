@@ -290,11 +290,14 @@ class Test(Config):
     FROM_NUMBER = 'testing'
     NOTIFY_ENVIRONMENT = 'test'
     DEBUG = True
+    TESTING = True
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
     DVLA_RESPONSE_BUCKET_NAME = 'test.notify.com-ftp'
     STATSD_ENABLED = True
     STATSD_HOST = "localhost"
     STATSD_PORT = 1000
+
+    BROKER_URL = 'you-forgot-to-mock-celery-in-your-tests://'
 
     for queue in QueueNames.all_queues():
         Config.CELERY_QUEUES.append(

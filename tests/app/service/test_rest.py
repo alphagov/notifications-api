@@ -12,13 +12,14 @@ from app import encryption
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
 from app.models import (
-    Organisation, Rate, Service, ServicePermission, User,
+    User, Organisation, Rate, Service, ServicePermission, Notification,
+    DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
-    DVLA_ORG_LAND_REGISTRY
 )
+
 from tests import create_authorization_header
-from tests.app.db import create_template, create_service_inbound_api
+from tests.app.db import create_template, create_service_inbound_api, create_user
 from tests.app.conftest import (
     sample_service as create_service,
     sample_user_service_permission as create_user_service_permission,
@@ -26,8 +27,8 @@ from tests.app.conftest import (
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
-
 from tests.app.db import create_user
+from tests.conftest import set_config_values
 
 
 def test_get_service_list(client, service_factory):
@@ -1316,6 +1317,23 @@ def test_get_notification_for_service(client, notify_db, notify_db_session):
         assert service_2_response == {'message': 'No result found', 'result': 'error'}
 
 
+def test_get_notification_for_service_includes_created_by(admin_request, sample_notification):
+    user = sample_notification.created_by = sample_notification.service.created_by
+
+    resp = admin_request.get(
+        'service.get_notification_for_service',
+        service_id=sample_notification.service_id,
+        notification_id=sample_notification.id
+    )
+
+    assert resp['id'] == str(sample_notification.id)
+    assert resp['created_by'] == {
+        'id': str(user.id),
+        'name': user.name,
+        'email_address': user.email_address
+    }
+
+
 @pytest.mark.parametrize(
     'include_from_test_key, expected_count_of_notifications',
     [
@@ -2227,3 +2245,21 @@ def test_fetch_service_inbound_api(client, sample_service):
 
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True))["data"] == service_inbound_api.serialize()
+
+
+def test_send_one_off_notification(admin_request, sample_template, mocker):
+    mocker.patch('app.service.send_notification.send_notification_to_queue')
+
+    response = admin_request.post(
+        'service.create_one_off_notification',
+        service_id=sample_template.service_id,
+        _data={
+            'template_id': str(sample_template.id),
+            'to': '07700900001',
+            'created_by': str(sample_template.service.created_by_id)
+        },
+        _expected_status=201
+    )
+
+    noti = Notification.query.one()
+    assert response['id'] == str(noti.id)

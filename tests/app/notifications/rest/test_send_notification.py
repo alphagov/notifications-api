@@ -755,13 +755,15 @@ def test_should_delete_notification_and_return_error_if_sqs_fails(
     save_model_api_key(api_key)
     auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
-    response = client.post(
-        path='/notifications/{}'.format(template_type),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+    with pytest.raises(Exception) as e:
+        client.post(
+            path='/notifications/{}'.format(template_type),
+            data=json.dumps(data),
+            headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))]
+        )
+    assert str(e.value) == 'failed to talk to SQS'
 
     mocked.assert_called_once_with([fake_uuid], queue='send-tasks')
-    assert response.status_code == 500
     assert not notifications_dao.get_notification_by_id(fake_uuid)
     assert not NotificationHistory.query.get(fake_uuid)
 
@@ -1095,69 +1097,69 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
 
 
 def test_should_allow_store_original_number_on_sms_notification(client, sample_template, mocker):
-        mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
-        data = {
-            'to': '+(44) 7700-900 855',
-            'template': str(sample_template.id)
-        }
+    data = {
+        'to': '+(44) 7700-900 855',
+        'template': str(sample_template.id)
+    }
 
-        auth_header = create_authorization_header(service_id=sample_template.service_id)
+    auth_header = create_authorization_header(service_id=sample_template.service_id)
 
-        response = client.post(
-            path='/notifications/sms',
-            data=json.dumps(data),
-            headers=[('Content-Type', 'application/json'), auth_header])
+    response = client.post(
+        path='/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
 
-        response_data = json.loads(response.data)['data']
-        notification_id = response_data['notification']['id']
+    response_data = json.loads(response.data)['data']
+    notification_id = response_data['notification']['id']
 
-        mocked.assert_called_once_with([notification_id], queue='send-tasks')
-        assert response.status_code == 201
-        assert notification_id
-        notifications = Notification.query.all()
-        assert len(notifications) == 1
-        assert '+(44) 7700-900 855' == notifications[0].to
+    mocked.assert_called_once_with([notification_id], queue='send-tasks')
+    assert response.status_code == 201
+    assert notification_id
+    notifications = Notification.query.all()
+    assert len(notifications) == 1
+    assert '+(44) 7700-900 855' == notifications[0].to
 
 
 def test_should_not_allow_international_number_on_sms_notification(client, sample_template, mocker):
-        mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
-        data = {
-            'to': '20-12-1234-1234',
-            'template': str(sample_template.id)
-        }
+    data = {
+        'to': '20-12-1234-1234',
+        'template': str(sample_template.id)
+    }
 
-        auth_header = create_authorization_header(service_id=sample_template.service_id)
+    auth_header = create_authorization_header(service_id=sample_template.service_id)
 
-        response = client.post(
-            path='/notifications/sms',
-            data=json.dumps(data),
-            headers=[('Content-Type', 'application/json'), auth_header])
+    response = client.post(
+        path='/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
 
-        assert not mocked.called
-        assert response.status_code == 400
-        error_json = json.loads(response.get_data(as_text=True))
-        assert error_json['result'] == 'error'
-        assert error_json['message']['to'][0] == 'Cannot send to international mobile numbers'
+    assert not mocked.called
+    assert response.status_code == 400
+    error_json = json.loads(response.get_data(as_text=True))
+    assert error_json['result'] == 'error'
+    assert error_json['message']['to'][0] == 'Cannot send to international mobile numbers'
 
 
 def test_should_allow_international_number_on_sms_notification(client, notify_db, notify_db_session, mocker):
-        mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
-        service = sample_service(notify_db, notify_db_session, can_send_international_sms=True)
-        template = create_sample_template(notify_db, notify_db_session, service=service)
+    service = sample_service(notify_db, notify_db_session, can_send_international_sms=True)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
 
-        data = {
-            'to': '20-12-1234-1234',
-            'template': str(template.id)
-        }
+    data = {
+        'to': '20-12-1234-1234',
+        'template': str(template.id)
+    }
 
-        auth_header = create_authorization_header(service_id=service.id)
+    auth_header = create_authorization_header(service_id=service.id)
 
-        response = client.post(
-            path='/notifications/sms',
-            data=json.dumps(data),
-            headers=[('Content-Type', 'application/json'), auth_header])
+    response = client.post(
+        path='/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
 
-        assert response.status_code == 201
+    assert response.status_code == 201
