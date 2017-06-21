@@ -7,9 +7,10 @@ from app import encryption
 from app.dao.service_inbound_api_dao import (
     save_service_inbound_api,
     reset_service_inbound_api,
-    get_service_inbound_api
-)
+    get_service_inbound_api,
+    get_service_inbound_api_for_service)
 from app.models import ServiceInboundApi
+from tests.app.db import create_service_inbound_api
 
 
 def test_save_service_inbound_api(sample_service):
@@ -115,3 +116,14 @@ def test_get_service_inbound_api(sample_service):
     assert inbound_api.bearer_token == "some_unique_string"
     assert inbound_api._bearer_token != "some_unique_string"
     assert inbound_api.updated_at is None
+
+
+def test_get_service_inbound_api_for_service(sample_service):
+    service_inbound_api = create_service_inbound_api(service=sample_service)
+    result = get_service_inbound_api_for_service(sample_service.id)
+    assert result.id == service_inbound_api.id
+    assert result.url == service_inbound_api.url
+    assert result.bearer_token == service_inbound_api.bearer_token
+    assert result.created_at == service_inbound_api.created_at
+    assert result.updated_at == service_inbound_api.updated_at
+    assert result.updated_by_id == service_inbound_api.updated_by_id

@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from unittest.mock import call
 
@@ -7,7 +8,7 @@ from flask import json
 from app.notifications.receive_notifications import (
     format_mmg_message,
     format_mmg_datetime,
-    create_inbound_mmg_sms_object,
+    create_inbound_sms_object,
     strip_leading_forty_four
 )
 
@@ -15,7 +16,8 @@ from app.models import InboundSms
 from tests.app.db import create_service
 
 
-def test_receive_notification_returns_received_to_mmg(client, sample_service):
+def test_receive_notification_returns_received_to_mmg(client, sample_service, mocker):
+    mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     data = {"ID": "1234",
             "MSISDN": "447700900855",
             "Message": "Some message to notify",
@@ -30,6 +32,8 @@ def test_receive_notification_returns_received_to_mmg(client, sample_service):
 
     assert response.status_code == 200
     assert response.get_data(as_text=True) == 'RECEIVED'
+    inbound_sms_id = InboundSms.query.all()[0].id
+    mocked.assert_called_once_with([str(inbound_sms_id), str(sample_service.id)], queue="notify-internal-tasks")
 
 
 @pytest.mark.parametrize('message, expected_output', [
@@ -61,7 +65,8 @@ def test_create_inbound_mmg_sms_object(sample_service):
         'ID': 'bar',
     }
 
-    inbound_sms = create_inbound_mmg_sms_object(sample_service, data)
+    inbound_sms = create_inbound_sms_object(sample_service, format_mmg_message(data["Message"]),
+                                            data["MSISDN"], data["ID"], data["DateRecieved"], "mmg")
 
     assert inbound_sms.service_id == sample_service.id
     assert inbound_sms.notify_number == 'foo'
@@ -96,9 +101,10 @@ def test_receive_notification_error_if_not_single_matching_service(client, notif
 
 
 def test_receive_notification_returns_received_to_firetext(notify_db_session, client, mocker):
+    mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
-    create_service(service_name='b', sms_sender='07111111111')
+    service = create_service(service_name='b', sms_sender='07111111111')
 
     data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 
@@ -113,9 +119,12 @@ def test_receive_notification_returns_received_to_firetext(notify_db_session, cl
     mock.assert_has_calls([call('inbound.firetext.successful')])
 
     assert result['status'] == 'ok'
+    inbound_sms_id = InboundSms.query.all()[0].id
+    mocked.assert_called_once_with([str(inbound_sms_id), str(service.id)], queue="notify-internal-tasks")
 
 
 def test_receive_notification_from_firetext_persists_message(notify_db_session, client, mocker):
+    mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
     service = create_service(service_name='b', sms_sender='07111111111')
@@ -139,9 +148,11 @@ def test_receive_notification_from_firetext_persists_message(notify_db_session, 
     assert persisted.content == 'this is a message'
     assert persisted.provider == 'firetext'
     assert persisted.provider_date == datetime(2017, 1, 1, 12, 0, 0, 0)
+    mocked.assert_called_once_with([str(persisted.id), str(service.id)], queue="notify-internal-tasks")
 
 
 def test_receive_notification_from_firetext_persists_message_with_normalized_phone(notify_db_session, client, mocker):
+    mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
     create_service(service_name='b', sms_sender='07111111111')
@@ -163,6 +174,7 @@ def test_receive_notification_from_firetext_persists_message_with_normalized_pho
 
 
 def test_returns_ok_to_firetext_if_mismatched_sms_sender(notify_db_session, client, mocker):
+    mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
     create_service(service_name='b', sms_sender='07111111199')
@@ -180,6 +192,7 @@ def test_returns_ok_to_firetext_if_mismatched_sms_sender(notify_db_session, clie
     assert not InboundSms.query.all()
     assert result['status'] == 'ok'
     mock.assert_has_calls([call('inbound.firetext.failed')])
+    mocked.call_count == 0
 
 
 @pytest.mark.parametrize(

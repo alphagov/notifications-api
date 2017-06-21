@@ -1,3 +1,4 @@
+import json
 from datetime import (datetime)
 from collections import namedtuple
 
@@ -6,6 +7,8 @@ from notifications_utils.recipients import (
     RecipientCSV
 )
 from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate, LetterDVLATemplate
+from requests import HTTPError
+from requests import request
 from sqlalchemy.exc import SQLAlchemyError
 from app import (
     create_uuid,
@@ -17,6 +20,7 @@ from app import (
 from app.aws import s3
 from app.celery import provider_tasks
 from app.config import QueueNames
+from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
 from app.dao.jobs_dao import (
     dao_update_job,
     dao_get_job_by_id,
@@ -25,6 +29,7 @@ from app.dao.jobs_dao import (
     dao_update_job_status)
 from app.dao.notifications_dao import get_notification_by_id, dao_update_notifications_sent_to_dvla
 from app.dao.provider_details_dao import get_current_provider
+from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
@@ -371,3 +376,44 @@ def process_updates_from_file(response_file):
     NotificationUpdate = namedtuple('NotificationUpdate', ['reference', 'status', 'page_count', 'cost_threshold'])
     notification_updates = [NotificationUpdate(*line.split('|')) for line in response_file.splitlines()]
     return notification_updates
+
+
+@notify_celery.task(bind=True, name="send-inbound-sms", max_retries=5, default_retry_delay=300)
+@statsd(namespace="tasks")
+def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
+    inbound_api = get_service_inbound_api_for_service(service_id=service_id)
+    if not inbound_api:
+        # No API data has been set for this service
+        return
+
+    inbound_sms = dao_get_inbound_sms_by_id(service_id=service_id,
+                                            inbound_id=inbound_sms_id)
+    data = {
+        "id": str(inbound_sms.id),
+        "from_number": inbound_sms.user_number,
+        "content": inbound_sms.content,
+        "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT)
+    }
+
+    response = request(
+        method="POST",
+        url=inbound_api.url,
+        data=json.dumps(data),
+        headers={
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer {}'.format(inbound_api.bearer_token)
+        },
+        timeout=60
+    )
+    try:
+        response.raise_for_status()
+    except HTTPError as e:
+        current_app.logger.exception("Exception raised in send_inbound_sms_to_service for service_id: {} and url: {}. "
+                                     "\n{}".format(service_id, inbound_api.url, e))
+        if e.response.status_code >= 500:
+            try:
+                self.retry(queue=QueueNames.RETRY,
+                           exc='Unable to send_inbound_sms_to_service for service_id: {} and url: {}. \n{}'.format(
+                               service_id, inbound_api.url, e))
+            except self.MaxRetriesExceededError:
+                current_app.logger.exception('Retry: send_inbound_sms_to_service has retried the max number of times')
