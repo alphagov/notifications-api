@@ -1130,8 +1130,9 @@ def test_send_inbound_sms_to_service_post_https_request_to_service(notify_api, s
                                      provider_date=datetime(2017, 6, 20), content="Here is some content")
     data = {
         "id": str(inbound_sms.id),
-        "from_number": inbound_sms.user_number,
-        "content": inbound_sms.content,
+        "source_number": inbound_sms.user_number,
+        "destination_number": inbound_sms.notify_number,
+        "message": inbound_sms.content,
         "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT)
     }
 
@@ -1175,12 +1176,6 @@ def test_send_inbound_sms_to_service_retries_if_request_returns_500(notify_api, 
                                              bearer_token="something_unique")
     inbound_sms = create_inbound_sms(service=sample_service, notify_number="0751421", user_number="447700900111",
                                      provider_date=datetime(2017, 6, 20), content="Here is some content")
-    data = {
-        "id": str(inbound_sms.id),
-        "from_number": inbound_sms.user_number,
-        "content": inbound_sms.content,
-        "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT)
-    }
 
     mocked = mocker.patch('app.celery.tasks.send_inbound_sms_to_service.retry')
     with requests_mock.Mocker() as request_mock:
@@ -1200,12 +1195,6 @@ def test_send_inbound_sms_to_service_does_not_retries_if_request_returns_404(not
                                              bearer_token="something_unique")
     inbound_sms = create_inbound_sms(service=sample_service, notify_number="0751421", user_number="447700900111",
                                      provider_date=datetime(2017, 6, 20), content="Here is some content")
-    data = {
-        "id": str(inbound_sms.id),
-        "from_number": inbound_sms.user_number,
-        "content": inbound_sms.content,
-        "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT)
-    }
 
     mocked = mocker.patch('app.celery.tasks.send_inbound_sms_to_service.retry')
     with requests_mock.Mocker() as request_mock:
