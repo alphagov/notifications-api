@@ -390,8 +390,9 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
                                             inbound_id=inbound_sms_id)
     data = {
         "id": str(inbound_sms.id),
-        "from_number": inbound_sms.user_number,
-        "content": inbound_sms.content,
+        "source_number": inbound_sms.user_number,
+        "destination_number": inbound_sms.notify_number,
+        "message": inbound_sms.content,
         "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT)
     }
 
