@@ -307,7 +307,7 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(client
 
 def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(notify_db, notify_db_session, client, mocker):
 
-    service = sample_service(notify_db, notify_db_session, can_send_international_sms=True)
+    service = sample_service(notify_db, notify_db_session, permissions=["international_sms"])
     template = create_sample_template(notify_db, notify_db_session, service=service)
 
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')

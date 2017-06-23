@@ -153,17 +153,10 @@ def dao_create_service(service, user, service_id=None, service_permissions=[SMS_
     service.active = True
     service.research_mode = False
 
-    def deprecate_process_service_permissions():
-        for permission in service_permissions:
-            service_permission = ServicePermission(service_id=service.id, permission=permission)
-            service.permissions.append(service_permission)
+    for permission in service_permissions:
+        service_permission = ServicePermission(service_id=service.id, permission=permission)
+        service.permissions.append(service_permission)
 
-            if permission == INTERNATIONAL_SMS_TYPE:
-                service.can_send_international_sms = True
-            if permission == LETTER_TYPE:
-                service.can_send_letters = True
-
-    deprecate_process_service_permissions()
     db.session.add(service)
 
 

@@ -76,7 +76,7 @@ def validate_and_format_recipient(send_to, key_type, service, notification_type)
     if notification_type == SMS_TYPE:
         international_phone_info = get_international_phone_info(send_to)
 
-        if international_phone_info.international and not service.can_send_international_sms:
+        if international_phone_info.international and 'international_sms' not in service.permissions:
             raise BadRequestError(message="Cannot send to international mobile numbers")
 
         return validate_and_format_phone_number(

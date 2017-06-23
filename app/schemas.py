@@ -230,31 +230,7 @@ class ServiceSchema(BaseSchema):
                 permission = ServicePermission(service_id=in_data["id"], permission=p)
                 permissions.append(permission)
 
-            def deprecate_override_flags():
-                in_data['can_send_letters'] = LETTER_TYPE in str_permissions
-                in_data['can_send_international_sms'] = INTERNATIONAL_SMS_TYPE in str_permissions
-
-            def deprecate_convert_flags_to_permissions():
-                def convert_flags(flag, notify_type):
-                    if flag and notify_type not in str_permissions:
-                        permission = ServicePermission(service_id=in_data['id'], permission=notify_type)
-                        permissions.append(permission)
-                    elif flag is False and notify_type in str_permissions:
-                        for p in permissions:
-                            if p.permission == notify_type:
-                                permissions.remove(p)
-
-                convert_flags(in_data["can_send_international_sms"], INTERNATIONAL_SMS_TYPE)
-                convert_flags(in_data["can_send_letters"], LETTER_TYPE)
-
-            if self.override_flag:
-                deprecate_override_flags()
-            else:
-                deprecate_convert_flags_to_permissions()
             in_data['permissions'] = permissions
-
-    def set_override_flag(self, flag):
-        self.override_flag = flag
 
 
 class DetailedServiceSchema(BaseSchema):
