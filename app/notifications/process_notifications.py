@@ -17,7 +17,7 @@ from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE, Schedu
 from app.dao.notifications_dao import (dao_create_notification,
                                        dao_delete_notifications_and_history_by_id,
                                        dao_created_scheduled_notification)
-from app.v2.errors import BadRequestError, SendNotificationToQueueError
+from app.v2.errors import BadRequestError
 from app.utils import get_template_instance, cache_key_for_service_template_counter, convert_bst_to_utc
 
 
@@ -49,7 +49,8 @@ def persist_notification(
     reference=None,
     client_reference=None,
     notification_id=None,
-    simulated=False
+    simulated=False,
+    created_by_id=None
 ):
 
     notification_created_at = created_at or datetime.utcnow()
@@ -109,10 +110,9 @@ def send_notification_to_queue(notification, research_mode, queue=None):
 
     try:
         deliver_task.apply_async([str(notification.id)], queue=queue)
-    except Exception as e:
-        current_app.logger.exception(e)
+    except Exception:
         dao_delete_notifications_and_history_by_id(notification.id)
-        raise SendNotificationToQueueError()
+        raise
 
     current_app.logger.info(
         "{} {} sent to the {} queue for delivery".format(notification.notification_type,

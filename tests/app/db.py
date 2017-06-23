@@ -2,10 +2,9 @@ from datetime import datetime
 import uuid
 
 
-from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.dao.jobs_dao import dao_create_job
+from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.models import (
-    InboundSms,
     Service,
     User,
     Template,
@@ -17,7 +16,7 @@ from app.models import (
     EMAIL_TYPE,
     SMS_TYPE,
     KEY_TYPE_NORMAL,
-)
+    ServiceInboundApi)
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import dao_create_notification, dao_created_scheduled_notification
 from app.dao.templates_dao import dao_create_template
@@ -212,3 +211,17 @@ def create_inbound_sms(
     )
     dao_create_inbound_sms(inbound)
     return inbound
+
+
+def create_service_inbound_api(
+    service,
+    url="https://something.com",
+    bearer_token="some_super_secret",
+):
+    service_inbound_api = ServiceInboundApi(service_id=service.id,
+                                            url=url,
+                                            bearer_token=bearer_token,
+                                            updated_by_id=service.users[0].id
+                                            )
+    save_service_inbound_api(service_inbound_api)
+    return service_inbound_api

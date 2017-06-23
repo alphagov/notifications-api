@@ -8,16 +8,18 @@ import pytest
 from flask import url_for, current_app
 from freezegun import freeze_time
 
+from app import encryption
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
 from app.models import (
-    Organisation, Rate, Service, ServicePermission, User,
+    User, Organisation, Rate, Service, ServicePermission, Notification,
+    DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
-    DVLA_ORG_LAND_REGISTRY
 )
+
 from tests import create_authorization_header
-from tests.app.db import create_template
+from tests.app.db import create_template, create_service_inbound_api, create_user
 from tests.app.conftest import (
     sample_service as create_service,
     sample_user_service_permission as create_user_service_permission,
@@ -25,7 +27,6 @@ from tests.app.conftest import (
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
-
 from tests.app.db import create_user
 from tests.conftest import set_config_values
 
@@ -1316,6 +1317,23 @@ def test_get_notification_for_service(client, notify_db, notify_db_session):
         assert service_2_response == {'message': 'No result found', 'result': 'error'}
 
 
+def test_get_notification_for_service_includes_created_by(admin_request, sample_notification):
+    user = sample_notification.created_by = sample_notification.service.created_by
+
+    resp = admin_request.get(
+        'service.get_notification_for_service',
+        service_id=sample_notification.service_id,
+        notification_id=sample_notification.id
+    )
+
+    assert resp['id'] == str(sample_notification.id)
+    assert resp['created_by'] == {
+        'id': str(user.id),
+        'name': user.name,
+        'email_address': user.email_address
+    }
+
+
 @pytest.mark.parametrize(
     'include_from_test_key, expected_count_of_notifications',
     [
@@ -2149,3 +2167,99 @@ def test_search_for_notification_by_to_field_returns_content(
     assert notifications[0]['id'] == str(notification.id)
     assert notifications[0]['to'] == '+447700900855'
     assert notifications[0]['body'] == 'Hello Foo\nYour thing is due soon'
+
+
+def test_create_service_inbound_api(client, sample_service):
+    data = {
+        "url": "https://some_service/inbound-sms",
+        "bearer_token": "some-unique-string",
+        "updated_by_id": str(sample_service.users[0].id)
+    }
+    response = client.post(
+        '/service/{}/inbound-api'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    assert response.status_code == 201
+
+    resp_json = json.loads(response.get_data(as_text=True))["data"]
+    assert resp_json["id"]
+    assert resp_json["service_id"] == str(sample_service.id)
+    assert resp_json["url"] == "https://some_service/inbound-sms"
+    assert resp_json["updated_by_id"] == str(sample_service.users[0].id)
+    assert resp_json["created_at"]
+    assert not resp_json["updated_at"]
+
+
+def test_set_service_inbound_api_raises_404_when_service_does_not_exist(client):
+    data = {
+        "url": "https://some_service/inbound-sms",
+        "bearer_token": "some-unique-string",
+        "updated_by_id": str(uuid.uuid4())
+    }
+    response = client.post(
+        '/service/{}/inbound-api'.format(uuid.uuid4()),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    assert response.status_code == 404
+    assert json.loads(response.get_data(as_text=True))['message'] == 'No result found'
+
+
+def test_update_service_inbound_api_updates_url(client, sample_service):
+    service_inbound_api = create_service_inbound_api(service=sample_service,
+                                                     url="https://original_url.com")
+
+    data = {
+        "url": "https://another_url.com",
+        "updated_by_id": str(sample_service.users[0].id)
+    }
+    response = client.post("/service/{}/inbound-api/{}".format(sample_service.id, service_inbound_api.id),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    assert response.status_code == 200
+    resp_json = json.loads(response.get_data(as_text=True))["data"]
+    assert resp_json["url"] == "https://another_url.com"
+    assert service_inbound_api.url == "https://another_url.com"
+
+
+def test_update_service_inbound_api_updates_bearer_token(client, sample_service):
+    service_inbound_api = create_service_inbound_api(service=sample_service,
+                                                     bearer_token="some_super_secret")
+    data = {
+        "bearer_token": "different_token",
+        "updated_by_id": str(sample_service.users[0].id)
+    }
+    response = client.post("/service/{}/inbound-api/{}".format(sample_service.id, service_inbound_api.id),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    assert response.status_code == 200
+    assert service_inbound_api.bearer_token == "different_token"
+
+
+def test_fetch_service_inbound_api(client, sample_service):
+    service_inbound_api = create_service_inbound_api(service=sample_service)
+
+    response = client.get("/service/{}/inbound-api/{}".format(sample_service.id, service_inbound_api.id),
+                          headers=[create_authorization_header()])
+
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True))["data"] == service_inbound_api.serialize()
+
+
+def test_send_one_off_notification(admin_request, sample_template, mocker):
+    mocker.patch('app.service.send_notification.send_notification_to_queue')
+
+    response = admin_request.post(
+        'service.create_one_off_notification',
+        service_id=sample_template.service_id,
+        _data={
+            'template_id': str(sample_template.id),
+            'to': '07700900001',
+            'created_by': str(sample_template.service.created_by_id)
+        },
+        _expected_status=201
+    )
+
+    noti = Notification.query.one()
+    assert response['id'] == str(noti.id)

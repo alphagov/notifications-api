@@ -8,6 +8,7 @@ from flask import (
     current_app,
     Blueprint
 )
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import redis_store
@@ -20,6 +21,11 @@ from app.dao.api_key_dao import (
     expire_api_key)
 from app.dao.date_util import get_financial_year
 from app.dao.notification_usage_dao import get_total_billable_units_for_sent_sms_notifications_in_date_range
+from app.dao.service_inbound_api_dao import (
+    save_service_inbound_api,
+    reset_service_inbound_api,
+    get_service_inbound_api
+)
 from app.dao.services_dao import (
     dao_fetch_service_by_id,
     dao_fetch_all_services,
@@ -49,10 +55,13 @@ from app.errors import (
     InvalidRequest,
     register_errors
 )
-from app.models import Service
+from app.models import Service, ServiceInboundApi
+from app.schema_validation import validate
 from app.service import statistics
+from app.service.service_inbound_api_schema import service_inbound_api, update_service_inbound_api_schema
 from app.service.utils import get_whitelist_objects
 from app.service.sender import send_notification_to_service_users
+from app.service.send_notification import send_one_off_notification
 from app.schemas import (
     service_schema,
     api_key_schema,
@@ -531,3 +540,61 @@ def get_yearly_monthly_usage(service_id):
         return json.dumps(json_results)
     except TypeError:
         return jsonify(result='error', message='No valid year provided'), 400
+
+
+@service_blueprint.route('/<uuid:service_id>/inbound-api', methods=['POST'])
+def create_service_inbound_api(service_id):
+    data = request.get_json()
+    validate(data, service_inbound_api)
+    data["service_id"] = service_id
+    inbound_api = ServiceInboundApi(**data)
+    try:
+        save_service_inbound_api(inbound_api)
+    except SQLAlchemyError as e:
+        return handle_sql_errror(e)
+
+    return jsonify(data=inbound_api.serialize()), 201
+
+
+@service_blueprint.route('/<uuid:service_id>/inbound-api/<uuid:inbound_api_id>', methods=['POST'])
+def update_service_inbound_api(service_id, inbound_api_id):
+    data = request.get_json()
+    validate(data, update_service_inbound_api_schema)
+
+    to_update = get_service_inbound_api(inbound_api_id, service_id)
+
+    reset_service_inbound_api(service_inbound_api=to_update,
+                              updated_by_id=data["updated_by_id"],
+                              url=data.get("url", None),
+                              bearer_token=data.get("bearer_token", None))
+    return jsonify(data=to_update.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/inbound-api/<uuid:inbound_api_id>', methods=["GET"])
+def fetch_service_inbound_api(service_id, inbound_api_id):
+    inbound_api = get_service_inbound_api(inbound_api_id, service_id)
+
+    return jsonify(data=inbound_api.serialize()), 200
+
+
+def handle_sql_errror(e):
+    if hasattr(e, 'orig') and hasattr(e.orig, 'pgerror') and e.orig.pgerror \
+            and ('duplicate key value violates unique constraint "ix_service_inbound_api_service_id"'
+                 in e.orig.pgerror):
+        return jsonify(
+            result='error',
+            message={'name': ["You can only have one URL and bearer token for your service."]}
+        ), 400
+    elif hasattr(e, 'orig') and hasattr(e.orig, 'pgerror') and e.orig.pgerror \
+            and ('insert or update on table "service_inbound_api" violates '
+                 'foreign key constraint "service_inbound_api_service_id_fkey"'
+                 in e.orig.pgerror):
+        return jsonify(result='error', message="No result found"), 404
+    else:
+        raise e
+
+
+@service_blueprint.route('/<uuid:service_id>/send-notification', methods=['POST'])
+def create_one_off_notification(service_id):
+    resp = send_one_off_notification(service_id, request.get_json())
+    return jsonify(resp), 201

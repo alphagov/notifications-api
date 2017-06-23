@@ -1,24 +1,20 @@
 from flask import request, jsonify, current_app
-from sqlalchemy.orm.exc import NoResultFound
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
-from app.dao import templates_dao
 from app.models import SMS_TYPE, EMAIL_TYPE, PRIORITY
 from app.notifications.process_notifications import (
-    create_content_for_notification,
     persist_notification,
     send_notification_to_queue,
     simulated_recipient,
     persist_scheduled_notification)
 from app.notifications.validators import (
-    check_template_is_for_notification_type,
-    check_template_is_active,
-    check_sms_content_char_count,
     validate_and_format_recipient,
-    check_rate_limiting, service_can_schedule_notification)
+    check_rate_limiting,
+    service_can_schedule_notification,
+    validate_template
+)
 from app.schema_validation import validate
-from app.v2.errors import BadRequestError
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import (
     post_sms_request,
@@ -45,7 +41,12 @@ def post_notification(notification_type):
                                             service=authenticated_service,
                                             notification_type=notification_type)
 
-    template, template_with_content = __validate_template(form, authenticated_service, notification_type)
+    template, template_with_content = validate_template(
+        form['template_id'],
+        form.get('personalisation', {}),
+        authenticated_service,
+        notification_type
+    )
 
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(send_to, notification_type)
@@ -91,20 +92,3 @@ def post_notification(notification_type):
                                                             service_id=authenticated_service.id,
                                                             scheduled_for=scheduled_for)
     return jsonify(resp), 201
-
-
-def __validate_template(form, service, notification_type):
-    try:
-        template = templates_dao.dao_get_template_by_id_and_service_id(template_id=form['template_id'],
-                                                                       service_id=service.id)
-    except NoResultFound:
-        message = 'Template not found'
-        raise BadRequestError(message=message,
-                              fields=[{'template': message}])
-
-    check_template_is_for_notification_type(notification_type, template.template_type)
-    check_template_is_active(template)
-    template_with_content = create_content_for_notification(template, form.get('personalisation', {}))
-    if template.template_type == SMS_TYPE:
-        check_sms_content_char_count(template_with_content.content_count)
-    return template, template_with_content
