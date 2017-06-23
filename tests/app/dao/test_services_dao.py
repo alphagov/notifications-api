@@ -262,55 +262,6 @@ def test_create_service_returns_service_with_default_permissions(service_factory
     assert set([SMS_TYPE, EMAIL_TYPE]) == set(p.permission for p in service.permissions)
 
 
-# This test is only for backward compatibility and will be removed
-# when the deprecated 'can_use' columns are not used in the Service data model
-@pytest.mark.parametrize("permission_to_add, can_send_letters, can_send_international_sms",
-                         [(LETTER_TYPE, True, False),
-                          (INTERNATIONAL_SMS_TYPE, False, True)])
-def test_create_service_by_id_adding_service_permission_returns_service_with_flags_and_permissions_set(
-        service_factory, permission_to_add, can_send_letters, can_send_international_sms):
-    service = service_factory.get('testing', email_from='testing')
-
-    dao_add_service_permission(service_id=service.id, permission=permission_to_add)
-    service.set_permissions()
-
-    service = dao_fetch_service_by_id(service.id)
-    assert len(service.permissions) == 3
-    assert set([SMS_TYPE, EMAIL_TYPE, permission_to_add]) == set(p.permission for p in service.permissions)
-    assert service.can_send_letters == can_send_letters
-    assert service.can_send_international_sms == can_send_international_sms
-
-
-# This test is only for backward compatibility and will be removed
-# when the deprecated 'can_use' columns are not used in the Service data model
-@pytest.mark.parametrize("permission_to_remove, can_send_letters, can_send_international_sms",
-                         [(LETTER_TYPE, False, True),
-                          (INTERNATIONAL_SMS_TYPE, True, False)])
-def test_create_service_by_id_removing_service_permission_returns_service_with_flags_and_permissions_set(
-        service_factory, permission_to_remove, can_send_letters, can_send_international_sms):
-    service = service_factory.get('testing', email_from='testing')
-
-    dao_add_service_permission(service_id=service.id, permission=LETTER_TYPE)
-    dao_add_service_permission(service_id=service.id, permission=INTERNATIONAL_SMS_TYPE)
-    service = dao_fetch_service_by_id(service.id)
-    service.set_permissions()
-    assert len(service.permissions) == 4
-    assert service.can_send_letters
-    assert service.can_send_international_sms
-
-    dao_remove_service_permission(service_id=service.id, permission=permission_to_remove)
-    service.set_permissions()
-
-    service = dao_fetch_service_by_id(service.id)
-    expected_permissions = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE]
-    expected_permissions.remove(permission_to_remove)
-
-    assert len(service.permissions) == 3
-    assert set(expected_permissions) == set(p.permission for p in service.permissions)
-    assert service.can_send_letters == can_send_letters
-    assert service.can_send_international_sms == can_send_international_sms
-
-
 @pytest.mark.parametrize("permission_to_remove, permission_remaining",
                          [(SMS_TYPE, EMAIL_TYPE),
                           (EMAIL_TYPE, SMS_TYPE)])
@@ -343,20 +294,17 @@ def test_create_service_by_id_adding_and_removing_letter_returns_service_without
     service = service_factory.get('testing', email_from='testing')
 
     dao_add_service_permission(service_id=service.id, permission=LETTER_TYPE)
-    service.set_permissions()
 
     service = dao_fetch_service_by_id(service.id)
     assert len(service.permissions) == 3
-    assert all(p.permission in [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE] for p in service.permissions)
-    assert service.can_send_letters
+    assert set([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]) == set(service.permissions)
 
     dao_remove_service_permission(service_id=service.id, permission=LETTER_TYPE)
     service.set_permissions()
     service = dao_fetch_service_by_id(service.id)
 
     assert len(service.permissions) == 2
-    assert all(p.permission in [SMS_TYPE, EMAIL_TYPE] for p in service.permissions)
-    assert not service.can_send_letters
+    assert set([SMS_TYPE, EMAIL_TYPE]) == set(service.permissions)
 
 
 def test_create_service_creates_a_history_record_with_current_data(sample_user):

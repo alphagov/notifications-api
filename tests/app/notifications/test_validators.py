@@ -317,6 +317,6 @@ def test_rejects_api_calls_with_international_numbers_if_service_does_not_allow_
 
 @pytest.mark.parametrize('key_type', ['test', 'normal'])
 def test_allows_api_calls_with_international_numbers_if_service_does_allow_int_sms(sample_service, key_type):
-    sample_service.can_send_international_sms = True
+    sample_service.permissions = ['international_sms']
     result = validate_and_format_recipient('20-12-1234-1234', key_type, sample_service, 'sms')
     assert result == '201212341234'

@@ -187,8 +187,6 @@ class Service(db.Model, Versioned):
         backref=db.backref('user_to_service', lazy='dynamic'))
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
     research_mode = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=False)
-    can_send_letters = db.Column(db.Boolean, nullable=False, default=False)
-    can_send_international_sms = db.Column(db.Boolean, nullable=False, default=False)
     email_from = db.Column(db.Text, index=False, unique=True, nullable=False)
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
@@ -214,12 +212,6 @@ class Service(db.Model, Versioned):
     )
 
     association_proxy('permissions', 'service_permission_types')
-
-    # This is only for backward compatibility and will be dropped when the columns are removed from the data model
-    def set_permissions(self):
-        if self.permissions:
-            self.can_send_letters = LETTER_TYPE in [p.permission for p in self.permissions]
-            self.can_send_international_sms = INTERNATIONAL_SMS_TYPE in [p.permission for p in self.permissions]
 
     @staticmethod
     def free_sms_fragment_limit():

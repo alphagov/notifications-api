@@ -284,8 +284,6 @@ def test_create_service(client, sample_user):
     json_resp = json.loads(resp.get_data(as_text=True))
     assert json_resp['data']['name'] == 'created service'
     assert not json_resp['data']['research_mode']
-    assert not json_resp['data']['can_send_letters']
-    assert not json_resp['data']['can_send_international_sms']
 
 
 def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_uuid):
@@ -478,13 +476,10 @@ def test_update_service_flags(client, sample_service):
     assert resp.status_code == 200
     assert json_resp['data']['name'] == sample_service.name
     assert json_resp['data']['research_mode'] is False
-    assert json_resp['data']['can_send_letters'] is False
-    assert json_resp['data']['can_send_international_sms'] is False
 
     data = {
         'research_mode': True,
-        'can_send_letters': True,
-        'can_send_international_sms': True,
+        'permissions': ['letter', 'international_sms']
     }
 
     auth_header = create_authorization_header()
@@ -497,8 +492,7 @@ def test_update_service_flags(client, sample_service):
     result = json.loads(resp.get_data(as_text=True))
     assert resp.status_code == 200
     assert result['data']['research_mode'] is True
-    assert result['data']['can_send_letters'] is True
-    assert result['data']['can_send_international_sms'] is True
+    assert set(result['data']['permissions']) == set(['letter', 'international_sms'])
 
 
 @pytest.fixture(scope='function')
@@ -509,8 +503,7 @@ def service_with_no_permissions(notify_db, notify_db_session):
 def test_update_service_flags_with_service_without_default_service_permissions(client, service_with_no_permissions):
     auth_header = create_authorization_header()
     data = {
-        'can_send_letters': True,
-        'can_send_international_sms': True,
+        'permissions': ['letter', 'international_sms'],
     }
 
     resp = client.post(
@@ -521,8 +514,6 @@ def test_update_service_flags_with_service_without_default_service_permissions(c
     result = json.loads(resp.get_data(as_text=True))
 
     assert resp.status_code == 200
-    assert result['data']['can_send_letters'] is True
-    assert result['data']['can_send_international_sms'] is True
     assert set(result['data']['permissions']) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
 
 
@@ -532,10 +523,10 @@ def test_update_service_flags_will_remove_service_permissions(client, notify_db,
     service = create_service(
         notify_db, notify_db_session, permissions=[SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE])
 
-    assert service.can_send_international_sms is True
+    assert INTERNATIONAL_SMS_TYPE in service.permissions
 
     data = {
-        'can_send_international_sms': False
+        'permissions': [SMS_TYPE, EMAIL_TYPE]
     }
 
     resp = client.post(
@@ -546,7 +537,7 @@ def test_update_service_flags_will_remove_service_permissions(client, notify_db,
     result = json.loads(resp.get_data(as_text=True))
 
     assert resp.status_code == 200
-    assert result['data']['can_send_international_sms'] is False
+    assert 'international_sms' not in result['data']['permissions']
 
     permissions = ServicePermission.query.filter_by(service_id=service.id).all()
     assert set([p.permission for p in permissions]) == set([SMS_TYPE, EMAIL_TYPE])
@@ -567,8 +558,6 @@ def test_update_permissions_will_override_permission_flags(client, service_with_
     result = json.loads(resp.get_data(as_text=True))
 
     assert resp.status_code == 200
-    assert result['data']['can_send_letters'] is True
-    assert result['data']['can_send_international_sms'] is True
     assert set(result['data']['permissions']) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
 
 

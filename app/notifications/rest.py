@@ -165,7 +165,7 @@ def get_notification_return_data(notification_id, notification, template):
 def _service_can_send_internationally(service, number):
     international_phone_info = get_international_phone_info(number)
 
-    if international_phone_info.international and not service.can_send_international_sms:
+    if international_phone_info.international and 'international_sms' not in service.permissions:
         raise InvalidRequest(
             {'to': ["Cannot send to international mobile numbers"]},
             status_code=400

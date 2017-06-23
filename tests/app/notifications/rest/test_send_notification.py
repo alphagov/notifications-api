@@ -1147,7 +1147,7 @@ def test_should_not_allow_international_number_on_sms_notification(client, sampl
 def test_should_allow_international_number_on_sms_notification(client, notify_db, notify_db_session, mocker):
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
-    service = sample_service(notify_db, notify_db_session, can_send_international_sms=True)
+    service = sample_service(notify_db, notify_db_session, permissions=['international_sms'])
     template = create_sample_template(notify_db, notify_db_session, service=service)
 
     data = {
