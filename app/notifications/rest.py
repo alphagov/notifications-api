@@ -16,7 +16,7 @@ from app.errors import (
     InvalidRequest
 )
 from app.models import KEY_TYPE_TEAM, PRIORITY
-from app.models import INTERNATIONAL_SMS_TYPE, SMS_TYPE
+from app.models import INTERNATIONAL_SMS_TYPE, SMS_TYPE, INBOUND_SMS_TYPE, EMAIL_TYPE
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
@@ -119,7 +119,11 @@ def send_notification(notification_type):
 
     _service_allowed_to_send_to(notification_form, authenticated_service)
     if notification_type == SMS_TYPE:
+        _service_has_permission(authenticated_service, SMS_TYPE)
         _service_can_send_internationally(authenticated_service, notification_form['to'])
+    elif notification_type == EMAIL_TYPE:
+        print('email')
+        _service_has_permission(authenticated_service, EMAIL_TYPE)
 
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(notification_form['to'], notification_type)
@@ -160,6 +164,22 @@ def get_notification_return_data(notification_id, notification, template):
         output.update({'subject': template.subject})
 
     return output
+
+
+def _service_has_permission(service, notify_type):
+    print(service.permissions)
+    if notify_type not in [p.permission for p in service.permissions]:
+        notify_type_text = notify_type + 's'
+        action = 'send'
+        if notify_type == SMS_TYPE or notify_type == INBOUND_SMS_TYPE:
+            notify_type_text = 'text messages'
+            if notify_type == INBOUND_SMS_TYPE:
+                action = 'receive'
+
+        raise InvalidRequest(
+            {'to': ["Cannot {action} {type}".format(action=action, type=notify_type_text)]},
+            status_code=400
+        )
 
 
 def _service_can_send_internationally(service, number):

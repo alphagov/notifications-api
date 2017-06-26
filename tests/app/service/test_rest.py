@@ -523,7 +523,7 @@ def test_update_service_flags_will_remove_service_permissions(client, notify_db,
     service = create_service(
         notify_db, notify_db_session, permissions=[SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE])
 
-    assert INTERNATIONAL_SMS_TYPE in service.permissions
+    assert INTERNATIONAL_SMS_TYPE in [p.permission for p in service.permissions]
 
     data = {
         'permissions': [SMS_TYPE, EMAIL_TYPE]
