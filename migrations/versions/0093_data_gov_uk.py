@@ -21,7 +21,7 @@ def upgrade():
     op.execute("""INSERT INTO organisation VALUES (
         '{}',
         '',
-        '',
+        'data_gov_uk_x2.png',
         ''
     )""".format(DATA_GOV_UK_ID))
 
