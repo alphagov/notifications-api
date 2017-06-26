@@ -28,6 +28,7 @@ def receive_mmg_sms():
         'DateRecieved': '2017-05-21+11%3A56%3A11'
     }
     """
+    current_app.logger.info("Inbound sms sender IP information {}".format(request.headers.getlist("X-Forwarded-For")))
     post_data = request.get_json()
 
     inbound_number = strip_leading_forty_four(post_data['Number'])
