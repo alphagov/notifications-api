@@ -163,12 +163,13 @@ def sample_template(
     user=None,
     service=None,
     created_by=None,
-    process_type='normal'
+    process_type='normal',
+    permissions=[EMAIL_TYPE, SMS_TYPE]
 ):
     if user is None:
         user = create_user()
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = sample_service(notify_db, notify_db_session, permissions=permissions)
     if created_by is None:
         created_by = create_user()
 
@@ -188,6 +189,11 @@ def sample_template(
     template = Template(**data)
     dao_create_template(template)
     return template
+
+
+@pytest.fixture(scope='function')
+def sample_template_without_sms_permission(notify_db, notify_db_session):
+    return sample_template(notify_db, notify_db_session, permissions=[EMAIL_TYPE])
 
 
 @pytest.fixture(scope='function')
@@ -213,11 +219,12 @@ def sample_email_template(
         user=None,
         content="This is a template",
         subject_line='Email Subject',
-        service=None):
+        service=None,
+        permissions=[EMAIL_TYPE, SMS_TYPE]):
     if user is None:
         user = create_user()
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = sample_service(notify_db, notify_db_session, permissions=permissions)
     data = {
         'name': template_name,
         'template_type': template_type,
@@ -229,6 +236,11 @@ def sample_email_template(
     template = Template(**data)
     dao_create_template(template)
     return template
+
+
+@pytest.fixture(scope='function')
+def sample_template_without_email_permission(notify_db, notify_db_session):
+    return sample_email_template(notify_db, notify_db_session, permissions=[SMS_TYPE])
 
 
 @pytest.fixture
