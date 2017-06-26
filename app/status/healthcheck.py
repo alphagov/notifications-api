@@ -57,6 +57,11 @@ def show_delivery_status():
             db_version=get_db_version()), 200
 
 
+@status.route('/_check_IP_source')
+def show_check_IP_source():
+    return jsonify({'ip': request.headers.getlist("X-Forwarded-For")}), 200
+
+
 def get_db_version():
     try:
         query = 'SELECT version_num FROM alembic_version'
