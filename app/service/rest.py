@@ -142,7 +142,6 @@ def update_service(service_id):
     service_going_live = fetched_service.restricted and not request.get_json().get('restricted', True)
 
     current_data = dict(service_schema.dump(fetched_service).data.items())
-    service_schema.set_override_flag(request.get_json().get('permissions') is not None)
     current_data.update(request.get_json())
     update_dict = service_schema.load(current_data).data
     dao_update_service(update_dict)

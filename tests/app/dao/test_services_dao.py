@@ -297,14 +297,13 @@ def test_create_service_by_id_adding_and_removing_letter_returns_service_without
 
     service = dao_fetch_service_by_id(service.id)
     assert len(service.permissions) == 3
-    assert set([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]) == set(service.permissions)
+    assert set([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]) == set([p.permission for p in service.permissions])
 
     dao_remove_service_permission(service_id=service.id, permission=LETTER_TYPE)
-    service.set_permissions()
     service = dao_fetch_service_by_id(service.id)
 
     assert len(service.permissions) == 2
-    assert set([SMS_TYPE, EMAIL_TYPE]) == set(service.permissions)
+    assert set([SMS_TYPE, EMAIL_TYPE]) == set([p.permission for p in service.permissions])
 
 
 def test_create_service_creates_a_history_record_with_current_data(sample_user):

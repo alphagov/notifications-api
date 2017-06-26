@@ -23,7 +23,7 @@ from app.celery.statistics_tasks import record_initial_job_statistics, create_in
 
 def send_sms_to_provider(notification):
     service = notification.service
-
+    print('send')
     if not service.active:
         technical_failure(notification=notification)
         return
