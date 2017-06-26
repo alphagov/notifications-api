@@ -77,6 +77,7 @@ def test_persist_notification_creates_and_save_to_db(sample_template, sample_api
     assert notification_from_db.status == notification_history_from_db.status
     assert notification_from_db.reference == notification_history_from_db.reference
     assert notification_from_db.client_reference == notification_history_from_db.client_reference
+    assert notification_from_db.created_by_id == notification_history_from_db.created_by_id
 
     mocked_redis.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count")
 
@@ -136,7 +137,8 @@ def test_persist_notification_does_not_increment_cache_if_test_key(
         api_key.key_type,
         job_id=sample_job.id,
         job_row_number=100,
-        reference="ref")
+        reference="ref",
+    )
 
     assert Notification.query.count() == 1
 
@@ -166,7 +168,8 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
         job_id=sample_job.id,
         job_row_number=10,
         client_reference="ref from client",
-        notification_id=n_id
+        notification_id=n_id,
+        created_by_id=sample_job.created_by_id
     )
     assert Notification.query.count() == 1
     assert NotificationHistory.query.count() == 1
@@ -182,6 +185,7 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
     assert persisted_notification.international is False
     assert persisted_notification.phone_prefix == '44'
     assert persisted_notification.rate_multiplier == 1
+    assert persisted_notification.created_by_id == sample_job.created_by_id
 
 
 @freeze_time("2016-01-01 11:09:00.061258")

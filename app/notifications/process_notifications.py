@@ -52,7 +52,6 @@ def persist_notification(
     simulated=False,
     created_by_id=None
 ):
-
     notification_created_at = created_at or datetime.utcnow()
 
     notification = Notification(
@@ -70,7 +69,8 @@ def persist_notification(
         job_id=job_id,
         job_row_number=job_row_number,
         client_reference=client_reference,
-        reference=reference
+        reference=reference,
+        created_by_id=created_by_id
     )
 
     if notification_type == SMS_TYPE:
