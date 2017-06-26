@@ -8,7 +8,7 @@ from notifications_utils.recipients import (
 from notifications_utils.clients.redis import rate_limit_cache_key, daily_limit_cache_key
 
 from app.dao import services_dao, templates_dao
-from app.models import KEY_TYPE_TEST, KEY_TYPE_TEAM, SMS_TYPE, SCHEDULE_NOTIFICATIONS
+from app.models import INTERNATIONAL_SMS_TYPE, KEY_TYPE_TEST, KEY_TYPE_TEAM, SMS_TYPE, SCHEDULE_NOTIFICATIONS
 from app.service.utils import service_allowed_to_send_to
 from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
 from app import redis_store
@@ -76,7 +76,8 @@ def validate_and_format_recipient(send_to, key_type, service, notification_type)
     if notification_type == SMS_TYPE:
         international_phone_info = get_international_phone_info(send_to)
 
-        if international_phone_info.international and 'international_sms' not in service.permissions:
+        if international_phone_info.international and \
+                INTERNATIONAL_SMS_TYPE not in [p.permission for p in service.permissions]:
             raise BadRequestError(message="Cannot send to international mobile numbers")
 
         return validate_and_format_phone_number(

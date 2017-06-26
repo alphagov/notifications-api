@@ -9,7 +9,8 @@ from notifications_python_client.authentication import create_jwt_token
 
 import app
 from app.dao import notifications_dao
-from app.models import ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, Notification, NotificationHistory
+from app.models import (
+    ApiKey, INTERNATIONAL_SMS_TYPE, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, Notification, NotificationHistory)
 from app.dao.templates_dao import dao_get_all_templates_for_service, dao_update_template
 from app.dao.services_dao import dao_update_service
 from app.dao.api_key_dao import save_model_api_key
@@ -1147,7 +1148,7 @@ def test_should_not_allow_international_number_on_sms_notification(client, sampl
 def test_should_allow_international_number_on_sms_notification(client, notify_db, notify_db_session, mocker):
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
-    service = sample_service(notify_db, notify_db_session, permissions=['international_sms'])
+    service = sample_service(notify_db, notify_db_session, permissions=[INTERNATIONAL_SMS_TYPE, 'sms'])
     template = create_sample_template(notify_db, notify_db_session, service=service)
 
     data = {

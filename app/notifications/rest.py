@@ -16,7 +16,7 @@ from app.errors import (
     InvalidRequest
 )
 from app.models import KEY_TYPE_TEAM, PRIORITY
-from app.models import SMS_TYPE
+from app.models import INTERNATIONAL_SMS_TYPE, SMS_TYPE
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
@@ -165,7 +165,8 @@ def get_notification_return_data(notification_id, notification, template):
 def _service_can_send_internationally(service, number):
     international_phone_info = get_international_phone_info(number)
 
-    if international_phone_info.international and 'international_sms' not in service.permissions:
+    if international_phone_info.international and \
+            INTERNATIONAL_SMS_TYPE not in [p.permission for p in service.permissions]:
         raise InvalidRequest(
             {'to': ["Cannot send to international mobile numbers"]},
             status_code=400
