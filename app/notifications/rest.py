@@ -122,7 +122,6 @@ def send_notification(notification_type):
         _service_has_permission(authenticated_service, SMS_TYPE)
         _service_can_send_internationally(authenticated_service, notification_form['to'])
     elif notification_type == EMAIL_TYPE:
-        print('email')
         _service_has_permission(authenticated_service, EMAIL_TYPE)
 
     # Do not persist or send notification to the queue if it is a simulated recipient
@@ -167,7 +166,6 @@ def get_notification_return_data(notification_id, notification, template):
 
 
 def _service_has_permission(service, notify_type):
-    print(service.permissions)
     if notify_type not in [p.permission for p in service.permissions]:
         notify_type_text = notify_type + 's'
         action = 'send'
