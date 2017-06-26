@@ -20,7 +20,7 @@ def upgrade():
         '{}',
         '',
         'een_x2.png',
-        'Enterprise Europe Network'
+        ''
     )""".format(ENTERPRISE_EUROPE_NETWORK_ID))
 
 
