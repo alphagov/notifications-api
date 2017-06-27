@@ -15,7 +15,8 @@ from app.dao.templates_dao import (
 )
 from notifications_utils.template import SMSMessageTemplate
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.models import SMS_TYPE
+from app.dao.service_permissions_dao import dao_fetch_service_permissions
+from app.models import SMS_TYPE, EMAIL_TYPE
 from app.schemas import (template_schema, template_history_schema)
 
 template_blueprint = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
@@ -36,10 +37,26 @@ def _content_count_greater_than_limit(content, template_type):
     return template.content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
 
 
+def _has_service_permission(template_type, action, permissions):
+    if template_type not in [p.permission for p in permissions]:
+        template_type_text = template_type
+        if template_type == SMS_TYPE:
+            template_type_text = 'text message'
+        message = 'Cannot {action} {type} templates'.format(
+            action=action, type=template_type_text)
+        errors = {'content': [message]}
+        raise InvalidRequest(errors, status_code=400)
+
+
 @template_blueprint.route('', methods=['POST'])
 def create_template(service_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
+    # permissions needs to be placed here otherwise marshmallow will intefere with versioning
+    permissions = fetched_service.permissions
     new_template = template_schema.load(request.get_json()).data
+
+    _has_service_permission(new_template.template_type, 'create', permissions)
+
     new_template.service = fetched_service
     over_limit = _content_count_greater_than_limit(new_template.content, new_template.template_type)
     if over_limit:
@@ -55,6 +72,8 @@ def create_template(service_id):
 @template_blueprint.route('/<uuid:template_id>', methods=['POST'])
 def update_template(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
+
+    _has_service_permission(fetched_template.template_type, 'update', fetched_template.service.permissions)
 
     data = request.get_json()
 
