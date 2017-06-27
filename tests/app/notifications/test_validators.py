@@ -2,6 +2,7 @@ import pytest
 from freezegun import freeze_time
 from flask import current_app
 import app
+from app.models import INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE
 from app.notifications.validators import (
     check_service_over_daily_message_limit,
     check_template_is_for_notification_type,
@@ -116,16 +117,16 @@ def test_check_service_message_limit_in_cache_over_message_limit_fails(
 
 
 @pytest.mark.parametrize('template_type, notification_type',
-                         [('email', 'email'),
-                          ('sms', 'sms')])
+                         [(EMAIL_TYPE, EMAIL_TYPE),
+                          (SMS_TYPE, SMS_TYPE)])
 def test_check_template_is_for_notification_type_pass(template_type, notification_type):
     assert check_template_is_for_notification_type(notification_type=notification_type,
                                                    template_type=template_type) is None
 
 
 @pytest.mark.parametrize('template_type, notification_type',
-                         [('sms', 'email'),
-                          ('email', 'sms')])
+                         [(SMS_TYPE, EMAIL_TYPE),
+                          (EMAIL_TYPE, SMS_TYPE)])
 def test_check_template_is_for_notification_type_fails_when_template_type_does_not_match_notification_type(
         template_type, notification_type):
     with pytest.raises(BadRequestError) as e:
@@ -309,7 +310,7 @@ def test_should_not_rate_limit_if_limiting_is_disabled(
 @pytest.mark.parametrize('key_type', ['test', 'normal'])
 def test_rejects_api_calls_with_international_numbers_if_service_does_not_allow_int_sms(sample_service, key_type):
     with pytest.raises(BadRequestError) as e:
-        validate_and_format_recipient('20-12-1234-1234', key_type, sample_service, 'sms')
+        validate_and_format_recipient('20-12-1234-1234', key_type, sample_service, SMS_TYPE)
     assert e.value.status_code == 400
     assert e.value.message == 'Cannot send to international mobile numbers'
     assert e.value.fields == []
@@ -318,6 +319,6 @@ def test_rejects_api_calls_with_international_numbers_if_service_does_not_allow_
 @pytest.mark.parametrize('key_type', ['test', 'normal'])
 def test_allows_api_calls_with_international_numbers_if_service_does_allow_int_sms(
         key_type, notify_db, notify_db_session):
-    service = create_service(notify_db, notify_db_session, permissions=['sms', 'international_sms'])
-    result = validate_and_format_recipient('20-12-1234-1234', key_type, service, 'sms')
+    service = create_service(notify_db, notify_db_session, permissions=[SMS_TYPE, INTERNATIONAL_SMS_TYPE])
+    result = validate_and_format_recipient('20-12-1234-1234', key_type, service, SMS_TYPE)
     assert result == '201212341234'
