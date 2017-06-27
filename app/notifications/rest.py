@@ -169,7 +169,7 @@ def _service_has_permission(service, notify_type):
     if notify_type not in [p.permission for p in service.permissions]:
         notify_type_text = notify_type + 's'
         action = 'send'
-        if notify_type == SMS_TYPE or notify_type == INBOUND_SMS_TYPE:
+        if notify_type in [SMS_TYPE, INBOUND_SMS_TYPE]:
             notify_type_text = 'text messages'
             if notify_type == INBOUND_SMS_TYPE:
                 action = 'receive'
