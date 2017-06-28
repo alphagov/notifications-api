@@ -297,6 +297,11 @@ class BaseTemplateSchema(BaseSchema):
         strict = True
 
 
+class TemplateRedactedSchema(BaseSchema):
+    class Meta:
+        model = models.TemplateRedacted
+
+
 class TemplateSchema(BaseTemplateSchema):
 
     created_by = field_for(models.Template, 'created_by', required=True)
@@ -440,7 +445,7 @@ class NotificationWithTemplateSchema(BaseSchema):
 
     template = fields.Nested(
         TemplateSchema,
-        only=['id', 'version', 'name', 'template_type', 'content', 'subject'],
+        only=['id', 'version', 'name', 'template_type', 'content', 'subject', 'redact_personalisation'],
         dump_only=True
     )
     job = fields.Nested(JobSchema, only=["id", "original_file_name"], dump_only=True)

@@ -443,6 +443,8 @@ class Template(db.Model):
         default=NORMAL
     )
 
+    redact_personalisation = association_proxy('template_redacted', 'redact_personalisation')
+
     def get_link(self):
         # TODO: use "/v2/" route once available
         return url_for(
