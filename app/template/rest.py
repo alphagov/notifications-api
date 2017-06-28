@@ -61,8 +61,10 @@ def update_template(service_id, template_id):
     # if redacting, don't update anything else
     if data.get('redact_personalisation') is True and 'updated_by_id' in data:
         # we also don't need to check what was passed in redact_personalisation - its presence in the dict is enough.
-        dao_redact_template(fetched_template, data['updated_by_id'])
-        return '', 200
+        # also, only
+        if not fetched_template.redact_personalisation:
+            dao_redact_template(fetched_template, data['updated_by_id'])
+        return 'null', 200
 
     current_data = dict(template_schema.dump(fetched_template).data.items())
     updated_template = dict(template_schema.dump(fetched_template).data.items())

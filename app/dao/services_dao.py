@@ -19,6 +19,7 @@ from app.models import (
     ApiKey,
     Template,
     TemplateHistory,
+    TemplateRedacted,
     Job,
     NotificationHistory,
     Notification,
@@ -218,6 +219,7 @@ def delete_service_and_all_associated_db_objects(service):
     _delete_commit(Job.query.filter_by(service=service))
     _delete_commit(NotificationHistory.query.filter_by(service=service))
     _delete_commit(Notification.query.filter_by(service=service))
+    _delete_commit(TemplateRedacted.query.filter_by(service=service))
     _delete_commit(Template.query.filter_by(service=service))
     _delete_commit(TemplateHistory.query.filter_by(service_id=service.id))
     _delete_commit(ServicePermission.query.filter_by(service_id=service.id))
