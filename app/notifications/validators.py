@@ -8,7 +8,10 @@ from notifications_utils.recipients import (
 from notifications_utils.clients.redis import rate_limit_cache_key, daily_limit_cache_key
 
 from app.dao import services_dao, templates_dao
-from app.models import INTERNATIONAL_SMS_TYPE, KEY_TYPE_TEST, KEY_TYPE_TEAM, SMS_TYPE, SCHEDULE_NOTIFICATIONS
+from app.models import (
+    INTERNATIONAL_SMS_TYPE, SMS_TYPE,
+    KEY_TYPE_TEST, KEY_TYPE_TEAM, SCHEDULE_NOTIFICATIONS
+)
 from app.service.utils import service_allowed_to_send_to
 from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
 from app import redis_store
