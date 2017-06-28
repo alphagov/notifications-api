@@ -15,8 +15,10 @@ from app.errors import (
     register_errors,
     InvalidRequest
 )
-from app.models import KEY_TYPE_TEAM, PRIORITY
-from app.models import INTERNATIONAL_SMS_TYPE, SMS_TYPE, INBOUND_SMS_TYPE, EMAIL_TYPE
+from app.models import (
+    EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, SMS_TYPE,
+    KEY_TYPE_TEAM, PRIORITY
+)
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
@@ -168,14 +170,11 @@ def get_notification_return_data(notification_id, notification, template):
 def _service_has_permission(service, notify_type):
     if notify_type not in [p.permission for p in service.permissions]:
         notify_type_text = notify_type + 's'
-        action = 'send'
-        if notify_type in [SMS_TYPE, INBOUND_SMS_TYPE]:
+        if notify_type == SMS_TYPE:
             notify_type_text = 'text messages'
-            if notify_type == INBOUND_SMS_TYPE:
-                action = 'receive'
 
         raise InvalidRequest(
-            {'to': ["Cannot {action} {type}".format(action=action, type=notify_type_text)]},
+            {'to': ["Cannot send {}".format(notify_type_text)]},
             status_code=400
         )
 

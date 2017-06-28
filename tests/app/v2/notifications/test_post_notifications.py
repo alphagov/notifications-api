@@ -3,7 +3,10 @@ import uuid
 import pytest
 from freezegun import freeze_time
 
-from app.models import Notification, ScheduledNotification, SCHEDULE_NOTIFICATIONS, EMAIL_TYPE, SMS_TYPE
+from app.models import (
+    Notification, ScheduledNotification, SCHEDULE_NOTIFICATIONS,
+    EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, SMS_TYPE
+)
 from flask import json, current_app
 
 from app.models import Notification
@@ -158,9 +161,9 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
 
 
 @pytest.mark.parametrize('recipient, notification_type', [
-    ('simulate-delivered@notifications.service.gov.uk', 'email'),
-    ('simulate-delivered-2@notifications.service.gov.uk', 'email'),
-    ('simulate-delivered-3@notifications.service.gov.uk', 'email'),
+    ('simulate-delivered@notifications.service.gov.uk', EMAIL_TYPE),
+    ('simulate-delivered-2@notifications.service.gov.uk', EMAIL_TYPE),
+    ('simulate-delivered-3@notifications.service.gov.uk', EMAIL_TYPE),
     ('07700 900000', 'sms'),
     ('07700 900111', 'sms'),
     ('07700 900222', 'sms')
@@ -307,7 +310,7 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(client
 
 def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(notify_db, notify_db_session, client, mocker):
 
-    service = sample_service(notify_db, notify_db_session, permissions=["international_sms"])
+    service = sample_service(notify_db, notify_db_session, permissions=[INTERNATIONAL_SMS_TYPE])
     template = create_sample_template(notify_db, notify_db_session, service=service)
 
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
@@ -362,7 +365,7 @@ def test_post_notification_with_scheduled_for(client, notify_db, notify_db_sessi
     template = create_template(service=service, template_type=notification_type)
     data = {
         key_send_to: send_to,
-        'template_id': str(template.id) if notification_type == 'email' else str(template.id),
+        'template_id': str(template.id) if notification_type == EMAIL_TYPE else str(template.id),
         'scheduled_for': '2017-05-14 14:15'
     }
     auth_header = create_authorization_header(service_id=service.id)
@@ -386,7 +389,7 @@ def test_post_notification_raises_bad_request_if_service_not_invited_to_schedule
         client, sample_template, sample_email_template, notification_type, key_send_to, send_to):
     data = {
         key_send_to: send_to,
-        'template_id': str(sample_email_template.id) if notification_type == 'email' else str(sample_template.id),
+        'template_id': str(sample_email_template.id) if notification_type == EMAIL_TYPE else str(sample_template.id),
         'scheduled_for': '2017-05-14 14:15'
     }
     auth_header = create_authorization_header(service_id=sample_template.service_id)

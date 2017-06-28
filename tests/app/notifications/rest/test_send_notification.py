@@ -10,8 +10,9 @@ from notifications_python_client.authentication import create_jwt_token
 import app
 from app.dao import notifications_dao
 from app.models import (
-    ApiKey, INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, Notification, NotificationHistory)
+    INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE,
+    ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, Notification, NotificationHistory
+)
 from app.dao.templates_dao import dao_get_all_templates_for_service, dao_update_template
 from app.dao.services_dao import dao_update_service
 from app.dao.api_key_dao import save_model_api_key
