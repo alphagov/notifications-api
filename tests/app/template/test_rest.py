@@ -617,15 +617,20 @@ def test_update_redact_template_does_nothing_if_already_redacted(admin_request, 
     assert sample_template.template_redacted.updated_at == dt
 
 
-
-def test_update_redact_template_does_nothing_if_no_updated_by(admin_request, sample_template):
+def test_update_redact_template_400s_if_no_updated_by(admin_request, sample_template):
     original_updated_time = sample_template.template_redacted.updated_at
-    admin_request.post(
+    resp = admin_request.post(
         'template.update_template',
         service_id=sample_template.service_id,
         template_id=sample_template.id,
-        _data={'redact_personalisation': True}
+        _data={'redact_personalisation': True},
+        _expected_status=400
     )
+
+    assert resp == {
+        'result': 'error',
+        'message': {'updated_by_id': ['Field is required']}
+    }
 
     assert sample_template.redact_personalisation is False
     assert sample_template.template_redacted.updated_at == original_updated_time
