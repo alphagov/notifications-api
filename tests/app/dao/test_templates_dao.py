@@ -1,14 +1,21 @@
+from datetime import datetime
+
+from freezegun import freeze_time
 from sqlalchemy.orm.exc import NoResultFound
+import pytest
+
 from app.dao.templates_dao import (
     dao_create_template,
     dao_get_template_by_id_and_service_id,
     dao_get_all_templates_for_service,
     dao_update_template,
     dao_get_template_versions,
-    dao_get_templates_for_cache)
+    dao_get_templates_for_cache,
+    dao_redact_template)
+from app.models import Template, TemplateHistory, TemplateRedacted
+
 from tests.app.conftest import sample_template as create_sample_template
-from app.models import Template, TemplateHistory
-import pytest
+from tests.app.db import create_template
 
 
 @pytest.mark.parametrize('template_type, subject', [
@@ -35,6 +42,17 @@ def test_create_template(sample_service, sample_user, template_type, subject):
     assert dao_get_all_templates_for_service(sample_service.id)[0].process_type == 'normal'
 
 
+def test_create_template_creates_redact_entry(sample_service):
+    assert TemplateRedacted.query.count() == 0
+
+    template = create_template(sample_service)
+
+    redacted = TemplateRedacted.query.one()
+    assert redacted.template_id == template.id
+    assert redacted.redact_personalisation is False
+    assert redacted.updated_by_id == sample_service.created_by_id
+
+
 def test_update_template(sample_service, sample_user):
     data = {
         'name': 'Sample Template',
@@ -51,6 +69,20 @@ def test_update_template(sample_service, sample_user):
     created.name = 'new name'
     dao_update_template(created)
     assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'new name'
+
+
+def test_redact_template(sample_template):
+    redacted = TemplateRedacted.query.one()
+    assert redacted.template_id == sample_template.id
+    assert redacted.redact_personalisation is False
+
+    time = datetime.now()
+    with freeze_time(time):
+        dao_redact_template(sample_template, sample_template.created_by_id)
+
+    assert redacted.redact_personalisation is True
+    assert redacted.updated_at == time
+    assert redacted.updated_by_id == sample_template.created_by_id
 
 
 def test_get_all_templates_for_service(notify_db, notify_db_session, service_factory):
