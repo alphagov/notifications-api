@@ -42,10 +42,8 @@ def _has_service_permission(template_type, action, permissions):
         template_type_text = template_type
         if template_type == SMS_TYPE:
             template_type_text = 'text message'
-        message = 'Cannot {action} {type} templates'.format(
-            action=action, type=template_type_text)
-        errors = {'content': [message]}
-        raise InvalidRequest(errors, status_code=400)
+        raise InvalidRequest("{action} {type} template is not allowed".format(
+            action=action, type=template_type_text), 403)
 
 
 @template_blueprint.route('', methods=['POST'])
@@ -55,7 +53,7 @@ def create_template(service_id):
     permissions = fetched_service.permissions
     new_template = template_schema.load(request.get_json()).data
 
-    _has_service_permission(new_template.template_type, 'create', permissions)
+    _has_service_permission(new_template.template_type, 'Create', permissions)
 
     new_template.service = fetched_service
     over_limit = _content_count_greater_than_limit(new_template.content, new_template.template_type)
@@ -73,7 +71,7 @@ def create_template(service_id):
 def update_template(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
 
-    _has_service_permission(fetched_template.template_type, 'update', fetched_template.service.permissions)
+    _has_service_permission(fetched_template.template_type, 'Update', fetched_template.service.permissions)
 
     data = request.get_json()
 

@@ -197,6 +197,11 @@ def sample_template_without_sms_permission(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
+def sample_template_without_letter_permission(notify_db, notify_db_session):
+    return sample_template(notify_db, notify_db_session, template_type="letter", permissions=[EMAIL_TYPE])
+
+
+@pytest.fixture(scope='function')
 def sample_template_with_placeholders(notify_db, notify_db_session):
     # deliberate space and title case in placeholder
     return sample_template(notify_db, notify_db_session, content="Hello (( Name))\nYour thing is due soon")
