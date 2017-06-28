@@ -13,8 +13,9 @@ from app.dao.templates_dao import dao_get_template_by_id, dao_redact_template
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_template as create_sample_template,
+    sample_template_without_email_permission,
+    sample_template_without_letter_permission,
     sample_template_without_sms_permission,
-    sample_template_without_email_permission
 )
 from tests.app.db import create_service
 
@@ -90,8 +91,9 @@ def test_should_raise_error_if_service_does_not_exist_on_create(client, sample_u
 
 
 @pytest.mark.parametrize('permissions, template_type, subject, expected_error', [
-    ([EMAIL_TYPE], SMS_TYPE, None, 'Cannot create text message templates'),
-    ([SMS_TYPE], EMAIL_TYPE, 'subject', 'Cannot create email templates'),
+    ([EMAIL_TYPE], SMS_TYPE, None, 'Create text message template is not allowed'),
+    ([SMS_TYPE], EMAIL_TYPE, 'subject', 'Create email template is not allowed'),
+    ([SMS_TYPE], LETTER_TYPE, 'subject', 'Create letter template is not allowed'),
 ])
 def test_should_raise_error_on_create_if_no_permission(
         client, sample_user, permissions, template_type, subject, expected_error):
@@ -115,14 +117,15 @@ def test_should_raise_error_on_create_if_no_permission(
         data=data
     )
     json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 400
+    assert response.status_code == 403
     assert json_resp['result'] == 'error'
-    assert json_resp['message'] == {'content': [expected_error]}
+    assert json_resp['message'] == expected_error
 
 
 @pytest.mark.parametrize('template_factory, expected_error', [
-    (sample_template_without_sms_permission, 'Cannot update text message templates'),
-    (sample_template_without_email_permission, 'Cannot update email templates'),
+    (sample_template_without_sms_permission, 'Update text message template is not allowed'),
+    (sample_template_without_email_permission, 'Update email template is not allowed'),
+    (sample_template_without_letter_permission, 'Update letter template is not allowed')
 ])
 def test_should_be_error_on_update_if_no_permission(
         client, sample_user, template_factory, expected_error, notify_db, notify_db_session):
@@ -143,9 +146,9 @@ def test_should_be_error_on_update_if_no_permission(
     )
 
     json_resp = json.loads(update_response.get_data(as_text=True))
-    assert update_response.status_code == 400
+    assert update_response.status_code == 403
     assert json_resp['result'] == 'error'
-    assert json_resp['message'] == {'content': [expected_error]}
+    assert json_resp['message'] == expected_error
 
 
 def test_should_error_if_created_by_missing(client, sample_user, sample_service):
