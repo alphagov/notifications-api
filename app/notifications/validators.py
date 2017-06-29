@@ -73,6 +73,19 @@ def service_can_send_to_recipient(send_to, key_type, service):
         raise BadRequestError(message=message)
 
 
+def service_has_permission(service, permission):
+    if permission not in [p.permission for p in service.permissions]:
+        action = 'send'
+        permission_text = permission + 's'
+        if permission == SMS_TYPE:
+            permission_text = 'text messages'
+        elif permission == SCHEDULE_NOTIFICATIONS:
+            action = 'schedule'
+            permission_text = "notifications (this feature is invite-only)"
+
+        raise BadRequestError(message="Cannot {} {}".format(action, permission_text))
+
+
 def validate_and_format_recipient(send_to, key_type, service, notification_type):
     service_can_send_to_recipient(send_to, key_type, service)
 
@@ -96,12 +109,6 @@ def check_sms_content_char_count(content_count):
     if content_count > char_count_limit:
         message = 'Content for template has a character count greater than the limit of {}'.format(char_count_limit)
         raise BadRequestError(message=message)
-
-
-def service_can_schedule_notification(service, scheduled_for):
-    if scheduled_for:
-        if SCHEDULE_NOTIFICATIONS not in [p.permission for p in service.permissions]:
-            raise BadRequestError(message="Cannot schedule notifications (this feature is invite-only)")
 
 
 def validate_template(template_id, personalisation, service, notification_type):

@@ -2,7 +2,7 @@ from flask import request, jsonify, current_app
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
-from app.models import SMS_TYPE, EMAIL_TYPE, PRIORITY
+from app.models import SMS_TYPE, EMAIL_TYPE, PRIORITY, SCHEDULE_NOTIFICATIONS
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
@@ -11,7 +11,7 @@ from app.notifications.process_notifications import (
 from app.notifications.validators import (
     validate_and_format_recipient,
     check_rate_limiting,
-    service_can_schedule_notification,
+    service_has_permission,
     validate_template
 )
 from app.schema_validation import validate
@@ -30,8 +30,11 @@ def post_notification(notification_type):
     else:
         form = validate(request.get_json(), post_sms_request)
 
+    service_has_permission(authenticated_service, notification_type)
+
     scheduled_for = form.get("scheduled_for", None)
-    service_can_schedule_notification(authenticated_service, scheduled_for)
+    if scheduled_for:
+        service_has_permission(authenticated_service, SCHEDULE_NOTIFICATIONS)
 
     check_rate_limiting(authenticated_service, api_user)
 
@@ -45,7 +48,7 @@ def post_notification(notification_type):
         form['template_id'],
         form.get('personalisation', {}),
         authenticated_service,
-        notification_type
+        notification_type,
     )
 
     # Do not persist or send notification to the queue if it is a simulated recipient

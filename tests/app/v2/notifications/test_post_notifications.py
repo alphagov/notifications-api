@@ -12,7 +12,11 @@ from flask import json, current_app
 from app.models import Notification
 from app.v2.errors import RateLimitError
 from tests import create_authorization_header
-from tests.app.conftest import sample_template as create_sample_template, sample_service
+from tests.app.conftest import (
+    sample_template as create_sample_template, sample_service,
+    sample_template_without_sms_permission, sample_template_without_email_permission
+)
+
 from tests.app.db import create_service, create_template
 
 
@@ -54,7 +58,7 @@ def test_post_sms_notification_returns_201(client, sample_template_with_placehol
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
                          [("sms", "phone_number", "+447700900855"),
                           ("email", "email_address", "sample@email.com")])
-def test_post_sms_notification_returns_404_and_missing_template(client, sample_service,
+def test_post_sms_notification_returns_400_and_missing_template(client, sample_service,
                                                                 notification_type, key_send_to, send_to):
     data = {
         key_send_to: send_to,
@@ -308,9 +312,37 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(client
     ]
 
 
+@pytest.mark.parametrize('template_factory,expected_error', [
+    (sample_template_without_sms_permission, 'Cannot send text messages'),
+    (sample_template_without_email_permission, 'Cannot send emails')])
+def test_post_sms_notification_returns_400_if_not_allowed_to_send_notification(
+        client, template_factory, expected_error, notify_db, notify_db_session):
+    sample_template_without_permission = template_factory(notify_db, notify_db_session)
+    data = {
+        'phone_number': '07700 900000',
+        'email_address': 'someone@test.com',
+        'template_id': sample_template_without_permission.id
+    }
+    auth_header = create_authorization_header(service_id=sample_template_without_permission.service.id)
+
+    response = client.post(
+        path='/v2/notifications/{}'.format(sample_template_without_permission.template_type),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 400
+    assert response.headers['Content-type'] == 'application/json'
+
+    error_json = json.loads(response.get_data(as_text=True))
+    assert error_json['status_code'] == 400
+    assert error_json['errors'] == [
+        {"error": "BadRequestError", "message": expected_error}
+    ]
+
+
 def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(notify_db, notify_db_session, client, mocker):
 
-    service = sample_service(notify_db, notify_db_session, permissions=[INTERNATIONAL_SMS_TYPE])
+    service = sample_service(notify_db, notify_db_session, permissions=[SMS_TYPE, INTERNATIONAL_SMS_TYPE])
     template = create_sample_template(notify_db, notify_db_session, service=service)
 
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
