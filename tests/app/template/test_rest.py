@@ -91,9 +91,9 @@ def test_should_raise_error_if_service_does_not_exist_on_create(client, sample_u
 
 
 @pytest.mark.parametrize('permissions, template_type, subject, expected_error', [
-    ([EMAIL_TYPE], SMS_TYPE, None, 'Create text message template is not allowed'),
-    ([SMS_TYPE], EMAIL_TYPE, 'subject', 'Create email template is not allowed'),
-    ([SMS_TYPE], LETTER_TYPE, 'subject', 'Create letter template is not allowed'),
+    ([EMAIL_TYPE], SMS_TYPE, None, 'Creating text message templates is not allowed'),
+    ([SMS_TYPE], EMAIL_TYPE, 'subject', 'Creating email templates is not allowed'),
+    ([SMS_TYPE], LETTER_TYPE, 'subject', 'Creating letter templates is not allowed'),
 ])
 def test_should_raise_error_on_create_if_no_permission(
         client, sample_user, permissions, template_type, subject, expected_error):
@@ -123,9 +123,9 @@ def test_should_raise_error_on_create_if_no_permission(
 
 
 @pytest.mark.parametrize('template_factory, expected_error', [
-    (sample_template_without_sms_permission, 'Update text message template is not allowed'),
-    (sample_template_without_email_permission, 'Update email template is not allowed'),
-    (sample_template_without_letter_permission, 'Update letter template is not allowed')
+    (sample_template_without_sms_permission, 'Updating text message templates is not allowed'),
+    (sample_template_without_email_permission, 'Updating email templates is not allowed'),
+    (sample_template_without_letter_permission, 'Updating letter templates is not allowed')
 ])
 def test_should_be_error_on_update_if_no_permission(
         client, sample_user, template_factory, expected_error, notify_db, notify_db_session):

@@ -73,17 +73,8 @@ def service_can_send_to_recipient(send_to, key_type, service):
         raise BadRequestError(message=message)
 
 
-def service_has_permission(service, permission):
-    if permission not in [p.permission for p in service.permissions]:
-        action = 'send'
-        permission_text = permission + 's'
-        if permission == SMS_TYPE:
-            permission_text = 'text messages'
-        elif permission == SCHEDULE_NOTIFICATIONS:
-            action = 'schedule'
-            permission_text = "notifications (this feature is invite-only)"
-
-        raise BadRequestError(message="Cannot {} {}".format(action, permission_text))
+def service_has_permission(notify_type, permissions):
+    return notify_type in [p.permission for p in permissions]
 
 
 def validate_and_format_recipient(send_to, key_type, service, notification_type):
