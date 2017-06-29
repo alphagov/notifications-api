@@ -552,7 +552,7 @@ def test_update_redact_template(admin_request, sample_template):
 
     data = {
         'redact_personalisation': True,
-        'updated_by_id': str(sample_template.created_by_id)
+        'created_by': str(sample_template.created_by_id)
     }
 
     dt = datetime.now()
@@ -578,7 +578,7 @@ def test_update_redact_template_ignores_other_properties(admin_request, sample_t
     data = {
         'name': 'Foo',
         'redact_personalisation': True,
-        'updated_by_id': str(sample_template.created_by_id)
+        'created_by': str(sample_template.created_by_id)
     }
 
     admin_request.post(
@@ -599,7 +599,7 @@ def test_update_redact_template_does_nothing_if_already_redacted(admin_request, 
 
     data = {
         'redact_personalisation': True,
-        'updated_by_id': str(sample_template.created_by_id)
+        'created_by': str(sample_template.created_by_id)
     }
 
     with freeze_time(dt + timedelta(days=1)):
@@ -617,7 +617,7 @@ def test_update_redact_template_does_nothing_if_already_redacted(admin_request, 
     assert sample_template.template_redacted.updated_at == dt
 
 
-def test_update_redact_template_400s_if_no_updated_by(admin_request, sample_template):
+def test_update_redact_template_400s_if_no_created_by(admin_request, sample_template):
     original_updated_time = sample_template.template_redacted.updated_at
     resp = admin_request.post(
         'template.update_template',
@@ -629,7 +629,7 @@ def test_update_redact_template_400s_if_no_updated_by(admin_request, sample_temp
 
     assert resp == {
         'result': 'error',
-        'message': {'updated_by_id': ['Field is required']}
+        'message': {'created_by': ['Field is required']}
     }
 
     assert sample_template.redact_personalisation is False

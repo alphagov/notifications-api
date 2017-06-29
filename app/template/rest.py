@@ -143,12 +143,12 @@ def _template_has_not_changed(current_data, updated_template):
 
 def redact_template(template, data):
     # we also don't need to check what was passed in redact_personalisation - its presence in the dict is enough.
-    if 'updated_by_id' not in data:
+    if 'created_by' not in data:
         message = 'Field is required'
-        errors = {'updated_by_id': [message]}
+        errors = {'created_by': [message]}
         raise InvalidRequest(errors, status_code=400)
 
     # if it's already redacted, then just return 200 straight away.
     if not template.redact_personalisation:
-        dao_redact_template(template, data['updated_by_id'])
+        dao_redact_template(template, data['created_by'])
     return 'null', 200
