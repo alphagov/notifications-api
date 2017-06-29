@@ -66,14 +66,40 @@ class PurgeFunctionalTestDataCommand(Command):
 
 
 class CustomDbScript(Command):
-    def run(self):
-        self.update_notification_international_flag()
+
+    option_list = (
+        Option('-n', '-name-of-db-function', dest='name_of_db_function', help="Function name of the DB script to run"),
+    )
+
+    def run(self, name_of_db_function):
+        db_function = getattr(self, name_of_db_function, None)
+        if callable(db_function):
+            db_function()
+        else:
+            print('The specified function does not exist.')
+
+    def backfill_notification_statuses(self):
+        """
+        This will be used to populate the new `Notification._status_fkey` with the old
+        `Notification._status_enum`
+        """
+        LIMIT = 250000
+        subq = "SELECT id FROM notification_history WHERE notification_status is NULL LIMIT {}".format(LIMIT)
+        update = "UPDATE notification_history SET notification_status = status WHERE id in ({})".format(subq)
+        result = db.session.execute(subq).fetchall()
+
+        while len(result) > 0:
+            db.session.execute(update)
+            print('commit {} updates at {}'.format(LIMIT, datetime.utcnow()))
+            db.session.commit()
+            result = db.session.execute(subq).fetchall()
 
     def update_notification_international_flag(self):
         # 250,000 rows takes 30 seconds to update.
         subq = "select id from notifications where international is null limit 250000"
         update = "update notifications set international = False where id in ({})".format(subq)
         result = db.session.execute(subq).fetchall()
+
         while len(result) > 0:
             db.session.execute(update)
             print('commit 250000 updates at {}'.format(datetime.utcnow()))
