@@ -27,7 +27,8 @@ from app.notifications.process_notifications import (
 from app.notifications.validators import (
     check_template_is_for_notification_type,
     check_template_is_active,
-    check_rate_limiting
+    check_rate_limiting,
+    service_has_permission,
 )
 from app.schemas import (
     email_notification_schema,
@@ -121,10 +122,19 @@ def send_notification(notification_type):
 
     _service_allowed_to_send_to(notification_form, authenticated_service)
     if notification_type == SMS_TYPE:
-        _service_has_permission(authenticated_service, SMS_TYPE)
+        if service_has_permission(SMS_TYPE, authenticated_service.permissions) is False:
+            raise InvalidRequest(
+                {'to': ["Cannot send text messages"]},
+                status_code=400
+            )
+
         _service_can_send_internationally(authenticated_service, notification_form['to'])
     elif notification_type == EMAIL_TYPE:
-        _service_has_permission(authenticated_service, EMAIL_TYPE)
+        if service_has_permission(EMAIL_TYPE, authenticated_service.permissions) is False:
+            raise InvalidRequest(
+                {'to': ["Cannot send emails"]},
+                status_code=400
+            )
 
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(notification_form['to'], notification_type)
@@ -165,18 +175,6 @@ def get_notification_return_data(notification_id, notification, template):
         output.update({'subject': template.subject})
 
     return output
-
-
-def _service_has_permission(service, notify_type):
-    if notify_type not in [p.permission for p in service.permissions]:
-        notify_type_text = notify_type + 's'
-        if notify_type == SMS_TYPE:
-            notify_type_text = 'text messages'
-
-        raise InvalidRequest(
-            {'to': ["Cannot send {}".format(notify_type_text)]},
-            status_code=400
-        )
 
 
 def _service_can_send_internationally(service, number):
