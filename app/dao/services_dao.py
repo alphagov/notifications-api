@@ -111,6 +111,7 @@ def dao_archive_service(service_id):
     # to ensure that db.session still contains the models when it comes to creating history objects
     service = Service.query.options(
         joinedload('templates'),
+        joinedload('templates.template_redacted'),
         joinedload('api_keys'),
     ).filter(Service.id == service_id).one()
 
