@@ -11,6 +11,7 @@ from freezegun import freeze_time
 from app import encryption
 from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
+from app.dao.templates_dao import dao_redact_template
 from app.models import (
     User, Organisation, Rate, Service, ServicePermission, Notification,
     DVLA_ORG_LAND_REGISTRY,
@@ -19,7 +20,7 @@ from app.models import (
 )
 
 from tests import create_authorization_header
-from tests.app.db import create_template, create_service_inbound_api, create_user
+from tests.app.db import create_template, create_service_inbound_api, create_user, create_notification
 from tests.app.conftest import (
     sample_service as create_service,
     sample_user_service_permission as create_user_service_permission,
@@ -2263,3 +2264,37 @@ def test_send_one_off_notification(admin_request, sample_template, mocker):
 
     noti = Notification.query.one()
     assert response['id'] == str(noti.id)
+
+
+def test_get_notification_for_service_includes_template_redacted(admin_request, sample_notification):
+    resp = admin_request.get(
+        'service.get_notification_for_service',
+        service_id=sample_notification.service_id,
+        notification_id=sample_notification.id
+    )
+
+    assert resp['id'] == str(sample_notification.id)
+    assert resp['template']['redact_personalisation'] is False
+
+
+def test_get_all_notifications_for_service_includes_template_redacted(admin_request, sample_service):
+    normal_template = create_template(sample_service)
+
+    redacted_template = create_template(sample_service)
+    dao_redact_template(redacted_template, sample_service.created_by_id)
+
+    with freeze_time('2000-01-01'):
+        redacted_noti = create_notification(redacted_template)
+    with freeze_time('2000-01-02'):
+        normal_noti = create_notification(normal_template)
+
+    resp = admin_request.get(
+        'service.get_all_notifications_for_service',
+        service_id=sample_service.id
+    )
+
+    assert resp['notifications'][0]['id'] == str(normal_noti.id)
+    assert resp['notifications'][0]['template']['redact_personalisation'] is False
+
+    assert resp['notifications'][1]['id'] == str(redacted_noti.id)
+    assert resp['notifications'][1]['template']['redact_personalisation'] is True

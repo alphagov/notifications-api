@@ -8,6 +8,7 @@ from flask import (
 from app.dao.templates_dao import (
     dao_update_template,
     dao_create_template,
+    dao_redact_template,
     dao_get_template_by_id_and_service_id,
     dao_get_all_templates_for_service,
     dao_get_template_versions
@@ -55,9 +56,15 @@ def create_template(service_id):
 def update_template(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
 
+    data = request.get_json()
+
+    # if redacting, don't update anything else
+    if data.get('redact_personalisation') is True:
+        return redact_template(fetched_template, data)
+
     current_data = dict(template_schema.dump(fetched_template).data.items())
     updated_template = dict(template_schema.dump(fetched_template).data.items())
-    updated_template.update(request.get_json())
+    updated_template.update(data)
     # Check if there is a change to make.
     if _template_has_not_changed(current_data, updated_template):
         return jsonify(data=updated_template), 200
@@ -132,3 +139,16 @@ def _template_has_not_changed(current_data, updated_template):
         current_data[key] == updated_template[key]
         for key in ('name', 'content', 'subject', 'archived', 'process_type')
     )
+
+
+def redact_template(template, data):
+    # we also don't need to check what was passed in redact_personalisation - its presence in the dict is enough.
+    if 'updated_by_id' not in data:
+        message = 'Field is required'
+        errors = {'updated_by_id': [message]}
+        raise InvalidRequest(errors, status_code=400)
+
+    # if it's already redacted, then just return 200 straight away.
+    if not template.redact_personalisation:
+        dao_redact_template(template, data['updated_by_id'])
+    return 'null', 200
