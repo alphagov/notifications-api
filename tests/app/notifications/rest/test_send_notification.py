@@ -1198,4 +1198,4 @@ def test_should_not_allow_notification_if_service_permission_not_set(
     error_json = json.loads(response.get_data(as_text=True))
 
     assert error_json['result'] == 'error'
-    assert error_json['message']['to'][0] == expected_error
+    assert error_json['message']['service'][0] == expected_error

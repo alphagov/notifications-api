@@ -45,10 +45,11 @@ def create_template(service_id):
     permissions = fetched_service.permissions
     new_template = template_schema.load(request.get_json()).data
 
-    if service_has_permission(new_template.template_type, permissions) is False:
-        raise InvalidRequest(
-            "Creating {} templates is not allowed".format(
-                get_public_notify_type_text(new_template.template_type)), 403)
+    if not service_has_permission(new_template.template_type, permissions):
+        message = "Creating {} templates is not allowed".format(
+            get_public_notify_type_text(new_template.template_type))
+        errors = {'template_type': [message]}
+        raise InvalidRequest(errors, 403)
 
     new_template.service = fetched_service
     over_limit = _content_count_greater_than_limit(new_template.content, new_template.template_type)
@@ -66,10 +67,12 @@ def create_template(service_id):
 def update_template(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
 
-    if service_has_permission(fetched_template.template_type, fetched_template.service.permissions) is False:
-        raise InvalidRequest(
-            "Updating {} templates is not allowed".format(
-                get_public_notify_type_text(fetched_template.template_type)), 403)
+    if not service_has_permission(fetched_template.template_type, fetched_template.service.permissions):
+        message = "Updating {} templates is not allowed".format(
+            get_public_notify_type_text(fetched_template.template_type))
+        errors = {'template_type': [message]}
+
+        raise InvalidRequest(errors, 403)
 
     data = request.get_json()
 
