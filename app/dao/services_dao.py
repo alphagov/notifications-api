@@ -19,6 +19,7 @@ from app.models import (
     ApiKey,
     Template,
     TemplateHistory,
+    TemplateRedacted,
     Job,
     NotificationHistory,
     Notification,
@@ -110,6 +111,7 @@ def dao_archive_service(service_id):
     # to ensure that db.session still contains the models when it comes to creating history objects
     service = Service.query.options(
         joinedload('templates'),
+        joinedload('templates.template_redacted'),
         joinedload('api_keys'),
     ).filter(Service.id == service_id).one()
 
@@ -201,12 +203,15 @@ def dao_remove_user_from_service(service, user):
 def delete_service_and_all_associated_db_objects(service):
 
     def _delete_commit(query):
-        query.delete()
+        query.delete(synchronize_session=False)
         db.session.commit()
 
     job_stats = JobStatistics.query.join(Job).filter(Job.service_id == service.id)
     list(map(db.session.delete, job_stats))
     db.session.commit()
+
+    subq = db.session.query(Template.id).filter_by(service=service).subquery()
+    _delete_commit(TemplateRedacted.query.filter(TemplateRedacted.template_id.in_(subq)))
 
     _delete_commit(NotificationStatistics.query.filter_by(service=service))
     _delete_commit(TemplateStatistics.query.filter_by(service=service))

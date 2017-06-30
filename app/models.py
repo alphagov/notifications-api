@@ -434,12 +434,16 @@ class Template(db.Model):
     subject = db.Column(db.Text, index=False, unique=False, nullable=True)
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     created_by = db.relationship('User')
-    version = db.Column(db.Integer, default=1, nullable=False)
-    process_type = db.Column(db.String(255),
-                             db.ForeignKey('template_process_type.name'),
-                             index=True,
-                             nullable=False,
-                             default=NORMAL)
+    version = db.Column(db.Integer, default=0, nullable=False)
+    process_type = db.Column(
+        db.String(255),
+        db.ForeignKey('template_process_type.name'),
+        index=True,
+        nullable=False,
+        default=NORMAL
+    )
+
+    redact_personalisation = association_proxy('template_redacted', 'redact_personalisation')
 
     def get_link(self):
         # TODO: use "/v2/" route once available
@@ -463,6 +467,19 @@ class Template(db.Model):
         }
 
         return serialized
+
+
+class TemplateRedacted(db.Model):
+    __tablename__ = 'template_redacted'
+
+    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), primary_key=True, nullable=False)
+    redact_personalisation = db.Column(db.Boolean, nullable=False, default=False)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False)
+    updated_by = db.relationship('User')
+
+    # uselist=False as this is a one-to-one relationship
+    template = db.relationship('Template', uselist=False, backref=db.backref('template_redacted', uselist=False))
 
 
 class TemplateHistory(db.Model):

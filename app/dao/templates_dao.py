@@ -1,10 +1,11 @@
+from datetime import datetime
 import uuid
 
 from sqlalchemy import desc
 from sqlalchemy.sql.expression import bindparam
 
 from app import db
-from app.models import (Template, TemplateHistory)
+from app.models import (Template, TemplateHistory, TemplateRedacted)
 from app.dao.dao_utils import (
     transactional,
     version_class
@@ -16,6 +17,13 @@ from app.dao.dao_utils import (
 def dao_create_template(template):
     template.id = uuid.uuid4()  # must be set now so version history model can use same id
     template.archived = False
+
+    template.template_redacted = TemplateRedacted(
+        template=template,
+        redact_personalisation=False,
+        updated_by=template.created_by
+    )
+
     db.session.add(template)
 
 
@@ -23,6 +31,14 @@ def dao_create_template(template):
 @version_class(Template, TemplateHistory)
 def dao_update_template(template):
     db.session.add(template)
+
+
+@transactional
+def dao_redact_template(template, user_id):
+    template.template_redacted.redact_personalisation = True
+    template.template_redacted.updated_at = datetime.utcnow()
+    template.template_redacted.updated_by_id = user_id
+    db.session.add(template.template_redacted)
 
 
 def dao_get_template_by_id_and_service_id(template_id, service_id, version=None):
