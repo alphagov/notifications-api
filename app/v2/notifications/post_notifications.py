@@ -32,13 +32,13 @@ def post_notification(notification_type):
     else:
         form = validate(request.get_json(), post_sms_request)
 
-    if service_has_permission(notification_type, authenticated_service.permissions) is False:
+    if not service_has_permission(notification_type, authenticated_service.permissions):
         raise BadRequestError(message="Cannot send {}".format(
             get_public_notify_type_text(notification_type, plural=True)))
 
     scheduled_for = form.get("scheduled_for", None)
     if scheduled_for:
-        if service_has_permission(SCHEDULE_NOTIFICATIONS, authenticated_service.permissions) is False:
+        if not service_has_permission(SCHEDULE_NOTIFICATIONS, authenticated_service.permissions):
             raise BadRequestError(message="Cannot schedule notifications (this feature is invite-only)")
 
     check_rate_limiting(authenticated_service, api_user)

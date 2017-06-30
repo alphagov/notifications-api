@@ -39,7 +39,7 @@ from app.schemas import (
     day_schema
 )
 from app.service.utils import service_allowed_to_send_to
-from app.utils import pagination_links, get_template_instance
+from app.utils import pagination_links, get_template_instance, get_public_notify_type_text
 
 from notifications_utils.recipients import get_international_phone_info
 
@@ -121,20 +121,14 @@ def send_notification(notification_type):
     template_object = create_template_object_for_notification(template, notification_form.get('personalisation', {}))
 
     _service_allowed_to_send_to(notification_form, authenticated_service)
-    if notification_type == SMS_TYPE:
-        if service_has_permission(SMS_TYPE, authenticated_service.permissions) is False:
-            raise InvalidRequest(
-                {'to': ["Cannot send text messages"]},
-                status_code=400
-            )
+    if not service_has_permission(notification_type, authenticated_service.permissions):
+        raise InvalidRequest(
+            {'service': ["Cannot send {}".format(get_public_notify_type_text(notification_type, plural=True))]},
+            status_code=400
+        )
 
+    if notification_type == SMS_TYPE:
         _service_can_send_internationally(authenticated_service, notification_form['to'])
-    elif notification_type == EMAIL_TYPE:
-        if service_has_permission(EMAIL_TYPE, authenticated_service.permissions) is False:
-            raise InvalidRequest(
-                {'to': ["Cannot send emails"]},
-                status_code=400
-            )
 
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(notification_form['to'], notification_type)
