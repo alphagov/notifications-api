@@ -349,6 +349,7 @@ def test_should_get_a_single_template(
     assert data['content'] == content
     assert data['subject'] == subject
     assert data['process_type'] == 'normal'
+    assert not data['redact_personalisation']
 
 
 @pytest.mark.parametrize(

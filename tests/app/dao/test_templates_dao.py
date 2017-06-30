@@ -195,10 +195,13 @@ def test_get_template_by_id_and_service(notify_db, notify_db_session, sample_ser
         notify_db_session,
         template_name='Test Template',
         service=sample_service)
-    assert dao_get_template_by_id_and_service_id(
+    template = dao_get_template_by_id_and_service_id(
         template_id=sample_template.id,
-        service_id=sample_service.id).name == 'Test Template'
-    assert Template.query.count() == 1
+        service_id=sample_service.id)
+    assert template.id == sample_template.id
+    assert template.name == 'Test Template'
+    assert template.version == sample_template.version
+    assert not template.redact_personalisation
 
 
 def test_get_template_by_id_and_service_returns_none_if_no_template(sample_service, fake_uuid):
@@ -278,6 +281,14 @@ def test_get_template_history_version(sample_user, sample_service, sample_templa
         '1'
     )
     assert old_template.content == old_content
+
+
+def test_can_get_template_then_redacted_returns_right_values(sample_template):
+    template = dao_get_template_by_id_and_service_id(template_id=sample_template.id,
+                                                     service_id=sample_template.service_id)
+    assert not template.redact_personalisation
+    dao_redact_template(template=template, user_id=sample_template.created_by_id)
+    assert template.redact_personalisation
 
 
 def test_get_template_versions(sample_template):
