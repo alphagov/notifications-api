@@ -98,7 +98,7 @@ def register_blueprint(application):
     from app.notifications.notifications_ses_callback import ses_callback_blueprint
     from app.notifications.notifications_sms_callback import sms_callback_blueprint
     from app.notifications.notifications_letter_callback import letter_callback_blueprint
-    from app.authentication.auth import requires_admin_auth, requires_auth, requires_no_auth
+    from app.authentication.auth import requires_admin_auth, requires_auth, requires_no_auth, restrict_ip_sms
     from app.letters.send_letter_jobs import letter_job
 
     service_blueprint.before_request(requires_admin_auth)
@@ -119,7 +119,7 @@ def register_blueprint(application):
     sms_callback_blueprint.before_request(requires_no_auth)
     application.register_blueprint(sms_callback_blueprint)
 
-    receive_notifications_blueprint.before_request(requires_no_auth)
+    receive_notifications_blueprint.before_request(restrict_ip_sms)
     application.register_blueprint(receive_notifications_blueprint)
 
     notifications_blueprint.before_request(requires_auth)

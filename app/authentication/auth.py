@@ -1,4 +1,5 @@
 from flask import request, _request_ctx_stack, current_app, g
+from flask import jsonify
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -41,6 +42,16 @@ def get_auth_token(req):
 
 def requires_no_auth():
     pass
+
+
+def restrict_ip_sms():
+    ip_addr = jsonify({'remote_addr': request.remote_addr,
+                       'X-Forwarded_FOR': request.headers.getlist('X-Forwarded-For'),
+                       'X_Real-Ip': request.headers.getlist('X-Real-Ip')})
+
+    current_app.logger.info("Inbound sms ip addresses = {}".format(ip_addr))
+
+    return
 
 
 def requires_admin_auth():

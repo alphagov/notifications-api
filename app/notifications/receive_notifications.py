@@ -28,7 +28,6 @@ def receive_mmg_sms():
         'DateRecieved': '2017-05-21+11%3A56%3A11'
     }
     """
-    current_app.logger.info("Inbound sms sender IP information {}".format(request.headers.getlist("X-Forwarded-For")))
     post_data = request.get_json()
 
     inbound_number = strip_leading_forty_four(post_data['Number'])
@@ -51,8 +50,6 @@ def receive_mmg_sms():
                                         provider_name="mmg")
 
     tasks.send_inbound_sms_to_service.apply_async([str(inbound.id), str(service.id)], queue=QueueNames.NOTIFY)
-    current_app.logger.info(
-        '{} received inbound SMS with reference {} from MMG'.format(service.id, inbound.provider_reference))
 
     return 'RECEIVED', 200
 
