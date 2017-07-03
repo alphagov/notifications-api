@@ -2161,13 +2161,12 @@ def test_search_for_notification_by_to_field_returns_content(
         headers=[create_authorization_header()]
     )
     notifications = json.loads(response.get_data(as_text=True))['notifications']
-
     assert response.status_code == 200
     assert len(notifications) == 1
 
     assert notifications[0]['id'] == str(notification.id)
     assert notifications[0]['to'] == '+447700900855'
-    assert notifications[0]['body'] == 'Hello Foo\nYour thing is due soon'
+    assert notifications[0]['template']['content'] == 'Hello (( Name))\nYour thing is due soon'
 
 
 def test_create_service_inbound_api(client, sample_service):
@@ -2298,3 +2297,32 @@ def test_get_all_notifications_for_service_includes_template_redacted(admin_requ
 
     assert resp['notifications'][1]['id'] == str(redacted_noti.id)
     assert resp['notifications'][1]['template']['redact_personalisation'] is True
+
+
+def test_search_for_notification_by_to_field_returns_personlisation(
+    client,
+    notify_db,
+    notify_db_session,
+    sample_template_with_placeholders
+):
+    create_sample_notification(
+        notify_db,
+        notify_db_session,
+        to_field='+447700900855',
+        normalised_to='447700900855',
+        template=sample_template_with_placeholders,
+        personalisation={"name": "Foo"}
+    )
+
+    response = client.get(
+        '/service/{}/notifications?to={}'.format(
+            sample_template_with_placeholders.service_id, '+447700900855'
+        ),
+        headers=[create_authorization_header()]
+    )
+    notifications = json.loads(response.get_data(as_text=True))['notifications']
+
+    assert response.status_code == 200
+    assert len(notifications) == 1
+    assert 'personalisation' in notifications[0].keys()
+    assert notifications[0]['personalisation']['name'] == 'Foo'
