@@ -262,6 +262,9 @@ class Config(object):
 
     FREE_SMS_TIER_FRAGMENT_COUNT = 250000
 
+    ALLOW_IP_INBOUND_SMS = []
+
+
 
 ######################
 # Config overrides ###
