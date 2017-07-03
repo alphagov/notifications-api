@@ -15,8 +15,10 @@ from app.errors import (
     register_errors,
     InvalidRequest
 )
-from app.models import KEY_TYPE_TEAM, PRIORITY
-from app.models import SMS_TYPE
+from app.models import (
+    EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, SMS_TYPE,
+    KEY_TYPE_TEAM, PRIORITY
+)
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
@@ -25,7 +27,8 @@ from app.notifications.process_notifications import (
 from app.notifications.validators import (
     check_template_is_for_notification_type,
     check_template_is_active,
-    check_rate_limiting
+    check_rate_limiting,
+    service_has_permission,
 )
 from app.schemas import (
     email_notification_schema,
@@ -36,7 +39,7 @@ from app.schemas import (
     day_schema
 )
 from app.service.utils import service_allowed_to_send_to
-from app.utils import pagination_links, get_template_instance
+from app.utils import pagination_links, get_template_instance, get_public_notify_type_text
 
 from notifications_utils.recipients import get_international_phone_info
 
@@ -118,6 +121,12 @@ def send_notification(notification_type):
     template_object = create_template_object_for_notification(template, notification_form.get('personalisation', {}))
 
     _service_allowed_to_send_to(notification_form, authenticated_service)
+    if not service_has_permission(notification_type, authenticated_service.permissions):
+        raise InvalidRequest(
+            {'service': ["Cannot send {}".format(get_public_notify_type_text(notification_type, plural=True))]},
+            status_code=400
+        )
+
     if notification_type == SMS_TYPE:
         _service_can_send_internationally(authenticated_service, notification_form['to'])
 
@@ -165,7 +174,8 @@ def get_notification_return_data(notification_id, notification, template):
 def _service_can_send_internationally(service, number):
     international_phone_info = get_international_phone_info(number)
 
-    if international_phone_info.international and not service.can_send_international_sms:
+    if international_phone_info.international and \
+            INTERNATIONAL_SMS_TYPE not in [p.permission for p in service.permissions]:
         raise InvalidRequest(
             {'to': ["Cannot send to international mobile numbers"]},
             status_code=400

@@ -8,11 +8,15 @@ from notifications_utils.recipients import (
 from notifications_utils.clients.redis import rate_limit_cache_key, daily_limit_cache_key
 
 from app.dao import services_dao, templates_dao
-from app.models import KEY_TYPE_TEST, KEY_TYPE_TEAM, SMS_TYPE, SCHEDULE_NOTIFICATIONS
+from app.models import (
+    INTERNATIONAL_SMS_TYPE, SMS_TYPE,
+    KEY_TYPE_TEST, KEY_TYPE_TEAM, SCHEDULE_NOTIFICATIONS
+)
 from app.service.utils import service_allowed_to_send_to
 from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
 from app import redis_store
 from app.notifications.process_notifications import create_content_for_notification
+from app.utils import get_public_notify_type_text
 
 
 def check_service_over_api_rate_limit(service, api_key):
@@ -70,13 +74,30 @@ def service_can_send_to_recipient(send_to, key_type, service):
         raise BadRequestError(message=message)
 
 
+def service_has_permission(notify_type, permissions):
+    return notify_type in [p.permission for p in permissions]
+
+
+def check_service_has_permission(notify_type, permissions):
+    if not service_has_permission(notify_type, permissions):
+        raise BadRequestError(message="Cannot send {}".format(
+            get_public_notify_type_text(notify_type, plural=True)))
+
+
+def check_service_can_schedule_notification(permissions, scheduled_for):
+    if scheduled_for:
+        if not service_has_permission(SCHEDULE_NOTIFICATIONS, permissions):
+            raise BadRequestError(message="Cannot schedule notifications (this feature is invite-only)")
+
+
 def validate_and_format_recipient(send_to, key_type, service, notification_type):
     service_can_send_to_recipient(send_to, key_type, service)
 
     if notification_type == SMS_TYPE:
         international_phone_info = get_international_phone_info(send_to)
 
-        if international_phone_info.international and not service.can_send_international_sms:
+        if international_phone_info.international and \
+                INTERNATIONAL_SMS_TYPE not in [p.permission for p in service.permissions]:
             raise BadRequestError(message="Cannot send to international mobile numbers")
 
         return validate_and_format_phone_number(
@@ -92,12 +113,6 @@ def check_sms_content_char_count(content_count):
     if content_count > char_count_limit:
         message = 'Content for template has a character count greater than the limit of {}'.format(char_count_limit)
         raise BadRequestError(message=message)
-
-
-def service_can_schedule_notification(service, scheduled_for):
-    if scheduled_for:
-        if SCHEDULE_NOTIFICATIONS not in [p.permission for p in service.permissions]:
-            raise BadRequestError(message="Cannot schedule notifications (this feature is invite-only)")
 
 
 def validate_template(template_id, personalisation, service, notification_type):

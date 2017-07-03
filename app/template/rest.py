@@ -15,7 +15,9 @@ from app.dao.templates_dao import (
 )
 from notifications_utils.template import SMSMessageTemplate
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.models import SMS_TYPE
+from app.dao.service_permissions_dao import dao_fetch_service_permissions
+from app.models import SMS_TYPE, EMAIL_TYPE
+from app.notifications.validators import service_has_permission
 from app.schemas import (template_schema, template_history_schema)
 
 template_blueprint = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
@@ -24,7 +26,7 @@ from app.errors import (
     register_errors,
     InvalidRequest
 )
-from app.utils import get_template_instance
+from app.utils import get_template_instance, get_public_notify_type_text
 
 register_errors(template_blueprint)
 
@@ -39,7 +41,16 @@ def _content_count_greater_than_limit(content, template_type):
 @template_blueprint.route('', methods=['POST'])
 def create_template(service_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
+    # permissions needs to be placed here otherwise marshmallow will intefere with versioning
+    permissions = fetched_service.permissions
     new_template = template_schema.load(request.get_json()).data
+
+    if not service_has_permission(new_template.template_type, permissions):
+        message = "Creating {} templates is not allowed".format(
+            get_public_notify_type_text(new_template.template_type))
+        errors = {'template_type': [message]}
+        raise InvalidRequest(errors, 403)
+
     new_template.service = fetched_service
     over_limit = _content_count_greater_than_limit(new_template.content, new_template.template_type)
     if over_limit:
@@ -55,6 +66,13 @@ def create_template(service_id):
 @template_blueprint.route('/<uuid:template_id>', methods=['POST'])
 def update_template(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
+
+    if not service_has_permission(fetched_template.template_type, fetched_template.service.permissions):
+        message = "Updating {} templates is not allowed".format(
+            get_public_notify_type_text(fetched_template.template_type))
+        errors = {'template_type': [message]}
+
+        raise InvalidRequest(errors, 403)
 
     data = request.get_json()
 

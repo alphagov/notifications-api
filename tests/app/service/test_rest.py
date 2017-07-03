@@ -284,8 +284,6 @@ def test_create_service(client, sample_user):
     json_resp = json.loads(resp.get_data(as_text=True))
     assert json_resp['data']['name'] == 'created service'
     assert not json_resp['data']['research_mode']
-    assert not json_resp['data']['can_send_letters']
-    assert not json_resp['data']['can_send_international_sms']
 
 
 def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_uuid):
@@ -478,13 +476,10 @@ def test_update_service_flags(client, sample_service):
     assert resp.status_code == 200
     assert json_resp['data']['name'] == sample_service.name
     assert json_resp['data']['research_mode'] is False
-    assert json_resp['data']['can_send_letters'] is False
-    assert json_resp['data']['can_send_international_sms'] is False
 
     data = {
         'research_mode': True,
-        'can_send_letters': True,
-        'can_send_international_sms': True,
+        'permissions': [LETTER_TYPE, INTERNATIONAL_SMS_TYPE]
     }
 
     auth_header = create_authorization_header()
@@ -497,8 +492,7 @@ def test_update_service_flags(client, sample_service):
     result = json.loads(resp.get_data(as_text=True))
     assert resp.status_code == 200
     assert result['data']['research_mode'] is True
-    assert result['data']['can_send_letters'] is True
-    assert result['data']['can_send_international_sms'] is True
+    assert set(result['data']['permissions']) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
 
 
 @pytest.fixture(scope='function')
@@ -509,8 +503,7 @@ def service_with_no_permissions(notify_db, notify_db_session):
 def test_update_service_flags_with_service_without_default_service_permissions(client, service_with_no_permissions):
     auth_header = create_authorization_header()
     data = {
-        'can_send_letters': True,
-        'can_send_international_sms': True,
+        'permissions': [LETTER_TYPE, INTERNATIONAL_SMS_TYPE],
     }
 
     resp = client.post(
@@ -521,8 +514,6 @@ def test_update_service_flags_with_service_without_default_service_permissions(c
     result = json.loads(resp.get_data(as_text=True))
 
     assert resp.status_code == 200
-    assert result['data']['can_send_letters'] is True
-    assert result['data']['can_send_international_sms'] is True
     assert set(result['data']['permissions']) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
 
 
@@ -532,10 +523,10 @@ def test_update_service_flags_will_remove_service_permissions(client, notify_db,
     service = create_service(
         notify_db, notify_db_session, permissions=[SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE])
 
-    assert service.can_send_international_sms is True
+    assert INTERNATIONAL_SMS_TYPE in [p.permission for p in service.permissions]
 
     data = {
-        'can_send_international_sms': False
+        'permissions': [SMS_TYPE, EMAIL_TYPE]
     }
 
     resp = client.post(
@@ -546,7 +537,7 @@ def test_update_service_flags_will_remove_service_permissions(client, notify_db,
     result = json.loads(resp.get_data(as_text=True))
 
     assert resp.status_code == 200
-    assert result['data']['can_send_international_sms'] is False
+    assert INTERNATIONAL_SMS_TYPE not in result['data']['permissions']
 
     permissions = ServicePermission.query.filter_by(service_id=service.id).all()
     assert set([p.permission for p in permissions]) == set([SMS_TYPE, EMAIL_TYPE])
@@ -567,8 +558,6 @@ def test_update_permissions_will_override_permission_flags(client, service_with_
     result = json.loads(resp.get_data(as_text=True))
 
     assert resp.status_code == 200
-    assert result['data']['can_send_letters'] is True
-    assert result['data']['can_send_international_sms'] is True
     assert set(result['data']['permissions']) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
 
 
@@ -1465,8 +1454,8 @@ def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_s
     service = json.loads(resp.get_data(as_text=True))['data']
     assert service['id'] == str(sample_service.id)
     assert 'statistics' in service.keys()
-    assert set(service['statistics'].keys()) == {'sms', 'email', 'letter'}
-    assert service['statistics']['sms'] == stats
+    assert set(service['statistics'].keys()) == {SMS_TYPE, EMAIL_TYPE, LETTER_TYPE}
+    assert service['statistics'][SMS_TYPE] == stats
 
 
 @pytest.mark.parametrize(
@@ -1518,9 +1507,9 @@ def test_get_services_with_detailed_flag(client, notify_db, notify_db_session):
     assert data[0]['name'] == 'Sample service'
     assert data[0]['id'] == str(notifications[0].service_id)
     assert data[0]['statistics'] == {
-        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 3},
-        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
+        EMAIL_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0},
+        SMS_TYPE: {'delivered': 0, 'failed': 0, 'requested': 3},
+        LETTER_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0}
     }
 
 
@@ -1541,9 +1530,9 @@ def test_get_services_with_detailed_flag_excluding_from_test_key(notify_api, not
     data = json.loads(resp.get_data(as_text=True))['data']
     assert len(data) == 1
     assert data[0]['statistics'] == {
-        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 2},
-        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
+        EMAIL_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0},
+        SMS_TYPE: {'delivered': 0, 'failed': 0, 'requested': 2},
+        LETTER_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0}
     }
 
 
@@ -1597,15 +1586,15 @@ def test_get_detailed_services_groups_by_service(notify_db, notify_db_session):
     assert len(data) == 2
     assert data[0]['id'] == str(service_1.id)
     assert data[0]['statistics'] == {
-        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 1, 'failed': 0, 'requested': 3},
-        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
+        EMAIL_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0},
+        SMS_TYPE: {'delivered': 1, 'failed': 0, 'requested': 3},
+        LETTER_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0}
     }
     assert data[1]['id'] == str(service_2.id)
     assert data[1]['statistics'] == {
-        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 1},
-        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
+        EMAIL_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0},
+        SMS_TYPE: {'delivered': 0, 'failed': 0, 'requested': 1},
+        LETTER_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0}
     }
 
 
@@ -1624,15 +1613,15 @@ def test_get_detailed_services_includes_services_with_no_notifications(notify_db
     assert len(data) == 2
     assert data[0]['id'] == str(service_1.id)
     assert data[0]['statistics'] == {
-        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 1},
-        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
+        EMAIL_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0},
+        SMS_TYPE: {'delivered': 0, 'failed': 0, 'requested': 1},
+        LETTER_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0}
     }
     assert data[1]['id'] == str(service_2.id)
     assert data[1]['statistics'] == {
-        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
+        EMAIL_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0},
+        SMS_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0},
+        LETTER_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0}
     }
 
 
@@ -1649,9 +1638,9 @@ def test_get_detailed_services_only_includes_todays_notifications(notify_db, not
 
     assert len(data) == 1
     assert data[0]['statistics'] == {
-        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 2},
-        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
+        EMAIL_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0},
+        SMS_TYPE: {'delivered': 0, 'failed': 0, 'requested': 2},
+        LETTER_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0}
     }
 
 
@@ -1676,9 +1665,9 @@ def test_get_detailed_services_for_date_range(notify_db, notify_db_session, set_
 
     assert len(data) == 1
     assert data[0]['statistics'] == {
-        'email': {'delivered': 0, 'failed': 0, 'requested': 0},
-        'sms': {'delivered': 0, 'failed': 0, 'requested': 2},
-        'letter': {'delivered': 0, 'failed': 0, 'requested': 0}
+        EMAIL_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0},
+        SMS_TYPE: {'delivered': 0, 'failed': 0, 'requested': 2},
+        LETTER_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0}
     }
 
 
@@ -1772,7 +1761,7 @@ def test_get_template_stats_by_month_returns_error_for_incorrect_year(
 
 
 def test_get_yearly_billing_usage(client, notify_db, notify_db_session):
-    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type='sms')
+    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type=SMS_TYPE)
     notify_db.session.add(rate)
     notification = create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
                                               sent_at=datetime(2016, 6, 5),
@@ -1786,13 +1775,13 @@ def test_get_yearly_billing_usage(client, notify_db, notify_db_session):
     assert json.loads(response.get_data(as_text=True)) == [{'credits': 1,
                                                             'billing_units': 1,
                                                             'rate_multiplier': 1,
-                                                            'notification_type': 'sms',
+                                                            'notification_type': SMS_TYPE,
                                                             'international': False,
                                                             'rate': 0.0158},
                                                            {'credits': 0,
                                                             'billing_units': 0,
                                                             'rate_multiplier': 1,
-                                                            'notification_type': 'email',
+                                                            'notification_type': EMAIL_TYPE,
                                                             'international': False,
                                                             'rate': 0}]
 
@@ -1809,7 +1798,7 @@ def test_get_yearly_billing_usage_returns_400_if_missing_year(client, sample_ser
 
 
 def test_get_monthly_billing_usage(client, notify_db, notify_db_session, sample_service):
-    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type='sms')
+    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type=SMS_TYPE)
     notify_db.session.add(rate)
     notification = create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
                                               sent_at=datetime(2016, 6, 5),
@@ -1821,7 +1810,7 @@ def test_get_monthly_billing_usage(client, notify_db, notify_db_session, sample_
                                sent_at=datetime(2016, 7, 5),
                                status='sending')
 
-    template = create_template(sample_service, template_type='email')
+    template = create_template(sample_service, template_type=EMAIL_TYPE)
     create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
                                sent_at=datetime(2016, 6, 5),
                                status='sending',
@@ -1836,19 +1825,19 @@ def test_get_monthly_billing_usage(client, notify_db, notify_db_session, sample_
     assert actual == [{'month': 'June',
                        'international': False,
                        'rate_multiplier': 1,
-                       'notification_type': 'sms',
+                       'notification_type': SMS_TYPE,
                        'rate': 0.0158,
                        'billing_units': 1},
                       {'month': 'June',
                        'international': False,
                        'rate_multiplier': 2,
-                       'notification_type': 'sms',
+                       'notification_type': SMS_TYPE,
                        'rate': 0.0158,
                        'billing_units': 1},
                       {'month': 'July',
                        'international': False,
                        'rate_multiplier': 1,
-                       'notification_type': 'sms',
+                       'notification_type': SMS_TYPE,
                        'rate': 0.0158,
                        'billing_units': 1}]
 
@@ -1865,7 +1854,7 @@ def test_get_monthly_billing_usage_returns_400_if_missing_year(client, sample_se
 
 
 def test_get_monthly_billing_usage_returns_empty_list_if_no_notifications(client, notify_db, sample_service):
-    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type='sms')
+    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type=SMS_TYPE)
     notify_db.session.add(rate)
     response = client.get(
         '/service/{}/monthly-usage?year=2016'.format(sample_service.id),
