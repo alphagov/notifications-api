@@ -830,12 +830,11 @@ class Notification(db.Model):
     def personalisation(self):
         if self._personalisation:
             return encryption.decrypt(self._personalisation)
-        return None
+        return {}
 
     @personalisation.setter
     def personalisation(self, personalisation):
-        if personalisation:
-            self._personalisation = encryption.encrypt(personalisation)
+        self._personalisation = encryption.encrypt(personalisation or {})
 
     def completed_at(self):
         if self.status in NOTIFICATION_STATUS_TYPES_COMPLETED:
