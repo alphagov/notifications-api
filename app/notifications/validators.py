@@ -16,6 +16,7 @@ from app.service.utils import service_allowed_to_send_to
 from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
 from app import redis_store
 from app.notifications.process_notifications import create_content_for_notification
+from app.utils import get_public_notify_type_text
 
 
 def check_service_over_api_rate_limit(service, api_key):
@@ -75,6 +76,18 @@ def service_can_send_to_recipient(send_to, key_type, service):
 
 def service_has_permission(notify_type, permissions):
     return notify_type in [p.permission for p in permissions]
+
+
+def check_service_has_permission(notify_type, permissions):
+    if not service_has_permission(notify_type, permissions):
+        raise BadRequestError(message="Cannot send {}".format(
+            get_public_notify_type_text(notify_type, plural=True)))
+
+
+def check_service_can_schedule_notification(permissions, scheduled_for):
+    if scheduled_for:
+        if not service_has_permission(SCHEDULE_NOTIFICATIONS, permissions):
+            raise BadRequestError(message="Cannot schedule notifications (this feature is invite-only)")
 
 
 def validate_and_format_recipient(send_to, key_type, service, notification_type):

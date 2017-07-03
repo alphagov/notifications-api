@@ -12,6 +12,8 @@ from app.notifications.validators import (
     validate_and_format_recipient,
     check_rate_limiting,
     service_has_permission,
+    check_service_can_schedule_notification,
+    check_service_has_permission,
     validate_template
 )
 from app.schema_validation import validate
@@ -32,14 +34,10 @@ def post_notification(notification_type):
     else:
         form = validate(request.get_json(), post_sms_request)
 
-    if not service_has_permission(notification_type, authenticated_service.permissions):
-        raise BadRequestError(message="Cannot send {}".format(
-            get_public_notify_type_text(notification_type, plural=True)))
+    check_service_has_permission(notification_type, authenticated_service.permissions)
 
     scheduled_for = form.get("scheduled_for", None)
-    if scheduled_for:
-        if not service_has_permission(SCHEDULE_NOTIFICATIONS, authenticated_service.permissions):
-            raise BadRequestError(message="Cannot schedule notifications (this feature is invite-only)")
+    check_service_can_schedule_notification(authenticated_service.permissions, scheduled_for)
 
     check_rate_limiting(authenticated_service, api_user)
 
