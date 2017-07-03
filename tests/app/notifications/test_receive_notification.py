@@ -17,11 +17,10 @@ from tests.app.db import create_service
 from tests.app.conftest import sample_service
 
 
-@pytest.mark.parametrize('provider,headers,data,expected_response', [
-    (
-        'mmg',
-        [('Content-Type', 'application/json')],
-        json.dumps({
+def test_receive_notification_returns_received_to_mmg(
+        client, mocker, sample_service_full_permissions):
+    mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
+    data = {
             "ID": "1234",
             "MSISDN": "447700900855",
             "Message": "Some message to notify",
@@ -29,30 +28,13 @@ from tests.app.conftest import sample_service
             "Number": "testing",
             "Channel": "SMS",
             "DateRecieved": "2012-06-27 12:33:00"
-        }),
-        'RECEIVED'
-    ),
-    (
-        'firetext',
-        None,
-        {
-            "Message": "Some message to notify",
-            "source": "Source",
-            "time": "2012-06-27 12:33:00",
-            "destination": "447700900856"
-        },
-        '{\n  "status": "ok"\n}'
-    ),
-])
-def test_receive_notification_returns_received_to_mmg(
-    client, mocker, sample_service_full_permissions, provider, headers, data, expected_response):
-    mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
-    response = client.post(path='/notifications/sms/receive/{}'.format(provider),
-                           data=data,
-                           headers=headers)
+        }
+    response = client.post(path='/notifications/sms/receive/mmg',
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json')])
 
     assert response.status_code == 200
-    assert response.get_data(as_text=True) == expected_response
+    assert response.get_data(as_text=True) == 'RECEIVED'
     inbound_sms_id = InboundSms.query.all()[0].id
     mocked.assert_called_once_with(
         [str(inbound_sms_id), str(sample_service_full_permissions.id)], queue="notify-internal-tasks")
