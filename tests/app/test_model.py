@@ -2,6 +2,7 @@ import pytest
 
 from freezegun import freeze_time
 
+from app import encryption
 from app.models import (
     ServiceWhitelist,
     Notification,
@@ -145,3 +146,23 @@ def test_notification_for_csv_returns_bst_correctly(notify_db, notify_db_session
 
     serialized = notification.serialize_for_csv()
     assert serialized['created_at'] == 'Monday 27 March 2017 at 00:01'
+
+
+def test_notification_personalisation_getter_returns_empty_dict_from_None(sample_notification):
+    sample_notification._personalisation = None
+    assert sample_notification.personalisation == {}
+
+
+def test_notification_personalisation_getter_always_returns_empty_dict(sample_notification):
+    sample_notification._personalisation = encryption.encrypt({})
+    assert sample_notification.personalisation == {}
+
+
+@pytest.mark.parametrize('input_value', [
+    None,
+    {}
+])
+def test_notification_personalisation_setter_always_sets_empty_dict(sample_notification, input_value):
+    sample_notification.personalisation = input_value
+
+    assert sample_notification._personalisation == encryption.encrypt({})
