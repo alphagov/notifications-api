@@ -67,7 +67,6 @@ def receive_firetext_sms():
         }), 200
 
     service = potential_services[0]
-
     inbound = create_inbound_sms_object(service=service,
                                         content=post_data["message"],
                                         from_number=post_data['source'],
