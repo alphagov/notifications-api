@@ -10,4 +10,5 @@ def test_get_dvla_organisations(client):
 
     assert response.status_code == 200
     dvla_organisations = json.loads(response.get_data(as_text=True))
-    assert dvla_organisations == {'001': 'HM Government', '500': 'Land Registry'}
+    assert dvla_organisations['001'] == 'HM Government'
+    assert dvla_organisations['500'] == 'Land Registry'

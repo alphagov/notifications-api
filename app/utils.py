@@ -77,3 +77,12 @@ def get_london_month_from_utc_column(column):
 
 def cache_key_for_service_template_counter(service_id, limit_days=7):
     return "{}-template-counter-limit-{}-days".format(service_id, limit_days)
+
+
+def get_public_notify_type_text(notify_type, plural=False):
+    from app.models import SMS_TYPE
+    notify_type_text = notify_type
+    if notify_type == SMS_TYPE:
+        notify_type_text = 'text message'
+
+    return '{}{}'.format(notify_type_text, 's' if plural else '')

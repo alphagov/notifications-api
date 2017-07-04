@@ -142,7 +142,6 @@ def update_service(service_id):
     service_going_live = fetched_service.restricted and not request.get_json().get('restricted', True)
 
     current_data = dict(service_schema.dump(fetched_service).data.items())
-    service_schema.set_override_flag(request.get_json().get('permissions') is not None)
     current_data.update(request.get_json())
     update_dict = service_schema.load(current_data).data
     dao_update_service(update_dict)
@@ -326,7 +325,7 @@ def get_notification_for_service(service_id, notification_id):
 def search_for_notification_by_to_field(service_id, search_term, statuses):
     results = notifications_dao.dao_get_notifications_by_to_field(service_id, search_term, statuses)
     return jsonify(
-        notifications=notification_with_personalisation_schema.dump(results, many=True).data
+        notifications=notification_with_template_schema.dump(results, many=True).data
     ), 200
 
 
