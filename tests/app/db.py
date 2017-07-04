@@ -13,6 +13,7 @@ from app.models import (
     ServicePermission,
     Job,
     InboundSms,
+    Organisation,
     EMAIL_TYPE,
     SMS_TYPE,
     KEY_TYPE_NORMAL,
@@ -23,6 +24,7 @@ from app.dao.templates_dao import dao_create_template
 from app.dao.services_dao import dao_create_service
 from app.dao.service_permissions_dao import dao_add_service_permission
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
+from app.dao.organisations_dao import dao_create_organisation
 
 
 def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk", state='active'):
@@ -225,3 +227,15 @@ def create_service_inbound_api(
                                             )
     save_service_inbound_api(service_inbound_api)
     return service_inbound_api
+
+
+def create_organisation(colour='blue', logo='test_x2.png', name='test_logo'):
+    data = {
+        'colour': colour,
+        'logo': logo,
+        'name': name
+    }
+    organisation = Organisation(**data)
+    dao_create_organisation(organisation)
+
+    return organisation
