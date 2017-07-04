@@ -48,7 +48,7 @@ def restrict_ip_sms():
     ip = ''
     if request.headers.getlist("X-Forwarded-For"):
         ip0 = request.headers.getlist("X-Forwarded-For")
-        ip1 = ip0.split(',');
+        ip1 = ip0.split(',')
         ip = ip1[0]
 
     if ip in current_app.config.get('ALLOW_IP_INBOUND_SMS'):
