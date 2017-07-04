@@ -5,6 +5,7 @@ from unittest.mock import call
 import pytest
 from flask import json
 
+from app.dao.services_dao import dao_fetch_services_by_sms_sender
 from app.notifications.receive_notifications import (
     format_mmg_message,
     format_mmg_datetime,
@@ -17,18 +18,17 @@ from tests.app.db import create_service
 from tests.app.conftest import sample_service
 
 
-def test_receive_notification_returns_received_to_mmg(
-        client, mocker, sample_service_full_permissions):
+def test_receive_notification_returns_received_to_mmg(client, mocker, sample_service_full_permissions):
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     data = {
-            "ID": "1234",
-            "MSISDN": "447700900855",
-            "Message": "Some message to notify",
-            "Trigger": "Trigger?",
-            "Number": "testing",
-            "Channel": "SMS",
-            "DateRecieved": "2012-06-27 12:33:00"
-        }
+        "ID": "1234",
+        "MSISDN": "447700900855",
+        "Message": "Some message to notify",
+        "Trigger": "Trigger?",
+        "Number": "testing",
+        "Channel": "SMS",
+        "DateRecieved": "2012-06-27 12:33:00"
+    }
     response = client.post(path='/notifications/sms/receive/mmg',
                            data=json.dumps(data),
                            headers=[('Content-Type', 'application/json')])
@@ -62,7 +62,7 @@ def test_receive_notification_returns_received_to_mmg(
             "Message": "Some message to notify",
             "source": "Source",
             "time": "2012-06-27 12:33:00",
-            "destination": "447700900856"
+            "destination": "447700900855"
         },
         '{\n  "status": "ok"\n}'
     ),
@@ -74,7 +74,11 @@ def test_receive_notification_returns_received_to_mmg(
 def test_receive_notification_without_permissions_does_not_create_inbound(
         client, mocker, notify_db, notify_db_session, permissions, provider, headers, data, expected_response):
     service = sample_service(notify_db, notify_db_session, permissions=permissions)
+    mocker.patch("app.notifications.receive_notifications.dao_fetch_services_by_sms_sender",
+                 return_value=[service])
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
+    mocked_logger = mocker.patch("flask.current_app.logger.error")
+
     response = client.post(path='/notifications/sms/receive/{}'.format(provider),
                            data=data,
                            headers=headers)
@@ -83,6 +87,7 @@ def test_receive_notification_without_permissions_does_not_create_inbound(
     assert response.get_data(as_text=True) == expected_response
     assert len(InboundSms.query.all()) == 0
     assert mocked.called is False
+    assert mocked_logger.call_args == call('Service "{}" does not allow inbound SMS'.format(service.id))
 
 
 @pytest.mark.parametrize('message, expected_output', [
