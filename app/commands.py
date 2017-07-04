@@ -115,3 +115,33 @@ class CustomDbScript(Command):
             print('commit 250000 updates at {}'.format(datetime.utcnow()))
             db.session.commit()
             result_history = db.session.execute(subq_history).fetchall()
+
+    def fix_notification_statuses_not_in_sync(self):
+        """
+        This will be used to correct an issue where Notification._status_enum and NotificationHistory._status_fkey
+        became out of sync. See 979e90a.
+
+        Notification._status_enum is the source of truth so NotificationHistory._status_fkey will be updated with
+        these values.
+        """
+        MAX = 10000
+
+        subq = "SELECT id FROM notifications WHERE cast (status as text) != notification_status".format(MAX)
+        update = "UPDATE notifications SET notification_status = status WHERE id in ({})".format(subq)
+        result = db.session.execute(subq).fetchall()
+
+        while len(result) > 0:
+            db.session.execute(update)
+            print('Committed {} updates at {}'.format(MAX, datetime.utcnow()))
+            db.session.commit()
+            result = db.session.execute(subq).fetchall()
+
+        subq_hist = "SELECT id FROM notification_history WHERE cast (status as text) != notification_status".format(MAX)
+        update = "UPDATE notification_history SET notification_status = status WHERE id in ({})".format(subq_hist)
+        result = db.session.execute(subq_hist).fetchall()
+
+        while len(result) > 0:
+            db.session.execute(update)
+            print('Committed {} updates at {}'.format(MAX, datetime.utcnow()))
+            db.session.commit()
+            result = db.session.execute(subq_hist).fetchall()
