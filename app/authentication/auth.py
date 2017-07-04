@@ -45,16 +45,17 @@ def requires_no_auth():
 
 
 def restrict_ip_sms():
-    '''
-    ip_addr = jsonify({'remote_addr': request.remote_addr,
-                       'X-Forwarded_FOR': request.headers.getlist('X-Forwarded-For'),
-                       'X_Real-Ip': request.headers.getlist('X-Real-Ip')})
-    '''
-    current_app.logger.info("Inbound sms ip addresses remote_addr = {}, "
-                            "X-Forwarded_FOR = {}".format(request.remote_addr,
-                                                          request.headers.getlist('X-Forwarded-For')))
+    ip = ''
+    if request.headers.getlist("X-Forwarded-For"):
+        ip = request.headers.getlist("X-Forwarded-For")[0]
 
-    return
+    if ip in current_app.config.get('ALLOW_IP_INBOUND_SMS'):
+        current_app.logger.info("Inbound sms ip addresses {} passed ".format(ip))
+        return
+    else:
+        current_app.logger.info("Inbound sms ip addresses {} blocked ".format(ip))
+        return
+        # raise AuthError('Unknown source IP address from the SMS provider', 403)
 
 
 def requires_admin_auth():

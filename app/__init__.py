@@ -116,7 +116,7 @@ def register_blueprint(application):
     ses_callback_blueprint.before_request(requires_no_auth)
     application.register_blueprint(ses_callback_blueprint)
 
-    sms_callback_blueprint.before_request(requires_no_auth)
+    sms_callback_blueprint.before_request(restrict_ip_sms)
     application.register_blueprint(sms_callback_blueprint)
 
     receive_notifications_blueprint.before_request(restrict_ip_sms)
