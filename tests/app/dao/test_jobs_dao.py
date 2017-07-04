@@ -40,8 +40,7 @@ def test_should_get_all_statuses_for_notifications_associated_with_job(
         notify_db,
         notify_db_session,
         sample_service,
-        sample_job
-):
+        sample_job):
     notification = partial(create_notification, notify_db, notify_db_session, service=sample_service, job=sample_job)
     notification(status='created')
     notification(status='sending')
@@ -54,7 +53,7 @@ def test_should_get_all_statuses_for_notifications_associated_with_job(
     notification(status='sent')
 
     results = dao_get_notification_outcomes_for_job(sample_service.id, sample_job.id)
-    assert set([(row.count, row.status) for row in results]) == set([
+    assert [(row.count, row.status) for row in results] == [
         (1, 'created'),
         (1, 'sending'),
         (1, 'delivered'),
@@ -64,19 +63,17 @@ def test_should_get_all_statuses_for_notifications_associated_with_job(
         (1, 'temporary-failure'),
         (1, 'permanent-failure'),
         (1, 'sent')
-    ])
+    ]
 
 
 def test_should_count_of_statuses_for_notifications_associated_with_job(
         notify_db,
         notify_db_session,
         sample_service,
-        sample_job
-):
+        sample_job):
     notification = partial(create_notification, notify_db, notify_db_session, service=sample_service, job=sample_job)
     notification(status='created')
     notification(status='created')
-
     notification(status='sending')
     notification(status='sending')
     notification(status='sending')
@@ -85,11 +82,11 @@ def test_should_count_of_statuses_for_notifications_associated_with_job(
     notification(status='delivered')
 
     results = dao_get_notification_outcomes_for_job(sample_service.id, sample_job.id)
-    assert set([(row.count, row.status) for row in results]) == set([
+    assert [(row.count, row.status) for row in results] == [
         (2, 'created'),
         (4, 'sending'),
         (2, 'delivered')
-    ])
+    ]
 
 
 def test_should_return_zero_length_array_if_no_notifications_for_job(sample_service, sample_job):

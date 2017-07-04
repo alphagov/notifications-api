@@ -819,11 +819,12 @@ class Notification(db.Model):
 
     @hybrid_property
     def status(self):
-        return self._status_fkey
+        return self._status_enum
 
     @status.setter
     def status(self, status):
         self._status_fkey = status
+        self._status_enum = status
 
     @property
     def personalisation(self):
@@ -1029,11 +1030,12 @@ class NotificationHistory(db.Model, HistoryModel):
 
     @hybrid_property
     def status(self):
-        return self._status_fkey
+        return self._status_enum
 
     @status.setter
     def status(self, status):
         self._status_fkey = status
+        self._status_enum = status
 
 
 INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
