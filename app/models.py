@@ -137,6 +137,19 @@ class Organisation(db.Model):
     logo = db.Column(db.String(255), nullable=True)
     name = db.Column(db.String(255), nullable=True)
 
+    @classmethod
+    def from_json(cls, data):
+        """
+        Assumption: data has been validated appropriately.
+
+        Returns a Service object based on the provided data. Deserialises created_by to created_by_id as marshmallow
+        would.
+        """
+        # validate json with marshmallow
+        fields = data.copy()
+
+        return cls(**fields)
+
 
 DVLA_ORG_HM_GOVERNMENT = '001'
 DVLA_ORG_LAND_REGISTRY = '500'
