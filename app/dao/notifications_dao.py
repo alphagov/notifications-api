@@ -410,7 +410,10 @@ def _timeout_notifications(current_statuses, new_status, timeout_start, updated_
             table.status.in_(current_statuses),
             table.notification_type != LETTER_TYPE
         )
-        last_update_count = q.update({'status': new_status, 'updated_at': updated_at}, synchronize_session=False)
+        last_update_count = q.update(
+            {'_status_enum': new_status, '_status_fkey': new_status, 'updated_at': updated_at},
+            synchronize_session=False
+        )
     return last_update_count
 
 
