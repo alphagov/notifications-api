@@ -743,8 +743,6 @@ NOTIFICATION_STATUS_TYPES = [
 
 NOTIFICATION_STATUS_TYPES_NON_BILLABLE = list(set(NOTIFICATION_STATUS_TYPES) - set(NOTIFICATION_STATUS_TYPES_BILLABLE))
 
-NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
-
 
 class NotificationStatusTypes(db.Model):
     __tablename__ = 'notification_status_types'
@@ -788,8 +786,7 @@ class Notification(db.Model):
         unique=False,
         nullable=True,
         onupdate=datetime.datetime.utcnow)
-    _status_enum = db.Column('status', NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
-    _status_fkey = db.Column(
+    status = db.Column(
         'notification_status',
         db.String,
         db.ForeignKey('notification_status_types.name'),
@@ -816,15 +813,6 @@ class Notification(db.Model):
 
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
-
-    @hybrid_property
-    def status(self):
-        return self._status_enum
-
-    @status.setter
-    def status(self, status):
-        self._status_fkey = status
-        self._status_enum = status
 
     @property
     def personalisation(self):
@@ -999,8 +987,7 @@ class NotificationHistory(db.Model, HistoryModel):
     sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
     sent_by = db.Column(db.String, nullable=True)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
-    _status_enum = db.Column('status', NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
-    _status_fkey = db.Column(
+    status = db.Column(
         'notification_status',
         db.String,
         db.ForeignKey('notification_status_types.name'),
@@ -1027,15 +1014,6 @@ class NotificationHistory(db.Model, HistoryModel):
     def update_from_original(self, original):
         super().update_from_original(original)
         self.status = original.status
-
-    @hybrid_property
-    def status(self):
-        return self._status_enum
-
-    @status.setter
-    def status(self, status):
-        self._status_fkey = status
-        self._status_enum = status
 
 
 INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']

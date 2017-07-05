@@ -405,7 +405,7 @@ def test_should_by_able_to_update_status_by_reference(sample_email_template, ses
     assert Notification.query.get(notification.id).status == 'delivered'
 
 
-def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_provider):
+def test_should_by_able_to_update_status_by_id_from_sending_to_delivered(sample_template, sample_job, mmg_provider):
     with freeze_time('2000-01-01 12:00:00'):
         data = _notification_json(sample_template, job_id=sample_job.id, status='sending')
         notification = Notification(**data)
