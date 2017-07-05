@@ -10,7 +10,8 @@ from app.notifications.receive_notifications import (
     format_mmg_message,
     format_mmg_datetime,
     create_inbound_sms_object,
-    strip_leading_forty_four
+    strip_leading_forty_four,
+    has_inbound_sms_permissions,
 )
 
 from app.models import InboundSms, EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE
@@ -78,7 +79,8 @@ def test_receive_notification_without_permissions_does_not_create_inbound(
                  return_value=[service])
     mocked_send_inbound_sms = mocker.patch(
         "app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
-    mocked_logger = mocker.patch("flask.current_app.logger.error")
+    mocked_has_permissions = mocker.patch(
+        "app.notifications.receive_notifications.has_inbound_sms_permissions", return_value=False)
 
     response = client.post(path='/notifications/sms/receive/{}'.format(provider),
                            data=data,
@@ -87,8 +89,18 @@ def test_receive_notification_without_permissions_does_not_create_inbound(
     assert response.status_code == 200
     assert response.get_data(as_text=True) == expected_response
     assert len(InboundSms.query.all()) == 0
+    assert mocked_has_permissions.called
     mocked_send_inbound_sms.assert_not_called()
-    mocked_logger.assert_called_once_with('Service "{}" does not allow inbound SMS'.format(service.id))
+
+
+@pytest.mark.parametrize('permissions,expected_response', [
+    ([SMS_TYPE, INBOUND_SMS_TYPE], True),
+    ([INBOUND_SMS_TYPE], False),
+    ([SMS_TYPE], False),
+])
+def test_check_permissions_for_inbound_sms(notify_db, notify_db_session, permissions, expected_response):
+    service = create_service(service_permissions=permissions)
+    assert has_inbound_sms_permissions(service.permissions) is expected_response
 
 
 @pytest.mark.parametrize('message, expected_output', [
