@@ -265,7 +265,6 @@ class Config(object):
     ALLOW_IP_INBOUND_SMS = []
 
 
-
 ######################
 # Config overrides ###
 ######################
