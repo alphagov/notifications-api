@@ -126,7 +126,7 @@ class CustomDbScript(Command):
         """
         MAX = 10000
 
-        subq = "SELECT id FROM notifications WHERE cast (status as text) != notification_status".format(MAX)
+        subq = "SELECT id FROM notifications WHERE cast (status as text) != notification_status LIMIT {}".format(MAX)
         update = "UPDATE notifications SET notification_status = status WHERE id in ({})".format(subq)
         result = db.session.execute(subq).fetchall()
 
@@ -136,7 +136,8 @@ class CustomDbScript(Command):
             db.session.commit()
             result = db.session.execute(subq).fetchall()
 
-        subq_hist = "SELECT id FROM notification_history WHERE cast (status as text) != notification_status".format(MAX)
+        subq_hist = "SELECT id FROM notification_history WHERE cast (status as text) != notification_status LIMIT {}" \
+            .format(MAX)
         update = "UPDATE notification_history SET notification_status = status WHERE id in ({})".format(subq_hist)
         result = db.session.execute(subq_hist).fetchall()
 
