@@ -262,7 +262,7 @@ class Config(object):
 
     FREE_SMS_TIER_FRAGMENT_COUNT = 250000
 
-    ALLOW_IP_INBOUND_SMS = ['134,213,243,188', '134,213,243,189']     # MMG
+    ALLOW_IP_INBOUND_SMS = ['134.213.243.188', '134.213.243.189']     # MMG
     ALLOW_IP_INBOUND_SMS = [ALLOW_IP_INBOUND_SMS, '5.44.234.151', '185.3.164.175',
                             '185.3.167.37', '185.3.167.137', '185.3.167.137']     # Firetext
 
