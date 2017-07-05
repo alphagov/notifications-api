@@ -5,27 +5,31 @@ from unittest.mock import call
 import pytest
 from flask import json
 
+from app.dao.services_dao import dao_fetch_services_by_sms_sender
 from app.notifications.receive_notifications import (
     format_mmg_message,
     format_mmg_datetime,
     create_inbound_sms_object,
-    strip_leading_forty_four
+    strip_leading_forty_four,
+    has_inbound_sms_permissions,
 )
 
-from app.models import InboundSms
+from app.models import InboundSms, EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE
 from tests.app.db import create_service
+from tests.app.conftest import sample_service
 
 
-def test_receive_notification_returns_received_to_mmg(client, sample_service, mocker):
+def test_receive_notification_returns_received_to_mmg(client, mocker, sample_service_full_permissions):
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
-    data = {"ID": "1234",
-            "MSISDN": "447700900855",
-            "Message": "Some message to notify",
-            "Trigger": "Trigger?",
-            "Number": "testing",
-            "Channel": "SMS",
-            "DateRecieved": "2012-06-27 12:33:00"
-            }
+    data = {
+        "ID": "1234",
+        "MSISDN": "447700900855",
+        "Message": "Some message to notify",
+        "Trigger": "Trigger?",
+        "Number": "testing",
+        "Channel": "SMS",
+        "DateRecieved": "2012-06-27 12:33:00"
+    }
     response = client.post(path='/notifications/sms/receive/mmg',
                            data=json.dumps(data),
                            headers=[('Content-Type', 'application/json')])
@@ -33,7 +37,70 @@ def test_receive_notification_returns_received_to_mmg(client, sample_service, mo
     assert response.status_code == 200
     assert response.get_data(as_text=True) == 'RECEIVED'
     inbound_sms_id = InboundSms.query.all()[0].id
-    mocked.assert_called_once_with([str(inbound_sms_id), str(sample_service.id)], queue="notify-internal-tasks")
+    mocked.assert_called_once_with(
+        [str(inbound_sms_id), str(sample_service_full_permissions.id)], queue="notify-internal-tasks")
+
+
+@pytest.mark.parametrize('provider,headers,data,expected_response', [
+    (
+        'mmg',
+        [('Content-Type', 'application/json')],
+        json.dumps({
+            "ID": "1234",
+            "MSISDN": "447700900855",
+            "Message": "Some message to notify",
+            "Trigger": "Trigger?",
+            "Number": "testing",
+            "Channel": "SMS",
+            "DateRecieved": "2012-06-27 12:33:00"
+        }),
+        'RECEIVED'
+    ),
+    (
+        'firetext',
+        None,
+        {
+            "Message": "Some message to notify",
+            "source": "Source",
+            "time": "2012-06-27 12:33:00",
+            "destination": "447700900855"
+        },
+        '{\n  "status": "ok"\n}'
+    ),
+])
+@pytest.mark.parametrize('permissions', [
+    ([SMS_TYPE]),
+    ([INBOUND_SMS_TYPE]),
+])
+def test_receive_notification_without_permissions_does_not_create_inbound(
+        client, mocker, notify_db, notify_db_session, permissions, provider, headers, data, expected_response):
+    service = sample_service(notify_db, notify_db_session, permissions=permissions)
+    mocker.patch("app.notifications.receive_notifications.dao_fetch_services_by_sms_sender",
+                 return_value=[service])
+    mocked_send_inbound_sms = mocker.patch(
+        "app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
+    mocked_has_permissions = mocker.patch(
+        "app.notifications.receive_notifications.has_inbound_sms_permissions", return_value=False)
+
+    response = client.post(path='/notifications/sms/receive/{}'.format(provider),
+                           data=data,
+                           headers=headers)
+
+    assert response.status_code == 200
+    assert response.get_data(as_text=True) == expected_response
+    assert len(InboundSms.query.all()) == 0
+    assert mocked_has_permissions.called
+    mocked_send_inbound_sms.assert_not_called()
+
+
+@pytest.mark.parametrize('permissions,expected_response', [
+    ([SMS_TYPE, INBOUND_SMS_TYPE], True),
+    ([INBOUND_SMS_TYPE], False),
+    ([SMS_TYPE], False),
+])
+def test_check_permissions_for_inbound_sms(notify_db, notify_db_session, permissions, expected_response):
+    service = create_service(service_permissions=permissions)
+    assert has_inbound_sms_permissions(service.permissions) is expected_response
 
 
 @pytest.mark.parametrize('message, expected_output', [
@@ -55,8 +122,8 @@ def test_format_mmg_datetime(provider_date, expected_output):
     assert format_mmg_datetime(provider_date) == expected_output
 
 
-def test_create_inbound_mmg_sms_object(sample_service):
-    sample_service.sms_sender = 'foo'
+def test_create_inbound_mmg_sms_object(sample_service_full_permissions):
+    sample_service_full_permissions.sms_sender = 'foo'
     data = {
         'Message': 'hello+there+%F0%9F%93%A9',
         'Number': 'foo',
@@ -65,10 +132,10 @@ def test_create_inbound_mmg_sms_object(sample_service):
         'ID': 'bar',
     }
 
-    inbound_sms = create_inbound_sms_object(sample_service, format_mmg_message(data["Message"]),
+    inbound_sms = create_inbound_sms_object(sample_service_full_permissions, format_mmg_message(data["Message"]),
                                             data["MSISDN"], data["ID"], data["DateRecieved"], "mmg")
 
-    assert inbound_sms.service_id == sample_service.id
+    assert inbound_sms.service_id == sample_service_full_permissions.id
     assert inbound_sms.notify_number == 'foo'
     assert inbound_sms.user_number == '447700900001'
     assert inbound_sms.provider_date == datetime(2017, 1, 2, 3, 4, 5)
@@ -80,8 +147,8 @@ def test_create_inbound_mmg_sms_object(sample_service):
 
 @pytest.mark.parametrize('notify_number', ['foo', 'baz'], ids=['two_matching_services', 'no_matching_services'])
 def test_receive_notification_error_if_not_single_matching_service(client, notify_db_session, notify_number):
-    create_service(service_name='a', sms_sender='foo')
-    create_service(service_name='b', sms_sender='foo')
+    create_service(service_name='a', sms_sender='foo', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
+    create_service(service_name='b', sms_sender='foo', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
 
     data = {
         'Message': 'hello',
@@ -104,7 +171,8 @@ def test_receive_notification_returns_received_to_firetext(notify_db_session, cl
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
-    service = create_service(service_name='b', sms_sender='07111111111')
+    service = create_service(
+        service_name='b', sms_sender='07111111111', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
 
     data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 
@@ -127,7 +195,8 @@ def test_receive_notification_from_firetext_persists_message(notify_db_session, 
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
-    service = create_service(service_name='b', sms_sender='07111111111')
+    service = create_service(
+        service_name='b', sms_sender='07111111111', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
 
     data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 
@@ -155,7 +224,8 @@ def test_receive_notification_from_firetext_persists_message_with_normalized_pho
     mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
-    create_service(service_name='b', sms_sender='07111111111')
+    create_service(
+        service_name='b', sms_sender='07111111111', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
 
     data = "source=(+44)7999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 
@@ -177,7 +247,8 @@ def test_returns_ok_to_firetext_if_mismatched_sms_sender(notify_db_session, clie
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
-    create_service(service_name='b', sms_sender='07111111199')
+    create_service(
+        service_name='b', sms_sender='07111111199', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
 
     data = "source=(+44)7999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 
