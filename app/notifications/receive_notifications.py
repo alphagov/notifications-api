@@ -128,13 +128,17 @@ def fetch_potential_services(inbound_number, provider_name):
         statsd_client.incr('inbound.{}.failed'.format(provider_name))
         return False
 
-    str_permissions = [p.permission for p in potential_services[0].permissions]
-    if set([INBOUND_SMS_TYPE, SMS_TYPE]).issubset(set(str_permissions)) is False:
+    if not has_inbound_sms_permissions(potential_services[0].permissions):
         current_app.logger.error(
             'Service "{}" does not allow inbound SMS'.format(potential_services[0].id))
         return False
 
     return potential_services
+
+
+def has_inbound_sms_permissions(permissions):
+    str_permissions = [p.permission for p in permissions]
+    return set([INBOUND_SMS_TYPE, SMS_TYPE]).issubset(set(str_permissions))
 
 
 def strip_leading_forty_four(number):
