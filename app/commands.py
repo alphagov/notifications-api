@@ -132,7 +132,7 @@ class CustomDbScript(Command):
 
         while len(result) > 0:
             db.session.execute(update)
-            print('Committed {} updates at {}'.format(MAX, datetime.utcnow()))
+            print('Committed {} updates at {}'.format(len(result), datetime.utcnow()))
             db.session.commit()
             result = db.session.execute(subq).fetchall()
 
@@ -143,6 +143,6 @@ class CustomDbScript(Command):
 
         while len(result) > 0:
             db.session.execute(update)
-            print('Committed {} updates at {}'.format(MAX, datetime.utcnow()))
+            print('Committed {} updates at {}'.format(len(result), datetime.utcnow()))
             db.session.commit()
             result = db.session.execute(subq_hist).fetchall()
