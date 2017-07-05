@@ -130,7 +130,7 @@ class BrandingTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
-class Organisation(db.Model):
+class Organisation(db.Model, Versioned):
     __tablename__ = 'organisation'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     colour = db.Column(db.String(7), nullable=True)
@@ -142,8 +142,7 @@ class Organisation(db.Model):
         """
         Assumption: data has been validated appropriately.
 
-        Returns a Service object based on the provided data. Deserialises created_by to created_by_id as marshmallow
-        would.
+        Returns a Organisation object based on the provided data. 
         """
         # validate json with marshmallow
         fields = data.copy()

@@ -38,7 +38,7 @@ def test_update_organisation(notify_db, notify_db_session):
     organisation = create_organisation()
 
     organisation_from_db = Organisation.query.first()
-    assert organisation.name != updated_name
+    assert organisation_from_db.name != updated_name
 
     organisation.name = updated_name
 
@@ -46,3 +46,21 @@ def test_update_organisation(notify_db, notify_db_session):
     organisation_from_db = Organisation.query.first()
 
     assert organisation_from_db.name == updated_name
+
+
+def test_create_organisation_creates_a_history_record_with_current_data(sample_user):
+    assert Organisation.query.count() == 0
+    assert Organisation.get_history_model().query.count() == 0
+    organisation = create_organisation()
+    assert Organisation.query.count() == 1
+    assert Organisation.get_history_model().query.count() == 1
+
+    organisation_from_db = Organisation.query.first()
+    organisation_history = Organisation.get_history_model().query.first()
+
+    assert organisation_from_db.id == organisation_history.id
+    assert organisation_from_db.name == organisation_history.name
+    assert organisation_from_db.version == 1
+    assert organisation_from_db.version == organisation_history.version
+    assert sample_user.id == organisation_history.created_by_id
+    assert organisation_from_db.created_by.id == organisation_history.created_by_id
