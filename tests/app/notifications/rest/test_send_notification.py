@@ -1,9 +1,7 @@
-import random
-import string
 import pytest
 from datetime import datetime
 
-from flask import (json, current_app)
+from flask import json
 from freezegun import freeze_time
 from notifications_python_client.authentication import create_jwt_token
 
@@ -18,6 +16,7 @@ from app.dao.services_dao import dao_update_service
 from app.dao.api_key_dao import save_model_api_key
 from app.v2.errors import RateLimitError
 from tests import create_authorization_header
+from tests.app.db import create_template
 from tests.app.conftest import (
     sample_notification as create_sample_notification,
     sample_service as create_sample_service,
@@ -25,7 +24,6 @@ from tests.app.conftest import (
     sample_template as create_sample_template,
     sample_service_whitelist as create_sample_service_whitelist,
     sample_api_key as create_sample_api_key,
-    sample_service,
     sample_template_without_sms_permission,
     sample_template_without_email_permission)
 
@@ -987,39 +985,30 @@ def test_create_template_doesnt_raise_with_too_much_personalisation(
     create_template_object_for_notification(template, {'name': 'Jo', 'extra': 'stuff'})
 
 
-@pytest.mark.parametrize(
-    'template_type, should_error', [
-        (SMS_TYPE, True),
-        (EMAIL_TYPE, False)
-    ]
-)
-def test_create_template_raises_invalid_request_when_content_too_large(
-        notify_db,
-        notify_db_session,
-        template_type,
-        should_error
-):
-    sample = create_sample_template(
-        notify_db,
-        notify_db_session,
+@pytest.mark.parametrize('template_type', [
+    SMS_TYPE,
+    pytest.mark.xfail(EMAIL_TYPE)
+])
+def test_create_template_raises_invalid_request_when_content_too_large(sample_service, template_type):
+    sample = create_template(
+        sample_service,
         content="((long_text))",
         template_type=template_type
     )
-    limit = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
     template = Template.query.get(sample.id)
     from app.notifications.rest import create_template_object_for_notification
-    try:
-        create_template_object_for_notification(template,
-                                                {'long_text':
-                                                    ''.join(
-                                                        random.choice(string.ascii_uppercase + string.digits) for _ in
-                                                        range(limit + 1))})
-        if should_error:
-            pytest.fail("expected an InvalidRequest")
-    except InvalidRequest as e:
-        if not should_error:
-            pytest.fail("do not expect an InvalidRequest")
-        assert e.message == {'content': ['Content has a character count greater than the limit of {}'.format(limit)]}
+
+    with pytest.raises(InvalidRequest) as exc_info:
+        create_template_object_for_notification(
+            template,
+            {
+                'long_text': 'a' * 460
+            }
+        )
+
+    assert exc_info.value.message == {
+        'content': ['Content has a character count greater than the limit of 459']
+    }
 
 
 @pytest.mark.parametrize("notification_type, send_to",
@@ -1152,7 +1141,7 @@ def test_should_not_allow_international_number_on_sms_notification(client, sampl
 def test_should_allow_international_number_on_sms_notification(client, notify_db, notify_db_session, mocker):
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
-    service = sample_service(notify_db, notify_db_session, permissions=[INTERNATIONAL_SMS_TYPE, SMS_TYPE])
+    service = create_sample_service(notify_db, notify_db_session, permissions=[INTERNATIONAL_SMS_TYPE, SMS_TYPE])
     template = create_sample_template(notify_db, notify_db_session, service=service)
 
     data = {

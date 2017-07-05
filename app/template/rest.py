@@ -14,6 +14,8 @@ from app.dao.templates_dao import (
     dao_get_template_versions
 )
 from notifications_utils.template import SMSMessageTemplate
+from notifications_utils.recipients import SMS_CHAR_COUNT_LIMIT
+
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.service_permissions_dao import dao_fetch_service_permissions
 from app.models import SMS_TYPE, EMAIL_TYPE
@@ -35,7 +37,7 @@ def _content_count_greater_than_limit(content, template_type):
     if template_type != SMS_TYPE:
         return False
     template = SMSMessageTemplate({'content': content, 'template_type': template_type})
-    return template.content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+    return template.content_count > SMS_CHAR_COUNT_LIMIT
 
 
 @template_blueprint.route('', methods=['POST'])
@@ -54,7 +56,7 @@ def create_template(service_id):
     new_template.service = fetched_service
     over_limit = _content_count_greater_than_limit(new_template.content, new_template.template_type)
     if over_limit:
-        char_count_limit = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+        char_count_limit = SMS_CHAR_COUNT_LIMIT
         message = 'Content has a character count greater than the limit of {}'.format(char_count_limit)
         errors = {'content': [message]}
         raise InvalidRequest(errors, status_code=400)
@@ -90,7 +92,7 @@ def update_template(service_id, template_id):
     update_dict = template_schema.load(updated_template).data
     over_limit = _content_count_greater_than_limit(updated_template['content'], fetched_template.template_type)
     if over_limit:
-        char_count_limit = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+        char_count_limit = SMS_CHAR_COUNT_LIMIT
         message = 'Content has a character count greater than the limit of {}'.format(char_count_limit)
         errors = {'content': [message]}
         raise InvalidRequest(errors, status_code=400)

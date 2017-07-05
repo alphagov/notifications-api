@@ -520,13 +520,10 @@ def test_should_return_404_if_no_templates_for_service_with_id(client, sample_se
 
 
 def test_create_400_for_over_limit_content(client, notify_api, sample_user, sample_service, fake_uuid):
-
-    limit = notify_api.config.get('SMS_CHAR_COUNT_LIMIT')
-    content = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(limit + 1))
     data = {
         'name': 'too big template',
         'template_type': SMS_TYPE,
-        'content': content,
+        'content': 'a' * 460,
         'service': str(sample_service.id),
         'created_by': str(sample_user.id)
     }
@@ -540,16 +537,12 @@ def test_create_400_for_over_limit_content(client, notify_api, sample_user, samp
     )
     assert response.status_code == 400
     json_resp = json.loads(response.get_data(as_text=True))
-    assert (
-        'Content has a character count greater than the limit of {}'
-    ).format(limit) in json_resp['message']['content']
+    assert 'Content has a character count greater than the limit of 459' in json_resp['message']['content']
 
 
 def test_update_400_for_over_limit_content(client, notify_api, sample_user, sample_template):
-
-    limit = notify_api.config.get('SMS_CHAR_COUNT_LIMIT')
     json_data = json.dumps({
-        'content': ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(limit + 1)),
+        'content': 'a' * 460,
         'created_by': str(sample_user.id)
     })
     auth_header = create_authorization_header()
@@ -560,9 +553,7 @@ def test_update_400_for_over_limit_content(client, notify_api, sample_user, samp
     )
     assert resp.status_code == 400
     json_resp = json.loads(resp.get_data(as_text=True))
-    assert (
-        'Content has a character count greater than the limit of {}'
-    ).format(limit) in json_resp['message']['content']
+    assert 'Content has a character count greater than the limit of 459' in json_resp['message']['content']
 
 
 def test_should_return_all_template_versions_for_service_and_template_id(client, sample_template):

@@ -109,7 +109,6 @@ class Config(object):
     SQLALCHEMY_TRACK_MODIFICATIONS = True
     PAGE_SIZE = 50
     API_PAGE_SIZE = 250
-    SMS_CHAR_COUNT_LIMIT = 495
     BRANDING_PATH = '/images/email-template/crests/'
     TEST_MESSAGE_FILENAME = 'Test message'
     ONE_OFF_MESSAGE_FILENAME = 'Report'

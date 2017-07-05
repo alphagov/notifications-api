@@ -4,6 +4,7 @@ from flask import (
     request,
     current_app
 )
+from notifications_utils.recipients import SMS_CHAR_COUNT_LIMIT
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
@@ -207,9 +208,9 @@ def create_template_object_for_notification(template, personalisation):
 
     if (
         template_object.template_type == SMS_TYPE and
-        template_object.content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+        template_object.content_count > SMS_CHAR_COUNT_LIMIT
     ):
-        char_count = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+        char_count = SMS_CHAR_COUNT_LIMIT
         message = 'Content has a character count greater than the limit of {}'.format(char_count)
         errors = {'content': [message]}
         raise InvalidRequest(errors, status_code=400)
