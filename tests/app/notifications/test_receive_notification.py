@@ -76,7 +76,8 @@ def test_receive_notification_without_permissions_does_not_create_inbound(
     service = sample_service(notify_db, notify_db_session, permissions=permissions)
     mocker.patch("app.notifications.receive_notifications.dao_fetch_services_by_sms_sender",
                  return_value=[service])
-    mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
+    mocked_send_inbound_sms = mocker.patch(
+        "app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     mocked_logger = mocker.patch("flask.current_app.logger.error")
 
     response = client.post(path='/notifications/sms/receive/{}'.format(provider),
@@ -86,8 +87,8 @@ def test_receive_notification_without_permissions_does_not_create_inbound(
     assert response.status_code == 200
     assert response.get_data(as_text=True) == expected_response
     assert len(InboundSms.query.all()) == 0
-    assert mocked.called is False
-    assert mocked_logger.call_args == call('Service "{}" does not allow inbound SMS'.format(service.id))
+    mocked_send_inbound_sms.assert_not_called()
+    mocked_logger.assert_called_once_with('Service "{}" does not allow inbound SMS'.format(service.id))
 
 
 @pytest.mark.parametrize('message, expected_output', [
