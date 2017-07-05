@@ -229,7 +229,7 @@ def create_service_inbound_api(
     return service_inbound_api
 
 
-def create_organisation(colour='blue', logo='test_x2.png', name='test_logo'):
+def create_organisation(colour='blue', logo='test_x2.png', name='test_org_1'):
     data = {
         'colour': colour,
         'logo': logo,

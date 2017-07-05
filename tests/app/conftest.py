@@ -39,7 +39,7 @@ from app.dao.invited_user_dao import save_invited_user
 from app.dao.provider_rates_dao import create_provider_rates
 from app.clients.sms.firetext import FiretextClient
 from tests import create_authorization_header
-from tests.app.db import create_user, create_template, create_notification
+from tests.app.db import create_user, create_template, create_notification, create_organisation
 
 
 @pytest.yield_fixture
@@ -972,6 +972,10 @@ def sample_provider_rate(notify_db, notify_db_session, valid_from=None, rate=Non
         valid_from=valid_from if valid_from is not None else datetime.utcnow(),
         rate=rate if rate is not None else 1,
     )
+
+
+def sample_organisation(notify_db, notify_db_session):
+    create_organisation()
 
 
 @pytest.fixture

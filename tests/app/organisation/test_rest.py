@@ -37,3 +37,21 @@ def test_get_organisation_by_id(notify_api, notify_db, notify_db_session):
     assert organisation['logo'] == '/path/image.png'
     assert organisation['name'] == 'My Org'
     assert organisation['id'] == str(org.id)
+
+
+def test_create_organisation(client, notify_db, notify_db_session):
+    data = {
+        'name': 'test organisation',
+        'colour': '#0000ff',
+        'logo': '/images/test_x2.png'
+    }
+    auth_header = create_authorization_header()
+
+    response = client.post(
+        '/organisation',
+        headers=[('Content-Type', 'application/json'), auth_header],
+        data=json.dumps(data)
+    )
+    assert response.status_code == 201
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert data['name'] == json_resp['data']['name']
