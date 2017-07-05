@@ -51,6 +51,8 @@ def restrict_ip_sms():
         ip_list = request.headers.get("X-Forwarded-For")
         ip = ip_list.split(',')[0].strip()
 
+    current_app.logger.info("Inbound sms ip list {}".format(ip_list))
+
     if ip in current_app.config.get('ALLOW_IP_INBOUND_SMS'):
         current_app.logger.info("Inbound sms ip addresses {} passed ".format(ip))
         return
