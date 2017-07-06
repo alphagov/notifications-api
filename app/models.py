@@ -130,11 +130,11 @@ class BrandingTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
-class Organisation(db.Model, Versioned):
+class Organisation(db.Model):
     __tablename__ = 'organisation'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     colour = db.Column(db.String(7), nullable=True)
-    logo = db.Column(db.String(255), nullable=True)
+    logo = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(255), nullable=True)
 
     @classmethod
@@ -142,7 +142,7 @@ class Organisation(db.Model, Versioned):
         """
         Assumption: data has been validated appropriately.
 
-        Returns a Organisation object based on the provided data. 
+        Returns a Organisation object based on the provided data.
         """
         # validate json with marshmallow
         fields = data.copy()
