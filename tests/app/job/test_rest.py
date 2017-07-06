@@ -463,8 +463,6 @@ def test_get_all_notifications_for_job_returns_correct_format(
     assert len(resp['notifications']) == 1
     assert resp['notifications'][0]['id'] == str(sample_notification_with_job.id)
     assert resp['notifications'][0]['status'] == sample_notification_with_job.status
-    assert '_status_fkey' not in resp['notifications'][0]
-    assert '_status_enum' not in resp['notifications'][0]
 
 
 def test_get_job_by_id(notify_api, sample_job):

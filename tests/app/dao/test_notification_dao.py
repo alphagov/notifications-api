@@ -410,7 +410,7 @@ def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_
         data = _notification_json(sample_template, job_id=sample_job.id, status='sending')
         notification = Notification(**data)
         dao_create_notification(notification)
-        assert notification._status_fkey == 'sending'
+        assert notification.status == 'sending'
 
     assert Notification.query.get(notification.id).status == 'sending'
 
@@ -421,7 +421,7 @@ def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_
     assert updated.updated_at == datetime(2000, 1, 2, 12, 0, 0)
     assert Notification.query.get(notification.id).status == 'delivered'
     assert notification.updated_at == datetime(2000, 1, 2, 12, 0, 0)
-    assert notification._status_fkey == 'delivered'
+    assert notification.status == 'delivered'
 
 
 def test_should_not_update_status_by_id_if_not_sending_and_does_not_update_job(notify_db, notify_db_session):

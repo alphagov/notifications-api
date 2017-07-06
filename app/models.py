@@ -788,14 +788,14 @@ class Notification(db.Model):
         unique=False,
         nullable=True,
         onupdate=datetime.datetime.utcnow)
-    _status_enum = db.Column('status', NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=True, default='created')
-    _status_fkey = db.Column(
+    status = db.Column(
         'notification_status',
         db.String,
         db.ForeignKey('notification_status_types.name'),
         index=True,
         nullable=True,
-        default='created'
+        default='created',
+        key='status'  # http://docs.sqlalchemy.org/en/latest/core/metadata.html#sqlalchemy.schema.Column
     )
     reference = db.Column(db.String, nullable=True, index=True)
     client_reference = db.Column(db.String, index=True, nullable=True)
@@ -816,14 +816,6 @@ class Notification(db.Model):
 
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
-
-    @hybrid_property
-    def status(self):
-        return self._status_fkey
-
-    @status.setter
-    def status(self, status):
-        self._status_fkey = status
 
     @property
     def personalisation(self):
@@ -998,14 +990,14 @@ class NotificationHistory(db.Model, HistoryModel):
     sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
     sent_by = db.Column(db.String, nullable=True)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
-    _status_enum = db.Column('status', NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=True, default='created')
-    _status_fkey = db.Column(
+    status = db.Column(
         'notification_status',
         db.String,
         db.ForeignKey('notification_status_types.name'),
         index=True,
         nullable=True,
-        default='created'
+        default='created',
+        key='status'  # http://docs.sqlalchemy.org/en/latest/core/metadata.html#sqlalchemy.schema.Column
     )
     reference = db.Column(db.String, nullable=True, index=True)
     client_reference = db.Column(db.String, nullable=True)
@@ -1026,14 +1018,6 @@ class NotificationHistory(db.Model, HistoryModel):
     def update_from_original(self, original):
         super().update_from_original(original)
         self.status = original.status
-
-    @hybrid_property
-    def status(self):
-        return self._status_fkey
-
-    @status.setter
-    def status(self, status):
-        self._status_fkey = status
 
 
 INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
