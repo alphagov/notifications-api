@@ -27,8 +27,8 @@ def get_organisation_by_id(org_id):
 @organisation_blueprint.route('', methods=['POST'])
 def post_organisation():
     data = request.get_json()
-    if not data.get('name', None):
-        errors = {'name': ['Missing data for required field.']}
+    if not data.get('logo', None):
+        errors = {'logo': ['Missing data for required field.']}
         raise InvalidRequest(errors, status_code=400)
 
     # validate json with marshmallow
