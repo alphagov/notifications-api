@@ -1,7 +1,10 @@
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from app.dao.organisations_dao import (
-    dao_create_organisation, dao_get_organisations, dao_get_organisation_by_id, dao_update_organisation
+    dao_create_organisation,
+    dao_get_organisations,
+    dao_get_organisation_by_id, dao_update_organisation
 )
 from app.models import Organisation
 
@@ -14,6 +17,21 @@ def test_create_organisation(notify_db, notify_db_session):
     assert Organisation.query.count() == 1
     organisation_from_db = Organisation.query.first()
     assert organisation == organisation_from_db
+
+
+def test_create_organisation_without_name_or_colour_is_valid(notify_db, notify_db_session):
+    organisation = create_organisation(name=None, colour=None)
+
+    assert Organisation.query.count() == 1
+    organisation_from_db = Organisation.query.first()
+    assert organisation == organisation_from_db
+
+
+def test_create_organisation_without_logo_raises_error(notify_db, notify_db_session):
+    with pytest.raises(IntegrityError) as excinfo:
+        create_organisation(logo=None)
+    assert 'column "logo" violates not-null constraint' in str(excinfo.value)
+    assert Organisation.query.count() == 0
 
 
 def test_get_organisations_gets_all_organisations(notify_db, notify_db_session):
@@ -46,21 +64,3 @@ def test_update_organisation(notify_db, notify_db_session):
     organisation_from_db = Organisation.query.first()
 
     assert organisation_from_db.name == updated_name
-
-
-def test_create_organisation_creates_a_history_record_with_current_data(sample_user):
-    assert Organisation.query.count() == 0
-    assert Organisation.get_history_model().query.count() == 0
-    organisation = create_organisation()
-    assert Organisation.query.count() == 1
-    assert Organisation.get_history_model().query.count() == 1
-
-    organisation_from_db = Organisation.query.first()
-    organisation_history = Organisation.get_history_model().query.first()
-
-    assert organisation_from_db.id == organisation_history.id
-    assert organisation_from_db.name == organisation_history.name
-    assert organisation_from_db.version == 1
-    assert organisation_from_db.version == organisation_history.version
-    assert sample_user.id == organisation_history.created_by_id
-    assert organisation_from_db.created_by.id == organisation_history.created_by_id

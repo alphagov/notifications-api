@@ -12,12 +12,10 @@ def dao_get_organisation_by_id(org_id):
 
 
 @transactional
-@version_class(Organisation)
 def dao_create_organisation(organisation):
     db.session.add(organisation)
 
 
 @transactional
-@version_class(Organisation)
 def dao_update_organisation(organisation):
     db.session.add(organisation)
