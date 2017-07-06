@@ -1,7 +1,7 @@
 """empty message
 
-Revision ID: 0105_noti_status_null
-Revises: 0104_more_letter_orgs
+Revision ID: 0106_noti_status_null
+Revises: 0105_opg_letter_org
 Create Date: 2017-07-03 16:58:38.650154
 
 """
@@ -10,8 +10,8 @@ Create Date: 2017-07-03 16:58:38.650154
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision = '0105_noti_status_null'
-down_revision = '0104_more_letter_orgs'
+revision = '0106_noti_status_null'
+down_revision = '0105_opg_letter_org'
 
 
 def upgrade():

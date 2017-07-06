@@ -157,13 +157,8 @@ def test_update_status_of_notifications_after_timeout(notify_api, sample_templat
         timeout_notifications()
 
         assert not1.status == 'temporary-failure'
-        assert not1._status_fkey == 'temporary-failure'
-
         assert not2.status == 'technical-failure'
-        assert not2._status_fkey == 'technical-failure'
-
         assert not3.status == 'temporary-failure'
-        assert not3._status_fkey == 'temporary-failure'
 
 
 def test_not_update_status_of_notification_before_timeout(notify_api, sample_template):
