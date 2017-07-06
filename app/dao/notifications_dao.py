@@ -411,7 +411,7 @@ def _timeout_notifications(current_statuses, new_status, timeout_start, updated_
             table.notification_type != LETTER_TYPE
         )
         last_update_count = q.update(
-            {'_status_enum': new_status, '_status_fkey': new_status, 'updated_at': updated_at},
+            {'status': new_status, 'updated_at': updated_at},
             synchronize_session=False
         )
     return last_update_count
@@ -432,8 +432,8 @@ def dao_timeout_notifications(timeout_period_in_seconds):
     """
     timeout_start = datetime.utcnow() - timedelta(seconds=timeout_period_in_seconds)
     updated_at = datetime.utcnow()
-
     timeout = functools.partial(_timeout_notifications, timeout_start=timeout_start, updated_at=updated_at)
+
     # Notifications still in created status are marked with a technical-failure:
     updated = timeout([NOTIFICATION_CREATED], NOTIFICATION_TECHNICAL_FAILURE)
 
