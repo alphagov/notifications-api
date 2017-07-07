@@ -4,7 +4,7 @@ Flask-Script==2.0.5
 Flask-Migrate==2.0.4
 Flask-SQLAlchemy==2.2
 psycopg2==2.7.1
-SQLAlchemy==1.0.15
+SQLAlchemy==1.1.11
 SQLAlchemy-Utils==0.32.9
 PyJWT==1.4.2
 marshmallow==2.4.2
