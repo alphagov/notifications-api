@@ -55,3 +55,34 @@ def test_create_organisation(client, notify_db, notify_db_session):
     assert response.status_code == 201
     json_resp = json.loads(response.get_data(as_text=True))
     assert data['name'] == json_resp['data']['name']
+
+
+def test_create_organisation_without_logo_raises_error(client, notify_db, notify_db_session):
+    data = {
+        'name': 'test organisation',
+        'colour': '#0000ff',
+    }
+    auth_header = create_authorization_header()
+
+    response = client.post(
+        '/organisation',
+        headers=[('Content-Type', 'application/json'), auth_header],
+        data=json.dumps(data)
+    )
+    assert response.status_code == 400
+
+
+def test_create_organisation_without_name_or_colour_is_valid(client, notify_db, notify_db_session):
+    data = {
+        'name': None,
+        'colour': None,
+        'logo': 'images/text_x2.png'
+    }
+    auth_header = create_authorization_header()
+
+    response = client.post(
+        '/organisation',
+        headers=[('Content-Type', 'application/json'), auth_header],
+        data=json.dumps(data)
+    )
+    assert response.status_code == 400
