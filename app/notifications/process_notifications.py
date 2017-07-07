@@ -35,6 +35,7 @@ def check_placeholders(template_object):
 
 
 def persist_notification(
+    *,
     template_id,
     template_version,
     recipient,

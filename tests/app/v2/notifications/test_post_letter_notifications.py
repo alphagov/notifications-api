@@ -10,14 +10,17 @@ from tests import create_authorization_header
 from tests.app.db import create_service, create_template
 
 
+pytestmark = pytest.mark.skip('Leters not currently implemented')
+
+
 def letter_request(client, data, service_id, _expected_status=201):
     resp = client.post(
         url_for('v2_notifications.post_notification', notification_type='letter'),
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), create_authorization_header(service_id=service_id)]
     )
-    assert resp.status_code == _expected_status
     json_resp = json.loads(resp.get_data(as_text=True))
+    assert resp.status_code == _expected_status, json_resp
     return json_resp
 
 
@@ -74,7 +77,6 @@ def test_post_letter_notification_returns_400_and_missing_template(
 
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [{'error': 'BadRequestError', 'message': 'Template not found'}]
-
 
 
 def test_post_notification_returns_403_and_well_formed_auth_error(
@@ -139,11 +141,16 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
     assert not persist_mock.called
 
 
+@pytest.mark.parametrize('service_args', [
+    {'service_permissions': [EMAIL_TYPE, SMS_TYPE]},
+    {'restricted': True}
+])
 def test_post_letter_notification_returns_400_if_not_allowed_to_send_notification(
     client,
-    notify_db_session
+    notify_db_session,
+    service_args
 ):
-    service = create_service(service_permissions=[EMAIL_TYPE, SMS_TYPE])
+    service = create_service(**service_args)
     template = create_template(service, template_type=LETTER_TYPE)
 
     data = {
@@ -154,5 +161,5 @@ def test_post_letter_notification_returns_400_if_not_allowed_to_send_notificatio
     error_json = letter_request(client, data, service_id=service.id, _expected_status=400)
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [
-        {'error': 'BadRequestError', 'message': 'Cannot send text letters'}
+        {'error': 'BadRequestError', 'message': 'Cannot send letters'}
     ]

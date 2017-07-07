@@ -433,3 +433,17 @@ def test_post_notification_raises_bad_request_if_service_not_invited_to_schedule
     error_json = json.loads(response.get_data(as_text=True))
     assert error_json['errors'] == [
         {"error": "BadRequestError", "message": 'Cannot schedule notifications (this feature is invite-only)'}]
+
+
+def test_post_notification_raises_bad_request_if_not_valid_notification_type(client, sample_service):
+    auth_header = create_authorization_header(service_id=sample_service.id)
+    response = client.post(
+        '/v2/notifications/foo',
+        data='{}',
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    assert response.status_code == 400
+    error_json = json.loads(response.get_data(as_text=True))
+    assert error_json['errors'] == [
+        {'error': 'BadRequestError', 'message': 'Unknown notification type foo'}
+    ]
