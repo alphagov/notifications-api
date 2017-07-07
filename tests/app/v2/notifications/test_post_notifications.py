@@ -58,8 +58,8 @@ def test_post_sms_notification_returns_201(client, sample_template_with_placehol
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
                          [("sms", "phone_number", "+447700900855"),
                           ("email", "email_address", "sample@email.com")])
-def test_post_sms_notification_returns_400_and_missing_template(client, sample_service,
-                                                                notification_type, key_send_to, send_to):
+def test_post_notification_returns_400_and_missing_template(client, sample_service,
+                                                            notification_type, key_send_to, send_to):
     data = {
         key_send_to: send_to,
         'template_id': str(uuid.uuid4())

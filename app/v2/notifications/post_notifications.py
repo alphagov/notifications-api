@@ -2,7 +2,7 @@ from flask import request, jsonify, current_app
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
-from app.models import SMS_TYPE, EMAIL_TYPE, PRIORITY, SCHEDULE_NOTIFICATIONS
+from app.models import SMS_TYPE, EMAIL_TYPE, PRIORITY
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
@@ -11,20 +11,17 @@ from app.notifications.process_notifications import (
 from app.notifications.validators import (
     validate_and_format_recipient,
     check_rate_limiting,
-    service_has_permission,
     check_service_can_schedule_notification,
     check_service_has_permission,
     validate_template
 )
 from app.schema_validation import validate
-from app.utils import get_public_notify_type_text
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import (
     post_sms_request,
     create_post_sms_response_from_notification,
     post_email_request,
     create_post_email_response_from_notification)
-from app.v2.errors import BadRequestError
 
 
 @v2_notification_blueprint.route('/<notification_type>', methods=['POST'])
@@ -87,7 +84,6 @@ def post_notification(notification_type):
                                                           body=str(template_with_content),
                                                           from_number=sms_sender,
                                                           url_root=request.url_root,
-                                                          service_id=authenticated_service.id,
                                                           scheduled_for=scheduled_for)
     else:
         resp = create_post_email_response_from_notification(notification=notification,
@@ -95,6 +91,5 @@ def post_notification(notification_type):
                                                             subject=template_with_content.subject,
                                                             email_from=authenticated_service.email_from,
                                                             url_root=request.url_root,
-                                                            service_id=authenticated_service.id,
                                                             scheduled_for=scheduled_for)
     return jsonify(resp), 201
