@@ -5,7 +5,7 @@ pytest-mock==1.6.0
 pytest-cov==2.5.1
 coveralls==1.1
 moto==1.0.1
-flex==5.8.0
+flex==6.10.0
 freezegun==0.3.7
 requests-mock==1.0.0
 strict-rfc3339==0.7
