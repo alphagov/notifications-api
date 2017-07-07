@@ -13,7 +13,7 @@ flask-marshmallow==0.8.0
 Flask-Bcrypt==0.7.1
 credstash==1.13.2
 boto3==1.4.4
-celery==3.1.25
+celery==4.0.2
 monotonic==1.2
 statsd==3.2.1
 jsonschema==2.5.1
