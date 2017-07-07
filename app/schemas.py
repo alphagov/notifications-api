@@ -600,12 +600,6 @@ class EventSchema(BaseSchema):
         strict = True
 
 
-class OrganisationSchema(BaseSchema):
-    class Meta:
-        model = models.Organisation
-        strict = True
-
-
 class DaySchema(ma.Schema):
 
     class Meta:
@@ -658,7 +652,6 @@ service_history_schema = ServiceHistorySchema()
 api_key_history_schema = ApiKeyHistorySchema()
 template_history_schema = TemplateHistorySchema()
 event_schema = EventSchema()
-organisation_schema = OrganisationSchema()
 provider_details_schema = ProviderDetailsSchema()
 provider_details_history_schema = ProviderDetailsHistorySchema()
 day_schema = DaySchema()

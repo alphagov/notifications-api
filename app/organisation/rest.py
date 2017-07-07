@@ -1,12 +1,17 @@
 from flask import Blueprint, jsonify, request
 
-from app.dao.organisations_dao import dao_get_organisations, dao_get_organisation_by_id, dao_create_organisation
-from app.schemas import organisation_schema
+from app.dao.organisations_dao import (
+    dao_get_organisations,
+    dao_get_organisation_by_id,
+    dao_create_organisation
+)
 from app.errors import (
     InvalidRequest,
     register_errors
 )
 from app.models import Organisation
+from app.organisation.organisation_schema import post_organisation_schema
+from app.schema_validation import validate
 
 organisation_blueprint = Blueprint('organisation', __name__)
 register_errors(organisation_blueprint)
@@ -14,28 +19,23 @@ register_errors(organisation_blueprint)
 
 @organisation_blueprint.route('', methods=['GET'])
 def get_organisations():
-    data = organisation_schema.dump(dao_get_organisations(), many=True).data
-    return jsonify(organisations=data)
+    organisations = [o.serialize() for o in dao_get_organisations()]
+    return jsonify(organisations=organisations)
 
 
 @organisation_blueprint.route('/<uuid:org_id>', methods=['GET'])
 def get_organisation_by_id(org_id):
-    data = organisation_schema.dump(dao_get_organisation_by_id(org_id)).data
-    return jsonify(organisation=data)
+    organisation = dao_get_organisation_by_id(org_id)
+    return jsonify(organisation=organisation.serialize())
 
 
 @organisation_blueprint.route('', methods=['POST'])
 def post_organisation():
     data = request.get_json()
-    if not data.get('logo', None):
-        errors = {'logo': ['Missing data for required field.']}
-        raise InvalidRequest(errors, status_code=400)
 
-    # validate json with marshmallow
-    organisation_schema.load(request.get_json())
+    validate(data, post_organisation_schema)
 
-    # unpack valid json into service object
-    valid_organisation = Organisation.from_json(data)
+    organisation = Organisation(**data)
 
-    dao_create_organisation(valid_organisation)
-    return jsonify(data=organisation_schema.dump(valid_organisation).data), 201
+    dao_create_organisation(organisation)
+    return jsonify(data=organisation.serialize()), 201

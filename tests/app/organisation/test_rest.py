@@ -70,12 +70,12 @@ def test_create_organisation_without_logo_raises_error(client, notify_db, notify
         data=json.dumps(data)
     )
     assert response.status_code == 400
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp['errors'][0]['message'] == "logo is a required property"
 
 
 def test_create_organisation_without_name_or_colour_is_valid(client, notify_db, notify_db_session):
     data = {
-        'name': None,
-        'colour': None,
         'logo': 'images/text_x2.png'
     }
     auth_header = create_authorization_header()
@@ -85,4 +85,4 @@ def test_create_organisation_without_name_or_colour_is_valid(client, notify_db, 
         headers=[('Content-Type', 'application/json'), auth_header],
         data=json.dumps(data)
     )
-    assert response.status_code == 400
+    assert response.status_code == 201

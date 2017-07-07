@@ -137,17 +137,15 @@ class Organisation(db.Model):
     logo = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(255), nullable=True)
 
-    @classmethod
-    def from_json(cls, data):
-        """
-        Assumption: data has been validated appropriately.
+    def serialize(self):
+        serialized = {
+            "id": str(self.id),
+            "colour": self.colour,
+            "logo": self.logo,
+            "name": self.name,
+        }
 
-        Returns a Organisation object based on the provided data.
-        """
-        # validate json with marshmallow
-        fields = data.copy()
-
-        return cls(**fields)
+        return serialized
 
 
 DVLA_ORG_HM_GOVERNMENT = '001'
