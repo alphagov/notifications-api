@@ -1,5 +1,5 @@
 from app import db
-from app.dao.dao_utils import transactional, version_class
+from app.dao.dao_utils import transactional
 from app.models import Organisation
 
 

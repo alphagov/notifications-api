@@ -35,12 +35,14 @@ def test_create_organisation_without_logo_raises_error(notify_db, notify_db_sess
 
 
 def test_get_organisations_gets_all_organisations(notify_db, notify_db_session):
-    create_organisation(name='test_org_1')
-    create_organisation(name='test_org_2')
+    org_1 = create_organisation(name='test_org_1')
+    org_2 = create_organisation(name='test_org_2')
 
     organisations = dao_get_organisations()
 
     assert len(organisations) == 2
+    assert org_1 == organisations[0]
+    assert org_2 == organisations[1]
 
 
 def test_get_organisation_by_id_gets_correct_organisation(notify_db, notify_db_session):
