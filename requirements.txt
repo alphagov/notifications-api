@@ -10,7 +10,7 @@ PyJWT==1.5.2
 marshmallow==2.13.5
 marshmallow-sqlalchemy==0.13.1
 flask-marshmallow==0.8.0
-Flask-Bcrypt==0.6.2
+Flask-Bcrypt==0.7.1
 credstash==1.8.0
 boto3==1.4.4
 celery==3.1.25
