@@ -11,7 +11,7 @@ marshmallow==2.13.5
 marshmallow-sqlalchemy==0.13.1
 flask-marshmallow==0.8.0
 Flask-Bcrypt==0.7.1
-credstash==1.8.0
+credstash==1.13.2
 boto3==1.4.4
 celery==3.1.25
 monotonic==1.2
