@@ -234,11 +234,11 @@ post_letter_response = {
 }
 
 
-def create_post_sms_response_from_notification(notification, body, from_number, url_root, scheduled_for):
+def create_post_sms_response_from_notification(notification, content, from_number, url_root, scheduled_for):
     noti = __create_notification_response(notification, url_root, scheduled_for)
     noti['content'] = {
         'from_number': from_number,
-        'body': body
+        'body': content
     }
     return noti
 
