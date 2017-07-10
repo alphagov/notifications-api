@@ -16,7 +16,8 @@ def notify_config():
             'admin_client_secret': 'admin client secret',
             'secret_key': 'secret key',
             'dangerous_salt': 'dangerous salt',
-            'performance_platform_token': 'performance platform token'
+            'performance_platform_token': 'performance platform token',
+            'allow_ip_inbound_sms': ['111.111.111.111', '100.100.100.100']
         }
     }
 
@@ -197,3 +198,10 @@ def test_redis_config():
 
     assert os.environ['REDIS_ENABLED'] == '1'
     assert os.environ['REDIS_URL'] == 'redis url'
+
+
+@pytest.mark.usefixtures('os_environ', 'cloudfoundry_environ')
+def test_sms_config():
+    extract_cloudfoundry_config()
+
+    assert os.environ['SMS_INBOUND_WHITELIST'] == ['111.111.111.111', '100.100.100.100']
