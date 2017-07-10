@@ -788,7 +788,7 @@ class Notification(db.Model):
         unique=False,
         nullable=True,
         onupdate=datetime.datetime.utcnow)
-    _status_enum = db.Column('status', NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
+    _status_enum = db.Column('status', NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=True, default='created')
     _status_fkey = db.Column(
         'notification_status',
         db.String,
@@ -999,7 +999,7 @@ class NotificationHistory(db.Model, HistoryModel):
     sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
     sent_by = db.Column(db.String, nullable=True)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
-    _status_enum = db.Column('status', NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=False, default='created')
+    _status_enum = db.Column('status', NOTIFICATION_STATUS_TYPES_ENUM, index=True, nullable=True, default='created')
     _status_fkey = db.Column(
         'notification_status',
         db.String,
