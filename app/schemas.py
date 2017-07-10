@@ -260,7 +260,7 @@ class NotificationModelSchema(BaseSchema):
     class Meta:
         model = models.Notification
         strict = True
-        exclude = ('_personalisation', 'job', 'service', 'template', 'api_key', '_status_enum', '_status_fkey')
+        exclude = ('_personalisation', 'job', 'service', 'template', 'api_key',)
 
     status = fields.String(required=False)
 
@@ -416,7 +416,7 @@ class NotificationWithTemplateSchema(BaseSchema):
     class Meta:
         model = models.Notification
         strict = True
-        exclude = ('_personalisation', '_status_enum', '_status_fkey')
+        exclude = ('_personalisation', )
 
     template = fields.Nested(
         TemplateSchema,
