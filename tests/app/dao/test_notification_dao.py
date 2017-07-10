@@ -410,8 +410,7 @@ def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_
         data = _notification_json(sample_template, job_id=sample_job.id, status='sending')
         notification = Notification(**data)
         dao_create_notification(notification)
-        assert notification._status_enum == 'sending'
-        assert notification._status_fkey == 'sending'
+        assert notification.status == 'sending'
 
     assert Notification.query.get(notification.id).status == 'sending'
 
@@ -422,8 +421,7 @@ def test_should_by_able_to_update_status_by_id(sample_template, sample_job, mmg_
     assert updated.updated_at == datetime(2000, 1, 2, 12, 0, 0)
     assert Notification.query.get(notification.id).status == 'delivered'
     assert notification.updated_at == datetime(2000, 1, 2, 12, 0, 0)
-    assert notification._status_enum == 'delivered'
-    assert notification._status_fkey == 'delivered'
+    assert notification.status == 'delivered'
 
 
 def test_should_not_update_status_by_id_if_not_sending_and_does_not_update_job(notify_db, notify_db_session):
@@ -950,43 +948,12 @@ def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_ses
         ) == months
 
 
-def test_update_notification(sample_notification):
+def test_update_notification_sets_status(sample_notification):
     assert sample_notification.status == 'created'
     sample_notification.status = 'failed'
     dao_update_notification(sample_notification)
     notification_from_db = Notification.query.get(sample_notification.id)
     assert notification_from_db.status == 'failed'
-
-
-def test_update_notification_with_no_notification_status(sample_notification):
-    # specifically, it has an old enum status, but not a new status (because the upgrade script has just run)
-    update_dict = {'_status_enum': 'created', '_status_fkey': None}
-    Notification.query.filter(Notification.id == sample_notification.id).update(update_dict)
-
-    # now lets update the status to failed - both columns should now be populated
-    sample_notification.status = 'failed'
-    dao_update_notification(sample_notification)
-
-    notification_from_db = Notification.query.get(sample_notification.id)
-    assert notification_from_db.status == 'failed'
-    assert notification_from_db._status_enum == 'failed'
-    assert notification_from_db._status_fkey == 'failed'
-
-
-def test_updating_notification_with_no_notification_status_updates_notification_history(sample_notification):
-    # same as above, but with notification history
-    update_dict = {'_status_enum': 'created', '_status_fkey': None}
-    Notification.query.filter(Notification.id == sample_notification.id).update(update_dict)
-    NotificationHistory.query.filter(NotificationHistory.id == sample_notification.id).update(update_dict)
-
-    # now lets update the notification's status to failed - both columns should now be populated on the history object
-    sample_notification.status = 'failed'
-    dao_update_notification(sample_notification)
-
-    hist_from_db = NotificationHistory.query.get(sample_notification.id)
-    assert hist_from_db.status == 'failed'
-    assert hist_from_db._status_enum == 'failed'
-    assert hist_from_db._status_fkey == 'failed'
 
 
 @pytest.mark.parametrize('notification_type, expected_sms_count, expected_email_count, expected_letter_count', [

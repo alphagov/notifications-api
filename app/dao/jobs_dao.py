@@ -17,7 +17,7 @@ from app.statsd_decorators import statsd
 def dao_get_notification_outcomes_for_job(service_id, job_id):
     query = db.session.query(
         func.count(NotificationHistory.status).label('count'),
-        NotificationHistory.status.label('status')
+        NotificationHistory.status
     )
 
     return query \
