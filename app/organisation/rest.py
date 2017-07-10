@@ -2,12 +2,13 @@ from flask import Blueprint, jsonify, request
 
 from app.dao.organisations_dao import (
     dao_create_organisation,
+    dao_update_organisation,
     dao_get_organisations,
     dao_get_organisation_by_id,
 )
 from app.errors import register_errors
 from app.models import Organisation
-from app.organisation.organisation_schema import post_organisation_schema
+from app.organisation.organisation_schema import post_create_organisation_schema, post_update_organisation_schema
 from app.schema_validation import validate
 
 organisation_blueprint = Blueprint('organisation', __name__)
@@ -27,12 +28,26 @@ def get_organisation_by_id(org_id):
 
 
 @organisation_blueprint.route('', methods=['POST'])
-def post_organisation():
+def create_organisation():
     data = request.get_json()
 
-    validate(data, post_organisation_schema)
+    validate(data, post_create_organisation_schema)
 
     organisation = Organisation(**data)
 
     dao_create_organisation(organisation)
     return jsonify(data=organisation.serialize()), 201
+
+
+@organisation_blueprint.route('/<uuid:organisation_id>', methods=['POST'])
+def update_organisation(organisation_id):
+    fetched_organisation = dao_get_organisation_by_id(organisation_id)
+
+    data = request.get_json()
+
+    validate(data, post_update_organisation_schema)
+
+    for key in data.keys():
+        setattr(fetched_organisation, key, data[key])
+
+    return jsonify(data=fetched_organisation.serialize()), 200
