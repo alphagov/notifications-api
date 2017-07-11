@@ -313,8 +313,7 @@ def __create_token(service_id):
 def restrict_ip_sms_app():
     app = flask.Flask(__name__)
     app.config['TESTING'] = True
-    app.config['ALLOW_IP_INBOUND_SMS'] = ['111.111.111.111', '100.100.100.100']
-    # app.config['ALLOW_IP_INBOUND_SMS'] = os.environ['SMS_INBOUND_WHITELIST']
+    app.config['SMS_INBOUND_WHITELIST'] = ['111.111.111.111', '100.100.100.100']
     blueprint = flask.Blueprint('restrict_ip_sms_app', __name__)
 
     @blueprint.route('/')
@@ -346,6 +345,19 @@ def test_reject_invalid_ips(restrict_ip_sms_app):
             path='/',
             headers=[
                 ('X-Forwarded-For', '222.222.222.222, 333.333.333.333, 127.0.0.1')
+            ]
+        )
+
+    assert exc_info.value.short_message == 'Unknown source IP address from the SMS provider'
+
+
+@pytest.mark.xfail(reason='Currently not blocking invalid IPs', strict=True)
+def test_illegitimate_ips(restrict_ip_sms_app):
+    with pytest.raises(AuthError) as exc_info:
+        restrict_ip_sms_app.get(
+            path='/',
+            headers=[
+                ('X-Forwarded-For', '111.111.111.111, 999.999.999.999, 333.333.333.333, 127.0.0.1')
             ]
         )
 
