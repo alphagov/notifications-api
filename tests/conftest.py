@@ -90,7 +90,13 @@ def os_environ():
     """
     # for use whenever you expect code to edit environment variables
     old_env = os.environ.copy()
-    os.environ = {}
+
+    class EnvironDict(dict):
+        def __setitem__(self, key, value):
+            assert type(value) == str
+            super().__setitem__(key, value)
+
+    os.environ = EnvironDict()
     yield
     os.environ = old_env
 

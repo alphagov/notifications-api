@@ -204,4 +204,4 @@ def test_redis_config():
 def test_sms_inbound_config():
     extract_cloudfoundry_config()
 
-    assert os.environ['SMS_INBOUND_WHITELIST'] == ['111.111.111.111', '100.100.100.100']
+    assert os.environ['SMS_INBOUND_WHITELIST'] == json.dumps(['111.111.111.111', '100.100.100.100'])
