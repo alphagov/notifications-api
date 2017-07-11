@@ -47,14 +47,11 @@ def restrict_ip_sms():
     ip = ''
     if request.headers.get("X-Forwarded-For"):
         # X-Forwarded-For looks like "203.0.113.195, 70.41.3.18, 150.172.238.178"
-        # Counting backwards and look at the IP at the 3rd last hop - hence, hop(end-3)
-        ip_route = request.headers.get("X-Forwarded-For")
-        ip_list = ip_route.split(',')
-        if len(ip_list) >= 3:
-            ip = ip_list[len(ip_list) - 3]
-        current_app.logger.info("Inbound sms ip route list {}".format(ip_route))
+        ip_list = request.headers.get("X-Forwarded-For")
+        ip = ip_list.split(',')[0].strip()
+        current_app.logger.info("Inbound sms ip list {}".format(ip_list))
 
-    if ip in current_app.config.get('SMS_INBOUND_WHITELIST'):
+    if ip in current_app.config.get('ALLOW_IP_INBOUND_SMS'):
         current_app.logger.info("Inbound sms ip addresses {} passed ".format(ip))
         return
     else:
