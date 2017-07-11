@@ -262,7 +262,7 @@ class Config(object):
 
     FREE_SMS_TIER_FRAGMENT_COUNT = 250000
 
-    SMS_INBOUND_WHITELIST = os.environ.get('SMS_INBOUND_WHITELIST', [])
+    ALLOW_IP_INBOUND_SMS = []
 
 
 ######################
