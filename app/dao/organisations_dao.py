@@ -14,3 +14,10 @@ def dao_get_organisation_by_id(org_id):
 @transactional
 def dao_create_organisation(organisation):
     db.session.add(organisation)
+
+
+@transactional
+def dao_update_organisation(organisation, **kwargs):
+    for key, value in kwargs.items():
+        setattr(organisation, key, value)
+    db.session.add(organisation)

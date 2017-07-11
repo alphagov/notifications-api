@@ -4,6 +4,7 @@ from app.dao.organisations_dao import (
     dao_create_organisation,
     dao_get_organisations,
     dao_get_organisation_by_id,
+    dao_update_organisation
 )
 from app.errors import register_errors
 from app.models import Organisation
@@ -45,7 +46,6 @@ def update_organisation(organisation_id):
     validate(data, post_update_organisation_schema)
 
     fetched_organisation = dao_get_organisation_by_id(organisation_id)
-    for key in data.keys():
-        setattr(fetched_organisation, key, data[key])
+    dao_update_organisation(fetched_organisation, **data)
 
     return jsonify(data=fetched_organisation.serialize()), 200
