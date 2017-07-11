@@ -2,7 +2,6 @@ from flask import Blueprint, jsonify, request
 
 from app.dao.organisations_dao import (
     dao_create_organisation,
-    dao_update_organisation,
     dao_get_organisations,
     dao_get_organisation_by_id,
 )
@@ -41,12 +40,11 @@ def create_organisation():
 
 @organisation_blueprint.route('/<uuid:organisation_id>', methods=['POST'])
 def update_organisation(organisation_id):
-    fetched_organisation = dao_get_organisation_by_id(organisation_id)
-
     data = request.get_json()
 
     validate(data, post_update_organisation_schema)
 
+    fetched_organisation = dao_get_organisation_by_id(organisation_id)
     for key in data.keys():
         setattr(fetched_organisation, key, data[key])
 

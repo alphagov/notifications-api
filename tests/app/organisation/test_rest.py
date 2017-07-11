@@ -84,7 +84,7 @@ def test_post_create_organisation_without_name_or_colour_is_valid(admin_request,
 
 @pytest.mark.parametrize('data_update', [
     ({'name': 'test organisation 1'}),
-    ({'logo': 'images/text_x3.png', 'colour': '#ffffff'})
+    ({'logo': 'images/text_x3.png', 'colour': '#ffffff'}),
 ])
 def test_post_update_organisation_updates_field(admin_request, notify_db_session, data_update):
     data = {

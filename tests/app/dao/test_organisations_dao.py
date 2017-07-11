@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from app.dao.organisations_dao import (
     dao_create_organisation,
     dao_get_organisations,
-    dao_get_organisation_by_id, dao_update_organisation
+    dao_get_organisation_by_id
 )
 from app.models import Organisation
 
@@ -60,9 +60,8 @@ def test_update_organisation(notify_db, notify_db_session):
     organisation_from_db = Organisation.query.first()
     assert organisation_from_db.name != updated_name
 
-    organisation.name = updated_name
+    setattr(organisation_from_db, 'name', updated_name)
 
-    dao_update_organisation(organisation)
-    organisation_from_db = Organisation.query.first()
+    organisation_from_db_again = Organisation.query.first()
 
-    assert organisation_from_db.name == updated_name
+    assert organisation_from_db_again.name == updated_name
