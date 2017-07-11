@@ -1,5 +1,6 @@
 from datetime import timedelta
 import os
+import json
 
 from celery.schedules import crontab
 from kombu import Exchange, Queue
@@ -262,7 +263,7 @@ class Config(object):
 
     FREE_SMS_TIER_FRAGMENT_COUNT = 250000
 
-    SMS_INBOUND_WHITELIST = os.environ.get('SMS_INBOUND_WHITELIST', [])
+    SMS_INBOUND_WHITELIST = json.loads(os.environ.get('SMS_INBOUND_WHITELIST', '[]'))
 
 
 ######################

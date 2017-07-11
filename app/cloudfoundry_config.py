@@ -43,7 +43,7 @@ def extract_notify_config(notify_config):
     os.environ['SECRET_KEY'] = notify_config['credentials']['secret_key']
     os.environ['DANGEROUS_SALT'] = notify_config['credentials']['dangerous_salt']
     os.environ['PERFORMANCE_PLATFORM_TOKEN'] = notify_config['credentials'].get('performance_platform_token', '')
-    os.environ['SMS_INBOUND_WHITELIST'] = notify_config['credentials']['allow_ip_inbound_sms']
+    os.environ['SMS_INBOUND_WHITELIST'] = json.dumps(notify_config['credentials']['allow_ip_inbound_sms'])
 
 
 def extract_notify_aws_config(aws_config):
