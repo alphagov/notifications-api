@@ -13,7 +13,6 @@ from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils import logging, request_id
 from werkzeug.local import LocalProxy
 
-from app.celery.celery import NotifyCelery
 from app.clients import Clients
 from app.clients.email.aws_ses import AwsSesClient
 from app.clients.sms.firetext import FiretextClient
@@ -26,6 +25,11 @@ DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 DATE_FORMAT = "%Y-%m-%d"
 
 db = SQLAlchemy()
+
+# avoid circular import by importing after db
+from app.celery.celery import NotifyCelery
+
+
 ma = Marshmallow()
 notify_celery = NotifyCelery()
 firetext_client = FiretextClient()

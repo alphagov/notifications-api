@@ -1,11 +1,11 @@
 from datetime import timedelta
 
-from app.celery import QueueNames
 from celery import Celery
 from celery.schedules import crontab
 from kombu import Queue, Exchange
 
-from app.config import QueueNames
+from app.celery import QueueNames
+
 
 class CeleryConfig:
     def __init__(self, config):
@@ -83,13 +83,15 @@ class CeleryConfig:
             'task': 'remove_csv_files',
             'schedule': crontab(minute=0, hour=4),
             'options': {'queue': QueueNames.PERIODIC},
-            'kwargs': {'job_types': [EMAIL_TYPE, SMS_TYPE]}
+            # TODO: Avoid duplication of keywords - ideally by moving definitions out of models.py
+            'kwargs': {'job_types': ['email', 'sms']}
         },
         'remove_letter_jobs': {
             'task': 'remove_csv_files',
             'schedule': crontab(minute=20, hour=4),
             'options': {'queue': QueueNames.PERIODIC},
-            'kwargs': {'job_types': [LETTER_TYPE]}
+            # TODO: Avoid duplication of keywords - ideally by moving definitions out of models.py
+            'kwargs': {'job_types': ['letter']}
         },
         'remove_transformed_dvla_files': {
             'task': 'remove_transformed_dvla_files',
@@ -122,7 +124,7 @@ class NotifyCelery(Celery):
                     Queue(queue, Exchange('default'), routing_key=queue)
                 )
 
-        self.config_from_object()
+        self.config_from_object(celery_config)
         TaskBase = self.Task
 
         class ContextTask(TaskBase):
