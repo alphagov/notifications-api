@@ -1,4 +1,5 @@
 from flask import Blueprint
+from flask import current_app
 from flask import json
 from flask import request, jsonify
 
@@ -22,6 +23,10 @@ def process_mmg_response():
     success, errors = process_sms_client_response(status=str(data.get('status')),
                                                   reference=data.get('CID'),
                                                   client_name=client_name)
+
+    current_app.logger.info(
+        "Full delivery response from {} for notification: {}\n{}".format(client_name, request.form.get('reference'),
+                                                                         request.form))
     if errors:
         raise InvalidRequest(errors, status_code=400)
     else:
@@ -38,6 +43,9 @@ def process_firetext_response():
         raise InvalidRequest(errors, status_code=400)
 
     status = request.form.get('status')
+    current_app.logger.info(
+        "Full delivery response from {} for notification: {}\n{}".format(client_name, request.form.get('reference'),
+                                                                         request.form))
     success, errors = process_sms_client_response(status=status,
                                                   reference=request.form.get('reference'),
                                                   client_name=client_name)
