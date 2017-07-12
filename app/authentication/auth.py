@@ -52,7 +52,8 @@ def restrict_ip_sms():
         ip_list = ip_route.split(',')
         if len(ip_list) >= 3:
             ip = ip_list[len(ip_list) - 3]
-        current_app.logger.info("Inbound sms ip route list {}".format(ip_route))
+        current_app.logger.info("Inbound sms ip route list {} OS environ{}"
+                                .format(ip_route, current_app.config.get('SMS_INBOUND_WHITELIST')))
 
     if ip in current_app.config.get('SMS_INBOUND_WHITELIST'):
         current_app.logger.info("Inbound sms ip addresses {} passed ".format(ip))
