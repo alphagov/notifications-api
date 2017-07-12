@@ -11,7 +11,6 @@ from app.models import (
     NotificationHistory,
     Job,
     NotificationStatistics,
-    TemplateStatistics,
     ScheduledNotification,
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_FAILED,
@@ -588,7 +587,6 @@ def test_create_notification_creates_notification_with_personalisation(notify_db
                                                                        sample_job, mmg_provider):
     assert Notification.query.count() == 0
     assert NotificationStatistics.query.count() == 0
-    assert TemplateStatistics.query.count() == 0
 
     data = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                                template=sample_template_with_placeholders,
@@ -612,7 +610,6 @@ def test_create_notification_creates_notification_with_personalisation(notify_db
 def test_save_notification_creates_sms(sample_template, sample_job, mmg_provider):
     assert Notification.query.count() == 0
     assert NotificationStatistics.query.count() == 0
-    assert TemplateStatistics.query.count() == 0
 
     data = _notification_json(sample_template, job_id=sample_job.id)
 
@@ -631,10 +628,9 @@ def test_save_notification_creates_sms(sample_template, sample_job, mmg_provider
     assert notification_from_db.status == 'created'
 
 
-def test_save_notification_and_create_email(sample_email_template, sample_job, ses_provider):
+def test_save_notification_and_create_email(sample_email_template, sample_job):
     assert Notification.query.count() == 0
     assert NotificationStatistics.query.count() == 0
-    assert TemplateStatistics.query.count() == 0
 
     data = _notification_json(sample_email_template, job_id=sample_job.id)
 
@@ -759,7 +755,6 @@ def test_not_save_notification_and_not_create_stats_on_commit_error(sample_templ
     assert Notification.query.count() == 0
     assert Job.query.get(sample_job.id).notifications_sent == 0
     assert NotificationStatistics.query.count() == 0
-    assert TemplateStatistics.query.count() == 0
 
 
 def test_save_notification_and_increment_job(sample_template, sample_job, mmg_provider):

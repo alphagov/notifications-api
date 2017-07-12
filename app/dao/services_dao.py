@@ -13,7 +13,6 @@ from app.dao.dao_utils import (
 from app.dao.notifications_dao import get_financial_year
 from app.models import (
     NotificationStatistics,
-    TemplateStatistics,
     ProviderStatistics,
     VerifyCode,
     ApiKey,
@@ -33,9 +32,7 @@ from app.models import (
     TEMPLATE_TYPES,
     JobStatistics,
     SMS_TYPE,
-    EMAIL_TYPE,
-    INTERNATIONAL_SMS_TYPE,
-    LETTER_TYPE
+    EMAIL_TYPE
 )
 from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
@@ -207,7 +204,6 @@ def delete_service_and_all_associated_db_objects(service):
     _delete_commit(TemplateRedacted.query.filter(TemplateRedacted.template_id.in_(subq)))
 
     _delete_commit(NotificationStatistics.query.filter_by(service=service))
-    _delete_commit(TemplateStatistics.query.filter_by(service=service))
     _delete_commit(ProviderStatistics.query.filter_by(service=service))
     _delete_commit(InvitedUser.query.filter_by(service=service))
     _delete_commit(Permission.query.filter_by(service=service))

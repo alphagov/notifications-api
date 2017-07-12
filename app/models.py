@@ -467,7 +467,7 @@ class TemplateRedacted(db.Model):
     template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), primary_key=True, nullable=False)
     redact_personalisation = db.Column(db.Boolean, nullable=False, default=False)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False)
+    updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False, index=True)
     updated_by = db.relationship('User')
 
     # uselist=False as this is a one-to-one relationship
@@ -1108,22 +1108,6 @@ class Permission(db.Model):
     )
 
 
-class TemplateStatistics(db.Model):
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
-    service = db.relationship('Service', backref=db.backref('template_statistics', lazy='dynamic'))
-    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), index=True, nullable=False, unique=False)
-    template = db.relationship('Template')
-    usage_count = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=1)
-    day = db.Column(db.Date, index=True, nullable=False, unique=False, default=datetime.date.today)
-    updated_at = db.Column(
-        db.DateTime,
-        index=False,
-        unique=False,
-        nullable=False,
-        default=datetime.datetime.utcnow)
-
-
 class Event(db.Model):
     __tablename__ = 'events'
 
@@ -1210,7 +1194,7 @@ class InboundSms(db.Model):
     service = db.relationship('Service', backref='inbound_sms')
 
     notify_number = db.Column(db.String, nullable=False)  # the service's number, that the msg was sent to
-    user_number = db.Column(db.String, nullable=False)  # the end user's number, that the msg was sent from
+    user_number = db.Column(db.String, nullable=False, index=True)  # the end user's number, that the msg was sent from
     provider_date = db.Column(db.DateTime)
     provider_reference = db.Column(db.String)
     provider = db.Column(db.String, nullable=False)
