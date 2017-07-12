@@ -134,8 +134,18 @@ class Organisation(db.Model):
     __tablename__ = 'organisation'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     colour = db.Column(db.String(7), nullable=True)
-    logo = db.Column(db.String(255), nullable=True)
+    logo = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(255), nullable=True)
+
+    def serialize(self):
+        serialized = {
+            "id": str(self.id),
+            "colour": self.colour,
+            "logo": self.logo,
+            "name": self.name,
+        }
+
+        return serialized
 
 
 DVLA_ORG_HM_GOVERNMENT = '001'
