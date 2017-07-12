@@ -28,7 +28,7 @@ def process_mmg_response():
     safe_to_log.pop("MSISDN")
     current_app.logger.info(
         "Full delivery response from {} for notification: {}\n{}".format(client_name, request.form.get('CID'),
-                                                                        safe_to_log))
+                                                                         safe_to_log))
     if errors:
         raise InvalidRequest(errors, status_code=400)
     else:
