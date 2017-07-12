@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0107_change_logo_not_nullable
-Revises: 0106_null_noti_status
+Revision ID: 0108_change_logo_not_nullable
+Revises: 0107_drop_template_stats
 Create Date: 2017-07-06 10:14:35.188404
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0107_change_logo_not_nullable'
-down_revision = '0106_null_noti_status'
+revision = '0108_change_logo_not_nullable'
+down_revision = '0107_drop_template_stats'
 
 from alembic import op
 import sqlalchemy as sa
