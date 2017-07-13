@@ -13,7 +13,7 @@ class CeleryConfig:
         self.broker_url = config.get('BROKER_URL', 'sqs://')
 
     broker_transport_options = {
-        'region': 'sqs.eu-west-1',
+        'region': 'eu-west-1',
         'polling_interval': 1,  # 1 second
         'visibility_timeout': 310,
         'queue_name_prefix': None
