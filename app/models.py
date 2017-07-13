@@ -4,7 +4,6 @@ import datetime
 from flask import url_for, current_app
 
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
@@ -1246,3 +1245,19 @@ class LetterRateDetail(db.Model):
     letter_rate = db.relationship('LetterRate', backref='letter_rates')
     page_total = db.Column(db.Integer, nullable=False)
     rate = db.Column(db.Numeric(), nullable=False)
+
+
+class MonthlyBilling(db.Model):
+    __tablename__ = 'monthly_billing'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
+    service = db.relationship('Service', backref='monthly_billing')
+    month = db.Column(db.String, nullable=False)
+    year = db.Column(db.Float(asdecimal=False), nullable=False)
+    notification_type = db.Column(notification_types, nullable=False)
+    monthly_totals = db.Column(JSON, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('service_id', 'month', 'year', 'notification_type', name='uix_monthly_billing'),
+    )
