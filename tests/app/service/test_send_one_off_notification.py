@@ -5,7 +5,7 @@ import pytest
 from notifications_utils.recipients import InvalidPhoneError
 
 from app.v2.errors import BadRequestError, TooManyRequestsError
-from app.config import QueueNames
+from app.celery import QueueNames
 from app.service.send_notification import send_one_off_notification
 from app.models import KEY_TYPE_NORMAL, PRIORITY, SMS_TYPE
 

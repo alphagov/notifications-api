@@ -36,7 +36,7 @@ from app.models import JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING, JOB_STATUS_CANC
 
 from app.utils import pagination_links
 
-from app.config import QueueNames
+from app.celery import QueueNames
 
 job_blueprint = Blueprint('job', __name__, url_prefix='/service/<uuid:service_id>/job')
 
