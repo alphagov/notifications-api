@@ -3,7 +3,7 @@ from notifications_utils.recipients import InvalidEmailError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import notify_celery
-from app.config import QueueNames
+from app.celery import QueueNames
 from app.dao import notifications_dao
 from app.dao.notifications_dao import update_notification_status_by_id
 from app.statsd_decorators import statsd

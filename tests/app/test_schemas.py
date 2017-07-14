@@ -44,8 +44,6 @@ def test_notification_schema_has_correct_status(sample_notification, schema_name
     data = getattr(schemas, schema_name).dump(sample_notification).data
 
     assert data['status'] == sample_notification.status
-    assert '_status_enum' not in data
-    assert '_status_fkey' not in data
 
 
 @pytest.mark.parametrize('user_attribute, user_value', [

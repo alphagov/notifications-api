@@ -31,7 +31,7 @@ def timeout_job_counts(notifications_type, timeout_start):
     results = db.session.query(
         JobStatistics.job_id.label('job_id'),
         func.count(Notification.status).label('count'),
-        Notification.status.label('status')
+        Notification.status
     ).filter(
         Notification.notification_type == notifications_type,
         JobStatistics.job_id == Notification.job_id,
