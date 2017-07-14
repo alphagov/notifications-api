@@ -25,7 +25,7 @@ from notifications_utils.recipients import (
 
 from app import ma
 from app import models
-from app.models import ServicePermission, INTERNATIONAL_SMS_TYPE, LETTER_TYPE
+from app.models import ServicePermission
 from app.dao.permissions_dao import permission_dao
 from app.utils import get_template_instance
 
@@ -571,15 +571,6 @@ class NotificationsFilterSchema(ma.Schema):
         _validate_positive_number(value)
 
 
-class TemplateStatisticsSchema(BaseSchema):
-
-    template = fields.Nested(TemplateSchema, only=["id", "name", "template_type"], dump_only=True)
-
-    class Meta:
-        model = models.TemplateStatistics
-        strict = True
-
-
 class ServiceHistorySchema(ma.Schema):
     id = fields.UUID()
     name = fields.String()
@@ -606,12 +597,6 @@ class ApiKeyHistorySchema(ma.Schema):
 class EventSchema(BaseSchema):
     class Meta:
         model = models.Event
-        strict = True
-
-
-class OrganisationSchema(BaseSchema):
-    class Meta:
-        model = models.Organisation
         strict = True
 
 
@@ -663,12 +648,10 @@ permission_schema = PermissionSchema()
 email_data_request_schema = EmailDataSchema()
 notifications_statistics_schema = NotificationsStatisticsSchema()
 notifications_filter_schema = NotificationsFilterSchema()
-template_statistics_schema = TemplateStatisticsSchema()
 service_history_schema = ServiceHistorySchema()
 api_key_history_schema = ApiKeyHistorySchema()
 template_history_schema = TemplateHistorySchema()
 event_schema = EventSchema()
-organisation_schema = OrganisationSchema()
 provider_details_schema = ProviderDetailsSchema()
 provider_details_history_schema = ProviderDetailsHistorySchema()
 day_schema = DaySchema()

@@ -4,7 +4,7 @@ from flask import (
     jsonify,
     current_app)
 
-from app.config import QueueNames
+from app.celery import QueueNames
 from app.dao.invited_user_dao import (
     save_invited_user,
     get_invited_user,
