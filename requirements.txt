@@ -33,8 +33,9 @@ awscli-cwlogs>=1.4,<1.5
 git+https://github.com/alphagov/notifications-utils.git@17.5.3#egg=notifications-utils==17.5.3
 
 # Kombu is a library that celery uses under the hood.
-# Kombu is pinned to a specific commit that brings in fixes for SQS - see https://github.com/celery/kombu/pull/693
 # Kombu v4.0.2 (which ships with celery v4.0.2) doesn't work with SQS due to problems with their use of boto2, so
 # Kombu migrated to boto3 - We're waiting for that to get a release version, and then to get a new version of celery
 # that pulls that in. Until that point, we should override the kombu version to get these SQS fixes.
-git+https://github.com/celery/kombu@09bd23bbd83344b09cbf38b7257107e560db9f25
+# Additionally, kombu master also includes a fix for the main process taking 100% CPU and not distributing tasks (!)
+# See https://github.com/celery/kombu/pull/693 and https://github.com/celery/kombu/pull/760
+https://github.com/celery/kombu/zipball/b2f21289284496efd89acea003ff9c24105b970e
