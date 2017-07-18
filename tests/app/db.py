@@ -1,8 +1,8 @@
 from datetime import datetime
 import uuid
 
-
 from app.dao.jobs_dao import dao_create_job
+from app.dao.provider_rates_dao import create_sms_rate
 from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.models import (
     Service,
@@ -11,6 +11,7 @@ from app.models import (
     Notification,
     ScheduledNotification,
     ServicePermission,
+    Rate,
     Job,
     InboundSms,
     Organisation,
@@ -239,3 +240,9 @@ def create_organisation(colour='blue', logo='test_x2.png', name='test_org_1'):
     dao_create_organisation(organisation)
 
     return organisation
+
+
+def create_rate(start_date, value, notification_type):
+    rate = Rate(id=uuid.uuid4(), valid_from=start_date, rate=value, notification_type=notification_type)
+    create_sms_rate(rate)
+    return rate

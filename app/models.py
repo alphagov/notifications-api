@@ -1261,3 +1261,12 @@ class MonthlyBilling(db.Model):
     __table_args__ = (
         UniqueConstraint('service_id', 'month', 'year', 'notification_type', name='uix_monthly_billing'),
     )
+
+    def serialized(self):
+        return {
+            "month": self.month,
+            "year": self.year,
+            "service_id": str(self.service_id),
+            "notification_type": self.notification_type,
+            "monthly_totals": self.monthly_totals
+        }
