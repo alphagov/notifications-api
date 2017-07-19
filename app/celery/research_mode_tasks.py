@@ -1,6 +1,7 @@
 import json
 
 from flask import current_app
+from app import notify_celery
 from requests import request, RequestException, HTTPError
 
 from app.models import SMS_TYPE

@@ -13,7 +13,7 @@ from app.celery.tasks import update_letter_notifications_statuses
 from app.v2.errors import register_errors
 from app.notifications.utils import autoconfirm_subscription
 from app.schema_validation import validate
-from app.celery import QueueNames
+from app.config import QueueNames
 
 letter_callback_blueprint = Blueprint('notifications_letter_callback', __name__)
 register_errors(letter_callback_blueprint)

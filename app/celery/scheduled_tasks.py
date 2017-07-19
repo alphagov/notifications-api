@@ -28,7 +28,7 @@ from app.models import LETTER_TYPE
 from app.notifications.process_notifications import send_notification_to_queue
 from app.statsd_decorators import statsd
 from app.celery.tasks import process_job
-from app.celery import QueueNames
+from app.config import QueueNames
 
 
 @notify_celery.task(name="remove_csv_files")

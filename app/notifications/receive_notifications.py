@@ -6,7 +6,7 @@ from notifications_utils.recipients import validate_and_format_phone_number
 
 from app import statsd_client, firetext_client, mmg_client
 from app.celery import tasks
-from app.celery import QueueNames
+from app.config import QueueNames
 from app.dao.services_dao import dao_fetch_services_by_sms_sender
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.models import InboundSms, INBOUND_SMS_TYPE, SMS_TYPE
