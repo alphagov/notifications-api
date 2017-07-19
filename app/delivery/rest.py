@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify
 
-from app.celery import QueueNames
+from app.config import QueueNames
 from app.delivery import send_to_providers
 from app.models import EMAIL_TYPE
 from app.celery import provider_tasks

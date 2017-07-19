@@ -4,7 +4,7 @@ from datetime import datetime
 
 from flask import (jsonify, request, Blueprint, current_app)
 
-from app.celery import QueueNames
+from app.config import QueueNames
 from app.dao.users_dao import (
     get_user_by_id,
     save_model_user,

@@ -1,21 +1,14 @@
 import pytest
-from sqlalchemy.exc import SQLAlchemyError
-
-from app import create_uuid
 from app.celery.statistics_tasks import (
     record_initial_job_statistics,
     record_outcome_job_statistics,
     create_initial_notification_statistic_tasks,
     create_outcome_notification_statistic_tasks)
-from app.models import (
-    NOTIFICATION_STATUS_TYPES_COMPLETED,
-    NOTIFICATION_SENDING,
-    NOTIFICATION_PENDING,
-    NOTIFICATION_CREATED,
-    NOTIFICATION_DELIVERED
-)
-
+from sqlalchemy.exc import SQLAlchemyError
+from app import create_uuid
 from tests.app.conftest import sample_notification
+from app.models import NOTIFICATION_STATUS_TYPES_COMPLETED, NOTIFICATION_SENT, NOTIFICATION_SENDING, \
+    NOTIFICATION_PENDING, NOTIFICATION_CREATED, NOTIFICATION_DELIVERED
 
 
 def test_should_create_initial_job_task_if_notification_is_related_to_a_job(
