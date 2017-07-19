@@ -263,7 +263,6 @@ def test_no_api_keys_return_job_notifications_by_default(
     job_notification = create_sample_notification(
         notify_db,
         notify_db_session,
-        api_key_id=normal_api_key.id,
         job=sample_job
     )
     normal_notification = create_sample_notification(

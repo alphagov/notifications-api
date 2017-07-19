@@ -507,7 +507,7 @@ def sample_notification(
         'billable_units': billable_units,
         'personalisation': personalisation,
         'notification_type': template.template_type,
-        'api_key_id': api_key_id,
+        'api_key_id': api_key_id or sample_api_key(notify_db, notify_db_session).id,
         'key_type': key_type,
         'sent_by': sent_by,
         'updated_at': created_at if status in NOTIFICATION_STATUS_TYPES_COMPLETED else None,

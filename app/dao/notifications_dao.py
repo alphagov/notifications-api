@@ -339,6 +339,7 @@ def get_notifications_for_service(
 
     if not include_jobs or (key_type and key_type != KEY_TYPE_NORMAL):
         filters.append(Notification.job_id.is_(None))
+        filters.append(Notification.api_key_id.isnot(None))
 
     if key_type is not None:
         filters.append(Notification.key_type == key_type)
