@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 
 from flask import current_app
@@ -53,7 +54,8 @@ def persist_notification(
     created_by_id=None
 ):
     notification_created_at = created_at or datetime.utcnow()
-
+    if not notification_id and simulated:
+        notification_id = uuid.uuid4()
     notification = Notification(
         id=notification_id,
         template_id=template_id,
