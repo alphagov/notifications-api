@@ -42,4 +42,4 @@ def send_response(send_call, task_call, notification):
                 notification.id,
                 notification.notification_type),
             e)
-        task_call.apply_async((str(notification.id)), queue=QueueNames.SEND)
+        task_call.apply_async((str(notification.id)), queue=QueueNames.SEND_COMBINED)
