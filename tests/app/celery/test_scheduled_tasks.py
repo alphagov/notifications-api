@@ -468,7 +468,7 @@ def test_should_send_all_scheduled_notifications_to_deliver_queue(sample_templat
 
     send_scheduled_notifications()
 
-    mocked.apply_async.assert_called_once_with([str(message_to_deliver.id)], queue='send-tasks')
+    mocked.apply_async.assert_called_once_with([str(message_to_deliver.id)], queue='send-sms-tasks')
     scheduled_notifications = dao_get_scheduled_notifications()
     assert not scheduled_notifications
 
