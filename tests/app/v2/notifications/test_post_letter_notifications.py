@@ -1,3 +1,4 @@
+
 import uuid
 
 from flask import url_for, json
@@ -145,7 +146,7 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
     {'service_permissions': [EMAIL_TYPE, SMS_TYPE]},
     {'restricted': True}
 ])
-def test_post_letter_notification_returns_400_if_not_allowed_to_send_notification(
+def test_post_letter_notification_returns_403_if_not_allowed_to_send_notification(
     client,
     notify_db_session,
     service_args
@@ -159,7 +160,7 @@ def test_post_letter_notification_returns_400_if_not_allowed_to_send_notificatio
     }
 
     error_json = letter_request(client, data, service_id=service.id, _expected_status=400)
-    assert error_json['status_code'] == 400
+    assert error_json['status_code'] == 403
     assert error_json['errors'] == [
         {'error': 'BadRequestError', 'message': 'Cannot send letters'}
     ]

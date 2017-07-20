@@ -1,6 +1,6 @@
 import functools
 
-from flask import request, jsonify, current_app
+from flask import request, jsonify, current_app, abort
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
@@ -18,12 +18,13 @@ from app.notifications.validators import (
     validate_template
 )
 from app.schema_validation import validate
-from app.v2.errors import BadRequestError
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import (
     post_sms_request,
     post_email_request,
-    post_letter_request,
+    post_letter_request
+)
+from app.v2.notifications.create_response import (
     create_post_sms_response_from_notification,
     create_post_email_response_from_notification,
     create_post_letter_response_from_notification
@@ -39,7 +40,7 @@ def post_notification(notification_type):
     elif notification_type == LETTER_TYPE:
         form = validate(request.get_json(), post_letter_request)
     else:
-        raise BadRequestError(message='Unknown notification type {}'.format(notification_type))
+        abort(404)
 
     check_service_has_permission(notification_type, authenticated_service.permissions)
 

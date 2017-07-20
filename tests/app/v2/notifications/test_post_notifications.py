@@ -442,8 +442,6 @@ def test_post_notification_raises_bad_request_if_not_valid_notification_type(cli
         data='{}',
         headers=[('Content-Type', 'application/json'), auth_header]
     )
-    assert response.status_code == 400
+    assert response.status_code == 404
     error_json = json.loads(response.get_data(as_text=True))
-    assert error_json['errors'] == [
-        {'error': 'BadRequestError', 'message': 'Unknown notification type foo'}
-    ]
+    assert 'The requested URL was not found on the server.' in error_json['message']
