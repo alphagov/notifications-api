@@ -155,11 +155,9 @@ def get_logo_url(base_url, logo_file):
         # strip "www."
         netloc = base_url.netloc[4:]
 
-    netloc = 'static-logos.' + netloc
-
     logo_url = parse.ParseResult(
         scheme=base_url.scheme,
-        netloc=netloc,
+        netloc='static-logos.' + netloc,
         path=logo_file,
         params=base_url.params,
         query=base_url.query,
