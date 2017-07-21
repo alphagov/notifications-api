@@ -103,7 +103,7 @@ def send_notification_to_queue(notification, research_mode, queue=None):
     if research_mode or notification.key_type == KEY_TYPE_TEST:
         queue = QueueNames.RESEARCH_MODE
     elif not queue:
-        queue = QueueNames.SEND
+        queue = QueueNames.SEND_COMBINED
 
     if notification.notification_type == SMS_TYPE:
         deliver_task = provider_tasks.deliver_sms

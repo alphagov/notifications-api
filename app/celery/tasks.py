@@ -182,7 +182,7 @@ def send_sms(self,
 
         provider_tasks.deliver_sms.apply_async(
             [str(saved_notification.id)],
-            queue=QueueNames.SEND if not service.research_mode else QueueNames.RESEARCH_MODE
+            queue=QueueNames.SEND_COMBINED if not service.research_mode else QueueNames.RESEARCH_MODE
         )
 
         current_app.logger.info(
@@ -227,7 +227,7 @@ def send_email(self,
 
         provider_tasks.deliver_email.apply_async(
             [str(saved_notification.id)],
-            queue=QueueNames.SEND if not service.research_mode else QueueNames.RESEARCH_MODE
+            queue=QueueNames.SEND_COMBINED if not service.research_mode else QueueNames.RESEARCH_MODE
         )
 
         current_app.logger.info("Email {} created at {}".format(saved_notification.id, created_at))
