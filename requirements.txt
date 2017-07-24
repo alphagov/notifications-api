@@ -16,7 +16,7 @@ boto3==1.4.4
 celery==3.1.25
 monotonic==1.2
 statsd==3.2.1
-jsonschema==2.5.1
+jsonschema==2.6.0
 gunicorn==19.6.0
 docopt==0.6.2
 six==1.10.0
