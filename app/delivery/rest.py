@@ -24,16 +24,20 @@ def send_notification_to_provider(notification_id):
         send_response(
             send_to_providers.send_email_to_provider,
             provider_tasks.deliver_email,
-            notification)
+            notification,
+            QueueNames.SEND_EMAIL
+        )
     else:
         send_response(
             send_to_providers.send_sms_to_provider,
             provider_tasks.deliver_sms,
-            notification)
+            notification,
+            QueueNames.SEND_SMS
+        )
     return jsonify({}), 204
 
 
-def send_response(send_call, task_call, notification):
+def send_response(send_call, task_call, notification, queue):
     try:
         send_call(notification)
     except Exception as e:
@@ -42,4 +46,4 @@ def send_response(send_call, task_call, notification):
                 notification.id,
                 notification.notification_type),
             e)
-        task_call.apply_async((str(notification.id)), queue=QueueNames.SEND_COMBINED)
+        task_call.apply_async((str(notification.id)), queue=queue)

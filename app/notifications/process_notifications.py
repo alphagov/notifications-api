@@ -102,12 +102,14 @@ def persist_notification(
 def send_notification_to_queue(notification, research_mode, queue=None):
     if research_mode or notification.key_type == KEY_TYPE_TEST:
         queue = QueueNames.RESEARCH_MODE
-    elif not queue:
-        queue = QueueNames.SEND_COMBINED
 
     if notification.notification_type == SMS_TYPE:
+        if not queue:
+            queue = QueueNames.SEND_SMS
         deliver_task = provider_tasks.deliver_sms
     if notification.notification_type == EMAIL_TYPE:
+        if not queue:
+            queue = QueueNames.SEND_EMAIL
         deliver_task = provider_tasks.deliver_email
 
     try:
