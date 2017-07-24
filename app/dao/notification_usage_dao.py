@@ -36,8 +36,7 @@ def get_yearly_billing_data(service_id, year):
 
 
 @statsd(namespace="dao")
-def get_billing_data_for_month(service_id, billing_month):
-    start_date, end_date = get_month_start_end_date(billing_month)
+def get_billing_data_for_month(service_id, start_date, end_date):
     rates = get_rates_for_year(start_date, end_date, SMS_TYPE)
     result = []
     # so the start end date in the query are the valid from the rate, not the month - this is going to take some thought

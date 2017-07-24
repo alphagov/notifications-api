@@ -1,8 +1,12 @@
 from datetime import datetime
 
-from app.dao.monthly_billing_dao import create_or_update_monthly_billing_sms, get_monthly_billing_sms
+from app.dao.monthly_billing_dao import (
+    create_or_update_monthly_billing_sms,
+    get_monthly_billing_sms,
+    get_service_ids_that_need_sms_billing_populated
+)
 from app.models import MonthlyBilling
-from tests.app.db import create_notification, create_rate
+from tests.app.db import create_notification, create_rate, create_service, create_template
 
 
 def test_add_monthly_billing(sample_template):
@@ -105,3 +109,18 @@ def assert_monthly_billing(monthly_billing, year, month, service_id, expected_le
     assert monthly_billing.service_id == service_id
     assert len(monthly_billing.monthly_totals) == expected_len
     assert sorted(monthly_billing.monthly_totals[0]) == sorted(first_row)
+
+
+def test_get_service_id():
+    service_1 = create_service(service_name="Service One")
+    template_1 = create_template(service=service_1)
+    service_2 = create_service(service_name="Service Two")
+    template_2 = create_template(service=service_2)
+    create_notification(template=template_1, created_at=datetime(2017, 6, 30, 13, 30), status='delivered')
+    create_notification(template=template_1, created_at=datetime(2017, 7, 1, 14, 30), status='delivered')
+    create_notification(template=template_2, created_at=datetime(2017, 7, 15, 13, 30))
+    create_notification(template=template_2, created_at=datetime(2017, 7, 31, 13, 30))
+    services = get_service_ids_that_need_sms_billing_populated(start_date=datetime(2017, 7, 1),
+                                                               end_date=datetime(2017, 7, 16))
+    expected_services = [service_1.id, service_2.id]
+    assert sorted([x.service_id for x in services]) == sorted(expected_services)

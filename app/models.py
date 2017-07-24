@@ -1257,6 +1257,7 @@ class MonthlyBilling(db.Model):
     year = db.Column(db.Float(asdecimal=False), nullable=False)
     notification_type = db.Column(notification_types, nullable=False)
     monthly_totals = db.Column(JSON, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
 
     __table_args__ = (
         UniqueConstraint('service_id', 'month', 'year', 'notification_type', name='uix_monthly_billing'),

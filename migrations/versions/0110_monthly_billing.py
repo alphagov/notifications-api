@@ -26,6 +26,7 @@ def upgrade():
                               postgresql.ENUM('email', 'sms', 'letter', name='notification_type', create_type=False),
                               nullable=False),
                     sa.Column('monthly_totals', postgresql.JSON(), nullable=False),
+                    sa.Column('updated_at', sa.DateTime, nullable=False),
                     sa.ForeignKeyConstraint(['service_id'], ['services.id'], ),
                     sa.PrimaryKeyConstraint('id')
                     )
