@@ -1,4 +1,4 @@
-from app.celery import QueueNames
+from app.config import QueueNames
 from app.notifications.validators import (
     check_service_over_daily_message_limit,
     validate_and_format_recipient,

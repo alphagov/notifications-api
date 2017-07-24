@@ -201,6 +201,7 @@ def test_should_not_persist_or_send_notification_if_simulated_recipient(
 
     assert response.status_code == 201
     apply_async.assert_not_called()
+    assert json.loads(response.get_data(as_text=True))["id"]
     assert Notification.query.count() == 0
 
 
