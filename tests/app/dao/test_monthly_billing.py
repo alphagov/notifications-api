@@ -13,6 +13,7 @@ def test_add_monthly_billing(sample_template):
     jan = datetime(2017, 1, 1)
     feb = datetime(2017, 2, 15)
     create_rate(start_date=jan, value=0.0158, notification_type='sms')
+    create_rate(start_date=datetime(2017, 3, 31, 23, 00, 00), value=0.123, notification_type='sms')
     create_notification(template=sample_template, created_at=jan, billable_units=1, status='delivered')
     create_notification(template=sample_template, created_at=feb, billable_units=2, status='delivered')
 

@@ -129,8 +129,10 @@ def get_rates_for_daterange(start_date, end_date, notification_type):
         results.append(rates[-1])
 
     if not results:
-        if start_date >= rates[-1].valid_from:
-            results.append(rates[-1])
+        for x in reversed(rates):
+            if start_date >= x.valid_from:
+                results.append(x)
+                break
 
     return results
 
