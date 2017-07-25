@@ -422,7 +422,7 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
     assert persisted_notification.notification_type == 'sms'
     mocked_deliver_sms.assert_called_once_with(
         [str(persisted_notification.id)],
-        queue="send-tasks"
+        queue="send-sms-tasks"
     )
 
 
@@ -483,7 +483,7 @@ def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notif
     assert persisted_notification.notification_type == 'sms'
     provider_tasks.deliver_sms.apply_async.assert_called_once_with(
         [str(persisted_notification.id)],
-        queue="send-tasks"
+        queue="send-sms-tasks"
     )
 
 
@@ -509,7 +509,7 @@ def test_should_send_sms_if_restricted_service_and_non_team_number_with_test_key
     persisted_notification = Notification.query.one()
     mocked_deliver_sms.assert_called_once_with(
         [str(persisted_notification.id)],
-        queue="send-tasks"
+        queue="send-sms-tasks"
     )
 
 
@@ -537,7 +537,7 @@ def test_should_send_email_if_restricted_service_and_non_team_email_address_with
     persisted_notification = Notification.query.one()
     mocked_deliver_email.assert_called_once_with(
         [str(persisted_notification.id)],
-        queue="send-tasks"
+        queue="send-email-tasks"
     )
 
 
@@ -641,7 +641,7 @@ def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_
 
     provider_tasks.deliver_sms.apply_async.assert_called_once_with(
         [str(persisted_notification.id)],
-        queue="send-tasks"
+        queue="send-sms-tasks"
     )
 
 
@@ -738,7 +738,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     assert persisted_notification.notification_type == 'email'
 
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
-        [str(persisted_notification.id)], queue='send-tasks')
+        [str(persisted_notification.id)], queue='send-email-tasks')
 
 
 def test_send_email_should_use_template_version_from_job_not_latest(sample_email_template, mocker):
@@ -769,7 +769,7 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
     assert not persisted_notification.sent_by
     assert persisted_notification.notification_type == 'email'
     provider_tasks.deliver_email.apply_async.assert_called_once_with([str(persisted_notification.id)],
-                                                                     queue='send-tasks')
+                                                                     queue='send-email-tasks')
 
 
 def test_should_use_email_template_subject_placeholders(sample_email_template_with_placeholders, mocker):
@@ -795,7 +795,7 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
     assert not persisted_notification.reference
     assert persisted_notification.notification_type == 'email'
     provider_tasks.deliver_email.apply_async.assert_called_once_with(
-        [str(persisted_notification.id)], queue='send-tasks'
+        [str(persisted_notification.id)], queue='send-email-tasks'
     )
 
 
@@ -823,7 +823,7 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
     assert not persisted_notification.reference
     assert persisted_notification.notification_type == 'email'
     provider_tasks.deliver_email.apply_async.assert_called_once_with([str(persisted_notification.id)],
-                                                                     queue='send-tasks')
+                                                                     queue='send-email-tasks')
 
 
 def test_send_sms_should_go_to_retry_queue_if_database_errors(sample_template, mocker):

@@ -25,8 +25,8 @@ from app.celery.scheduled_tasks import (
     send_scheduled_notifications,
     switch_current_sms_provider_on_slow_delivery,
     timeout_job_statistics,
-    timeout_notifications
-)
+    timeout_notifications,
+    populate_monthly_billing)
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.notifications_dao import dao_get_scheduled_notifications
@@ -36,10 +36,10 @@ from app.dao.provider_details_dao import (
 )
 from app.models import (
     Service, Template,
-    SMS_TYPE, LETTER_TYPE
-)
+    SMS_TYPE, LETTER_TYPE,
+    MonthlyBilling)
 from app.utils import get_london_midnight_in_utc
-from tests.app.db import create_notification, create_service, create_template, create_job
+from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
 from tests.app.conftest import (
     sample_job as create_sample_job,
     sample_notification_history as create_notification_history,
@@ -98,6 +98,8 @@ def test_should_have_decorated_tasks_functions():
         'remove_transformed_dvla_files'
     assert delete_dvla_response_files_older_than_seven_days.__wrapped__.__name__ == \
         'delete_dvla_response_files_older_than_seven_days'
+    assert populate_monthly_billing.__wrapped__.__name__ == \
+        'populate_monthly_billing'
 
 
 @pytest.fixture(scope='function')
@@ -468,7 +470,7 @@ def test_should_send_all_scheduled_notifications_to_deliver_queue(sample_templat
 
     send_scheduled_notifications()
 
-    mocked.apply_async.assert_called_once_with([str(message_to_deliver.id)], queue='send-tasks')
+    mocked.apply_async.assert_called_once_with([str(message_to_deliver.id)], queue='send-sms-tasks')
     scheduled_notifications = dao_get_scheduled_notifications()
     assert not scheduled_notifications
 
@@ -607,3 +609,30 @@ def test_delete_dvla_response_files_older_than_seven_days_does_not_remove_files(
     delete_dvla_response_files_older_than_seven_days()
 
     remove_s3_mock.assert_not_called()
+
+
+@freeze_time("2017-07-12 02:00:00")
+def test_populate_monthly_billing(sample_template):
+    yesterday = datetime(2017, 7, 11, 13, 30)
+    create_rate(datetime(2016, 1, 1), 0.0123, 'sms')
+    create_notification(template=sample_template, status='delivered', created_at=yesterday)
+    create_notification(template=sample_template, status='delivered', created_at=yesterday - timedelta(days=1))
+    create_notification(template=sample_template, status='delivered', created_at=yesterday + timedelta(days=1))
+    # not included in billing
+    create_notification(template=sample_template, status='delivered', created_at=yesterday - timedelta(days=30))
+
+    assert len(MonthlyBilling.query.all()) == 0
+    populate_monthly_billing()
+
+    monthly_billing = MonthlyBilling.query.all()
+    assert len(monthly_billing) == 1
+    assert monthly_billing[0].service_id == sample_template.service_id
+    assert monthly_billing[0].year == 2017
+    assert monthly_billing[0].month == 'July'
+    assert monthly_billing[0].notification_type == 'sms'
+    assert len(monthly_billing[0].monthly_totals) == 1
+    assert sorted(monthly_billing[0].monthly_totals[0]) == sorted({'international': False,
+                                                                   'rate_multiplier': 1,
+                                                                   'billing_units': 3,
+                                                                   'rate': 0.0123,
+                                                                   'total_cost': 0.0369})

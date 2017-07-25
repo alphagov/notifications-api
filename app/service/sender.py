@@ -1,6 +1,6 @@
 from flask import current_app
 
-from app.celery import QueueNames
+from app.config import QueueNames
 from app.dao.services_dao import dao_fetch_service_by_id, dao_fetch_active_users_for_service
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import EMAIL_TYPE, KEY_TYPE_NORMAL

@@ -19,8 +19,8 @@ from app import (
 )
 from app.aws import s3
 from app.celery import provider_tasks
+from app.config import QueueNames
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
-from app.celery import QueueNames
 from app.dao.jobs_dao import (
     dao_update_job,
     dao_get_job_by_id,
@@ -182,7 +182,7 @@ def send_sms(self,
 
         provider_tasks.deliver_sms.apply_async(
             [str(saved_notification.id)],
-            queue=QueueNames.SEND if not service.research_mode else QueueNames.RESEARCH_MODE
+            queue=QueueNames.SEND_SMS if not service.research_mode else QueueNames.RESEARCH_MODE
         )
 
         current_app.logger.info(
@@ -227,7 +227,7 @@ def send_email(self,
 
         provider_tasks.deliver_email.apply_async(
             [str(saved_notification.id)],
-            queue=QueueNames.SEND if not service.research_mode else QueueNames.RESEARCH_MODE
+            queue=QueueNames.SEND_EMAIL if not service.research_mode else QueueNames.RESEARCH_MODE
         )
 
         current_app.logger.info("Email {} created at {}".format(saved_notification.id, created_at))

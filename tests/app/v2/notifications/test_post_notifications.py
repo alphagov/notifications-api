@@ -58,8 +58,8 @@ def test_post_sms_notification_returns_201(client, sample_template_with_placehol
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
                          [("sms", "phone_number", "+447700900855"),
                           ("email", "email_address", "sample@email.com")])
-def test_post_sms_notification_returns_400_and_missing_template(client, sample_service,
-                                                                notification_type, key_send_to, send_to):
+def test_post_notification_returns_400_and_missing_template(client, sample_service,
+                                                            notification_type, key_send_to, send_to):
     data = {
         key_send_to: send_to,
         'template_id': str(uuid.uuid4())
@@ -201,6 +201,7 @@ def test_should_not_persist_or_send_notification_if_simulated_recipient(
 
     assert response.status_code == 201
     apply_async.assert_not_called()
+    assert json.loads(response.get_data(as_text=True))["id"]
     assert Notification.query.count() == 0
 
 
@@ -433,3 +434,15 @@ def test_post_notification_raises_bad_request_if_service_not_invited_to_schedule
     error_json = json.loads(response.get_data(as_text=True))
     assert error_json['errors'] == [
         {"error": "BadRequestError", "message": 'Cannot schedule notifications (this feature is invite-only)'}]
+
+
+def test_post_notification_raises_bad_request_if_not_valid_notification_type(client, sample_service):
+    auth_header = create_authorization_header(service_id=sample_service.id)
+    response = client.post(
+        '/v2/notifications/foo',
+        data='{}',
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    assert response.status_code == 404
+    error_json = json.loads(response.get_data(as_text=True))
+    assert 'The requested URL was not found on the server.' in error_json['message']

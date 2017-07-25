@@ -51,10 +51,18 @@ def test_persist_notification_creates_and_save_to_db(sample_template, sample_api
 
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
-    notification = persist_notification(sample_template.id, sample_template.version, '+447111111111',
-                                        sample_template.service, {}, 'sms', sample_api_key.id,
-                                        sample_api_key.key_type, job_id=sample_job.id,
-                                        job_row_number=100, reference="ref")
+    notification = persist_notification(
+        template_id=sample_template.id,
+        template_version=sample_template.version,
+        recipient='+447111111111',
+        service=sample_template.service,
+        personalisation={},
+        notification_type='sms',
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        job_id=sample_job.id,
+        job_row_number=100,
+        reference="ref")
 
     assert Notification.query.get(notification.id) is not None
     assert NotificationHistory.query.get(notification.id) is not None
@@ -127,14 +135,14 @@ def test_persist_notification_does_not_increment_cache_if_test_key(
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
     persist_notification(
-        sample_template.id,
-        sample_template.version,
-        '+447111111111',
-        sample_template.service,
-        {},
-        'sms',
-        api_key.id,
-        api_key.key_type,
+        template_id=sample_template.id,
+        template_version=sample_template.version,
+        recipient='+447111111111',
+        service=sample_template.service,
+        personalisation={},
+        notification_type='sms',
+        api_key_id=api_key.id,
+        key_type=api_key.key_type,
         job_id=sample_job.id,
         job_row_number=100,
         reference="ref",
@@ -193,18 +201,33 @@ def test_persist_notification_increments_cache_if_key_exists(sample_template, sa
     mock_incr = mocker.patch('app.notifications.process_notifications.redis_store.incr')
     mock_incr_hash_value = mocker.patch('app.notifications.process_notifications.redis_store.increment_hash_value')
 
-    persist_notification(sample_template.id, sample_template.version, '+447111111111',
-                         sample_template.service, {}, 'sms', sample_api_key.id,
-                         sample_api_key.key_type, reference="ref")
+    persist_notification(
+        template_id=sample_template.id,
+        template_version=sample_template.version,
+        recipient='+447111111111',
+        service=sample_template.service,
+        personalisation={},
+        notification_type='sms',
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        reference="ref"
+    )
     mock_incr.assert_not_called()
     mock_incr_hash_value.assert_not_called()
 
     mocker.patch('app.notifications.process_notifications.redis_store.get', return_value=1)
     mocker.patch('app.notifications.process_notifications.redis_store.get_all_from_hash',
                  return_value={sample_template.id, 1})
-    persist_notification(sample_template.id, sample_template.version, '+447111111122',
-                         sample_template.service, {}, 'sms', sample_api_key.id,
-                         sample_api_key.key_type, reference="ref2")
+    persist_notification(
+        template_id=sample_template.id,
+        template_version=sample_template.version,
+        recipient='+447111111122',
+        service=sample_template.service,
+        personalisation={},
+        notification_type='sms',
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
+        reference="ref2")
     mock_incr.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count", )
     mock_incr_hash_value.assert_called_once_with(cache_key_for_service_template_counter(sample_template.service_id),
                                                  sample_template.id)
@@ -214,9 +237,9 @@ def test_persist_notification_increments_cache_if_key_exists(sample_template, sa
                          [(True, None, 'research-mode-tasks', 'sms', 'normal'),
                           (True, None, 'research-mode-tasks', 'email', 'normal'),
                           (True, None, 'research-mode-tasks', 'email', 'team'),
-                          (False, None, 'send-tasks', 'sms', 'normal'),
-                          (False, None, 'send-tasks', 'email', 'normal'),
-                          (False, None, 'send-tasks', 'sms', 'team'),
+                          (False, None, 'send-sms-tasks', 'sms', 'normal'),
+                          (False, None, 'send-email-tasks', 'email', 'normal'),
+                          (False, None, 'send-sms-tasks', 'sms', 'team'),
                           (False, None, 'research-mode-tasks', 'sms', 'test'),
                           (True, 'notify-internal-tasks', 'research-mode-tasks', 'email', 'normal'),
                           (False, 'notify-internal-tasks', 'notify-internal-tasks', 'sms', 'normal'),

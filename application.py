@@ -16,6 +16,7 @@ manager.add_command('db', MigrateCommand)
 manager.add_command('create_provider_rate', commands.CreateProviderRateCommand)
 manager.add_command('purge_functional_test_data', commands.PurgeFunctionalTestDataCommand)
 manager.add_command('custom_db_script', commands.CustomDbScript)
+manager.add_command('populate_monthly_billing', commands.PopulateMonthlyBilling)
 
 
 @manager.command

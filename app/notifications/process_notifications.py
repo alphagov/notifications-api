@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 
 from flask import current_app
@@ -12,7 +13,7 @@ from app import redis_store
 from app.celery import provider_tasks
 from notifications_utils.clients import redis
 
-from app.celery import QueueNames
+from app.config import QueueNames
 from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE, ScheduledNotification
 from app.dao.notifications_dao import (dao_create_notification,
                                        dao_delete_notifications_and_history_by_id,
@@ -35,6 +36,7 @@ def check_placeholders(template_object):
 
 
 def persist_notification(
+    *,
     template_id,
     template_version,
     recipient,
@@ -53,7 +55,8 @@ def persist_notification(
     created_by_id=None
 ):
     notification_created_at = created_at or datetime.utcnow()
-
+    if not notification_id and simulated:
+        notification_id = uuid.uuid4()
     notification = Notification(
         id=notification_id,
         template_id=template_id,
@@ -100,12 +103,14 @@ def persist_notification(
 def send_notification_to_queue(notification, research_mode, queue=None):
     if research_mode or notification.key_type == KEY_TYPE_TEST:
         queue = QueueNames.RESEARCH_MODE
-    elif not queue:
-        queue = QueueNames.SEND
 
     if notification.notification_type == SMS_TYPE:
+        if not queue:
+            queue = QueueNames.SEND_SMS
         deliver_task = provider_tasks.deliver_sms
     if notification.notification_type == EMAIL_TYPE:
+        if not queue:
+            queue = QueueNames.SEND_EMAIL
         deliver_task = provider_tasks.deliver_email
 
     try:
