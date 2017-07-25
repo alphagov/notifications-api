@@ -20,7 +20,7 @@ from app.utils import get_london_month_from_utc_column
 @statsd(namespace="dao")
 def get_yearly_billing_data(service_id, year):
     start_date, end_date = get_financial_year(year)
-    rates = get_rates_for_year(start_date, end_date, SMS_TYPE)
+    rates = get_rates_for_daterange(start_date, end_date, SMS_TYPE)
 
     def get_valid_from(valid_from):
         return start_date if valid_from < start_date else valid_from
@@ -37,7 +37,7 @@ def get_yearly_billing_data(service_id, year):
 
 @statsd(namespace="dao")
 def get_billing_data_for_month(service_id, start_date, end_date):
-    rates = get_rates_for_year(start_date, end_date, SMS_TYPE)
+    rates = get_rates_for_daterange(start_date, end_date, SMS_TYPE)
     result = []
     # so the start end date in the query are the valid from the rate, not the month - this is going to take some thought
     for r, n in zip(rates, rates[1:]):
@@ -52,7 +52,7 @@ def get_billing_data_for_month(service_id, start_date, end_date):
 @statsd(namespace="dao")
 def get_monthly_billing_data(service_id, year):
     start_date, end_date = get_financial_year(year)
-    rates = get_rates_for_year(start_date, end_date, SMS_TYPE)
+    rates = get_rates_for_daterange(start_date, end_date, SMS_TYPE)
 
     result = []
     for r, n in zip(rates, rates[1:]):
@@ -117,7 +117,7 @@ def sms_yearly_billing_data_query(rate, service_id, start_date, end_date):
         return result
 
 
-def get_rates_for_year(start_date, end_date, notification_type):
+def get_rates_for_daterange(start_date, end_date, notification_type):
     rates = Rate.query.filter(Rate.notification_type == notification_type).order_by(Rate.valid_from).all()
     results = []
     for current_rate, current_rate_expiry_date in zip(rates, rates[1:]):
@@ -207,7 +207,7 @@ def get_total_billable_units_for_sent_sms_notifications_in_date_range(start_date
 
 def discover_rate_bounds_for_billing_query(start_date, end_date):
     bounds = []
-    rates = get_rates_for_year(start_date, end_date, SMS_TYPE)
+    rates = get_rates_for_daterange(start_date, end_date, SMS_TYPE)
 
     def current_valid_from(index):
         return rates[index].valid_from
