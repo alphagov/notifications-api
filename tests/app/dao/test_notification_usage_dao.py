@@ -6,7 +6,7 @@ from flask import current_app
 
 from app.dao.date_util import get_financial_year
 from app.dao.notification_usage_dao import (
-    get_rates_for_year,
+    get_rates_for_daterange,
     get_yearly_billing_data,
     get_monthly_billing_data,
     get_total_billable_units_for_sent_sms_notifications_in_date_range,
@@ -24,22 +24,22 @@ from freezegun import freeze_time
 from tests.conftest import set_config
 
 
-def test_get_rates_for_year(notify_db, notify_db_session):
+def test_get_rates_for_daterange(notify_db, notify_db_session):
     set_up_rate(notify_db, datetime(2016, 5, 18), 0.016)
     set_up_rate(notify_db, datetime(2017, 3, 31, 23), 0.0158)
     start_date, end_date = get_financial_year(2017)
-    rates = get_rates_for_year(start_date, end_date, 'sms')
+    rates = get_rates_for_daterange(start_date, end_date, 'sms')
     assert len(rates) == 1
     assert datetime.strftime(rates[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2017-03-31 23:00:00"
     assert rates[0].rate == 0.0158
 
 
-def test_get_rates_for_year_multiple_result_per_year(notify_db, notify_db_session):
+def test_get_rates_for_daterange_multiple_result_per_year(notify_db, notify_db_session):
     set_up_rate(notify_db, datetime(2016, 4, 1), 0.015)
     set_up_rate(notify_db, datetime(2016, 5, 18), 0.016)
     set_up_rate(notify_db, datetime(2017, 4, 1), 0.0158)
     start_date, end_date = get_financial_year(2016)
-    rates = get_rates_for_year(start_date, end_date, 'sms')
+    rates = get_rates_for_daterange(start_date, end_date, 'sms')
     assert len(rates) == 2
     assert datetime.strftime(rates[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2016-04-01 00:00:00"
     assert rates[0].rate == 0.015
@@ -47,12 +47,12 @@ def test_get_rates_for_year_multiple_result_per_year(notify_db, notify_db_sessio
     assert rates[1].rate == 0.016
 
 
-def test_get_rates_for_year_returns_correct_rates(notify_db, notify_db_session):
+def test_get_rates_for_daterange_returns_correct_rates(notify_db, notify_db_session):
     set_up_rate(notify_db, datetime(2016, 4, 1), 0.015)
     set_up_rate(notify_db, datetime(2016, 9, 1), 0.016)
     set_up_rate(notify_db, datetime(2017, 6, 1), 0.0175)
     start_date, end_date = get_financial_year(2017)
-    rates_2017 = get_rates_for_year(start_date, end_date, 'sms')
+    rates_2017 = get_rates_for_daterange(start_date, end_date, 'sms')
     assert len(rates_2017) == 2
     assert datetime.strftime(rates_2017[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2016-09-01 00:00:00"
     assert rates_2017[0].rate == 0.016
@@ -60,41 +60,54 @@ def test_get_rates_for_year_returns_correct_rates(notify_db, notify_db_session):
     assert rates_2017[1].rate == 0.0175
 
 
-def test_get_rates_for_year_in_the_future(notify_db, notify_db_session):
+def test_get_rates_for_daterange_in_the_future(notify_db, notify_db_session):
     set_up_rate(notify_db, datetime(2016, 4, 1), 0.015)
     set_up_rate(notify_db, datetime(2017, 6, 1), 0.0175)
     start_date, end_date = get_financial_year(2018)
-    rates = get_rates_for_year(start_date, end_date, 'sms')
+    rates = get_rates_for_daterange(start_date, end_date, 'sms')
     assert datetime.strftime(rates[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2017-06-01 00:00:00"
     assert rates[0].rate == 0.0175
 
 
-def test_get_rates_for_year_returns_empty_list_if_year_is_before_earliest_rate(notify_db, notify_db_session):
+def test_get_rates_for_daterange_returns_empty_list_if_year_is_before_earliest_rate(notify_db, notify_db_session):
     set_up_rate(notify_db, datetime(2016, 4, 1), 0.015)
     set_up_rate(notify_db, datetime(2017, 6, 1), 0.0175)
     start_date, end_date = get_financial_year(2015)
-    rates = get_rates_for_year(start_date, end_date, 'sms')
+    rates = get_rates_for_daterange(start_date, end_date, 'sms')
     assert rates == []
 
 
-def test_get_rates_for_year_early_rate(notify_db, notify_db_session):
+def test_get_rates_for_daterange_early_rate(notify_db, notify_db_session):
     set_up_rate(notify_db, datetime(2015, 6, 1), 0.014)
     set_up_rate(notify_db, datetime(2016, 6, 1), 0.015)
     set_up_rate(notify_db, datetime(2016, 9, 1), 0.016)
     set_up_rate(notify_db, datetime(2017, 6, 1), 0.0175)
     start_date, end_date = get_financial_year(2016)
-    rates = get_rates_for_year(start_date, end_date, 'sms')
+    rates = get_rates_for_daterange(start_date, end_date, 'sms')
     assert len(rates) == 3
 
 
-def test_get_rates_for_year_edge_case(notify_db, notify_db_session):
+def test_get_rates_for_daterange_edge_case(notify_db, notify_db_session):
     set_up_rate(notify_db, datetime(2016, 3, 31, 23, 00), 0.015)
     set_up_rate(notify_db, datetime(2017, 3, 31, 23, 00), 0.0175)
     start_date, end_date = get_financial_year(2016)
-    rates = get_rates_for_year(start_date, end_date, 'sms')
+    rates = get_rates_for_daterange(start_date, end_date, 'sms')
     assert len(rates) == 1
     assert datetime.strftime(rates[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2016-03-31 23:00:00"
     assert rates[0].rate == 0.015
+
+
+def test_get_rates_for_daterange_where_daterange_is_one_month_that_falls_between_rate_valid_from(
+        notify_db, notify_db_session
+):
+    set_up_rate(notify_db, datetime(2017, 1, 1), 0.175)
+    set_up_rate(notify_db, datetime(2017, 3, 31), 0.123)
+    start_date = datetime(2017, 2, 1, 00, 00, 00)
+    end_date = datetime(2017, 2, 28, 23, 59, 59, 99999)
+    rates = get_rates_for_daterange(start_date, end_date, 'sms')
+    assert len(rates) == 1
+    assert datetime.strftime(rates[0].valid_from, '%Y-%m-%d %H:%M:%S') == "2017-01-01 00:00:00"
+    assert rates[0].rate == 0.175
 
 
 def test_get_yearly_billing_data(notify_db, notify_db_session, sample_template, sample_email_template):
@@ -254,8 +267,7 @@ def test_get_monthly_billing_data_with_multiple_rates(notify_db, notify_db_sessi
     assert results[3] == ('June', 4, 1, False, 'sms', 0.0175)
 
 
-def test_get_monthly_billing_data_with_no_notifications_for_year(notify_db, notify_db_session, sample_template,
-                                                                 sample_email_template):
+def test_get_monthly_billing_data_with_no_notifications_for_daterange(notify_db, notify_db_session, sample_template):
     set_up_rate(notify_db, datetime(2016, 4, 1), 0.014)
     results = get_monthly_billing_data(sample_template.service_id, 2016)
     assert len(results) == 0
