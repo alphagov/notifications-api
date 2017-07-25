@@ -6,7 +6,7 @@ from sqlalchemy import func, case, cast
 from sqlalchemy import literal_column
 
 from app import db
-from app.dao.date_util import get_financial_year
+from app.dao.date_util import get_financial_year, get_month_start_end_date
 from app.models import (NotificationHistory,
                         Rate,
                         NOTIFICATION_STATUS_TYPES_BILLABLE,
@@ -33,6 +33,20 @@ def get_yearly_billing_data(service_id, year):
     result.append(email_yearly_billing_data_query(service_id, start_date, end_date))
 
     return sum(result, [])
+
+
+@statsd(namespace="dao")
+def get_billing_data_for_month(service_id, start_date, end_date):
+    rates = get_rates_for_year(start_date, end_date, SMS_TYPE)
+    result = []
+    # so the start end date in the query are the valid from the rate, not the month - this is going to take some thought
+    for r, n in zip(rates, rates[1:]):
+        result.extend(sms_billing_data_per_month_query(r.rate, service_id, max(r.valid_from, start_date),
+                                                       min(n.valid_from, end_date)))
+    result.extend(
+        sms_billing_data_per_month_query(rates[-1].rate, service_id, max(rates[-1].valid_from, start_date), end_date))
+
+    return result
 
 
 @statsd(namespace="dao")
@@ -128,12 +142,12 @@ def is_between(date, start_date, end_date):
 def sms_billing_data_per_month_query(rate, service_id, start_date, end_date):
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
     result = db.session.query(
-        month,
-        func.sum(NotificationHistory.billable_units),
-        rate_multiplier(),
+        month.label('month'),
+        func.sum(NotificationHistory.billable_units).label('billing_units'),
+        rate_multiplier().label('rate_multiplier'),
         NotificationHistory.international,
         NotificationHistory.notification_type,
-        cast(rate, Float())
+        cast(rate, Float()).label('rate')
     ).filter(
         *billing_data_filter(SMS_TYPE, start_date, end_date, service_id)
     ).group_by(
