@@ -20,6 +20,9 @@ personalisation = {
 }
 
 
+letter_personalisation = dict(personalisation, required=["address_line_1", "postcode"])
+
+
 https_url = {
     "type": "string",
     "format": "uri",
