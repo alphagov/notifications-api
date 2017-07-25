@@ -26,7 +26,7 @@ def create_or_update_monthly_billing_sms(service_id, billing_month):
     # update monthly
     monthly_totals = _monthly_billing_data_to_json(monthly)
     row = MonthlyBilling.query.filter_by(year=billing_month.year,
-                                         month=datetime.strftime(billing_month, "%B"),
+                                         month=datetime.strftime(end_date, "%B"),
                                          notification_type='sms').first()
     if row:
         row.monthly_totals = monthly_totals
@@ -34,7 +34,7 @@ def create_or_update_monthly_billing_sms(service_id, billing_month):
         row = MonthlyBilling(service_id=service_id,
                              notification_type=SMS_TYPE,
                              year=billing_month.year,
-                             month=datetime.strftime(billing_month, "%B"),
+                             month=datetime.strftime(end_date, "%B"),
                              monthly_totals=monthly_totals)
     db.session.add(row)
 
