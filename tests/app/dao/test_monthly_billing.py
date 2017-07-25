@@ -111,7 +111,7 @@ def assert_monthly_billing(monthly_billing, year, month, service_id, expected_le
     assert sorted(monthly_billing.monthly_totals[0]) == sorted(first_row)
 
 
-def test_get_service_id():
+def test_get_service_id(notify_db_session):
     service_1 = create_service(service_name="Service One")
     template_1 = create_template(service=service_1)
     service_2 = create_service(service_name="Service Two")

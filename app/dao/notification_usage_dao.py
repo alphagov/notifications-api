@@ -142,12 +142,12 @@ def is_between(date, start_date, end_date):
 def sms_billing_data_per_month_query(rate, service_id, start_date, end_date):
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
     result = db.session.query(
-        month,
-        func.sum(NotificationHistory.billable_units),
-        rate_multiplier(),
+        month.label('month'),
+        func.sum(NotificationHistory.billable_units).label('billing_units'),
+        rate_multiplier().label('rate_multiplier'),
         NotificationHistory.international,
         NotificationHistory.notification_type,
-        cast(rate, Float())
+        cast(rate, Float()).label('rate')
     ).filter(
         *billing_data_filter(SMS_TYPE, start_date, end_date, service_id)
     ).group_by(

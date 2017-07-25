@@ -50,8 +50,8 @@ def _monthly_billing_data_to_json(monthly):
     #  (month, billing_units, rate_multiplier, international, notification_type, rate)
     # total cost must take into account the free allowance.
     # might be a good idea to capture free allowance in this table
-    return [{"billing_units": x[1],
-             "rate_multiplier": x[2],
-             "international": x[3],
-             "rate": x[5],
-             "total_cost": (x[1] * x[2]) * x[5]} for x in monthly]
+    return [{"billing_units": x.billing_units,
+             "rate_multiplier": x.rate_multiplier,
+             "international": x.international,
+             "rate": x.rate,
+             "total_cost": (x.billing_units * x.rate_multiplier) * x.rate} for x in monthly]
