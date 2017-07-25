@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0110_drop_old_service_flags
-Revises: 0109_rem_old_noti_status
+Revision ID: 0111_drop_old_service_flags
+Revises: 0110_monthly_billing
 Create Date: 2017-07-12 13:35:45.636618
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0110_drop_old_service_flags'
-down_revision = '0109_rem_old_noti_status'
+revision = '0111_drop_old_service_flags'
+down_revision = '0110_monthly_billing'
 
 from alembic import op
 import sqlalchemy as sa
