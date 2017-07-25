@@ -46,8 +46,6 @@ def get_monthly_billing_sms(service_id, billing_month):
 
 
 def _monthly_billing_data_to_json(monthly):
-    # ('April', 6, 1, False, 'sms', 0.014)
-    #  (month, billing_units, rate_multiplier, international, notification_type, rate)
     # total cost must take into account the free allowance.
     # might be a good idea to capture free allowance in this table
     return [{"billing_units": x.billing_units,
