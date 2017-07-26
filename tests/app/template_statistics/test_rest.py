@@ -211,8 +211,8 @@ def test_get_template_statistics_by_id_returns_last_notification(
 
 
 def test_get_template_statistics_for_template_returns_empty_if_no_statistics(
-        client,
-        sample_template,
+    client,
+    sample_template,
 ):
     auth_header = create_authorization_header()
 
@@ -221,7 +221,24 @@ def test_get_template_statistics_for_template_returns_empty_if_no_statistics(
         headers=[('Content-Type', 'application/json'), auth_header],
     )
 
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp['data'] == {}
+
+
+def test_get_template_statistics_raises_error_for_nonexistent_template(
+    client,
+    sample_service,
+    fake_uuid
+):
+    auth_header = create_authorization_header()
+
+    response = client.get(
+        '/service/{}/template-statistics/{}'.format(sample_service.id, fake_uuid),
+        headers=[('Content-Type', 'application/json'), auth_header],
+    )
+
     assert response.status_code == 404
     json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp['message'] == 'No result found'
     assert json_resp['result'] == 'error'
-    assert json_resp['message']['template_id'] == ['No template found for id {}'.format(sample_template.id)]
