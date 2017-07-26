@@ -619,7 +619,7 @@ class JobStatus(db.Model):
 class Job(db.Model):
     __tablename__ = 'jobs'
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     original_file_name = db.Column(db.String, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
     service = db.relationship('Service', backref=db.backref('jobs', lazy='dynamic'))

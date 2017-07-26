@@ -5,11 +5,16 @@ from flask import request, jsonify, current_app, abort
 from app import api_user, authenticated_service
 from app.config import QueueNames
 from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, PRIORITY
+from app.celery.tasks import build_dvla_file
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
     simulated_recipient,
     persist_scheduled_notification)
+from app.notifications.process_letter_notifications import (
+    create_letter_api_job,
+    create_letter_notification
+)
 from app.notifications.validators import (
     validate_and_format_recipient,
     check_rate_limiting,
@@ -58,10 +63,9 @@ def post_notification(notification_type):
 
     if notification_type == LETTER_TYPE:
         notification = process_letter_notification(
-            form=form,
+            letter_data=form,
             api_key=api_user,
             template=template,
-            service=authenticated_service,
         )
     else:
         notification = process_sms_or_email_notification(
@@ -140,10 +144,12 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
     return notification
 
 
-def process_letter_notification(*, form, api_key, template, service):
-    # create job
-
-    # create notification
-
-    # trigger build_dvla_file task
-    raise NotImplementedError
+def process_letter_notification(*, letter_data, api_key, template, service):
+    job = create_letter_api_job(template)
+    notification = create_letter_notification(letter_data, job, api_key)
+    build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
+    current_app.logger.info("send job {} for api notification {} to build-dvla-file in the process-job queue".format(
+        job.id,
+        notification.id
+    ))
+    return notification
