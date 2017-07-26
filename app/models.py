@@ -1253,20 +1253,20 @@ class MonthlyBilling(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service', backref='monthly_billing')
-    month = db.Column(db.String, nullable=False)
-    year = db.Column(db.Float(asdecimal=False), nullable=False)
+    start_date = db.Column(db.DateTime, nullable=False)
+    end_date = db.Column(db.DateTime, nullable=False)
     notification_type = db.Column(notification_types, nullable=False)
     monthly_totals = db.Column(JSON, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
 
     __table_args__ = (
-        UniqueConstraint('service_id', 'month', 'year', 'notification_type', name='uix_monthly_billing'),
+        UniqueConstraint('service_id', 'start_date', 'notification_type', name='uix_monthly_billing'),
     )
 
     def serialized(self):
         return {
-            "month": self.month,
-            "year": self.year,
+            "start_date": self.start_date,
+            "end_date": self.end_date,
             "service_id": str(self.service_id),
             "notification_type": self.notification_type,
             "monthly_totals": self.monthly_totals

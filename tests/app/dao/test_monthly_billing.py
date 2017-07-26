@@ -1,5 +1,8 @@
 from datetime import datetime
 
+from freezegun import freeze_time
+from freezegun.api import FakeDatetime
+
 from app.dao.monthly_billing_dao import (
     create_or_update_monthly_billing_sms,
     get_monthly_billing_sms,
@@ -23,8 +26,8 @@ def test_add_monthly_billing(sample_template):
                                          billing_month=feb)
     monthly_billing = MonthlyBilling.query.all()
     assert len(monthly_billing) == 2
-    assert monthly_billing[0].month == 'January'
-    assert monthly_billing[1].month == 'February'
+    assert monthly_billing[0].start_date == datetime(2017, 1, 1)
+    assert monthly_billing[1].start_date == datetime(2017, 2, 1)
 
     january = get_monthly_billing_sms(service_id=sample_template.service_id, billing_month=jan)
     expected_jan = {"billing_units": 1,
@@ -32,7 +35,8 @@ def test_add_monthly_billing(sample_template):
                     "international": False,
                     "rate": 0.0158,
                     "total_cost": 1 * 0.0158}
-    assert_monthly_billing(january, 2017, "January", sample_template.service_id, 1, expected_jan)
+    assert_monthly_billing(january, sample_template.service_id, 1, expected_jan,
+                           start_date=datetime(2017, 1, 1), end_date=datetime(2017, 1, 31))
 
     february = get_monthly_billing_sms(service_id=sample_template.service_id, billing_month=feb)
     expected_feb = {"billing_units": 2,
@@ -40,7 +44,8 @@ def test_add_monthly_billing(sample_template):
                     "international": False,
                     "rate": 0.0158,
                     "total_cost": 2 * 0.0158}
-    assert_monthly_billing(february, 2017, "February", sample_template.service_id, 1, expected_feb)
+    assert_monthly_billing(february, sample_template.service_id, 1, expected_feb,
+                           start_date=datetime(2017, 2, 1), end_date=datetime(2017, 2, 28))
 
 
 def test_add_monthly_billing_multiple_rates_in_a_month(sample_template):
@@ -62,7 +67,7 @@ def test_add_monthly_billing_multiple_rates_in_a_month(sample_template):
                                          billing_month=rate_2)
     monthly_billing = MonthlyBilling.query.all()
     assert len(monthly_billing) == 1
-    assert monthly_billing[0].month == 'January'
+    assert monthly_billing[0].start_date == datetime(2017, 1, 1)
 
     january = get_monthly_billing_sms(service_id=sample_template.service_id, billing_month=rate_2)
     first_row = {"billing_units": 2,
@@ -70,7 +75,8 @@ def test_add_monthly_billing_multiple_rates_in_a_month(sample_template):
                  "international": False,
                  "rate": 0.0158,
                  "total_cost": 3 * 0.0158}
-    assert_monthly_billing(january, 2017, "January", sample_template.service_id, 2, first_row)
+    assert_monthly_billing(january, sample_template.service_id, 2, first_row,
+                           start_date=datetime(2017, 1, 1), end_date=datetime(2017, 1, 1))
     second_row = {"billing_units": 6,
                   "rate_multiplier": 1,
                   "international": False,
@@ -83,30 +89,35 @@ def test_update_monthly_billing_overwrites_old_totals(sample_template):
     july = datetime(2017, 7, 1)
     create_rate(july, 0.123, 'sms')
     create_notification(template=sample_template, created_at=datetime(2017, 7, 2), billable_units=1, status='delivered')
-
-    create_or_update_monthly_billing_sms(sample_template.service_id, july)
+    with freeze_time('2017-07-20 02:30:00'):
+        create_or_update_monthly_billing_sms(sample_template.service_id, july)
     first_update = get_monthly_billing_sms(sample_template.service_id, july)
     expected = {"billing_units": 1,
                 "rate_multiplier": 1,
                 "international": False,
                 "rate": 0.123,
                 "total_cost": 1 * 0.123}
-    assert_monthly_billing(first_update, 2017, "July", sample_template.service_id, 1, expected)
+    assert_monthly_billing(first_update, sample_template.service_id, 1, expected,
+                           start_date=datetime(2017, 6, 30, 23), end_date=datetime(2017, 7, 31, 23, 59, 59, 99999))
+    first_updated_at = first_update.updated_at
+    with freeze_time('2017-07-20 03:30:00'):
+        create_notification(template=sample_template, created_at=datetime(2017, 7, 5), billable_units=2,
+                            status='delivered')
 
-    create_notification(template=sample_template, created_at=datetime(2017, 7, 5), billable_units=2, status='delivered')
-    create_or_update_monthly_billing_sms(sample_template.service_id, july)
+        create_or_update_monthly_billing_sms(sample_template.service_id, july)
     second_update = get_monthly_billing_sms(sample_template.service_id, july)
     expected_update = {"billing_units": 3,
                        "rate_multiplier": 1,
                        "international": False,
                        "rate": 0.123,
                        "total_cost": 3 * 0.123}
-    assert_monthly_billing(second_update, 2017, "July", sample_template.service_id, 1, expected_update)
+    assert_monthly_billing(second_update, sample_template.service_id, 1, expected_update,
+                           start_date=datetime(2017, 6, 30, 23), end_date=datetime(2017, 7, 31, 23, 59, 59, 99999))
+    assert second_update.updated_at == FakeDatetime(2017, 7, 20, 3, 30)
+    assert first_updated_at != second_update.updated_at
 
 
-def assert_monthly_billing(monthly_billing, year, month, service_id, expected_len, first_row):
-    assert monthly_billing.year == year
-    assert monthly_billing.month == month
+def assert_monthly_billing(monthly_billing, service_id, expected_len, first_row, start_date, end_date):
     assert monthly_billing.service_id == service_id
     assert len(monthly_billing.monthly_totals) == expected_len
     assert sorted(monthly_billing.monthly_totals[0]) == sorted(first_row)

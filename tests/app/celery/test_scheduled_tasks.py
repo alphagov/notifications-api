@@ -627,8 +627,8 @@ def test_populate_monthly_billing(sample_template):
     monthly_billing = MonthlyBilling.query.all()
     assert len(monthly_billing) == 1
     assert monthly_billing[0].service_id == sample_template.service_id
-    assert monthly_billing[0].year == 2017
-    assert monthly_billing[0].month == 'July'
+    assert monthly_billing[0].start_date == datetime(2017, 6, 30, 23)
+    assert monthly_billing[0].end_date == datetime(2017, 7, 31, 22, 59, 59, 99999)
     assert monthly_billing[0].notification_type == 'sms'
     assert len(monthly_billing[0].monthly_totals) == 1
     assert sorted(monthly_billing[0].monthly_totals[0]) == sorted({'international': False,

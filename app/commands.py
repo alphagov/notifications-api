@@ -158,6 +158,7 @@ class PopulateMonthlyBilling(Command):
         )
 
         def run(self, service_id, month, year):
+            print('Starting populating monthly billing')
             create_or_update_monthly_billing_sms(service_id, datetime(int(year), int(month), 1))
             results = get_monthly_billing_sms(service_id, datetime(int(year), int(month), 1))
             print("Finished populating data for {} for service id {}".format(month, service_id))
