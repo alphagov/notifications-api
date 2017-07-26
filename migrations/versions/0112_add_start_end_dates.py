@@ -16,6 +16,8 @@ revision = '0112_add_start_end_dates'
 
 def upgrade():
     op.drop_index('uix_monthly_billing', 'monthly_billing')
+    op.alter_column('monthly_billing', 'month', nullable=True)
+    op.alter_column('monthly_billing', 'year', nullable=True)
     op.add_column('monthly_billing', sa.Column('start_date', sa.DateTime))
     op.add_column('monthly_billing', sa.Column('end_date', sa.DateTime))
     conn = op.get_bind()
