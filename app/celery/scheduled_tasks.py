@@ -298,5 +298,5 @@ def populate_monthly_billing():
     # this will overwrite the existing amount.
     yesterday = datetime.utcnow() - timedelta(days=1)
     start_date, end_date = get_month_start_end_date(yesterday)
-    services = get_service_ids_that_need_sms_billing_populated(start_date, end_date=end_date)
-    [create_or_update_monthly_billing_sms(service_id=s.service_id, billing_month=start_date) for s in services]
+    services = get_service_ids_that_need_sms_billing_populated(start_date=start_date, end_date=end_date)
+    [create_or_update_monthly_billing_sms(service_id=s.service_id, billing_month=yesterday) for s in services]
