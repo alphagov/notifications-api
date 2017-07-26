@@ -29,24 +29,11 @@ def upgrade():
                                                                                                             x.id))
     op.alter_column('monthly_billing', 'start_date', nullable=False)
     op.alter_column('monthly_billing', 'end_date', nullable=False)
-    op.drop_column('monthly_billing', 'month')
-    op.drop_column('monthly_billing', 'year')
-
     op.create_index(op.f('uix_monthly_billing'), 'monthly_billing', ['service_id', 'start_date', 'notification_type'],
                     unique=True)
 
 
 def downgrade():
-    op.add_column('monthly_billing', sa.Column('month', sa.String(), nullable=True))
-    op.add_column('monthly_billing', sa.Column('year', sa.Float(), nullable=True))
-    conn = op.get_bind()
-    results = conn.execute("Select id, start_date, end_date from monthly_billing")
-    res = results.fetchall()
-    for x in res:
-        year = datetime.strftime(x.end_date, '%Y')
-        month = datetime.strftime(x.end_date, '%B')
-        conn.execute("update monthly_billing set month = '{}', year = {} where id = '{}'".format(month, year, x.id))
-
     op.drop_column('monthly_billing', 'start_date')
     op.drop_column('monthly_billing', 'end_date')
 
