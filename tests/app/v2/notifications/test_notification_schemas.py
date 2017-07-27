@@ -127,7 +127,7 @@ def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
     error = json.loads(str(e.value))
     assert len(error.get('errors')) == 1
     assert error['errors'] == [{'error': 'ValidationError',
-                                'message': "personalisation should contain key value pairs"}]
+                                'message': "personalisation not_a_dict is not of type object"}]
     assert error.get('status_code') == 400
     assert len(error.keys()) == 2
 

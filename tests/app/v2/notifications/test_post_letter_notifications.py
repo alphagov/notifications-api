@@ -100,6 +100,26 @@ def test_notification_returns_400_for_schema_problems(
     }]
 
 
+def test_notification_returns_400_if_address_doesnt_have_underscores(
+    client,
+    sample_letter_template
+):
+    data = {
+        'template_id': str(sample_letter_template.id),
+        'personalisation': {
+            'address line 1': 'Her Royal Highness Queen Elizabeth II',
+            'postcode': 'SW1 1AA',
+        }
+    }
+
+    error_json = letter_request(client, data, service_id=sample_letter_template.service_id, _expected_status=400)
+
+    assert error_json['status_code'] == 400
+    assert error_json['errors'] == [{
+        'error': 'ValidationError',
+        'message': 'personalisation address_line_1 is a required property'
+    }]
+
 
 def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
     client,
