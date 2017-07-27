@@ -56,11 +56,11 @@ def restrict_ip_sms():
                                 .format(ip_route))
 
     # Temporary custom header for route security - to experiment if the header passes through
-    if request.headers.get("X-Custom-forwarder"):
-        current_app.logger.info("X-Custom-forwarder {}".format(request.headers.get("X-Custom-forwarder")))
+    if request.headers.get("X-Custom-Forwarder"):
+        current_app.logger.info("X-Custom-Forwarder {}".format(request.headers.get("X-Custom-forwarder")))
 
     if ip in current_app.config.get('SMS_INBOUND_WHITELIST'):
-        current_app.logger.info("Inbound sms ip addresses {} passed ".format(ip))
+        current_app.logger.info("Inbound sms ip addresses passed {}".format(ip))
         return
     else:
         current_app.logger.info("Inbound sms ip addresses blocked {}".format(ip))
