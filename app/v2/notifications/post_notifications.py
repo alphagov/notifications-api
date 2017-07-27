@@ -144,7 +144,7 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
     return notification
 
 
-def process_letter_notification(*, letter_data, api_key, template, service):
+def process_letter_notification(*, letter_data, api_key, template):
     job = create_letter_api_job(template)
     notification = create_letter_notification(letter_data, job, api_key)
     build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)

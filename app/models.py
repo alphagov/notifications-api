@@ -654,7 +654,7 @@ class Job(db.Model):
         unique=False,
         nullable=True)
     created_by = db.relationship('User')
-    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=True)
     scheduled_for = db.Column(
         db.DateTime,
         index=True,

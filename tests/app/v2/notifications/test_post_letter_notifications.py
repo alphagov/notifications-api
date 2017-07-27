@@ -1,4 +1,3 @@
-
 import uuid
 
 from flask import url_for, json
@@ -9,9 +8,6 @@ from app.v2.errors import RateLimitError
 
 from tests import create_authorization_header
 from tests.app.db import create_service, create_template
-
-
-pytestmark = pytest.mark.skip('Leters not currently implemented')
 
 
 def letter_request(client, data, service_id, _expected_status=201):
@@ -160,7 +156,7 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
     }
 
     error_json = letter_request(client, data, service_id=service.id, _expected_status=400)
-    assert error_json['status_code'] == 403
+    assert error_json['status_code'] == 400
     assert error_json['errors'] == [
         {'error': 'BadRequestError', 'message': 'Cannot send letters'}
     ]
