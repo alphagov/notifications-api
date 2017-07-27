@@ -255,8 +255,8 @@ def sample_template_without_email_permission(notify_db, notify_db_session):
 
 
 @pytest.fixture
-def sample_letter_template(sample_service):
-    return create_template(sample_service, template_type=LETTER_TYPE)
+def sample_letter_template(sample_service_full_permissions):
+    return create_template(sample_service_full_permissions, template_type=LETTER_TYPE)
 
 
 @pytest.fixture(scope='function')
@@ -397,17 +397,18 @@ def sample_email_job(notify_db,
 
 
 @pytest.fixture
-def sample_letter_job(sample_service, sample_letter_template):
+def sample_letter_job(sample_letter_template):
+    service = sample_letter_template.service
     data = {
         'id': uuid.uuid4(),
-        'service_id': sample_service.id,
-        'service': sample_service,
+        'service_id': service.id,
+        'service': service,
         'template_id': sample_letter_template.id,
         'template_version': sample_letter_template.version,
         'original_file_name': 'some.csv',
         'notification_count': 1,
         'created_at': datetime.utcnow(),
-        'created_by': sample_service.created_by,
+        'created_by': service.created_by,
     }
     job = Job(**data)
     dao_create_job(job)
@@ -1026,7 +1027,7 @@ def admin_request(client):
                 headers=[('Content-Type', 'application/json'), create_authorization_header()]
             )
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == _expected_status
+            assert resp.status_code == _expected_status, json_resp
             return json_resp
 
         @staticmethod
@@ -1036,7 +1037,7 @@ def admin_request(client):
                 headers=[create_authorization_header()]
             )
             json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == _expected_status
+            assert resp.status_code == _expected_status, json_resp
             return json_resp
 
     return AdminRequest
