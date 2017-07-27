@@ -1,13 +1,20 @@
 import uuid
 
-from flask import url_for, json
+from flask import json
+from flask import url_for
 import pytest
 
-from app.models import Job, Notification, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
+from app.models import EMAIL_TYPE
+from app.models import Job
+from app.models import LETTER_TYPE
+from app.models import Notification
+from app.models import SMS_TYPE
 from app.v2.errors import RateLimitError
+from app.v2.notifications.post_notifications import process_letter_notification
 
 from tests import create_authorization_header
-from tests.app.db import create_service, create_template
+from tests.app.db import create_service
+from tests.app.db import create_template
 
 
 def letter_request(client, data, service_id, _expected_status=201):
@@ -41,7 +48,7 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
     resp_json = letter_request(client, data, service_id=sample_letter_template.service_id)
 
     job = Job.query.one()
-    notification = Notification.query.all()
+    notification = Notification.query.one()
     notification_id = notification.id
     assert resp_json['id'] == str(notification_id)
     assert resp_json['reference'] == reference
@@ -58,57 +65,40 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
     )
     assert not resp_json['scheduled_for']
 
-    mocked.assert_called_once_with((str(job.id), ), queue='job-tasks')
+    mocked.assert_called_once_with([str(job.id)], queue='job-tasks')
 
 
 def test_post_letter_notification_returns_400_and_missing_template(
     client,
-    sample_service
+    sample_service_full_permissions
 ):
     data = {
         'template_id': str(uuid.uuid4()),
         'personalisation': {'address_line_1': '', 'postcode': ''}
     }
 
-    error_json = letter_request(client, data, service_id=sample_service.id, _expected_status=400)
+    error_json = letter_request(client, data, service_id=sample_service_full_permissions.id, _expected_status=400)
 
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [{'error': 'BadRequestError', 'message': 'Template not found'}]
 
 
-def test_post_notification_returns_403_and_well_formed_auth_error(
-    client,
-    sample_letter_template
-):
-    data = {
-        'template_id': str(sample_letter_template.id),
-        'personalisation': {'address_line_1': '', 'postcode': ''}
-    }
-
-    error_json = letter_request(client, data, service_id=sample_letter_template.service_id, _expected_status=401)
-
-    assert error_json['status_code'] == 401
-    assert error_json['errors'] == [{
-        'error': 'AuthError',
-        'message': 'Unauthorized, authentication token must be provided'
-    }]
-
-
 def test_notification_returns_400_for_schema_problems(
     client,
-    sample_service
+    sample_service_full_permissions
 ):
     data = {
         'personalisation': {'address_line_1': '', 'postcode': ''}
     }
 
-    error_json = letter_request(client, data, service_id=sample_service.id, _expected_status=400)
+    error_json = letter_request(client, data, service_id=sample_service_full_permissions.id, _expected_status=400)
 
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [{
         'error': 'ValidationError',
         'message': 'template_id is a required property'
     }]
+
 
 
 def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(

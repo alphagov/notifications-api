@@ -15,10 +15,10 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 def upgrade():
-    op.alter_column('job', 'created_by', nullable=True)
+    op.alter_column('jobs', 'created_by_id', nullable=True)
 
 
 def downgrade():
     # This will error if there are any jobs with no created_by - we'll have to decide how to handle those as and when
     # we downgrade
-    op.alter_column('job', 'created_by', nullable=False)
+    op.alter_column('jobs', 'created_by_id', nullable=False)

@@ -1,15 +1,16 @@
 from app import create_random_identifier
-from app.models import LETTER_TYPE, JOB_STATUS_READY_TO_SEND
+from app.models import LETTER_TYPE, JOB_STATUS_READY_TO_SEND, Job
+from app.dao.jobs_dao import dao_create_job
 from app.notifications.process_notifications import persist_notification
+from app.v2.errors import InvalidRequest
 
 
 def create_letter_api_job(template):
     service = template.service
     if not service.active:
-        raise InvalidRequest('Create job is not allowed: service is inactive', 403)
+        raise InvalidRequest('Service {} is inactive'.format(service.id), 403)
     if template.archived:
-        raise InvalidRequest('Create job is not allowed: template is deleted', 400)
-
+        raise InvalidRequest('Template {} is deleted'.format(template.id), 400)
 
     job = Job(
         original_file_name='letter submitted via api',
@@ -21,13 +22,15 @@ def create_letter_api_job(template):
         created_by=None
     )
     dao_create_job(job)
+    return job
 
 
 def create_letter_notification(letter_data, job, api_key):
     notification = persist_notification(
         template_id=job.template.id,
         template_version=job.template.version,
-        recipient=letter_data['personalisation']['address line 1'],  # or addressline1 or address_line_1?
+        # we only accept addresses_with_underscores from the API (from CSV we also accept dashes, spaces etc)
+        recipient=letter_data['personalisation']['address_line_1'],
         service=job.service,
         personalisation=letter_data['personalisation'],
         notification_type=LETTER_TYPE,

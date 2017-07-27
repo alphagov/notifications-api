@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta
 
 from flask import current_app
@@ -108,6 +109,8 @@ def dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id):
 
 
 def dao_create_job(job):
+    if not job.id:
+        job.id = uuid.uuid4()
     job_stats = JobStatistics(
         job_id=job.id,
         updated_at=datetime.utcnow()
