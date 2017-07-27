@@ -572,128 +572,124 @@ def test_should_not_send_sms_if_team_api_key_and_not_a_service_user(notify_api, 
         ] == json_resp['message']['to']
 
 
-def test_should_send_email_if_team_api_key_and_a_service_user(notify_api, sample_email_template, fake_uuid, mocker):
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-        mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
+def test_should_send_email_if_team_api_key_and_a_service_user(client, sample_email_template, fake_uuid, mocker):
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    mocker.patch('app.notifications.process_notifications.uuid.uuid4', return_value=fake_uuid)
 
-        data = {
-            'to': sample_email_template.service.created_by.email_address,
-            'template': sample_email_template.id
-        }
-        api_key = ApiKey(service=sample_email_template.service,
-                         name='team_key',
-                         created_by=sample_email_template.created_by,
-                         key_type=KEY_TYPE_TEAM)
-        save_model_api_key(api_key)
-        auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
+    data = {
+        'to': sample_email_template.service.created_by.email_address,
+        'template': sample_email_template.id
+    }
+    api_key = ApiKey(service=sample_email_template.service,
+                     name='team_key',
+                     created_by=sample_email_template.created_by,
+                     key_type=KEY_TYPE_TEAM)
+    save_model_api_key(api_key)
+    auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
-        response = client.post(
-            path='/notifications/email',
-            data=json.dumps(data),
-            headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+    response = client.post(
+        path='/notifications/email',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
-        app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
-            [fake_uuid],
-            queue='send-email-tasks'
-        )
-        assert response.status_code == 201
+    app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
+        [fake_uuid],
+        queue='send-email-tasks'
+    )
+    assert response.status_code == 201
 
 
 @pytest.mark.parametrize('restricted', [True, False])
 @pytest.mark.parametrize('limit', [0, 1])
 def test_should_send_sms_to_anyone_with_test_key(
-    notify_api, sample_template, mocker, restricted, limit, fake_uuid
+    client, sample_template, mocker, restricted, limit, fake_uuid
 ):
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-        mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    mocker.patch('app.notifications.process_notifications.uuid.uuid4', return_value=fake_uuid)
 
-        data = {
-            'to': '07811111111',
-            'template': sample_template.id
-        }
-        sample_template.service.restricted = restricted
-        sample_template.service.message_limit = limit
-        api_key = ApiKey(
-            service=sample_template.service,
-            name='test_key',
-            created_by=sample_template.created_by,
-            key_type=KEY_TYPE_TEST
-        )
-        save_model_api_key(api_key)
-        auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
+    data = {
+        'to': '07811111111',
+        'template': sample_template.id
+    }
+    sample_template.service.restricted = restricted
+    sample_template.service.message_limit = limit
+    api_key = ApiKey(
+        service=sample_template.service,
+        name='test_key',
+        created_by=sample_template.created_by,
+        key_type=KEY_TYPE_TEST
+    )
+    save_model_api_key(api_key)
+    auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
-        response = client.post(
-            path='/notifications/sms',
-            data=json.dumps(data),
-            headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))]
-        )
-        app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-            [fake_uuid], queue='research-mode-tasks'
-        )
-        assert response.status_code == 201
+    response = client.post(
+        path='/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))]
+    )
+    app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
+        [fake_uuid], queue='research-mode-tasks'
+    )
+    assert response.status_code == 201
 
 
 @pytest.mark.parametrize('restricted', [True, False])
 @pytest.mark.parametrize('limit', [0, 1])
 def test_should_send_email_to_anyone_with_test_key(
-    notify_api, sample_email_template, mocker, restricted, limit, fake_uuid
+    client, sample_email_template, mocker, restricted, limit, fake_uuid
 ):
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-        mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    mocker.patch('app.notifications.process_notifications.uuid.uuid4', return_value=fake_uuid)
 
-        data = {
-            'to': 'anyone123@example.com',
-            'template': sample_email_template.id
-        }
-        sample_email_template.service.restricted = restricted
-        sample_email_template.service.message_limit = limit
-        api_key = ApiKey(
-            service=sample_email_template.service,
-            name='test_key',
-            created_by=sample_email_template.created_by,
-            key_type=KEY_TYPE_TEST
-        )
-        save_model_api_key(api_key)
-        auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
+    data = {
+        'to': 'anyone123@example.com',
+        'template': sample_email_template.id
+    }
+    sample_email_template.service.restricted = restricted
+    sample_email_template.service.message_limit = limit
+    api_key = ApiKey(
+        service=sample_email_template.service,
+        name='test_key',
+        created_by=sample_email_template.created_by,
+        key_type=KEY_TYPE_TEST
+    )
+    save_model_api_key(api_key)
+    auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
-        response = client.post(
-            path='/notifications/email',
-            data=json.dumps(data),
-            headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))]
-        )
+    response = client.post(
+        path='/notifications/email',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))]
+    )
 
-        app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
-            [fake_uuid], queue='research-mode-tasks'
-        )
-        assert response.status_code == 201
+    app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
+        [fake_uuid], queue='research-mode-tasks'
+    )
+    assert response.status_code == 201
 
 
-def test_should_send_sms_if_team_api_key_and_a_service_user(notify_api, sample_template, fake_uuid, mocker):
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-        mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
+def test_should_send_sms_if_team_api_key_and_a_service_user(client, sample_template, fake_uuid, mocker):
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    mocker.patch('app.notifications.process_notifications.uuid.uuid4', return_value=fake_uuid)
 
-        data = {
-            'to': sample_template.service.created_by.mobile_number,
-            'template': sample_template.id
-        }
-        api_key = ApiKey(service=sample_template.service,
-                         name='team_key',
-                         created_by=sample_template.created_by,
-                         key_type=KEY_TYPE_TEAM)
-        save_model_api_key(api_key)
-        auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
+    data = {
+        'to': sample_template.service.created_by.mobile_number,
+        'template': sample_template.id
+    }
+    api_key = ApiKey(service=sample_template.service,
+                     name='team_key',
+                     created_by=sample_template.created_by,
+                     key_type=KEY_TYPE_TEAM)
+    save_model_api_key(api_key)
+    auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
-        response = client.post(
-            path='/notifications/sms',
-            data=json.dumps(data),
-            headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+    response = client.post(
+        path='/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
-        app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with([fake_uuid], queue='send-sms-tasks')
-        assert response.status_code == 201
+    app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with([fake_uuid], queue='send-sms-tasks')
+    assert response.status_code == 201
 
 
 @pytest.mark.parametrize('template_type,queue_name', [
@@ -710,7 +706,8 @@ def test_should_persist_notification(
     queue_name
 ):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type))
-    mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
+    mocker.patch('app.notifications.process_notifications.uuid.uuid4', return_value=fake_uuid)
+
     template = sample_template if template_type == SMS_TYPE else sample_email_template
     to = sample_template.service.created_by.mobile_number if template_type == SMS_TYPE \
         else sample_email_template.service.created_by.email_address
@@ -757,7 +754,8 @@ def test_should_delete_notification_and_return_error_if_sqs_fails(
         'app.celery.provider_tasks.deliver_{}.apply_async'.format(template_type),
         side_effect=Exception("failed to talk to SQS")
     )
-    mocker.patch('app.dao.notifications_dao.create_uuid', return_value=fake_uuid)
+    mocker.patch('app.notifications.process_notifications.uuid.uuid4', return_value=fake_uuid)
+
     template = sample_template if template_type == SMS_TYPE else sample_email_template
     to = sample_template.service.created_by.mobile_number if template_type == SMS_TYPE \
         else sample_email_template.service.created_by.email_address

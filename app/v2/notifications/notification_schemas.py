@@ -228,7 +228,8 @@ post_letter_response = {
         "content": letter_content,
         "uri": {"type": "string", "format": "uri"},
         "template": template,
-        "scheduled_for": {"type": ["string", "null"]}
+        # letters cannot be scheduled
+        "scheduled_for": {"type": "null"}
     },
     "required": ["id", "content", "uri", "template"]
 }
