@@ -145,34 +145,20 @@ def provider_to_use(notification_type, notification_id, international=False):
     return clients.get_client_by_name_and_type(active_providers_in_order[0].identifier, notification_type)
 
 
-def get_logo_url(base_url, branding_path, logo_file):
-    """
-    Get the complete URL for a given logo.
-
-    We have to convert the base_url into a static url. Our hosted environments all have their own cloudfront instances,
-    found at the static subdomain (eg https://static.notifications.service.gov.uk).
-
-    If running locally (dev environment), don't try and use cloudfront - just stick to the actual underlying source
-    ({URL}/static/{PATH})
-    """
+def get_logo_url(base_url, logo_file):
     base_url = parse.urlparse(base_url)
     netloc = base_url.netloc
 
-    # covers both preview and staging
-    if base_url.netloc.startswith('localhost') or 'notify.works' in base_url.netloc:
-        path = '/static' + branding_path + logo_file
-    else:
-        if base_url.netloc.startswith('www'):
-            # strip "www."
-            netloc = base_url.netloc[4:]
-
-        netloc = 'static.' + netloc
-        path = branding_path + logo_file
+    if base_url.netloc.startswith('localhost'):
+        netloc = 'notify.tools'
+    elif base_url.netloc.startswith('www'):
+        # strip "www."
+        netloc = base_url.netloc[4:]
 
     logo_url = parse.ParseResult(
         scheme=base_url.scheme,
-        netloc=netloc,
-        path=path,
+        netloc='static-logos.' + netloc,
+        path=logo_file,
         params=base_url.params,
         query=base_url.query,
         fragment=base_url.fragment
@@ -185,7 +171,6 @@ def get_html_email_options(service):
     if service.organisation:
         logo_url = get_logo_url(
             current_app.config['ADMIN_BASE_URL'],
-            current_app.config['BRANDING_PATH'],
             service.organisation.logo
         )
 
