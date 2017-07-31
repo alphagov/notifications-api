@@ -580,17 +580,12 @@ def test_should_send_email_if_team_api_key_and_a_service_user(client, sample_ema
         'to': sample_email_template.service.created_by.email_address,
         'template': sample_email_template.id
     }
-    api_key = ApiKey(service=sample_email_template.service,
-                     name='team_key',
-                     created_by=sample_email_template.created_by,
-                     key_type=KEY_TYPE_TEAM)
-    save_model_api_key(api_key)
-    auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
+    auth_header = create_authorization_header(service_id=sample_email_template.service_id, key_type=KEY_TYPE_TEAM)
 
     response = client.post(
         path='/notifications/email',
         data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
+        headers=[('Content-Type', 'application/json'), auth_header])
 
     app.celery.provider_tasks.deliver_email.apply_async.assert_called_once_with(
         [fake_uuid],

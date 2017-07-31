@@ -4,8 +4,8 @@ from flask import request, jsonify, current_app, abort
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
-from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, PRIORITY
-from app.celery.tasks import build_dvla_file
+from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, PRIORITY, KEY_TYPE_TEST, KEY_TYPE_TEAM
+from app.celery.tasks import build_dvla_file, update_job_to_sent_to_dvla
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
@@ -23,6 +23,7 @@ from app.notifications.validators import (
     validate_template
 )
 from app.schema_validation import validate
+from app.v2.errors import BadRequestError
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import (
     post_sms_request,
@@ -145,9 +146,16 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
 
 
 def process_letter_notification(*, letter_data, api_key, template):
+    if api_key.key_type == KEY_TYPE_TEAM:
+        raise BadRequestError(message='Cannot send letters with a team api key', status_code=403)
+
     job = create_letter_api_job(template)
     notification = create_letter_notification(letter_data, job, api_key)
-    build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
+    if api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST:
+        update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
+    else:
+        build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
+
     current_app.logger.info("send job {} for api notification {} to build-dvla-file in the process-job queue".format(
         job.id,
         notification.id

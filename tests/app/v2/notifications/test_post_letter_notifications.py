@@ -6,22 +6,27 @@ import pytest
 
 from app.models import EMAIL_TYPE
 from app.models import Job
+from app.models import KEY_TYPE_NORMAL
+from app.models import KEY_TYPE_TEAM
+from app.models import KEY_TYPE_TEST
 from app.models import LETTER_TYPE
 from app.models import Notification
 from app.models import SMS_TYPE
 from app.v2.errors import RateLimitError
-from app.v2.notifications.post_notifications import process_letter_notification
 
 from tests import create_authorization_header
 from tests.app.db import create_service
 from tests.app.db import create_template
 
 
-def letter_request(client, data, service_id, _expected_status=201):
+def letter_request(client, data, service_id, key_type=KEY_TYPE_NORMAL, _expected_status=201):
     resp = client.post(
         url_for('v2_notifications.post_notification', notification_type='letter'),
         data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), create_authorization_header(service_id=service_id)]
+        headers=[
+            ('Content-Type', 'application/json'),
+            create_authorization_header(service_id=service_id, key_type=key_type)
+        ]
     )
     json_resp = json.loads(resp.get_data(as_text=True))
     assert resp.status_code == _expected_status, json_resp
@@ -170,3 +175,50 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
     assert error_json['errors'] == [
         {'error': 'BadRequestError', 'message': 'Cannot send letters'}
     ]
+
+
+@pytest.mark.parametrize('research_mode, key_type', [
+    (True, KEY_TYPE_NORMAL),
+    (False, KEY_TYPE_TEST)
+])
+def test_post_letter_notification_doesnt_queue_task(
+    client,
+    notify_db_session,
+    mocker,
+    research_mode,
+    key_type
+):
+    real_task = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
+    fake_task = mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
+
+    service = create_service(research_mode=research_mode, service_permissions=[LETTER_TYPE])
+    template = create_template(service, template_type=LETTER_TYPE)
+
+    data = {
+        'template_id': str(template.id),
+        'personalisation': {'address_line_1': 'Foo', 'postcode': 'Bar'}
+    }
+
+    letter_request(client, data, service_id=service.id, key_type=key_type)
+
+    job = Job.query.one()
+    assert not real_task.called
+    fake_task.assert_called_once_with([str(job.id)], queue='research-mode-tasks')
+
+
+def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_template):
+    data = {
+        'template_id': str(sample_letter_template.id),
+        'personalisation': {'address_line_1': 'Foo', 'postcode': 'Bar'}
+    }
+
+    error_json = letter_request(
+        client,
+        data,
+        sample_letter_template.service_id,
+        key_type=KEY_TYPE_TEAM,
+        _expected_status=403
+    )
+
+    assert error_json['status_code'] == 403
+    assert error_json['errors'] == [{'error': 'BadRequestError', 'message': 'Cannot send letters with a team api key'}]
