@@ -1,15 +1,38 @@
-from datetime import datetime
-
+from datetime import datetime, timedelta
 from freezegun import freeze_time
 from freezegun.api import FakeDatetime
 
+from app import db
 from app.dao.monthly_billing_dao import (
     create_or_update_monthly_billing_sms,
+    get_monthly_billing_entry,
     get_monthly_billing_sms,
     get_service_ids_that_need_sms_billing_populated
 )
-from app.models import MonthlyBilling
+from app.models import MonthlyBilling, SMS_TYPE
 from tests.app.db import create_notification, create_rate, create_service, create_template
+
+
+def create_sample_monthly_billing_entry(
+    notify_db,
+    notify_db_session,
+    service_id,
+    notification_type,
+    monthly_totals,
+    start_date,
+    end_date
+):
+    entry = MonthlyBilling(
+        service_id=service_id,
+        notification_type=notification_type,
+        monthly_totals=monthly_totals,
+        start_date=start_date,
+        end_date=end_date
+    )
+    db.session.add(entry)
+    db.session.commit()
+
+    return entry
 
 
 def test_add_monthly_billing(sample_template):
@@ -136,3 +159,34 @@ def test_get_service_id(notify_db_session):
                                                                end_date=datetime(2017, 7, 16))
     expected_services = [service_1.id, service_2.id]
     assert sorted([x.service_id for x in services]) == sorted(expected_services)
+
+
+def test_get_monthly_billing_entry_filters_by_service(notify_db, notify_db_session):
+    service_1 = create_service(service_name="Service One")
+    service_2 = create_service(service_name="Service Two")
+    now = datetime.utcnow()
+
+    create_sample_monthly_billing_entry(
+        notify_db,
+        notify_db_session,
+        service_1.id,
+        'sms',
+        [],
+        now,
+        now + timedelta(days=30)
+    )
+
+    create_sample_monthly_billing_entry(
+        notify_db,
+        notify_db_session,
+        service_2.id,
+        'sms',
+        [],
+        now,
+        now + timedelta(days=30)
+    )
+
+    entry = get_monthly_billing_entry(service_2.id, now, SMS_TYPE)
+
+    assert entry.start_date == now
+    assert entry.service_id == service_2.id
