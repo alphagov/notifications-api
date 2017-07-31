@@ -68,7 +68,6 @@ from app.schemas import (
     user_schema,
     permission_schema,
     notification_with_template_schema,
-    notification_with_personalisation_schema,
     notifications_filter_schema,
     detailed_service_schema
 )

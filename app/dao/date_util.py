@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 
 import pytz
 
+from app.utils import convert_bst_to_utc
+
 
 def get_financial_year(year):
     return get_april_fools(year), get_april_fools(year + 1) - timedelta(microseconds=1)
@@ -16,3 +18,16 @@ def get_april_fools(year):
     """
     return pytz.timezone('Europe/London').localize(datetime(year, 4, 1, 0, 0, 0)).astimezone(pytz.UTC).replace(
         tzinfo=None)
+
+
+def get_month_start_end_date(month_year):
+    """
+     This function return the start and date of the month_year as UTC,
+     :param month_year: the datetime to calculate the start and end date for that month
+     :return: start_date, end_date, month
+    """
+    import calendar
+    _, num_days = calendar.monthrange(month_year.year, month_year.month)
+    first_day = datetime(month_year.year, month_year.month, 1, 0, 0, 0)
+    last_day = datetime(month_year.year, month_year.month, num_days, 23, 59, 59, 99999)
+    return convert_bst_to_utc(first_day), convert_bst_to_utc(last_day)

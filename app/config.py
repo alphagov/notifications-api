@@ -22,7 +22,6 @@ class QueueNames(object):
     PERIODIC = 'periodic-tasks'
     PRIORITY = 'priority-tasks'
     DATABASE = 'database-tasks'
-    SEND_COMBINED = 'send-tasks'
     SEND_SMS = 'send-sms-tasks'
     SEND_EMAIL = 'send-email-tasks'
     RESEARCH_MODE = 'research-mode-tasks'
@@ -38,7 +37,6 @@ class QueueNames(object):
             QueueNames.PRIORITY,
             QueueNames.PERIODIC,
             QueueNames.DATABASE,
-            QueueNames.SEND_COMBINED,
             QueueNames.SEND_SMS,
             QueueNames.SEND_EMAIL,
             QueueNames.RESEARCH_MODE,
@@ -115,7 +113,6 @@ class Config(object):
     PAGE_SIZE = 50
     API_PAGE_SIZE = 250
     SMS_CHAR_COUNT_LIMIT = 495
-    BRANDING_PATH = '/images/email-template/crests/'
     TEST_MESSAGE_FILENAME = 'Test message'
     ONE_OFF_MESSAGE_FILENAME = 'Report'
     MAX_VERIFY_CODE_COUNT = 10

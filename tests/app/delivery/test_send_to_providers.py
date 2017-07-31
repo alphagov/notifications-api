@@ -435,29 +435,22 @@ def test_get_html_email_renderer_prepends_logo_path(notify_api):
 
     renderer = send_to_providers.get_html_email_options(service)
 
-    assert renderer['brand_logo'] == 'http://localhost:6012/static/images/email-template/crests/justice-league.png'
+    assert renderer['brand_logo'] == 'http://static-logos.notify.tools/justice-league.png'
 
 
 @pytest.mark.parametrize('base_url, expected_url', [
     # don't change localhost to prevent errors when testing locally
-    ('http://localhost:6012', 'http://localhost:6012/static/sub-path/filename.png'),
-    # on other environments, replace www with staging
-    ('https://www.notifications.service.gov.uk', 'https://static.notifications.service.gov.uk/sub-path/filename.png'),
-
-    # staging and preview do not have cloudfront running, so should act as localhost
-    pytest.mark.xfail(('https://www.notify.works', 'https://static.notify.works/sub-path/filename.png')),
-    pytest.mark.xfail(('https://www.staging-notify.works', 'https://static.notify.works/sub-path/filename.png')),
-    pytest.mark.xfail(('https://notify.works', 'https://static.notify.works/sub-path/filename.png')),
-    pytest.mark.xfail(('https://staging-notify.works', 'https://static.notify.works/sub-path/filename.png')),
-    # these tests should be removed when cloudfront works on staging/preview
-    ('https://www.notify.works', 'https://www.notify.works/static/sub-path/filename.png'),
-    ('https://www.staging-notify.works', 'https://www.staging-notify.works/static/sub-path/filename.png'),
+    ('http://localhost:6012', 'http://static-logos.notify.tools/filename.png'),
+    ('https://www.notifications.service.gov.uk', 'https://static-logos.notifications.service.gov.uk/filename.png'),
+    ('https://notify.works', 'https://static-logos.notify.works/filename.png'),
+    ('https://staging-notify.works', 'https://static-logos.staging-notify.works/filename.png'),
+    ('https://www.notify.works', 'https://static-logos.notify.works/filename.png'),
+    ('https://www.staging-notify.works', 'https://static-logos.staging-notify.works/filename.png'),
 ])
 def test_get_logo_url_works_for_different_environments(base_url, expected_url):
-    branding_path = '/sub-path/'
     logo_file = 'filename.png'
 
-    logo_url = send_to_providers.get_logo_url(base_url, branding_path, logo_file)
+    logo_url = send_to_providers.get_logo_url(base_url, logo_file)
 
     assert logo_url == expected_url
 

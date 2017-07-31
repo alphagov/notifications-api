@@ -5,7 +5,8 @@ from flask.ext.script import Command, Manager, Option
 
 
 from app import db
-from app.models import (PROVIDERS, Service, User, NotificationHistory)
+from app.dao.monthly_billing_dao import create_or_update_monthly_billing_sms, get_monthly_billing_sms
+from app.models import (PROVIDERS, User)
 from app.dao.services_dao import (
     delete_service_and_all_associated_db_objects,
     dao_fetch_all_services_by_user
@@ -146,3 +147,19 @@ class CustomDbScript(Command):
             print('Committed {} updates at {}'.format(len(result), datetime.utcnow()))
             db.session.commit()
             result = db.session.execute(subq_hist).fetchall()
+
+
+class PopulateMonthlyBilling(Command):
+        option_list = (
+            Option('-s', '-service-id', dest='service_id',
+                   help="Service id to populate monthly billing for"),
+            Option('-m', '-month', dest="month", help="Use for integer value for month, e.g. 7 for July"),
+            Option('-y', '-year', dest="year", help="Use for integer value for year, e.g. 2017")
+        )
+
+        def run(self, service_id, month, year):
+            print('Starting populating monthly billing')
+            create_or_update_monthly_billing_sms(service_id, datetime(int(year), int(month), 1))
+            results = get_monthly_billing_sms(service_id, datetime(int(year), int(month), 1))
+            print("Finished populating data for {} for service id {}".format(month, service_id))
+            print(results.monthly_totals)
