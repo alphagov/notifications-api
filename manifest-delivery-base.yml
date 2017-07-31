@@ -33,7 +33,7 @@ applications:
       NOTIFY_APP_NAME: delivery-worker-research
 
   - name: notify-delivery-worker-sender
-    command: scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q send-tasks,send-sms-tasks,send-email-tasks
+    command: scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q send-sms-tasks,send-email-tasks
     env:
       NOTIFY_APP_NAME: delivery-worker-sender
 

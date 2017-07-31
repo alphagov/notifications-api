@@ -22,7 +22,6 @@ class QueueNames(object):
     PERIODIC = 'periodic-tasks'
     PRIORITY = 'priority-tasks'
     DATABASE = 'database-tasks'
-    SEND_COMBINED = 'send-tasks'
     SEND_SMS = 'send-sms-tasks'
     SEND_EMAIL = 'send-email-tasks'
     RESEARCH_MODE = 'research-mode-tasks'
@@ -38,7 +37,6 @@ class QueueNames(object):
             QueueNames.PRIORITY,
             QueueNames.PERIODIC,
             QueueNames.DATABASE,
-            QueueNames.SEND_COMBINED,
             QueueNames.SEND_SMS,
             QueueNames.SEND_EMAIL,
             QueueNames.RESEARCH_MODE,
