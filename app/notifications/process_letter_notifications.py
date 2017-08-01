@@ -3,6 +3,7 @@ from app.models import LETTER_TYPE, JOB_STATUS_READY_TO_SEND, Job
 from app.dao.jobs_dao import dao_create_job
 from app.notifications.process_notifications import persist_notification
 from app.v2.errors import InvalidRequest
+from app.variables import LETTER_API_FILENAME
 
 
 def create_letter_api_job(template):
@@ -13,7 +14,7 @@ def create_letter_api_job(template):
         raise InvalidRequest('Template {} is deleted'.format(template.id), 400)
 
     job = Job(
-        original_file_name='letter submitted via api',
+        original_file_name=LETTER_API_FILENAME,
         service=service,
         template=template,
         template_version=template.version,

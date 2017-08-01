@@ -4,6 +4,7 @@ from flask import request, jsonify, current_app, abort
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
+from app.dao.jobs_dao import dao_update_job
 from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, PRIORITY, KEY_TYPE_TEST, KEY_TYPE_TEAM
 from app.celery.tasks import build_dvla_file, update_job_to_sent_to_dvla
 from app.notifications.process_notifications import (
@@ -35,6 +36,7 @@ from app.v2.notifications.create_response import (
     create_post_email_response_from_notification,
     create_post_letter_response_from_notification
 )
+from app.variables import LETTER_TEST_API_FILENAME
 
 
 @v2_notification_blueprint.route('/<notification_type>', methods=['POST'])
@@ -151,7 +153,13 @@ def process_letter_notification(*, letter_data, api_key, template):
 
     job = create_letter_api_job(template)
     notification = create_letter_notification(letter_data, job, api_key)
+
     if api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST:
+
+        # distinguish real API jobs from test jobs by giving the test jobs a different filename
+        job.original_file_name = LETTER_TEST_API_FILENAME
+        dao_update_job(job)
+
         update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
     else:
         build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)

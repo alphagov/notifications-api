@@ -891,7 +891,7 @@ class Notification(db.Model):
     @property
     def subject(self):
         from app.utils import get_template_instance
-        if self.notification_type == EMAIL_TYPE:
+        if self.notification_type != SMS_TYPE:
             template_object = get_template_instance(self.template.__dict__, self.personalisation)
             return template_object.subject
 
@@ -971,9 +971,23 @@ class Notification(db.Model):
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "sent_at": self.sent_at.strftime(DATETIME_FORMAT) if self.sent_at else None,
             "completed_at": self.completed_at(),
-            "scheduled_for": convert_bst_to_utc(self.scheduled_notification.scheduled_for
-                                                ).strftime(DATETIME_FORMAT) if self.scheduled_notification else None
+            "scheduled_for": (
+                convert_bst_to_utc(
+                    self.scheduled_notification.scheduled_for
+                ).strftime(DATETIME_FORMAT)
+                if self.scheduled_notification
+                else None
+            )
         }
+
+        if self.notification_type == LETTER_TYPE:
+            serialized['line_1'] = self.personalisation['address_line_1']
+            serialized['line_2'] = self.personalisation.get('address_line_2')
+            serialized['line_3'] = self.personalisation.get('address_line_3')
+            serialized['line_4'] = self.personalisation.get('address_line_4')
+            serialized['line_5'] = self.personalisation.get('address_line_5')
+            serialized['line_6'] = self.personalisation.get('address_line_6')
+            serialized['postcode'] = self.personalisation['postcode']
 
         return serialized
 
