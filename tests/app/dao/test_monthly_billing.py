@@ -1,22 +1,43 @@
-from datetime import datetime
-
+from datetime import datetime, timedelta
 from freezegun import freeze_time
 from freezegun.api import FakeDatetime
 
+from app import db
 from app.dao.monthly_billing_dao import (
     create_or_update_monthly_billing_sms,
+    get_monthly_billing_entry,
     get_monthly_billing_sms,
     get_service_ids_that_need_sms_billing_populated
 )
-from app.models import MonthlyBilling
+from app.models import MonthlyBilling, SMS_TYPE
 from tests.app.db import create_notification, create_rate, create_service, create_template
+
+
+def create_sample_monthly_billing_entry(
+    service_id,
+    monthly_totals,
+    start_date,
+    end_date,
+    notification_type=SMS_TYPE
+):
+    entry = MonthlyBilling(
+        service_id=service_id,
+        notification_type=notification_type,
+        monthly_totals=monthly_totals,
+        start_date=start_date,
+        end_date=end_date
+    )
+    db.session.add(entry)
+    db.session.commit()
+
+    return entry
 
 
 def test_add_monthly_billing(sample_template):
     jan = datetime(2017, 1, 1)
     feb = datetime(2017, 2, 15)
-    create_rate(start_date=jan, value=0.0158, notification_type='sms')
-    create_rate(start_date=datetime(2017, 3, 31, 23, 00, 00), value=0.123, notification_type='sms')
+    create_rate(start_date=jan, value=0.0158, notification_type=SMS_TYPE)
+    create_rate(start_date=datetime(2017, 3, 31, 23, 00, 00), value=0.123, notification_type=SMS_TYPE)
     create_notification(template=sample_template, created_at=jan, billable_units=1, status='delivered')
     create_notification(template=sample_template, created_at=feb, billable_units=2, status='delivered')
 
@@ -51,8 +72,8 @@ def test_add_monthly_billing(sample_template):
 def test_add_monthly_billing_multiple_rates_in_a_month(sample_template):
     rate_1 = datetime(2016, 12, 1)
     rate_2 = datetime(2017, 1, 15)
-    create_rate(start_date=rate_1, value=0.0158, notification_type='sms')
-    create_rate(start_date=rate_2, value=0.0124, notification_type='sms')
+    create_rate(start_date=rate_1, value=0.0158, notification_type=SMS_TYPE)
+    create_rate(start_date=rate_2, value=0.0124, notification_type=SMS_TYPE)
 
     create_notification(template=sample_template, created_at=datetime(2017, 1, 1), billable_units=1, status='delivered')
     create_notification(template=sample_template, created_at=datetime(2017, 1, 14, 23, 59), billable_units=1,
@@ -87,7 +108,7 @@ def test_add_monthly_billing_multiple_rates_in_a_month(sample_template):
 
 def test_update_monthly_billing_overwrites_old_totals(sample_template):
     july = datetime(2017, 7, 1)
-    create_rate(july, 0.123, 'sms')
+    create_rate(july, 0.123, SMS_TYPE)
     create_notification(template=sample_template, created_at=datetime(2017, 7, 2), billable_units=1, status='delivered')
     with freeze_time('2017-07-20 02:30:00'):
         create_or_update_monthly_billing_sms(sample_template.service_id, july)
@@ -136,3 +157,28 @@ def test_get_service_id(notify_db_session):
                                                                end_date=datetime(2017, 7, 16))
     expected_services = [service_1.id, service_2.id]
     assert sorted([x.service_id for x in services]) == sorted(expected_services)
+
+
+def test_get_monthly_billing_entry_filters_by_service(notify_db, notify_db_session):
+    service_1 = create_service(service_name="Service One")
+    service_2 = create_service(service_name="Service Two")
+    now = datetime.utcnow()
+
+    create_sample_monthly_billing_entry(
+        service_id=service_1.id,
+        monthly_totals=[],
+        start_date=now,
+        end_date=now + timedelta(days=30)
+    )
+
+    create_sample_monthly_billing_entry(
+        service_id=service_2.id,
+        monthly_totals=[],
+        start_date=now,
+        end_date=now + timedelta(days=30)
+    )
+
+    entry = get_monthly_billing_entry(service_2.id, now, SMS_TYPE)
+
+    assert entry.start_date == now
+    assert entry.service_id == service_2.id

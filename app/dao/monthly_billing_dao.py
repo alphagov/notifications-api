@@ -25,18 +25,31 @@ def create_or_update_monthly_billing_sms(service_id, billing_month):
     monthly = get_billing_data_for_month(service_id=service_id, start_date=start_date, end_date=end_date)
     # update monthly
     monthly_totals = _monthly_billing_data_to_json(monthly)
-    row = MonthlyBilling.query.filter_by(start_date=start_date,
-                                         notification_type='sms').first()
+    row = get_monthly_billing_entry(service_id, start_date, SMS_TYPE)
+
     if row:
         row.monthly_totals = monthly_totals
         row.updated_at = datetime.utcnow()
     else:
-        row = MonthlyBilling(service_id=service_id,
-                             notification_type=SMS_TYPE,
-                             monthly_totals=monthly_totals,
-                             start_date=start_date,
-                             end_date=end_date)
+        row = MonthlyBilling(
+            service_id=service_id,
+            notification_type=SMS_TYPE,
+            monthly_totals=monthly_totals,
+            start_date=start_date,
+            end_date=end_date
+        )
+
     db.session.add(row)
+
+
+def get_monthly_billing_entry(service_id, start_date, notification_type):
+    entry = MonthlyBilling.query.filter_by(
+        service_id=service_id,
+        start_date=start_date,
+        notification_type=notification_type
+    ).first()
+
+    return entry
 
 
 @statsd(namespace="dao")
