@@ -153,12 +153,19 @@ class PopulateMonthlyBilling(Command):
         option_list = (
             Option('-s', '-service-id', dest='service_id',
                    help="Service id to populate monthly billing for"),
-            Option('-m', '-month', dest="month", help="Use for integer value for month, e.g. 7 for July"),
             Option('-y', '-year', dest="year", help="Use for integer value for year, e.g. 2017")
         )
 
-        def run(self, service_id, month, year):
-            print('Starting populating monthly billing')
+        def run(self, service_id, year):
+            start, end = 1, 13
+            if year == '2016':
+                start = 6
+
+            print('Starting populating monthly billing for {}'.format(year))
+            for i in range(start, end):
+                self.populate(service_id, year, i)
+
+        def populate(self, service_id, year, month):
             create_or_update_monthly_billing_sms(service_id, datetime(int(year), int(month), 1))
             results = get_monthly_billing_sms(service_id, datetime(int(year), int(month), 1))
             print("Finished populating data for {} for service id {}".format(month, service_id))
