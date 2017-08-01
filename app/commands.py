@@ -159,7 +159,7 @@ class PopulateMonthlyBilling(Command):
         def run(self, service_id, year):
             start, end = 1, 13
             if year == '2016':
-                start = 6
+                start = 4
 
             print('Starting populating monthly billing for {}'.format(year))
             for i in range(start, end):
