@@ -13,6 +13,8 @@ from app.models import LETTER_TYPE
 from app.models import Notification
 from app.models import SMS_TYPE
 from app.v2.errors import RateLimitError
+from app.variables import LETTER_TEST_API_FILENAME
+from app.variables import LETTER_API_FILENAME
 
 from tests import create_authorization_header
 from tests.app.db import create_service
@@ -53,6 +55,7 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
     resp_json = letter_request(client, data, service_id=sample_letter_template.service_id)
 
     job = Job.query.one()
+    assert job.original_file_name == LETTER_API_FILENAME
     notification = Notification.query.one()
     notification_id = notification.id
     assert resp_json['id'] == str(notification_id)
@@ -202,6 +205,7 @@ def test_post_letter_notification_doesnt_queue_task(
     letter_request(client, data, service_id=service.id, key_type=key_type)
 
     job = Job.query.one()
+    assert job.original_file_name == LETTER_TEST_API_FILENAME
     assert not real_task.called
     fake_task.assert_called_once_with([str(job.id)], queue='research-mode-tasks')
 

@@ -150,7 +150,7 @@ def dao_get_all_letter_jobs():
     ).filter(
         Template.template_type == LETTER_TYPE,
         # test letter jobs (or from research mode services) are created with a different filename,
-        # exclude them so we don't see them on the send to CSV 
+        # exclude them so we don't see them on the send to CSV
         Job.original_file_name != LETTER_TEST_API_FILENAME
     ).order_by(
         desc(Job.created_at)

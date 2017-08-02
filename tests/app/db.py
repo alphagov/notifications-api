@@ -5,6 +5,7 @@ from app import db
 from app.dao.jobs_dao import dao_create_job
 from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.models import (
+    ApiKey,
     Service,
     User,
     Template,
@@ -119,6 +120,14 @@ def create_notification(
     if status != 'created':
         sent_at = sent_at or datetime.utcnow()
         updated_at = updated_at or datetime.utcnow()
+
+    if not job and not api_key_id:
+        # we didn't specify in test - lets create it
+        existing_api_key = ApiKey.query.filter(ApiKey.service == template.service, ApiKey.key_type == key_type).first()
+        if existing_api_key:
+            api_key_id = existing_api_key.id
+        else:
+            api_key_id = create_api_key(template.service, key_type=key_type).id
 
     data = {
         'id': uuid.uuid4(),
@@ -253,3 +262,17 @@ def create_rate(start_date, value, notification_type):
     db.session.add(rate)
     db.session.commit()
     return rate
+
+
+def create_api_key(service, key_type=KEY_TYPE_NORMAL):
+    api_key = ApiKey(
+        service=service,
+        name='live api key',
+        created_by=service.created_by,
+        key_type=key_type,
+        id=uuid.uuid4(),
+        secret=uuid.uuid4()
+    )
+    db.session.add(api_key)
+    db.session.commit()
+    return api_key

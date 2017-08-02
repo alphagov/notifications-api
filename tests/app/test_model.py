@@ -6,6 +6,7 @@ from app import encryption
 from app.models import (
     ServiceWhitelist,
     Notification,
+    SMS_TYPE,
     MOBILE_TYPE,
     EMAIL_TYPE,
     NOTIFICATION_CREATED,
@@ -18,6 +19,7 @@ from tests.app.conftest import (
     sample_template as create_sample_template,
     sample_notification_with_job as create_sample_notification_with_job
 )
+from tests.app.db import create_notification
 
 
 @pytest.mark.parametrize('mobile_number', [
@@ -148,21 +150,56 @@ def test_notification_for_csv_returns_bst_correctly(notify_db, notify_db_session
     assert serialized['created_at'] == 'Monday 27 March 2017 at 00:01'
 
 
-def test_notification_personalisation_getter_returns_empty_dict_from_None(sample_notification):
-    sample_notification._personalisation = None
-    assert sample_notification.personalisation == {}
+def test_notification_personalisation_getter_returns_empty_dict_from_None():
+    noti = Notification()
+    noti._personalisation = None
+    assert noti.personalisation == {}
 
 
-def test_notification_personalisation_getter_always_returns_empty_dict(sample_notification):
-    sample_notification._personalisation = encryption.encrypt({})
-    assert sample_notification.personalisation == {}
+def test_notification_personalisation_getter_always_returns_empty_dict():
+    noti = Notification()
+    noti._personalisation = encryption.encrypt({})
+    assert noti.personalisation == {}
 
 
 @pytest.mark.parametrize('input_value', [
     None,
     {}
 ])
-def test_notification_personalisation_setter_always_sets_empty_dict(sample_notification, input_value):
-    sample_notification.personalisation = input_value
+def test_notification_personalisation_setter_always_sets_empty_dict(input_value):
+    noti = Notification()
+    noti.personalisation = input_value
 
-    assert sample_notification._personalisation == encryption.encrypt({})
+    assert noti._personalisation == encryption.encrypt({})
+
+
+def test_notification_subject_is_none_for_sms():
+    assert Notification(notification_type=SMS_TYPE).subject is None
+
+
+def test_notification_subject_fills_in_placeholders_for_email(sample_email_template_with_placeholders):
+    noti = create_notification(sample_email_template_with_placeholders, personalisation={'name': 'hello'})
+    assert noti.subject == 'hello'
+
+
+def test_notification_subject_fills_in_placeholders_for_letter(sample_letter_template):
+    sample_letter_template.subject = '((name))'
+    noti = create_notification(sample_letter_template, personalisation={'name': 'hello'})
+    assert noti.subject == 'hello'
+
+
+def test_letter_notification_serializes_with_address(client, sample_letter_notification):
+    sample_letter_notification.personalisation = {
+        'address_line_1': 'foo',
+        'address_line_3': 'bar',
+        'address_line_5': None,
+        'postcode': 'SW1 1AA'
+    }
+    res = sample_letter_notification.serialize()
+    assert res['line_1'] == 'foo'
+    assert res['line_2'] is None
+    assert res['line_3'] == 'bar'
+    assert res['line_4'] is None
+    assert res['line_5'] is None
+    assert res['line_6'] is None
+    assert res['postcode'] == 'SW1 1AA'

@@ -8,6 +8,7 @@ from app.models import Notification
 from app.notifications.process_letter_notifications import create_letter_api_job
 from app.notifications.process_letter_notifications import create_letter_notification
 from app.v2.errors import InvalidRequest
+from app.variables import LETTER_API_FILENAME
 
 from tests.app.db import create_service
 from tests.app.db import create_template
@@ -37,7 +38,7 @@ def test_create_job_creates_job(sample_letter_template):
     job = create_letter_api_job(sample_letter_template)
 
     assert job == Job.query.one()
-    assert job.original_file_name == 'letter submitted via api'
+    assert job.original_file_name == LETTER_API_FILENAME
     assert job.service == sample_letter_template.service
     assert job.template_id == sample_letter_template.id
     assert job.template_version == sample_letter_template.version
