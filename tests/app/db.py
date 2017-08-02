@@ -104,7 +104,7 @@ def create_notification(
     updated_at=None,
     billable_units=1,
     personalisation=None,
-    api_key_id=None,
+    api_key=None,
     key_type=KEY_TYPE_NORMAL,
     sent_by=None,
     client_reference=None,
@@ -121,22 +121,20 @@ def create_notification(
         sent_at = sent_at or datetime.utcnow()
         updated_at = updated_at or datetime.utcnow()
 
-    if not job and not api_key_id:
+    if job is None and api_key is None:
         # we didn't specify in test - lets create it
-        existing_api_key = ApiKey.query.filter(ApiKey.service == template.service, ApiKey.key_type == key_type).first()
-        if existing_api_key:
-            api_key_id = existing_api_key.id
-        else:
-            api_key_id = create_api_key(template.service, key_type=key_type).id
+        api_key = ApiKey.query.filter(ApiKey.service == template.service, ApiKey.key_type == key_type).first()
+        if not api_key:
+            api_key = create_api_key(template.service, key_type=key_type)
 
     data = {
         'id': uuid.uuid4(),
         'to': to_field,
-        'job_id': job.id if job else None,
+        'job_id': job and job.id,
         'job': job,
         'service_id': template.service.id,
         'service': template.service,
-        'template_id': template.id if template else None,
+        'template_id': template and template.id,
         'template': template,
         'template_version': template.version,
         'status': status,
@@ -146,8 +144,9 @@ def create_notification(
         'billable_units': billable_units,
         'personalisation': personalisation,
         'notification_type': template.template_type,
-        'api_key_id': api_key_id,
-        'key_type': key_type,
+        'api_key': api_key,
+        'api_key_id': api_key and api_key.id,
+        'key_type': api_key.key_type if api_key else key_type,
         'sent_by': sent_by,
         'updated_at': updated_at,
         'client_reference': client_reference,
@@ -265,12 +264,13 @@ def create_rate(start_date, value, notification_type):
 
 
 def create_api_key(service, key_type=KEY_TYPE_NORMAL):
+    id_ = uuid.uuid4()
     api_key = ApiKey(
         service=service,
-        name='live api key',
+        name='{} api key {}'.format(key_type, id_),
         created_by=service.created_by,
         key_type=key_type,
-        id=uuid.uuid4(),
+        id=id_,
         secret=uuid.uuid4()
     )
     db.session.add(api_key)

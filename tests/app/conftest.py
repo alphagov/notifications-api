@@ -39,7 +39,7 @@ from app.dao.invited_user_dao import save_invited_user
 from app.dao.provider_rates_dao import create_provider_rates
 from app.clients.sms.firetext import FiretextClient
 from tests import create_authorization_header
-from tests.app.db import create_user, create_template, create_notification
+from tests.app.db import create_user, create_template, create_notification, create_api_key
 
 
 @pytest.yield_fixture
@@ -430,7 +430,7 @@ def sample_notification_with_job(
         sent_at=None,
         billable_units=1,
         personalisation=None,
-        api_key_id=None,
+        api_key=None,
         key_type=KEY_TYPE_NORMAL
 ):
     if job is None:
@@ -449,7 +449,7 @@ def sample_notification_with_job(
         sent_at=sent_at,
         billable_units=billable_units,
         personalisation=personalisation,
-        api_key_id=api_key_id,
+        api_key=api_key,
         key_type=key_type
     )
 
@@ -469,7 +469,7 @@ def sample_notification(
     sent_at=None,
     billable_units=1,
     personalisation=None,
-    api_key_id=None,
+    api_key=None,
     key_type=KEY_TYPE_NORMAL,
     sent_by=None,
     client_reference=None,
@@ -483,6 +483,12 @@ def sample_notification(
         service = sample_service(notify_db, notify_db_session)
     if template is None:
         template = sample_template(notify_db, notify_db_session, service=service)
+
+    if job is None and api_key is None:
+        # we didn't specify in test - lets create it
+        api_key = ApiKey.query.filter(ApiKey.service == template.service, ApiKey.key_type == key_type).first()
+        if not api_key:
+            api_key = create_api_key(template.service, key_type=key_type)
 
     notification_id = uuid.uuid4()
 
@@ -508,8 +514,9 @@ def sample_notification(
         'billable_units': billable_units,
         'personalisation': personalisation,
         'notification_type': template.template_type,
-        'api_key_id': api_key_id,
-        'key_type': key_type,
+        'api_key': api_key,
+        'api_key_id': api_key and api_key.id,
+        'key_type': api_key.key_type if api_key else key_type,
         'sent_by': sent_by,
         'updated_at': created_at if status in NOTIFICATION_STATUS_TYPES_COMPLETED else None,
         'client_reference': client_reference,
@@ -550,11 +557,12 @@ def sample_letter_notification(sample_letter_template):
 @pytest.fixture(scope='function')
 def sample_notification_with_api_key(notify_db, notify_db_session):
     notification = sample_notification(notify_db, notify_db_session)
-    notification.api_key_id = sample_api_key(
+    notification.api_key = sample_api_key(
         notify_db,
         notify_db_session,
         name='Test key'
-    ).id
+    )
+    notification.api_key_id = notification.api_key.id
     return notification
 
 
