@@ -836,12 +836,12 @@ def test_get_notification_by_id(notify_db, notify_db_session, sample_template):
     assert notification_from_db.scheduled_notification.scheduled_for == datetime(2017, 5, 5, 14, 15)
 
 
-def test_get_notifications_by_reference(notify_db, notify_db_session, sample_service):
+def test_get_notifications_by_reference(notify_db, notify_db_session, sample_service, sample_api_key):
     client_reference = 'some-client-ref'
     assert len(Notification.query.all()) == 0
-    sample_notification(notify_db, notify_db_session, client_reference=client_reference)
-    sample_notification(notify_db, notify_db_session, client_reference=client_reference)
-    sample_notification(notify_db, notify_db_session, client_reference='other-ref')
+    sample_notification(notify_db, notify_db_session, api_key_id=sample_api_key.id, client_reference=client_reference)
+    sample_notification(notify_db, notify_db_session, api_key_id=sample_api_key.id, client_reference=client_reference)
+    sample_notification(notify_db, notify_db_session, api_key_id=sample_api_key.id, client_reference='other-ref')
     all_notifications = get_notifications_for_service(sample_service.id, client_reference=client_reference).items
     assert len(all_notifications) == 2
 
@@ -1066,14 +1066,25 @@ def test_should_not_delete_notification_history(notify_db, notify_db_session, sa
 
 
 @freeze_time("2016-01-10")
-def test_should_limit_notifications_return_by_day_limit_plus_one(notify_db, notify_db_session, sample_service):
+def test_should_limit_notifications_return_by_day_limit_plus_one(
+    notify_db,
+    notify_db_session,
+    sample_service,
+    sample_api_key
+):
     assert len(Notification.query.all()) == 0
 
     # create one notification a day between 1st and 9th
     for i in range(1, 11):
         past_date = '2016-01-{0:02d}'.format(i)
         with freeze_time(past_date):
-            sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow(), status="failed")
+            sample_notification(
+                notify_db,
+                notify_db_session,
+                api_key_id=sample_api_key.id,
+                created_at=datetime.utcnow(),
+                status="failed"
+            )
 
     all_notifications = Notification.query.all()
     assert len(all_notifications) == 10
@@ -1302,15 +1313,20 @@ def test_dao_timeout_notifications_doesnt_affect_letters(sample_letter_template)
     assert updated == 0
 
 
-def test_should_return_notifications_excluding_jobs_by_default(notify_db, notify_db_session, sample_service):
+def test_should_return_notifications_excluding_jobs_by_default(
+    notify_db,
+    notify_db_session,
+    sample_service,
+    sample_api_key,
+):
     assert len(Notification.query.all()) == 0
 
     job = sample_job(notify_db, notify_db_session)
     with_job = sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), status="delivered", job=job
+        notify_db, notify_db_session, created_at=datetime.utcnow(), status="delivered", api_key_id=None
     )
     without_job = sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), status="delivered"
+        notify_db, notify_db_session, created_at=datetime.utcnow(), status="delivered", api_key_id=sample_api_key.id
     )
 
     all_notifications = Notification.query.all()
