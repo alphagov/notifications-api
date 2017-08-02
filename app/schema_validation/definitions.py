@@ -14,7 +14,6 @@ uuid = {
 
 personalisation = {
     "type": "object",
-    "validationMessage": "should contain key value pairs",
     "code": "1001",  # yet to be implemented
     "link": "link to our error documentation not yet implemented"
 }

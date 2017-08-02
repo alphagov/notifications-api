@@ -2,6 +2,8 @@ import uuid
 
 from flask import json
 
+from app.variables import LETTER_TEST_API_FILENAME
+
 from tests import create_authorization_header
 
 
@@ -41,7 +43,7 @@ def test_send_letter_jobs_throws_validation_error(client, mocker):
     assert not mock_celery.called
 
 
-def test_send_letter_jobs_throws_validation_error(client, sample_letter_job):
+def test_get_letter_jobs_excludes_non_letter_jobs(client, sample_letter_job, sample_job):
     auth_header = create_authorization_header()
     response = client.get(
         path='/letter-jobs',
@@ -53,3 +55,11 @@ def test_send_letter_jobs_throws_validation_error(client, sample_letter_job):
     assert json_resp['data'][0]['id'] == str(sample_letter_job.id)
     assert json_resp['data'][0]['service_name']['name'] == sample_letter_job.service.name
     assert json_resp['data'][0]['job_status'] == 'pending'
+
+
+def test_get_letter_jobs_excludes_test_jobs(admin_request, sample_letter_job):
+    sample_letter_job.original_file_name = LETTER_TEST_API_FILENAME
+
+    json_resp = admin_request.get('letter-job.get_letter_jobs')
+
+    assert len(json_resp['data']) == 0

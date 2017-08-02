@@ -29,10 +29,10 @@ class RateLimitError(InvalidRequest):
 
 
 class BadRequestError(InvalidRequest):
-    status_code = 400
     message = "An error occurred"
 
-    def __init__(self, fields=[], message=None):
+    def __init__(self, fields=[], message=None, status_code=400):
+        self.status_code = status_code
         self.fields = fields
         self.message = message if message else self.message
 

@@ -30,7 +30,7 @@ def url_with_token(data, url, config):
 def get_template_instance(template, values):
     from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
     return {
-        SMS_TYPE: SMSMessageTemplate, EMAIL_TYPE: PlainTextEmailTemplate, LETTER_TYPE: LetterPreviewTemplate
+        SMS_TYPE: SMSMessageTemplate, EMAIL_TYPE: PlainTextEmailTemplate, LETTER_TYPE: PlainTextEmailTemplate
     }[template['template_type']](template, values)
 
 
