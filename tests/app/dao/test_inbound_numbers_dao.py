@@ -51,10 +51,24 @@ def test_allocate_inbound_number_to_service(
     assert res[0].service_id == service.id
 
 
+def test_allocating_a_service_twice_will_raise_an_error(
+        notify_db, notify_db_session, sample_inbound_numbers):
+    service = create_service(service_name='test service')
+
+    dao_allocate_inbound_number_to_service(service.id)
+
+    with pytest.raises(IndexError) as e:
+        dao_allocate_inbound_number_to_service(service.id)
+
+    res = InboundNumber.query.filter(InboundNumber.service_id == service.id).all()
+
+    assert len(res) == 1
+    assert res[0].service_id == service.id
+    assert str(e.value) == 'No inbound numbers available'
+
+
 def test_get_inbound_number_for_service(notify_db, notify_db_session, sample_inbound_numbers, service_1):
     res = dao_get_inbound_number_for_service(service_1.id)
 
     assert len(res) == 1
-    assert res[0].number == '3'
-    assert res[0].provider == 'firetext'
-    assert res[0].service_id == service_1.id
+    assert res[0] == sample_inbound_numbers[2]
