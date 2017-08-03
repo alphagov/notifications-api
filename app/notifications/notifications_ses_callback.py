@@ -27,11 +27,13 @@ register_errors(ses_callback_blueprint)
 
 
 @ses_callback_blueprint.route('/notifications/email/ses', methods=['POST'])
-def process_ses_response():
+def sns_callback_handler():
+    process_ses_response(json.loads(request.data))
+
+
+def process_ses_response(ses_request):
     client_name = 'SES'
     try:
-        ses_request = json.loads(request.data)
-
         subscribed_topic = autoconfirm_subscription(ses_request)
         if subscribed_topic:
             current_app.logger.info("Automatically subscribed to topic: {}".format(subscribed_topic))
