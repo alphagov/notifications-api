@@ -44,6 +44,7 @@ from app.models import (
     JOB_STATUS_READY_TO_SEND,
     JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_ERROR)
 from app.notifications.process_notifications import persist_notification
+from app.notifications.notifications_ses_callback import process_ses_response
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
 from notifications_utils.s3 import s3upload
@@ -418,3 +419,9 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
                                service_id, inbound_api.url, e))
             except self.MaxRetriesExceededError:
                 current_app.logger.exception('Retry: send_inbound_sms_to_service has retried the max number of times')
+
+
+@notify_celery.task(bind=True, name='process-ses-result')
+@statsd(namespace="tasks")
+def process_ses_results(self, response):
+    process_ses_response(response)
