@@ -242,6 +242,18 @@ class Service(db.Model, Versioned):
         return cls(**fields)
 
 
+class InboundNumber(db.Model):
+    __tablename__ = "inbound_numbers"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    number = db.Column(db.String(11), unique=True, nullable=False)
+    provider = db.Column(db.String(), nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=True, index=True, nullable=True)
+    service = db.relationship('Service')
+    active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+
 class ServicePermission(db.Model):
     __tablename__ = "service_permissions"
 
