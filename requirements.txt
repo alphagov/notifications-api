@@ -28,6 +28,6 @@ notifications-python-client>=3.1,<3.2
 awscli>=1.11,<1.12
 awscli-cwlogs>=1.4,<1.5
 
-git+https://github.com/alphagov/notifications-utils.git@17.7.0#egg=notifications-utils==17.7.0
+git+https://github.com/alphagov/notifications-utils.git@17.8.0#egg=notifications-utils==17.8.0
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
