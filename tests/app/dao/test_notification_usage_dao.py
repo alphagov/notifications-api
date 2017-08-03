@@ -1,13 +1,15 @@
+import pytest
 import uuid
 from datetime import datetime, timedelta
+from freezegun import freeze_time
 
-import pytest
 from flask import current_app
 
 from app.dao.date_util import get_financial_year
 from app.dao.notification_usage_dao import (
     get_rates_for_daterange,
     get_yearly_billing_data,
+    get_billing_data_for_month,
     get_monthly_billing_data,
     get_total_billable_units_for_sent_sms_notifications_in_date_range,
     discover_rate_bounds_for_billing_query
@@ -16,11 +18,16 @@ from app.models import (
     Rate,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_STATUS_TYPES_BILLABLE,
-    NOTIFICATION_STATUS_TYPES_NON_BILLABLE)
-from tests.app.conftest import sample_notification, sample_email_template, sample_letter_template, sample_service
-from tests.app.db import create_notification
-from freezegun import freeze_time
-
+    NOTIFICATION_STATUS_TYPES_NON_BILLABLE,
+    SMS_TYPE,
+)
+from tests.app.conftest import (
+    sample_notification,
+    sample_email_template,
+    sample_letter_template,
+    sample_service
+)
+from tests.app.db import create_notification, create_rate
 from tests.conftest import set_config
 
 
@@ -722,3 +729,46 @@ def test_deducts_free_tier_from_bill_across_rate_boundaries(
         )[1] == expected_cost
     finally:
         current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT'] = start_value
+
+
+def test_get_yearly_billing_data_for_start_date_before_rate_returns_empty(
+    sample_template
+):
+    create_rate(datetime(2016, 4, 1), 0.014, SMS_TYPE)
+
+    results = get_yearly_billing_data(
+        service_id=sample_template.service_id,
+        year=2015
+    )
+
+    assert not results
+
+
+@freeze_time("2016-05-01")
+def test_get_billing_data_for_month_where_start_date_before_rate_returns_empty(
+    sample_template
+):
+    create_rate(datetime(2016, 4, 1), 0.014, SMS_TYPE)
+
+    results = get_monthly_billing_data(
+        service_id=sample_template.service_id,
+        year=2015
+    )
+
+    assert not results
+
+
+@freeze_time("2016-05-01")
+def test_get_monthly_billing_data_where_start_date_before_rate_returns_empty(
+    sample_template
+):
+    now = datetime.utcnow()
+    create_rate(now, 0.014, SMS_TYPE)
+
+    results = get_billing_data_for_month(
+        service_id=sample_template.service_id,
+        start_date=now - timedelta(days=2),
+        end_date=now - timedelta(days=1)
+    )
+
+    assert not results

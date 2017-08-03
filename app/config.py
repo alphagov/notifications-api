@@ -221,6 +221,11 @@ class Config(object):
             'task': 'timeout-job-statistics',
             'schedule': crontab(minute=0, hour=5),
             'options': {'queue': QueueNames.PERIODIC}
+        },
+        'populate_monthly_billing': {
+            'task': 'populate_monthly_billing',
+            'schedule': crontab(minute=10, hour=5),
+            'options': {'queue': QueueNames.PERIODIC}
         }
     }
     CELERY_QUEUES = []
