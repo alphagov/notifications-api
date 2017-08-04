@@ -254,11 +254,17 @@ class InboundNumber(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     def serialize(self):
+        def serialize_service():
+            return {
+                "id": str(self.service_id),
+                "name": self.service.name
+            }
+
         return {
             "id": str(self.id),
             "number": self.number,
             "provider": self.provider,
-            "service_id": str(self.service_id),
+            "service": serialize_service() if self.service else None,
             "active": self.active,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
         }
