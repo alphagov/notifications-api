@@ -3,11 +3,10 @@ from unittest.mock import call
 
 from flask import json
 from freezegun import freeze_time
-from requests import HTTPError
-import pytest
 
 from app import statsd_client
 from app.dao.notifications_dao import get_notification_by_id
+from app.notifications.notifications_ses_callback import process_ses_response
 from tests.app.conftest import sample_notification as create_sample_notification
 
 
@@ -24,68 +23,9 @@ def test_ses_callback_should_fail_if_invalid_json(client, mocker):
     stats_mock = mocker.patch(
         'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
     )
-
-    response = client.post(
-        path='/notifications/email/ses',
-        data="nonsense",
-        headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-    )
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 400
-    assert json_resp['result'] == 'error'
-    assert json_resp['message'] == 'SES callback failed: invalid json'
-    stats_mock.assert_not_called()
-
-
-def test_ses_callback_should_autoconfirm_subscriptions(client, rmock, mocker):
-    stats_mock = mocker.patch(
-        'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
-    )
-
-    endpoint = json.loads(ses_confirmation_callback())['SubscribeURL']
-    rmock.request(
-        "GET",
-        endpoint,
-        json={"status": "success"},
-        status_code=200)
-
-    response = client.post(
-        path='/notifications/email/ses',
-        data=ses_confirmation_callback(),
-        headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-    )
-    json_resp = json.loads(response.get_data(as_text=True))
-
-    assert rmock.called
-    assert rmock.request_history[0].url == endpoint
-    assert response.status_code == 200
-    assert json_resp['result'] == 'success'
-    assert json_resp['message'] == 'SES callback succeeded'
-    stats_mock.assert_not_called()
-
-
-def test_ses_callback_autoconfirm_raises_exception_if_not_200(client, rmock, mocker):
-    stats_mock = mocker.patch(
-        'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
-    )
-
-    endpoint = json.loads(ses_confirmation_callback())['SubscribeURL']
-    rmock.request(
-        "GET",
-        endpoint,
-        json={"status": "not allowed"},
-        status_code=405)
-
-    with pytest.raises(HTTPError) as exc:
-        client.post(
-            path='/notifications/email/ses',
-            data=ses_confirmation_callback(),
-            headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-        )
-
-    assert rmock.called
-    assert rmock.request_history[0].url == endpoint
-    assert exc.value.response.status_code == 405
+    errors, status, _ = process_ses_response('nonsense')
+    assert status == 400
+    assert errors == 'SES callback failed: invalid json'
     stats_mock.assert_not_called()
 
 
@@ -94,15 +34,9 @@ def test_ses_callback_should_fail_if_invalid_notification_type(client, mocker):
         'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
     )
 
-    response = client.post(
-        path='/notifications/email/ses',
-        data=ses_invalid_notification_type_callback(),
-        headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-    )
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 400
-    assert json_resp['result'] == 'error'
-    assert json_resp['message'] == 'SES callback failed: status Unknown not found'
+    errors, status, _ = process_ses_response(json.loads(ses_invalid_notification_type_callback()))
+    assert status == 400
+    assert errors == 'SES callback failed: status Unknown not found'
     stats_mock.assert_not_called()
 
 
@@ -111,15 +45,9 @@ def test_ses_callback_should_fail_if_missing_message_id(client, mocker):
         'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
     )
 
-    response = client.post(
-        path='/notifications/email/ses',
-        data=ses_missing_notification_id_callback(),
-        headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-    )
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 400
-    assert json_resp['result'] == 'error'
-    assert json_resp['message'] == 'SES callback failed: messageId missing'
+    errors, status, _ = process_ses_response(json.loads(ses_missing_notification_id_callback()))
+    assert status == 400
+    assert errors == 'SES callback failed: messageId missing'
     stats_mock.assert_not_called()
 
 
@@ -128,15 +56,9 @@ def test_ses_callback_should_fail_if_notification_cannot_be_found(notify_db, not
         'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
     )
 
-    response = client.post(
-        path='/notifications/email/ses',
-        data=ses_invalid_notification_id_callback(),
-        headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-    )
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 404
-    assert json_resp['result'] == 'error'
-    assert json_resp['message'] == 'SES callback failed: notification either not found or already updated from sending. Status delivered for notification reference missing'  # noqa
+    errors, status, _ = process_ses_response(json.loads(ses_invalid_notification_id_callback()))
+    assert status == 404
+    assert errors == 'SES callback failed: notification either not found or already updated from sending. Status delivered for notification reference missing'  # noqa
     stats_mock.assert_not_called()
 
 
@@ -164,15 +86,10 @@ def test_ses_callback_should_update_notification_status(
 
         assert get_notification_by_id(notification.id).status == 'sending'
 
-        response = client.post(
-            path='/notifications/email/ses',
-            data=ses_notification_callback(),
-            headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-        )
-        json_resp = json.loads(response.get_data(as_text=True))
-        assert response.status_code == 200
-        assert json_resp['result'] == 'success'
-        assert json_resp['message'] == 'SES callback succeeded'
+        _, status, res = process_ses_response(json.loads(ses_notification_callback()))
+        assert status == 200
+        assert res['result'] == 'success'
+        assert res['message'] == 'SES callback succeeded'
         assert get_notification_by_id(notification.id).status == 'delivered'
         statsd_client.timing_with_dates.assert_any_call(
             "callback.ses.elapsed-time", datetime.utcnow(), notification.sent_at
@@ -216,25 +133,13 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
         sent_at=datetime.utcnow(),
         status='sending')
 
-    resp1 = client.post(
-        path='/notifications/email/ses',
-        data=ses_notification_callback(ref='ref1'),
-        headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-    )
-    resp2 = client.post(
-        path='/notifications/email/ses',
-        data=ses_notification_callback(ref='ref2'),
-        headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-    )
-    resp3 = client.post(
-        path='/notifications/email/ses',
-        data=ses_notification_callback(ref='ref3'),
-        headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-    )
+    resp1 = process_ses_response(json.loads(data=ses_notification_callback(ref='ref1')))
+    resp2 = process_ses_response(json.loads(data=ses_notification_callback(ref='ref2')))
+    resp3 = process_ses_response(json.loads(data=ses_notification_callback(ref='ref3')))
 
-    assert resp1.status_code == 200
-    assert resp2.status_code == 200
-    assert resp3.status_code == 200
+    assert resp1[1] == 200
+    assert resp2[1] == 200
+    assert resp3[1] == 200
     stats_mock.assert_has_calls([
         call(notification1),
         call(notification2),
@@ -262,15 +167,10 @@ def test_ses_callback_should_set_status_to_temporary_failure(client,
     )
     assert get_notification_by_id(notification.id).status == 'sending'
 
-    response = client.post(
-        path='/notifications/email/ses',
-        data=ses_soft_bounce_callback(),
-        headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-    )
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 200
-    assert json_resp['result'] == 'success'
-    assert json_resp['message'] == 'SES callback succeeded'
+    _, status, res = process_ses_response(json.loads(data=ses_soft_bounce_callback()))
+    assert status == 200
+    assert res['result'] == 'success'
+    assert res['message'] == 'SES callback succeeded'
     assert get_notification_by_id(notification.id).status == 'temporary-failure'
     stats_mock.assert_called_once_with(notification)
 
@@ -295,15 +195,9 @@ def test_ses_callback_should_not_set_status_once_status_is_delivered(client,
 
     assert get_notification_by_id(notification.id).status == 'delivered'
 
-    response = client.post(
-        path='/notifications/email/ses',
-        data=ses_soft_bounce_callback(),
-        headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-    )
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 404
-    assert json_resp['result'] == 'error'
-    assert json_resp['message'] == 'SES callback failed: notification either not found or already updated from sending. Status temporary-failure for notification reference ref'  # noqa
+    error, status, _ = process_ses_response(json.loads(data=ses_soft_bounce_callback()))
+    assert status == 404
+    assert error == 'SES callback failed: notification either not found or already updated from sending. Status temporary-failure for notification reference ref'  # noqa
     assert get_notification_by_id(notification.id).status == 'delivered'
     stats_mock.assert_not_called()
 
@@ -328,15 +222,10 @@ def test_ses_callback_should_set_status_to_permanent_failure(client,
 
     assert get_notification_by_id(notification.id).status == 'sending'
 
-    response = client.post(
-        path='/notifications/email/ses',
-        data=ses_hard_bounce_callback(),
-        headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-    )
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 200
-    assert json_resp['result'] == 'success'
-    assert json_resp['message'] == 'SES callback succeeded'
+    _, status, res = process_ses_response(json.loads(data=ses_hard_bounce_callback()))
+    assert status == 200
+    assert res['result'] == 'success'
+    assert res['message'] == 'SES callback succeeded'
     assert get_notification_by_id(notification.id).status == 'permanent-failure'
     stats_mock.assert_called_once_with(notification)
 
