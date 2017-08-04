@@ -281,10 +281,10 @@ def create_api_key(service, key_type=KEY_TYPE_NORMAL):
 
 def create_inbound_number(number, provider='mmg', active=True, service_id=None):
     inbound_number = InboundNumber(
-        id=uuid.uuid4(), 
-        number=number, 
-        provider=provider, 
-        active=active, 
+        id=uuid.uuid4(),
+        number=number,
+        provider=provider,
+        active=active,
         service_id=service_id
     )
     db.session.add(inbound_number)

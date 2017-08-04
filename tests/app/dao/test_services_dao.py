@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from freezegun import freeze_time
 from app import db
 from app.dao.inbound_numbers_dao import (
-    dao_set_inbound_number_to_service, 
+    dao_set_inbound_number_to_service,
     dao_get_available_inbound_numbers
 )
 from app.dao.services_dao import (
