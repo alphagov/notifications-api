@@ -249,9 +249,19 @@ class InboundNumber(db.Model):
     number = db.Column(db.String(11), unique=True, nullable=False)
     provider = db.Column(db.String(), nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=True, index=True, nullable=True)
-    service = db.relationship('Service')
+    service = db.relationship(Service, backref=db.backref("inbound_number", uselist=False))
     active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    def serialize(self):
+        serialized = {
+            "id": str(self.id),
+            "number": self.number,
+            "provider": self.provider,
+            "service_id": self.service_id,
+            "active": self.active,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+        }
 
 
 class ServicePermission(db.Model):

@@ -7,6 +7,10 @@ from sqlalchemy.orm.exc import FlushError, NoResultFound
 from sqlalchemy.exc import IntegrityError
 from freezegun import freeze_time
 from app import db
+from app.dao.inbound_numbers_dao import (
+    dao_allocate_inbound_number_to_service, 
+    dao_get_available_inbound_numbers
+)
 from app.dao.services_dao import (
     dao_create_service,
     dao_add_user_to_service,
@@ -896,3 +900,13 @@ def test_dao_fetch_services_by_sms_sender(notify_db_session):
     services = dao_fetch_services_by_sms_sender('foo')
 
     assert {foo1.id, foo2.id} == {x.id for x in services}
+
+
+def test_dao_allocating_inbound_number_shows_on_service(notify_db_session, sample_inbound_numbers):
+    inbound_numbers = dao_get_available_inbound_numbers()
+
+    service = create_service(service_name='test service')
+
+    dao_allocate_inbound_number_to_service(service.id)
+
+    assert service.inbound_number.number == inbound_numbers[0].number
