@@ -37,6 +37,11 @@ def sns_callback_handler():
 def process_ses_response(ses_request):
     client_name = 'SES'
     try:
+
+        # TODO: remove this check once the sns_callback_handler is removed
+        if not isinstance(ses_request, dict):
+            ses_request = json.loads(ses_request)
+
         errors = validate_callback_data(data=ses_request, fields=['Message'], client_name=client_name)
         if errors:
             return errors, 400, {}
