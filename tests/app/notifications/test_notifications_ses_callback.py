@@ -133,9 +133,15 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
         sent_at=datetime.utcnow(),
         status='sending')
 
+<<<<<<< HEAD
     resp1 = process_ses_response(json.loads(ses_notification_callback(ref='ref1')))
     resp2 = process_ses_response(json.loads(ses_notification_callback(ref='ref2')))
     resp3 = process_ses_response(json.loads(ses_notification_callback(ref='ref3')))
+=======
+    resp1 = process_ses_response(json.loads(data=ses_notification_callback(ref='ref1')))
+    resp2 = process_ses_response(json.loads(data=ses_notification_callback(ref='ref2')))
+    resp3 = process_ses_response(json.loads(data=ses_notification_callback(ref='ref3')))
+>>>>>>> Update tests
 
     assert resp1[1] == 200
     assert resp2[1] == 200
@@ -167,7 +173,11 @@ def test_ses_callback_should_set_status_to_temporary_failure(client,
     )
     assert get_notification_by_id(notification.id).status == 'sending'
 
+<<<<<<< HEAD
     _, status, res = process_ses_response(json.loads(ses_soft_bounce_callback()))
+=======
+    _, status, res = process_ses_response(json.loads(data=ses_soft_bounce_callback()))
+>>>>>>> Update tests
     assert status == 200
     assert res['result'] == 'success'
     assert res['message'] == 'SES callback succeeded'
@@ -195,7 +205,11 @@ def test_ses_callback_should_not_set_status_once_status_is_delivered(client,
 
     assert get_notification_by_id(notification.id).status == 'delivered'
 
+<<<<<<< HEAD
     error, status, _ = process_ses_response(json.loads(ses_soft_bounce_callback()))
+=======
+    error, status, _ = process_ses_response(json.loads(data=ses_soft_bounce_callback()))
+>>>>>>> Update tests
     assert status == 404
     assert error == 'SES callback failed: notification either not found or already updated from sending. Status temporary-failure for notification reference ref'  # noqa
     assert get_notification_by_id(notification.id).status == 'delivered'
@@ -222,7 +236,11 @@ def test_ses_callback_should_set_status_to_permanent_failure(client,
 
     assert get_notification_by_id(notification.id).status == 'sending'
 
+<<<<<<< HEAD
     _, status, res = process_ses_response(json.loads(ses_hard_bounce_callback()))
+=======
+    _, status, res = process_ses_response(json.loads(data=ses_hard_bounce_callback()))
+>>>>>>> Update tests
     assert status == 200
     assert res['result'] == 'success'
     assert res['message'] == 'SES callback succeeded'
