@@ -1051,11 +1051,8 @@ def admin_request(client):
                 data=json.dumps(_data),
                 headers=[('Content-Type', 'application/json'), create_authorization_header()]
             )
-            if resp.get_data(as_text=True):
-                json_resp = json.loads(resp.get_data(as_text=True))
-            else:
-                json_resp = None
-            assert resp.status_code == _expected_status
+            json_resp = json.loads(resp.get_data(as_text=True))
+            assert resp.status_code == _expected_status, json_resp
             return json_resp
 
         @staticmethod
