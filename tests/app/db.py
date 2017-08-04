@@ -279,7 +279,7 @@ def create_api_key(service, key_type=KEY_TYPE_NORMAL):
     return api_key
 
 
-def create_inbound_number(number, provider, active=True, service_id=None):
+def create_inbound_number(number, provider='mmg', active=True, service_id=None):
     inbound_number = InboundNumber(
         id=uuid.uuid4(), 
         number=number, 
