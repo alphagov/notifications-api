@@ -39,7 +39,14 @@ from app.dao.invited_user_dao import save_invited_user
 from app.dao.provider_rates_dao import create_provider_rates
 from app.clients.sms.firetext import FiretextClient
 from tests import create_authorization_header
-from tests.app.db import create_user, create_template, create_notification, create_api_key, create_inbound_number
+from tests.app.db import (
+    create_user,
+    create_template,
+    create_notification,
+    create_service,
+    create_api_key,
+    create_inbound_number
+)
 
 
 @pytest.yield_fixture
@@ -985,9 +992,10 @@ def sample_provider_rate(notify_db, notify_db_session, valid_from=None, rate=Non
 
 @pytest.fixture
 def sample_inbound_numbers(notify_db, notify_db_session, sample_service):
+    service = create_service(service_name='sample service 2')
     inbound_numbers = []
     inbound_numbers.append(create_inbound_number(number='1', provider='mmg'))
-    inbound_numbers.append(create_inbound_number(number='2', provider='mmg', active=False))
+    inbound_numbers.append(create_inbound_number(number='2', provider='mmg', active=False, service_id=service.id))
     inbound_numbers.append(create_inbound_number(number='3', provider='firetext', service_id=sample_service.id))
     return inbound_numbers
 
@@ -1043,8 +1051,11 @@ def admin_request(client):
                 data=json.dumps(_data),
                 headers=[('Content-Type', 'application/json'), create_authorization_header()]
             )
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == _expected_status, json_resp
+            if resp.get_data(as_text=True):
+                json_resp = json.loads(resp.get_data(as_text=True))
+            else:
+                json_resp = None
+            assert resp.status_code == _expected_status
             return json_resp
 
         @staticmethod
