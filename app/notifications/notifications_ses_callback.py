@@ -15,7 +15,6 @@ from app.dao import (
 )
 from app.celery.statistics_tasks import create_outcome_notification_statistic_tasks
 from app.notifications.process_client_response import validate_callback_data
-from app.notifications.utils import autoconfirm_subscription
 
 ses_callback_blueprint = Blueprint('notifications_ses_callback', __name__)
 
@@ -38,11 +37,6 @@ def sns_callback_handler():
 def process_ses_response(ses_request):
     client_name = 'SES'
     try:
-        subscribed_topic = autoconfirm_subscription(ses_request)
-        if subscribed_topic:
-            current_app.logger.info("Automatically subscribed to topic: {}".format(subscribed_topic))
-            return [], 200, {'result': "success", 'message': "SES callback succeeded"}
-
         errors = validate_callback_data(data=ses_request, fields=['Message'], client_name=client_name)
         if errors:
             return errors, 400, {}
