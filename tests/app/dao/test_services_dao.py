@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from freezegun import freeze_time
 from app import db
 from app.dao.inbound_numbers_dao import (
-    dao_allocate_inbound_number_to_service, 
+    dao_set_inbound_number_to_service, 
     dao_get_available_inbound_numbers
 )
 from app.dao.services_dao import (
@@ -907,6 +907,6 @@ def test_dao_allocating_inbound_number_shows_on_service(notify_db_session, sampl
 
     service = create_service(service_name='test service')
 
-    dao_allocate_inbound_number_to_service(service.id)
+    dao_set_inbound_number_to_service(service.id, inbound_numbers[0])
 
     assert service.inbound_number.number == inbound_numbers[0].number

@@ -16,13 +16,7 @@ def dao_get_inbound_number_for_service(service_id):
 
 
 @transactional
-def dao_allocate_inbound_number_to_service(service_id):
-    available_numbers = InboundNumber.query.filter(
-        InboundNumber.active, InboundNumber.service_id.is_(None)).all()
+def dao_set_inbound_number_to_service(service_id, inbound_number):
+    inbound_number.service_id = service_id
 
-    if len(available_numbers) > 0:
-        available_numbers[0].service_id = service_id
-
-        db.session.add(available_numbers[0])
-    else:
-        raise IndexError('No inbound numbers available')
+    db.session.add(inbound_number)
