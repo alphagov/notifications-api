@@ -16,13 +16,16 @@ from tests.app.db import create_service, create_inbound_number
 def test_get_inbound_numbers(notify_db, notify_db_session, sample_inbound_numbers):
     res = dao_get_inbound_numbers()
 
-    assert len(res) == 3
+    assert len(res) == len(sample_inbound_numbers)
     assert res == sample_inbound_numbers
 
 
 def test_get_available_inbound_numbers(notify_db, notify_db_session, sample_inbound_numbers):
+    available_numbers = [num for num in sample_inbound_numbers if num.active and num.service_id is None]
+
     res = dao_get_available_inbound_numbers()
 
+    assert len(res) == len(available_numbers)
     assert len(res) == 1
     assert res[0] == sample_inbound_numbers[0]
 
