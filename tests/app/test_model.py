@@ -203,3 +203,18 @@ def test_letter_notification_serializes_with_address(client, sample_letter_notif
     assert res['line_5'] is None
     assert res['line_6'] is None
     assert res['postcode'] == 'SW1 1AA'
+
+
+def test_sms_notification_serializes_without_subject(client, sample_template):
+    res = sample_template.serialize()
+    assert res['subject'] is None
+
+
+def test_email_notification_serializes_with_subject(client, sample_email_template):
+    res = sample_email_template.serialize()
+    assert res['subject'] == 'Email Subject'
+
+
+def test_letter_notification_serializes_with_subject(client, sample_letter_template):
+    res = sample_letter_template.serialize()
+    assert res['subject'] == 'Template Subject'
