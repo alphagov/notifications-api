@@ -3,16 +3,20 @@ import pytest
 from flask import json
 
 from app import DATETIME_FORMAT
-from app.models import EMAIL_TYPE, TEMPLATE_TYPES
+from app.models import TEMPLATE_TYPES, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
 from tests import create_authorization_header
 from tests.app.db import create_template
 
 valid_version_params = [None, 1]
 
 
-@pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)
+@pytest.mark.parametrize("tmp_type, expected_subject", [
+    (SMS_TYPE, None),
+    (EMAIL_TYPE, 'Template subject'),
+    (LETTER_TYPE, 'Template subject')
+])
 @pytest.mark.parametrize("version", valid_version_params)
-def test_get_template_by_id_returns_200(client, sample_service, tmp_type, version):
+def test_get_template_by_id_returns_200(client, sample_service, tmp_type, expected_subject, version):
     template = create_template(sample_service, template_type=tmp_type)
     auth_header = create_authorization_header(service_id=sample_service.id)
 
@@ -34,7 +38,7 @@ def test_get_template_by_id_returns_200(client, sample_service, tmp_type, versio
         'version': template.version,
         'created_by': template.created_by.email_address,
         'body': template.content,
-        "subject": template.subject if tmp_type == EMAIL_TYPE else None
+        "subject": expected_subject
     }
 
     assert json_response == expected_response
