@@ -604,9 +604,8 @@ def is_service_name_unique():
 
     name_exists = Service.query.filter_by(name=name).first()
     email_from_exists = Service.query.filter_by(email_from=email_from).first()
-    if name_exists or email_from_exists:
-        return jsonify(result=False), 200
-    return jsonify(result=True), 200
+    result = not (name_exists or email_from_exists)
+    return jsonify(result=result), 200
 
 
 def check_request_args(request):
