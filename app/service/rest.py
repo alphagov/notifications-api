@@ -596,3 +596,27 @@ def handle_sql_errror(e):
 def create_one_off_notification(service_id):
     resp = send_one_off_notification(service_id, request.get_json())
     return jsonify(resp), 201
+
+
+@service_blueprint.route('/unique', methods=["GET"])
+def is_service_name_unique():
+    name, email_from = check_request_args(request)
+
+    name_exists = Service.query.filter_by(name=name).first()
+    email_from_exists = Service.query.filter_by(email_from=email_from).first()
+    if name_exists or email_from_exists:
+        return jsonify(result=False), 200
+    return jsonify(result=True), 200
+
+
+def check_request_args(request):
+    name = request.args.get('name', None)
+    email_from = request.args.get('email_from', None)
+    errors = []
+    if not name:
+        errors.append({'name': ["Can't be empty"]})
+    if not email_from:
+        errors.append({'email_from': ["Can't be empty"]})
+    if errors:
+        raise InvalidRequest(errors, status_code=400)
+    return name, email_from
