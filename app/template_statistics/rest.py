@@ -7,8 +7,12 @@ from flask import (
 from app import redis_store
 from app.dao.notifications_dao import (
     dao_get_template_usage,
-    dao_get_last_template_usage)
-from app.dao.templates_dao import dao_get_templates_for_cache
+    dao_get_last_template_usage
+)
+from app.dao.templates_dao import (
+    dao_get_templates_for_cache,
+    dao_get_template_by_id_and_service_id
+)
 
 from app.schemas import notification_with_template_schema
 from app.utils import cache_key_for_service_template_counter
@@ -52,12 +56,17 @@ def get_template_statistics_for_service_by_day(service_id):
 
 @template_statistics.route('/<template_id>')
 def get_template_statistics_for_template_id(service_id, template_id):
-    notification = dao_get_last_template_usage(template_id)
-    if not notification:
+    template = dao_get_template_by_id_and_service_id(template_id, service_id)
+    if not template:
         message = 'No template found for id {}'.format(template_id)
         errors = {'template_id': [message]}
         raise InvalidRequest(errors, status_code=404)
-    data = notification_with_template_schema.dump(notification).data
+
+    data = None
+    notification = dao_get_last_template_usage(template_id)
+    if notification:
+        data = notification_with_template_schema.dump(notification).data
+
     return jsonify(data=data)
 
 
