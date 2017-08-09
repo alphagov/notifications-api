@@ -95,7 +95,6 @@ class Config(object):
 
     # Logging
     DEBUG = False
-    LOGGING_STDOUT_JSON = os.getenv('LOGGING_STDOUT_JSON') == '1'
 
     ###########################
     # Default config values ###
@@ -106,7 +105,7 @@ class Config(object):
     AWS_REGION = 'eu-west-1'
     INVITATION_EXPIRATION_DAYS = 2
     NOTIFY_APP_NAME = 'api'
-    NOTIFY_LOG_PATH = '/var/log/notify/application.log'
+    NOTIFY_LOG_PATH = None
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False
     SQLALCHEMY_RECORD_QUERIES = True
     SQLALCHEMY_TRACK_MODIFICATIONS = True
@@ -277,6 +276,7 @@ class Config(object):
 ######################
 
 class Development(Config):
+    NOTIFY_LOG_PATH = 'application.log'
     SQLALCHEMY_ECHO = False
     NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
