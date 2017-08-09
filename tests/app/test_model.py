@@ -217,4 +217,4 @@ def test_email_notification_serializes_with_subject(client, sample_email_templat
 
 def test_letter_notification_serializes_with_subject(client, sample_letter_template):
     res = sample_letter_template.serialize()
-    assert res['subject'] == 'Template Subject'
+    assert res['subject'] == 'Template subject'
