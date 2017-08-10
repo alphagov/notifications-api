@@ -1052,10 +1052,14 @@ def admin_request(client):
                 headers=[('Content-Type', 'application/json'), create_authorization_header()]
             )
 <<<<<<< HEAD
+<<<<<<< HEAD
             json_resp = json.loads(resp.get_data(as_text=True))
             assert resp.status_code == _expected_status, json_resp
 =======
             if resp.get_data:
+=======
+            if resp.get_data():
+>>>>>>> Fixed admin_request bug
                 json_resp = json.loads(resp.get_data(as_text=True))
             else:
                 json_resp = None
