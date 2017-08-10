@@ -8,6 +8,7 @@ import pytest
 from flask import url_for, current_app
 from freezegun import freeze_time
 
+from app.dao.monthly_billing_dao import create_or_update_monthly_billing
 from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
@@ -1753,12 +1754,19 @@ def test_get_template_stats_by_month_returns_error_for_incorrect_year(
     assert json.loads(response.get_data(as_text=True)) == expected_json
 
 
-def test_get_yearly_billing_usage(client, notify_db, notify_db_session):
+def test_get_yearly_billing_usage(client, notify_db, notify_db_session, sample_service):
     rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type=SMS_TYPE)
     notify_db.session.add(rate)
-    notification = create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
-                                              sent_at=datetime(2016, 6, 5),
-                                              status='sending')
+    after_rate_created = datetime(2016, 6, 5)
+    notification = create_sample_notification(
+        notify_db,
+        notify_db_session,
+        created_at=after_rate_created,
+        sent_at=after_rate_created,
+        status='sending',
+        service=sample_service
+    )
+    create_or_update_monthly_billing(sample_service.id, after_rate_created)
     response = client.get(
         '/service/{}/yearly-usage?year=2016'.format(notification.service_id),
         headers=[create_authorization_header()]
