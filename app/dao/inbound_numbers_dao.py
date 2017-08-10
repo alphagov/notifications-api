@@ -22,7 +22,6 @@ def dao_get_inbound_number(inbound_number_id):
 @transactional
 def dao_set_inbound_number_to_service(service_id, inbound_number):
     inbound_number.service_id = service_id
-
     db.session.add(inbound_number)
 
 
