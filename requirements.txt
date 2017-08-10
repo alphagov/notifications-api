@@ -21,7 +21,6 @@ six==1.10.0
 iso8601==0.1.12
 celery==3.1.25 # pyup: <4
 
-# pin to minor version 3.1.x
 notifications-python-client==4.3.1
 
 # PaaS
