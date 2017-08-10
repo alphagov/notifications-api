@@ -22,14 +22,31 @@ def get_yearly_billing_data(service_id, year):
     start_date, end_date = get_financial_year(year)
     rates = get_rates_for_daterange(start_date, end_date, SMS_TYPE)
 
+    if not rates:
+        return []
+
     def get_valid_from(valid_from):
         return start_date if valid_from < start_date else valid_from
 
     result = []
     for r, n in zip(rates, rates[1:]):
-        result.append(sms_yearly_billing_data_query(r.rate, service_id, get_valid_from(r.valid_from), n.valid_from))
+        result.append(
+            sms_yearly_billing_data_query(
+                r.rate,
+                service_id,
+                get_valid_from(r.valid_from),
+                n.valid_from
+            )
+        )
     result.append(
-        sms_yearly_billing_data_query(rates[-1].rate, service_id, get_valid_from(rates[-1].valid_from), end_date))
+        sms_yearly_billing_data_query(
+            rates[-1].rate,
+            service_id,
+            get_valid_from(rates[-1].valid_from),
+            end_date
+        )
+    )
+
     result.append(email_yearly_billing_data_query(service_id, start_date, end_date))
 
     return sum(result, [])
@@ -38,6 +55,10 @@ def get_yearly_billing_data(service_id, year):
 @statsd(namespace="dao")
 def get_billing_data_for_month(service_id, start_date, end_date):
     rates = get_rates_for_daterange(start_date, end_date, SMS_TYPE)
+
+    if not rates:
+        return []
+
     result = []
     # so the start end date in the query are the valid from the rate, not the month - this is going to take some thought
     for r, n in zip(rates, rates[1:]):
@@ -53,6 +74,9 @@ def get_billing_data_for_month(service_id, start_date, end_date):
 def get_monthly_billing_data(service_id, year):
     start_date, end_date = get_financial_year(year)
     rates = get_rates_for_daterange(start_date, end_date, SMS_TYPE)
+
+    if not rates:
+        return []
 
     result = []
     for r, n in zip(rates, rates[1:]):

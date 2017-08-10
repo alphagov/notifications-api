@@ -55,7 +55,7 @@ def persist_notification(
     created_by_id=None
 ):
     notification_created_at = created_at or datetime.utcnow()
-    if not notification_id and simulated:
+    if not notification_id:
         notification_id = uuid.uuid4()
     notification = Notification(
         id=notification_id,

@@ -1,24 +1,34 @@
-
 import uuid
 
-from flask import url_for, json
+from flask import json
+from flask import url_for
 import pytest
 
-from app.models import Job, Notification, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
+from app.models import EMAIL_TYPE
+from app.models import Job
+from app.models import KEY_TYPE_NORMAL
+from app.models import KEY_TYPE_TEAM
+from app.models import KEY_TYPE_TEST
+from app.models import LETTER_TYPE
+from app.models import Notification
+from app.models import SMS_TYPE
 from app.v2.errors import RateLimitError
+from app.variables import LETTER_TEST_API_FILENAME
+from app.variables import LETTER_API_FILENAME
 
 from tests import create_authorization_header
-from tests.app.db import create_service, create_template
+from tests.app.db import create_service
+from tests.app.db import create_template
 
 
-pytestmark = pytest.mark.skip('Leters not currently implemented')
-
-
-def letter_request(client, data, service_id, _expected_status=201):
+def letter_request(client, data, service_id, key_type=KEY_TYPE_NORMAL, _expected_status=201):
     resp = client.post(
         url_for('v2_notifications.post_notification', notification_type='letter'),
         data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), create_authorization_header(service_id=service_id)]
+        headers=[
+            ('Content-Type', 'application/json'),
+            create_authorization_header(service_id=service_id, key_type=key_type)
+        ]
     )
     json_resp = json.loads(resp.get_data(as_text=True))
     assert resp.status_code == _expected_status, json_resp
@@ -45,7 +55,8 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
     resp_json = letter_request(client, data, service_id=sample_letter_template.service_id)
 
     job = Job.query.one()
-    notification = Notification.query.all()
+    assert job.original_file_name == LETTER_API_FILENAME
+    notification = Notification.query.one()
     notification_id = notification.id
     assert resp_json['id'] == str(notification_id)
     assert resp_json['reference'] == reference
@@ -62,57 +73,66 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
     )
     assert not resp_json['scheduled_for']
 
-    mocked.assert_called_once_with((str(job.id), ), queue='job-tasks')
+    mocked.assert_called_once_with([str(job.id)], queue='job-tasks')
 
 
 def test_post_letter_notification_returns_400_and_missing_template(
     client,
-    sample_service
+    sample_service_full_permissions
 ):
     data = {
         'template_id': str(uuid.uuid4()),
-        'personalisation': {'address_line_1': '', 'postcode': ''}
+        'personalisation': {'address_line_1': '', 'address_line_2': '', 'postcode': ''}
     }
 
-    error_json = letter_request(client, data, service_id=sample_service.id, _expected_status=400)
+    error_json = letter_request(client, data, service_id=sample_service_full_permissions.id, _expected_status=400)
 
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [{'error': 'BadRequestError', 'message': 'Template not found'}]
 
 
-def test_post_notification_returns_403_and_well_formed_auth_error(
+def test_notification_returns_400_for_missing_template_field(
     client,
-    sample_letter_template
+    sample_service_full_permissions
 ):
     data = {
-        'template_id': str(sample_letter_template.id),
-        'personalisation': {'address_line_1': '', 'postcode': ''}
+        'personalisation': {'address_line_1': '', 'address_line_2': '', 'postcode': ''}
     }
 
-    error_json = letter_request(client, data, service_id=sample_letter_template.service_id, _expected_status=401)
-
-    assert error_json['status_code'] == 401
-    assert error_json['errors'] == [{
-        'error': 'AuthError',
-        'message': 'Unauthorized, authentication token must be provided'
-    }]
-
-
-def test_notification_returns_400_for_schema_problems(
-    client,
-    sample_service
-):
-    data = {
-        'personalisation': {'address_line_1': '', 'postcode': ''}
-    }
-
-    error_json = letter_request(client, data, service_id=sample_service.id, _expected_status=400)
+    error_json = letter_request(client, data, service_id=sample_service_full_permissions.id, _expected_status=400)
 
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [{
         'error': 'ValidationError',
         'message': 'template_id is a required property'
     }]
+
+
+def test_notification_returns_400_if_address_doesnt_have_underscores(
+    client,
+    sample_letter_template
+):
+    data = {
+        'template_id': str(sample_letter_template.id),
+        'personalisation': {
+            'address line 1': 'Her Royal Highness Queen Elizabeth II',
+            'address-line-2': 'Buckingham Palace',
+            'postcode': 'SW1 1AA',
+        }
+    }
+
+    error_json = letter_request(client, data, service_id=sample_letter_template.service_id, _expected_status=400)
+
+    assert error_json['status_code'] == 400
+    assert len(error_json['errors']) == 2
+    assert {
+        'error': 'ValidationError',
+        'message': 'personalisation address_line_1 is a required property'
+    } in error_json['errors']
+    assert {
+        'error': 'ValidationError',
+        'message': 'personalisation address_line_2 is a required property'
+    } in error_json['errors']
 
 
 def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
@@ -128,7 +148,7 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
 
     data = {
         'template_id': str(sample_letter_template.id),
-        'personalisation': {'address_line_1': '', 'postcode': ''}
+        'personalisation': {'address_line_1': '', 'address_line_2': '', 'postcode': ''}
     }
 
     error_json = letter_request(client, data, service_id=sample_letter_template.service_id, _expected_status=429)
@@ -156,11 +176,59 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
 
     data = {
         'template_id': str(template.id),
-        'personalisation': {'address_line_1': '', 'postcode': ''}
+        'personalisation': {'address_line_1': '', 'address_line_2': '', 'postcode': ''}
     }
 
     error_json = letter_request(client, data, service_id=service.id, _expected_status=400)
-    assert error_json['status_code'] == 403
+    assert error_json['status_code'] == 400
     assert error_json['errors'] == [
         {'error': 'BadRequestError', 'message': 'Cannot send letters'}
     ]
+
+
+@pytest.mark.parametrize('research_mode, key_type', [
+    (True, KEY_TYPE_NORMAL),
+    (False, KEY_TYPE_TEST)
+])
+def test_post_letter_notification_doesnt_queue_task(
+    client,
+    notify_db_session,
+    mocker,
+    research_mode,
+    key_type
+):
+    real_task = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
+    fake_task = mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
+
+    service = create_service(research_mode=research_mode, service_permissions=[LETTER_TYPE])
+    template = create_template(service, template_type=LETTER_TYPE)
+
+    data = {
+        'template_id': str(template.id),
+        'personalisation': {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
+    }
+
+    letter_request(client, data, service_id=service.id, key_type=key_type)
+
+    job = Job.query.one()
+    assert job.original_file_name == LETTER_TEST_API_FILENAME
+    assert not real_task.called
+    fake_task.assert_called_once_with([str(job.id)], queue='research-mode-tasks')
+
+
+def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_template):
+    data = {
+        'template_id': str(sample_letter_template.id),
+        'personalisation': {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
+    }
+
+    error_json = letter_request(
+        client,
+        data,
+        sample_letter_template.service_id,
+        key_type=KEY_TYPE_TEAM,
+        _expected_status=403
+    )
+
+    assert error_json['status_code'] == 403
+    assert error_json['errors'] == [{'error': 'BadRequestError', 'message': 'Cannot send letters with a team api key'}]

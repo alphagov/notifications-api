@@ -14,13 +14,12 @@ uuid = {
 
 personalisation = {
     "type": "object",
-    "validationMessage": "should contain key value pairs",
     "code": "1001",  # yet to be implemented
     "link": "link to our error documentation not yet implemented"
 }
 
 
-letter_personalisation = dict(personalisation, required=["address_line_1", "postcode"])
+letter_personalisation = dict(personalisation, required=["address_line_1", "address_line_2", "postcode"])
 
 
 https_url = {

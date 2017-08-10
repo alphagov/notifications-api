@@ -4,12 +4,18 @@ from flask import request, jsonify, current_app, abort
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
-from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, PRIORITY
+from app.dao.jobs_dao import dao_update_job
+from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, PRIORITY, KEY_TYPE_TEST, KEY_TYPE_TEAM
+from app.celery.tasks import build_dvla_file, update_job_to_sent_to_dvla
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
     simulated_recipient,
     persist_scheduled_notification)
+from app.notifications.process_letter_notifications import (
+    create_letter_api_job,
+    create_letter_notification
+)
 from app.notifications.validators import (
     validate_and_format_recipient,
     check_rate_limiting,
@@ -18,6 +24,7 @@ from app.notifications.validators import (
     validate_template
 )
 from app.schema_validation import validate
+from app.v2.errors import BadRequestError
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import (
     post_sms_request,
@@ -29,6 +36,7 @@ from app.v2.notifications.create_response import (
     create_post_email_response_from_notification,
     create_post_letter_response_from_notification
 )
+from app.variables import LETTER_TEST_API_FILENAME
 
 
 @v2_notification_blueprint.route('/<notification_type>', methods=['POST'])
@@ -58,10 +66,9 @@ def post_notification(notification_type):
 
     if notification_type == LETTER_TYPE:
         notification = process_letter_notification(
-            form=form,
+            letter_data=form,
             api_key=api_user,
             template=template,
-            service=authenticated_service,
         )
     else:
         notification = process_sms_or_email_notification(
@@ -140,10 +147,25 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
     return notification
 
 
-def process_letter_notification(*, form, api_key, template, service):
-    # create job
+def process_letter_notification(*, letter_data, api_key, template):
+    if api_key.key_type == KEY_TYPE_TEAM:
+        raise BadRequestError(message='Cannot send letters with a team api key', status_code=403)
 
-    # create notification
+    job = create_letter_api_job(template)
+    notification = create_letter_notification(letter_data, job, api_key)
 
-    # trigger build_dvla_file task
-    raise NotImplementedError
+    if api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST:
+
+        # distinguish real API jobs from test jobs by giving the test jobs a different filename
+        job.original_file_name = LETTER_TEST_API_FILENAME
+        dao_update_job(job)
+
+        update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
+    else:
+        build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
+
+    current_app.logger.info("send job {} for api notification {} to build-dvla-file in the process-job queue".format(
+        job.id,
+        notification.id
+    ))
+    return notification

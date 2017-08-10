@@ -46,7 +46,7 @@ from app.dao.notifications_dao import (
     dao_created_scheduled_notification, dao_get_scheduled_notifications, set_scheduled_notification_to_processed)
 
 from app.dao.services_dao import dao_update_service
-from tests.app.db import create_notification
+from tests.app.db import create_notification, create_api_key
 from tests.app.conftest import (
     sample_notification,
     sample_template,
@@ -117,14 +117,14 @@ def test_template_usage_should_ignore_test_keys(
         notify_db_session,
         created_at=two_minutes_ago,
         template=sms,
-        api_key_id=sample_team_api_key.id,
+        api_key=sample_team_api_key,
         key_type=KEY_TYPE_TEAM)
     sample_notification(
         notify_db,
         notify_db_session,
         created_at=one_minute_ago,
         template=sms,
-        api_key_id=sample_test_api_key.id,
+        api_key=sample_test_api_key,
         key_type=KEY_TYPE_TEST)
 
     results = dao_get_last_template_usage(sms.id)
@@ -169,11 +169,11 @@ def test_template_history_should_ignore_test_keys(
     sms = sample_template(notify_db, notify_db_session)
 
     sample_notification(
-        notify_db, notify_db_session, template=sms, api_key_id=sample_api_key.id, key_type=KEY_TYPE_NORMAL)
+        notify_db, notify_db_session, template=sms, api_key=sample_api_key, key_type=KEY_TYPE_NORMAL)
     sample_notification(
-        notify_db, notify_db_session, template=sms, api_key_id=sample_team_api_key.id, key_type=KEY_TYPE_TEAM)
+        notify_db, notify_db_session, template=sms, api_key=sample_team_api_key, key_type=KEY_TYPE_TEAM)
     sample_notification(
-        notify_db, notify_db_session, template=sms, api_key_id=sample_test_api_key.id, key_type=KEY_TYPE_TEST)
+        notify_db, notify_db_session, template=sms, api_key=sample_test_api_key, key_type=KEY_TYPE_TEST)
     sample_notification(
         notify_db, notify_db_session, template=sms)
 
@@ -836,13 +836,16 @@ def test_get_notification_by_id(notify_db, notify_db_session, sample_template):
     assert notification_from_db.scheduled_notification.scheduled_for == datetime(2017, 5, 5, 14, 15)
 
 
-def test_get_notifications_by_reference(notify_db, notify_db_session, sample_service):
+def test_get_notifications_by_reference(sample_template):
     client_reference = 'some-client-ref'
     assert len(Notification.query.all()) == 0
-    sample_notification(notify_db, notify_db_session, client_reference=client_reference)
-    sample_notification(notify_db, notify_db_session, client_reference=client_reference)
-    sample_notification(notify_db, notify_db_session, client_reference='other-ref')
-    all_notifications = get_notifications_for_service(sample_service.id, client_reference=client_reference).items
+    create_notification(sample_template, client_reference=client_reference)
+    create_notification(sample_template, client_reference=client_reference)
+    create_notification(sample_template, client_reference='other-ref')
+    all_notifications = get_notifications_for_service(
+        sample_template.service_id,
+        client_reference=client_reference
+    ).items
     assert len(all_notifications) == 2
 
 
@@ -1066,22 +1069,22 @@ def test_should_not_delete_notification_history(notify_db, notify_db_session, sa
 
 
 @freeze_time("2016-01-10")
-def test_should_limit_notifications_return_by_day_limit_plus_one(notify_db, notify_db_session, sample_service):
+def test_should_limit_notifications_return_by_day_limit_plus_one(sample_template):
     assert len(Notification.query.all()) == 0
 
     # create one notification a day between 1st and 9th
     for i in range(1, 11):
         past_date = '2016-01-{0:02d}'.format(i)
         with freeze_time(past_date):
-            sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow(), status="failed")
+            create_notification(sample_template, created_at=datetime.utcnow(), status="failed")
 
     all_notifications = Notification.query.all()
     assert len(all_notifications) == 10
 
-    all_notifications = get_notifications_for_service(sample_service.id, limit_days=10).items
+    all_notifications = get_notifications_for_service(sample_template.service_id, limit_days=10).items
     assert len(all_notifications) == 10
 
-    all_notifications = get_notifications_for_service(sample_service.id, limit_days=1).items
+    all_notifications = get_notifications_for_service(sample_template.service_id, limit_days=1).items
     assert len(all_notifications) == 2
 
 
@@ -1302,42 +1305,20 @@ def test_dao_timeout_notifications_doesnt_affect_letters(sample_letter_template)
     assert updated == 0
 
 
-def test_should_return_notifications_excluding_jobs_by_default(notify_db, notify_db_session, sample_service):
-    assert len(Notification.query.all()) == 0
+def test_should_return_notifications_excluding_jobs_by_default(sample_template, sample_job, sample_api_key):
+    with_job = create_notification(sample_template, job=sample_job)
+    without_job = create_notification(sample_template, api_key=sample_api_key)
 
-    job = sample_job(notify_db, notify_db_session)
-    with_job = sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), status="delivered", job=job
-    )
-    without_job = sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), status="delivered"
-    )
+    include_jobs = get_notifications_for_service(sample_template.service_id, include_jobs=True).items
+    assert len(include_jobs) == 2
 
-    all_notifications = Notification.query.all()
-    assert len(all_notifications) == 2
+    exclude_jobs_by_default = get_notifications_for_service(sample_template.service_id).items
+    assert len(exclude_jobs_by_default) == 1
+    assert exclude_jobs_by_default[0].id == without_job.id
 
-    all_notifications = get_notifications_for_service(sample_service.id).items
-    assert len(all_notifications) == 1
-    assert all_notifications[0].id == without_job.id
-
-
-def test_should_return_notifications_including_jobs(notify_db, notify_db_session, sample_service):
-    assert len(Notification.query.all()) == 0
-
-    job = sample_job(notify_db, notify_db_session)
-    with_job = sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), status="delivered", job=job
-    )
-
-    all_notifications = Notification.query.all()
-    assert len(all_notifications) == 1
-
-    all_notifications = get_notifications_for_service(sample_service.id).items
-    assert len(all_notifications) == 0
-
-    all_notifications = get_notifications_for_service(sample_service.id, limit_days=1, include_jobs=True).items
-    assert len(all_notifications) == 1
-    assert all_notifications[0].id == with_job.id
+    exclude_jobs_manually = get_notifications_for_service(sample_template.service_id, include_jobs=False).items
+    assert len(exclude_jobs_manually) == 1
+    assert exclude_jobs_manually[0].id == without_job.id
 
 
 def test_get_notifications_created_by_api_or_csv_are_returned_correctly_excluding_test_key_notifications(
@@ -1353,15 +1334,15 @@ def test_get_notifications_created_by_api_or_csv_are_returned_correctly_excludin
         notify_db, notify_db_session, created_at=datetime.utcnow(), job=sample_job
     )
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_api_key,
         key_type=sample_api_key.key_type
     )
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_team_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_team_api_key,
         key_type=sample_team_api_key.key_type
     )
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_test_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_test_api_key,
         key_type=sample_test_api_key.key_type
     )
 
@@ -1394,15 +1375,15 @@ def test_get_notifications_with_a_live_api_key_type(
         notify_db, notify_db_session, created_at=datetime.utcnow(), job=sample_job
     )
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_api_key,
         key_type=sample_api_key.key_type
     )
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_team_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_team_api_key,
         key_type=sample_team_api_key.key_type
     )
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_test_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_test_api_key,
         key_type=sample_test_api_key.key_type
     )
 
@@ -1432,15 +1413,15 @@ def test_get_notifications_with_a_test_api_key_type(
         notify_db, notify_db_session, created_at=datetime.utcnow(), job=sample_job
     )
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_api_key,
         key_type=sample_api_key.key_type
     )
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_team_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_team_api_key,
         key_type=sample_team_api_key.key_type
     )
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_test_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_test_api_key,
         key_type=sample_test_api_key.key_type
     )
 
@@ -1467,15 +1448,15 @@ def test_get_notifications_with_a_team_api_key_type(
         notify_db, notify_db_session, created_at=datetime.utcnow(), job=sample_job
     )
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_api_key,
         key_type=sample_api_key.key_type
     )
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_team_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_team_api_key,
         key_type=sample_team_api_key.key_type
     )
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_test_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_test_api_key,
         key_type=sample_test_api_key.key_type
     )
 
@@ -1503,15 +1484,15 @@ def test_should_exclude_test_key_notifications_by_default(
     )
 
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_api_key,
         key_type=sample_api_key.key_type
     )
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_team_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_team_api_key,
         key_type=sample_team_api_key.key_type
     )
     sample_notification(
-        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key_id=sample_test_api_key.id,
+        notify_db, notify_db_session, created_at=datetime.utcnow(), api_key=sample_test_api_key,
         key_type=sample_test_api_key.key_type
     )
 
@@ -1784,13 +1765,15 @@ def test_dao_update_notifications_sent_to_dvla(notify_db, notify_db_session, sam
     assert history.updated_at
 
 
-def test_dao_update_notifications_sent_to_dvla_does_update_history_if_test_key(
-        notify_db, notify_db_session, sample_letter_template, sample_api_key):
-    job = sample_job(notify_db=notify_db, notify_db_session=notify_db_session, template=sample_letter_template)
+def test_dao_update_notifications_sent_to_dvla_does_update_history_if_test_key(sample_letter_job):
+    api_key = create_api_key(sample_letter_job.service, key_type=KEY_TYPE_TEST)
     notification = create_notification(
-        template=sample_letter_template, job=job, api_key_id=sample_api_key.id, key_type='test')
+        sample_letter_job.template,
+        job=sample_letter_job,
+        api_key=api_key
+    )
 
-    updated_count = dao_update_notifications_sent_to_dvla(job_id=job.id, provider='some provider')
+    updated_count = dao_update_notifications_sent_to_dvla(job_id=sample_letter_job.id, provider='some provider')
 
     assert updated_count == 1
     updated_notification = Notification.query.get(notification.id)
@@ -1798,7 +1781,7 @@ def test_dao_update_notifications_sent_to_dvla_does_update_history_if_test_key(
     assert updated_notification.sent_by == 'some provider'
     assert updated_notification.sent_at
     assert updated_notification.updated_at
-    assert not NotificationHistory.query.get(notification.id)
+    assert NotificationHistory.query.count() == 0
 
 
 def test_dao_get_notifications_by_to_field(sample_template):
