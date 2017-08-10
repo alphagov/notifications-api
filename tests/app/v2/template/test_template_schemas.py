@@ -51,11 +51,18 @@ valid_json_post_args = {
 }
 
 invalid_json_post_args = [
-    ({"id": "invalid_uuid", "personalisation": {"key": "value"}}, ["id is not a valid UUID"]),
-    ({"id": str(uuid.uuid4()), "personalisation": "invalid_personalisation"},
-     ["personalisation should contain key value pairs"]),
-    ({"personalisation": "invalid_personalisation"},
-     ["id is a required property", "personalisation should contain key value pairs"])
+    (
+        {"id": "invalid_uuid", "personalisation": {"key": "value"}},
+        ["id is not a valid UUID"]
+    ),
+    (
+        {"id": str(uuid.uuid4()), "personalisation": ['a', 'b']},
+        ["personalisation [a, b] is not of type object"]
+    ),
+    (
+        {"personalisation": "invalid_personalisation"},
+        ["id is a required property", "personalisation invalid_personalisation is not of type object"]
+    )
 ]
 
 valid_json_post_response = {

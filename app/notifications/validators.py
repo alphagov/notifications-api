@@ -9,7 +9,7 @@ from notifications_utils.clients.redis import rate_limit_cache_key, daily_limit_
 
 from app.dao import services_dao, templates_dao
 from app.models import (
-    INTERNATIONAL_SMS_TYPE, SMS_TYPE,
+    INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE,
     KEY_TYPE_TEST, KEY_TYPE_TEAM, SCHEDULE_NOTIFICATIONS
 )
 from app.service.utils import service_allowed_to_send_to
@@ -104,7 +104,7 @@ def validate_and_format_recipient(send_to, key_type, service, notification_type)
             number=send_to,
             international=international_phone_info.international
         )
-    else:
+    elif notification_type == EMAIL_TYPE:
         return validate_and_format_email_address(email_address=send_to)
 
 

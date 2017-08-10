@@ -22,7 +22,6 @@ class QueueNames(object):
     PERIODIC = 'periodic-tasks'
     PRIORITY = 'priority-tasks'
     DATABASE = 'database-tasks'
-    SEND_COMBINED = 'send-tasks'
     SEND_SMS = 'send-sms-tasks'
     SEND_EMAIL = 'send-email-tasks'
     RESEARCH_MODE = 'research-mode-tasks'
@@ -38,7 +37,6 @@ class QueueNames(object):
             QueueNames.PRIORITY,
             QueueNames.PERIODIC,
             QueueNames.DATABASE,
-            QueueNames.SEND_COMBINED,
             QueueNames.SEND_SMS,
             QueueNames.SEND_EMAIL,
             QueueNames.RESEARCH_MODE,
@@ -97,7 +95,7 @@ class Config(object):
 
     # Logging
     DEBUG = False
-    LOGGING_STDOUT_JSON = os.getenv('LOGGING_STDOUT_JSON') == '1'
+    NOTIFY_LOG_PATH = os.getenv('NOTIFY_LOG_PATH')
 
     ###########################
     # Default config values ###
@@ -108,14 +106,12 @@ class Config(object):
     AWS_REGION = 'eu-west-1'
     INVITATION_EXPIRATION_DAYS = 2
     NOTIFY_APP_NAME = 'api'
-    NOTIFY_LOG_PATH = '/var/log/notify/application.log'
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False
     SQLALCHEMY_RECORD_QUERIES = True
     SQLALCHEMY_TRACK_MODIFICATIONS = True
     PAGE_SIZE = 50
     API_PAGE_SIZE = 250
     SMS_CHAR_COUNT_LIMIT = 495
-    BRANDING_PATH = '/images/email-template/crests/'
     TEST_MESSAGE_FILENAME = 'Test message'
     ONE_OFF_MESSAGE_FILENAME = 'Report'
     MAX_VERIFY_CODE_COUNT = 10
@@ -224,6 +220,11 @@ class Config(object):
             'task': 'timeout-job-statistics',
             'schedule': crontab(minute=0, hour=5),
             'options': {'queue': QueueNames.PERIODIC}
+        },
+        'populate_monthly_billing': {
+            'task': 'populate_monthly_billing',
+            'schedule': crontab(minute=10, hour=5),
+            'options': {'queue': QueueNames.PERIODIC}
         }
     }
     CELERY_QUEUES = []
@@ -275,6 +276,7 @@ class Config(object):
 ######################
 
 class Development(Config):
+    NOTIFY_LOG_PATH = 'application.log'
     SQLALCHEMY_ECHO = False
     NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'

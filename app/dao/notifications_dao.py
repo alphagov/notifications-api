@@ -149,11 +149,11 @@ def dao_get_template_usage(service_id, limit_days=None):
 
 @statsd(namespace="dao")
 def dao_get_last_template_usage(template_id):
-    return NotificationHistory.query.filter(
-        NotificationHistory.template_id == template_id,
-        NotificationHistory.key_type != KEY_TYPE_TEST
+    return Notification.query.filter(
+        Notification.template_id == template_id,
+        Notification.key_type != KEY_TYPE_TEST
     ).order_by(
-        desc(NotificationHistory.created_at)
+        desc(Notification.created_at)
     ).first()
 
 
@@ -338,7 +338,8 @@ def get_notifications_for_service(
         filters.append(Notification.created_at < older_than_created_at)
 
     if not include_jobs or (key_type and key_type != KEY_TYPE_NORMAL):
-        filters.append(Notification.job_id.is_(None))
+        # we can't say "job_id == None" here, because letters sent via the API still have a job_id :(
+        filters.append(Notification.api_key_id != None)  # noqa
 
     if key_type is not None:
         filters.append(Notification.key_type == key_type)

@@ -52,13 +52,18 @@ def restrict_ip_sms():
         ip_list = ip_route.split(',')
         if len(ip_list) >= 3:
             ip = ip_list[len(ip_list) - 3]
-        current_app.logger.info("Inbound sms ip route list {}".format(ip_route))
+        current_app.logger.info("Inbound sms ip route list {}"
+                                .format(ip_route))
+
+    # Temporary custom header for route security - to experiment if the header passes through
+    if request.headers.get("X-Custom-forwarder"):
+        current_app.logger.info("X-Custom-forwarder {}".format(request.headers.get("X-Custom-forwarder")))
 
     if ip in current_app.config.get('SMS_INBOUND_WHITELIST'):
         current_app.logger.info("Inbound sms ip addresses {} passed ".format(ip))
         return
     else:
-        current_app.logger.info("Inbound sms ip addresses {} blocked ".format(ip))
+        current_app.logger.info("Inbound sms ip addresses blocked {}".format(ip))
         return
         # raise AuthError('Unknown source IP address from the SMS provider', 403)
 

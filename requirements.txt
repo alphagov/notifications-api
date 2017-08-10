@@ -6,21 +6,20 @@ Flask-SQLAlchemy==2.0
 psycopg2==2.6.2
 SQLAlchemy==1.0.15
 SQLAlchemy-Utils==0.32.9
-PyJWT==1.4.2
+PyJWT==1.5.2
 marshmallow==2.4.2
 marshmallow-sqlalchemy==0.8.0
 flask-marshmallow==0.6.2
 Flask-Bcrypt==0.6.2
-credstash==1.8.0
 boto3==1.4.4
-celery==3.1.25
-monotonic==1.2
+monotonic==1.3
 statsd==3.2.1
-jsonschema==2.5.1
+jsonschema==2.6.0
 gunicorn==19.6.0
 docopt==0.6.2
 six==1.10.0
-iso8601==0.1.11
+iso8601==0.1.12
+celery==3.1.25 # pyup: <4
 
 # pin to minor version 3.1.x
 notifications-python-client==4.3.1
@@ -29,6 +28,6 @@ notifications-python-client==4.3.1
 awscli>=1.11,<1.12
 awscli-cwlogs>=1.4,<1.5
 
-git+https://github.com/alphagov/notifications-utils.git@17.5.7#egg=notifications-utils==17.5.7
+git+https://github.com/alphagov/notifications-utils.git@18.0.0#egg=notifications-utils==18.0.0
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3

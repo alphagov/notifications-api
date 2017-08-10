@@ -52,11 +52,9 @@ function on_exit {
   kill 0
 }
 
-function start_appplication {
-  exec "$@" 2>&1 | while read line; do echo $line; echo $line >> /home/vcap/logs/app.log.`date +%Y-%m-%d`; done &
-  LOGGER_PID=$!
+function start_application {
+  exec "$@" &
   APP_PID=`jobs -p`
-  echo "Logger process pid: ${LOGGER_PID}"
   echo "Application process pid: ${APP_PID}"
 }
 
@@ -69,7 +67,6 @@ function start_aws_logs_agent {
 function run {
   while true; do
     kill -0 ${APP_PID} 2&>/dev/null || break
-    kill -0 ${LOGGER_PID} 2&>/dev/null || break
     kill -0 ${AWSLOGS_AGENT_PID} 2&>/dev/null || start_aws_logs_agent
     sleep 1
   done
@@ -84,7 +81,7 @@ trap "on_exit" EXIT
 configure_aws_logs
 
 # The application has to start first!
-start_appplication "$@"
+start_application "$@"
 
 start_aws_logs_agent
 

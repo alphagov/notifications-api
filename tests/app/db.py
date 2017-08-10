@@ -1,16 +1,18 @@
 from datetime import datetime
 import uuid
 
-
+from app import db
 from app.dao.jobs_dao import dao_create_job
 from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.models import (
+    ApiKey,
     Service,
     User,
     Template,
     Notification,
     ScheduledNotification,
     ServicePermission,
+    Rate,
     Job,
     InboundSms,
     Organisation,
@@ -49,7 +51,9 @@ def create_service(
     service_id=None,
     restricted=False,
     service_permissions=[EMAIL_TYPE, SMS_TYPE],
-    sms_sender='testing'
+    sms_sender='testing',
+    research_mode=False,
+    active=True,
 ):
     service = Service(
         name=service_name,
@@ -57,9 +61,13 @@ def create_service(
         restricted=restricted,
         email_from=service_name.lower().replace(' ', '.'),
         created_by=user or create_user(),
-        sms_sender=sms_sender
+        sms_sender=sms_sender,
     )
     dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
+
+    service.active = active
+    service.research_mode = research_mode
+
     return service
 
 
@@ -96,7 +104,7 @@ def create_notification(
     updated_at=None,
     billable_units=1,
     personalisation=None,
-    api_key_id=None,
+    api_key=None,
     key_type=KEY_TYPE_NORMAL,
     sent_by=None,
     client_reference=None,
@@ -113,14 +121,20 @@ def create_notification(
         sent_at = sent_at or datetime.utcnow()
         updated_at = updated_at or datetime.utcnow()
 
+    if job is None and api_key is None:
+        # we didn't specify in test - lets create it
+        api_key = ApiKey.query.filter(ApiKey.service == template.service, ApiKey.key_type == key_type).first()
+        if not api_key:
+            api_key = create_api_key(template.service, key_type=key_type)
+
     data = {
         'id': uuid.uuid4(),
         'to': to_field,
-        'job_id': job.id if job else None,
+        'job_id': job and job.id,
         'job': job,
         'service_id': template.service.id,
         'service': template.service,
-        'template_id': template.id if template else None,
+        'template_id': template and template.id,
         'template': template,
         'template_version': template.version,
         'status': status,
@@ -130,8 +144,9 @@ def create_notification(
         'billable_units': billable_units,
         'personalisation': personalisation,
         'notification_type': template.template_type,
-        'api_key_id': api_key_id,
-        'key_type': key_type,
+        'api_key': api_key,
+        'api_key_id': api_key and api_key.id,
+        'key_type': api_key.key_type if api_key else key_type,
         'sent_by': sent_by,
         'updated_at': updated_at,
         'client_reference': client_reference,
@@ -239,3 +254,25 @@ def create_organisation(colour='blue', logo='test_x2.png', name='test_org_1'):
     dao_create_organisation(organisation)
 
     return organisation
+
+
+def create_rate(start_date, value, notification_type):
+    rate = Rate(id=uuid.uuid4(), valid_from=start_date, rate=value, notification_type=notification_type)
+    db.session.add(rate)
+    db.session.commit()
+    return rate
+
+
+def create_api_key(service, key_type=KEY_TYPE_NORMAL):
+    id_ = uuid.uuid4()
+    api_key = ApiKey(
+        service=service,
+        name='{} api key {}'.format(key_type, id_),
+        created_by=service.created_by,
+        key_type=key_type,
+        id=id_,
+        secret=uuid.uuid4()
+    )
+    db.session.add(api_key)
+    db.session.commit()
+    return api_key
