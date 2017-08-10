@@ -5,8 +5,8 @@ from flask.ext.script import Command, Manager, Option
 
 
 from app import db
-from app.dao.monthly_billing_dao import create_or_update_monthly_billing_sms, get_monthly_billing_sms
-from app.models import (PROVIDERS, User)
+from app.dao.monthly_billing_dao import create_or_update_monthly_billing, get_monthly_billing_by_notification_type
+from app.models import PROVIDERS, User, SMS_TYPE, EMAIL_TYPE
 from app.dao.services_dao import (
     delete_service_and_all_associated_db_objects,
     dao_fetch_all_services_by_user
@@ -166,7 +166,13 @@ class PopulateMonthlyBilling(Command):
                 self.populate(service_id, year, i)
 
         def populate(self, service_id, year, month):
-            create_or_update_monthly_billing_sms(service_id, datetime(int(year), int(month), 1))
-            results = get_monthly_billing_sms(service_id, datetime(int(year), int(month), 1))
+            create_or_update_monthly_billing(service_id, datetime(int(year), int(month), 1))
+            sms_res = get_monthly_billing_by_notification_type(
+                service_id, datetime(int(year), int(month), 1), SMS_TYPE
+            )
+            email_res = get_monthly_billing_by_notification_type(
+                service_id, datetime(int(year), int(month), 1), EMAIL_TYPE
+            )
             print("Finished populating data for {} for service id {}".format(month, service_id))
-            print(results.monthly_totals)
+            print('SMS: {}'.format(sms_res.monthly_totals))
+            print('Email: {}'.format(email_res.monthly_totals))
