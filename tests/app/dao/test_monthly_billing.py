@@ -378,3 +378,114 @@ def test_get_monthly_billing_entry_filters_by_service(notify_db, notify_db_sessi
 
     assert entry.start_date == now
     assert entry.service_id == service_2.id
+
+
+def test_get_yearly_billing_data_for_year_returns_within_year_only(
+    sample_template
+):
+    monthly_billing_entry = partial(
+        create_monthly_billing_entry, service=sample_template.service, notification_type=SMS_TYPE
+    )
+    monthly_billing_entry(start_date=FEB_2016_MONTH_START, end_date=FEB_2016_MONTH_END)
+    monthly_billing_entry(
+        monthly_totals=[{
+            "billing_units": 138,
+            "rate": 0.0158,
+            "rate_multiplier": 1,
+            "total_cost": 2.1804,
+            "international": None
+        }],
+        start_date=APR_2016_MONTH_START,
+        end_date=APR_2016_MONTH_END,
+        notification_type=SMS_TYPE
+    )
+    monthly_billing_entry(start_date=APR_2017_MONTH_START, end_date=APR_2017_MONTH_END)
+
+    billing_data = get_billing_data_for_financial_year(sample_template.service.id, 2016, [SMS_TYPE])
+
+    assert len(billing_data) == 1
+    assert billing_data[0].monthly_totals[0]['billing_units'] == 138
+
+
+def test_get_yearly_billing_data_for_year_returns_multiple_notification_types(sample_template):
+    monthly_billing_entry = partial(
+        create_monthly_billing_entry, service=sample_template.service,
+        start_date=APR_2016_MONTH_START, end_date=APR_2016_MONTH_END
+    )
+
+    monthly_billing_entry(
+        notification_type=SMS_TYPE, monthly_totals=[]
+    )
+    monthly_billing_entry(
+        notification_type=EMAIL_TYPE,
+        monthly_totals=[{
+            "billing_units": 2,
+            "rate": 1.3,
+            "rate_multiplier": 3,
+            "total_cost": 2.1804,
+            "international": False
+        }]
+    )
+
+    billing_data = get_billing_data_for_financial_year(
+        service_id=sample_template.service.id,
+        year=2016,
+        notification_types=[SMS_TYPE, EMAIL_TYPE]
+    )
+
+    assert len(billing_data) == 2
+    _assert_monthly_billing(
+        billing_data[0], sample_template.service.id, 'email', APR_2016_MONTH_START, APR_2016_MONTH_END
+    )
+    _assert_monthly_billing_totals(billing_data[0].monthly_totals[0], {
+        "billing_units": 2,
+        "rate_multiplier": 3,
+        "international": False,
+        "rate": 1.3,
+        "total_cost": 2.1804
+    })
+
+    _assert_monthly_billing(
+        billing_data[1], sample_template.service.id, 'sms', APR_2016_MONTH_START, APR_2016_MONTH_END
+    )
+    assert billing_data[1].monthly_totals == []
+
+
+@freeze_time("2016-04-21 11:00:00")
+def test_get_yearly_billing_data_for_year_includes_current_day_totals(sample_template):
+    create_rate(start_date=FEB_2016_MONTH_START, value=0.0158, notification_type=SMS_TYPE)
+
+    create_monthly_billing_entry(
+        service=sample_template.service,
+        start_date=APR_2016_MONTH_START,
+        end_date=APR_2016_MONTH_END,
+        notification_type=SMS_TYPE
+    )
+
+    billing_data = get_billing_data_for_financial_year(
+        service_id=sample_template.service.id,
+        year=2016,
+        notification_types=[SMS_TYPE]
+    )
+
+    assert len(billing_data) == 1
+    _assert_monthly_billing(
+        billing_data[0], sample_template.service.id, 'sms', APR_2016_MONTH_START, APR_2016_MONTH_END
+    )
+    assert billing_data[0].monthly_totals == []
+
+    create_notification(
+        template=sample_template,
+        created_at=datetime.utcnow(),
+        sent_at=datetime.utcnow(),
+        status='sending',
+        billable_units=3
+    )
+
+    billing_data = get_billing_data_for_financial_year(
+        service_id=sample_template.service.id,
+        year=2016,
+        notification_types=[SMS_TYPE]
+    )
+
+    assert billing_data[0].monthly_totals[0]['billing_units'] == 3

@@ -79,19 +79,38 @@ def get_monthly_billing_entry(service_id, start_date, notification_type):
 
 
 @statsd(namespace="dao")
-def get_monthly_billing_sms(service_id, billing_month):
-    start_date, end_date = get_month_start_end_date(billing_month)
-    monthly = MonthlyBilling.query.filter_by(service_id=service_id,
-                                             start_date=start_date,
-                                             notification_type=SMS_TYPE).first()
-    return monthly
+def get_yearly_billing_data_for_date_range(
+    service_id, start_date, end_date, notification_types
+):
+    results = MonthlyBilling.query.filter(
+        MonthlyBilling.service_id == service_id,
+        MonthlyBilling.start_date >= start_date,
+        MonthlyBilling.end_date <= end_date,
+        MonthlyBilling.notification_type.in_(notification_types)
+    ).order_by(
+        MonthlyBilling.notification_type
+    ).all()
+
+    return results
 
 
-def _monthly_billing_data_to_json(monthly):
-    # total cost must take into account the free allowance.
-    # might be a good idea to capture free allowance in this table
-    return [{"billing_units": x.billing_units,
-             "rate_multiplier": x.rate_multiplier,
-             "international": x.international,
-             "rate": x.rate,
-             "total_cost": (x.billing_units * x.rate_multiplier) * x.rate} for x in monthly]
+@statsd(namespace="dao")
+def get_monthly_billing_by_notification_type(service_id, billing_month, notification_type):
+    billing_month_in_bst = convert_utc_to_bst(billing_month)
+    start_date, _ = get_month_start_and_end_date_in_utc(billing_month_in_bst)
+    return get_monthly_billing_entry(service_id, start_date, notification_type)
+
+
+@statsd(namespace="dao")
+def get_billing_data_for_financial_year(service_id, year, notification_types=[SMS_TYPE, EMAIL_TYPE]):
+    # Update totals to the latest so we include data for today
+    now = convert_utc_to_bst(datetime.utcnow())
+    create_or_update_monthly_billing(service_id=service_id, billing_month=now)
+
+    start_date, end_date = get_financial_year(year)
+
+    results = get_yearly_billing_data_for_date_range(
+        service_id, start_date, end_date, notification_types
+    )
+
+    return results
