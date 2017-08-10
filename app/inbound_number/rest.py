@@ -5,7 +5,7 @@ from app.dao.inbound_numbers_dao import (
     dao_get_inbound_number_for_service,
     dao_get_available_inbound_numbers,
     dao_set_inbound_number_to_service,
-    dao_set_inbound_number_active_flag_for_service
+    dao_set_inbound_number_active_flag
 )
 from app.errors import register_errors
 from app.models import InboundNumber
@@ -35,11 +35,11 @@ def post_allocate_or_reactivate_inbound_number(service_id):
         else:
             return '', 409
     else:
-        dao_set_inbound_number_active_flag_for_service(service_id, active=True)
+        dao_set_inbound_number_active_flag(service_id, active=True)
         return '', 204
 
 
 @inbound_number_blueprint.route('/<uuid:service_id>/off', methods=['POST'])
 def post_deactivate_inbound_number(service_id):
-    dao_set_inbound_number_active_flag_for_service(service_id, active=False)
+    dao_set_inbound_number_active_flag(service_id, active=False)
     return '', 204
