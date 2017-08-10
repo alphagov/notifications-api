@@ -1,26 +1,23 @@
-from datetime import datetime, timedelta, date
-from functools import partial
 import json
 import uuid
+from datetime import datetime, timedelta, date
+from functools import partial
 from unittest.mock import ANY
 
 import pytest
 from flask import url_for, current_app
 from freezegun import freeze_time
 
-from app import encryption
-from app.dao.users_dao import save_model_user
 from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
+from app.dao.users_dao import save_model_user
 from app.models import (
     User, Organisation, Rate, Service, ServicePermission, Notification,
     DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
 )
-
 from tests import create_authorization_header
-from tests.app.db import create_template, create_service_inbound_api, create_user, create_notification
 from tests.app.conftest import (
     sample_service as create_service,
     sample_user_service_permission as create_user_service_permission,
@@ -28,8 +25,8 @@ from tests.app.conftest import (
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
+from tests.app.db import create_template, create_service_inbound_api, create_notification
 from tests.app.db import create_user
-from tests.conftest import set_config_values
 
 
 def test_get_service_list(client, service_factory):
@@ -2311,3 +2308,32 @@ def test_search_for_notification_by_to_field_returns_personlisation(
     assert len(notifications) == 1
     assert 'personalisation' in notifications[0].keys()
     assert notifications[0]['personalisation']['name'] == 'Foo'
+
+
+def test_is_service_name_unique_returns_200_if_unique(client):
+    response = client.get('/service/unique?name=something&email_from=something',
+                          headers=[create_authorization_header()])
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == {"result": True}
+
+
+@pytest.mark.parametrize('name, email_from',
+                         [("something unique", "something"),
+                          ("unique", "something.unique"),
+                          ("something unique", "something.unique")
+                          ])
+def test_is_service_name_unique_returns_200_and_false(client, notify_db, notify_db_session, name, email_from):
+    create_service(notify_db=notify_db, notify_db_session=notify_db_session,
+                   service_name='something unique', email_from='something.unique')
+    response = client.get('/service/unique?name={}&email_from={}'.format(name, email_from),
+                          headers=[create_authorization_header()])
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == {"result": False}
+
+
+def test_is_service_name_unique_returns_400_when_name_does_not_exist(client):
+    response = client.get('/service/unique', headers=[create_authorization_header()])
+    assert response.status_code == 400
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp["message"][0]["name"] == ["Can't be empty"]
+    assert json_resp["message"][1]["email_from"] == ["Can't be empty"]
