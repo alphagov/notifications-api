@@ -28,7 +28,7 @@ from app import (
 )
 
 from app.history_meta import Versioned
-from app.utils import convert_utc_time_in_bst, convert_bst_to_utc
+from app.utils import convert_utc_to_bst, convert_bst_to_utc
 
 SMS_TYPE = 'sms'
 EMAIL_TYPE = 'email'
@@ -950,7 +950,7 @@ class Notification(db.Model):
         }[self.template.template_type].get(self.status, self.status)
 
     def serialize_for_csv(self):
-        created_at_in_bst = convert_utc_time_in_bst(self.created_at)
+        created_at_in_bst = convert_utc_to_bst(self.created_at)
         serialized = {
             "row_number": '' if self.job_row_number is None else self.job_row_number + 1,
             "recipient": self.to,
@@ -1304,3 +1304,6 @@ class MonthlyBilling(db.Model):
             "notification_type": self.notification_type,
             "monthly_totals": self.monthly_totals
         }
+
+    def __repr__(self):
+        return str(self.serialized())
