@@ -2,38 +2,64 @@ from datetime import datetime
 
 from app import db
 from app.dao.dao_utils import transactional
-from app.dao.date_util import get_month_start_end_date
+from app.dao.date_util import get_month_start_and_end_date_in_utc, get_financial_year
 from app.dao.notification_usage_dao import get_billing_data_for_month
-from app.models import MonthlyBilling, SMS_TYPE, NotificationHistory
+from app.models import (
+    SMS_TYPE,
+    EMAIL_TYPE,
+    MonthlyBilling,
+    NotificationHistory
+)
 from app.statsd_decorators import statsd
+from app.utils import convert_utc_to_bst
 
 
-def get_service_ids_that_need_sms_billing_populated(start_date, end_date):
+def get_service_ids_that_need_billing_populated(start_date, end_date):
     return db.session.query(
         NotificationHistory.service_id
     ).filter(
         NotificationHistory.created_at >= start_date,
         NotificationHistory.created_at <= end_date,
-        NotificationHistory.notification_type == SMS_TYPE,
+        NotificationHistory.notification_type.in_([SMS_TYPE, EMAIL_TYPE]),
         NotificationHistory.billable_units != 0
     ).distinct().all()
 
 
-@transactional
-def create_or_update_monthly_billing_sms(service_id, billing_month):
-    start_date, end_date = get_month_start_end_date(billing_month)
-    monthly = get_billing_data_for_month(service_id=service_id, start_date=start_date, end_date=end_date)
-    # update monthly
-    monthly_totals = _monthly_billing_data_to_json(monthly)
-    row = get_monthly_billing_entry(service_id, start_date, SMS_TYPE)
+def create_or_update_monthly_billing(service_id, billing_month):
+    start_date, end_date = get_month_start_and_end_date_in_utc(billing_month)
+    _update_monthly_billing(service_id, start_date, end_date, SMS_TYPE)
+    _update_monthly_billing(service_id, start_date, end_date, EMAIL_TYPE)
 
+
+def _monthly_billing_data_to_json(monthly):
+    # total cost must take into account the free allowance.
+    # might be a good idea to capture free allowance in this table
+    return [{
+        "billing_units": x.billing_units,
+        "rate_multiplier": x.rate_multiplier,
+        "international": x.international,
+        "rate": x.rate,
+        "total_cost": (x.billing_units * x.rate_multiplier) * x.rate
+    } for x in monthly]
+
+
+@transactional
+def _update_monthly_billing(service_id, start_date, end_date, notification_type):
+    billing_data = get_billing_data_for_month(
+        service_id=service_id,
+        start_date=start_date,
+        end_date=end_date,
+        notification_type=notification_type
+    )
+    monthly_totals = _monthly_billing_data_to_json(billing_data)
+    row = get_monthly_billing_entry(service_id, start_date, notification_type)
     if row:
         row.monthly_totals = monthly_totals
         row.updated_at = datetime.utcnow()
     else:
         row = MonthlyBilling(
             service_id=service_id,
-            notification_type=SMS_TYPE,
+            notification_type=notification_type,
             monthly_totals=monthly_totals,
             start_date=start_date,
             end_date=end_date
