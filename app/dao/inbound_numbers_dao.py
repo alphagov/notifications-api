@@ -15,6 +15,10 @@ def dao_get_inbound_number_for_service(service_id):
     return InboundNumber.query.filter(InboundNumber.service_id == service_id).first()
 
 
+def dao_get_inbound_number(inbound_number_id):
+    return InboundNumber.query.filter(InboundNumber.id == inbound_number_id).first()
+
+
 @transactional
 def dao_set_inbound_number_to_service(service_id, inbound_number):
     inbound_number.service_id = service_id
@@ -23,8 +27,8 @@ def dao_set_inbound_number_to_service(service_id, inbound_number):
 
 
 @transactional
-def dao_set_inbound_number_active_flag_for_service(service_id, active):
-    inbound_number = dao_get_inbound_number_for_service(service_id)
+def dao_set_inbound_number_active_flag(inbound_number_id, active):
+    inbound_number = dao_get_inbound_number(inbound_number_id)
     inbound_number.active = active
 
     db.session.add(inbound_number)

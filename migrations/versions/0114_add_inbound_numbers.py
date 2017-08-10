@@ -2,7 +2,7 @@
 
 Revision ID: 0114_add_inbound_numbers
 Revises: 0113_job_created_by_nullable
-Create Date: 2017-08-03 11:08:00.970476
+Create Date: 2017-08-10 17:30:01.507694
 
 """
 
@@ -22,6 +22,7 @@ def upgrade():
     sa.Column('service_id', postgresql.UUID(as_uuid=True), nullable=True),
     sa.Column('active', sa.Boolean(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['service_id'], ['services.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('number')

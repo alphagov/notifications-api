@@ -252,6 +252,7 @@ class InboundNumber(db.Model):
     service = db.relationship(Service, backref=db.backref("inbound_number", uselist=False))
     active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
     def serialize(self):
         def serialize_service():
@@ -267,6 +268,7 @@ class InboundNumber(db.Model):
             "service": serialize_service() if self.service else None,
             "active": self.active,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
         }
 
 
