@@ -1862,7 +1862,9 @@ def test_get_monthly_billing_usage_returns_empty_list_if_no_notifications(client
         headers=[create_authorization_header()]
     )
     assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True)) == []
+
+    results = json.loads(response.get_data(as_text=True))
+    assert results == []
 
 
 def test_search_for_notification_by_to_field(client, notify_db, notify_db_session):

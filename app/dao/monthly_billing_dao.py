@@ -1,5 +1,8 @@
 from datetime import datetime
 
+from sqlalchemy import func
+
+
 from app import db
 from app.dao.dao_utils import transactional
 from app.dao.date_util import get_month_start_and_end_date_in_utc, get_financial_year
@@ -31,16 +34,19 @@ def create_or_update_monthly_billing(service_id, billing_month):
     _update_monthly_billing(service_id, start_date, end_date, EMAIL_TYPE)
 
 
-def _monthly_billing_data_to_json(monthly):
-    # total cost must take into account the free allowance.
-    # might be a good idea to capture free allowance in this table
-    return [{
-        "billing_units": x.billing_units,
-        "rate_multiplier": x.rate_multiplier,
-        "international": x.international,
-        "rate": x.rate,
-        "total_cost": (x.billing_units * x.rate_multiplier) * x.rate
-    } for x in monthly]
+def _monthly_billing_data_to_json(billing_data):
+    results = []
+    if billing_data:
+        # total cost must take into account the free allowance.
+        # might be a good idea to capture free allowance in this table
+        results = [{
+            "billing_units": x.billing_units,
+            "rate_multiplier": x.rate_multiplier,
+            "international": x.international,
+            "rate": x.rate,
+            "total_cost": (x.billing_units * x.rate_multiplier) * x.rate
+        } for x in billing_data]
+    return results
 
 
 @transactional
@@ -82,7 +88,11 @@ def get_monthly_billing_entry(service_id, start_date, notification_type):
 def get_yearly_billing_data_for_date_range(
     service_id, start_date, end_date, notification_types
 ):
-    results = MonthlyBilling.query.filter(
+    results = db.session.query(
+        MonthlyBilling.notification_type,
+        MonthlyBilling.monthly_totals,
+        MonthlyBilling.start_date,
+    ).filter(
         MonthlyBilling.service_id == service_id,
         MonthlyBilling.start_date >= start_date,
         MonthlyBilling.end_date <= end_date,
@@ -112,5 +122,4 @@ def get_billing_data_for_financial_year(service_id, year, notification_types=[SM
     results = get_yearly_billing_data_for_date_range(
         service_id, start_date, end_date, notification_types
     )
-
     return results

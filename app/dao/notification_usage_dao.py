@@ -127,6 +127,7 @@ def email_yearly_billing_data_query(service_id, start_date, end_date, rate=0):
         rate_multiplier(),
         NotificationHistory.international
     ).first()
+
     if not result:
         return [(0, 0, 1, EMAIL_TYPE, False, 0)]
     else:
@@ -187,9 +188,14 @@ def is_between(date, start_date, end_date):
 
 def billing_data_per_month_query(rate, service_id, start_date, end_date, notification_type):
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
-    result = db.session.query(
+    if notification_type == SMS_TYPE:
+        filter_subq = func.sum(NotificationHistory.billable_units).label('billing_units')
+    elif notification_type == EMAIL_TYPE:
+        filter_subq = func.count(NotificationHistory.billable_units).label('billing_units')
+
+    results = db.session.query(
         month.label('month'),
-        func.sum(NotificationHistory.billable_units).label('billing_units'),
+        filter_subq,
         rate_multiplier().label('rate_multiplier'),
         NotificationHistory.international,
         NotificationHistory.notification_type,
@@ -206,17 +212,7 @@ def billing_data_per_month_query(rate, service_id, start_date, end_date, notific
         rate_multiplier()
     ).all()
 
-    if not result and notification_type == EMAIL_TYPE:
-        start_date = convert_utc_to_bst(start_date)
-        BillingData = namedtuple(
-            'BillingData',
-            'start_date billing_units rate_multiplier international notification_type rate'
-        )
-        return [BillingData(start_date, 0, 1, False, notification_type, 0)]
-    else:
-        return result
-
-    return result
+    return results
 
 
 def rate_multiplier():

@@ -635,15 +635,12 @@ def test_populate_monthly_billing_populates_correctly(sample_template):
     assert monthly_billing[0].end_date == jul_month_end
     assert monthly_billing[0].notification_type == 'email'
     assert monthly_billing[0].notification_type == 'email'
-    assert len(monthly_billing[1].monthly_totals) == 1
-    assert monthly_billing[0].monthly_totals[0]['billing_units'] == 0
-    assert monthly_billing[0].monthly_totals[0]['total_cost'] == 0
+    assert monthly_billing[0].monthly_totals == []
 
     assert monthly_billing[1].service_id == sample_template.service_id
     assert monthly_billing[1].start_date == jul_month_start
     assert monthly_billing[1].end_date == jul_month_end
     assert monthly_billing[1].notification_type == 'sms'
-    assert len(monthly_billing[1].monthly_totals) == 1
     assert sorted(monthly_billing[1].monthly_totals[0]) == sorted(
         {
             'international': False,
@@ -672,7 +669,7 @@ def test_populate_monthly_billing_updates_correct_month_in_bst(sample_template):
     assert monthly_billing[0].start_date == apr_month_start
     assert monthly_billing[0].end_date == apr_month_end
     assert monthly_billing[0].notification_type == 'email'
-    assert monthly_billing[0].monthly_totals[0]['billing_units'] == 0
+    assert monthly_billing[0].monthly_totals == []
 
     assert monthly_billing[1].service_id == sample_template.service_id
     assert monthly_billing[1].start_date == apr_month_start

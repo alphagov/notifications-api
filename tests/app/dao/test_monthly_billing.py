@@ -41,12 +41,12 @@ JAN_2017_MONTH_END = datetime(2017, 1, 31, 23, 59, 59, 99999)
 FEB_2017 = datetime(2017, 2, 15)
 APR_2016 = datetime(2016, 4, 10)
 
-EMPTY_BILLING_DATA = {
-    'billing_units': 0,
-    'international': False,
-    'rate': 0,
-    'rate_multiplier': 1,
-    'total_cost': 0,
+NO_BILLING_DATA = {
+    "billing_units": 0,
+    "rate_multiplier": 1,
+    "international": False,
+    "rate": 0,
+    "total_cost": 0
 }
 
 
@@ -189,13 +189,7 @@ def test_add_monthly_billing_for_single_month_populates_correctly(
     _assert_monthly_billing(
         monthly_billing[0], sample_template.service.id, 'email', JAN_2017_MONTH_START, JAN_2017_MONTH_END
     )
-    _assert_monthly_billing_totals(monthly_billing[0].monthly_totals[0], {
-        "billing_units": 0,
-        "rate_multiplier": 1,
-        "international": False,
-        "rate": 0,
-        "total_cost": 0
-    })
+    assert monthly_billing[0].monthly_totals == []
 
     _assert_monthly_billing(
         monthly_billing[1], sample_template.service.id, 'sms', JAN_2017_MONTH_START, JAN_2017_MONTH_END
@@ -225,13 +219,23 @@ def test_add_monthly_billing_for_multiple_months_populate_correctly(
     create_or_update_monthly_billing(service_id=sample_template.service_id, billing_month=FEB_2016_MONTH_START)
     create_or_update_monthly_billing(service_id=sample_template.service_id, billing_month=MAR_2016_MONTH_START)
 
-    monthly_billing = MonthlyBilling.query.all()
+    monthly_billing = MonthlyBilling.query.order_by(MonthlyBilling.notification_type).all()
 
     assert len(monthly_billing) == 4
     _assert_monthly_billing(
-        monthly_billing[0], sample_template.service.id, 'sms', FEB_2016_MONTH_START, FEB_2016_MONTH_END
+        monthly_billing[0], sample_template.service.id, 'email', FEB_2016_MONTH_START, FEB_2016_MONTH_END
     )
-    _assert_monthly_billing_totals(monthly_billing[0].monthly_totals[0], {
+    assert monthly_billing[0].monthly_totals == []
+
+    _assert_monthly_billing(
+        monthly_billing[1], sample_template.service.id, 'email', MAR_2016_MONTH_START, MAR_2016_MONTH_END
+    )
+    assert monthly_billing[1].monthly_totals == []
+
+    _assert_monthly_billing(
+        monthly_billing[2], sample_template.service.id, 'sms', FEB_2016_MONTH_START, FEB_2016_MONTH_END
+    )
+    _assert_monthly_billing_totals(monthly_billing[2].monthly_totals[0], {
         "billing_units": 1,
         "rate_multiplier": 2,
         "international": False,
@@ -240,25 +244,15 @@ def test_add_monthly_billing_for_multiple_months_populate_correctly(
     })
 
     _assert_monthly_billing(
-        monthly_billing[1], sample_template.service.id, 'email', FEB_2016_MONTH_START, FEB_2016_MONTH_END
+        monthly_billing[3], sample_template.service.id, 'sms', MAR_2016_MONTH_START, MAR_2016_MONTH_END
     )
-    _assert_monthly_billing_totals(monthly_billing[1].monthly_totals[0], EMPTY_BILLING_DATA)
-
-    _assert_monthly_billing(
-        monthly_billing[2], sample_template.service.id, 'sms', MAR_2016_MONTH_START, MAR_2016_MONTH_END
-    )
-    _assert_monthly_billing_totals(monthly_billing[2].monthly_totals[0], {
+    _assert_monthly_billing_totals(monthly_billing[3].monthly_totals[0], {
         "billing_units": 2,
         "rate_multiplier": 3,
         "international": False,
         "rate": 0.12,
         "total_cost": 0.72
     })
-
-    _assert_monthly_billing(
-        monthly_billing[3], sample_template.service.id, 'email', MAR_2016_MONTH_START, MAR_2016_MONTH_END
-    )
-    _assert_monthly_billing_totals(monthly_billing[3].monthly_totals[0], EMPTY_BILLING_DATA)
 
 
 def test_add_monthly_billing_with_multiple_rates_populate_correctly(
@@ -274,31 +268,31 @@ def test_add_monthly_billing_with_multiple_rates_populate_correctly(
 
     create_or_update_monthly_billing(service_id=sample_template.service_id, billing_month=JAN_2017_MONTH_START)
 
-    monthly_billing = MonthlyBilling.query.all()
+    monthly_billing = MonthlyBilling.query.order_by(MonthlyBilling.notification_type).all()
 
     assert len(monthly_billing) == 2
     _assert_monthly_billing(
-        monthly_billing[0], sample_template.service.id, 'sms', JAN_2017_MONTH_START, JAN_2017_MONTH_END
+        monthly_billing[0], sample_template.service.id, 'email', JAN_2017_MONTH_START, JAN_2017_MONTH_END
     )
-    _assert_monthly_billing_totals(monthly_billing[0].monthly_totals[0], {
+    assert monthly_billing[0].monthly_totals == []
+
+    _assert_monthly_billing(
+        monthly_billing[1], sample_template.service.id, 'sms', JAN_2017_MONTH_START, JAN_2017_MONTH_END
+    )
+    _assert_monthly_billing_totals(monthly_billing[1].monthly_totals[0], {
         "billing_units": 1,
         "rate_multiplier": 1,
         "international": False,
         "rate": 0.0158,
         "total_cost": 0.0158
     })
-    _assert_monthly_billing_totals(monthly_billing[0].monthly_totals[1], {
+    _assert_monthly_billing_totals(monthly_billing[1].monthly_totals[1], {
         "billing_units": 2,
         "rate_multiplier": 1,
         "international": False,
         "rate": 0.123,
         "total_cost": 0.246
     })
-
-    _assert_monthly_billing(
-        monthly_billing[1], sample_template.service.id, 'email', JAN_2017_MONTH_START, JAN_2017_MONTH_END
-    )
-    _assert_monthly_billing_totals(monthly_billing[1].monthly_totals[0], EMPTY_BILLING_DATA)
 
 
 def test_update_monthly_billing_overwrites_old_totals(sample_template):
@@ -434,21 +428,10 @@ def test_get_yearly_billing_data_for_year_returns_multiple_notification_types(sa
     )
 
     assert len(billing_data) == 2
-    _assert_monthly_billing(
-        billing_data[0], sample_template.service.id, 'email', APR_2016_MONTH_START, APR_2016_MONTH_END
-    )
-    _assert_monthly_billing_totals(billing_data[0].monthly_totals[0], {
-        "billing_units": 2,
-        "rate_multiplier": 3,
-        "international": False,
-        "rate": 1.3,
-        "total_cost": 2.1804
-    })
 
-    _assert_monthly_billing(
-        billing_data[1], sample_template.service.id, 'sms', APR_2016_MONTH_START, APR_2016_MONTH_END
-    )
-    assert billing_data[1].monthly_totals == []
+    assert billing_data[0].notification_type == EMAIL_TYPE
+    assert billing_data[0].monthly_totals[0]['billing_units'] == 2
+    assert billing_data[1].notification_type == SMS_TYPE
 
 
 @freeze_time("2016-04-21 11:00:00")
@@ -469,9 +452,7 @@ def test_get_yearly_billing_data_for_year_includes_current_day_totals(sample_tem
     )
 
     assert len(billing_data) == 1
-    _assert_monthly_billing(
-        billing_data[0], sample_template.service.id, 'sms', APR_2016_MONTH_START, APR_2016_MONTH_END
-    )
+    assert billing_data[0].notification_type == SMS_TYPE
     assert billing_data[0].monthly_totals == []
 
     create_notification(
