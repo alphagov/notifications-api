@@ -1,3 +1,5 @@
+import pytest
+
 from flask import url_for
 import json
 
@@ -29,22 +31,6 @@ def test_rest_get_inbound_number(admin_request, notify_db_session, sample_servic
     assert result['data'] == inbound_number.serialize()
 
 
-def test_rest_set_service_to_several_inbound_numbers_returns_400(
-        admin_request, notify_db_session, sample_service):
-    service_1 = create_service(service_name='test service 1')
-    create_inbound_number(number='1', provider='mmg', active=False, service_id=sample_service.id)
-    inbound_number = create_inbound_number(number='2', provider='mmg', active=True, service_id=service_1.id)
-    service_2 = create_service(service_name='test service 2')
-
-    result = admin_request.post(
-        'inbound_number.post_set_inbound_number_for_service',
-        _expected_status=400,
-        inbound_number_id=inbound_number.id,
-        service_id=service_2.id
-    )
-    assert result['message'] == 'No inbound numbers available'
-
-
 def test_rest_set_number_to_several_services_returns_400(
         admin_request, notify_db_session, sample_service):
     service_1 = create_service(service_name='test service 1')
@@ -61,7 +47,7 @@ def test_rest_set_number_to_several_services_returns_400(
     assert result['message'] == 'Inbound number already assigned'
 
 
-def test_rest_set_multiple_number_to_a_service_returns_400(
+def test_rest_set_multiple_numbers_to_a_service_returns_400(
         admin_request, notify_db_session, sample_service):
     create_inbound_number(number='1', provider='mmg', active=True, service_id=sample_service.id)
     inbound_number = create_inbound_number(number='2', provider='mmg', active=True, service_id=None)
@@ -75,29 +61,18 @@ def test_rest_set_multiple_number_to_a_service_returns_400(
     assert result['message'] == 'Service already has an inbound number'
 
 
-def test_rest_set_inbound_number_active_flag_off(admin_request, notify_db_session):
+@pytest.mark.parametrize("active_flag,expected_flag_state", [("on", True), ("off", False)])
+def test_rest_set_inbound_number_active_flag(
+        admin_request, notify_db_session, active_flag, expected_flag_state):
     service = create_service(service_name='test service 1')
-    inbound_number = create_inbound_number(number='1', provider='mmg', active=True, service_id=service.id)
+    inbound_number = create_inbound_number(
+        number='1', provider='mmg', active=not expected_flag_state, service_id=service.id)
 
     admin_request.post(
-        'inbound_number.post_set_inbound_number_off',
+        'inbound_number.post_set_inbound_number_{}'.format(active_flag),
         _expected_status=204,
         inbound_number_id=inbound_number.id
     )
 
-    inbound_number_off = dao_get_inbound_number_for_service(service.id)
-    assert not inbound_number_off.active
-
-
-def test_rest_set_inbound_number_active_flag_on(admin_request, notify_db_session):
-    service = create_service(service_name='test service 1')
-    inbound_number = create_inbound_number(number='1', provider='mmg', active=False, service_id=service.id)
-
-    admin_request.post(
-        'inbound_number.post_set_inbound_number_on',
-        _expected_status=204,
-        inbound_number_id=inbound_number.id
-    )
-
-    inbound_number_on = dao_get_inbound_number_for_service(service.id)
-    assert inbound_number_on.active
+    inbound_number_from_db = dao_get_inbound_number_for_service(service.id)
+    assert inbound_number_from_db.active == expected_flag_state
