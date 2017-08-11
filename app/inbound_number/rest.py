@@ -8,7 +8,7 @@ from app.dao.inbound_numbers_dao import (
     dao_set_inbound_number_to_service,
     dao_set_inbound_number_active_flag
 )
-from app.errors import register_errors
+from app.errors import InvalidRequest, register_errors
 from app.models import InboundNumber
 from app.schema_validation import validate
 
@@ -30,32 +30,28 @@ def get_inbound_numbers_available():
     return jsonify(data=inbound_numbers)
 
 
-@inbound_number_blueprint.route('/service/<uuid:service_id>', methods=['POST'])
-def post_allocate_inbound_number(service_id):
+@inbound_number_blueprint.route('/service/<uuid:service_id>', methods=['GET'])
+def get_inbound_number_for_service(service_id):
     inbound_number = dao_get_inbound_number_for_service(service_id)
 
-    if not inbound_number:
-        available_numbers = dao_get_available_inbound_numbers()
-
-        if len(available_numbers) > 0:
-            dao_set_inbound_number_to_service(service_id, available_numbers[0])
-            return '', 204
-        else:
-            return '', 409
-    else:
-        dao_set_inbound_number_active_flag(service_id, active=True)
-        return '', 204
+    return jsonify(data=inbound_number.serialize())
 
 
 @inbound_number_blueprint.route('/<uuid:inbound_number_id>/service/<uuid:service_id>', methods=['POST'])
 def post_set_inbound_number_for_service(inbound_number_id, service_id):
-    try:
-        dao_set_inbound_number_to_service(service_id, inbound_number_id)
-    except TypeError as e:
-        if str(e) == 'UUID objects are immutable':
-            return '', 409
-        else:
-            raise e
+    if len(dao_get_available_inbound_numbers()) == 0:
+        raise InvalidRequest('No inbound numbers available', status_code=400)
+
+    inbound_number = dao_get_inbound_number_for_service(service_id)
+    if inbound_number:
+        raise InvalidRequest('Service already has an inbound number', status_code=400)
+
+    inbound_number = dao_get_inbound_number(inbound_number_id)
+    if inbound_number.service_id:
+        raise InvalidRequest('Inbound number already assigned', status_code=400)
+
+    dao_set_inbound_number_to_service(service_id, inbound_number_id)
+
     return '', 204
 
 

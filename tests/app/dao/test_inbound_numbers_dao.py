@@ -76,6 +76,6 @@ def test_set_inbound_number_active_flag(notify_db, notify_db_session, sample_ser
 
     dao_set_inbound_number_active_flag(inbound_number.id, active=active)
 
-    inbound_number = dao_get_inbound_number(inbound_number.id)
+    inbound_number = dao_get_inbound_number_for_service(sample_service.id)
 
     assert inbound_number.active is active
