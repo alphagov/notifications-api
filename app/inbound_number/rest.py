@@ -20,21 +20,21 @@ register_errors(inbound_number_blueprint)
 def get_inbound_numbers():
     inbound_numbers = [i.serialize() for i in dao_get_inbound_numbers()]
 
-    return jsonify(data=inbound_numbers)
+    return jsonify(data=inbound_numbers if inbound_numbers else None)
 
 
 @inbound_number_blueprint.route('/available', methods=['GET'])
-def get_inbound_numbers_available():
+def get_next_available_inbound_numbers():
     inbound_numbers = [i.serialize() for i in dao_get_available_inbound_numbers()]
 
-    return jsonify(data=inbound_numbers)
+    return jsonify(data=inbound_numbers[0] if len(inbound_numbers) else [])
 
 
 @inbound_number_blueprint.route('/service/<uuid:service_id>', methods=['GET'])
 def get_inbound_number_for_service(service_id):
     inbound_number = dao_get_inbound_number_for_service(service_id)
 
-    return jsonify(data=inbound_number.serialize())
+    return jsonify(data=inbound_number.serialize() if inbound_number else None)
 
 
 @inbound_number_blueprint.route('/<uuid:inbound_number_id>/service/<uuid:service_id>', methods=['POST'])
@@ -47,12 +47,12 @@ def post_set_inbound_number_for_service(inbound_number_id, service_id):
     if inbound_number.service_id:
         raise InvalidRequest('Inbound number already assigned', status_code=400)
 
-    dao_set_inbound_number_to_service(service_id, inbound_number_id)
+    dao_set_inbound_number_to_service(service_id, inbound_number)
 
     return '', 204
 
 
-@inbound_number_blueprint.route('/service/<uuid:inbound_number_id>/on', methods=['POST'])
+@inbound_number_blueprint.route('/<uuid:inbound_number_id>/on', methods=['POST'])
 def post_set_inbound_number_on(inbound_number_id):
     dao_set_inbound_number_active_flag(inbound_number_id, active=True)
     return '', 204
