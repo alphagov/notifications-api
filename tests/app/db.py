@@ -15,6 +15,7 @@ from app.models import (
     Rate,
     Job,
     InboundSms,
+    InboundNumber,
     Organisation,
     EMAIL_TYPE,
     SMS_TYPE,
@@ -276,3 +277,16 @@ def create_api_key(service, key_type=KEY_TYPE_NORMAL):
     db.session.add(api_key)
     db.session.commit()
     return api_key
+
+
+def create_inbound_number(number, provider='mmg', active=True, service_id=None):
+    inbound_number = InboundNumber(
+        id=uuid.uuid4(),
+        number=number,
+        provider=provider,
+        active=active,
+        service_id=service_id
+    )
+    db.session.add(inbound_number)
+    db.session.commit()
+    return inbound_number

@@ -242,6 +242,36 @@ class Service(db.Model, Versioned):
         return cls(**fields)
 
 
+class InboundNumber(db.Model):
+    __tablename__ = "inbound_numbers"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    number = db.Column(db.String(11), unique=True, nullable=False)
+    provider = db.Column(db.String(), nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=True, index=True, nullable=True)
+    service = db.relationship(Service, backref=db.backref("inbound_number", uselist=False))
+    active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    def serialize(self):
+        def serialize_service():
+            return {
+                "id": str(self.service_id),
+                "name": self.service.name
+            }
+
+        return {
+            "id": str(self.id),
+            "number": self.number,
+            "provider": self.provider,
+            "service": serialize_service() if self.service else None,
+            "active": self.active,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+        }
+
+
 class ServicePermission(db.Model):
     __tablename__ = "service_permissions"
 
