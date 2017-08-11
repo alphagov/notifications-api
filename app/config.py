@@ -211,11 +211,6 @@ class Config(object):
             'schedule': crontab(minute=40, hour=4),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'delete_dvla_response_files': {
-            'task': 'delete_dvla_response_files',
-            'schedule': crontab(minute=10, hour=5),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
         'timeout-job-statistics': {
             'task': 'timeout-job-statistics',
             'schedule': crontab(minute=0, hour=5),
