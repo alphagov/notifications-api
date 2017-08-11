@@ -1,14 +1,14 @@
 """empty message
 
-Revision ID: 0114_add_inbound_numbers
-Revises: 0113_job_created_by_nullable
+Revision ID: 0115_add_inbound_numbers
+Revises: 0014_drop_monthly_billing_cols
 Create Date: 2017-08-10 17:30:01.507694
 
 """
 
 # revision identifiers, used by Alembic.
-revision = '0114_add_inbound_numbers'
-down_revision = '0113_job_created_by_nullable'
+revision = '0115_add_inbound_numbers'
+down_revision = '0014_drop_monthly_billing_cols'
 
 from alembic import op
 import sqlalchemy as sa
