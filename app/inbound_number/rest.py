@@ -39,9 +39,6 @@ def get_inbound_number_for_service(service_id):
 
 @inbound_number_blueprint.route('/<uuid:inbound_number_id>/service/<uuid:service_id>', methods=['POST'])
 def post_set_inbound_number_for_service(inbound_number_id, service_id):
-    if len(dao_get_available_inbound_numbers()) == 0:
-        raise InvalidRequest('No inbound numbers available', status_code=400)
-
     inbound_number = dao_get_inbound_number_for_service(service_id)
     if inbound_number:
         raise InvalidRequest('Service already has an inbound number', status_code=400)
