@@ -21,6 +21,16 @@ def test_rest_get_inbound_numbers(admin_request, sample_inbound_numbers):
     assert result['data'] == [i.serialize() for i in sample_inbound_numbers]
 
 
+def test_rest_get_next_available_inbound_numbers(admin_request, sample_service):
+    create_inbound_number(number='1', provider='mmg', active=False, service_id=sample_service.id)
+    next_available_inbound_number = create_inbound_number(number='2', provider='mmg', active=True)
+    create_inbound_number(number='3', provider='firetext', active=True)
+
+    result = admin_request.get('inbound_number.get_next_available_inbound_numbers')
+
+    assert result['data'] == next_available_inbound_number.serialize()
+
+
 def test_rest_get_inbound_number(admin_request, notify_db_session, sample_service):
     inbound_number = create_inbound_number(number='1', provider='mmg', active=False, service_id=sample_service.id)
 
@@ -29,6 +39,25 @@ def test_rest_get_inbound_number(admin_request, notify_db_session, sample_servic
         service_id=sample_service.id
     )
     assert result['data'] == inbound_number.serialize()
+
+
+def test_rest_set_number_to_service(
+        admin_request, notify_db_session, sample_service):
+    service = create_service(service_name='test service 1')
+    inbound_number = create_inbound_number(number='1', provider='mmg', active=True)
+
+    result = admin_request.post(
+        'inbound_number.post_set_inbound_number_for_service',
+        _expected_status=204,
+        inbound_number_id=inbound_number.id,
+        service_id=service.id
+    )
+
+    inbound_number_from_db = dao_get_inbound_number_for_service(service.id)
+
+    assert inbound_number_from_db.active
+    assert inbound_number_from_db.id == inbound_number.id
+    assert inbound_number_from_db.number == inbound_number.number
 
 
 def test_rest_set_number_to_several_services_returns_400(
