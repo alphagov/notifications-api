@@ -3,8 +3,8 @@ from sqlalchemy.exc import IntegrityError
 
 from app.dao.inbound_numbers_dao import (
     dao_get_inbound_numbers,
+    dao_get_inbound_number_for_service,
     dao_get_available_inbound_numbers,
-    dao_get_inbound_number,
     dao_set_inbound_number_to_service,
     dao_set_inbound_number_active_flag
 )
@@ -56,14 +56,6 @@ def test_after_setting_service_id_that_inbound_number_is_unavailable(
     assert len(res) == 0
 
 
-def test_get_inbound_number(notify_db, notify_db_session):
-    inbound_number = create_inbound_number(number='1')
-
-    res = dao_get_inbound_number(inbound_number.id)
-
-    assert res.id == inbound_number.id
-
-
 def test_setting_a_service_twice_will_raise_an_error(notify_db, notify_db_session):
     create_inbound_number(number='1')
     create_inbound_number(number='2')
@@ -85,6 +77,6 @@ def test_set_inbound_number_active_flag(notify_db, notify_db_session, sample_ser
 
     dao_set_inbound_number_active_flag(inbound_number.id, active=active)
 
-    inbound_number = dao_get_inbound_number(inbound_number.id)
+    inbound_number = dao_get_inbound_number_for_service(sample_service.id)
 
     assert inbound_number.active is active
