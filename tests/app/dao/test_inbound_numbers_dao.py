@@ -20,14 +20,13 @@ def test_get_inbound_numbers(notify_db, notify_db_session, sample_inbound_number
     assert res == sample_inbound_numbers
 
 
-def test_get_available_inbound_numbers(notify_db, notify_db_session, sample_inbound_numbers):
-    available_numbers = [num for num in sample_inbound_numbers if num.active and num.service_id is None]
+def test_get_available_inbound_numbers(notify_db, notify_db_session):
+    inbound_number = create_inbound_number(number='1')
 
     res = dao_get_available_inbound_numbers()
 
-    assert len(res) == len(available_numbers)
     assert len(res) == 1
-    assert res[0] == sample_inbound_numbers[0]
+    assert res[0] == inbound_number
 
 
 def test_set_service_id_on_inbound_number(notify_db, notify_db_session, sample_inbound_numbers):
