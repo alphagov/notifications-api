@@ -15,7 +15,7 @@ from app.notifications.receive_notifications import (
 )
 
 from app.models import InboundSms, EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE
-from tests.app.db import create_service
+from tests.app.db import create_inbound_number, create_service
 from tests.app.conftest import sample_service
 
 
@@ -143,6 +143,31 @@ def test_create_inbound_mmg_sms_object(sample_service_full_permissions):
     assert inbound_sms._content != 'hello there 📩'
     assert inbound_sms.content == 'hello there 📩'
     assert inbound_sms.provider == 'mmg'
+
+
+def test_create_inbound_mmg_sms_object_uses_inbound_number_if_set(sample_service_full_permissions):
+    sample_service_full_permissions.sms_sender = 'foo'
+    inbound_number = create_inbound_number('1', service_id=sample_service_full_permissions.id)
+
+    data = {
+        'Message': 'hello+there+%F0%9F%93%A9',
+        'Number': 'foo',
+        'MSISDN': '07700 900 001',
+        'DateRecieved': '2017-01-02+03%3A04%3A05',
+        'ID': 'bar',
+    }
+
+    inbound_sms = create_inbound_sms_object(
+        sample_service_full_permissions,
+        format_mmg_message(data["Message"]),
+        data["MSISDN"],
+        data["ID"],
+        data["DateRecieved"],
+        "mmg"
+    )
+
+    assert inbound_sms.service_id == sample_service_full_permissions.id
+    assert inbound_sms.notify_number == inbound_number.number
 
 
 @pytest.mark.parametrize('notify_number', ['foo', 'baz'], ids=['two_matching_services', 'no_matching_services'])

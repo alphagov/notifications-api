@@ -21,7 +21,7 @@ from app.models import (
     BRANDING_ORG,
     BRANDING_BOTH)
 
-from tests.app.db import create_service, create_template, create_notification
+from tests.app.db import create_service, create_template, create_notification, create_inbound_number
 
 
 def test_should_return_highest_priority_active_provider(restore_provider_details):
@@ -642,4 +642,26 @@ def test_should_handle_sms_sender_and_prefix_message(
         sender=expected_sender,
         to=ANY,
         reference=ANY,
+    )
+
+
+def test_should_use_inbound_number_as_sender_if_set(
+    sample_service,
+    mocker
+):
+    sample_service.sms_sender = 'test sender'
+    template = create_template(sample_service, content='bar')
+    notification = create_notification(template)
+    inbound_number = create_inbound_number('1', service_id=sample_service.id)
+
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+
+    send_to_providers.send_sms_to_provider(notification)
+
+    mmg_client.send_sms.assert_called_once_with(
+        to=ANY,
+        content=ANY,
+        reference=str(notification.id),
+        sender=inbound_number.number
     )

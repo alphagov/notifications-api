@@ -17,7 +17,7 @@ from tests.app.conftest import (
     sample_template_without_sms_permission, sample_template_without_email_permission
 )
 
-from tests.app.db import create_service, create_template
+from tests.app.db import create_inbound_number, create_service, create_template
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -53,6 +53,29 @@ def test_post_sms_notification_returns_201(client, sample_template_with_placehol
            in resp_json['template']['uri']
     assert not resp_json["scheduled_for"]
     assert mocked.called
+
+
+def test_post_sms_notification_uses_inbound_number_as_sender(client, sample_template_with_placeholders, mocker):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    data = {
+        'phone_number': '+447700900855',
+        'template_id': str(sample_template_with_placeholders.id),
+        'personalisation': {' Name': 'Jo'}
+    }
+    inbound_number = create_inbound_number('1', service_id=sample_template_with_placeholders.service_id)
+    auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
+
+    response = client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 201
+    resp_json = json.loads(response.get_data(as_text=True))
+    notifications = Notification.query.all()
+    assert len(notifications) == 1
+    notification_id = notifications[0].id
+    assert resp_json['id'] == str(notification_id)
+    assert resp_json['content']['from_number'] == inbound_number.number
 
 
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",

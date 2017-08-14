@@ -20,6 +20,7 @@ from tests.app.conftest import (
     sample_notification_with_job as create_sample_notification_with_job
 )
 from tests.app.db import create_notification, create_service, create_inbound_number
+from tests.conftest import set_config
 
 
 @pytest.mark.parametrize('mobile_number', [
@@ -227,3 +228,23 @@ def test_inbound_number_serializes_with_service(client, notify_db_session):
     assert serialized_inbound_number.get('id') == str(inbound_number.id)
     assert serialized_inbound_number.get('service').get('id') == str(inbound_number.service.id)
     assert serialized_inbound_number.get('service').get('name') == inbound_number.service.name
+
+
+def test_inbound_number_returns_inbound_number(client, notify_db_session):
+    service = create_service()
+    inbound_number = create_inbound_number(number='1', service_id=service.id)
+
+    assert service.get_inbound_number() == inbound_number.number
+
+
+def test_inbound_number_returns_sms_sender(client, notify_db_session):
+    service = create_service(sms_sender='testing')
+
+    assert service.get_inbound_number() == service.sms_sender
+
+
+def test_inbound_number_returns_from_number_config(client, notify_db_session):
+    with set_config(client.application, 'FROM_NUMBER', 'test'):
+        service = create_service(sms_sender=None)
+
+    assert service.get_inbound_number() == 'test'
