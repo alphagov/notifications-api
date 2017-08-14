@@ -9,7 +9,7 @@ from app.dao.inbound_numbers_dao import (
 )
 from app.errors import InvalidRequest, register_errors
 
-inbound_number_blueprint = Blueprint('inbound_number', __name__)
+inbound_number_blueprint = Blueprint('inbound_number', __name__, url_prefix='/inbound-number')
 register_errors(inbound_number_blueprint)
 
 

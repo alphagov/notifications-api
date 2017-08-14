@@ -136,7 +136,7 @@ def register_blueprint(application):
     application.register_blueprint(delivery_blueprint)
 
     inbound_number_blueprint.before_request(requires_admin_auth)
-    application.register_blueprint(inbound_number_blueprint, url_prefix='/inbound-number')
+    application.register_blueprint(inbound_number_blueprint)
 
     inbound_sms_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(inbound_sms_blueprint)
