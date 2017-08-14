@@ -26,8 +26,8 @@ def dao_set_inbound_number_to_service(service_id, inbound_number):
 
 
 @transactional
-def dao_set_inbound_number_active_flag(inbound_number_id, active):
-    inbound_number = InboundNumber.query.filter(InboundNumber.id == inbound_number_id).first()
+def dao_set_inbound_number_active_flag(service_id, active):
+    inbound_number = InboundNumber.query.filter(InboundNumber.service_id == service_id).first()
     inbound_number.active = active
 
     db.session.add(inbound_number)

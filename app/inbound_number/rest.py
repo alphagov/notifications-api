@@ -33,7 +33,7 @@ def post_allocate_inbound_number(service_id):
 
     if inbound_number:
         if not inbound_number.active:
-            dao_set_inbound_number_active_flag(inbound_number.id, active=True)
+            dao_set_inbound_number_active_flag(service_id, active=True)
             return '', 204
         else:
             return '', 200
@@ -47,7 +47,7 @@ def post_allocate_inbound_number(service_id):
         raise InvalidRequest('No available inbound numbers', status_code=400)
 
 
-@inbound_number_blueprint.route('/<uuid:inbound_number_id>/off', methods=['POST'])
-def post_set_inbound_number_off(inbound_number_id):
-    dao_set_inbound_number_active_flag(inbound_number_id, active=False)
+@inbound_number_blueprint.route('/service/<uuid:service_id>/off', methods=['POST'])
+def post_set_inbound_number_off(service_id):
+    dao_set_inbound_number_active_flag(service_id, active=False)
     return '', 204
