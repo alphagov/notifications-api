@@ -110,7 +110,7 @@ def test_rest_set_inbound_number_active_flag_off(
     admin_request.post(
         'inbound_number.post_set_inbound_number_off',
         _expected_status=204,
-        inbound_number_id=inbound_number.id
+        service_id=service.id
     )
 
     inbound_number_from_db = dao_get_inbound_number_for_service(service.id)
