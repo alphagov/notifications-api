@@ -246,7 +246,7 @@ class InboundNumber(db.Model):
     __tablename__ = "inbound_numbers"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    number = db.Column(db.String(12), unique=True, nullable=False)
+    number = db.Column(db.String(11), unique=True, nullable=False)
     provider = db.Column(db.String(), nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=True, index=True, nullable=True)
     service = db.relationship(Service, backref=db.backref("inbound_number", uselist=False))
