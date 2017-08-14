@@ -4,14 +4,15 @@ from flask import url_for
 import json
 
 from app.models import InboundNumber
-from app.dao.inbound_numbers_dao import (
-    dao_get_inbound_numbers,
-    dao_get_available_inbound_numbers,
-    dao_get_inbound_number_for_service,
-    dao_set_inbound_number_to_service
-)
+from app.dao.inbound_numbers_dao import dao_get_inbound_number_for_service
 
 from tests.app.db import create_service, create_inbound_number
+
+
+def test_rest_get_inbound_numbers_when_none_set_returns_empty_list(admin_request):
+    result = admin_request.get('inbound_number.get_inbound_numbers')
+
+    assert result['data'] == []
 
 
 def test_rest_get_inbound_numbers(admin_request, sample_inbound_numbers):
@@ -19,16 +20,6 @@ def test_rest_get_inbound_numbers(admin_request, sample_inbound_numbers):
 
     assert len(result['data']) == len(sample_inbound_numbers)
     assert result['data'] == [i.serialize() for i in sample_inbound_numbers]
-
-
-def test_rest_get_next_available_inbound_numbers(admin_request, sample_service):
-    create_inbound_number(number='1', provider='mmg', active=False, service_id=sample_service.id)
-    next_available_inbound_number = create_inbound_number(number='2', provider='mmg', active=True)
-    create_inbound_number(number='3', provider='firetext', active=True)
-
-    result = admin_request.get('inbound_number.get_next_available_inbound_numbers')
-
-    assert result['data'] == next_available_inbound_number.serialize()
 
 
 def test_rest_get_inbound_number(admin_request, notify_db_session, sample_service):
@@ -41,15 +32,23 @@ def test_rest_get_inbound_number(admin_request, notify_db_session, sample_servic
     assert result['data'] == inbound_number.serialize()
 
 
-def test_rest_set_number_to_service(
+def test_rest_get_inbound_number_when_service_is_not_assigned_returns_empty_dict(
+        admin_request, notify_db_session, sample_service):
+    result = admin_request.get(
+        'inbound_number.get_inbound_number_for_service',
+        service_id=sample_service.id
+    )
+    assert result['data'] == {}
+
+
+def test_rest_allocate_inbound_number_to_service(
         admin_request, notify_db_session, sample_service):
     service = create_service(service_name='test service 1')
     inbound_number = create_inbound_number(number='1', provider='mmg', active=True)
 
     result = admin_request.post(
-        'inbound_number.post_set_inbound_number_for_service',
+        'inbound_number.post_allocate_inbound_number',
         _expected_status=204,
-        inbound_number_id=inbound_number.id,
         service_id=service.id
     )
 
@@ -60,48 +59,59 @@ def test_rest_set_number_to_service(
     assert inbound_number_from_db.number == inbound_number.number
 
 
-def test_rest_set_number_to_several_services_returns_400(
+def test_rest_allocate_inbound_number_to_service_raises_400_when_no_available_numbers(
         admin_request, notify_db_session, sample_service):
-    service_1 = create_service(service_name='test service 1')
-    inbound_number = create_inbound_number(number='1', provider='mmg', active=True, service_id=sample_service.id)
-    create_inbound_number(number='2', provider='mmg', active=True, service_id=None)
-    service_2 = create_service(service_name='test service 2')
+    service = create_service(service_name='test service 1')
+    create_inbound_number(number='1', provider='mmg', active=False)
 
     result = admin_request.post(
-        'inbound_number.post_set_inbound_number_for_service',
+        'inbound_number.post_allocate_inbound_number',
         _expected_status=400,
-        inbound_number_id=inbound_number.id,
-        service_id=service_2.id
+        service_id=service.id
     )
-    assert result['message'] == 'Inbound number already assigned'
+
+    assert result['message'] == 'No available inbound numbers'
 
 
-def test_rest_set_multiple_numbers_to_a_service_returns_400(
+def test_rest_allocate_inbound_number_to_service_sets_active_flag_true_when_flag_is_false(
         admin_request, notify_db_session, sample_service):
-    create_inbound_number(number='1', provider='mmg', active=True, service_id=sample_service.id)
-    inbound_number = create_inbound_number(number='2', provider='mmg', active=True, service_id=None)
+    service = create_service(service_name='test service 1')
+    create_inbound_number(number='1', provider='mmg', active=False, service_id=service.id)
 
     result = admin_request.post(
-        'inbound_number.post_set_inbound_number_for_service',
-        _expected_status=400,
-        inbound_number_id=inbound_number.id,
-        service_id=sample_service.id
+        'inbound_number.post_allocate_inbound_number',
+        _expected_status=204,
+        service_id=service.id
     )
-    assert result['message'] == 'Service already has an inbound number'
+
+    inbound_number = dao_get_inbound_number_for_service(service.id)
+
+    assert inbound_number.active
 
 
-@pytest.mark.parametrize("active_flag,expected_flag_state", [("on", True), ("off", False)])
-def test_rest_set_inbound_number_active_flag(
-        admin_request, notify_db_session, active_flag, expected_flag_state):
+def test_rest_allocate_inbound_number_to_service_sets_active_flag_true_when_flag_is_true(
+        admin_request, notify_db_session, sample_service):
+    service = create_service(service_name='test service 1')
+    create_inbound_number(number='1', provider='mmg', active=True, service_id=service.id)
+
+    result = admin_request.post(
+        'inbound_number.post_allocate_inbound_number',
+        _expected_status=200,
+        service_id=service.id
+    )
+
+
+def test_rest_set_inbound_number_active_flag_off(
+        admin_request, notify_db_session):
     service = create_service(service_name='test service 1')
     inbound_number = create_inbound_number(
-        number='1', provider='mmg', active=not expected_flag_state, service_id=service.id)
+        number='1', provider='mmg', active=True, service_id=service.id)
 
     admin_request.post(
-        'inbound_number.post_set_inbound_number_{}'.format(active_flag),
+        'inbound_number.post_set_inbound_number_off',
         _expected_status=204,
         inbound_number_id=inbound_number.id
     )
 
     inbound_number_from_db = dao_get_inbound_number_for_service(service.id)
-    assert inbound_number_from_db.active == expected_flag_state
+    assert not inbound_number_from_db.active
