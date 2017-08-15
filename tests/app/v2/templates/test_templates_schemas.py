@@ -22,7 +22,8 @@ valid_json_get_all_response = [
                 'updated_at': None,
                 'version': 1,
                 'created_by': 'someone@test.com',
-                'body': 'some body'
+                'body': 'some body',
+                'name': 'some name',
             },
             {
                 'id': str(uuid.uuid4()),
@@ -32,7 +33,8 @@ valid_json_get_all_response = [
                 'version': 2,
                 'created_by': 'someone@test.com',
                 'subject': 'test subject',
-                'body': 'some body'
+                'body': 'some body',
+                'name': 'some name',
             }
         ]
     },
@@ -45,7 +47,8 @@ valid_json_get_all_response = [
                 'updated_at': None,
                 'version': 2,
                 'created_by': 'someone@test.com',
-                'body': 'some body'
+                'body': 'some body',
+                'name': 'some name',
             }
         ]
     },
@@ -64,7 +67,8 @@ invalid_json_get_all_response = [
                 'updated_at': None,
                 'version': 1,
                 'created_by': 'someone@test.com',
-                'body': 'some body'
+                'body': 'some body',
+                'name': 'some name',
             }
         ]
     }, ['templates is not a valid UUID']),
@@ -77,7 +81,8 @@ invalid_json_get_all_response = [
                 'updated_at': None,
                 'version': 'invalid_version',
                 'created_by': 'someone@test.com',
-                'body': 'some body'
+                'body': 'some body',
+                'name': 'some name',
             }
         ]
     }, ['templates invalid_version is not of type integer']),
@@ -90,7 +95,8 @@ invalid_json_get_all_response = [
                 'updated_at': None,
                 'version': 1,
                 'created_by': 'someone@test.com',
-                'body': 'some body'
+                'body': 'some body',
+                'name': 'some name',
             }
         ]
     }, ['templates invalid_created_at is not a date-time']),
@@ -103,10 +109,24 @@ invalid_json_get_all_response = [
                 'updated_at': None,
                 'version': 1,
                 'created_by': 'someone@test.com',
-                'body': 'some body'
+                'body': 'some body',
+                'name': 'some name',
             }
         ]
     }, ['templates id is a required property']),
+    ({
+        "templates": [
+            {
+                'id': str(uuid.uuid4()),
+                'type': SMS_TYPE,
+                'created_at': '2017-02-10T18:25:43.511Z',
+                'updated_at': None,
+                'version': 1,
+                'created_by': 'someone@test.com',
+                'body': 'some body',
+            }
+        ]
+    }, ['templates name is a required property']),
     ({
         "templates": [
             {
@@ -115,7 +135,8 @@ invalid_json_get_all_response = [
                 'updated_at': None,
                 'version': 1,
                 'created_by': 'someone@test.com',
-                'body': 'some body'
+                'body': 'some body',
+                'name': 'some name',
             }
         ]
     }, ['templates type is a required property']),
@@ -127,7 +148,8 @@ invalid_json_get_all_response = [
                 'updated_at': None,
                 'version': 1,
                 'created_by': 'someone@test.com',
-                'body': 'some body'
+                'body': 'some body',
+                'name': 'some name',
             }
         ]
     }, ['templates created_at is a required property']),
@@ -139,7 +161,8 @@ invalid_json_get_all_response = [
                 'created_at': '2017-02-10T18:25:43.511Z',
                 'version': 1,
                 'created_by': 'someone@test.com',
-                'body': 'some body'
+                'body': 'some body',
+                'name': 'some name',
             }
         ]
     }, ['templates updated_at is a required property']),
@@ -151,7 +174,8 @@ invalid_json_get_all_response = [
                 'created_at': '2017-02-10T18:25:43.511Z',
                 'updated_at': None,
                 'created_by': 'someone@test.com',
-                'body': 'some body'
+                'body': 'some body',
+                'name': 'some name',
             }
         ]
     }, ['templates version is a required property']),
@@ -163,7 +187,8 @@ invalid_json_get_all_response = [
                 'created_at': '2017-02-10T18:25:43.511Z',
                 'updated_at': None,
                 'version': 1,
-                'body': 'some body'
+                'body': 'some body',
+                'name': 'some name',
             }
         ]
     }, ['templates created_by is a required property']),
@@ -175,7 +200,8 @@ invalid_json_get_all_response = [
                 'created_at': '2017-02-10T18:25:43.511Z',
                 'updated_at': None,
                 'version': 1,
-                'created_by': 'someone@test.com'
+                'created_by': 'someone@test.com',
+                'name': 'some name',
             }
         ]
     }, ['templates body is a required property']),
@@ -186,7 +212,8 @@ invalid_json_get_all_response = [
                 'created_at': '2017-02-10T18:25:43.511Z',
                 'updated_at': None,
                 'created_by': 'someone@test.com',
-                'body': 'some body'
+                'body': 'some body',
+                'name': 'some name',
             }
         ]
     }, ['templates id is a required property', 'templates version is a required property']),

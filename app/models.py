@@ -494,7 +494,8 @@ class Template(db.Model):
             "created_by": self.created_by.email_address,
             "version": self.version,
             "body": self.content,
-            "subject": self.subject if self.template_type != SMS_TYPE else None
+            "subject": self.subject if self.template_type != SMS_TYPE else None,
+            "name": self.name,
         }
 
         return serialized
