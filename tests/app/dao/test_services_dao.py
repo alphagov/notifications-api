@@ -955,6 +955,15 @@ def test_dao_fetch_services_by_sms_sender_with_unknown_number(notify_db_session)
     assert services == []
 
 
+def test_dao_fetch_services_by_sms_sender_with_inactive_number_returns_empty(notify_db_session):
+    service = create_service(service_name='a', sms_sender=None)
+    inbound_number = create_inbound_number('1', service_id=service.id, active=False)
+
+    services = dao_fetch_services_by_sms_sender('1')
+
+    assert services == []
+
+
 def test_dao_allocating_inbound_number_shows_on_service(notify_db_session, sample_inbound_numbers):
     inbound_numbers = dao_get_available_inbound_numbers()
 

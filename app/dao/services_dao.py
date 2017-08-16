@@ -71,7 +71,8 @@ def dao_fetch_service_by_id(service_id, only_active=False):
 ############
 def dao_fetch_services_by_sms_sender(sms_sender):
     inbound_number = InboundNumber.query.filter(
-        InboundNumber.number == sms_sender
+        InboundNumber.number == sms_sender,
+        InboundNumber.active
     ).first()
 
     if not inbound_number:
