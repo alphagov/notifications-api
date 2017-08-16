@@ -4,7 +4,7 @@ from app.models import InboundNumber
 
 
 def dao_get_inbound_numbers():
-    return InboundNumber.query.order_by(InboundNumber.updated_at, InboundNumber.number).all()
+    return InboundNumber.query.order_by(InboundNumber.updated_at).all()
 
 
 def dao_get_available_inbound_numbers():
