@@ -3,9 +3,12 @@ from datetime import datetime
 from decimal import Decimal
 from flask.ext.script import Command, Manager, Option
 
-
 from app import db
-from app.dao.monthly_billing_dao import create_or_update_monthly_billing, get_monthly_billing_by_notification_type
+from app.dao.monthly_billing_dao import (
+    create_or_update_monthly_billing,
+    get_monthly_billing_by_notification_type,
+    get_service_ids_that_need_billing_populated
+)
 from app.models import PROVIDERS, User, SMS_TYPE, EMAIL_TYPE
 from app.dao.services_dao import (
     delete_service_and_all_associated_db_objects,
@@ -151,19 +154,23 @@ class CustomDbScript(Command):
 
 class PopulateMonthlyBilling(Command):
         option_list = (
-            Option('-s', '-service-id', dest='service_id',
-                   help="Service id to populate monthly billing for"),
-            Option('-y', '-year', dest="year", help="Use for integer value for year, e.g. 2017")
+            Option('-y', '-year', dest="year", help="Use for integer value for year, e.g. 2017"),
         )
 
-        def run(self, service_id, year):
+        def run(self, year):
+            service_ids = get_service_ids_that_need_billing_populated(
+                start_date=datetime(2016, 5, 1), end_date=datetime(2017, 8, 16)
+            )
             start, end = 1, 13
             if year == '2016':
                 start = 4
 
-            print('Starting populating monthly billing for {}'.format(year))
-            for i in range(start, end):
-                self.populate(service_id, year, i)
+            for service_id in service_ids:
+                print('Starting to populate data for service {}'.format(str(service_id)))
+                print('Starting populating monthly billing for {}'.format(year))
+                for i in range(start, end):
+                    print('Population for {}-{}'.format(i, year))
+                    self.populate(service_id, year, i)
 
         def populate(self, service_id, year, month):
             create_or_update_monthly_billing(service_id, datetime(int(year), int(month), 1))
@@ -173,6 +180,6 @@ class PopulateMonthlyBilling(Command):
             email_res = get_monthly_billing_by_notification_type(
                 service_id, datetime(int(year), int(month), 1), EMAIL_TYPE
             )
-            print("Finished populating data for {} for service id {}".format(month, service_id))
+            print("Finished populating data for {} for service id {}".format(month, str(service_id)))
             print('SMS: {}'.format(sms_res.monthly_totals))
             print('Email: {}'.format(email_res.monthly_totals))
