@@ -25,9 +25,10 @@ from app.models import (
     ProviderDetailsHistory,
     ProviderRates,
     NotificationStatistics,
+    ScheduledNotification,
     ServiceWhitelist,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM,
-    MOBILE_TYPE, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED, ScheduledNotification,
+    MOBILE_TYPE, EMAIL_TYPE, INBOUND_SMS_TYPE, SMS_TYPE, LETTER_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED,
     SERVICE_PERMISSION_TYPES)
 from app.dao.users_dao import (create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
@@ -156,12 +157,18 @@ def sample_service(
     else:
         if user not in service.users:
             dao_add_user_to_service(service, user)
+
+    if INBOUND_SMS_TYPE in permissions:
+        create_inbound_number('12345', service_id=service.id)
+
     return service
 
 
 @pytest.fixture(scope='function')
 def sample_service_full_permissions(notify_db, notify_db_session):
-    return sample_service(notify_db, notify_db_session, permissions=SERVICE_PERMISSION_TYPES)
+    service = sample_service(notify_db, notify_db_session, permissions=SERVICE_PERMISSION_TYPES)
+    create_inbound_number('12345', service_id=service.id)
+    return service
 
 
 @pytest.fixture(scope='function')
