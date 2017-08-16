@@ -528,13 +528,14 @@ def get_yearly_monthly_usage(service_id):
     try:
         year = int(request.args.get('year'))
         results = notification_usage_dao.get_monthly_billing_data(service_id, year)
-        json_results = [{"month": x[0],
-                         "billing_units": x[1],
-                         "rate_multiplier": x[2],
-                         "international": x[3],
-                         "notification_type": x[4],
-                         "rate": x[5]
-                         } for x in results]
+        json_results = [{
+            "month": x[0],
+            "billing_units": x[1],
+            "rate_multiplier": x[2],
+            "international": x[3],
+            "notification_type": x[4],
+            "rate": x[5]
+        } for x in results]
         return json.dumps(json_results)
     except TypeError:
         return jsonify(result='error', message='No valid year provided'), 400

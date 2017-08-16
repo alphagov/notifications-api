@@ -277,7 +277,7 @@ def test_get_monthly_billing_data_with_multiple_rates(notify_db, notify_db_sessi
 def test_get_monthly_billing_data_with_no_notifications_for_daterange(notify_db, notify_db_session, sample_template):
     set_up_rate(notify_db, datetime(2016, 4, 1), 0.014)
     results = get_monthly_billing_data(sample_template.service_id, 2016)
-    assert len(results) == 0
+    assert results == []
 
 
 def set_up_rate(notify_db, start_date, value):
@@ -768,7 +768,8 @@ def test_get_monthly_billing_data_where_start_date_before_rate_returns_empty(
     results = get_billing_data_for_month(
         service_id=sample_template.service_id,
         start_date=now - timedelta(days=2),
-        end_date=now - timedelta(days=1)
+        end_date=now - timedelta(days=1),
+        notification_type=SMS_TYPE
     )
 
     assert not results

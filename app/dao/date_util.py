@@ -20,7 +20,7 @@ def get_april_fools(year):
         tzinfo=None)
 
 
-def get_month_start_end_date(month_year):
+def get_month_start_and_end_date_in_utc(month_year):
     """
      This function return the start and date of the month_year as UTC,
      :param month_year: the datetime to calculate the start and end date for that month
