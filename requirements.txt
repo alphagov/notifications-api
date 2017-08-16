@@ -5,7 +5,7 @@ Flask-Migrate==2.1.0
 Flask-SQLAlchemy==2.0
 psycopg2==2.7.3
 SQLAlchemy==1.0.15
-SQLAlchemy-Utils==0.32.9
+SQLAlchemy-Utils==0.32.14
 PyJWT==1.5.2
 marshmallow==2.4.2
 marshmallow-sqlalchemy==0.13.1
