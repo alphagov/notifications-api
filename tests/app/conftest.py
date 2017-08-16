@@ -166,9 +166,7 @@ def sample_service(
 
 @pytest.fixture(scope='function')
 def sample_service_full_permissions(notify_db, notify_db_session):
-    service = sample_service(notify_db, notify_db_session, permissions=SERVICE_PERMISSION_TYPES)
-    create_inbound_number('12345', service_id=service.id)
-    return service
+    return sample_service(notify_db, notify_db_session, permissions=SERVICE_PERMISSION_TYPES)
 
 
 @pytest.fixture(scope='function')
