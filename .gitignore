@@ -69,7 +69,5 @@ environment.sh
 
 celerybeat-schedule
 
-wheelhouse/
-
 # CloudFoundry
 .cf

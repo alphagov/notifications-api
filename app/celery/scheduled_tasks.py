@@ -9,9 +9,17 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.aws import s3
 from app import notify_celery
 from app import performance_platform_client
+from app.dao.date_util import get_month_start_and_end_date_in_utc
 from app.dao.inbound_sms_dao import delete_inbound_sms_created_more_than_a_week_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
-from app.dao.jobs_dao import dao_set_scheduled_jobs_to_pending, dao_get_jobs_older_than_limited_by
+from app.dao.jobs_dao import (
+    dao_set_scheduled_jobs_to_pending,
+    dao_get_jobs_older_than_limited_by
+)
+from app.dao.monthly_billing_dao import (
+    get_service_ids_that_need_billing_populated,
+    create_or_update_monthly_billing
+)
 from app.dao.notifications_dao import (
     dao_timeout_notifications,
     is_delivery_slow_for_provider,
@@ -29,6 +37,7 @@ from app.notifications.process_notifications import send_notification_to_queue
 from app.statsd_decorators import statsd
 from app.celery.tasks import process_job
 from app.config import QueueNames
+from app.utils import convert_utc_to_bst
 
 
 @notify_celery.task(name="remove_csv_files")
@@ -281,3 +290,15 @@ def delete_dvla_response_files_older_than_seven_days():
     except SQLAlchemyError as e:
         current_app.logger.exception("Failed to delete dvla response files")
         raise
+
+
+@notify_celery.task(name="populate_monthly_billing")
+@statsd(namespace="tasks")
+def populate_monthly_billing():
+    # for every service with billable units this month update billing totals for yesterday
+    # this will overwrite the existing amount.
+    yesterday = datetime.utcnow() - timedelta(days=1)
+    yesterday_in_bst = convert_utc_to_bst(yesterday)
+    start_date, end_date = get_month_start_and_end_date_in_utc(yesterday_in_bst)
+    services = get_service_ids_that_need_billing_populated(start_date=start_date, end_date=end_date)
+    [create_or_update_monthly_billing(service_id=s.service_id, billing_month=end_date) for s in services]

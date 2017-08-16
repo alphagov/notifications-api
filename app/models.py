@@ -4,7 +4,6 @@ import datetime
 from flask import url_for, current_app
 
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
@@ -29,7 +28,7 @@ from app import (
 )
 
 from app.history_meta import Versioned
-from app.utils import convert_utc_time_in_bst, convert_bst_to_utc
+from app.utils import convert_utc_to_bst, convert_bst_to_utc
 
 SMS_TYPE = 'sms'
 EMAIL_TYPE = 'email'
@@ -241,6 +240,36 @@ class Service(db.Model, Versioned):
         fields['created_by_id'] = fields.pop('created_by')
 
         return cls(**fields)
+
+
+class InboundNumber(db.Model):
+    __tablename__ = "inbound_numbers"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    number = db.Column(db.String(11), unique=True, nullable=False)
+    provider = db.Column(db.String(), nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=True, index=True, nullable=True)
+    service = db.relationship(Service, backref=db.backref("inbound_number", uselist=False))
+    active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    def serialize(self):
+        def serialize_service():
+            return {
+                "id": str(self.service_id),
+                "name": self.service.name
+            }
+
+        return {
+            "id": str(self.id),
+            "number": self.number,
+            "provider": self.provider,
+            "service": serialize_service() if self.service else None,
+            "active": self.active,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+        }
 
 
 class ServicePermission(db.Model):
@@ -465,7 +494,7 @@ class Template(db.Model):
             "created_by": self.created_by.email_address,
             "version": self.version,
             "body": self.content,
-            "subject": self.subject if self.template_type == EMAIL_TYPE else None
+            "subject": self.subject if self.template_type != SMS_TYPE else None
         }
 
         return serialized
@@ -507,18 +536,7 @@ class TemplateHistory(db.Model):
                              default=NORMAL)
 
     def serialize(self):
-        serialized = {
-            "id": self.id,
-            "type": self.template_type,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
-            "created_by": self.created_by.email_address,
-            "version": self.version,
-            "body": self.content,
-            "subject": self.subject if self.template_type == EMAIL_TYPE else None
-        }
-
-        return serialized
+        return Template.serialize(self)
 
 
 MMG_PROVIDER = "mmg"
@@ -620,7 +638,7 @@ class JobStatus(db.Model):
 class Job(db.Model):
     __tablename__ = 'jobs'
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     original_file_name = db.Column(db.String, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
     service = db.relationship('Service', backref=db.backref('jobs', lazy='dynamic'))
@@ -655,7 +673,7 @@ class Job(db.Model):
         unique=False,
         nullable=True)
     created_by = db.relationship('User')
-    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=True)
     scheduled_for = db.Column(
         db.DateTime,
         index=True,
@@ -892,7 +910,7 @@ class Notification(db.Model):
     @property
     def subject(self):
         from app.utils import get_template_instance
-        if self.notification_type == EMAIL_TYPE:
+        if self.notification_type != SMS_TYPE:
             template_object = get_template_instance(self.template.__dict__, self.personalisation)
             return template_object.subject
 
@@ -932,7 +950,7 @@ class Notification(db.Model):
         }[self.template.template_type].get(self.status, self.status)
 
     def serialize_for_csv(self):
-        created_at_in_bst = convert_utc_time_in_bst(self.created_at)
+        created_at_in_bst = convert_utc_to_bst(self.created_at)
         serialized = {
             "row_number": '' if self.job_row_number is None else self.job_row_number + 1,
             "recipient": self.to,
@@ -972,9 +990,23 @@ class Notification(db.Model):
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "sent_at": self.sent_at.strftime(DATETIME_FORMAT) if self.sent_at else None,
             "completed_at": self.completed_at(),
-            "scheduled_for": convert_bst_to_utc(self.scheduled_notification.scheduled_for
-                                                ).strftime(DATETIME_FORMAT) if self.scheduled_notification else None
+            "scheduled_for": (
+                convert_bst_to_utc(
+                    self.scheduled_notification.scheduled_for
+                ).strftime(DATETIME_FORMAT)
+                if self.scheduled_notification
+                else None
+            )
         }
+
+        if self.notification_type == LETTER_TYPE:
+            serialized['line_1'] = self.personalisation['address_line_1']
+            serialized['line_2'] = self.personalisation.get('address_line_2')
+            serialized['line_3'] = self.personalisation.get('address_line_3')
+            serialized['line_4'] = self.personalisation.get('address_line_4')
+            serialized['line_5'] = self.personalisation.get('address_line_5')
+            serialized['line_6'] = self.personalisation.get('address_line_6')
+            serialized['postcode'] = self.personalisation['postcode']
 
         return serialized
 
@@ -1246,3 +1278,32 @@ class LetterRateDetail(db.Model):
     letter_rate = db.relationship('LetterRate', backref='letter_rates')
     page_total = db.Column(db.Integer, nullable=False)
     rate = db.Column(db.Numeric(), nullable=False)
+
+
+class MonthlyBilling(db.Model):
+    __tablename__ = 'monthly_billing'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
+    service = db.relationship('Service', backref='monthly_billing')
+    start_date = db.Column(db.DateTime, nullable=False)
+    end_date = db.Column(db.DateTime, nullable=False)
+    notification_type = db.Column(notification_types, nullable=False)
+    monthly_totals = db.Column(JSON, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint('service_id', 'start_date', 'notification_type', name='uix_monthly_billing'),
+    )
+
+    def serialized(self):
+        return {
+            "start_date": self.start_date,
+            "end_date": self.end_date,
+            "service_id": str(self.service_id),
+            "notification_type": self.notification_type,
+            "monthly_totals": self.monthly_totals
+        }
+
+    def __repr__(self):
+        return str(self.serialized())

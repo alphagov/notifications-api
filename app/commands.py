@@ -5,7 +5,8 @@ from flask.ext.script import Command, Manager, Option
 
 
 from app import db
-from app.models import (PROVIDERS, Service, User, NotificationHistory)
+from app.dao.monthly_billing_dao import create_or_update_monthly_billing, get_monthly_billing_by_notification_type
+from app.models import PROVIDERS, User, SMS_TYPE, EMAIL_TYPE
 from app.dao.services_dao import (
     delete_service_and_all_associated_db_objects,
     dao_fetch_all_services_by_user
@@ -146,3 +147,32 @@ class CustomDbScript(Command):
             print('Committed {} updates at {}'.format(len(result), datetime.utcnow()))
             db.session.commit()
             result = db.session.execute(subq_hist).fetchall()
+
+
+class PopulateMonthlyBilling(Command):
+        option_list = (
+            Option('-s', '-service-id', dest='service_id',
+                   help="Service id to populate monthly billing for"),
+            Option('-y', '-year', dest="year", help="Use for integer value for year, e.g. 2017")
+        )
+
+        def run(self, service_id, year):
+            start, end = 1, 13
+            if year == '2016':
+                start = 4
+
+            print('Starting populating monthly billing for {}'.format(year))
+            for i in range(start, end):
+                self.populate(service_id, year, i)
+
+        def populate(self, service_id, year, month):
+            create_or_update_monthly_billing(service_id, datetime(int(year), int(month), 1))
+            sms_res = get_monthly_billing_by_notification_type(
+                service_id, datetime(int(year), int(month), 1), SMS_TYPE
+            )
+            email_res = get_monthly_billing_by_notification_type(
+                service_id, datetime(int(year), int(month), 1), EMAIL_TYPE
+            )
+            print("Finished populating data for {} for service id {}".format(month, service_id))
+            print('SMS: {}'.format(sms_res.monthly_totals))
+            print('Email: {}'.format(email_res.monthly_totals))

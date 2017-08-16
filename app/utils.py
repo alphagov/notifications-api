@@ -30,7 +30,7 @@ def url_with_token(data, url, config):
 def get_template_instance(template, values):
     from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
     return {
-        SMS_TYPE: SMSMessageTemplate, EMAIL_TYPE: PlainTextEmailTemplate, LETTER_TYPE: LetterPreviewTemplate
+        SMS_TYPE: SMSMessageTemplate, EMAIL_TYPE: PlainTextEmailTemplate, LETTER_TYPE: PlainTextEmailTemplate
     }[template['template_type']](template, values)
 
 
@@ -51,7 +51,7 @@ def get_midnight_for_day_before(date):
     return get_london_midnight_in_utc(day_before)
 
 
-def convert_utc_time_in_bst(utc_dt):
+def convert_utc_to_bst(utc_dt):
     return pytz.utc.localize(utc_dt).astimezone(local_timezone).replace(tzinfo=None)
 
 

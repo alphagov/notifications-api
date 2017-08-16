@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta
 
 from flask import current_app
@@ -10,6 +11,7 @@ from app.models import (
     JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING,
     LETTER_TYPE
 )
+from app.variables import LETTER_TEST_API_FILENAME
 from app.statsd_decorators import statsd
 
 
@@ -108,6 +110,8 @@ def dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id):
 
 
 def dao_create_job(job):
+    if not job.id:
+        job.id = uuid.uuid4()
     job_stats = JobStatistics(
         job_id=job.id,
         updated_at=datetime.utcnow()
@@ -139,9 +143,18 @@ def dao_get_jobs_older_than_limited_by(job_types, older_than=7, limit_days=2):
 
 
 def dao_get_all_letter_jobs():
-    return db.session.query(Job).join(Job.template).filter(
-        Template.template_type == LETTER_TYPE
-    ).order_by(desc(Job.created_at)).all()
+    return db.session.query(
+        Job
+    ).join(
+        Job.template
+    ).filter(
+        Template.template_type == LETTER_TYPE,
+        # test letter jobs (or from research mode services) are created with a different filename,
+        # exclude them so we don't see them on the send to CSV
+        Job.original_file_name != LETTER_TEST_API_FILENAME
+    ).order_by(
+        desc(Job.created_at)
+    ).all()
 
 
 @statsd(namespace="dao")

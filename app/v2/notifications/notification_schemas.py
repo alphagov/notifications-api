@@ -1,5 +1,5 @@
 from app.models import NOTIFICATION_STATUS_TYPES, TEMPLATE_TYPES
-from app.schema_validation.definitions import (uuid, personalisation)
+from app.schema_validation.definitions import (uuid, personalisation, letter_personalisation)
 
 
 template = {
@@ -192,40 +192,44 @@ post_email_response = {
 }
 
 
-def create_post_sms_response_from_notification(notification, body, from_number, url_root, service_id, scheduled_for):
-    return {"id": notification.id,
-            "reference": notification.client_reference,
-            "content": {'body': body,
-                        'from_number': from_number},
-            "uri": "{}v2/notifications/{}".format(url_root, str(notification.id)),
-            "template": __create_template_from_notification(notification=notification,
-                                                            url_root=url_root,
-                                                            service_id=service_id),
-            "scheduled_for": scheduled_for if scheduled_for else None
-            }
+post_letter_request = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "POST letter notification schema",
+    "type": "object",
+    "title": "POST v2/notifications/letter",
+    "properties": {
+        "reference": {"type": "string"},
+        "template_id": uuid,
+        "personalisation": letter_personalisation
+    },
+    "required": ["template_id", "personalisation"]
+}
 
+letter_content = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "Letter content for POST letter notification",
+    "type": "object",
+    "title": "notification letter content",
+    "properties": {
+        "body": {"type": "string"},
+        "subject": {"type": "string"}
+    },
+    "required": ["body", "subject"]
+}
 
-def create_post_email_response_from_notification(notification, content, subject, email_from, url_root, service_id,
-                                                 scheduled_for):
-    return {
-        "id": notification.id,
-        "reference": notification.client_reference,
-        "content": {
-            "from_email": email_from,
-            "body": content,
-            "subject": subject
-        },
-        "uri": "{}v2/notifications/{}".format(url_root, str(notification.id)),
-        "template": __create_template_from_notification(notification=notification,
-                                                        url_root=url_root,
-                                                        service_id=service_id),
-        "scheduled_for": scheduled_for if scheduled_for else None
-    }
-
-
-def __create_template_from_notification(notification, url_root, service_id):
-    return {
-        "id": notification.template_id,
-        "version": notification.template_version,
-        "uri": "{}services/{}/templates/{}".format(url_root, str(service_id), str(notification.template_id))
-    }
+post_letter_response = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "POST sms notification response schema",
+    "type": "object",
+    "title": "response v2/notifications/letter",
+    "properties": {
+        "id": uuid,
+        "reference": {"type": ["string", "null"]},
+        "content": letter_content,
+        "uri": {"type": "string", "format": "uri"},
+        "template": template,
+        # letters cannot be scheduled
+        "scheduled_for": {"type": "null"}
+    },
+    "required": ["id", "content", "uri", "template"]
+}

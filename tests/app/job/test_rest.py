@@ -276,7 +276,6 @@ def test_create_job_returns_400_if_missing_data(notify_api, sample_template, moc
             assert resp_json['result'] == 'error'
             assert 'Missing data for required field.' in resp_json['message']['original_file_name']
             assert 'Missing data for required field.' in resp_json['message']['notification_count']
-            assert 'Missing data for required field.' in resp_json['message']['id']
 
 
 def test_create_job_returns_404_if_template_does_not_exist(notify_api, sample_service, mocker):

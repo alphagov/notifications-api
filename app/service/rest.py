@@ -68,7 +68,6 @@ from app.schemas import (
     user_schema,
     permission_schema,
     notification_with_template_schema,
-    notification_with_personalisation_schema,
     notifications_filter_schema,
     detailed_service_schema
 )
@@ -529,13 +528,14 @@ def get_yearly_monthly_usage(service_id):
     try:
         year = int(request.args.get('year'))
         results = notification_usage_dao.get_monthly_billing_data(service_id, year)
-        json_results = [{"month": x[0],
-                         "billing_units": x[1],
-                         "rate_multiplier": x[2],
-                         "international": x[3],
-                         "notification_type": x[4],
-                         "rate": x[5]
-                         } for x in results]
+        json_results = [{
+            "month": x[0],
+            "billing_units": x[1],
+            "rate_multiplier": x[2],
+            "international": x[3],
+            "notification_type": x[4],
+            "rate": x[5]
+        } for x in results]
         return json.dumps(json_results)
     except TypeError:
         return jsonify(result='error', message='No valid year provided'), 400
@@ -597,3 +597,26 @@ def handle_sql_errror(e):
 def create_one_off_notification(service_id):
     resp = send_one_off_notification(service_id, request.get_json())
     return jsonify(resp), 201
+
+
+@service_blueprint.route('/unique', methods=["GET"])
+def is_service_name_unique():
+    name, email_from = check_request_args(request)
+
+    name_exists = Service.query.filter_by(name=name).first()
+    email_from_exists = Service.query.filter_by(email_from=email_from).first()
+    result = not (name_exists or email_from_exists)
+    return jsonify(result=result), 200
+
+
+def check_request_args(request):
+    name = request.args.get('name', None)
+    email_from = request.args.get('email_from', None)
+    errors = []
+    if not name:
+        errors.append({'name': ["Can't be empty"]})
+    if not email_from:
+        errors.append({'email_from': ["Can't be empty"]})
+    if errors:
+        raise InvalidRequest(errors, status_code=400)
+    return name, email_from

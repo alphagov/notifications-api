@@ -1,26 +1,24 @@
-from datetime import datetime, timedelta, date
-from functools import partial
 import json
 import uuid
+from datetime import datetime, timedelta, date
+from functools import partial
 from unittest.mock import ANY
 
 import pytest
 from flask import url_for, current_app
 from freezegun import freeze_time
 
-from app import encryption
-from app.dao.users_dao import save_model_user
+from app.dao.monthly_billing_dao import create_or_update_monthly_billing
 from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
+from app.dao.users_dao import save_model_user
 from app.models import (
     User, Organisation, Rate, Service, ServicePermission, Notification,
     DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
 )
-
 from tests import create_authorization_header
-from tests.app.db import create_template, create_service_inbound_api, create_user, create_notification
 from tests.app.conftest import (
     sample_service as create_service,
     sample_user_service_permission as create_user_service_permission,
@@ -28,8 +26,8 @@ from tests.app.conftest import (
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
+from tests.app.db import create_template, create_service_inbound_api, create_notification
 from tests.app.db import create_user
-from tests.conftest import set_config_values
 
 
 def test_get_service_list(client, service_factory):
@@ -1362,24 +1360,20 @@ def test_get_all_notifications_for_service_including_ones_made_by_jobs(
 
 
 def test_get_only_api_created_notifications_for_service(
-        client,
-        notify_db,
-        notify_db_session,
-        sample_service
+    admin_request,
+    sample_job,
+    sample_template
 ):
-    with_job = sample_notification_with_job(notify_db, notify_db_session, service=sample_service)
-    without_job = create_sample_notification(notify_db, notify_db_session, service=sample_service)
+    with_job = create_notification(sample_template, job=sample_job)
+    without_job = create_notification(sample_template)
 
-    auth_header = create_authorization_header()
-
-    response = client.get(
-        path='/service/{}/notifications?include_jobs=false'.format(sample_service.id),
-        headers=[auth_header])
-
-    resp = json.loads(response.get_data(as_text=True))
+    resp = admin_request.get(
+        'service.get_all_notifications_for_service',
+        service_id=sample_template.service_id,
+        include_jobs=False
+    )
     assert len(resp['notifications']) == 1
     assert resp['notifications'][0]['id'] == str(without_job.id)
-    assert response.status_code == 200
 
 
 def test_set_sms_sender_for_service(client, sample_service):
@@ -1760,12 +1754,19 @@ def test_get_template_stats_by_month_returns_error_for_incorrect_year(
     assert json.loads(response.get_data(as_text=True)) == expected_json
 
 
-def test_get_yearly_billing_usage(client, notify_db, notify_db_session):
+def test_get_yearly_billing_usage(client, notify_db, notify_db_session, sample_service):
     rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type=SMS_TYPE)
     notify_db.session.add(rate)
-    notification = create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
-                                              sent_at=datetime(2016, 6, 5),
-                                              status='sending')
+    after_rate_created = datetime(2016, 6, 5)
+    notification = create_sample_notification(
+        notify_db,
+        notify_db_session,
+        created_at=after_rate_created,
+        sent_at=after_rate_created,
+        status='sending',
+        service=sample_service
+    )
+    create_or_update_monthly_billing(sample_service.id, after_rate_created)
     response = client.get(
         '/service/{}/yearly-usage?year=2016'.format(notification.service_id),
         headers=[create_authorization_header()]
@@ -1861,7 +1862,9 @@ def test_get_monthly_billing_usage_returns_empty_list_if_no_notifications(client
         headers=[create_authorization_header()]
     )
     assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True)) == []
+
+    results = json.loads(response.get_data(as_text=True))
+    assert results == []
 
 
 def test_search_for_notification_by_to_field(client, notify_db, notify_db_session):
@@ -2315,3 +2318,32 @@ def test_search_for_notification_by_to_field_returns_personlisation(
     assert len(notifications) == 1
     assert 'personalisation' in notifications[0].keys()
     assert notifications[0]['personalisation']['name'] == 'Foo'
+
+
+def test_is_service_name_unique_returns_200_if_unique(client):
+    response = client.get('/service/unique?name=something&email_from=something',
+                          headers=[create_authorization_header()])
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == {"result": True}
+
+
+@pytest.mark.parametrize('name, email_from',
+                         [("something unique", "something"),
+                          ("unique", "something.unique"),
+                          ("something unique", "something.unique")
+                          ])
+def test_is_service_name_unique_returns_200_and_false(client, notify_db, notify_db_session, name, email_from):
+    create_service(notify_db=notify_db, notify_db_session=notify_db_session,
+                   service_name='something unique', email_from='something.unique')
+    response = client.get('/service/unique?name={}&email_from={}'.format(name, email_from),
+                          headers=[create_authorization_header()])
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == {"result": False}
+
+
+def test_is_service_name_unique_returns_400_when_name_does_not_exist(client):
+    response = client.get('/service/unique', headers=[create_authorization_header()])
+    assert response.status_code == 400
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp["message"][0]["name"] == ["Can't be empty"]
+    assert json_resp["message"][1]["email_from"] == ["Can't be empty"]

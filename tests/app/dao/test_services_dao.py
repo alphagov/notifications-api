@@ -7,6 +7,10 @@ from sqlalchemy.orm.exc import FlushError, NoResultFound
 from sqlalchemy.exc import IntegrityError
 from freezegun import freeze_time
 from app import db
+from app.dao.inbound_numbers_dao import (
+    dao_set_inbound_number_to_service,
+    dao_get_available_inbound_numbers
+)
 from app.dao.services_dao import (
     dao_create_service,
     dao_add_user_to_service,
@@ -552,11 +556,11 @@ def test_fetch_stats_counts_should_ignore_team_key(
         sample_team_api_key
 ):
     # two created email, one failed email, and one created sms
-    create_notification(notify_db, notify_db_session, api_key_id=sample_api_key.id, key_type=sample_api_key.key_type)
+    create_notification(notify_db, notify_db_session, api_key=sample_api_key, key_type=sample_api_key.key_type)
     create_notification(
-        notify_db, notify_db_session, api_key_id=sample_test_api_key.id, key_type=sample_test_api_key.key_type)
+        notify_db, notify_db_session, api_key=sample_test_api_key, key_type=sample_test_api_key.key_type)
     create_notification(
-        notify_db, notify_db_session, api_key_id=sample_team_api_key.id, key_type=sample_team_api_key.key_type)
+        notify_db, notify_db_session, api_key=sample_team_api_key, key_type=sample_team_api_key.key_type)
     create_notification(
         notify_db, notify_db_session)
 
@@ -757,24 +761,17 @@ def test_dao_suspend_service_marks_service_as_inactive_and_expires_api_keys(samp
                           ("8", "4", "2")])  # a date range that starts more than 7 days ago
 def test_fetch_stats_by_date_range_for_all_services_returns_test_notifications(notify_db,
                                                                                notify_db_session,
-                                                                               sample_api_key,
                                                                                start_delta,
                                                                                end_delta,
                                                                                expected):
-    result_one = create_notification(notify_db, notify_db_session, created_at=datetime.now(),
-                                     api_key_id=sample_api_key.id, key_type='test')
-    create_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=2),
-                        api_key_id=sample_api_key.id, key_type='test')
-    create_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=3),
-                        api_key_id=sample_api_key.id, key_type='test')
-    create_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=4),
-                        api_key_id=sample_api_key.id, key_type='normal')
-    create_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=4),
-                        api_key_id=sample_api_key.id, key_type='test')
-    create_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=8),
-                        api_key_id=sample_api_key.id, key_type='test')
-    create_notification(notify_db, notify_db_session, created_at=datetime.now() - timedelta(days=8),
-                        api_key_id=sample_api_key.id, key_type='normal')
+    create_noti = functools.partial(create_notification, notify_db, notify_db_session)
+    result_one = create_noti(created_at=datetime.now(), key_type='test')
+    create_noti(created_at=datetime.now() - timedelta(days=2), key_type='test')
+    create_noti(created_at=datetime.now() - timedelta(days=3), key_type='test')
+    create_noti(created_at=datetime.now() - timedelta(days=4), key_type='normal')
+    create_noti(created_at=datetime.now() - timedelta(days=4), key_type='test')
+    create_noti(created_at=datetime.now() - timedelta(days=8), key_type='test')
+    create_noti(created_at=datetime.now() - timedelta(days=8), key_type='normal')
 
     start_date = (datetime.utcnow() - timedelta(days=int(start_delta))).date()
     end_date = (datetime.utcnow() - timedelta(days=int(end_delta))).date()
@@ -903,3 +900,13 @@ def test_dao_fetch_services_by_sms_sender(notify_db_session):
     services = dao_fetch_services_by_sms_sender('foo')
 
     assert {foo1.id, foo2.id} == {x.id for x in services}
+
+
+def test_dao_allocating_inbound_number_shows_on_service(notify_db_session, sample_inbound_numbers):
+    inbound_numbers = dao_get_available_inbound_numbers()
+
+    service = create_service(service_name='test service')
+
+    dao_set_inbound_number_to_service(service.id, inbound_numbers[0])
+
+    assert service.inbound_number.number == inbound_numbers[0].number
