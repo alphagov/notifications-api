@@ -9,7 +9,7 @@ SQLAlchemy-Utils==0.32.14
 PyJWT==1.5.2
 marshmallow==2.4.2
 marshmallow-sqlalchemy==0.13.1
-flask-marshmallow==0.6.2
+flask-marshmallow==0.8.0
 Flask-Bcrypt==0.6.2
 boto3==1.4.4
 monotonic==1.3
