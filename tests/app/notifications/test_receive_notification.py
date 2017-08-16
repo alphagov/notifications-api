@@ -93,6 +93,36 @@ def test_receive_notification_without_permissions_does_not_create_inbound(
     mocked_send_inbound_sms.assert_not_called()
 
 
+def test_receive_notification_without_permissions_does_not_create_inbound_even_with_inbound_number_set(
+        client, mocker, notify_db, notify_db_session):
+    service = sample_service(notify_db, notify_db_session, permissions=[SMS_TYPE])
+    inbound_number = create_inbound_number('1', service_id=service.id, active=True)
+
+    mocked_send_inbound_sms = mocker.patch(
+        "app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
+    mocked_has_permissions = mocker.patch(
+        "app.notifications.receive_notifications.has_inbound_sms_permissions", return_value=False)
+
+    data = json.dumps({
+        "ID": "1234",
+        "MSISDN": "447700900855",
+        "Message": "Some message to notify",
+        "Trigger": "Trigger?",
+        "Number": inbound_number.number,
+        "Channel": "SMS",
+        "DateRecieved": "2012-06-27 12:33:00"
+    })
+
+    response = client.post(path='/notifications/sms/receive/mmg',
+                           data=data,
+                           headers=[('Content-Type', 'application/json')])
+
+    assert response.status_code == 200
+    assert len(InboundSms.query.all()) == 0
+    assert mocked_has_permissions.called
+    mocked_send_inbound_sms.assert_not_called()
+
+
 @pytest.mark.parametrize('permissions,expected_response', [
     ([SMS_TYPE, INBOUND_SMS_TYPE], True),
     ([INBOUND_SMS_TYPE], False),
