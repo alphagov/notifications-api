@@ -35,9 +35,10 @@ get_template_by_id_response = {
         "created_by": {"type": "string"},
         "version": {"type": "integer"},
         "body": {"type": "string"},
-        "subject": {"type": ["string", "null"]}
+        "subject": {"type": ["string", "null"]},
+        "name": {"type": "string"},
     },
-    "required": ["id", "type", "created_at", "updated_at", "version", "created_by", "body"]
+    "required": ["id", "type", "created_at", "updated_at", "version", "created_by", "body", "name"],
 }
 
 post_template_preview_request = {
