@@ -151,6 +151,19 @@ class CustomDbScript(Command):
             db.session.commit()
             result = db.session.execute(subq_hist).fetchall()
 
+    def link_inbound_numbers_to_service(self):
+        update = """
+        UPDATE inbound_numbers SET
+        service_id = services.id,
+        updated_at = now()
+        FROM services
+        WHERE services.sms_sender = inbound_numbers.number
+        """
+        result = db.session.execute(update)
+        db.session.commit()
+
+        print("Linked {} inbound numbers to service".format(result.rowcount))
+
 
 class PopulateMonthlyBilling(Command):
         option_list = (
