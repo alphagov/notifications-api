@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import asc, func, or_, and_
+from sqlalchemy import asc, func, or_
 from sqlalchemy.orm import joinedload
 from flask import current_app
 
