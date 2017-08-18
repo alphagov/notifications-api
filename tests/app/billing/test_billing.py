@@ -1,13 +1,22 @@
 from datetime import datetime, timedelta
 import json
 
-from app.dao.monthly_billing_dao import create_or_update_monthly_billing
+from app.billing.rest import _transform_billing_for_month
+from app.dao.monthly_billing_dao import (
+    create_or_update_monthly_billing,
+    get_monthly_billing_by_notification_type,
+)
 from app.models import SMS_TYPE, EMAIL_TYPE
 from tests.app.db import (
     create_notification,
-    create_rate
+    create_rate,
+    create_monthly_billing_entry
 )
+
 from tests import create_authorization_header
+
+APR_2016_MONTH_START = datetime(2016, 3, 31, 23, 00, 00)
+APR_2016_MONTH_END = datetime(2016, 4, 30, 22, 59, 59, 99999)
 
 IN_MAY_2016 = datetime(2016, 5, 10, 23, 00, 00)
 IN_JUN_2016 = datetime(2016, 6, 3, 23, 00, 00)
@@ -76,7 +85,7 @@ def test_get_yearly_usage_by_month_returns_400_if_missing_year(client, sample_se
     }
 
 
-def test_get_yearly_usage_by_month_returns_empty_list_if_no_notifications(client, sample_template):
+def test_get_yearly_usage_by_month_returns_empty_list_if_no_usage(client, sample_template):
     create_rate(start_date=IN_MAY_2016 - timedelta(days=1), value=0.12, notification_type=SMS_TYPE)
     response = client.get(
         '/service/{}/billing/monthly-usage?year=2016'.format(sample_template.service.id),
@@ -127,4 +136,56 @@ def test_get_yearly_usage_by_month_returns_correctly(client, sample_template):
         'notification_type': SMS_TYPE,
         'rate': 0.12,
         'rate_multiplier': 3
+    })
+
+
+def test_transform_billing_for_month_returns_empty_if_no_monthly_totals(sample_service):
+    create_monthly_billing_entry(
+        service=sample_service,
+        monthly_totals=[],
+        start_date=APR_2016_MONTH_START,
+        end_date=APR_2016_MONTH_END,
+        notification_type=SMS_TYPE
+    )
+
+    transformed_billing_data = _transform_billing_for_month(get_monthly_billing_by_notification_type(
+        sample_service.id, APR_2016_MONTH_START, SMS_TYPE
+    ))
+
+    _assert_dict_equals(transformed_billing_data, {
+        'notification_type': SMS_TYPE,
+        'billing_units': 0,
+        'month': 'April',
+        'international': False,
+        'rate_multiplier': 0,
+        'rate': 0,
+    })
+
+
+def test_transform_billing_for_month_formats_monthly_totals_correctly(sample_service):
+    create_monthly_billing_entry(
+        service=sample_service,
+        monthly_totals=[{
+            "billing_units": 12,
+            "rate": 0.0158,
+            "rate_multiplier": 5,
+            "total_cost": 2.1804,
+            "international": False
+        }],
+        start_date=APR_2016_MONTH_START,
+        end_date=APR_2016_MONTH_END,
+        notification_type=SMS_TYPE
+    )
+
+    transformed_billing_data = _transform_billing_for_month(get_monthly_billing_by_notification_type(
+        sample_service.id, APR_2016_MONTH_START, SMS_TYPE
+    ))
+
+    _assert_dict_equals(transformed_billing_data, {
+        'notification_type': SMS_TYPE,
+        'billing_units': 12,
+        'month': 'April',
+        'international': False,
+        'rate_multiplier': 5,
+        'rate': 0.0158,
     })

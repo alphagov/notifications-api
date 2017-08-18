@@ -3,12 +3,14 @@ import json
 
 from flask import Blueprint, jsonify, request
 
-from app.dao.notification_usage_dao import get_billing_data_for_month
-from app.dao.monthly_billing_dao import get_billing_data_for_financial_year
-from app.dao.date_util import get_financial_year
+from app.dao.monthly_billing_dao import (
+    get_billing_data_for_financial_year,
+    get_monthly_billing_by_notification_type
+)
+from app.dao.date_util import get_financial_year, get_months_for_financial_year
 from app.errors import register_errors
 from app.models import SMS_TYPE, EMAIL_TYPE
-
+from app.utils import convert_utc_to_bst
 
 billing_blueprint = Blueprint(
     'billing',
@@ -25,16 +27,13 @@ def get_yearly_usage_by_month(service_id):
     try:
         year = int(request.args.get('year'))
         start_date, end_date = get_financial_year(year)
-        results = get_billing_data_for_month(service_id, start_date, end_date, SMS_TYPE)
-        json_results = [{
-            "month": datetime.strftime(x[0], "%B"),
-            "billing_units": x[1],
-            "rate_multiplier": x[2],
-            "international": x[3],
-            "notification_type": x[4],
-            "rate": x[5]
-        } for x in results]
-        return json.dumps(json_results)
+        results = []
+        for month in get_months_for_financial_year(year):
+            billing_for_month = get_monthly_billing_by_notification_type(service_id, month, SMS_TYPE)
+            if billing_for_month:
+                results.append(_transform_billing_for_month(billing_for_month))
+        return json.dumps(results)
+
     except TypeError:
         return jsonify(result='error', message='No valid year provided'), 400
 
@@ -69,5 +68,25 @@ def _get_total_billable_units_and_rate_for_notification_type(billing_data, noti_
     return {
         "notification_type": noti_type,
         "billing_units": total_sent,
+        "rate": rate
+    }
+
+
+def _transform_billing_for_month(billing_for_month):
+    month_name = datetime.strftime(convert_utc_to_bst(billing_for_month.start_date), "%B")
+    billing_units = rate = rate_multiplier = international = 0
+
+    if billing_for_month.monthly_totals:
+        billing_units = billing_for_month.monthly_totals[0]['billing_units']
+        rate = billing_for_month.monthly_totals[0]['rate']
+        rate_multiplier = billing_for_month.monthly_totals[0]['rate_multiplier']
+        international = billing_for_month.monthly_totals[0]['international']
+
+    return {
+        "month": month_name,
+        "billing_units": billing_units,
+        "rate_multiplier": rate_multiplier,
+        "international": bool(international),
+        "notification_type": billing_for_month.notification_type,
         "rate": rate
     }
