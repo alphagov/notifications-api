@@ -50,26 +50,6 @@ NO_BILLING_DATA = {
 }
 
 
-def _create_sample_monthly_billing_entry(
-    service_id,
-    monthly_totals,
-    start_date,
-    end_date,
-    notification_type=SMS_TYPE
-):
-    entry = MonthlyBilling(
-        service_id=service_id,
-        notification_type=notification_type,
-        monthly_totals=monthly_totals,
-        start_date=start_date,
-        end_date=end_date
-    )
-    db.session.add(entry)
-    db.session.commit()
-
-    return entry
-
-
 def _assert_monthly_billing(monthly_billing, service_id, notification_type, month_start, month_end):
     assert monthly_billing.service_id == service_id
     assert monthly_billing.notification_type == notification_type
@@ -85,8 +65,8 @@ def _assert_monthly_billing_totals(monthly_billing_totals, expected_dict):
 def test_get_monthly_billing_by_notification_type_returns_correct_totals(notify_db, notify_db_session):
     service = create_service(service_name="Service One")
 
-    _create_sample_monthly_billing_entry(
-        service_id=service.id,
+    create_monthly_billing_entry(
+        service=service,
         monthly_totals=[{
             "billing_units": 12,
             "rate": 0.0158,
@@ -116,8 +96,8 @@ def test_get_monthly_billing_by_notification_type_returns_correct_totals(notify_
 def test_get_monthly_billing_by_notification_type_filters_by_type(notify_db, notify_db_session):
     service = create_service(service_name="Service One")
 
-    _create_sample_monthly_billing_entry(
-        service_id=service.id,
+    create_monthly_billing_entry(
+        service=service,
         monthly_totals=[{
             "billing_units": 138,
             "rate": 0.0158,
@@ -130,8 +110,8 @@ def test_get_monthly_billing_by_notification_type_filters_by_type(notify_db, not
         notification_type=SMS_TYPE
     )
 
-    _create_sample_monthly_billing_entry(
-        service_id=service.id,
+    create_monthly_billing_entry(
+        service=service,
         monthly_totals=[],
         start_date=APR_2016_MONTH_START,
         end_date=APR_2016_MONTH_END,
@@ -149,8 +129,8 @@ def test_get_monthly_billing_by_notification_type_filters_by_type(notify_db, not
 def test_get_monthly_billing_by_notification_type_normalises_start_date(notify_db, notify_db_session):
     service = create_service(service_name="Service One")
 
-    _create_sample_monthly_billing_entry(
-        service_id=service.id,
+    create_monthly_billing_entry(
+        service=service,
         monthly_totals=[{
             "billing_units": 321,
             "rate": 0.0158,
@@ -354,18 +334,20 @@ def test_get_monthly_billing_entry_filters_by_service(notify_db, notify_db_sessi
     service_2 = create_service(service_name="Service Two")
     now = datetime.utcnow()
 
-    _create_sample_monthly_billing_entry(
-        service_id=service_1.id,
+    create_monthly_billing_entry(
+        service=service_1,
         monthly_totals=[],
         start_date=now,
-        end_date=now + timedelta(days=30)
+        end_date=now + timedelta(days=30),
+        notification_type=SMS_TYPE
     )
 
-    _create_sample_monthly_billing_entry(
-        service_id=service_2.id,
+    create_monthly_billing_entry(
+        service=service_2,
         monthly_totals=[],
         start_date=now,
-        end_date=now + timedelta(days=30)
+        end_date=now + timedelta(days=30),
+        notification_type=SMS_TYPE
     )
 
     entry = get_monthly_billing_entry(service_2.id, now, SMS_TYPE)
