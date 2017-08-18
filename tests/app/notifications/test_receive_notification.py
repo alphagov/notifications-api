@@ -15,7 +15,7 @@ from app.notifications.receive_notifications import (
 )
 
 from app.models import InboundSms, EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE
-from tests.app.db import create_service
+from tests.app.db import create_inbound_number, create_service
 from tests.app.conftest import sample_service
 
 
@@ -26,7 +26,7 @@ def test_receive_notification_returns_received_to_mmg(client, mocker, sample_ser
         "MSISDN": "447700900855",
         "Message": "Some message to notify",
         "Trigger": "Trigger?",
-        "Number": "testing",
+        "Number": sample_service_full_permissions.get_inbound_number(),
         "Channel": "SMS",
         "DateRecieved": "2012-06-27 12:33:00"
     }
@@ -93,6 +93,36 @@ def test_receive_notification_without_permissions_does_not_create_inbound(
     mocked_send_inbound_sms.assert_not_called()
 
 
+def test_receive_notification_without_permissions_does_not_create_inbound_even_with_inbound_number_set(
+        client, mocker, notify_db, notify_db_session):
+    service = sample_service(notify_db, notify_db_session, permissions=[SMS_TYPE])
+    inbound_number = create_inbound_number('1', service_id=service.id, active=True)
+
+    mocked_send_inbound_sms = mocker.patch(
+        "app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
+    mocked_has_permissions = mocker.patch(
+        "app.notifications.receive_notifications.has_inbound_sms_permissions", return_value=False)
+
+    data = json.dumps({
+        "ID": "1234",
+        "MSISDN": "447700900855",
+        "Message": "Some message to notify",
+        "Trigger": "Trigger?",
+        "Number": inbound_number.number,
+        "Channel": "SMS",
+        "DateRecieved": "2012-06-27 12:33:00"
+    })
+
+    response = client.post(path='/notifications/sms/receive/mmg',
+                           data=data,
+                           headers=[('Content-Type', 'application/json')])
+
+    assert response.status_code == 200
+    assert len(InboundSms.query.all()) == 0
+    assert mocked_has_permissions.called
+    mocked_send_inbound_sms.assert_not_called()
+
+
 @pytest.mark.parametrize('permissions,expected_response', [
     ([SMS_TYPE, INBOUND_SMS_TYPE], True),
     ([INBOUND_SMS_TYPE], False),
@@ -123,10 +153,9 @@ def test_format_mmg_datetime(provider_date, expected_output):
 
 
 def test_create_inbound_mmg_sms_object(sample_service_full_permissions):
-    sample_service_full_permissions.sms_sender = 'foo'
     data = {
         'Message': 'hello+there+%F0%9F%93%A9',
-        'Number': 'foo',
+        'Number': sample_service_full_permissions.get_inbound_number(),
         'MSISDN': '07700 900 001',
         'DateRecieved': '2017-01-02+03%3A04%3A05',
         'ID': 'bar',
@@ -136,7 +165,7 @@ def test_create_inbound_mmg_sms_object(sample_service_full_permissions):
                                             data["MSISDN"], data["ID"], data["DateRecieved"], "mmg")
 
     assert inbound_sms.service_id == sample_service_full_permissions.id
-    assert inbound_sms.notify_number == 'foo'
+    assert inbound_sms.notify_number == sample_service_full_permissions.get_inbound_number()
     assert inbound_sms.user_number == '447700900001'
     assert inbound_sms.provider_date == datetime(2017, 1, 2, 3, 4, 5)
     assert inbound_sms.provider_reference == 'bar'
@@ -145,10 +174,45 @@ def test_create_inbound_mmg_sms_object(sample_service_full_permissions):
     assert inbound_sms.provider == 'mmg'
 
 
+def test_create_inbound_mmg_sms_object_uses_inbound_number_if_set(sample_service_full_permissions):
+    sample_service_full_permissions.sms_sender = 'foo'
+    inbound_number = sample_service_full_permissions.get_inbound_number()
+
+    data = {
+        'Message': 'hello+there+%F0%9F%93%A9',
+        'Number': sample_service_full_permissions.get_inbound_number(),
+        'MSISDN': '07700 900 001',
+        'DateRecieved': '2017-01-02+03%3A04%3A05',
+        'ID': 'bar',
+    }
+
+    inbound_sms = create_inbound_sms_object(
+        sample_service_full_permissions,
+        format_mmg_message(data["Message"]),
+        data["MSISDN"],
+        data["ID"],
+        data["DateRecieved"],
+        "mmg"
+    )
+
+    assert inbound_sms.service_id == sample_service_full_permissions.id
+    assert inbound_sms.notify_number == inbound_number
+
+
 @pytest.mark.parametrize('notify_number', ['foo', 'baz'], ids=['two_matching_services', 'no_matching_services'])
 def test_receive_notification_error_if_not_single_matching_service(client, notify_db_session, notify_number):
-    create_service(service_name='a', sms_sender='foo', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
-    create_service(service_name='b', sms_sender='foo', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
+    create_service(
+        service_name='a',
+        sms_sender='foo',
+        service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE],
+        do_create_inbound_number=False
+    )
+    create_service(
+        service_name='b',
+        sms_sender='foo',
+        service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE],
+        do_create_inbound_number=False
+    )
 
     data = {
         'Message': 'hello',

@@ -4,7 +4,7 @@ from app.models import InboundNumber
 
 
 def dao_get_inbound_numbers():
-    return InboundNumber.query.all()
+    return InboundNumber.query.order_by(InboundNumber.updated_at).all()
 
 
 def dao_get_available_inbound_numbers():
@@ -15,16 +15,19 @@ def dao_get_inbound_number_for_service(service_id):
     return InboundNumber.query.filter(InboundNumber.service_id == service_id).first()
 
 
+def dao_get_inbound_number(inbound_number_id):
+    return InboundNumber.query.filter(InboundNumber.id == inbound_number_id).first()
+
+
 @transactional
 def dao_set_inbound_number_to_service(service_id, inbound_number):
     inbound_number.service_id = service_id
-
     db.session.add(inbound_number)
 
 
 @transactional
-def dao_set_inbound_number_active_flag(inbound_number_id, active):
-    inbound_number = InboundNumber.query.filter(InboundNumber.id == inbound_number_id).first()
+def dao_set_inbound_number_active_flag(service_id, active):
+    inbound_number = InboundNumber.query.filter(InboundNumber.service_id == service_id).first()
     inbound_number.active = active
 
     db.session.add(inbound_number)

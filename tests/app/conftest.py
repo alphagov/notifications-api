@@ -25,9 +25,10 @@ from app.models import (
     ProviderDetailsHistory,
     ProviderRates,
     NotificationStatistics,
+    ScheduledNotification,
     ServiceWhitelist,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM,
-    MOBILE_TYPE, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED, ScheduledNotification,
+    MOBILE_TYPE, EMAIL_TYPE, INBOUND_SMS_TYPE, SMS_TYPE, LETTER_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED,
     SERVICE_PERMISSION_TYPES)
 from app.dao.users_dao import (create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
@@ -156,6 +157,10 @@ def sample_service(
     else:
         if user not in service.users:
             dao_add_user_to_service(service, user)
+
+    if INBOUND_SMS_TYPE in permissions:
+        create_inbound_number('12345', service_id=service.id)
+
     return service
 
 
@@ -1051,8 +1056,11 @@ def admin_request(client):
                 data=json.dumps(_data),
                 headers=[('Content-Type', 'application/json'), create_authorization_header()]
             )
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == _expected_status, json_resp
+            if resp.get_data():
+                json_resp = json.loads(resp.get_data(as_text=True))
+            else:
+                json_resp = None
+            assert resp.status_code == _expected_status
             return json_resp
 
         @staticmethod

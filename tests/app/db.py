@@ -21,8 +21,11 @@ from app.models import (
     InboundSms,
     InboundNumber,
     Organisation,
-    ServiceInboundApi
-)
+    EMAIL_TYPE,
+    SMS_TYPE,
+    INBOUND_SMS_TYPE,
+    KEY_TYPE_NORMAL,
+    ServiceInboundApi)
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import dao_create_notification, dao_created_scheduled_notification
 from app.dao.templates_dao import dao_create_template
@@ -57,6 +60,7 @@ def create_service(
     sms_sender='testing',
     research_mode=False,
     active=True,
+    do_create_inbound_number=True,
 ):
     service = Service(
         name=service_name,
@@ -66,6 +70,10 @@ def create_service(
         created_by=user or create_user(),
         sms_sender=sms_sender,
     )
+
+    if do_create_inbound_number and INBOUND_SMS_TYPE in service_permissions:
+        create_inbound_number(number=sms_sender, service_id=service.id)
+
     dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
 
     service.active = active

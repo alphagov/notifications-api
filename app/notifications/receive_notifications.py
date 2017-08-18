@@ -107,7 +107,7 @@ def create_inbound_sms_object(service, content, from_number, provider_ref, date_
 
     inbound = InboundSms(
         service=service,
-        notify_number=service.sms_sender,
+        notify_number=service.get_inbound_number(),
         user_number=user_number,
         provider_date=provider_date,
         provider_reference=provider_ref,

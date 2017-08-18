@@ -241,6 +241,12 @@ class Service(db.Model, Versioned):
 
         return cls(**fields)
 
+    def get_inbound_number(self):
+        if self.inbound_number and self.inbound_number.active:
+            return self.inbound_number.number
+        else:
+            return self.sms_sender or current_app.config['FROM_NUMBER']
+
 
 class InboundNumber(db.Model):
     __tablename__ = "inbound_numbers"

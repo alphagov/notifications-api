@@ -74,7 +74,7 @@ def test_set_inbound_number_active_flag(notify_db, notify_db_session, sample_ser
     inbound_number = create_inbound_number(number='1')
     dao_set_inbound_number_to_service(sample_service.id, inbound_number)
 
-    dao_set_inbound_number_active_flag(inbound_number.id, active=active)
+    dao_set_inbound_number_active_flag(sample_service.id, active=active)
 
     inbound_number = dao_get_inbound_number_for_service(sample_service.id)
 
