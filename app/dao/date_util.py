@@ -5,6 +5,20 @@ import pytz
 from app.utils import convert_bst_to_utc
 
 
+def get_months_for_financial_year(year):
+    return [
+        convert_bst_to_utc(month) for month in (
+            get_months_for_year(4, 13, year) +
+            get_months_for_year(1, 4, year + 1)
+        )
+        if month < datetime.now()
+    ]
+
+
+def get_months_for_year(start, end, year):
+    return [datetime(year, month, 1) for month in range(start, end)]
+
+
 def get_financial_year(year):
     return get_april_fools(year), get_april_fools(year + 1) - timedelta(microseconds=1)
 
