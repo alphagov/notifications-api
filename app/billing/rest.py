@@ -74,19 +74,15 @@ def _get_total_billable_units_and_rate_for_notification_type(billing_data, noti_
 
 def _transform_billing_for_month(billing_for_month):
     month_name = datetime.strftime(convert_utc_to_bst(billing_for_month.start_date), "%B")
-    billing_units = rate = rate_multiplier = international = 0
+    billing_units = rate = 0
 
-    if billing_for_month.monthly_totals:
-        billing_units = billing_for_month.monthly_totals[0]['billing_units']
-        rate = billing_for_month.monthly_totals[0]['rate']
-        rate_multiplier = billing_for_month.monthly_totals[0]['rate_multiplier']
-        international = billing_for_month.monthly_totals[0]['international']
+    for total in billing_for_month.monthly_totals:
+        billing_units += (total['billing_units'] * total['rate_multiplier'])
+        rate = total['rate']
 
     return {
         "month": month_name,
         "billing_units": billing_units,
-        "rate_multiplier": rate_multiplier,
-        "international": bool(international),
         "notification_type": billing_for_month.notification_type,
         "rate": rate
     }

@@ -121,21 +121,17 @@ def test_get_yearly_usage_by_month_returns_correctly(client, sample_template):
     resp_json = json.loads(response.get_data(as_text=True))
 
     _assert_dict_equals(resp_json[0], {
-        'billing_units': 1,
-        'international': False,
+        'billing_units': 2,
         'month': 'May',
         'notification_type': SMS_TYPE,
-        'rate': 0.12,
-        'rate_multiplier': 2
+        'rate': 0.12
     })
 
     _assert_dict_equals(resp_json[1], {
-        'billing_units': 2,
-        'international': False,
+        'billing_units': 6,
         'month': 'June',
         'notification_type': SMS_TYPE,
-        'rate': 0.12,
-        'rate_multiplier': 3
+        'rate': 0.12
     })
 
 
@@ -156,8 +152,6 @@ def test_transform_billing_for_month_returns_empty_if_no_monthly_totals(sample_s
         'notification_type': SMS_TYPE,
         'billing_units': 0,
         'month': 'April',
-        'international': False,
-        'rate_multiplier': 0,
         'rate': 0,
     })
 
@@ -183,9 +177,77 @@ def test_transform_billing_for_month_formats_monthly_totals_correctly(sample_ser
 
     _assert_dict_equals(transformed_billing_data, {
         'notification_type': SMS_TYPE,
-        'billing_units': 12,
+        'billing_units': 60,
         'month': 'April',
-        'international': False,
-        'rate_multiplier': 5,
         'rate': 0.0158,
+    })
+
+
+def test_transform_billing_sums_billable_units(sample_service):
+    create_monthly_billing_entry(
+        service=sample_service,
+        monthly_totals=[{
+            'billing_units': 1321,
+            'international': False,
+            'month': 'May',
+            'notification_type': SMS_TYPE,
+            'rate': 0.12,
+            'rate_multiplier': 1
+        }, {
+            'billing_units': 1,
+            'international': False,
+            'month': 'May',
+            'notification_type': SMS_TYPE,
+            'rate': 0.12,
+            'rate_multiplier': 1
+        }],
+        start_date=APR_2016_MONTH_START,
+        end_date=APR_2016_MONTH_END,
+        notification_type=SMS_TYPE
+    )
+
+    transformed_billing_data = _transform_billing_for_month(get_monthly_billing_by_notification_type(
+        sample_service.id, APR_2016_MONTH_START, SMS_TYPE
+    ))
+
+    _assert_dict_equals(transformed_billing_data, {
+        'notification_type': SMS_TYPE,
+        'billing_units': 1322,
+        'month': 'April',
+        'rate': 0.12,
+    })
+
+
+def test_transform_billing_calculates_with_different_rate_multipliers(sample_service):
+    create_monthly_billing_entry(
+        service=sample_service,
+        monthly_totals=[{
+            'billing_units': 1321,
+            'international': False,
+            'month': 'May',
+            'notification_type': SMS_TYPE,
+            'rate': 0.12,
+            'rate_multiplier': 1
+        }, {
+            'billing_units': 1,
+            'international': False,
+            'month': 'May',
+            'notification_type': SMS_TYPE,
+            'rate': 0.12,
+            'rate_multiplier': 3
+        }],
+        start_date=APR_2016_MONTH_START,
+        end_date=APR_2016_MONTH_END,
+        notification_type=SMS_TYPE
+    )
+
+    transformed_billing_data = _transform_billing_for_month(get_monthly_billing_by_notification_type(
+        sample_service.id, APR_2016_MONTH_START, SMS_TYPE
+    ))
+
+    _assert_dict_equals(transformed_billing_data, {
+        'notification_type': SMS_TYPE,
+        'billing_units': 1324,
+        'month': 'April',
+        'rate': 0.12,
     })
