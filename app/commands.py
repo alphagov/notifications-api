@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from flask.ext.script import Command, Manager, Option
+from flask_script import Command, Manager, Option
 
 from app import db
 from app.dao.monthly_billing_dao import (

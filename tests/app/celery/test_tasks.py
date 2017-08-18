@@ -1186,7 +1186,7 @@ def test_send_inbound_sms_to_service_retries_if_request_returns_500(notify_api, 
 
     mocked.assert_called_with(
         exc='Unable to send_inbound_sms_to_service for service_id: {} '
-            'and url: {}. \n500 Server Error: None'.format(sample_service.id, inbound_api.url),
+            'and url: {url}. \n500 Server Error: None for url: {url}'.format(sample_service.id, url=inbound_api.url),
         queue="retry-tasks")
 
 
