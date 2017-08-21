@@ -8,12 +8,11 @@ import pytest
 from flask import url_for, current_app
 from freezegun import freeze_time
 
-from app.dao.monthly_billing_dao import create_or_update_monthly_billing
 from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
 from app.models import (
-    User, Organisation, Rate, Service, ServicePermission, Notification,
+    User, Organisation, Service, ServicePermission, Notification,
     DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
@@ -1728,75 +1727,6 @@ def test_get_template_stats_by_month_returns_error_for_incorrect_year(
     )
     assert response.status_code == expected_status
     assert json.loads(response.get_data(as_text=True)) == expected_json
-
-
-def test_get_monthly_billing_usage(client, notify_db, notify_db_session, sample_service):
-    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type=SMS_TYPE)
-    notify_db.session.add(rate)
-    notification = create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
-                                              sent_at=datetime(2016, 6, 5),
-                                              status='sending')
-    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
-                               sent_at=datetime(2016, 6, 5),
-                               status='sending', rate_multiplier=2)
-    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 7, 5),
-                               sent_at=datetime(2016, 7, 5),
-                               status='sending')
-
-    template = create_template(sample_service, template_type=EMAIL_TYPE)
-    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2016, 6, 5),
-                               sent_at=datetime(2016, 6, 5),
-                               status='sending',
-                               template=template)
-    response = client.get(
-        '/service/{}/monthly-usage?year=2016'.format(notification.service_id),
-        headers=[create_authorization_header()]
-    )
-    assert response.status_code == 200
-    actual = json.loads(response.get_data(as_text=True))
-    assert len(actual) == 3
-    assert actual == [{'month': 'June',
-                       'international': False,
-                       'rate_multiplier': 1,
-                       'notification_type': SMS_TYPE,
-                       'rate': 0.0158,
-                       'billing_units': 1},
-                      {'month': 'June',
-                       'international': False,
-                       'rate_multiplier': 2,
-                       'notification_type': SMS_TYPE,
-                       'rate': 0.0158,
-                       'billing_units': 1},
-                      {'month': 'July',
-                       'international': False,
-                       'rate_multiplier': 1,
-                       'notification_type': SMS_TYPE,
-                       'rate': 0.0158,
-                       'billing_units': 1}]
-
-
-def test_get_monthly_billing_usage_returns_400_if_missing_year(client, sample_service):
-    response = client.get(
-        '/service/{}/monthly-usage'.format(sample_service.id),
-        headers=[create_authorization_header()]
-    )
-    assert response.status_code == 400
-    assert json.loads(response.get_data(as_text=True)) == {
-        'message': 'No valid year provided', 'result': 'error'
-    }
-
-
-def test_get_monthly_billing_usage_returns_empty_list_if_no_notifications(client, notify_db, sample_service):
-    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type=SMS_TYPE)
-    notify_db.session.add(rate)
-    response = client.get(
-        '/service/{}/monthly-usage?year=2016'.format(sample_service.id),
-        headers=[create_authorization_header()]
-    )
-    assert response.status_code == 200
-
-    results = json.loads(response.get_data(as_text=True))
-    assert results == []
 
 
 def test_search_for_notification_by_to_field(client, notify_db, notify_db_session):
