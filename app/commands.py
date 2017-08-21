@@ -157,7 +157,7 @@ class CustomDbScript(Command):
         service_id = services.id,
         updated_at = now()
         FROM services
-        WHERE services.sms_sender = inbound_numbers.number AND 
+        WHERE services.sms_sender = inbound_numbers.number AND
         inbound_numbers.service_id is null
         """
         result = db.session.execute(update)
