@@ -31,7 +31,6 @@ from app.dao.notifications_dao import (
     delete_notifications_created_more_than_a_week_ago_by_type,
     get_notification_by_id,
     get_notification_for_job,
-    get_notification_billable_unit_count_per_month,
     get_notification_with_personalisation,
     get_notifications_for_job,
     get_notifications_for_service,
@@ -912,38 +911,6 @@ def test_get_all_notifications_for_job_by_status(notify_db, notify_db_session, s
             assert len(notifications(filter_dict={'status': status}).items) == 1
 
     assert len(notifications(filter_dict={'status': NOTIFICATION_STATUS_TYPES[:3]}).items) == 3
-
-
-def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_session, sample_service):
-
-    for year, month, day, hour, minute, second in (
-        (2017, 1, 15, 23, 59, 59),  # ↓ 2016 financial year
-        (2016, 9, 30, 23, 59, 59),  # counts in October with BST conversion
-        (2016, 6, 30, 23, 50, 20),
-        (2016, 7, 15, 9, 20, 25),
-        (2016, 4, 1, 1, 1, 00),
-        (2016, 4, 1, 0, 0, 00),
-        (2016, 3, 31, 23, 00, 1),  # counts in April with BST conversion
-        (2015, 4, 1, 13, 8, 59),  # ↓ 2015 financial year
-        (2015, 11, 20, 22, 40, 45),
-        (2016, 1, 31, 23, 30, 40)  # counts in January no BST conversion in winter
-    ):
-        sample_notification(
-            notify_db, notify_db_session, service=sample_service,
-            created_at=datetime(
-                year, month, day, hour, minute, second, 0
-            )
-        )
-
-    for financial_year, months in (
-        (2017, []),
-        (2016, [('April', 3), ('July', 2), ('October', 1), ('January', 1)]),
-        (2015, [('April', 1), ('November', 1), ('January', 1)]),
-        (2014, [])
-    ):
-        assert get_notification_billable_unit_count_per_month(
-            sample_service.id, financial_year
-        ) == months
 
 
 def test_update_notification_sets_status(sample_notification):

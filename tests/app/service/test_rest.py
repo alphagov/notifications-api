@@ -1665,30 +1665,6 @@ def test_get_detailed_services_for_date_range(notify_db, notify_db_session, set_
     }
 
 
-@freeze_time('2012-12-12T12:00:01')
-def test_get_notification_billable_unit_count(client, notify_db, notify_db_session):
-    notification = create_sample_notification(notify_db, notify_db_session)
-    response = client.get(
-        '/service/{}/billable-units?year=2012'.format(notification.service_id),
-        headers=[create_authorization_header()]
-    )
-    assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True)) == {
-        'December': 1
-    }
-
-
-def test_get_notification_billable_unit_count_missing_year(client, sample_service):
-    response = client.get(
-        '/service/{}/billable-units'.format(sample_service.id),
-        headers=[create_authorization_header()]
-    )
-    assert response.status_code == 400
-    assert json.loads(response.get_data(as_text=True)) == {
-        'message': 'No valid year provided', 'result': 'error'
-    }
-
-
 @pytest.mark.parametrize('query_string, expected_status, expected_json', [
     ('', 200, {'data': {'email_count': 0, 'sms_count': 0}}),
     ('?year=2000', 200, {'data': {'email_count': 0, 'sms_count': 0}}),

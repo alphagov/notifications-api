@@ -450,16 +450,6 @@ def resume_service(service_id):
     return '', 204
 
 
-@service_blueprint.route('/<uuid:service_id>/billable-units')
-def get_billable_unit_count(service_id):
-    try:
-        return jsonify(notifications_dao.get_notification_billable_unit_count_per_month(
-            service_id, int(request.args.get('year'))
-        ))
-    except TypeError:
-        return jsonify(result='error', message='No valid year provided'), 400
-
-
 @service_blueprint.route('/<uuid:service_id>/notifications/templates/monthly', methods=['GET'])
 def get_monthly_template_stats(service_id):
     service = dao_fetch_service_by_id(service_id)

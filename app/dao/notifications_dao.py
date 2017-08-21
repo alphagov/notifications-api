@@ -271,27 +271,6 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
 
 
 @statsd(namespace="dao")
-def get_notification_billable_unit_count_per_month(service_id, year):
-    month = get_london_month_from_utc_column(NotificationHistory.created_at)
-
-    start_date, end_date = get_financial_year(year)
-    notifications = db.session.query(
-        month,
-        func.sum(NotificationHistory.billable_units)
-    ).filter(
-        NotificationHistory.billable_units != 0,
-        NotificationHistory.service_id == service_id,
-        NotificationHistory.created_at.between(start_date, end_date)
-    ).group_by(
-        month
-    ).order_by(
-        month
-    ).all()
-
-    return [(datetime.strftime(x[0], "%B"), x[1]) for x in notifications]
-
-
-@statsd(namespace="dao")
 def get_notification_with_personalisation(service_id, notification_id, key_type):
     filter_dict = {'service_id': service_id, 'id': notification_id}
     if key_type:
