@@ -6,7 +6,6 @@ from freezegun import freeze_time
 from app.dao.date_util import get_financial_year
 from app.dao.notification_usage_dao import (
     get_rates_for_daterange,
-    get_yearly_billing_data,
     get_billing_data_for_month,
     get_monthly_billing_data
 )
@@ -103,94 +102,6 @@ def test_get_rates_for_daterange_where_daterange_is_one_month_that_falls_between
     assert rates[0].rate == 0.175
 
 
-def test_get_yearly_billing_data(notify_db, notify_db_session, sample_template, sample_email_template):
-    set_up_rate(notify_db, datetime(2016, 4, 1), 0.014)
-    set_up_rate(notify_db, datetime(2016, 6, 1), 0.0158)
-    set_up_rate(notify_db, datetime(2017, 6, 1), 0.0165)
-    # previous year
-    create_notification(template=sample_template, created_at=datetime(2016, 3, 31), sent_at=datetime(2016, 3, 31),
-                        status='sending', billable_units=1)
-    # current year
-    create_notification(template=sample_template, created_at=datetime(2016, 4, 2), sent_at=datetime(2016, 4, 2),
-                        status='sending', billable_units=1)
-    create_notification(template=sample_template, created_at=datetime(2016, 5, 18), sent_at=datetime(2016, 5, 18),
-                        status='sending', billable_units=2)
-    create_notification(template=sample_template, created_at=datetime(2016, 7, 22), sent_at=datetime(2016, 7, 22),
-                        status='sending', billable_units=3, rate_multiplier=2, international=True, phone_prefix="1")
-    create_notification(template=sample_template, created_at=datetime(2016, 9, 15), sent_at=datetime(2016, 9, 15),
-                        status='sending', billable_units=4)
-    create_notification(template=sample_template, created_at=datetime(2017, 3, 31), sent_at=datetime(2017, 3, 31),
-                        status='sending', billable_units=5)
-    create_notification(template=sample_email_template, created_at=datetime(2016, 9, 15), sent_at=datetime(2016, 9, 15),
-                        status='sending', billable_units=0)
-    create_notification(template=sample_email_template, created_at=datetime(2017, 3, 31), sent_at=datetime(2017, 3, 31),
-                        status='sending', billable_units=0)
-    # next year
-    create_notification(template=sample_template, created_at=datetime(2017, 4, 1), sent_at=datetime(2017, 4, 1),
-                        status='sending', billable_units=6)
-    results = get_yearly_billing_data(sample_template.service_id, 2016)
-    assert len(results) == 4
-    assert results[0] == (3, 3, 1, 'sms', False, 0.014)
-    assert results[1] == (9, 9, 1, 'sms', False, 0.0158)
-    assert results[2] == (6, 3, 2, 'sms', True, 0.0158)
-    assert results[3] == (2, 2, 1, 'email', False, 0)
-
-
-def test_get_future_yearly_billing_data(notify_db, notify_db_session, sample_template, sample_email_template):
-    set_up_rate(notify_db, datetime(2017, 4, 1), 0.0158)
-
-    create_notification(template=sample_template, created_at=datetime(2017, 3, 30), sent_at=datetime(2017, 3, 30),
-                        status='sending', billable_units=1)
-    create_notification(template=sample_template, created_at=datetime(2017, 4, 6), sent_at=datetime(2017, 4, 6),
-                        status='sending', billable_units=1)
-    create_notification(template=sample_template, created_at=datetime(2017, 4, 6), sent_at=datetime(2017, 4, 6),
-                        status='sending', billable_units=1)
-
-    results = get_yearly_billing_data(sample_template.service_id, 2018)
-    assert len(results) == 2
-    assert results[0] == (0, 0, 1, 'sms', False, 0.0158)
-
-
-def test_get_yearly_billing_data_with_one_rate(notify_db, notify_db_session, sample_template):
-    set_up_rate(notify_db, datetime(2016, 4, 1), 0.014)
-    # previous year
-    create_notification(template=sample_template, created_at=datetime(2016, 3, 31), sent_at=datetime(2016, 3, 31),
-                        status='sending', billable_units=1)
-    # current year
-    create_notification(template=sample_template, created_at=datetime(2016, 4, 2), sent_at=datetime(2016, 4, 2),
-                        status='sending', billable_units=1)
-    create_notification(template=sample_template, created_at=datetime(2016, 5, 18), sent_at=datetime(2016, 5, 18),
-                        status='sending', billable_units=2)
-    create_notification(template=sample_template, created_at=datetime(2016, 7, 22), sent_at=datetime(2016, 7, 22),
-                        status='sending', billable_units=3)
-    create_notification(template=sample_template, created_at=datetime(2016, 9, 15), sent_at=datetime(2016, 9, 15),
-                        status='sending', billable_units=4)
-    create_notification(template=sample_template, created_at=datetime(2017, 3, 31, 22, 59, 59),
-                        sent_at=datetime(2017, 3, 31), status='sending', billable_units=5)
-    # next year
-    create_notification(template=sample_template, created_at=datetime(2017, 3, 31, 23, 00, 00),
-                        sent_at=datetime(2017, 3, 31), status='sending', billable_units=6)
-    create_notification(template=sample_template, created_at=datetime(2017, 4, 1), sent_at=datetime(2017, 4, 1),
-                        status='sending', billable_units=7)
-    results = get_yearly_billing_data(sample_template.service_id, 2016)
-    assert len(results) == 2
-    assert results[0] == (15, 15, 1, 'sms', False, 0.014)
-    assert results[1] == (0, 0, 1, 'email', False, 0)
-
-
-def test_get_yearly_billing_data_with_no_sms_notifications(notify_db, notify_db_session, sample_email_template):
-    set_up_rate(notify_db, datetime(2016, 4, 1), 0.014)
-    create_notification(template=sample_email_template, created_at=datetime(2016, 7, 31), sent_at=datetime(2016, 3, 31),
-                        status='sending', billable_units=0)
-    create_notification(template=sample_email_template, created_at=datetime(2016, 10, 2), sent_at=datetime(2016, 4, 2),
-                        status='sending', billable_units=0)
-
-    results = get_yearly_billing_data(sample_email_template.service_id, 2016)
-    assert len(results) == 2
-    assert results[0] == (0, 0, 1, 'sms', False, 0.014)
-    assert results[1] == (2, 2, 1, 'email', False, 0)
-
-
 def test_get_monthly_billing_data(notify_db, notify_db_session, sample_template, sample_email_template):
     set_up_rate(notify_db, datetime(2016, 4, 1), 0.014)
     # previous year
@@ -269,19 +180,6 @@ def test_get_monthly_billing_data_with_no_notifications_for_daterange(notify_db,
 def set_up_rate(notify_db, start_date, value):
     rate = Rate(id=uuid.uuid4(), valid_from=start_date, rate=value, notification_type='sms')
     notify_db.session.add(rate)
-
-
-def test_get_yearly_billing_data_for_start_date_before_rate_returns_empty(
-    sample_template
-):
-    create_rate(datetime(2016, 4, 1), 0.014, SMS_TYPE)
-
-    results = get_yearly_billing_data(
-        service_id=sample_template.service_id,
-        year=2015
-    )
-
-    assert not results
 
 
 @freeze_time("2016-05-01")
