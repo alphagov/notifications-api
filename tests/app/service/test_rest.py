@@ -1730,50 +1730,6 @@ def test_get_template_stats_by_month_returns_error_for_incorrect_year(
     assert json.loads(response.get_data(as_text=True)) == expected_json
 
 
-def test_get_yearly_billing_usage(client, notify_db, notify_db_session, sample_service):
-    rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type=SMS_TYPE)
-    notify_db.session.add(rate)
-    after_rate_created = datetime(2016, 6, 5)
-    notification = create_sample_notification(
-        notify_db,
-        notify_db_session,
-        created_at=after_rate_created,
-        sent_at=after_rate_created,
-        status='sending',
-        service=sample_service
-    )
-    create_or_update_monthly_billing(sample_service.id, after_rate_created)
-    response = client.get(
-        '/service/{}/yearly-usage?year=2016'.format(notification.service_id),
-        headers=[create_authorization_header()]
-    )
-    assert response.status_code == 200
-
-    assert json.loads(response.get_data(as_text=True)) == [{'credits': 1,
-                                                            'billing_units': 1,
-                                                            'rate_multiplier': 1,
-                                                            'notification_type': SMS_TYPE,
-                                                            'international': False,
-                                                            'rate': 0.0158},
-                                                           {'credits': 0,
-                                                            'billing_units': 0,
-                                                            'rate_multiplier': 1,
-                                                            'notification_type': EMAIL_TYPE,
-                                                            'international': False,
-                                                            'rate': 0}]
-
-
-def test_get_yearly_billing_usage_returns_400_if_missing_year(client, sample_service):
-    response = client.get(
-        '/service/{}/yearly-usage'.format(sample_service.id),
-        headers=[create_authorization_header()]
-    )
-    assert response.status_code == 400
-    assert json.loads(response.get_data(as_text=True)) == {
-        'message': 'No valid year provided', 'result': 'error'
-    }
-
-
 def test_get_monthly_billing_usage(client, notify_db, notify_db_session, sample_service):
     rate = Rate(id=uuid.uuid4(), valid_from=datetime(2016, 3, 31, 23, 00), rate=0.0158, notification_type=SMS_TYPE)
     notify_db.session.add(rate)
