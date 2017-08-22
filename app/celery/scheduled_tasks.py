@@ -13,6 +13,7 @@ from app.dao.date_util import get_month_start_and_end_date_in_utc
 from app.dao.inbound_sms_dao import delete_inbound_sms_created_more_than_a_week_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
 from app.dao.jobs_dao import (
+    dao_get_letter_jobs_by_status,
     dao_set_scheduled_jobs_to_pending,
     dao_get_jobs_older_than_limited_by
 )
@@ -32,7 +33,7 @@ from app.dao.provider_details_dao import (
     dao_toggle_sms_provider
 )
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
-from app.models import LETTER_TYPE
+from app.models import LETTER_TYPE, JOB_STATUS_READY_TO_SEND
 from app.notifications.process_notifications import send_notification_to_queue
 from app.statsd_decorators import statsd
 from app.celery.tasks import process_job
@@ -302,3 +303,15 @@ def populate_monthly_billing():
     start_date, end_date = get_month_start_and_end_date_in_utc(yesterday_in_bst)
     services = get_service_ids_that_need_billing_populated(start_date=start_date, end_date=end_date)
     [create_or_update_monthly_billing(service_id=s.service_id, billing_month=end_date) for s in services]
+
+
+@notify_celery.task(name="run-letter-jobs")
+@statsd(namespace="tasks")
+def run_letter_jobs():
+    ids = dao_get_letter_jobs_by_status(JOB_STATUS_READY_TO_SEND)
+    notify_celery.send_task(
+        name=QueueNames.DVLA_FILES,
+        args=(ids),
+        queue=QueueNames.PROCESS_FTP
+    )
+    current_app.logger.info("Queued {} ready letter job ids onto {}".format(len(ids), QueueNames.PROCESS_FTP))

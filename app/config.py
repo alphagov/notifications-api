@@ -30,6 +30,7 @@ class QueueNames(object):
     RETRY = 'retry-tasks'
     NOTIFY = 'notify-internal-tasks'
     PROCESS_FTP = 'process-ftp-tasks'
+    DVLA_FILES = 'send-files-to-dvla'
 
     @staticmethod
     def all_queues():
@@ -44,7 +45,8 @@ class QueueNames(object):
             QueueNames.JOBS,
             QueueNames.RETRY,
             QueueNames.NOTIFY,
-            QueueNames.PROCESS_FTP
+            QueueNames.PROCESS_FTP,
+            QueueNames.DVLA_FILES
         ]
 
 
@@ -219,6 +221,11 @@ class Config(object):
         'populate_monthly_billing': {
             'task': 'populate_monthly_billing',
             'schedule': crontab(minute=10, hour=5),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
+        'run-letter-jobs': {
+            'task': 'run-letter-jobs',
+            'schedule': crontab(minute=0, hour=16),
             'options': {'queue': QueueNames.PERIODIC}
         }
     }

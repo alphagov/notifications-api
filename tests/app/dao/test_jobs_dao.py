@@ -18,18 +18,24 @@ from app.dao.jobs_dao import (
     dao_get_all_notifications_for_job,
     dao_get_jobs_older_than_limited_by,
     dao_get_job_statistics_for_job,
-    dao_get_job_stats_for_service)
+    dao_get_job_stats_for_service,
+    dao_get_letter_jobs_by_status)
 from app.dao.statistics_dao import create_or_update_job_sending_statistics, update_job_stats_outcome_count
 from app.models import (
     Job, JobStatistics,
-    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
+    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE,
+    JOB_STATUS_READY_TO_SEND
 )
 
 from tests.app.conftest import sample_notification as create_notification
 from tests.app.conftest import sample_job as create_job
 from tests.app.conftest import sample_service as create_service
 from tests.app.conftest import sample_template as create_template
-from tests.app.db import create_user
+from tests.app.db import (
+    create_user,
+    create_job as create_db_job,
+    create_template as create_db_template
+)
 
 
 def test_should_have_decorated_notifications_dao_functions():
@@ -542,3 +548,17 @@ def stats_set_up(notify_db, notify_db_session, service):
     update_job_stats_outcome_count(notification_delivered)
     update_job_stats_outcome_count(notification_failed)
     return job_1, job_2
+
+
+def test_dao_get_letter_jobs_by_status(sample_service):
+    create_db_template(service=sample_service, template_type=SMS_TYPE)
+    create_db_template(service=sample_service, template_type=EMAIL_TYPE)
+    letter_template = create_db_template(service=sample_service, template_type=LETTER_TYPE)
+    jobs = []
+    jobs.append(create_db_job(letter_template, job_status=JOB_STATUS_READY_TO_SEND, original_file_name='1.csv'))
+    jobs.append(create_db_job(letter_template, job_status=JOB_STATUS_READY_TO_SEND, original_file_name='2.csv'))
+
+    result = dao_get_letter_jobs_by_status(JOB_STATUS_READY_TO_SEND)
+
+    assert len(result) == 2
+    assert set(result) == set(jobs)
