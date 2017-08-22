@@ -82,7 +82,7 @@ def test_post_letter_notification_returns_400_and_missing_template(
 ):
     data = {
         'template_id': str(uuid.uuid4()),
-        'personalisation': {'address_line_1': '', 'postcode': ''}
+        'personalisation': {'address_line_1': '', 'address_line_2': '', 'postcode': ''}
     }
 
     error_json = letter_request(client, data, service_id=sample_service_full_permissions.id, _expected_status=400)
@@ -91,12 +91,12 @@ def test_post_letter_notification_returns_400_and_missing_template(
     assert error_json['errors'] == [{'error': 'BadRequestError', 'message': 'Template not found'}]
 
 
-def test_notification_returns_400_for_schema_problems(
+def test_notification_returns_400_for_missing_template_field(
     client,
     sample_service_full_permissions
 ):
     data = {
-        'personalisation': {'address_line_1': '', 'postcode': ''}
+        'personalisation': {'address_line_1': '', 'address_line_2': '', 'postcode': ''}
     }
 
     error_json = letter_request(client, data, service_id=sample_service_full_permissions.id, _expected_status=400)
@@ -116,6 +116,7 @@ def test_notification_returns_400_if_address_doesnt_have_underscores(
         'template_id': str(sample_letter_template.id),
         'personalisation': {
             'address line 1': 'Her Royal Highness Queen Elizabeth II',
+            'address-line-2': 'Buckingham Palace',
             'postcode': 'SW1 1AA',
         }
     }
@@ -123,10 +124,15 @@ def test_notification_returns_400_if_address_doesnt_have_underscores(
     error_json = letter_request(client, data, service_id=sample_letter_template.service_id, _expected_status=400)
 
     assert error_json['status_code'] == 400
-    assert error_json['errors'] == [{
+    assert len(error_json['errors']) == 2
+    assert {
         'error': 'ValidationError',
         'message': 'personalisation address_line_1 is a required property'
-    }]
+    } in error_json['errors']
+    assert {
+        'error': 'ValidationError',
+        'message': 'personalisation address_line_2 is a required property'
+    } in error_json['errors']
 
 
 def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
@@ -142,7 +148,7 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
 
     data = {
         'template_id': str(sample_letter_template.id),
-        'personalisation': {'address_line_1': '', 'postcode': ''}
+        'personalisation': {'address_line_1': '', 'address_line_2': '', 'postcode': ''}
     }
 
     error_json = letter_request(client, data, service_id=sample_letter_template.service_id, _expected_status=429)
@@ -170,7 +176,7 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
 
     data = {
         'template_id': str(template.id),
-        'personalisation': {'address_line_1': '', 'postcode': ''}
+        'personalisation': {'address_line_1': '', 'address_line_2': '', 'postcode': ''}
     }
 
     error_json = letter_request(client, data, service_id=service.id, _expected_status=400)
@@ -199,7 +205,7 @@ def test_post_letter_notification_doesnt_queue_task(
 
     data = {
         'template_id': str(template.id),
-        'personalisation': {'address_line_1': 'Foo', 'postcode': 'Bar'}
+        'personalisation': {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
     }
 
     letter_request(client, data, service_id=service.id, key_type=key_type)
@@ -213,7 +219,7 @@ def test_post_letter_notification_doesnt_queue_task(
 def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_template):
     data = {
         'template_id': str(sample_letter_template.id),
-        'personalisation': {'address_line_1': 'Foo', 'postcode': 'Bar'}
+        'personalisation': {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
     }
 
     error_json = letter_request(

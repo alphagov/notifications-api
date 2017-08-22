@@ -25,9 +25,10 @@ from app.models import (
     ProviderDetailsHistory,
     ProviderRates,
     NotificationStatistics,
+    ScheduledNotification,
     ServiceWhitelist,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM,
-    MOBILE_TYPE, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED, ScheduledNotification,
+    MOBILE_TYPE, EMAIL_TYPE, INBOUND_SMS_TYPE, SMS_TYPE, LETTER_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED,
     SERVICE_PERMISSION_TYPES)
 from app.dao.users_dao import (create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
@@ -39,7 +40,14 @@ from app.dao.invited_user_dao import save_invited_user
 from app.dao.provider_rates_dao import create_provider_rates
 from app.clients.sms.firetext import FiretextClient
 from tests import create_authorization_header
-from tests.app.db import create_user, create_template, create_notification, create_api_key
+from tests.app.db import (
+    create_user,
+    create_template,
+    create_notification,
+    create_service,
+    create_api_key,
+    create_inbound_number
+)
 
 
 @pytest.yield_fixture
@@ -149,6 +157,10 @@ def sample_service(
     else:
         if user not in service.users:
             dao_add_user_to_service(service, user)
+
+    if INBOUND_SMS_TYPE in permissions:
+        create_inbound_number('12345', service_id=service.id)
+
     return service
 
 
@@ -984,6 +996,16 @@ def sample_provider_rate(notify_db, notify_db_session, valid_from=None, rate=Non
 
 
 @pytest.fixture
+def sample_inbound_numbers(notify_db, notify_db_session, sample_service):
+    service = create_service(service_name='sample service 2')
+    inbound_numbers = []
+    inbound_numbers.append(create_inbound_number(number='1', provider='mmg'))
+    inbound_numbers.append(create_inbound_number(number='2', provider='mmg', active=False, service_id=service.id))
+    inbound_numbers.append(create_inbound_number(number='3', provider='firetext', service_id=sample_service.id))
+    return inbound_numbers
+
+
+@pytest.fixture
 def restore_provider_details(notify_db, notify_db_session):
     """
     We view ProviderDetails as a static in notify_db_session, since we don't modify it... except we do, we updated
@@ -1034,8 +1056,11 @@ def admin_request(client):
                 data=json.dumps(_data),
                 headers=[('Content-Type', 'application/json'), create_authorization_header()]
             )
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == _expected_status, json_resp
+            if resp.get_data():
+                json_resp = json.loads(resp.get_data(as_text=True))
+            else:
+                json_resp = None
+            assert resp.status_code == _expected_status
             return json_resp
 
         @staticmethod

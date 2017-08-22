@@ -4,7 +4,7 @@ import pytest
 from app.utils import (
     get_london_midnight_in_utc,
     get_midnight_for_day_before,
-    convert_utc_time_in_bst,
+    convert_utc_to_bst,
     convert_bst_to_utc)
 
 
@@ -35,7 +35,7 @@ def test_get_midnight_for_day_before_returns_expected_date(date, expected_date):
     (datetime(2017, 5, 12, 14), datetime(2017, 5, 12, 15, 0))
 ])
 def test_get_utc_in_bst_returns_expected_date(date, expected_date):
-    ret_date = convert_utc_time_in_bst(date)
+    ret_date = convert_utc_to_bst(date)
     assert ret_date == expected_date
 
 

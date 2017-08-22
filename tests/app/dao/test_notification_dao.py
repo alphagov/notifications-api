@@ -31,7 +31,6 @@ from app.dao.notifications_dao import (
     delete_notifications_created_more_than_a_week_ago_by_type,
     get_notification_by_id,
     get_notification_for_job,
-    get_notification_billable_unit_count_per_month,
     get_notification_with_personalisation,
     get_notifications_for_job,
     get_notifications_for_service,
@@ -914,38 +913,6 @@ def test_get_all_notifications_for_job_by_status(notify_db, notify_db_session, s
     assert len(notifications(filter_dict={'status': NOTIFICATION_STATUS_TYPES[:3]}).items) == 3
 
 
-def test_get_notification_billable_unit_count_per_month(notify_db, notify_db_session, sample_service):
-
-    for year, month, day, hour, minute, second in (
-        (2017, 1, 15, 23, 59, 59),  # ↓ 2016 financial year
-        (2016, 9, 30, 23, 59, 59),  # counts in October with BST conversion
-        (2016, 6, 30, 23, 50, 20),
-        (2016, 7, 15, 9, 20, 25),
-        (2016, 4, 1, 1, 1, 00),
-        (2016, 4, 1, 0, 0, 00),
-        (2016, 3, 31, 23, 00, 1),  # counts in April with BST conversion
-        (2015, 4, 1, 13, 8, 59),  # ↓ 2015 financial year
-        (2015, 11, 20, 22, 40, 45),
-        (2016, 1, 31, 23, 30, 40)  # counts in January no BST conversion in winter
-    ):
-        sample_notification(
-            notify_db, notify_db_session, service=sample_service,
-            created_at=datetime(
-                year, month, day, hour, minute, second, 0
-            )
-        )
-
-    for financial_year, months in (
-        (2017, []),
-        (2016, [('April', 3), ('July', 2), ('October', 1), ('January', 1)]),
-        (2015, [('April', 1), ('November', 1), ('January', 1)]),
-        (2014, [])
-    ):
-        assert get_notification_billable_unit_count_per_month(
-            sample_service.id, financial_year
-        ) == months
-
-
 def test_update_notification_sets_status(sample_notification):
     assert sample_notification.status == 'created'
     sample_notification.status = 'failed'
@@ -1785,8 +1752,17 @@ def test_dao_update_notifications_sent_to_dvla_does_update_history_if_test_key(s
 
 
 def test_dao_get_notifications_by_to_field(sample_template):
+
+    recipient_to_search_for = {
+        'to_field': '+447700900855',
+        'normalised_to': '447700900855'
+    }
+
     notification1 = create_notification(
-        template=sample_template, to_field='+447700900855', normalised_to='447700900855'
+        template=sample_template, **recipient_to_search_for
+    )
+    create_notification(
+        template=sample_template, key_type=KEY_TYPE_TEST, **recipient_to_search_for
     )
     create_notification(
         template=sample_template, to_field='jack@gmail.com', normalised_to='jack@gmail.com'
@@ -1794,7 +1770,11 @@ def test_dao_get_notifications_by_to_field(sample_template):
     create_notification(
         template=sample_template, to_field='jane@gmail.com', normalised_to='jane@gmail.com'
     )
-    results = dao_get_notifications_by_to_field(notification1.service_id, "+447700900855")
+
+    results = dao_get_notifications_by_to_field(
+        notification1.service_id,
+        recipient_to_search_for["to_field"]
+    )
 
     assert len(results) == 1
     assert notification1.id == results[0].id

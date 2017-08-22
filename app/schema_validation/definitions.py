@@ -19,7 +19,7 @@ personalisation = {
 }
 
 
-letter_personalisation = dict(personalisation, required=["address_line_1", "postcode"])
+letter_personalisation = dict(personalisation, required=["address_line_1", "address_line_2", "postcode"])
 
 
 https_url = {

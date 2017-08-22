@@ -19,7 +19,8 @@ from tests.app.conftest import (
     sample_template as create_sample_template,
     sample_notification_with_job as create_sample_notification_with_job
 )
-from tests.app.db import create_notification
+from tests.app.db import create_notification, create_service, create_inbound_number
+from tests.conftest import set_config
 
 
 @pytest.mark.parametrize('mobile_number', [
@@ -203,3 +204,47 @@ def test_letter_notification_serializes_with_address(client, sample_letter_notif
     assert res['line_5'] is None
     assert res['line_6'] is None
     assert res['postcode'] == 'SW1 1AA'
+
+
+def test_sms_notification_serializes_without_subject(client, sample_template):
+    res = sample_template.serialize()
+    assert res['subject'] is None
+
+
+def test_email_notification_serializes_with_subject(client, sample_email_template):
+    res = sample_email_template.serialize()
+    assert res['subject'] == 'Email Subject'
+
+
+def test_letter_notification_serializes_with_subject(client, sample_letter_template):
+    res = sample_letter_template.serialize()
+    assert res['subject'] == 'Template subject'
+
+
+def test_inbound_number_serializes_with_service(client, notify_db_session):
+    service = create_service()
+    inbound_number = create_inbound_number(number='1', service_id=service.id)
+    serialized_inbound_number = inbound_number.serialize()
+    assert serialized_inbound_number.get('id') == str(inbound_number.id)
+    assert serialized_inbound_number.get('service').get('id') == str(inbound_number.service.id)
+    assert serialized_inbound_number.get('service').get('name') == inbound_number.service.name
+
+
+def test_inbound_number_returns_inbound_number(client, notify_db_session):
+    service = create_service()
+    inbound_number = create_inbound_number(number='1', service_id=service.id)
+
+    assert service.get_inbound_number() == inbound_number.number
+
+
+def test_inbound_number_returns_sms_sender(client, notify_db_session):
+    service = create_service(sms_sender='testing')
+
+    assert service.get_inbound_number() == service.sms_sender
+
+
+def test_inbound_number_returns_from_number_config(client, notify_db_session):
+    with set_config(client.application, 'FROM_NUMBER', 'test'):
+        service = create_service(sms_sender=None)
+
+    assert service.get_inbound_number() == 'test'

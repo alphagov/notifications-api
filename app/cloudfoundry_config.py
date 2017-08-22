@@ -18,7 +18,7 @@ def set_config_env_vars(vcap_services):
 
     vcap_application = json.loads(os.environ['VCAP_APPLICATION'])
     os.environ['NOTIFY_ENVIRONMENT'] = vcap_application['space_name']
-    os.environ['LOGGING_STDOUT_JSON'] = '1'
+    os.environ['NOTIFY_LOG_PATH'] = '/home/vcap/logs/app.log'
 
     # Notify common config
     for s in vcap_services['user-provided']:

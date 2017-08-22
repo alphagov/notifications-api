@@ -5,7 +5,7 @@ import uuid
 
 from flask import Flask, _request_ctx_stack
 from flask import request, g, jsonify
-from flask.ext.sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from monotonic import monotonic
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
@@ -93,6 +93,7 @@ def register_blueprint(application):
     from app.organisation.rest import organisation_blueprint
     from app.dvla_organisation.rest import dvla_organisation_blueprint
     from app.delivery.rest import delivery_blueprint
+    from app.inbound_number.rest import inbound_number_blueprint
     from app.inbound_sms.rest import inbound_sms as inbound_sms_blueprint
     from app.notifications.receive_notifications import receive_notifications_blueprint
     from app.notifications.notifications_ses_callback import ses_callback_blueprint
@@ -100,6 +101,7 @@ def register_blueprint(application):
     from app.notifications.notifications_letter_callback import letter_callback_blueprint
     from app.authentication.auth import requires_admin_auth, requires_auth, requires_no_auth, restrict_ip_sms
     from app.letters.send_letter_jobs import letter_job
+    from app.billing.rest import billing_blueprint
 
     service_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(service_blueprint, url_prefix='/service')
@@ -134,6 +136,9 @@ def register_blueprint(application):
     delivery_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(delivery_blueprint)
 
+    inbound_number_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(inbound_number_blueprint)
+
     inbound_sms_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(inbound_sms_blueprint)
 
@@ -163,6 +168,9 @@ def register_blueprint(application):
 
     letter_callback_blueprint.before_request(requires_no_auth)
     application.register_blueprint(letter_callback_blueprint)
+
+    billing_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(billing_blueprint)
 
 
 def register_v2_blueprints(application):

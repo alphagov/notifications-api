@@ -6,18 +6,24 @@ from app.dao.jobs_dao import dao_create_job
 from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.models import (
     ApiKey,
+    EMAIL_TYPE,
+    SMS_TYPE,
+    KEY_TYPE_NORMAL,
     Service,
     User,
     Template,
+    MonthlyBilling,
     Notification,
     ScheduledNotification,
     ServicePermission,
     Rate,
     Job,
     InboundSms,
+    InboundNumber,
     Organisation,
     EMAIL_TYPE,
     SMS_TYPE,
+    INBOUND_SMS_TYPE,
     KEY_TYPE_NORMAL,
     ServiceInboundApi)
 from app.dao.users_dao import save_model_user
@@ -54,6 +60,7 @@ def create_service(
     sms_sender='testing',
     research_mode=False,
     active=True,
+    do_create_inbound_number=True,
 ):
     service = Service(
         name=service_name,
@@ -63,6 +70,10 @@ def create_service(
         created_by=user or create_user(),
         sms_sender=sms_sender,
     )
+
+    if do_create_inbound_number and INBOUND_SMS_TYPE in service_permissions:
+        create_inbound_number(number=sms_sender, service_id=service.id)
+
     dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
 
     service.active = active
@@ -257,7 +268,12 @@ def create_organisation(colour='blue', logo='test_x2.png', name='test_org_1'):
 
 
 def create_rate(start_date, value, notification_type):
-    rate = Rate(id=uuid.uuid4(), valid_from=start_date, rate=value, notification_type=notification_type)
+    rate = Rate(
+        id=uuid.uuid4(),
+        valid_from=start_date,
+        rate=value,
+        notification_type=notification_type
+    )
     db.session.add(rate)
     db.session.commit()
     return rate
@@ -276,3 +292,37 @@ def create_api_key(service, key_type=KEY_TYPE_NORMAL):
     db.session.add(api_key)
     db.session.commit()
     return api_key
+
+
+def create_inbound_number(number, provider='mmg', active=True, service_id=None):
+    inbound_number = InboundNumber(
+        id=uuid.uuid4(),
+        number=number,
+        provider=provider,
+        active=active,
+        service_id=service_id
+    )
+    db.session.add(inbound_number)
+    db.session.commit()
+    return inbound_number
+
+
+def create_monthly_billing_entry(
+    service,
+    start_date,
+    end_date,
+    notification_type,
+    monthly_totals=[]
+):
+    entry = MonthlyBilling(
+        service_id=service.id,
+        notification_type=notification_type,
+        monthly_totals=monthly_totals,
+        start_date=start_date,
+        end_date=end_date
+    )
+
+    db.session.add(entry)
+    db.session.commit()
+
+    return entry

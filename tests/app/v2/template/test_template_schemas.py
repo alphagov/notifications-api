@@ -21,7 +21,8 @@ valid_json_get_response = {
     'updated_at': None,
     'version': 1,
     'created_by': 'someone@test.com',
-    'body': 'some body'
+    'body': 'some body',
+    'name': 'some name',
 }
 
 valid_json_get_response_with_optionals = {
@@ -32,7 +33,8 @@ valid_json_get_response_with_optionals = {
     'version': 1,
     'created_by': 'someone',
     'body': 'some body',
-    'subject': "some subject"
+    'subject': "some subject",
+    'name': 'some name',
 }
 
 valid_request_args = [{"id": str(uuid.uuid4()), "version": 1}, {"id": str(uuid.uuid4())}]

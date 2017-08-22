@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import asc, func
+from sqlalchemy import asc, func, or_
 from sqlalchemy.orm import joinedload
 from flask import current_app
 
@@ -19,6 +19,7 @@ from app.models import (
     Template,
     TemplateHistory,
     TemplateRedacted,
+    InboundNumber,
     Job,
     NotificationHistory,
     Notification,
@@ -65,9 +66,23 @@ def dao_fetch_service_by_id(service_id, only_active=False):
     return query.one()
 
 
+############
+# refactor this when API only uses inbound_numbers and not sms_sender
+############
 def dao_fetch_services_by_sms_sender(sms_sender):
+    inbound_number = InboundNumber.query.filter(
+        InboundNumber.number == sms_sender,
+        InboundNumber.active
+    ).first()
+
+    if not inbound_number:
+        return []
+
     return Service.query.filter(
-        Service.sms_sender == sms_sender
+        or_(
+            Service.sms_sender == sms_sender,
+            Service.id == inbound_number.service_id
+        )
     ).all()
 
 

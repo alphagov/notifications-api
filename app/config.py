@@ -95,7 +95,7 @@ class Config(object):
 
     # Logging
     DEBUG = False
-    LOGGING_STDOUT_JSON = os.getenv('LOGGING_STDOUT_JSON') == '1'
+    NOTIFY_LOG_PATH = os.getenv('NOTIFY_LOG_PATH')
 
     ###########################
     # Default config values ###
@@ -106,7 +106,6 @@ class Config(object):
     AWS_REGION = 'eu-west-1'
     INVITATION_EXPIRATION_DAYS = 2
     NOTIFY_APP_NAME = 'api'
-    NOTIFY_LOG_PATH = '/var/log/notify/application.log'
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False
     SQLALCHEMY_RECORD_QUERIES = True
     SQLALCHEMY_TRACK_MODIFICATIONS = True
@@ -212,11 +211,6 @@ class Config(object):
             'schedule': crontab(minute=40, hour=4),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'delete_dvla_response_files': {
-            'task': 'delete_dvla_response_files',
-            'schedule': crontab(minute=10, hour=5),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
         'timeout-job-statistics': {
             'task': 'timeout-job-statistics',
             'schedule': crontab(minute=0, hour=5),
@@ -277,6 +271,7 @@ class Config(object):
 ######################
 
 class Development(Config):
+    NOTIFY_LOG_PATH = 'application.log'
     SQLALCHEMY_ECHO = False
     NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'

@@ -5,8 +5,8 @@ import boto3
 import pytest
 from alembic.command import upgrade
 from alembic.config import Config
-from flask.ext.migrate import Migrate, MigrateCommand
-from flask.ext.script import Manager
+from flask_migrate import Migrate, MigrateCommand
+from flask_script import Manager
 
 from app import create_app, db
 
@@ -18,16 +18,16 @@ def notify_api():
     # deattach server-error error handlers - error_handler_spec looks like:
     #   {'blueprint_name': {
     #       status_code: [error_handlers],
-    #       None: [ tuples of (exception, )]
+    #       None: { ExceptionClass: error_handler }
     # }}
     for error_handlers in app.error_handler_spec.values():
         error_handlers.pop(500, None)
         if None in error_handlers:
-            error_handlers[None] = [
-                exception_handler
-                for exception_handler in error_handlers[None]
-                if exception_handler[0] != Exception
-            ]
+            error_handlers[None] = {
+                exc_class: error_handler
+                for exc_class, error_handler in error_handlers[None].items()
+                if exc_class != Exception
+            }
             if error_handlers[None] == []:
                 error_handlers.pop(None)
 

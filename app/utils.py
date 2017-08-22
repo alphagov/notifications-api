@@ -51,7 +51,7 @@ def get_midnight_for_day_before(date):
     return get_london_midnight_in_utc(day_before)
 
 
-def convert_utc_time_in_bst(utc_dt):
+def convert_utc_to_bst(utc_dt):
     return pytz.utc.localize(utc_dt).astimezone(local_timezone).replace(tzinfo=None)
 
 

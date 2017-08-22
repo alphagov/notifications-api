@@ -38,7 +38,7 @@ from app.models import (
     Service, Template,
     SMS_TYPE, LETTER_TYPE,
     MonthlyBilling)
-from app.utils import get_london_midnight_in_utc
+from app.utils import get_london_midnight_in_utc, convert_utc_to_bst
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
 from tests.app.conftest import (
     sample_job as create_sample_job,
@@ -612,27 +612,68 @@ def test_delete_dvla_response_files_older_than_seven_days_does_not_remove_files(
 
 
 @freeze_time("2017-07-12 02:00:00")
-def test_populate_monthly_billing(sample_template):
+def test_populate_monthly_billing_populates_correctly(sample_template):
     yesterday = datetime(2017, 7, 11, 13, 30)
+    jul_month_start = datetime(2017, 6, 30, 23)
+    jul_month_end = datetime(2017, 7, 31, 22, 59, 59, 99999)
     create_rate(datetime(2016, 1, 1), 0.0123, 'sms')
+
     create_notification(template=sample_template, status='delivered', created_at=yesterday)
     create_notification(template=sample_template, status='delivered', created_at=yesterday - timedelta(days=1))
     create_notification(template=sample_template, status='delivered', created_at=yesterday + timedelta(days=1))
     # not included in billing
     create_notification(template=sample_template, status='delivered', created_at=yesterday - timedelta(days=30))
 
-    assert len(MonthlyBilling.query.all()) == 0
     populate_monthly_billing()
 
-    monthly_billing = MonthlyBilling.query.all()
-    assert len(monthly_billing) == 1
+    monthly_billing = MonthlyBilling.query.order_by(MonthlyBilling.notification_type).all()
+
+    assert len(monthly_billing) == 2
+
     assert monthly_billing[0].service_id == sample_template.service_id
-    assert monthly_billing[0].start_date == datetime(2017, 6, 30, 23)
-    assert monthly_billing[0].end_date == datetime(2017, 7, 31, 22, 59, 59, 99999)
-    assert monthly_billing[0].notification_type == 'sms'
-    assert len(monthly_billing[0].monthly_totals) == 1
-    assert sorted(monthly_billing[0].monthly_totals[0]) == sorted({'international': False,
-                                                                   'rate_multiplier': 1,
-                                                                   'billing_units': 3,
-                                                                   'rate': 0.0123,
-                                                                   'total_cost': 0.0369})
+    assert monthly_billing[0].start_date == jul_month_start
+    assert monthly_billing[0].end_date == jul_month_end
+    assert monthly_billing[0].notification_type == 'email'
+    assert monthly_billing[0].notification_type == 'email'
+    assert monthly_billing[0].monthly_totals == []
+
+    assert monthly_billing[1].service_id == sample_template.service_id
+    assert monthly_billing[1].start_date == jul_month_start
+    assert monthly_billing[1].end_date == jul_month_end
+    assert monthly_billing[1].notification_type == 'sms'
+    assert sorted(monthly_billing[1].monthly_totals[0]) == sorted(
+        {
+            'international': False,
+            'rate_multiplier': 1,
+            'billing_units': 3,
+            'rate': 0.0123,
+            'total_cost': 0.0369
+        }
+    )
+
+
+@freeze_time("2016-04-01 23:00:00")
+def test_populate_monthly_billing_updates_correct_month_in_bst(sample_template):
+    yesterday = datetime.utcnow() - timedelta(days=1)
+    apr_month_start = datetime(2016, 3, 31, 23)
+    apr_month_end = datetime(2016, 4, 30, 22, 59, 59, 99999)
+    create_rate(datetime(2016, 1, 1), 0.0123, 'sms')
+    create_notification(template=sample_template, status='delivered', created_at=yesterday)
+    populate_monthly_billing()
+
+    monthly_billing = MonthlyBilling.query.order_by(MonthlyBilling.notification_type).all()
+
+    assert len(monthly_billing) == 2
+
+    assert monthly_billing[0].service_id == sample_template.service_id
+    assert monthly_billing[0].start_date == apr_month_start
+    assert monthly_billing[0].end_date == apr_month_end
+    assert monthly_billing[0].notification_type == 'email'
+    assert monthly_billing[0].monthly_totals == []
+
+    assert monthly_billing[1].service_id == sample_template.service_id
+    assert monthly_billing[1].start_date == apr_month_start
+    assert monthly_billing[1].end_date == apr_month_end
+    assert monthly_billing[1].notification_type == 'sms'
+    assert monthly_billing[1].monthly_totals[0]['billing_units'] == 1
+    assert monthly_billing[1].monthly_totals[0]['total_cost'] == 0.0123

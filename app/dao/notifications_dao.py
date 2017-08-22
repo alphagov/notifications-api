@@ -149,11 +149,11 @@ def dao_get_template_usage(service_id, limit_days=None):
 
 @statsd(namespace="dao")
 def dao_get_last_template_usage(template_id):
-    return NotificationHistory.query.filter(
-        NotificationHistory.template_id == template_id,
-        NotificationHistory.key_type != KEY_TYPE_TEST
+    return Notification.query.filter(
+        Notification.template_id == template_id,
+        Notification.key_type != KEY_TYPE_TEST
     ).order_by(
-        desc(NotificationHistory.created_at)
+        desc(Notification.created_at)
     ).first()
 
 
@@ -268,27 +268,6 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
         page=page,
         per_page=page_size
     )
-
-
-@statsd(namespace="dao")
-def get_notification_billable_unit_count_per_month(service_id, year):
-    month = get_london_month_from_utc_column(NotificationHistory.created_at)
-
-    start_date, end_date = get_financial_year(year)
-    notifications = db.session.query(
-        month,
-        func.sum(NotificationHistory.billable_units)
-    ).filter(
-        NotificationHistory.billable_units != 0,
-        NotificationHistory.service_id == service_id,
-        NotificationHistory.created_at.between(start_date, end_date)
-    ).group_by(
-        month
-    ).order_by(
-        month
-    ).all()
-
-    return [(datetime.strftime(x[0], "%B"), x[1]) for x in notifications]
 
 
 @statsd(namespace="dao")
@@ -505,7 +484,8 @@ def dao_get_notifications_by_to_field(service_id, search_term, statuses=None):
 
     filters = [
         Notification.service_id == service_id,
-        Notification.normalised_to == normalised
+        Notification.normalised_to == normalised,
+        Notification.key_type != KEY_TYPE_TEST,
     ]
 
     if statuses:

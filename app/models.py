@@ -28,7 +28,7 @@ from app import (
 )
 
 from app.history_meta import Versioned
-from app.utils import convert_utc_time_in_bst, convert_bst_to_utc
+from app.utils import convert_utc_to_bst, convert_bst_to_utc
 
 SMS_TYPE = 'sms'
 EMAIL_TYPE = 'email'
@@ -240,6 +240,42 @@ class Service(db.Model, Versioned):
         fields['created_by_id'] = fields.pop('created_by')
 
         return cls(**fields)
+
+    def get_inbound_number(self):
+        if self.inbound_number and self.inbound_number.active:
+            return self.inbound_number.number
+        else:
+            return self.sms_sender or current_app.config['FROM_NUMBER']
+
+
+class InboundNumber(db.Model):
+    __tablename__ = "inbound_numbers"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    number = db.Column(db.String(11), unique=True, nullable=False)
+    provider = db.Column(db.String(), nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=True, index=True, nullable=True)
+    service = db.relationship(Service, backref=db.backref("inbound_number", uselist=False))
+    active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    def serialize(self):
+        def serialize_service():
+            return {
+                "id": str(self.service_id),
+                "name": self.service.name
+            }
+
+        return {
+            "id": str(self.id),
+            "number": self.number,
+            "provider": self.provider,
+            "service": serialize_service() if self.service else None,
+            "active": self.active,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+        }
 
 
 class ServicePermission(db.Model):
@@ -464,7 +500,8 @@ class Template(db.Model):
             "created_by": self.created_by.email_address,
             "version": self.version,
             "body": self.content,
-            "subject": self.subject if self.template_type == EMAIL_TYPE else None
+            "subject": self.subject if self.template_type != SMS_TYPE else None,
+            "name": self.name,
         }
 
         return serialized
@@ -506,18 +543,7 @@ class TemplateHistory(db.Model):
                              default=NORMAL)
 
     def serialize(self):
-        serialized = {
-            "id": self.id,
-            "type": self.template_type,
-            "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
-            "created_by": self.created_by.email_address,
-            "version": self.version,
-            "body": self.content,
-            "subject": self.subject if self.template_type == EMAIL_TYPE else None
-        }
-
-        return serialized
+        return Template.serialize(self)
 
 
 MMG_PROVIDER = "mmg"
@@ -931,7 +957,7 @@ class Notification(db.Model):
         }[self.template.template_type].get(self.status, self.status)
 
     def serialize_for_csv(self):
-        created_at_in_bst = convert_utc_time_in_bst(self.created_at)
+        created_at_in_bst = convert_utc_to_bst(self.created_at)
         serialized = {
             "row_number": '' if self.job_row_number is None else self.job_row_number + 1,
             "recipient": self.to,
@@ -1285,3 +1311,6 @@ class MonthlyBilling(db.Model):
             "notification_type": self.notification_type,
             "monthly_totals": self.monthly_totals
         }
+
+    def __repr__(self):
+        return str(self.serialized())

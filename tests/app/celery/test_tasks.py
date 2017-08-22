@@ -1184,10 +1184,13 @@ def test_send_inbound_sms_to_service_retries_if_request_returns_500(notify_api, 
                           status_code=500)
         send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
 
-    mocked.assert_called_with(
-        exc='Unable to send_inbound_sms_to_service for service_id: {} '
-            'and url: {}. \n500 Server Error: None'.format(sample_service.id, inbound_api.url),
-        queue="retry-tasks")
+    exc_msg = 'Unable to send_inbound_sms_to_service for service_id: {} and url: {url}'.format(
+        sample_service.id,
+        url=inbound_api.url
+    )
+    assert mocked.call_count == 1
+    assert mocked.call_args[1]['queue'] == 'retry-tasks'
+    assert exc_msg in mocked.call_args[1]['exc']
 
 
 def test_send_inbound_sms_to_service_does_not_retries_if_request_returns_404(notify_api, sample_service, mocker):

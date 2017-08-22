@@ -7,6 +7,10 @@ from sqlalchemy.orm.exc import FlushError, NoResultFound
 from sqlalchemy.exc import IntegrityError
 from freezegun import freeze_time
 from app import db
+from app.dao.inbound_numbers_dao import (
+    dao_set_inbound_number_to_service,
+    dao_get_available_inbound_numbers
+)
 from app.dao.services_dao import (
     dao_create_service,
     dao_add_user_to_service,
@@ -57,7 +61,7 @@ from app.models import (
     SERVICE_PERMISSION_TYPES
 )
 
-from tests.app.db import create_user, create_service
+from tests.app.db import create_inbound_number, create_user, create_service
 from tests.app.conftest import (
     sample_notification as create_notification,
     sample_notification_history as create_notification_history,
@@ -888,11 +892,83 @@ def test_dao_fetch_active_users_for_service_returns_active_only(notify_db, notif
     assert len(users) == 1
 
 
-def test_dao_fetch_services_by_sms_sender(notify_db_session):
-    foo1 = create_service(service_name='a', sms_sender='foo')
-    foo2 = create_service(service_name='b', sms_sender='foo')
-    bar = create_service(service_name='c', sms_sender='bar')
+def test_dao_fetch_services_by_sms_sender_with_inbound_number(notify_db_session):
+    foo1 = create_service(service_name='a', sms_sender='1')
+    foo2 = create_service(service_name='b', sms_sender='2')
+    bar = create_service(service_name='c', sms_sender='3')
+    create_inbound_number('1')
+    create_inbound_number('2')
+    create_inbound_number('3')
 
-    services = dao_fetch_services_by_sms_sender('foo')
+    services = dao_fetch_services_by_sms_sender('1')
 
-    assert {foo1.id, foo2.id} == {x.id for x in services}
+    assert len(services) == 1
+    assert foo1.id == services[0].id
+
+
+def test_dao_fetch_services_by_sms_sender_with_inbound_number_not_set(notify_db_session):
+    create_inbound_number('1')
+
+    services = dao_fetch_services_by_sms_sender('1')
+
+    assert services == []
+
+
+def test_dao_fetch_services_by_sms_sender_when_inbound_number_set(notify_db_session):
+    service = create_service(service_name='a', sms_sender=None)
+    service = create_service(service_name='b')
+    inbound_number = create_inbound_number('1', service_id=service.id)
+
+    services = dao_fetch_services_by_sms_sender('1')
+
+    assert len(services) == 1
+    assert services[0].id == service.id
+
+
+def test_dao_fetch_services_by_sms_sender_when_inbound_number_set_and_sms_sender_same(notify_db_session):
+    service = create_service(service_name='a', sms_sender=None)
+    service = create_service(service_name='b', sms_sender='1')
+    inbound_number = create_inbound_number('1', service_id=service.id)
+
+    services = dao_fetch_services_by_sms_sender('1')
+
+    assert len(services) == 1
+    assert services[0].id == service.id
+
+
+def test_dao_fetch_services_by_sms_sender_when_inbound_number_not_set_gets_sms_sender(notify_db_session):
+    service = create_service(service_name='a', sms_sender=None)
+    service = create_service(service_name='b', sms_sender='testing_gov')
+    inbound_number = create_inbound_number('1', service_id=service.id)
+
+    services = dao_fetch_services_by_sms_sender('testing_gov')
+
+    assert services == []
+
+
+def test_dao_fetch_services_by_sms_sender_with_unknown_number(notify_db_session):
+    service = create_service(service_name='a', sms_sender=None)
+    inbound_number = create_inbound_number('1', service_id=service.id)
+
+    services = dao_fetch_services_by_sms_sender('9')
+
+    assert services == []
+
+
+def test_dao_fetch_services_by_sms_sender_with_inactive_number_returns_empty(notify_db_session):
+    service = create_service(service_name='a', sms_sender=None)
+    inbound_number = create_inbound_number('1', service_id=service.id, active=False)
+
+    services = dao_fetch_services_by_sms_sender('1')
+
+    assert services == []
+
+
+def test_dao_allocating_inbound_number_shows_on_service(notify_db_session, sample_inbound_numbers):
+    inbound_numbers = dao_get_available_inbound_numbers()
+
+    service = create_service(service_name='test service')
+
+    dao_set_inbound_number_to_service(service.id, inbound_numbers[0])
+
+    assert service.inbound_number.number == inbound_numbers[0].number

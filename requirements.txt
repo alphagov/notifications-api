@@ -1,33 +1,32 @@
-apispec==0.14.0
-Flask==0.10.1
-Flask-Script==2.0.5
-Flask-Migrate==1.3.1
-Flask-SQLAlchemy==2.0
-psycopg2==2.6.2
-SQLAlchemy==1.0.15
-SQLAlchemy-Utils==0.32.9
-PyJWT==1.4.2
-marshmallow==2.4.2
-marshmallow-sqlalchemy==0.8.0
-flask-marshmallow==0.6.2
-Flask-Bcrypt==0.7.1
-boto3==1.4.4
-monotonic==1.3
-statsd==3.2.1
-jsonschema==2.5.1
-gunicorn==19.6.0
+apispec==0.25.0
+boto3==1.4.6
+celery==3.1.25 # pyup: <4
 docopt==0.6.2
-six==1.10.0
+Flask-Bcrypt==0.7.1
+Flask-Marshmallow==0.8.0
+Flask-Migrate==2.1.0
+Flask-Script==2.0.5
+Flask-SQLAlchemy==2.2
+Flask==0.12.2
+gunicorn==19.7.1
 iso8601==0.1.12
-celery==3.1.25
+jsonschema==2.6.0
+marshmallow-sqlalchemy==0.13.1
+marshmallow==2.13.6
+monotonic==1.3
+psycopg2==2.7.3
+PyJWT==1.5.2
+six==1.10.0
+SQLAlchemy-Utils==0.32.14
+SQLAlchemy==1.1.13
+statsd==3.2.1
 
-# pin to minor version 3.1.x
-notifications-python-client>=3.1,<3.2
+notifications-python-client==4.3.1
 
 # PaaS
 awscli>=1.11,<1.12
 awscli-cwlogs>=1.4,<1.5
 
-git+https://github.com/alphagov/notifications-utils.git@17.8.0#egg=notifications-utils==17.8.0
+git+https://github.com/alphagov/notifications-utils.git@18.0.1#egg=notifications-utils==18.0.1
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
