@@ -34,6 +34,7 @@ from tests.app.conftest import sample_template as create_template
 from tests.app.db import (
     create_user,
     create_job as create_db_job,
+    create_service as create_db_service,
     create_template as create_db_template
 )
 
@@ -551,16 +552,34 @@ def stats_set_up(notify_db, notify_db_session, service):
 
 
 def test_dao_get_letter_jobs_by_status(sample_service):
-    create_db_template(service=sample_service, template_type=SMS_TYPE)
-    create_db_template(service=sample_service, template_type=EMAIL_TYPE)
+    another_service = create_db_service(service_name="another service")
+
+    sms_template = create_db_template(service=sample_service, template_type=SMS_TYPE)
+    email_template = create_db_template(service=sample_service, template_type=EMAIL_TYPE)
     letter_template = create_db_template(service=sample_service, template_type=LETTER_TYPE)
-    jobs = []
-    jobs.append(create_db_job(letter_template, job_status=JOB_STATUS_READY_TO_SEND, original_file_name='1.csv'))
-    jobs.append(create_db_job(letter_template, job_status=JOB_STATUS_READY_TO_SEND, original_file_name='2.csv'))
-    create_db_job(letter_template, job_status=JOB_STATUS_SENT_TO_DVLA, original_file_name='3.csv')
-    create_db_job(letter_template, job_status=JOB_STATUS_FINISHED, original_file_name='4.csv')
-    create_db_job(letter_template, job_status=JOB_STATUS_PENDING, original_file_name='5.csv')
+    another_letter_template = create_db_template(service=another_service, template_type=LETTER_TYPE)
+    ready_letter_jobs = []
+    ready_letter_jobs.append(
+        create_db_job(
+            letter_template,
+            job_status=JOB_STATUS_READY_TO_SEND,
+            original_file_name='1.csv'
+        )
+    )
+    ready_letter_jobs.append(
+        create_db_job(
+            another_letter_template,
+            job_status=JOB_STATUS_READY_TO_SEND,
+            original_file_name='2.csv'
+        )
+    )
+    create_db_job(sms_template, job_status=JOB_STATUS_FINISHED)
+    create_db_job(email_template, job_status=JOB_STATUS_FINISHED)
+    create_db_job(letter_template, job_status=JOB_STATUS_SENT_TO_DVLA)
+    create_db_job(letter_template, job_status=JOB_STATUS_FINISHED)
+    create_db_job(letter_template, job_status=JOB_STATUS_PENDING)
+
     result = dao_get_letter_jobs_by_status(JOB_STATUS_READY_TO_SEND)
 
     assert len(result) == 2
-    assert set(result) == set(jobs)
+    assert set(result) == set(ready_letter_jobs)

@@ -41,6 +41,7 @@ from app.dao.provider_details_dao import (
 from app.models import (
     Service, Template,
     SMS_TYPE, LETTER_TYPE,
+    JOB_STATUS_READY_TO_SEND,
     MonthlyBilling)
 from app.utils import get_london_midnight_in_utc, convert_utc_to_bst
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
@@ -683,16 +684,17 @@ def test_populate_monthly_billing_updates_correct_month_in_bst(sample_template):
     assert monthly_billing[1].monthly_totals[0]['total_cost'] == 0.0123
 
 
-def test_run_letter_jobs(client, mocker):
-    job_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
+def test_run_letter_jobs(client, mocker, sample_letter_template):
+    jobs = [create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND),
+            create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND)]
     mocker.patch(
         "app.celery.scheduled_tasks.dao_get_letter_jobs_by_status",
-        return_value=job_ids
+        return_value=jobs
     )
     mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
 
     run_letter_jobs()
 
     mock_celery.assert_called_once_with(name=QueueNames.DVLA_FILES,
-                                        args=(job_ids),
+                                        args=([job.id for job in jobs]),
                                         queue=QueueNames.PROCESS_FTP)
