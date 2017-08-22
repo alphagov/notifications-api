@@ -24,7 +24,7 @@ from app.dao.statistics_dao import create_or_update_job_sending_statistics, upda
 from app.models import (
     Job, JobStatistics,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE,
-    JOB_STATUS_READY_TO_SEND
+    JOB_STATUS_READY_TO_SEND, JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_FINISHED, JOB_STATUS_PENDING
 )
 
 from tests.app.conftest import sample_notification as create_notification
@@ -557,7 +557,9 @@ def test_dao_get_letter_jobs_by_status(sample_service):
     jobs = []
     jobs.append(create_db_job(letter_template, job_status=JOB_STATUS_READY_TO_SEND, original_file_name='1.csv'))
     jobs.append(create_db_job(letter_template, job_status=JOB_STATUS_READY_TO_SEND, original_file_name='2.csv'))
-
+    create_db_job(letter_template, job_status=JOB_STATUS_SENT_TO_DVLA, original_file_name='3.csv')
+    create_db_job(letter_template, job_status=JOB_STATUS_FINISHED, original_file_name='4.csv')
+    create_db_job(letter_template, job_status=JOB_STATUS_PENDING, original_file_name='5.csv')
     result = dao_get_letter_jobs_by_status(JOB_STATUS_READY_TO_SEND)
 
     assert len(result) == 2
