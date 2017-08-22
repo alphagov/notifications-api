@@ -225,7 +225,7 @@ class Config(object):
         },
         'run-letter-jobs': {
             'task': 'run-letter-jobs',
-            'schedule': crontab(minute=0, hour=16),
+            'schedule': crontab(minute=15, hour=17),
             'options': {'queue': QueueNames.PERIODIC}
         }
     }
