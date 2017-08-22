@@ -182,8 +182,9 @@ def set_up_notifications(notify_db, notify_db_session):
 
 
 @freeze_time('2016-08-18')
-def test_returns_empty_list_if_no_templates_used(client, sample_service):
+def test_returns_empty_list_if_no_templates_used(client, sample_service, mocker):
     auth_header = create_authorization_header()
+    mock_redis = mocker.patch('app.redis_store.set_hash_and_expire')
 
     response = client.get(
         '/service/{}/template-statistics'.format(sample_service.id),
@@ -193,6 +194,7 @@ def test_returns_empty_list_if_no_templates_used(client, sample_service):
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
     assert len(json_resp['data']) == 0
+    mock_redis.assert_not_called()
 
 
 def test_get_template_statistics_by_id_returns_last_notification(
