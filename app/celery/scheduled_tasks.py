@@ -37,7 +37,7 @@ from app.models import LETTER_TYPE, JOB_STATUS_READY_TO_SEND
 from app.notifications.process_notifications import send_notification_to_queue
 from app.statsd_decorators import statsd
 from app.celery.tasks import process_job
-from app.config import QueueNames
+from app.config import QueueNames, TaskNames
 from app.utils import convert_utc_to_bst
 
 
@@ -310,7 +310,7 @@ def populate_monthly_billing():
 def run_letter_jobs():
     job_ids = [job.id for job in dao_get_letter_jobs_by_status(JOB_STATUS_READY_TO_SEND)]
     notify_celery.send_task(
-        name=QueueNames.DVLA_FILES,
+        name=TaskNames.DVLA_FILES,
         args=(job_ids),
         queue=QueueNames.PROCESS_FTP
     )

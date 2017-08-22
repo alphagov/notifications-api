@@ -30,7 +30,6 @@ class QueueNames(object):
     RETRY = 'retry-tasks'
     NOTIFY = 'notify-internal-tasks'
     PROCESS_FTP = 'process-ftp-tasks'
-    DVLA_FILES = 'send-files-to-dvla'
 
     @staticmethod
     def all_queues():
@@ -46,6 +45,10 @@ class QueueNames(object):
             QueueNames.RETRY,
             QueueNames.NOTIFY,
         ]
+
+
+class TaskNames(object):
+    DVLA_FILES = 'send-files-to-dvla'
 
 
 class Config(object):

@@ -31,7 +31,7 @@ from app.celery.scheduled_tasks import (
     timeout_notifications,
     populate_monthly_billing)
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
-from app.config import QueueNames
+from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.notifications_dao import dao_get_scheduled_notifications
 from app.dao.provider_details_dao import (
@@ -695,6 +695,6 @@ def test_run_letter_jobs(client, mocker, sample_letter_template):
 
     run_letter_jobs()
 
-    mock_celery.assert_called_once_with(name=QueueNames.DVLA_FILES,
+    mock_celery.assert_called_once_with(name=TaskNames.DVLA_FILES,
                                         args=([job.id for job in jobs]),
                                         queue=QueueNames.PROCESS_FTP)
