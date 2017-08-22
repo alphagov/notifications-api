@@ -45,8 +45,6 @@ class QueueNames(object):
             QueueNames.JOBS,
             QueueNames.RETRY,
             QueueNames.NOTIFY,
-            QueueNames.PROCESS_FTP,
-            QueueNames.DVLA_FILES
         ]
 
 
