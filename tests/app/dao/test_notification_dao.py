@@ -1785,8 +1785,17 @@ def test_dao_update_notifications_sent_to_dvla_does_update_history_if_test_key(s
 
 
 def test_dao_get_notifications_by_to_field(sample_template):
+
+    recipient_to_search_for = {
+        'to_field': '+447700900855',
+        'normalised_to': '447700900855'
+    }
+
     notification1 = create_notification(
-        template=sample_template, to_field='+447700900855', normalised_to='447700900855'
+        template=sample_template, **recipient_to_search_for
+    )
+    create_notification(
+        template=sample_template, key_type=KEY_TYPE_TEST, **recipient_to_search_for
     )
     create_notification(
         template=sample_template, to_field='jack@gmail.com', normalised_to='jack@gmail.com'
@@ -1794,7 +1803,11 @@ def test_dao_get_notifications_by_to_field(sample_template):
     create_notification(
         template=sample_template, to_field='jane@gmail.com', normalised_to='jane@gmail.com'
     )
-    results = dao_get_notifications_by_to_field(notification1.service_id, "+447700900855")
+
+    results = dao_get_notifications_by_to_field(
+        notification1.service_id,
+        recipient_to_search_for["to_field"]
+    )
 
     assert len(results) == 1
     assert notification1.id == results[0].id

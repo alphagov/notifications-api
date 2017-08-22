@@ -505,7 +505,8 @@ def dao_get_notifications_by_to_field(service_id, search_term, statuses=None):
 
     filters = [
         Notification.service_id == service_id,
-        Notification.normalised_to == normalised
+        Notification.normalised_to == normalised,
+        Notification.key_type != KEY_TYPE_TEST,
     ]
 
     if statuses:
