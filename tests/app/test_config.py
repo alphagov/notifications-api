@@ -64,14 +64,15 @@ def test_queue_names_all_queues_correct():
     # Need to ensure that all_queues() only returns queue names used in API
     queues = QueueNames.all_queues()
     assert len(queues) == 10
-    assert set([QueueNames.PRIORITY,
-                QueueNames.PERIODIC,
-                QueueNames.DATABASE,
-                QueueNames.SEND_SMS,
-                QueueNames.SEND_EMAIL,
-                QueueNames.RESEARCH_MODE,
-                QueueNames.STATISTICS,
-                QueueNames.JOBS,
-                QueueNames.RETRY,
-                QueueNames.NOTIFY
-                ]) == set(queues)
+    assert set([
+        QueueNames.PRIORITY,
+        QueueNames.PERIODIC,
+        QueueNames.DATABASE,
+        QueueNames.SEND_SMS,
+        QueueNames.SEND_EMAIL,
+        QueueNames.RESEARCH_MODE,
+        QueueNames.STATISTICS,
+        QueueNames.JOBS,
+        QueueNames.RETRY,
+        QueueNames.NOTIFY
+    ]) == set(queues)
