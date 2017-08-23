@@ -1205,3 +1205,17 @@ def test_should_not_allow_notification_if_service_permission_not_set(
 
     assert error_json['result'] == 'error'
     assert error_json['message']['service'][0] == expected_error
+
+
+@pytest.mark.parametrize(
+    "notification_type, err_msg",
+    [("letter", "letter notification type is not supported, please use the latest version of the client"),
+     ("apple", "apple notification type is not supported")])
+def test_should_throw_exception_if_notification_type_is_invalid(client, sample_service, notification_type, err_msg):
+    auth_header = create_authorization_header(service_id=sample_service.id)
+    response = client.post(
+        path='/notifications/{}'.format(notification_type),
+        data={},
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True))["message"] == err_msg

@@ -17,8 +17,8 @@ from app.errors import (
 )
 from app.models import (
     EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, SMS_TYPE,
-    KEY_TYPE_TEAM, PRIORITY
-)
+    KEY_TYPE_TEAM, PRIORITY,
+    LETTER_TYPE)
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
@@ -99,8 +99,10 @@ def get_notification_statistics_for_day():
 @notifications.route('/notifications/<string:notification_type>', methods=['POST'])
 def send_notification(notification_type):
 
-    if notification_type not in ['sms', 'email']:
-        assert False
+    if notification_type not in [SMS_TYPE, EMAIL_TYPE]:
+        msg = "{} notification type is not supported".format(notification_type)
+        msg = msg + ", please use the latest version of the client" if notification_type == LETTER_TYPE else msg
+        raise InvalidRequest(msg, 400)
 
     notification_form, errors = (
         sms_template_notification_schema if notification_type == SMS_TYPE else email_notification_schema
