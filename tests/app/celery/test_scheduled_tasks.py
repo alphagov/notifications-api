@@ -1,3 +1,5 @@
+import uuid
+
 from datetime import datetime, timedelta
 from functools import partial
 from unittest.mock import call, patch, PropertyMock
@@ -20,6 +22,7 @@ from app.celery.scheduled_tasks import (
     remove_csv_files,
     remove_transformed_dvla_files,
     run_scheduled_jobs,
+    run_letter_jobs,
     s3,
     send_daily_performance_platform_stats,
     send_scheduled_notifications,
@@ -28,6 +31,7 @@ from app.celery.scheduled_tasks import (
     timeout_notifications,
     populate_monthly_billing)
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
+from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.notifications_dao import dao_get_scheduled_notifications
 from app.dao.provider_details_dao import (
@@ -37,6 +41,7 @@ from app.dao.provider_details_dao import (
 from app.models import (
     Service, Template,
     SMS_TYPE, LETTER_TYPE,
+    JOB_STATUS_READY_TO_SEND,
     MonthlyBilling)
 from app.utils import get_london_midnight_in_utc, convert_utc_to_bst
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
@@ -677,3 +682,19 @@ def test_populate_monthly_billing_updates_correct_month_in_bst(sample_template):
     assert monthly_billing[1].notification_type == 'sms'
     assert monthly_billing[1].monthly_totals[0]['billing_units'] == 1
     assert monthly_billing[1].monthly_totals[0]['total_cost'] == 0.0123
+
+
+def test_run_letter_jobs(client, mocker, sample_letter_template):
+    jobs = [create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND),
+            create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND)]
+    mocker.patch(
+        "app.celery.scheduled_tasks.dao_get_letter_jobs_by_status",
+        return_value=jobs
+    )
+    mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
+
+    run_letter_jobs()
+
+    mock_celery.assert_called_once_with(name=TaskNames.DVLA_FILES,
+                                        args=([job.id for job in jobs]),
+                                        queue=QueueNames.PROCESS_FTP)

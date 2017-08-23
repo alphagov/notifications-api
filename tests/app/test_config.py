@@ -5,6 +5,7 @@ from unittest import mock
 import pytest
 
 from app import config
+from app.config import QueueNames
 
 
 def cf_conf():
@@ -57,3 +58,21 @@ def test_load_config_if_cloudfoundry_not_available(monkeypatch, reload_config):
 def test_cloudfoundry_config_has_different_defaults():
     # these should always be set on Sandbox
     assert config.Sandbox.REDIS_ENABLED is False
+
+
+def test_queue_names_all_queues_correct():
+    # Need to ensure that all_queues() only returns queue names used in API
+    queues = QueueNames.all_queues()
+    assert len(queues) == 10
+    assert set([
+        QueueNames.PRIORITY,
+        QueueNames.PERIODIC,
+        QueueNames.DATABASE,
+        QueueNames.SEND_SMS,
+        QueueNames.SEND_EMAIL,
+        QueueNames.RESEARCH_MODE,
+        QueueNames.STATISTICS,
+        QueueNames.JOBS,
+        QueueNames.RETRY,
+        QueueNames.NOTIFY
+    ]) == set(queues)

@@ -44,8 +44,11 @@ class QueueNames(object):
             QueueNames.JOBS,
             QueueNames.RETRY,
             QueueNames.NOTIFY,
-            QueueNames.PROCESS_FTP
         ]
+
+
+class TaskNames(object):
+    DVLA_FILES = 'send-files-to-dvla'
 
 
 class Config(object):
@@ -219,6 +222,11 @@ class Config(object):
         'populate_monthly_billing': {
             'task': 'populate_monthly_billing',
             'schedule': crontab(minute=10, hour=5),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
+        'run-letter-jobs': {
+            'task': 'run-letter-jobs',
+            'schedule': crontab(minute=30, hour=17),
             'options': {'queue': QueueNames.PERIODIC}
         }
     }

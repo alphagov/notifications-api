@@ -100,7 +100,7 @@ def register_blueprint(application):
     from app.notifications.notifications_sms_callback import sms_callback_blueprint
     from app.notifications.notifications_letter_callback import letter_callback_blueprint
     from app.authentication.auth import requires_admin_auth, requires_auth, requires_no_auth, restrict_ip_sms
-    from app.letters.send_letter_jobs import letter_job
+    from app.letters.rest import letter_job
     from app.billing.rest import billing_blueprint
 
     service_blueprint.before_request(requires_admin_auth)

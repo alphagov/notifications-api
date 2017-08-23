@@ -157,6 +157,22 @@ def dao_get_all_letter_jobs():
     ).all()
 
 
+def dao_get_letter_jobs_by_status(status):
+    return db.session.query(
+        Job
+    ).join(
+        Job.template
+    ).filter(
+        Job.job_status == status,
+        Template.template_type == LETTER_TYPE,
+        # test letter jobs (or from research mode services) are created with a different filename,
+        # exclude them so we don't see them on the send to CSV
+        Job.original_file_name != LETTER_TEST_API_FILENAME
+    ).order_by(
+        desc(Job.created_at)
+    ).all()
+
+
 @statsd(namespace="dao")
 def dao_get_job_statistics_for_job(service_id, job_id):
     query = Job.query.join(
