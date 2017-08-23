@@ -273,6 +273,10 @@ class Config(object):
 
     SMS_INBOUND_WHITELIST = json.loads(os.environ.get('SMS_INBOUND_WHITELIST', '[]'))
 
+    # Format is as follows:
+    # {"dataset_1": "token_1", ...}
+    PERFORMANCE_PLATFORM_ENDPOINTS = json.loads(os.environ.get('PERFORMANCE_PLATFORM_ENDPOINTS', '{}'))
+
 
 ######################
 # Config overrides ###

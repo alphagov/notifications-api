@@ -34,6 +34,8 @@ def set_config_env_vars(vcap_services):
             extract_firetext_config(s)
         elif s['name'] == 'redis':
             extract_redis_config(s)
+        elif s['name'] == 'performance-platform':
+            extract_performance_platform_config(s)
 
 
 def extract_notify_config(notify_config):
@@ -42,8 +44,11 @@ def extract_notify_config(notify_config):
     os.environ['ADMIN_CLIENT_SECRET'] = notify_config['credentials']['admin_client_secret']
     os.environ['SECRET_KEY'] = notify_config['credentials']['secret_key']
     os.environ['DANGEROUS_SALT'] = notify_config['credentials']['dangerous_salt']
-    os.environ['PERFORMANCE_PLATFORM_TOKEN'] = notify_config['credentials'].get('performance_platform_token', '')
     os.environ['SMS_INBOUND_WHITELIST'] = json.dumps(notify_config['credentials']['allow_ip_inbound_sms'])
+
+
+def extract_performance_platform_config(performance_platform_config):
+    os.environ['PERFORMANCE_PLATFORM_ENDPOINTS'] = json.dumps(performance_platform_config['credentials'])
 
 
 def extract_notify_aws_config(aws_config):

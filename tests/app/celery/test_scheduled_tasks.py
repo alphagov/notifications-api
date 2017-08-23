@@ -270,12 +270,7 @@ def test_will_remove_csv_files_for_jobs_older_than_seven_days(
     ]
 
 
-def test_send_daily_performance_stats_calls_does_not_send_if_inactive(
-    notify_db,
-    notify_db_session,
-    sample_template,
-    mocker
-):
+def test_send_daily_performance_stats_calls_does_not_send_if_inactive(mocker):
     send_mock = mocker.patch('app.celery.scheduled_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')
 
     with patch.object(
