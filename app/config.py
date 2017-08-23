@@ -224,11 +224,11 @@ class Config(object):
             'schedule': crontab(minute=10, hour=5),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'run-letter-jobs': {
-            'task': 'run-letter-jobs',
-            'schedule': crontab(minute=30, hour=17),
-            'options': {'queue': QueueNames.PERIODIC}
-        }
+        # 'run-letter-jobs': {
+        #     'task': 'run-letter-jobs',
+        #     'schedule': crontab(minute=30, hour=17),
+        #     'options': {'queue': QueueNames.PERIODIC}
+        # }
     }
     CELERY_QUEUES = []
 
