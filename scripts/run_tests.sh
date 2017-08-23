@@ -30,5 +30,6 @@ fi
 pycodestyle .
 display_result $? 1 "Code style check"
 
-py.test --cov=app --cov-report=term-missing tests/ --junitxml=test_results.xml
+# run with six concurrent threads
+py.test --cov=app --cov-report=term-missing tests/ --junitxml=test_results.xml -n 6
 display_result $? 2 "Unit tests"

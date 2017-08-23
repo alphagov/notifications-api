@@ -1,12 +1,14 @@
 from contextlib import contextmanager
 import os
 
-import boto3
-import pytest
 from alembic.command import upgrade
 from alembic.config import Config
 from flask_migrate import Migrate, MigrateCommand
 from flask_script import Manager
+from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+import boto3
+import psycopg2
+import pytest
 
 from app import create_app, db
 
@@ -45,9 +47,31 @@ def client(notify_api):
         yield client
 
 
+def create_test_db(database_uri):
+    database_name = database_uri.split('/')[-1]
+    system_db = psycopg2.connect(dbname='postgres')
+    system_db.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+    cursor = system_db.cursor()
+
+    try:
+        cursor.execute('CREATE DATABASE {}'.format(database_name))
+    except psycopg2.ProgrammingError:
+        # database "test_notification_api_x..." already exists
+        pass
+    finally:
+        cursor.close()
+        system_db.close()
+
+
 @pytest.fixture(scope='session')
-def notify_db(notify_api):
-    assert db.engine.url.database != 'notification_api', 'dont run tests against main db'
+def notify_db(notify_api, worker_id):
+    assert 'test_notification_api' in db.engine.url.database, 'dont run tests against main db'
+
+    # create a database for this worker thread -
+    from flask import current_app
+    current_app.config['SQLALCHEMY_DATABASE_URI'] += '_{}'.format(worker_id)
+    create_test_db(current_app.config['SQLALCHEMY_DATABASE_URI'])
+
     Migrate(notify_api, db)
     Manager(db, MigrateCommand)
     BASE_DIR = os.path.dirname(os.path.dirname(__file__))
