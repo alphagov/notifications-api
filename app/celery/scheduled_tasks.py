@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.aws import s3
 from app import notify_celery
+from app.performance_platform import total_sent_notifications
 from app import performance_platform_client
 from app.dao.date_util import get_month_start_and_end_date_in_utc
 from app.dao.inbound_sms_dao import delete_inbound_sms_created_more_than_a_week_ago
@@ -175,7 +176,7 @@ def timeout_notifications():
 @statsd(namespace="tasks")
 def send_daily_performance_platform_stats():
     if performance_platform_client.active:
-        count_dict = performance_platform_client.get_total_sent_notifications_yesterday()
+        count_dict = total_sent_notifications.get_total_sent_notifications_yesterday()
         email_sent_count = count_dict.get('email').get('count')
         sms_sent_count = count_dict.get('sms').get('count')
         start_date = count_dict.get('start_date')
@@ -185,14 +186,14 @@ def send_daily_performance_platform_stats():
             .format(start_date, email_sent_count, sms_sent_count)
         )
 
-        performance_platform_client.send_performance_stats(
+        total_sent_notifications.send_total_notifications_sent_for_day_stats(
             start_date,
             'sms',
             sms_sent_count,
             'day'
         )
 
-        performance_platform_client.send_performance_stats(
+        total_sent_notifications.send_total_notifications_sent_for_day_stats(
             start_date,
             'email',
             email_sent_count,

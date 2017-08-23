@@ -276,7 +276,7 @@ def test_send_daily_performance_stats_calls_does_not_send_if_inactive(
     sample_template,
     mocker
 ):
-    send_mock = mocker.patch('app.celery.scheduled_tasks.performance_platform_client.send_performance_stats')
+    send_mock = mocker.patch('app.celery.scheduled_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')
 
     with patch.object(
         PerformancePlatformClient,
@@ -296,7 +296,7 @@ def test_send_daily_performance_stats_calls_with_correct_totals(
     sample_template,
     mocker
 ):
-    perf_mock = mocker.patch('app.celery.scheduled_tasks.performance_platform_client.send_performance_stats')
+    perf_mock = mocker.patch('app.celery.scheduled_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')
 
     notification_history = partial(
         create_notification_history,
