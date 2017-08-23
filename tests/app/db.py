@@ -71,10 +71,10 @@ def create_service(
         sms_sender=sms_sender,
     )
 
+    dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
+
     if do_create_inbound_number and INBOUND_SMS_TYPE in service_permissions:
         create_inbound_number(number=sms_sender, service_id=service.id)
-
-    dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
 
     service.active = active
     service.research_mode = research_mode
