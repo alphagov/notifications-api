@@ -311,7 +311,7 @@ def run_letter_jobs():
     job_ids = [job.id for job in dao_get_letter_jobs_by_status(JOB_STATUS_READY_TO_SEND)]
     notify_celery.send_task(
         name=TaskNames.DVLA_FILES,
-        args=(job_ids),
+        args=(job_ids,),
         queue=QueueNames.PROCESS_FTP
     )
     current_app.logger.info("Queued {} ready letter job ids onto {}".format(len(job_ids), QueueNames.PROCESS_FTP))
