@@ -1,6 +1,8 @@
 import uuid
+
 from flask import current_app
 from notifications_python_client.authentication import create_jwt_token
+
 from app.models import ApiKey, KEY_TYPE_NORMAL
 from app.dao.api_key_dao import save_model_api_key
 from app.dao.services_dao import dao_fetch_service_by_id

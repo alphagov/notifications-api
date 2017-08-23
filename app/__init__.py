@@ -5,7 +5,7 @@ import uuid
 
 from flask import Flask, _request_ctx_stack
 from flask import request, g, jsonify
-from flask.ext.sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from monotonic import monotonic
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
