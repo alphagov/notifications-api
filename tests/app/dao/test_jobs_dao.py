@@ -19,7 +19,7 @@ from app.dao.jobs_dao import (
     dao_get_jobs_older_than_limited_by,
     dao_get_job_statistics_for_job,
     dao_get_job_stats_for_service,
-    dao_get_letter_jobs_by_status)
+    dao_get_letter_job_ids_by_status)
 from app.dao.statistics_dao import create_or_update_job_sending_statistics, update_job_stats_outcome_count
 from app.models import (
     Job, JobStatistics,
@@ -551,35 +551,24 @@ def stats_set_up(notify_db, notify_db_session, service):
     return job_1, job_2
 
 
-def test_dao_get_letter_jobs_by_status(sample_service):
+def test_dao_get_letter_job_ids_by_status(sample_service):
     another_service = create_db_service(service_name="another service")
 
     sms_template = create_db_template(service=sample_service, template_type=SMS_TYPE)
     email_template = create_db_template(service=sample_service, template_type=EMAIL_TYPE)
-    letter_template = create_db_template(service=sample_service, template_type=LETTER_TYPE)
-    another_letter_template = create_db_template(service=another_service, template_type=LETTER_TYPE)
-    ready_letter_jobs = []
-    ready_letter_jobs.append(
-        create_db_job(
-            letter_template,
-            job_status=JOB_STATUS_READY_TO_SEND,
-            original_file_name='1.csv'
-        )
-    )
-    ready_letter_jobs.append(
-        create_db_job(
-            another_letter_template,
-            job_status=JOB_STATUS_READY_TO_SEND,
-            original_file_name='2.csv'
-        )
-    )
+    letter_template_1 = create_db_template(service=sample_service, template_type=LETTER_TYPE)
+    letter_template_2 = create_db_template(service=another_service, template_type=LETTER_TYPE)
+    letter_job_1 = create_db_job(letter_template_1, job_status=JOB_STATUS_READY_TO_SEND, original_file_name='1.csv')
+    letter_job_2 = create_db_job(letter_template_2, job_status=JOB_STATUS_READY_TO_SEND, original_file_name='2.csv')
+    ready_letter_job_ids = [str(letter_job_1.id), str(letter_job_2.id)]
+
     create_db_job(sms_template, job_status=JOB_STATUS_FINISHED)
     create_db_job(email_template, job_status=JOB_STATUS_FINISHED)
-    create_db_job(letter_template, job_status=JOB_STATUS_SENT_TO_DVLA)
-    create_db_job(letter_template, job_status=JOB_STATUS_FINISHED)
-    create_db_job(letter_template, job_status=JOB_STATUS_PENDING)
+    create_db_job(letter_template_1, job_status=JOB_STATUS_SENT_TO_DVLA)
+    create_db_job(letter_template_1, job_status=JOB_STATUS_FINISHED)
+    create_db_job(letter_template_2, job_status=JOB_STATUS_PENDING)
 
-    result = dao_get_letter_jobs_by_status(JOB_STATUS_READY_TO_SEND)
+    result = dao_get_letter_job_ids_by_status(JOB_STATUS_READY_TO_SEND)
 
     assert len(result) == 2
-    assert set(result) == set(ready_letter_jobs)
+    assert set(result) == set(ready_letter_job_ids)

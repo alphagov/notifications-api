@@ -157,8 +157,8 @@ def dao_get_all_letter_jobs():
     ).all()
 
 
-def dao_get_letter_jobs_by_status(status):
-    return db.session.query(
+def dao_get_letter_job_ids_by_status(status):
+    jobs = db.session.query(
         Job
     ).join(
         Job.template
@@ -171,6 +171,8 @@ def dao_get_letter_jobs_by_status(status):
     ).order_by(
         desc(Job.created_at)
     ).all()
+
+    return [str(job.id) for job in jobs]
 
 
 @statsd(namespace="dao")
