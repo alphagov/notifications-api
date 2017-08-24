@@ -5,10 +5,9 @@ from alembic.command import upgrade
 from alembic.config import Config
 from flask_migrate import Migrate, MigrateCommand
 from flask_script import Manager
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 import boto3
-import psycopg2
 import pytest
+import sqlalchemy
 
 from app import create_app, db
 
@@ -48,19 +47,24 @@ def client(notify_api):
 
 
 def create_test_db(database_uri):
-    database_name = database_uri.split('/')[-1]
-    system_db = psycopg2.connect(dbname='postgres')
-    system_db.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-    cursor = system_db.cursor()
+    # get the
+    db_uri_parts = database_uri.split('/')
+    postgres_db_uri = '/'.join(db_uri_parts[:-1] + ['postgres'])
 
+    postgres_db = sqlalchemy.create_engine(
+        postgres_db_uri,
+        echo=False,
+        isolation_level='AUTOCOMMIT',
+        client_encoding='utf8'
+    )
     try:
-        cursor.execute('CREATE DATABASE {}'.format(database_name))
-    except psycopg2.ProgrammingError:
-        # database "test_notification_api_x..." already exists
+        result = postgres_db.execute(sqlalchemy.sql.text('CREATE DATABASE {}'.format(db_uri_parts[-1])))
+        result.close()
+    except sqlalchemy.exc.ProgrammingError:
+        # database "test_notification_api_master" already exists
         pass
     finally:
-        cursor.close()
-        system_db.close()
+        postgres_db.dispose()
 
 
 @pytest.fixture(scope='session')
