@@ -11,7 +11,6 @@ from flask import (
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import redis_store
 from app.dao import notification_usage_dao, notifications_dao
 from app.dao.dao_utils import dao_rollback
 from app.dao.api_key_dao import (
@@ -19,8 +18,6 @@ from app.dao.api_key_dao import (
     get_model_api_keys,
     get_unsigned_secret,
     expire_api_key)
-from app.dao.date_util import get_financial_year
-from app.dao.notification_usage_dao import get_total_billable_units_for_sent_sms_notifications_in_date_range
 from app.dao.service_inbound_api_dao import (
     save_service_inbound_api,
     reset_service_inbound_api,
@@ -72,7 +69,6 @@ from app.schemas import (
     detailed_service_schema
 )
 from app.utils import pagination_links
-from notifications_utils.clients.redis import sms_billable_units_cache_key
 
 service_blueprint = Blueprint('service', __name__)
 
@@ -460,39 +456,6 @@ def get_monthly_template_stats(service_id):
         ))
     except ValueError:
         raise InvalidRequest('Year must be a number', status_code=400)
-
-
-@service_blueprint.route('/<uuid:service_id>/yearly-sms-billable-units')
-def get_yearly_sms_billable_units(service_id):
-    cache_key = sms_billable_units_cache_key(service_id)
-    cached_billable_sms_units = redis_store.get_all_from_hash(cache_key)
-    if cached_billable_sms_units:
-        return jsonify({
-            'billable_sms_units': int(cached_billable_sms_units[b'billable_units']),
-            'total_cost': float(cached_billable_sms_units[b'total_cost'])
-        })
-    else:
-        try:
-            start_date, end_date = get_financial_year(int(request.args.get('year')))
-        except (ValueError, TypeError) as e:
-            current_app.logger.exception(e)
-            return jsonify(result='error', message='No valid year provided'), 400
-
-        billable_units, total_cost = get_total_billable_units_for_sent_sms_notifications_in_date_range(
-            start_date,
-            end_date,
-            service_id)
-
-        cached_values = {
-            'billable_units': billable_units,
-            'total_cost': total_cost
-        }
-
-        redis_store.set_hash_and_expire(cache_key, cached_values, expire_in_seconds=60)
-        return jsonify({
-            'billable_sms_units': billable_units,
-            'total_cost': total_cost
-        })
 
 
 @service_blueprint.route('/<uuid:service_id>/yearly-usage')
