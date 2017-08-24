@@ -687,14 +687,15 @@ def test_populate_monthly_billing_updates_correct_month_in_bst(sample_template):
 def test_run_letter_jobs(client, mocker, sample_letter_template):
     jobs = [create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND),
             create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND)]
+    job_ids = [str(job.id) for job in jobs]
     mocker.patch(
-        "app.celery.scheduled_tasks.dao_get_letter_jobs_by_status",
-        return_value=jobs
+        "app.celery.scheduled_tasks.dao_get_letter_job_ids_by_status",
+        return_value=job_ids
     )
     mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
 
     run_letter_jobs()
 
     mock_celery.assert_called_once_with(name=TaskNames.DVLA_FILES,
-                                        args=([job.id for job in jobs]),
+                                        args=(job_ids,),
                                         queue=QueueNames.PROCESS_FTP)

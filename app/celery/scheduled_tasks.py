@@ -13,7 +13,7 @@ from app.dao.date_util import get_month_start_and_end_date_in_utc
 from app.dao.inbound_sms_dao import delete_inbound_sms_created_more_than_a_week_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
 from app.dao.jobs_dao import (
-    dao_get_letter_jobs_by_status,
+    dao_get_letter_job_ids_by_status,
     dao_set_scheduled_jobs_to_pending,
     dao_get_jobs_older_than_limited_by
 )
@@ -308,10 +308,10 @@ def populate_monthly_billing():
 @notify_celery.task(name="run-letter-jobs")
 @statsd(namespace="tasks")
 def run_letter_jobs():
-    job_ids = [job.id for job in dao_get_letter_jobs_by_status(JOB_STATUS_READY_TO_SEND)]
+    job_ids = dao_get_letter_job_ids_by_status(JOB_STATUS_READY_TO_SEND)
     notify_celery.send_task(
         name=TaskNames.DVLA_FILES,
-        args=(job_ids),
+        args=(job_ids,),
         queue=QueueNames.PROCESS_FTP
     )
     current_app.logger.info("Queued {} ready letter job ids onto {}".format(len(job_ids), QueueNames.PROCESS_FTP))
