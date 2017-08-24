@@ -11,6 +11,7 @@ services:
   - firetext
   - hosted-graphite
   - redis
+  - performance-platform
 instances: 1
 memory: 1G
 

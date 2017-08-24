@@ -4,26 +4,20 @@ from app import performance_platform_client
 from app.dao.notifications_dao import get_total_sent_notifications_in_date_range
 from app.utils import (
     get_london_midnight_in_utc,
-    get_midnight_for_day_before,
-    convert_utc_to_bst,
+    get_midnight_for_day_before
 )
 
 
-def send_total_notifications_sent_for_day_stats(date, channel, count, period):
-    payload = {
-        '_timestamp': convert_utc_to_bst(date).isoformat(),
-        'service': 'govuk-notify',
-        'channel': channel,
-        'count': count,
-        'dataType': 'notifications',
-        'period': period
-    }
-    performance_platform_client.add_id_to_payload(payload)
-
-    performance_platform_client.send_stats_to_performance_platform(
+def send_total_notifications_sent_for_day_stats(date, notification_type, count):
+    payload = performance_platform_client.format_payload(
         dataset='notifications',
-        payload=payload
+        date=date,
+        group_name='channel',
+        group_value=notification_type,
+        count=count
     )
+
+    performance_platform_client.send_stats_to_performance_platform(payload)
 
 
 def get_total_sent_notifications_yesterday():

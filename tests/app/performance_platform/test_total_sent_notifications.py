@@ -19,15 +19,13 @@ def test_send_total_notifications_sent_for_day_stats_stats_creates_correct_call(
 
     send_total_notifications_sent_for_day_stats(
         date=datetime(2016, 10, 15, 23, 0, 0),
-        channel='sms',
-        count=142,
-        period='day'
+        notification_type='sms',
+        count=142
     )
 
     assert send_stats.call_count == 1
-    assert send_stats.call_args[1]['dataset'] == 'notifications'
 
-    request_args = send_stats.call_args[1]['payload']
+    request_args = send_stats.call_args[0][0]
     assert request_args['dataType'] == 'notifications'
     assert request_args['service'] == 'govuk-notify'
     assert request_args['period'] == 'day'

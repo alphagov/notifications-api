@@ -87,7 +87,7 @@ def delete_verify_codes():
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} verify codes".format(start, datetime.utcnow(), deleted)
         )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         current_app.logger.exception("Failed to delete verify codes")
         raise
 
@@ -106,7 +106,7 @@ def delete_sms_notifications_older_than_seven_days():
                 deleted
             )
         )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         current_app.logger.exception("Failed to delete sms notifications")
         raise
 
@@ -125,7 +125,7 @@ def delete_email_notifications_older_than_seven_days():
                 deleted
             )
         )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         current_app.logger.exception("Failed to delete sms notifications")
         raise
 
@@ -144,7 +144,7 @@ def delete_letter_notifications_older_than_seven_days():
                 deleted
             )
         )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         current_app.logger.exception("Failed to delete sms notifications")
         raise
 
@@ -158,7 +158,7 @@ def delete_invitations():
         current_app.logger.info(
             "Delete job started {} finished {} deleted {} invitations".format(start, datetime.utcnow(), deleted)
         )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         current_app.logger.exception("Failed to delete invitations")
         raise
 
@@ -189,15 +189,13 @@ def send_daily_performance_platform_stats():
         total_sent_notifications.send_total_notifications_sent_for_day_stats(
             start_date,
             'sms',
-            sms_sent_count,
-            'day'
+            sms_sent_count
         )
 
         total_sent_notifications.send_total_notifications_sent_for_day_stats(
             start_date,
             'email',
-            email_sent_count,
-            'day'
+            email_sent_count
         )
 
 
@@ -254,7 +252,7 @@ def delete_inbound_sms_older_than_seven_days():
                 deleted
             )
         )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         current_app.logger.exception("Failed to delete inbound sms notifications")
         raise
 
@@ -289,7 +287,7 @@ def delete_dvla_response_files_older_than_seven_days():
                 len(older_than_seven_days)
             )
         )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         current_app.logger.exception("Failed to delete dvla response files")
         raise
 
