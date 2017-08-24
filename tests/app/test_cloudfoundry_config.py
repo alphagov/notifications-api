@@ -86,6 +86,7 @@ def redis_config():
         }
     }
 
+
 @pytest.fixture
 def performance_platform_config():
     return {

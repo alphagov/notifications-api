@@ -29,7 +29,6 @@ def test_should_not_call_if_not_enabled(perf_client):
     assert request_mock.called is False
 
 
-
 def test_should_call_if_enabled(perf_client):
     with requests_mock.Mocker() as request_mock:
         request_mock.post('https://performance-platform-url/foo', json={}, status_code=200)

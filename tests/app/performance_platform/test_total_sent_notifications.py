@@ -4,7 +4,7 @@ from functools import partial
 from freezegun import freeze_time
 
 from app.utils import get_midnight_for_day_before
-from app.performance_platform.total_sent_notifications import(
+from app.performance_platform.total_sent_notifications import (
     send_total_notifications_sent_for_day_stats,
     get_total_sent_notifications_yesterday
 )

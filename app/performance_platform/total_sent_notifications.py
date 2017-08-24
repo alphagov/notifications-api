@@ -25,6 +25,7 @@ def send_total_notifications_sent_for_day_stats(date, channel, count, period):
         payload=payload
     )
 
+
 def get_total_sent_notifications_yesterday():
     today = datetime.utcnow()
     start_date = get_midnight_for_day_before(today)
