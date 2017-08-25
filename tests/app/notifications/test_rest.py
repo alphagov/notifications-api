@@ -15,12 +15,20 @@ from tests.app.conftest import sample_notification as create_sample_notification
 from tests.app.db import create_notification, create_api_key
 
 
-@pytest.mark.parametrize('type', ('email', 'sms'))
-def test_get_notification_by_id(client, sample_notification, sample_email_notification, type):
+@pytest.mark.parametrize('type', ('email', 'sms', 'letter'))
+def test_get_notification_by_id(
+    client,
+    sample_notification,
+    sample_email_notification,
+    sample_letter_notification,
+    type
+):
     if type == 'email':
         notification_to_get = sample_email_notification
     if type == 'sms':
         notification_to_get = sample_notification
+    if type == 'letter':
+        notification_to_get = sample_letter_notification
 
     auth_header = create_authorization_header(service_id=notification_to_get.service_id)
     response = client.get(

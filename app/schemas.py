@@ -468,7 +468,7 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
         in_data['template'] = in_data.pop('template_history')
         template = get_template_instance(in_data['template'], in_data['personalisation'])
         in_data['body'] = str(template)
-        if in_data['template']['template_type'] == models.EMAIL_TYPE:
+        if in_data['template']['template_type'] != models.SMS_TYPE:
             in_data['subject'] = template.subject
             in_data['content_char_count'] = None
         else:
