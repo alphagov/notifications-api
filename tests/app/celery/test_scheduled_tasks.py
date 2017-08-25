@@ -680,9 +680,7 @@ def test_populate_monthly_billing_updates_correct_month_in_bst(sample_template):
 
 
 def test_run_letter_jobs(client, mocker, sample_letter_template):
-    jobs = [create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND),
-            create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND)]
-    job_ids = [str(job.id) for job in jobs]
+    job_ids = [str(uuid.uuid4()), str(uuid.uuid4())]
     mocker.patch(
         "app.celery.scheduled_tasks.dao_get_letter_job_ids_by_status",
         return_value=job_ids
