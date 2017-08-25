@@ -150,6 +150,9 @@ def process_letter_notification(*, letter_data, api_key, template):
     if api_key.key_type == KEY_TYPE_TEAM:
         raise BadRequestError(message='Cannot send letters with a team api key', status_code=403)
 
+    if api_key.service.restricted:
+        raise BadRequestError(message='Cannot send letters when service is in trial mode', status_code=403)
+
     job = create_letter_api_job(template)
     notification = create_letter_notification(letter_data, job, api_key)
 

@@ -17,13 +17,12 @@ from app.variables import LETTER_TEST_API_FILENAME
 from app.variables import LETTER_API_FILENAME
 
 from tests import create_authorization_header
-from tests.app.db import create_service
-from tests.app.db import create_template
+from tests.app.db import create_service, create_template
 
 
 def letter_request(client, data, service_id, key_type=KEY_TYPE_NORMAL, _expected_status=201):
     resp = client.post(
-        url_for('v2_notifications.post_notification', notification_type='letter'),
+        url_for('v2_notifications.post_notification', notification_type=LETTER_TYPE),
         data=json.dumps(data),
         headers=[
             ('Content-Type', 'application/json'),
@@ -232,3 +231,21 @@ def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_t
 
     assert error_json['status_code'] == 403
     assert error_json['errors'] == [{'error': 'BadRequestError', 'message': 'Cannot send letters with a team api key'}]
+
+
+def test_post_letter_notification_doesnt_send_in_trial(client, sample_trial_letter_template):
+    data = {
+        'template_id': str(sample_trial_letter_template.id),
+        'personalisation': {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
+    }
+
+    error_json = letter_request(
+        client,
+        data,
+        sample_trial_letter_template.service_id,
+        _expected_status=403
+    )
+
+    assert error_json['status_code'] == 403
+    assert error_json['errors'] == [
+        {'error': 'BadRequestError', 'message': 'Cannot send letters when service is in trial mode'}]
