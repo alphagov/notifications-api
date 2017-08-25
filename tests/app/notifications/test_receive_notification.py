@@ -5,7 +5,7 @@ from unittest.mock import call
 import pytest
 from flask import json
 
-from app.dao.services_dao import dao_fetch_services_by_sms_sender
+from app.dao.services_dao import dao_fetch_service_by_inbound_number
 from app.notifications.receive_notifications import (
     format_mmg_message,
     format_mmg_datetime,
@@ -85,7 +85,12 @@ def test_receive_notification_from_firetext_without_permissions_does_not_persist
     permissions
 ):
     service = create_service(sms_sender='07111111111', service_permissions=permissions)
-    mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
+    mocker.patch("app.notifications.receive_notifications.dao_fetch_service_by_inbound_number",
+                 return_value=service)
+    mocked_send_inbound_sms = mocker.patch(
+        "app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
+    mocked_has_permissions = mocker.patch(
+        "app.notifications.receive_notifications.has_inbound_sms_permissions", return_value=False)
 
     data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
     response = client.post(
@@ -99,7 +104,7 @@ def test_receive_notification_from_firetext_without_permissions_does_not_persist
 
     assert result['status'] == 'ok'
     assert InboundSms.query.count() == 0
-    assert mocked.called is False
+    assert not mocked_send_inbound_sms.called
 
 
 def test_receive_notification_without_permissions_does_not_create_inbound_even_with_inbound_number_set(

@@ -30,7 +30,7 @@ from app.dao.services_dao import (
     dao_suspend_service,
     dao_resume_service,
     dao_fetch_active_users_for_service,
-    dao_fetch_services_by_sms_sender
+    dao_fetch_service_by_inbound_number
 )
 from app.dao.service_permissions_dao import dao_add_service_permission, dao_remove_service_permission
 from app.dao.users_dao import save_model_user
@@ -892,76 +892,53 @@ def test_dao_fetch_active_users_for_service_returns_active_only(notify_db, notif
     assert len(users) == 1
 
 
-def test_dao_fetch_services_by_sms_sender_with_inbound_number(notify_db_session):
+def test_dao_fetch_service_by_inbound_number_with_inbound_number(notify_db_session):
     foo1 = create_service(service_name='a', sms_sender='1')
     foo2 = create_service(service_name='b', sms_sender='2')
     bar = create_service(service_name='c', sms_sender='3')
-    create_inbound_number('1')
+    create_inbound_number('1', service_id=foo1.id)
     create_inbound_number('2')
     create_inbound_number('3')
 
-    services = dao_fetch_services_by_sms_sender('1')
+    service = dao_fetch_service_by_inbound_number('1')
 
-    assert len(services) == 1
-    assert foo1.id == services[0].id
+    assert foo1.id == service.id
 
 
-def test_dao_fetch_services_by_sms_sender_with_inbound_number_not_set(notify_db_session):
+def test_dao_fetch_service_by_inbound_number_with_inbound_number_not_set(notify_db_session):
     create_inbound_number('1')
 
-    services = dao_fetch_services_by_sms_sender('1')
+    service = dao_fetch_service_by_inbound_number('1')
 
-    assert services == []
-
-
-def test_dao_fetch_services_by_sms_sender_when_inbound_number_set(notify_db_session):
-    service = create_service(service_name='a', sms_sender=None)
-    service = create_service(service_name='b')
-    inbound_number = create_inbound_number('1', service_id=service.id)
-
-    services = dao_fetch_services_by_sms_sender('1')
-
-    assert len(services) == 1
-    assert services[0].id == service.id
+    assert service is None
 
 
-def test_dao_fetch_services_by_sms_sender_when_inbound_number_set_and_sms_sender_same(notify_db_session):
-    service = create_service(service_name='a', sms_sender=None)
-    service = create_service(service_name='b', sms_sender='1')
-    inbound_number = create_inbound_number('1', service_id=service.id)
+def test_dao_fetch_service_by_inbound_number_when_inbound_number_set(notify_db_session):
+    service_1 = create_service(service_name='a', sms_sender=None)
+    service_2 = create_service(service_name='b')
+    inbound_number = create_inbound_number('1', service_id=service_1.id)
 
-    services = dao_fetch_services_by_sms_sender('1')
+    service = dao_fetch_service_by_inbound_number('1')
 
-    assert len(services) == 1
-    assert services[0].id == service.id
-
-
-def test_dao_fetch_services_by_sms_sender_when_inbound_number_not_set_gets_sms_sender(notify_db_session):
-    service = create_service(service_name='a', sms_sender=None)
-    service = create_service(service_name='b', sms_sender='testing_gov')
-    inbound_number = create_inbound_number('1', service_id=service.id)
-
-    services = dao_fetch_services_by_sms_sender('testing_gov')
-
-    assert services == []
+    assert service.id == service_1.id
 
 
-def test_dao_fetch_services_by_sms_sender_with_unknown_number(notify_db_session):
+def test_dao_fetch_service_by_inbound_number_with_unknown_number(notify_db_session):
     service = create_service(service_name='a', sms_sender=None)
     inbound_number = create_inbound_number('1', service_id=service.id)
 
-    services = dao_fetch_services_by_sms_sender('9')
+    service = dao_fetch_service_by_inbound_number('9')
 
-    assert services == []
+    assert service is None
 
 
-def test_dao_fetch_services_by_sms_sender_with_inactive_number_returns_empty(notify_db_session):
+def test_dao_fetch_service_by_inbound_number_with_inactive_number_returns_empty(notify_db_session):
     service = create_service(service_name='a', sms_sender=None)
     inbound_number = create_inbound_number('1', service_id=service.id, active=False)
 
-    services = dao_fetch_services_by_sms_sender('1')
+    service = dao_fetch_service_by_inbound_number('1')
 
-    assert services == []
+    assert service is None
 
 
 def test_dao_allocating_inbound_number_shows_on_service(notify_db_session, sample_inbound_numbers):

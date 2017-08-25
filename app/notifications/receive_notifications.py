@@ -7,7 +7,7 @@ from notifications_utils.recipients import validate_and_format_phone_number
 from app import statsd_client, firetext_client, mmg_client
 from app.celery import tasks
 from app.config import QueueNames
-from app.dao.services_dao import dao_fetch_services_by_sms_sender
+from app.dao.services_dao import dao_fetch_service_by_inbound_number
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.models import InboundSms, INBOUND_SMS_TYPE, SMS_TYPE
 from app.errors import register_errors
@@ -32,15 +32,13 @@ def receive_mmg_sms():
 
     inbound_number = strip_leading_forty_four(post_data['Number'])
 
-    potential_services = fetch_potential_services(inbound_number, 'mmg')
-    if not potential_services:
+    service = fetch_potential_service(inbound_number, 'mmg')
+    if not service:
         # since this is an issue with our service <-> number mapping, or no inbound_sms service permission
         # we should still tell MMG that we received it successfully
         return 'RECEIVED', 200
 
     statsd_client.incr('inbound.mmg.successful')
-
-    service = potential_services[0]
 
     inbound = create_inbound_sms_object(service,
                                         content=format_mmg_message(post_data["Message"]),
@@ -60,13 +58,12 @@ def receive_firetext_sms():
 
     inbound_number = strip_leading_forty_four(post_data['destination'])
 
-    potential_services = fetch_potential_services(inbound_number, 'firetext')
-    if not potential_services:
+    service = fetch_potential_service(inbound_number, 'firetext')
+    if not service:
         return jsonify({
             "status": "ok"
         }), 200
 
-    service = potential_services[0]
     inbound = create_inbound_sms_object(service=service,
                                         content=post_data["message"],
                                         from_number=post_data['source'],
@@ -118,22 +115,22 @@ def create_inbound_sms_object(service, content, from_number, provider_ref, date_
     return inbound
 
 
-def fetch_potential_services(inbound_number, provider_name):
-    potential_services = dao_fetch_services_by_sms_sender(inbound_number)
+def fetch_potential_service(inbound_number, provider_name):
+    service = dao_fetch_service_by_inbound_number(inbound_number)
 
-    if len(potential_services) != 1:
-        current_app.logger.error('Inbound number "{}" from {} not associated with exactly one service'.format(
+    if not service:
+        current_app.logger.error('Inbound number "{}" from {} not associated with a service'.format(
             inbound_number, provider_name
         ))
         statsd_client.incr('inbound.{}.failed'.format(provider_name))
         return False
 
-    if not has_inbound_sms_permissions(potential_services[0].permissions):
+    if not has_inbound_sms_permissions(service.permissions):
         current_app.logger.error(
-            'Service "{}" does not allow inbound SMS'.format(potential_services[0].id))
+            'Service "{}" does not allow inbound SMS'.format(service.id))
         return False
 
-    return potential_services
+    return service
 
 
 def has_inbound_sms_permissions(permissions):
