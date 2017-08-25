@@ -75,6 +75,13 @@ def process_job(job_id):
 
     db_template = dao_get_template_by_id(job.template_id, job.template_version)
 
+    if db_template.template_type == LETTER_TYPE and service.restricted:
+        job.job_status = JOB_STATUS_ERROR
+        dao_update_job(job)
+        current_app.logger.warn(
+            "Job {} has been set to error, service {} is in trial mode".format(job_id, service.id))
+        return
+
     TemplateClass = get_template_class(db_template.template_type)
     template = TemplateClass(db_template.__dict__)
 

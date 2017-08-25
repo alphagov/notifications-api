@@ -271,6 +271,12 @@ def sample_letter_template(sample_service_full_permissions):
     return create_template(sample_service_full_permissions, template_type=LETTER_TYPE)
 
 
+@pytest.fixture
+def sample_trial_letter_template(sample_service_full_permissions):
+    sample_service_full_permissions.restricted = True
+    return create_template(sample_service_full_permissions, template_type=LETTER_TYPE)
+
+
 @pytest.fixture(scope='function')
 def sample_email_template_with_placeholders(notify_db, notify_db_session):
     return sample_email_template(
