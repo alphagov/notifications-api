@@ -1,4 +1,4 @@
-boto3==1.4.6
+boto3==1.4.7
 celery==3.1.25 # pyup: <4
 docopt==0.6.2
 # ignore flask-bcrypt - when upgrading, it installs an invalid version of bcrypt that isn't removed when a different
