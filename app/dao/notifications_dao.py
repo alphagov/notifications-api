@@ -16,6 +16,8 @@ from notifications_utils.recipients import (
 from werkzeug.datastructures import MultiDict
 from sqlalchemy import (desc, func, or_, and_, asc)
 from sqlalchemy.orm import joinedload
+from sqlalchemy.sql.expression import case
+from sqlalchemy.sql import functions
 from notifications_utils.international_billing_rates import INTERNATIONAL_BILLING_RATES
 
 from app import db, create_uuid
@@ -519,3 +521,37 @@ def set_scheduled_notification_to_processed(notification_id):
         {'pending': False}
     )
     db.session.commit()
+
+
+def dao_get_total_notifications_sent_per_day_for_perfomance_platform(start_date, end_date):
+    """
+    SELECT
+    count(notifications),
+    sum(CASE WHEN sent_at - created_at <= interval '10 seconds' THEN 1 ELSE 0 END)
+    FROM notifications
+    WHERE
+    created_at > 'START DATE' AND
+    created_at < 'END DATE' AND
+    api_key_id IS NOT NULL AND
+    key_type != 'test' AND
+    notification_type != 'letter';
+    """
+    under_10_secs = Notification.sent_at - Notification.created_at <= timedelta(seconds=10)
+    sum_column = functions.sum(
+        case(
+            [
+                (under_10_secs, 1)
+            ],
+            else_=0
+        )
+    )
+    return db.session.query(
+        func.count(Notification.id).label('messages_total'),
+        sum_column.label('messages_within_10_secs')
+    ).filter(
+        Notification.created_at >= start_date,
+        Notification.created_at < end_date,
+        Notification.api_key_id.isnot(None),
+        Notification.key_type != KEY_TYPE_TEST,
+        Notification.notification_type != LETTER_TYPE
+    ).one()
