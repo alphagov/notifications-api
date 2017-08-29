@@ -610,8 +610,7 @@ def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_serv
     )
 
 
-@freeze_time("2017-08-29 17:30:00")
-def test_should_build_dvla_file_in_research_mode_for_letter_job(
+def test_should_not_build_dvla_file_in_research_mode_for_letter_job(
         notify_db, notify_db_session, mocker, sample_service, sample_letter_job, fake_uuid
 ):
     test_encrypted_data = 'some encrypted data'
@@ -620,9 +619,31 @@ def test_should_build_dvla_file_in_research_mode_for_letter_job(
     csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
     A1,A2,A3,A4,A_POST,Alice
     """
-    s3_mock = mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=csv)
-    # mocker.patch('app.celery.tasks.process_row')
-    mock_persist_letter = mocker.patch('app.celery.tasks.persist_letter.apply_async')
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=csv)
+    mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
+    mocker.patch('app.celery.tasks.persist_letter.apply_async')
+    mocker.patch('app.celery.tasks.create_uuid', return_value=fake_uuid)
+    mocker.patch('app.celery.tasks.encryption.encrypt', return_value=test_encrypted_data)
+    mock_dvla_file_task = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
+
+    process_job(sample_letter_job.id)
+
+    assert not mock_dvla_file_task.called
+
+
+@freeze_time("2017-08-29 17:30:00")
+def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
+        notify_db, notify_db_session, mocker, sample_service, sample_letter_job, fake_uuid
+):
+    test_encrypted_data = 'some encrypted data'
+    sample_service.research_mode = True
+
+    csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
+    A1,A2,A3,A4,A_POST,Alice
+    """
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=csv)
+    mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
+    mocker.patch('app.celery.tasks.persist_letter.apply_async')
     mocker.patch('app.celery.tasks.create_uuid', return_value=fake_uuid)
     mocker.patch('app.celery.tasks.encryption.encrypt', return_value=test_encrypted_data)
     mock_dvla_file_task = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
@@ -641,10 +662,8 @@ def test_should_build_dvla_file_in_research_mode_for_letter_job(
         queue=QueueNames.RESEARCH_MODE
     )
 
-    build_dvla_file.apply_async.assert_called_once_with(
-        [str(job.id)],
-        queue=QueueNames.RESEARCH_MODE
-    )
+    update_job_to_sent_to_dvla.apply_async.assert_called_once_with(
+        [str(job.id)], queue=QueueNames.RESEARCH_MODE)
 
 
 def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_api_key, mocker):
