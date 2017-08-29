@@ -10,6 +10,7 @@ services:
   - firetext
   - hosted-graphite
   - redis
+  - performance-platform
 env:
   NOTIFY_APP_NAME: public-api
   CW_APP_NAME: api

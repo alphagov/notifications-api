@@ -93,7 +93,7 @@ class Config(object):
 
     # Performance platform
     PERFORMANCE_PLATFORM_ENABLED = False
-    PERFORMANCE_PLATFORM_URL = 'https://www.performance.service.gov.uk/data/govuk-notify/notifications'
+    PERFORMANCE_PLATFORM_URL = 'https://www.performance.service.gov.uk/data/govuk-notify/'
     PERFORMANCE_PLATFORM_TOKEN = os.getenv('PERFORMANCE_PLATFORM_TOKEN')
 
     # Logging
@@ -272,6 +272,10 @@ class Config(object):
     FREE_SMS_TIER_FRAGMENT_COUNT = 250000
 
     SMS_INBOUND_WHITELIST = json.loads(os.environ.get('SMS_INBOUND_WHITELIST', '[]'))
+
+    # Format is as follows:
+    # {"dataset_1": "token_1", ...}
+    PERFORMANCE_PLATFORM_ENDPOINTS = json.loads(os.environ.get('PERFORMANCE_PLATFORM_ENDPOINTS', '{}'))
 
 
 ######################

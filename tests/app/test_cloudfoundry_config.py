@@ -16,7 +16,6 @@ def notify_config():
             'admin_client_secret': 'admin client secret',
             'secret_key': 'secret key',
             'dangerous_salt': 'dangerous salt',
-            'performance_platform_token': 'performance platform token',
             'allow_ip_inbound_sms': ['111.111.111.111', '100.100.100.100']
         }
     }
@@ -89,6 +88,17 @@ def redis_config():
 
 
 @pytest.fixture
+def performance_platform_config():
+    return {
+        'name': 'performance-platform',
+        'credentials': {
+            'foo': 'my_token',
+            'bar': 'other_token'
+        }
+    }
+
+
+@pytest.fixture
 def cloudfoundry_config(
         postgres_config,
         notify_config,
@@ -96,7 +106,8 @@ def cloudfoundry_config(
         hosted_graphite_config,
         mmg_config,
         firetext_config,
-        redis_config
+        redis_config,
+        performance_platform_config
 ):
     return {
         'postgres': postgres_config,
@@ -106,7 +117,8 @@ def cloudfoundry_config(
             hosted_graphite_config,
             mmg_config,
             firetext_config,
-            redis_config
+            redis_config,
+            performance_platform_config
         ]
     }
 
@@ -148,16 +160,6 @@ def test_notify_config():
     assert os.environ['ADMIN_CLIENT_SECRET'] == 'admin client secret'
     assert os.environ['SECRET_KEY'] == 'secret key'
     assert os.environ['DANGEROUS_SALT'] == 'dangerous salt'
-    assert os.environ['PERFORMANCE_PLATFORM_TOKEN'] == 'performance platform token'
-
-
-@pytest.mark.usefixtures('os_environ', 'cloudfoundry_environ')
-def test_notify_config_if_perf_platform_not_set(cloudfoundry_config):
-    del cloudfoundry_config['user-provided'][0]['credentials']['performance_platform_token']
-
-    set_config_env_vars(cloudfoundry_config)
-
-    assert os.environ['PERFORMANCE_PLATFORM_TOKEN'] == ''
 
 
 @pytest.mark.usefixtures('os_environ', 'cloudfoundry_environ')
@@ -205,3 +207,13 @@ def test_sms_inbound_config():
     extract_cloudfoundry_config()
 
     assert os.environ['SMS_INBOUND_WHITELIST'] == json.dumps(['111.111.111.111', '100.100.100.100'])
+
+
+@pytest.mark.usefixtures('os_environ', 'cloudfoundry_environ')
+def test_performance_platform_config():
+    extract_cloudfoundry_config()
+
+    assert os.environ['PERFORMANCE_PLATFORM_ENDPOINTS'] == json.dumps({
+        'foo': 'my_token',
+        'bar': 'other_token'
+    })

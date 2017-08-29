@@ -270,13 +270,8 @@ def test_will_remove_csv_files_for_jobs_older_than_seven_days(
     ]
 
 
-def test_send_daily_performance_stats_calls_does_not_send_if_inactive(
-    notify_db,
-    notify_db_session,
-    sample_template,
-    mocker
-):
-    send_mock = mocker.patch('app.celery.scheduled_tasks.performance_platform_client.send_performance_stats')
+def test_send_daily_performance_stats_calls_does_not_send_if_inactive(client, mocker):
+    send_mock = mocker.patch('app.celery.scheduled_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')  # noqa
 
     with patch.object(
         PerformancePlatformClient,
@@ -296,7 +291,7 @@ def test_send_daily_performance_stats_calls_with_correct_totals(
     sample_template,
     mocker
 ):
-    perf_mock = mocker.patch('app.celery.scheduled_tasks.performance_platform_client.send_performance_stats')
+    perf_mock = mocker.patch('app.celery.scheduled_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')  # noqa
 
     notification_history = partial(
         create_notification_history,
@@ -327,8 +322,8 @@ def test_send_daily_performance_stats_calls_with_correct_totals(
         send_daily_performance_platform_stats()
 
         perf_mock.assert_has_calls([
-            call(get_london_midnight_in_utc(yesterday), 'sms', 2, 'day'),
-            call(get_london_midnight_in_utc(yesterday), 'email', 3, 'day')
+            call(get_london_midnight_in_utc(yesterday), 'sms', 2),
+            call(get_london_midnight_in_utc(yesterday), 'email', 3)
         ])
 
 
