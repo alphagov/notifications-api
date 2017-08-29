@@ -93,9 +93,11 @@ def process_job(job_id):
         process_row(row_number, recipient, personalisation, template, job, service)
 
     if template.template_type == LETTER_TYPE:
-        build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
+        build_dvla_file.apply_async(
+            [str(job.id)], queue=QueueNames.JOBS if not service.research_mode else QueueNames.RESEARCH_MODE)
         # temporary logging
-        current_app.logger.info("send job {} to build-dvla-file in the process-job queue".format(job_id))
+        current_app.logger.info("send job {} to build-dvla-file in the {} queue".format(
+            job_id, QueueNames.JOBS if not service.research_mode else QueueNames.RESEARCH_MODE))
     else:
         job.job_status = JOB_STATUS_FINISHED
 
