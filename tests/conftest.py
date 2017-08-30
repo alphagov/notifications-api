@@ -1,12 +1,13 @@
 from contextlib import contextmanager
 import os
 
-import boto3
-import pytest
 from alembic.command import upgrade
 from alembic.config import Config
 from flask_migrate import Migrate, MigrateCommand
 from flask_script import Manager
+import boto3
+import pytest
+import sqlalchemy
 
 from app import create_app, db
 
@@ -45,9 +46,36 @@ def client(notify_api):
         yield client
 
 
+def create_test_db(database_uri):
+    # get the
+    db_uri_parts = database_uri.split('/')
+    postgres_db_uri = '/'.join(db_uri_parts[:-1] + ['postgres'])
+
+    postgres_db = sqlalchemy.create_engine(
+        postgres_db_uri,
+        echo=False,
+        isolation_level='AUTOCOMMIT',
+        client_encoding='utf8'
+    )
+    try:
+        result = postgres_db.execute(sqlalchemy.sql.text('CREATE DATABASE {}'.format(db_uri_parts[-1])))
+        result.close()
+    except sqlalchemy.exc.ProgrammingError:
+        # database "test_notification_api_master" already exists
+        pass
+    finally:
+        postgres_db.dispose()
+
+
 @pytest.fixture(scope='session')
-def notify_db(notify_api):
-    assert db.engine.url.database != 'notification_api', 'dont run tests against main db'
+def notify_db(notify_api, worker_id):
+    assert 'test_notification_api' in db.engine.url.database, 'dont run tests against main db'
+
+    # create a database for this worker thread -
+    from flask import current_app
+    current_app.config['SQLALCHEMY_DATABASE_URI'] += '_{}'.format(worker_id)
+    create_test_db(current_app.config['SQLALCHEMY_DATABASE_URI'])
+
     Migrate(notify_api, db)
     Manager(db, MigrateCommand)
     BASE_DIR = os.path.dirname(os.path.dirname(__file__))
