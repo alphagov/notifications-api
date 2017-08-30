@@ -23,19 +23,24 @@ from app.models import User, VerifyCode
 from tests.app.db import create_user
 
 
-def test_create_user(notify_db_session):
+@pytest.mark.parametrize('phone_number', [
+    '+447700900986',
+    '+1-800-555-5555',
+])
+def test_create_user(notify_db_session, phone_number):
     email = 'notify@digital.cabinet-office.gov.uk'
     data = {
         'name': 'Test User',
         'email_address': email,
         'password': 'password',
-        'mobile_number': '+447700900986'
+        'mobile_number': phone_number
     }
     user = User(**data)
     save_model_user(user)
     assert User.query.count() == 1
     assert User.query.first().email_address == email
     assert User.query.first().id == user.id
+    assert User.query.first().mobile_number == phone_number
     assert not user.platform_admin
 
 
