@@ -75,7 +75,7 @@ def process_job(job_id):
 
     db_template = dao_get_template_by_id(job.template_id, job.template_version)
 
-    if db_template.template_type == LETTER_TYPE and service.restricted:
+    if db_template.template_type == LETTER_TYPE and job.service.restricted:
         job.job_status = JOB_STATUS_ERROR
         dao_update_job(job)
         current_app.logger.warn(
@@ -97,9 +97,9 @@ def process_job(job_id):
             update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
         else:
             build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
-        # temporary logging
-        current_app.logger.info("send job {} to build-dvla-file in the {} queue".format(
-            job_id, QueueNames.JOBS if not service.research_mode else QueueNames.RESEARCH_MODE))
+            # temporary logging
+            current_app.logger.info("send job {} to build-dvla-file in the {} queue".format(
+                job_id, QueueNames.JOBS))
     else:
         job.job_status = JOB_STATUS_FINISHED
 

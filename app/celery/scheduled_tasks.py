@@ -39,7 +39,7 @@ from app.notifications.process_notifications import send_notification_to_queue
 from app.statsd_decorators import statsd
 from app.celery.tasks import process_job
 from app.config import QueueNames, TaskNames
-from app.utils import convert_utc_to_bst
+from app.utils import convert_utc_to_bst, get_unrestricted_letter_ids
 
 
 @notify_celery.task(name="remove_csv_files")
@@ -308,9 +308,14 @@ def populate_monthly_billing():
 @statsd(namespace="tasks")
 def run_letter_jobs():
     job_ids = dao_get_letter_job_ids_by_status(JOB_STATUS_READY_TO_SEND)
-    notify_celery.send_task(
-        name=TaskNames.DVLA_FILES,
-        args=(job_ids,),
-        queue=QueueNames.PROCESS_FTP
-    )
-    current_app.logger.info("Queued {} ready letter job ids onto {}".format(len(job_ids), QueueNames.PROCESS_FTP))
+
+    unrestricted_job_ids = get_unrestricted_letter_ids(job_ids)
+
+    if unrestricted_job_ids:
+        notify_celery.send_task(
+            name=TaskNames.DVLA_FILES,
+            args=(unrestricted_job_ids,),
+            queue=QueueNames.PROCESS_FTP
+        )
+    current_app.logger.info(
+        "Queued {} ready letter job ids onto {}".format(len(unrestricted_job_ids), QueueNames.PROCESS_FTP))
