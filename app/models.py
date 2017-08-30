@@ -318,7 +318,7 @@ class ServiceWhitelist(db.Model):
 
         try:
             if recipient_type == MOBILE_TYPE:
-                validate_phone_number(recipient)
+                validate_phone_number(recipient, international=True)
                 instance.recipient = recipient
             elif recipient_type == EMAIL_TYPE:
                 validate_email_address(recipient)
