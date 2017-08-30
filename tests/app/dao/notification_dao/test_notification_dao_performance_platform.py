@@ -85,3 +85,10 @@ def test_get_total_notifications_counts_messages_that_have_not_sent(sample_templ
     result = dao_get_total_notifications_sent_per_day_for_perfomance_platform(date(2016, 10, 18), date(2016, 10, 19))
     assert result.messages_total == 1
     assert result.messages_within_10_secs == 0
+
+
+@freeze_time('2016-10-18T10:00')
+def test_get_total_notifications_returns_zero_if_no_data(notify_db_session):
+    result = dao_get_total_notifications_sent_per_day_for_perfomance_platform(date(2016, 10, 18), date(2016, 10, 19))
+    assert result.messages_total == 0
+    assert result.messages_within_10_secs == 0

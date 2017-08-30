@@ -527,7 +527,7 @@ def dao_get_total_notifications_sent_per_day_for_perfomance_platform(start_date,
     """
     SELECT
     count(notifications),
-    sum(CASE WHEN sent_at - created_at <= interval '10 seconds' THEN 1 ELSE 0 END)
+    coalesce(sum(CASE WHEN sent_at - created_at <= interval '10 seconds' THEN 1 ELSE 0 END), 0)
     FROM notifications
     WHERE
     created_at > 'START DATE' AND
@@ -537,14 +537,14 @@ def dao_get_total_notifications_sent_per_day_for_perfomance_platform(start_date,
     notification_type != 'letter';
     """
     under_10_secs = Notification.sent_at - Notification.created_at <= timedelta(seconds=10)
-    sum_column = functions.sum(
+    sum_column = functions.coalesce(functions.sum(
         case(
             [
                 (under_10_secs, 1)
             ],
             else_=0
         )
-    )
+    ), 0)
     return db.session.query(
         func.count(Notification.id).label('messages_total'),
         sum_column.label('messages_within_10_secs')
