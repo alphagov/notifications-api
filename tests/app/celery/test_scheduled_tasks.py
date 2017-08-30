@@ -29,7 +29,8 @@ from app.celery.scheduled_tasks import (
     switch_current_sms_provider_on_slow_delivery,
     timeout_job_statistics,
     timeout_notifications,
-    populate_monthly_billing)
+    populate_monthly_billing,
+    send_total_sent_notifications_to_performance_platform)
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -285,7 +286,7 @@ def test_send_daily_performance_stats_calls_does_not_send_if_inactive(client, mo
 
 
 @freeze_time("2016-01-11 12:30:00")
-def test_send_daily_performance_stats_calls_with_correct_totals(
+def test_send_total_sent_notifications_to_performance_platform_calls_with_correct_totals(
     notify_db,
     notify_db_session,
     sample_template,
@@ -319,7 +320,7 @@ def test_send_daily_performance_stats_calls_with_correct_totals(
         new_callable=PropertyMock
     ) as mock_active:
         mock_active.return_value = True
-        send_daily_performance_platform_stats()
+        send_total_sent_notifications_to_performance_platform()
 
         perf_mock.assert_has_calls([
             call(get_london_midnight_in_utc(yesterday), 'sms', 2),
