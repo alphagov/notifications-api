@@ -2,6 +2,7 @@ from datetime import datetime
 
 from app.commands import BackfillProcessingTime
 
+
 def test_backfill_processing_time_works_for_correct_dates(mocker):
     send_mock = mocker.patch('app.commands.send_processing_time_for_start_and_end')
 
