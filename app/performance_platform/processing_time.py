@@ -12,6 +12,10 @@ def send_processing_time_to_performance_platform():
     start_date = get_midnight_for_day_before(today)
     end_date = get_london_midnight_in_utc(today)
 
+    send_processing_time_for_start_and_end(start_date, end_date)
+
+
+def send_processing_time_for_start_and_end(start_date, end_date):
     result = dao_get_total_notifications_sent_per_day_for_performance_platform(start_date, end_date)
 
     current_app.logger.info(
