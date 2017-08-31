@@ -123,7 +123,8 @@ def create_notification(
     international=False,
     phone_prefix=None,
     scheduled_for=None,
-    normalised_to=None
+    normalised_to=None,
+    one_off=False,
 ):
     if created_at is None:
         created_at = datetime.utcnow()
@@ -132,7 +133,7 @@ def create_notification(
         sent_at = sent_at or datetime.utcnow()
         updated_at = updated_at or datetime.utcnow()
 
-    if job is None and api_key is None:
+    if not one_off and (job is None and api_key is None):
         # we didn't specify in test - lets create it
         api_key = ApiKey.query.filter(ApiKey.service == template.service, ApiKey.key_type == key_type).first()
         if not api_key:

@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.aws import s3
 from app import notify_celery
-from app.performance_platform import total_sent_notifications
+from app.performance_platform import total_sent_notifications, processing_time
 from app import performance_platform_client
 from app.dao.date_util import get_month_start_and_end_date_in_utc
 from app.dao.inbound_sms_dao import delete_inbound_sms_created_more_than_a_week_ago
@@ -176,27 +176,32 @@ def timeout_notifications():
 @statsd(namespace="tasks")
 def send_daily_performance_platform_stats():
     if performance_platform_client.active:
-        count_dict = total_sent_notifications.get_total_sent_notifications_yesterday()
-        email_sent_count = count_dict.get('email').get('count')
-        sms_sent_count = count_dict.get('sms').get('count')
-        start_date = count_dict.get('start_date')
+        send_total_sent_notifications_to_performance_platform()
+        processing_time.send_processing_time_to_performance_platform()
 
-        current_app.logger.info(
-            "Attempting to update performance platform for date {} with email count {} and sms count {}"
-            .format(start_date, email_sent_count, sms_sent_count)
-        )
 
-        total_sent_notifications.send_total_notifications_sent_for_day_stats(
-            start_date,
-            'sms',
-            sms_sent_count
-        )
+def send_total_sent_notifications_to_performance_platform():
+    count_dict = total_sent_notifications.get_total_sent_notifications_yesterday()
+    email_sent_count = count_dict.get('email').get('count')
+    sms_sent_count = count_dict.get('sms').get('count')
+    start_date = count_dict.get('start_date')
 
-        total_sent_notifications.send_total_notifications_sent_for_day_stats(
-            start_date,
-            'email',
-            email_sent_count
-        )
+    current_app.logger.info(
+        "Attempting to update performance platform for date {} with email count {} and sms count {}"
+        .format(start_date, email_sent_count, sms_sent_count)
+    )
+
+    total_sent_notifications.send_total_notifications_sent_for_day_stats(
+        start_date,
+        'sms',
+        sms_sent_count
+    )
+
+    total_sent_notifications.send_total_notifications_sent_for_day_stats(
+        start_date,
+        'email',
+        email_sent_count
+    )
 
 
 @notify_celery.task(name='switch-current-sms-provider-on-slow-delivery')

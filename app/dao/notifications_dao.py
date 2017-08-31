@@ -16,6 +16,8 @@ from notifications_utils.recipients import (
 from werkzeug.datastructures import MultiDict
 from sqlalchemy import (desc, func, or_, and_, asc)
 from sqlalchemy.orm import joinedload
+from sqlalchemy.sql.expression import case
+from sqlalchemy.sql import functions
 from notifications_utils.international_billing_rates import INTERNATIONAL_BILLING_RATES
 
 from app import db, create_uuid
@@ -42,7 +44,6 @@ from app.models import (
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
-from app.utils import get_london_month_from_utc_column
 
 
 def dao_get_notification_statistics_for_service_and_day(service_id, day):
@@ -519,3 +520,38 @@ def set_scheduled_notification_to_processed(notification_id):
         {'pending': False}
     )
     db.session.commit()
+
+
+def dao_get_total_notifications_sent_per_day_for_performance_platform(start_date, end_date):
+    """
+    SELECT
+    count(notification_history),
+    coalesce(sum(CASE WHEN sent_at - created_at <= interval '10 seconds' THEN 1 ELSE 0 END), 0)
+    FROM notification_history
+    WHERE
+    created_at > 'START DATE' AND
+    created_at < 'END DATE' AND
+    api_key_id IS NOT NULL AND
+    key_type != 'test' AND
+    notification_type != 'letter';
+    """
+    under_10_secs = NotificationHistory.sent_at - NotificationHistory.created_at <= timedelta(seconds=10)
+    sum_column = functions.coalesce(functions.sum(
+        case(
+            [
+                (under_10_secs, 1)
+            ],
+            else_=0
+        )
+    ), 0)
+
+    return db.session.query(
+        func.count(NotificationHistory.id).label('messages_total'),
+        sum_column.label('messages_within_10_secs')
+    ).filter(
+        NotificationHistory.created_at >= start_date,
+        NotificationHistory.created_at < end_date,
+        NotificationHistory.api_key_id.isnot(None),
+        NotificationHistory.key_type != KEY_TYPE_TEST,
+        NotificationHistory.notification_type != LETTER_TYPE
+    ).one()
