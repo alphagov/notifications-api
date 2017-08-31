@@ -3,7 +3,6 @@ from dateutil.relativedelta import relativedelta
 from freezegun import freeze_time
 from functools import partial
 
-from app import db
 from app.dao.monthly_billing_dao import (
     create_or_update_monthly_billing,
     get_monthly_billing_entry,

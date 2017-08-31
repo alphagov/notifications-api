@@ -1,7 +1,5 @@
 from datetime import datetime
 
-from sqlalchemy import func
-
 
 from app import db
 from app.dao.dao_utils import transactional

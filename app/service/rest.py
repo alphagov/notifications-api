@@ -458,43 +458,6 @@ def get_monthly_template_stats(service_id):
         raise InvalidRequest('Year must be a number', status_code=400)
 
 
-@service_blueprint.route('/<uuid:service_id>/yearly-usage')
-def get_yearly_billing_usage(service_id):
-    try:
-        year = int(request.args.get('year'))
-        results = notification_usage_dao.get_yearly_billing_data(service_id, year)
-        json_result = [{
-            "credits": x[0],
-            "billing_units": x[1],
-            "rate_multiplier": x[2],
-            "notification_type": x[3],
-            "international": x[4],
-            "rate": x[5]
-        } for x in results]
-        return json.dumps(json_result)
-
-    except TypeError:
-        return jsonify(result='error', message='No valid year provided'), 400
-
-
-@service_blueprint.route('/<uuid:service_id>/monthly-usage')
-def get_yearly_monthly_usage(service_id):
-    try:
-        year = int(request.args.get('year'))
-        results = notification_usage_dao.get_monthly_billing_data(service_id, year)
-        json_results = [{
-            "month": x[0],
-            "billing_units": x[1],
-            "rate_multiplier": x[2],
-            "international": x[3],
-            "notification_type": x[4],
-            "rate": x[5]
-        } for x in results]
-        return json.dumps(json_results)
-    except TypeError:
-        return jsonify(result='error', message='No valid year provided'), 400
-
-
 @service_blueprint.route('/<uuid:service_id>/inbound-api', methods=['POST'])
 def create_service_inbound_api(service_id):
     data = request.get_json()
