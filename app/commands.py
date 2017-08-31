@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
-from flask_script import Command, Manager, Option
+from flask_script import Command, Option
 
 from app import db
 from app.dao.monthly_billing_dao import (
@@ -49,7 +49,7 @@ class PurgeFunctionalTestDataCommand(Command):
         Option('-u', '-user-email-prefix', dest='user_email_prefix', help="Functional test user email prefix."),
     )
 
-    def run(self, service_name_prefix=None, user_email_prefix=None):
+    def run(self, user_email_prefix=None):
         if user_email_prefix:
             users = User.query.filter(User.email_address.like("{}%".format(user_email_prefix))).all()
             for usr in users:
@@ -167,33 +167,33 @@ class CustomDbScript(Command):
 
 
 class PopulateMonthlyBilling(Command):
-        option_list = (
-            Option('-y', '-year', dest="year", help="Use for integer value for year, e.g. 2017"),
+    option_list = (
+        Option('-y', '-year', dest="year", help="Use for integer value for year, e.g. 2017"),
+    )
+
+    def run(self, year):
+        service_ids = get_service_ids_that_need_billing_populated(
+            start_date=datetime(2016, 5, 1), end_date=datetime(2017, 8, 16)
         )
+        start, end = 1, 13
+        if year == '2016':
+            start = 4
 
-        def run(self, year):
-            service_ids = get_service_ids_that_need_billing_populated(
-                start_date=datetime(2016, 5, 1), end_date=datetime(2017, 8, 16)
-            )
-            start, end = 1, 13
-            if year == '2016':
-                start = 4
+        for service_id in service_ids:
+            print('Starting to populate data for service {}'.format(str(service_id)))
+            print('Starting populating monthly billing for {}'.format(year))
+            for i in range(start, end):
+                print('Population for {}-{}'.format(i, year))
+                self.populate(service_id, year, i)
 
-            for service_id in service_ids:
-                print('Starting to populate data for service {}'.format(str(service_id)))
-                print('Starting populating monthly billing for {}'.format(year))
-                for i in range(start, end):
-                    print('Population for {}-{}'.format(i, year))
-                    self.populate(service_id, year, i)
-
-        def populate(self, service_id, year, month):
-            create_or_update_monthly_billing(service_id, datetime(int(year), int(month), 1))
-            sms_res = get_monthly_billing_by_notification_type(
-                service_id, datetime(int(year), int(month), 1), SMS_TYPE
-            )
-            email_res = get_monthly_billing_by_notification_type(
-                service_id, datetime(int(year), int(month), 1), EMAIL_TYPE
-            )
-            print("Finished populating data for {} for service id {}".format(month, str(service_id)))
-            print('SMS: {}'.format(sms_res.monthly_totals))
-            print('Email: {}'.format(email_res.monthly_totals))
+    def populate(self, service_id, year, month):
+        create_or_update_monthly_billing(service_id, datetime(int(year), int(month), 1))
+        sms_res = get_monthly_billing_by_notification_type(
+            service_id, datetime(int(year), int(month), 1), SMS_TYPE
+        )
+        email_res = get_monthly_billing_by_notification_type(
+            service_id, datetime(int(year), int(month), 1), EMAIL_TYPE
+        )
+        print("Finished populating data for {} for service id {}".format(month, str(service_id)))
+        print('SMS: {}'.format(sms_res.monthly_totals))
+        print('Email: {}'.format(email_res.monthly_totals))
