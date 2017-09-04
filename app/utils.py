@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta
 
 import pytz
-from flask import current_app, url_for
+from flask import url_for
 from sqlalchemy import func
-from notifications_utils.template import SMSMessageTemplate, PlainTextEmailTemplate, LetterPreviewTemplate
+from notifications_utils.template import SMSMessageTemplate, PlainTextEmailTemplate
 
 local_timezone = pytz.timezone("Europe/London")
 
@@ -86,31 +86,3 @@ def get_public_notify_type_text(notify_type, plural=False):
         notify_type_text = 'text message'
 
     return '{}{}'.format(notify_type_text, 's' if plural else '')
-
-
-def get_unrestricted_letter_ids(job_ids):
-    from app.dao.jobs_dao import (
-        dao_get_job_by_id,
-        dao_update_job
-    )
-
-    from app.models import (LETTER_TYPE, JOB_STATUS_ERROR)
-    from app.dao.templates_dao import dao_get_template_by_id
-
-    unrestricted_job_ids = []
-
-    for job_id in job_ids:
-        job = dao_get_job_by_id(job_id)
-
-        template = dao_get_template_by_id(job.template_id, job.template_version)
-
-        if template.template_type == LETTER_TYPE:
-            if job.service.restricted:
-                job.job_status = JOB_STATUS_ERROR
-                dao_update_job(job)
-                current_app.logger.warn(
-                    "Job {} has been set to error, service {} is in trial mode".format(job.id, job.service.id))
-            else:
-                unrestricted_job_ids.append(job_id)
-
-    return unrestricted_job_ids

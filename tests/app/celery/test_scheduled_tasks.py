@@ -1,5 +1,3 @@
-import uuid
-
 from datetime import datetime, timedelta
 from functools import partial
 from unittest.mock import call, patch, PropertyMock
@@ -41,9 +39,9 @@ from app.dao.provider_details_dao import (
 from app.models import (
     Service, Template,
     SMS_TYPE, LETTER_TYPE,
-    JOB_STATUS_READY_TO_SEND, JOB_STATUS_ERROR,
+    JOB_STATUS_READY_TO_SEND,
     MonthlyBilling)
-from app.utils import get_london_midnight_in_utc, convert_utc_to_bst
+from app.utils import get_london_midnight_in_utc
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
 from tests.app.conftest import (
     sample_job as create_sample_job,
@@ -694,42 +692,3 @@ def test_run_letter_jobs(client, mocker, sample_letter_template):
     mock_celery.assert_called_once_with(name=TaskNames.DVLA_FILES,
                                         args=(job_ids,),
                                         queue=QueueNames.PROCESS_FTP)
-
-
-def test_run_letter_jobs_in_trial_sets_job_to_error(client, mocker, sample_letter_template):
-    sample_letter_template.service.restricted = True
-    job = create_job(sample_letter_template)
-    job_ids = [str(job.id)]
-    mocker.patch(
-        "app.celery.scheduled_tasks.dao_get_letter_job_ids_by_status",
-        return_value=job_ids
-    )
-    mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
-
-    run_letter_jobs()
-
-    assert not mock_celery.called
-    assert job.job_status == JOB_STATUS_ERROR
-
-
-def test_run_letter_jobs_in_trial_sets_job_to_error_and_process_live_services(
-        client, mocker, sample_letter_template):
-    live_job = create_job(sample_letter_template)
-
-    service = create_service(service_name="Sample service 2", restricted=True)
-    template = create_template(service, template_type=LETTER_TYPE)
-    trial_job = create_job(template)
-
-    job_ids = [str(live_job.id), str(trial_job.id)]
-    mocker.patch(
-        "app.celery.scheduled_tasks.dao_get_letter_job_ids_by_status",
-        return_value=job_ids
-    )
-    mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
-
-    run_letter_jobs()
-
-    mock_celery.assert_called_once_with(name=TaskNames.DVLA_FILES,
-                                        args=([str(live_job.id)],),
-                                        queue=QueueNames.PROCESS_FTP)
-    assert trial_job.job_status == JOB_STATUS_ERROR

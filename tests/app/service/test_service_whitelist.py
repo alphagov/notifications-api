@@ -30,10 +30,9 @@ def test_get_whitelist_separates_emails_and_phones(client, sample_service):
 
     response = client.get('service/{}/whitelist'.format(sample_service.id), headers=[create_authorization_header()])
     assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True)) == {
-        'email_addresses': ['service@example.com'],
-        'phone_numbers': ['+1800-555-555', '07123456789']
-    }
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp['email_addresses'] == ['service@example.com']
+    assert sorted(json_resp['phone_numbers']) == sorted(['+1800-555-555', '07123456789'])
 
 
 def test_get_whitelist_404s_with_unknown_service_id(client):

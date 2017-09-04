@@ -1035,26 +1035,6 @@ def test_should_cancel_job_if_service_is_inactive(sample_service,
     mock_dvla_file_task.assert_not_called()
 
 
-def test_should_error_job_if_service_is_restricted_and_letter_template_type(
-    sample_service,
-    sample_letter_job,
-    mocker
-):
-    sample_service.restricted = True
-
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3')
-    mocker.patch('app.celery.tasks.process_row')
-    mock_dvla_file_task = mocker.patch('app.celery.tasks.build_dvla_file')
-
-    process_job(sample_letter_job.id)
-
-    job = jobs_dao.dao_get_job_by_id(sample_letter_job.id)
-    assert job.job_status == JOB_STATUS_ERROR
-    s3.get_job_from_s3.assert_not_called()
-    tasks.process_row.assert_not_called()
-    mock_dvla_file_task.assert_not_called()
-
-
 @pytest.mark.parametrize('template_type, expected_class', [
     (SMS_TYPE, SMSMessageTemplate),
     (EMAIL_TYPE, WithSubjectTemplate),

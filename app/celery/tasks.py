@@ -75,13 +75,6 @@ def process_job(job_id):
 
     db_template = dao_get_template_by_id(job.template_id, job.template_version)
 
-    if db_template.template_type == LETTER_TYPE and job.service.restricted:
-        job.job_status = JOB_STATUS_ERROR
-        dao_update_job(job)
-        current_app.logger.warn(
-            "Job {} has been set to error, service {} is in trial mode".format(job_id, service.id))
-        return
-
     TemplateClass = get_template_class(db_template.template_type)
     template = TemplateClass(db_template.__dict__)
 
@@ -97,9 +90,7 @@ def process_job(job_id):
             update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
         else:
             build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
-            # temporary logging
-            current_app.logger.info("send job {} to build-dvla-file in the {} queue".format(
-                job_id, QueueNames.JOBS))
+            current_app.logger.info("send job {} to build-dvla-file in the {} queue".format(job_id, QueueNames.JOBS))
     else:
         job.job_status = JOB_STATUS_FINISHED
 

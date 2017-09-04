@@ -150,18 +150,16 @@ def process_letter_notification(*, letter_data, api_key, template):
     if api_key.key_type == KEY_TYPE_TEAM:
         raise BadRequestError(message='Cannot send letters with a team api key', status_code=403)
 
-    if api_key.service.restricted:
-        raise BadRequestError(message='Cannot send letters when service is in trial mode', status_code=403)
+    if api_key.service.restricted and api_key.key_type != KEY_TYPE_TEST:
+            raise BadRequestError(message='Cannot send letters when service is in trial mode', status_code=403)
 
     job = create_letter_api_job(template)
     notification = create_letter_notification(letter_data, job, api_key)
 
     if api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST:
-
         # distinguish real API jobs from test jobs by giving the test jobs a different filename
         job.original_file_name = LETTER_TEST_API_FILENAME
         dao_update_job(job)
-
         update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
     else:
         build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)

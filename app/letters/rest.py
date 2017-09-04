@@ -8,7 +8,6 @@ from app.schemas import job_schema
 from app.v2.errors import register_errors
 from app.letters.letter_schemas import letter_job_ids
 from app.schema_validation import validate
-from app.utils import get_unrestricted_letter_ids
 
 letter_job = Blueprint("letter-job", __name__)
 register_errors(letter_job)
@@ -17,11 +16,7 @@ register_errors(letter_job)
 @letter_job.route('/send-letter-jobs', methods=['POST'])
 def send_letter_jobs():
     job_ids = validate(request.get_json(), letter_job_ids)
-
-    unrestricted_job_ids = get_unrestricted_letter_ids(job_ids['job_ids'])
-
-    notify_celery.send_task(
-        name=TaskNames.DVLA_FILES, args=(unrestricted_job_ids,), queue=QueueNames.PROCESS_FTP)
+    notify_celery.send_task(name=TaskNames.DVLA_FILES, args=(job_ids['job_ids'],), queue=QueueNames.PROCESS_FTP)
 
     return jsonify(data={"response": "Task created to send files to DVLA"}), 201
 

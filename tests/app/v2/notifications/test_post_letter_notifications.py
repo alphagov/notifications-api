@@ -249,3 +249,19 @@ def test_post_letter_notification_doesnt_send_in_trial(client, sample_trial_lett
     assert error_json['status_code'] == 403
     assert error_json['errors'] == [
         {'error': 'BadRequestError', 'message': 'Cannot send letters when service is in trial mode'}]
+
+
+def test_post_letter_notification_calls_update_job_sent_to_dvla_when_service_is_in_trial_mode_but_using_test_key(
+        client, sample_trial_letter_template, mocker):
+    build_dvla_task = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
+    update_job_task = mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
+
+    data = {
+        "template_id": sample_trial_letter_template.id,
+        "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
+    }
+    letter_request(client, data=data, service_id=sample_trial_letter_template.service_id,
+                   key_type=KEY_TYPE_TEST)
+    job = Job.query.one()
+    update_job_task.assert_called_once_with([str(job.id)], queue='research-mode-tasks')
+    assert not build_dvla_task.called
