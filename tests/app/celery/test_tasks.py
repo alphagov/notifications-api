@@ -611,7 +611,7 @@ def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_serv
 
 
 def test_should_not_build_dvla_file_in_research_mode_for_letter_job(
-        notify_db, notify_db_session, mocker, sample_service, sample_letter_job, fake_uuid
+        mocker, sample_service, sample_letter_job, fake_uuid
 ):
     test_encrypted_data = 'some encrypted data'
     sample_service.research_mode = True
@@ -633,7 +633,7 @@ def test_should_not_build_dvla_file_in_research_mode_for_letter_job(
 
 @freeze_time("2017-08-29 17:30:00")
 def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
-        notify_db, notify_db_session, mocker, sample_service, sample_letter_job, fake_uuid
+        mocker, sample_service, sample_letter_job, fake_uuid
 ):
     test_encrypted_data = 'some encrypted data'
     sample_service.research_mode = True
