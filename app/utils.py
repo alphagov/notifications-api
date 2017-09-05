@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytz
 from flask import url_for
 from sqlalchemy import func
-from notifications_utils.template import SMSMessageTemplate, PlainTextEmailTemplate, LetterPreviewTemplate
+from notifications_utils.template import SMSMessageTemplate, PlainTextEmailTemplate
 
 local_timezone = pytz.timezone("Europe/London")
 

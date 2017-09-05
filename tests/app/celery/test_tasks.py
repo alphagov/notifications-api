@@ -29,6 +29,7 @@ from app.celery.tasks import (
     update_letter_notifications_statuses,
     process_updates_from_file,
     send_inbound_sms_to_service)
+from app.config import QueueNames
 from app.dao import jobs_dao, services_dao
 from app.models import (
     Notification,
@@ -38,7 +39,8 @@ from app.models import (
     SMS_TYPE,
     EMAIL_TYPE,
     LETTER_TYPE,
-    Job)
+    Job,
+    JOB_STATUS_ERROR)
 
 from tests.app import load_example_csv
 from tests.conftest import set_config
@@ -606,6 +608,62 @@ def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_serv
         [str(persisted_notification.id)],
         queue="research-mode-tasks"
     )
+
+
+def test_should_not_build_dvla_file_in_research_mode_for_letter_job(
+        mocker, sample_service, sample_letter_job, fake_uuid
+):
+    test_encrypted_data = 'some encrypted data'
+    sample_service.research_mode = True
+
+    csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
+    A1,A2,A3,A4,A_POST,Alice
+    """
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=csv)
+    mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
+    mocker.patch('app.celery.tasks.persist_letter.apply_async')
+    mocker.patch('app.celery.tasks.create_uuid', return_value=fake_uuid)
+    mocker.patch('app.celery.tasks.encryption.encrypt', return_value=test_encrypted_data)
+    mock_dvla_file_task = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
+
+    process_job(sample_letter_job.id)
+
+    assert not mock_dvla_file_task.called
+
+
+@freeze_time("2017-08-29 17:30:00")
+def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
+        mocker, sample_service, sample_letter_job, fake_uuid
+):
+    test_encrypted_data = 'some encrypted data'
+    sample_service.research_mode = True
+
+    csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
+    A1,A2,A3,A4,A_POST,Alice
+    """
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=csv)
+    mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
+    mocker.patch('app.celery.tasks.persist_letter.apply_async')
+    mocker.patch('app.celery.tasks.create_uuid', return_value=fake_uuid)
+    mocker.patch('app.celery.tasks.encryption.encrypt', return_value=test_encrypted_data)
+    mock_dvla_file_task = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
+
+    process_job(sample_letter_job.id)
+
+    job = jobs_dao.dao_get_job_by_id(sample_letter_job.id)
+
+    persist_letter.apply_async.assert_called_once_with(
+        (
+            str(sample_service.id),
+            fake_uuid,
+            test_encrypted_data,
+            datetime.utcnow().strftime(DATETIME_FORMAT)
+        ),
+        queue=QueueNames.RESEARCH_MODE
+    )
+
+    update_job_to_sent_to_dvla.apply_async.assert_called_once_with(
+        [str(job.id)], queue=QueueNames.RESEARCH_MODE)
 
 
 def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_api_key, mocker):
