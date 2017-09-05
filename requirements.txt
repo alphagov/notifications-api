@@ -20,7 +20,7 @@ psycopg2==2.7.3.1
 PyJWT==1.5.2
 six==1.10.0
 SQLAlchemy-Utils==0.32.14
-SQLAlchemy==1.1.13
+SQLAlchemy==1.1.14
 statsd==3.2.1
 
 notifications-python-client==4.3.1
