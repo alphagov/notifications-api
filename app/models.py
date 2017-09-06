@@ -245,7 +245,7 @@ class Service(db.Model, Versioned):
         if self.inbound_number and self.inbound_number.active:
             return self.inbound_number.number
         else:
-            return self.sms_sender or current_app.config['FROM_NUMBER']
+            return self.sms_sender
 
 
 class InboundNumber(db.Model):
