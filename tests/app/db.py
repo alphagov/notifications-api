@@ -68,7 +68,7 @@ def create_service(
         restricted=restricted,
         email_from=service_name.lower().replace(' ', '.'),
         created_by=user or create_user(),
-        sms_sender=sms_sender,
+        _sms_sender=sms_sender,
     )
 
     dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)

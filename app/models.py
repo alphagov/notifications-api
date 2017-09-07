@@ -201,7 +201,7 @@ class Service(db.Model, Versioned):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     reply_to_email_address = db.Column(db.Text, index=False, unique=False, nullable=True)
     letter_contact_block = db.Column(db.Text, index=False, unique=False, nullable=True)
-    sms_sender = db.Column(db.String(11), nullable=False, default=lambda: current_app.config['FROM_NUMBER'])
+    _sms_sender = db.Column('sms_sender', db.String(11), nullable=False)
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
     organisation = db.relationship('Organisation')
     dvla_organisation_id = db.Column(
@@ -246,6 +246,16 @@ class Service(db.Model, Versioned):
             return self.inbound_number.number
         else:
             return self.sms_sender
+
+    @property
+    def sms_sender(self):
+        return self._sms_sender
+
+    @sms_sender.setter
+    def sms_sender(self, sms_sender):
+        self._sms_sender = sms_sender
+        from app.dao.service_sms_sender_dao import update_service_sms_sender
+        update_service_sms_sender(self, sms_sender)
 
 
 class InboundNumber(db.Model):

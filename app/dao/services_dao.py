@@ -1,9 +1,9 @@
 import uuid
 from datetime import date, datetime, timedelta
 
+from flask import current_app
 from sqlalchemy import asc, func
 from sqlalchemy.orm import joinedload
-from flask import current_app
 
 from app import db
 from app.dao.dao_utils import (
@@ -33,8 +33,8 @@ from app.models import (
     TEMPLATE_TYPES,
     JobStatistics,
     SMS_TYPE,
-    EMAIL_TYPE
-)
+    EMAIL_TYPE,
+    ServiceSmsSender)
 from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
@@ -146,11 +146,8 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
 @transactional
 @version_class(Service)
 def dao_create_service(service, user, service_id=None, service_permissions=[SMS_TYPE, EMAIL_TYPE]):
-    # the default property does not appear to work when there is a difference between the sqlalchemy schema and the
-    # db schema (ie: during a migration), so we have to set sms_sender manually here. After the GOVUK sms_sender
-    # migration is completed, this code should be able to be removed.
     if not service.sms_sender:
-        service.sms_sender = current_app.config['FROM_NUMBER']
+        service._sms_sender = current_app.config['FROM_NUMBER']
 
     from app.dao.permissions_dao import permission_dao
     service.users.append(user)
@@ -211,7 +208,7 @@ def delete_service_and_all_associated_db_objects(service):
 
     subq = db.session.query(Template.id).filter_by(service=service).subquery()
     _delete_commit(TemplateRedacted.query.filter(TemplateRedacted.template_id.in_(subq)))
-
+    _delete_commit(ServiceSmsSender.query.filter_by(service=service))
     _delete_commit(NotificationStatistics.query.filter_by(service=service))
     _delete_commit(ProviderStatistics.query.filter_by(service=service))
     _delete_commit(InvitedUser.query.filter_by(service=service))

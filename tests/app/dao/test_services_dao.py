@@ -58,8 +58,8 @@ from app.models import (
     EMAIL_TYPE,
     SMS_TYPE,
     LETTER_TYPE,
-    SERVICE_PERMISSION_TYPES
-)
+    SERVICE_PERMISSION_TYPES,
+    ServiceSmsSender)
 
 from tests.app.db import create_inbound_number, create_user, create_service
 from tests.app.conftest import (
@@ -95,6 +95,10 @@ def test_create_service(sample_user):
     assert service_db.research_mode is False
     assert service.active is True
     assert sample_user in service_db.users
+
+    service_sms_sender = ServiceSmsSender.query.filter_by(service_id=service_db.id).one()
+    assert service_sms_sender.sms_sender == service.sms_sender
+    assert not service_sms_sender.inbound_number_id
 
 
 def test_cannot_create_two_services_with_same_name(sample_user):
@@ -914,7 +918,7 @@ def test_dao_fetch_service_by_inbound_number_with_inbound_number_not_set(notify_
 
 
 def test_dao_fetch_service_by_inbound_number_when_inbound_number_set(notify_db_session):
-    service_1 = create_service(service_name='a', sms_sender=None)
+    service_1 = create_service(service_name='a')
     service_2 = create_service(service_name='b')
     inbound_number = create_inbound_number('1', service_id=service_1.id)
 
@@ -924,7 +928,7 @@ def test_dao_fetch_service_by_inbound_number_when_inbound_number_set(notify_db_s
 
 
 def test_dao_fetch_service_by_inbound_number_with_unknown_number(notify_db_session):
-    service = create_service(service_name='a', sms_sender=None)
+    service = create_service(service_name='a')
     inbound_number = create_inbound_number('1', service_id=service.id)
 
     service = dao_fetch_service_by_inbound_number('9')
@@ -932,8 +936,8 @@ def test_dao_fetch_service_by_inbound_number_with_unknown_number(notify_db_sessi
     assert service is None
 
 
-def test_dao_fetch_service_by_inbound_number_with_inactive_number_returns_empty(notify_db_session):
-    service = create_service(service_name='a', sms_sender=None)
+def test_dao_fetch_service_by_inbound_number_with_inactive_number(notify_db_session):
+    service = create_service(service_name='a')
     inbound_number = create_inbound_number('1', service_id=service.id, active=False)
 
     service = dao_fetch_service_by_inbound_number('1')
