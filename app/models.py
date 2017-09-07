@@ -245,7 +245,7 @@ class Service(db.Model, Versioned):
         if self.inbound_number and self.inbound_number.active:
             return self.inbound_number.number
         else:
-            return self.sms_sender or current_app.config['FROM_NUMBER']
+            return self.sms_sender
 
 
 class InboundNumber(db.Model):
@@ -276,6 +276,21 @@ class InboundNumber(db.Model):
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
         }
+
+
+class ServiceSmsSender(db.Model):
+    __tablename__ = "service_sms_senders"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    sms_sender = db.Column(db.String(11), nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=True, index=True, nullable=False)
+    service = db.relationship(Service, backref=db.backref("service_sms_senders", uselist=False))
+    is_default = db.Column(db.Boolean, nullable=False, default=True)
+    inbound_number_id = db.Column(UUID(as_uuid=True), db.ForeignKey('inbound_numbers.id'),
+                                  unique=True, index=True, nullable=True)
+    inbound_number = db.relationship(InboundNumber, backref=db.backref("inbound_number", uselist=False))
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
 
 class ServicePermission(db.Model):
