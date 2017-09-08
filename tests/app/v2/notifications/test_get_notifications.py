@@ -1,6 +1,6 @@
 import datetime
 import pytest
-from flask import json
+from flask import json, url_for
 
 from app import DATETIME_FORMAT
 from tests import create_authorization_header
@@ -23,13 +23,20 @@ from tests.app.conftest import (
 def test_get_notification_by_id_returns_200(
         client, billable_units, provider, sample_template
 ):
-    sample_notification = create_notification(template=sample_template, billable_units=billable_units, sent_by=provider,
-                                              scheduled_for="2017-05-12 15:15"
-                                              )
+    sample_notification = create_notification(
+        template=sample_template,
+        billable_units=billable_units,
+        sent_by=provider,
+        scheduled_for="2017-05-12 15:15"
+    )
 
-    another = create_notification(template=sample_template, billable_units=billable_units, sent_by=provider,
-                                  scheduled_for="2017-06-12 15:15"
-                                  )
+    another = create_notification(
+        template=sample_template,
+        billable_units=billable_units,
+        sent_by=provider,
+        scheduled_for="2017-06-12 15:15"
+    )
+
     auth_header = create_authorization_header(service_id=sample_notification.service_id)
     response = client.get(
         path='/v2/notifications/{}'.format(sample_notification.id),
@@ -75,9 +82,10 @@ def test_get_notification_by_id_returns_200(
 def test_get_notification_by_id_with_placeholders_returns_200(
         client, sample_email_template_with_placeholders
 ):
-    sample_notification = create_notification(template=sample_email_template_with_placeholders,
-                                              personalisation={"name": "Bob"}
-                                              )
+    sample_notification = create_notification(
+        template=sample_email_template_with_placeholders,
+        personalisation={"name": "Bob"}
+    )
 
     auth_header = create_authorization_header(service_id=sample_notification.service_id)
     response = client.get(
@@ -549,3 +557,35 @@ def test_get_all_notifications_filter_multiple_query_parameters(client, sample_e
     assert len(json_response['notifications']) == 1
 
     assert json_response['notifications'][0]['id'] == str(older_notification.id)
+
+
+def test_get_all_notifications_renames_letter_statuses(client, sample_letter_notification, sample_notification):
+    auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
+    response = client.get(
+        path=url_for('v2_notifications.get_notifications'),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    json_response = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 200
+
+    for noti in json_response['notifications']:
+        if noti['type'] == 'sms':
+            assert noti['status'] == 'created'
+        elif noti['type'] == 'letter':
+            assert noti['status'] == 'received_by_notify'
+        else:
+            pytest.fail()
+
+
+def test_get_notifications_renames_letter_statuses(client, sample_letter_notification):
+    auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
+    response = client.get(
+        path=url_for('v2_notifications.get_notification_by_id', id=sample_letter_notification.id),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    json_response = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 200
+
+    assert json_response['status'] == 'received_by_notify'
