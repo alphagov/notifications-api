@@ -146,8 +146,9 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
 @transactional
 @version_class(Service)
 def dao_create_service(service, user, service_id=None, service_permissions=[SMS_TYPE, EMAIL_TYPE]):
+
     if not service.sms_sender:
-        service._sms_sender = current_app.config['FROM_NUMBER']
+        service.sms_sender = current_app.config['FROM_NUMBER']
 
     from app.dao.permissions_dao import permission_dao
     service.users.append(user)

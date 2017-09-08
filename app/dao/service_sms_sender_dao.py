@@ -16,4 +16,3 @@ def update_service_sms_sender(service, sms_sender):
                                           is_default=True
                                           )
         db.session.add(new_sms_sender)
-        db.session.commit()
