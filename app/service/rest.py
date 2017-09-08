@@ -1,5 +1,4 @@
 import itertools
-import json
 from datetime import datetime
 
 from flask import (
@@ -11,7 +10,7 @@ from flask import (
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 
-from app.dao import notification_usage_dao, notifications_dao
+from app.dao import notifications_dao
 from app.dao.dao_utils import dao_rollback
 from app.dao.api_key_dao import (
     save_model_api_key,
@@ -46,6 +45,7 @@ from app.dao.service_whitelist_dao import (
     dao_add_and_commit_whitelisted_contacts,
     dao_remove_service_whitelist
 )
+from app.dao.service_email_reply_to_dao import create_or_update_email_reply_to
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_user_by_id
 from app.errors import (
@@ -132,9 +132,13 @@ def create_service():
 
 @service_blueprint.route('/<uuid:service_id>', methods=['POST'])
 def update_service(service_id):
+    req_json = request.get_json()
     fetched_service = dao_fetch_service_by_id(service_id)
     # Capture the status change here as Marshmallow changes this later
-    service_going_live = fetched_service.restricted and not request.get_json().get('restricted', True)
+    service_going_live = fetched_service.restricted and not req_json.get('restricted', True)
+
+    if 'reply_to_email_address' in req_json:
+        create_or_update_email_reply_to(fetched_service.id, req_json['reply_to_email_address'])
 
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())

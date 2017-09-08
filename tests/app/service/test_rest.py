@@ -2123,3 +2123,18 @@ def test_is_service_name_unique_returns_400_when_name_does_not_exist(client):
     json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp["message"][0]["name"] == ["Can't be empty"]
     assert json_resp["message"][1]["email_from"] == ["Can't be empty"]
+
+
+def test_update_service_reply_to_email_address_upserts_email_reply_to(mocker, admin_request, sample_service):
+    update_mock = mocker.patch('app.service.rest.create_or_update_email_reply_to')
+
+    admin_request.post(
+        'service.update_service',
+        service_id=sample_service.id,
+        _data={
+            'reply_to_email_address': 'new@mail.com'
+        },
+        _expected_status=200
+    )
+
+    assert update_mock.called
