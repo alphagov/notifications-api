@@ -1329,3 +1329,17 @@ class MonthlyBilling(db.Model):
 
     def __repr__(self):
         return str(self.serialized())
+
+
+class ServiceEmailReplyTo(db.Model):
+    __tablename__ = "service_email_reply_to"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False, index=True, nullable=False)
+    service = db.relationship(Service, backref=db.backref("reply_to_email_addresses", uselist=False))
+
+    email_address = db.Column(db.Text, nullable=False, index=False, unique=False)
+    is_default = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
