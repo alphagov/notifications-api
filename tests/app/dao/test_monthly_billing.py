@@ -198,7 +198,10 @@ def test_add_monthly_billing_for_multiple_months_populate_correctly(
     create_or_update_monthly_billing(service_id=sample_template.service_id, billing_month=FEB_2016_MONTH_START)
     create_or_update_monthly_billing(service_id=sample_template.service_id, billing_month=MAR_2016_MONTH_START)
 
-    monthly_billing = MonthlyBilling.query.order_by(MonthlyBilling.notification_type).all()
+    monthly_billing = MonthlyBilling.query.order_by(
+        MonthlyBilling.notification_type,
+        MonthlyBilling.start_date
+    ).all()
 
     assert len(monthly_billing) == 4
     _assert_monthly_billing(
