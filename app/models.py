@@ -797,6 +797,9 @@ NOTIFICATION_STATUS_TYPES_NON_BILLABLE = list(set(NOTIFICATION_STATUS_TYPES) - s
 
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
+NOTIFICATION_STATUS_LETTER_RECEIVED = 'received_by_notify'
+NOTIFICATION_STATUS_LETTER_RECEIVED_PRETTY = 'Received by Notify'
+
 
 class NotificationStatusTypes(db.Model):
     __tablename__ = 'notification_status_types'
@@ -962,16 +965,28 @@ class Notification(db.Model):
                 'sent': 'Sent internationally'
             },
             'letter': {
-                'failed': 'Failed',
                 'technical-failure': 'Technical failure',
-                'temporary-failure': 'Temporary failure',
-                'permanent-failure': 'Permanent failure',
-                'delivered': 'Delivered',
-                'sending': 'Sending',
-                'created': 'Sending',
-                'sent': 'Delivered'
+                'sending': NOTIFICATION_STATUS_LETTER_RECEIVED_PRETTY,
+                'created': NOTIFICATION_STATUS_LETTER_RECEIVED_PRETTY,
             }
         }[self.template.template_type].get(self.status, self.status)
+
+    def get_letter_status(self):
+        """
+        Return the notification_status, as we should present for letters. The distinction between created and sending is
+        a bit more confusing for letters, not to mention that there's no concept of temporary or permanent failure yet.
+
+
+        """
+        # this should only ever be called for letter notifications - it makes no sense otherwise and I'd rather not
+        # get the two code flows mixed up at all
+        assert self.notification_type == LETTER_TYPE
+
+        if self.status == NOTIFICATION_CREATED or NOTIFICATION_SENDING:
+            return NOTIFICATION_STATUS_LETTER_RECEIVED
+        else:
+            # Currently can only be technical-failure
+            return status
 
     def serialize_for_csv(self):
         created_at_in_bst = convert_utc_to_bst(self.created_at)
@@ -1007,7 +1022,7 @@ class Notification(db.Model):
             "line_6": None,
             "postcode": None,
             "type": self.notification_type,
-            "status": self.status,
+            "status": self.get_letter_status() if self.notification_type == LETTER_TYPE else self.status,
             "template": template_dict,
             "body": self.content,
             "subject": self.subject,
