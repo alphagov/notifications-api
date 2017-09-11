@@ -1,4 +1,4 @@
-
+import datetime
 import pytest
 from flask import json
 
@@ -205,6 +205,32 @@ def test_get_notification_by_id_invalid_id(client, sample_notification, id):
                    "If you entered the URL manually please check your spelling and try again.",
         "result": "error"
     }
+
+
+@pytest.mark.parametrize('created_at_month, estimated_delivery', [
+    (
+        12, '2000-12-06T16:00:00.000000Z',  # 4pm GMT in winter
+    ),
+    (
+        6, '2000-06-05T15:00:00.000000Z',  # 4pm BST in summer
+    ),
+])
+def test_get_notification_adds_delivery_estimate_for_letters(
+    client,
+    sample_letter_notification,
+    created_at_month,
+    estimated_delivery,
+):
+    sample_letter_notification.created_at = datetime.date(2000, created_at_month, 1)
+    auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
+    response = client.get(
+        path='/v2/notifications/{}'.format(sample_letter_notification.id),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    json_response = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 200
+    assert json_response['estimated_delivery'] == estimated_delivery
 
 
 def test_get_all_notifications_returns_200(client, sample_template):
