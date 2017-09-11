@@ -16,7 +16,7 @@ from app.models import (
     DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
-)
+    ServiceSmsSender)
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_service as create_service,
@@ -281,6 +281,10 @@ def test_create_service(client, sample_user):
     json_resp = json.loads(resp.get_data(as_text=True))
     assert json_resp['data']['name'] == 'created service'
     assert not json_resp['data']['research_mode']
+
+    service_sms_senders = ServiceSmsSender.query.filter_by(service_id=service_db.id).all()
+    assert len(service_sms_senders) == 1
+    assert service_sms_senders[0].sms_sender == service_db.sms_sender
 
 
 def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_uuid):
@@ -1390,6 +1394,10 @@ def test_set_sms_sender_for_service(client, sample_service):
     result = json.loads(resp.get_data(as_text=True))
     assert resp.status_code == 200
     assert result['data']['sms_sender'] == 'elevenchars'
+    service_sms_senders = ServiceSmsSender.query.filter_by(service_id=sample_service.id).all()
+    assert len(service_sms_senders) == 1
+    assert service_sms_senders[0].sms_sender == 'elevenchars'
+    assert service_sms_senders[0].is_default
 
 
 def test_set_sms_sender_for_service_rejects_invalid_characters(client, sample_service):
