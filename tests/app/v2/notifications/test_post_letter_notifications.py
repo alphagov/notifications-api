@@ -12,7 +12,9 @@ from app.models import KEY_TYPE_TEST
 from app.models import LETTER_TYPE
 from app.models import Notification
 from app.models import SMS_TYPE
+from app.schema_validation import validate
 from app.v2.errors import RateLimitError
+from app.v2.notifications.notification_schemas import post_letter_response
 from app.variables import LETTER_TEST_API_FILENAME
 from app.variables import LETTER_API_FILENAME
 
@@ -53,6 +55,7 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
 
     resp_json = letter_request(client, data, service_id=sample_letter_template.service_id)
 
+    assert validate(resp_json, post_letter_response) == resp_json
     job = Job.query.one()
     assert job.original_file_name == LETTER_API_FILENAME
     notification = Notification.query.one()

@@ -88,7 +88,7 @@ def post_notification(notification_type):
         create_resp_partial = functools.partial(
             create_post_email_response_from_notification,
             subject=template_with_content.subject,
-            email_from=authenticated_service.email_from
+            email_from='{}@{}'.format(authenticated_service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN'])
         )
     elif notification_type == LETTER_TYPE:
         create_resp_partial = functools.partial(
