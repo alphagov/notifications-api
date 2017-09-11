@@ -1392,42 +1392,6 @@ def test_set_sms_sender_for_service(client, sample_service):
     assert result['data']['sms_sender'] == 'elevenchars'
 
 
-def test_set_sms_sender_for_service_rejects_invalid_characters(client, sample_service):
-    data = {
-        'sms_sender': 'invalid####',
-    }
-
-    auth_header = create_authorization_header()
-
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    result = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 400
-    assert result['result'] == 'error'
-    assert result['message'] == {'sms_sender': ['Only alphanumeric characters allowed']}
-
-
-def test_set_sms_sender_for_service_rejects_null(client, sample_service):
-    data = {
-        'sms_sender': None,
-    }
-
-    auth_header = create_authorization_header()
-
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    result = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 400
-    assert result['result'] == 'error'
-    assert result['message'] == {'sms_sender': ['Field may not be null.']}
-
-
 @pytest.mark.parametrize('today_only,stats', [
     ('False', {'requested': 2, 'delivered': 1, 'failed': 0}),
     ('True', {'requested': 1, 'delivered': 0, 'failed': 0})

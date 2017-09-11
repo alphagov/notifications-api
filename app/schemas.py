@@ -182,6 +182,7 @@ class ServiceSchema(BaseSchema):
     dvla_organisation = field_for(models.Service, 'dvla_organisation')
     permissions = fields.Method("service_permissions")
     override_flag = False
+    sms_sender = fields.String(required=False)
 
     def get_free_sms_fragment_limit(selfs, service):
         return service.free_sms_fragment_limit()
@@ -202,13 +203,9 @@ class ServiceSchema(BaseSchema):
             'template_statistics',
             'service_provider_stats',
             'service_notification_stats',
+            '_sms_sender'
         )
         strict = True
-
-    @validates('sms_sender')
-    def validate_sms_sender(self, value):
-        if value and not re.match(r'^[a-zA-Z0-9\s]+$', value):
-            raise ValidationError('Only alphanumeric characters allowed')
 
     @validates('permissions')
     def validate_permissions(self, value):

@@ -243,8 +243,7 @@ def test_inbound_number_returns_sms_sender(client, notify_db_session):
     assert service.get_inbound_number() == service.sms_sender
 
 
-def test_inbound_number_returns_from_number_config(client, notify_db_session):
+def test_get_inbound_number_returns_from_number_config(client, notify_db_session):
     with set_config(client.application, 'FROM_NUMBER', 'test'):
         service = create_service(sms_sender=None)
-
     assert service.get_inbound_number() == 'test'

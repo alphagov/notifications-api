@@ -4,7 +4,7 @@ import pytest
 from freezegun import freeze_time
 
 from app.models import (
-    Notification, ScheduledNotification, SCHEDULE_NOTIFICATIONS,
+    ScheduledNotification, SCHEDULE_NOTIFICATIONS,
     EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, SMS_TYPE
 )
 from flask import json, current_app
