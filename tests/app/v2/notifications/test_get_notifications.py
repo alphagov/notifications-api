@@ -573,7 +573,7 @@ def test_get_all_notifications_renames_letter_statuses(client, sample_letter_not
         if noti['type'] == 'sms':
             assert noti['status'] == 'created'
         elif noti['type'] == 'letter':
-            assert noti['status'] == 'received_by_notify'
+            assert noti['status'] == 'accepted'
         else:
             pytest.fail()
 
@@ -588,4 +588,4 @@ def test_get_notifications_renames_letter_statuses(client, sample_letter_notific
     json_response = json.loads(response.get_data(as_text=True))
     assert response.status_code == 200
 
-    assert json_response['status'] == 'received_by_notify'
+    assert json_response['status'] == 'accepted'

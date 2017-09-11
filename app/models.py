@@ -797,8 +797,8 @@ NOTIFICATION_STATUS_TYPES_NON_BILLABLE = list(set(NOTIFICATION_STATUS_TYPES) - s
 
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
-NOTIFICATION_STATUS_LETTER_RECEIVED = 'received_by_notify'
-NOTIFICATION_STATUS_LETTER_RECEIVED_PRETTY = 'Received by Notify'
+NOTIFICATION_STATUS_LETTER_ACCEPTED = 'accepted'
+NOTIFICATION_STATUS_LETTER_ACCEPTED_PRETTY = 'Accepted'
 
 
 class NotificationStatusTypes(db.Model):
@@ -966,8 +966,8 @@ class Notification(db.Model):
             },
             'letter': {
                 'technical-failure': 'Technical failure',
-                'sending': NOTIFICATION_STATUS_LETTER_RECEIVED_PRETTY,
-                'created': NOTIFICATION_STATUS_LETTER_RECEIVED_PRETTY,
+                'sending': NOTIFICATION_STATUS_LETTER_ACCEPTED_PRETTY,
+                'created': NOTIFICATION_STATUS_LETTER_ACCEPTED_PRETTY,
             }
         }[self.template.template_type].get(self.status, self.status)
 
@@ -983,7 +983,7 @@ class Notification(db.Model):
         assert self.notification_type == LETTER_TYPE
 
         if self.status == NOTIFICATION_CREATED or NOTIFICATION_SENDING:
-            return NOTIFICATION_STATUS_LETTER_RECEIVED
+            return NOTIFICATION_STATUS_LETTER_ACCEPTED
         else:
             # Currently can only be technical-failure
             return status
