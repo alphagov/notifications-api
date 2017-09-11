@@ -32,7 +32,7 @@ from app.schemas import (
 
 from app.celery.tasks import process_job
 
-from app.models import JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING, JOB_STATUS_CANCELLED
+from app.models import JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING, JOB_STATUS_CANCELLED, LETTER_TYPE
 
 from app.utils import pagination_links
 
@@ -189,6 +189,9 @@ def create_job(service_id):
         "service": service_id
     })
     template = dao_get_template_by_id(data['template'])
+
+    if template.template_type == LETTER_TYPE and service.restricted:
+        raise InvalidRequest("Create letter job is not allowed for service in trial mode ", 403)
 
     errors = unarchived_template_schema.validate({'archived': template.archived})
 

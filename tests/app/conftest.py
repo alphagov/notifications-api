@@ -136,24 +136,30 @@ def sample_service(
     restricted=False,
     limit=1000,
     email_from=None,
-    permissions=[SMS_TYPE, EMAIL_TYPE]
+    permissions=[SMS_TYPE, EMAIL_TYPE],
+    research_mode=None
 ):
     if user is None:
         user = create_user()
     if email_from is None:
         email_from = service_name.lower().replace(' ', '.')
+
     data = {
         'name': service_name,
         'message_limit': limit,
         'restricted': restricted,
         'email_from': email_from,
         'created_by': user,
-        'letter_contact_block': 'London,\nSW1A 1AA',
+        'letter_contact_block': 'London,\nSW1A 1AA'
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
         service = Service(**data)
         dao_create_service(service, user, service_permissions=permissions)
+
+        if research_mode:
+            service.research_mode = research_mode
+
     else:
         if user not in service.users:
             dao_add_user_to_service(service, user)
@@ -206,6 +212,7 @@ def sample_template(
         })
     template = Template(**data)
     dao_create_template(template)
+
     return template
 
 
@@ -268,6 +275,12 @@ def sample_template_without_email_permission(notify_db, notify_db_session):
 
 @pytest.fixture
 def sample_letter_template(sample_service_full_permissions):
+    return create_template(sample_service_full_permissions, template_type=LETTER_TYPE)
+
+
+@pytest.fixture
+def sample_trial_letter_template(sample_service_full_permissions):
+    sample_service_full_permissions.restricted = True
     return create_template(sample_service_full_permissions, template_type=LETTER_TYPE)
 
 
@@ -631,13 +644,21 @@ def sample_notification_history(
     status='created',
     created_at=None,
     notification_type=None,
-    key_type=KEY_TYPE_NORMAL
+    key_type=KEY_TYPE_NORMAL,
+    sent_at=None,
+    api_key=None
 ):
     if created_at is None:
         created_at = datetime.utcnow()
 
+    if sent_at is None:
+        sent_at = datetime.utcnow()
+
     if notification_type is None:
         notification_type = sample_template.template_type
+
+    if not api_key:
+        api_key = create_api_key(sample_template.service, key_type=key_type)
 
     notification_history = NotificationHistory(
         id=uuid.uuid4(),
@@ -647,7 +668,10 @@ def sample_notification_history(
         status=status,
         created_at=created_at,
         notification_type=notification_type,
-        key_type=key_type
+        key_type=key_type,
+        api_key=api_key,
+        api_key_id=api_key and api_key.id,
+        sent_at=sent_at
     )
     notify_db.session.add(notification_history)
     notify_db.session.commit()

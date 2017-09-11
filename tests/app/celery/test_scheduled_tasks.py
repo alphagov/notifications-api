@@ -1,5 +1,3 @@
-import uuid
-
 from datetime import datetime, timedelta
 from functools import partial
 from unittest.mock import call, patch, PropertyMock
@@ -29,7 +27,8 @@ from app.celery.scheduled_tasks import (
     switch_current_sms_provider_on_slow_delivery,
     timeout_job_statistics,
     timeout_notifications,
-    populate_monthly_billing)
+    populate_monthly_billing,
+    send_total_sent_notifications_to_performance_platform)
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -43,7 +42,7 @@ from app.models import (
     SMS_TYPE, LETTER_TYPE,
     JOB_STATUS_READY_TO_SEND,
     MonthlyBilling)
-from app.utils import get_london_midnight_in_utc, convert_utc_to_bst
+from app.utils import get_london_midnight_in_utc
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
 from tests.app.conftest import (
     sample_job as create_sample_job,
@@ -285,7 +284,7 @@ def test_send_daily_performance_stats_calls_does_not_send_if_inactive(client, mo
 
 
 @freeze_time("2016-01-11 12:30:00")
-def test_send_daily_performance_stats_calls_with_correct_totals(
+def test_send_total_sent_notifications_to_performance_platform_calls_with_correct_totals(
     notify_db,
     notify_db_session,
     sample_template,
@@ -319,7 +318,7 @@ def test_send_daily_performance_stats_calls_with_correct_totals(
         new_callable=PropertyMock
     ) as mock_active:
         mock_active.return_value = True
-        send_daily_performance_platform_stats()
+        send_total_sent_notifications_to_performance_platform()
 
         perf_mock.assert_has_calls([
             call(get_london_midnight_in_utc(yesterday), 'sms', 2),
@@ -682,7 +681,7 @@ def test_populate_monthly_billing_updates_correct_month_in_bst(sample_template):
 def test_run_letter_jobs(client, mocker, sample_letter_template):
     jobs = [create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND),
             create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND)]
-    job_ids = [str(job.id) for job in jobs]
+    job_ids = [str(j.id) for j in jobs]
     mocker.patch(
         "app.celery.scheduled_tasks.dao_get_letter_job_ids_by_status",
         return_value=job_ids
