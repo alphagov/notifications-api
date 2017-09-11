@@ -177,7 +177,7 @@ email_content = {
 
 post_email_response = {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "POST sms notification response schema",
+    "description": "POST email notification response schema",
     "type": "object",
     "title": "response v2/notifications/email",
     "properties": {

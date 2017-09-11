@@ -5,15 +5,12 @@ from flask import json
 from freezegun import freeze_time
 from jsonschema import ValidationError
 
+from app.schema_validation import validate
 from app.v2.notifications.notification_schemas import (
     get_notifications_request,
-    get_notification_response,
     post_sms_request as post_sms_request_schema,
-    post_sms_response as post_sms_response_schema,
-    post_email_request as post_email_request_schema,
-    post_email_response as post_email_response_schema
+    post_email_request as post_email_request_schema
 )
-from app.schema_validation import validate
 
 
 @pytest.mark.parametrize('invalid_statuses, valid_statuses', [
@@ -163,40 +160,6 @@ def test_post_sms_request_schema_invalid_phone_number_and_missing_template():
     assert {"error": "ValidationError", "message": "template_id is a required property"} in errors
 
 
-def valid_sms_response():
-    return {
-        "id": str(uuid.uuid4()),
-        "content": {"body": "contents of message",
-                    "from_number": "46045"},
-        "uri": "http://notify.api/v2/notifications/id",
-        "template": {
-            "id": str(uuid.uuid4()),
-            "version": 1,
-            "uri": "http://notify.api/v2/template/id"
-        }
-    }
-
-
-def valid_sms_response_with_optionals():
-    return {
-        "id": str(uuid.uuid4()),
-        "reference": "reference_from_service",
-        "content": {"body": "contents of message",
-                    "from_number": "46045"},
-        "uri": "http://notify.api/v2/notifications/id",
-        "template": {
-            "id": str(uuid.uuid4()),
-            "version": 1,
-            "uri": "http://notify.api/v2/template/id"
-        }
-    }
-
-
-@pytest.mark.parametrize('input', [valid_sms_response()])
-def test_post_sms_response_schema_schema_is_valid(input):
-    assert validate(input, post_sms_response_schema) == input
-
-
 valid_post_email_json = {"email_address": "test@example.gov.uk",
                          "template_id": str(uuid.uuid4())
                          }
@@ -250,110 +213,6 @@ def valid_email_response():
         },
         "scheduled_for": ""
     }
-
-
-def valid_email_response_with_optionals():
-    return {
-        "id": str(uuid.uuid4()),
-        "reference": "some reference",
-        "content": {"body": "the body of the message",
-                    "subject": "subject of the message",
-                    "from_email": "service@dig.gov.uk"},
-        "uri": "http://notify.api/v2/notifications/id",
-        "template": {
-            "id": str(uuid.uuid4()),
-            "version": 1,
-            "uri": "http://notify.api/v2/template/id"
-        },
-        "schedule_for": "2017-05-12 13:00:00"
-    }
-
-
-@pytest.mark.parametrize("input", [valid_email_response(), valid_email_response_with_optionals()])
-def test_post_email_response_schema(input):
-    assert validate(input, post_email_response_schema) == input
-
-
-@pytest.mark.parametrize('response, schema', [
-    (valid_email_response(), post_email_response_schema),
-    (valid_sms_response(), post_sms_response_schema)
-])
-def test_post_sms_response_schema_missing_uri_raises_validation_error(response, schema):
-    del response['uri']
-    with pytest.raises(ValidationError) as e:
-        validate(response, schema)
-    error = json.loads(str(e.value))
-    assert error['status_code'] == 400
-    assert error['errors'] == [{'error': 'ValidationError',
-                               'message': "uri is a required property"}]
-
-
-@pytest.mark.parametrize('response, schema', [
-    (valid_email_response(), post_email_response_schema),
-    (valid_sms_response(), post_sms_response_schema)
-])
-def test_post_sms_response_schema_invalid_uri_raises_validation_error(response, schema):
-    response['uri'] = 'invalid-uri'
-    with pytest.raises(ValidationError) as e:
-        validate(response, schema)
-    error = json.loads(str(e.value))
-    assert error['status_code'] == 400
-    assert error['errors'] == [{'error': 'ValidationError',
-                               'message': "uri invalid-uri is not a valid URI."}]
-
-
-@pytest.mark.parametrize('response, schema', [
-    (valid_email_response(), post_email_response_schema),
-    (valid_sms_response(), post_sms_response_schema)
-])
-def test_post_sms_response_schema_missing_template_uri_raises_validation_error(response, schema):
-    del response['template']['uri']
-    with pytest.raises(ValidationError) as e:
-        validate(response, schema)
-    error = json.loads(str(e.value))
-    assert error['status_code'] == 400
-    assert error['errors'] == [{'error': 'ValidationError',
-                               'message': "template uri is a required property"}]
-
-
-@pytest.mark.parametrize('response, schema', [
-    (valid_email_response(), post_email_response_schema),
-    (valid_sms_response(), post_sms_response_schema)
-])
-def test_post_sms_response_schema_invalid_template_uri_raises_validation_error(response, schema):
-    response['template']['uri'] = 'invalid-uri'
-    with pytest.raises(ValidationError) as e:
-        validate(response, schema)
-    error = json.loads(str(e.value))
-    assert error['status_code'] == 400
-    assert error['errors'] == [{'error': 'ValidationError',
-                               'message': "template invalid-uri is not a valid URI."}]
-
-
-def test_get_notifications_response_with_email_and_phone_number():
-    response = {"id": str(uuid.uuid4()),
-                "reference": "something",
-                "email_address": None,
-                "phone_number": "+447115411111",
-                "line_1": None,
-                "line_2": None,
-                "line_3": None,
-                "line_4": None,
-                "line_5": None,
-                "line_6": None,
-                "postcode": None,
-                "type": "email",
-                "status": "delivered",
-                "template": {"id": str(uuid.uuid4()), "version": 1, "uri": "http://template/id"},
-                "body": "some body",
-                "subject": "some subject",
-                "created_at": "2016-01-01",
-                "sent_at": "2016-01-01",
-                "completed_at": "2016-01-01",
-                "schedule_for": ""
-                }
-
-    assert validate(response, get_notification_response) == response
 
 
 @pytest.mark.parametrize("schema",
