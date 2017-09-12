@@ -314,7 +314,7 @@ def populate_monthly_billing():
 def run_letter_jobs():
     job_ids = dao_get_letter_job_ids_by_status(JOB_STATUS_READY_TO_SEND)
     notify_celery.send_task(
-        name=TaskNames.DVLA_FILES,
+        name=TaskNames.DVLA_JOBS,
         args=(job_ids,),
         queue=QueueNames.PROCESS_FTP
     )
