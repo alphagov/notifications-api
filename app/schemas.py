@@ -203,7 +203,8 @@ class ServiceSchema(BaseSchema):
             'service_provider_stats',
             'service_notification_stats',
             'service_sms_senders',
-            'monthly_billing'
+            'monthly_billing',
+            'reply_to_email_addresses',
         )
         strict = True
 
@@ -256,7 +257,8 @@ class DetailedServiceSchema(BaseSchema):
             'service_notification_stats',
             'organisation',
             'service_sms_senders',
-            'monthly_billing'
+            'monthly_billing',
+            'reply_to_email_addresses'
         )
 
 
