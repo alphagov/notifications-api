@@ -235,14 +235,14 @@ class PopulateServiceEmailReplyTo(Command):
     def run(self):
         services_to_update = """
             INSERT INTO service_email_reply_to(id, service_id, email_address, is_default, created_at)
-            SELECT '{}', id, reply_to_email_address, true, '{}'
+            SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, reply_to_email_address, true, '{}'
             FROM services
             WHERE reply_to_email_address IS NOT NULL
             AND id NOT IN(
                 SELECT service_id
                 FROM service_email_reply_to
             )
-        """.format(uuid.uuid4(), datetime.utcnow())
+        """.format(datetime.utcnow())
 
         result = db.session.execute(services_to_update)
         db.session.commit()
