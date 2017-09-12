@@ -2126,7 +2126,7 @@ def test_is_service_name_unique_returns_400_when_name_does_not_exist(client):
 
 
 def test_update_service_reply_to_email_address_upserts_email_reply_to(admin_request, sample_service):
-    admin_request.post(
+    response = admin_request.post(
         'service.update_service',
         service_id=sample_service.id,
         _data={
@@ -2135,4 +2135,8 @@ def test_update_service_reply_to_email_address_upserts_email_reply_to(admin_requ
         _expected_status=200
     )
 
-    assert len(ServiceEmailReplyTo.query.all()) == 1
+    service_reply_to_emails = ServiceEmailReplyTo.query.all()
+    assert len(service_reply_to_emails) == 1
+    assert service_reply_to_emails[0].email_address == 'new@mail.com'
+    assert service_reply_to_emails[0].is_default
+    assert response['data']['reply_to_email_address'] == 'new@mail.com'
