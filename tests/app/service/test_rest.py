@@ -12,7 +12,7 @@ from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
 from app.models import (
-    User, Organisation, Service, ServicePermission, Notification,
+    User, Organisation, Service, ServicePermission, Notification, ServiceEmailReplyTo,
     DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
@@ -2125,10 +2125,8 @@ def test_is_service_name_unique_returns_400_when_name_does_not_exist(client):
     assert json_resp["message"][1]["email_from"] == ["Can't be empty"]
 
 
-def test_update_service_reply_to_email_address_upserts_email_reply_to(mocker, admin_request, sample_service):
-    update_mock = mocker.patch('app.service.rest.create_or_update_email_reply_to')
-
-    admin_request.post(
+def test_update_service_reply_to_email_address_upserts_email_reply_to(admin_request, sample_service):
+    response = admin_request.post(
         'service.update_service',
         service_id=sample_service.id,
         _data={
@@ -2137,4 +2135,8 @@ def test_update_service_reply_to_email_address_upserts_email_reply_to(mocker, ad
         _expected_status=200
     )
 
-    assert update_mock.called
+    service_reply_to_emails = ServiceEmailReplyTo.query.all()
+    assert len(service_reply_to_emails) == 1
+    assert service_reply_to_emails[0].email_address == 'new@mail.com'
+    assert service_reply_to_emails[0].is_default
+    assert response['data']['reply_to_email_address'] == 'new@mail.com'

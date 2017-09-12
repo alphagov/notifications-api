@@ -202,6 +202,7 @@ class ServiceSchema(BaseSchema):
             'template_statistics',
             'service_provider_stats',
             'service_notification_stats',
+            'reply_to_email_addresses',
         )
         strict = True
 
