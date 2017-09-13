@@ -44,6 +44,12 @@ def requires_no_auth():
 
 
 def restrict_ip_sms():
+    # Check route of inbound sms (Experimental)
+    # Temporary custom header for route security
+    if request.headers.get("X-Custom-forwarder"):
+        current_app.logger.info("X-Custom-forwarder {}".format(request.headers.get("X-Custom-forwarder")))
+
+    # Check IP of SMS providers
     ip = ''
     if request.headers.get("X-Forwarded-For"):
         # X-Forwarded-For looks like "203.0.113.195, 70.41.3.18, 150.172.238.178"
@@ -54,21 +60,29 @@ def restrict_ip_sms():
             ip = ip_list[len(ip_list) - 3]
         current_app.logger.info("Inbound sms ip route list {}"
                                 .format(ip_route))
+    p0 = ip.split('.')
 
-    # Temporary custom header for route security - to experiment if the header passes through
-    if request.headers.get("X-Custom-forwarder"):
-        current_app.logger.info("X-Custom-forwarder {}".format(request.headers.get("X-Custom-forwarder")))
+    # IP whitelist
+    allowed_ips = current_app.config.get('SMS_INBOUND_WHITELIST')
+    allowed = False
+
+    for allowed_ip in allowed_ips:
+        p1 = allowed_ip.split('.')
+        if p0[0] == p1[0] and p0[1] == p1[1] and p0[2] == p1[2]:
+            allowed = True
+            # return
+        # else:
+            # raise AuthError('Unknown source IP address from the SMS provider', 403)
 
     current_app.logger.info({
         'message': 'Inbound sms ip address',
         'log_contents': {
-            'passed': ip in current_app.config.get('SMS_INBOUND_WHITELIST'),
+            'passed': allowed,
             'ip_address': ip
         }
     })
 
     return
-    # raise AuthError('Unknown source IP address from the SMS provider', 403)
 
 
 def requires_admin_auth():

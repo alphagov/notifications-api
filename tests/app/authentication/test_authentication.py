@@ -362,3 +362,15 @@ def test_illegitimate_ips(restrict_ip_sms_app):
         )
 
     assert exc_info.value.short_message == 'Unknown IP route not from known SMS provider'
+
+
+def test_allow_valid_ips_24bits(restrict_ip_sms_app):
+    # Test an address that match the first 24 bits only
+    response = restrict_ip_sms_app.get(
+        path='/',
+        headers=[
+            ('X-Forwarded-For', '111.111.111.119, 222.222.222.222, 127.0.0.1'),
+        ]
+    )
+
+    assert response.status_code == 200
