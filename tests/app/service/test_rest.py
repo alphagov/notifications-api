@@ -25,7 +25,7 @@ from tests.app.conftest import (
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
-from tests.app.db import create_template, create_service_inbound_api, create_notification
+from tests.app.db import create_template, create_service_inbound_api, create_notification, create_reply_to_email
 from tests.app.db import create_user
 
 
@@ -2148,3 +2148,53 @@ def test_update_service_reply_to_email_address_upserts_email_reply_to(admin_requ
     assert service_reply_to_emails[0].email_address == 'new@mail.com'
     assert service_reply_to_emails[0].is_default
     assert response['data']['reply_to_email_address'] == 'new@mail.com'
+
+
+def test_get_email_reply_to_addresses_when_there_are_no_reply_to_email_addresses(client, sample_service):
+    response = client.get('/service/{}/email-reply-to'.format(sample_service.id),
+                          headers=[create_authorization_header()])
+
+    assert json.loads(response.get_data(as_text=True)) == []
+    assert response.status_code == 200
+
+
+def test_get_email_reply_to_addresses_with_one_email_address(client, notify_db, notify_db_session):
+    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    reply_to = create_reply_to_email(service, 'test@mail.com')
+    service.reply_to_email_address = 'test@mail.com'
+
+    response = client.get('/service/{}/email-reply-to'.format(service.id),
+                          headers=[create_authorization_header()])
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert len(json_response) == 1
+    assert json_response[0]['email_address'] == 'test@mail.com'
+    assert json_response[0]['is_default']
+    assert json_response[0]['created_at']
+    assert not json_response[0]['updated_at']
+    assert response.status_code == 200
+
+
+def test_get_email_reply_to_addresses_with_multiple_email_addresses(client, notify_db, notify_db_session):
+    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    reply_to_a = create_reply_to_email(service, 'test_a@mail.com')
+    reply_to_b = create_reply_to_email(service, 'test_b@mail.com', False)
+
+    service.reply_to_email_address = 'test_a@mail.com'
+
+    response = client.get('/service/{}/email-reply-to'.format(service.id),
+                          headers=[create_authorization_header()])
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert len(json_response) == 2
+    assert response.status_code == 200
+
+    assert json_response[0]['email_address'] == 'test_a@mail.com'
+    assert json_response[0]['is_default']
+    assert json_response[0]['created_at']
+    assert not json_response[0]['updated_at']
+
+    assert json_response[1]['email_address'] == 'test_b@mail.com'
+    assert not json_response[1]['is_default']
+    assert json_response[1]['created_at']
+    assert not json_response[1]['updated_at']

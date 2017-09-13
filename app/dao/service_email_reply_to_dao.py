@@ -5,12 +5,17 @@ from app.models import ServiceEmailReplyTo
 
 def create_or_update_email_reply_to(service_id, email_address):
     reply_to = dao_get_reply_to_by_service_id(service_id)
-    if reply_to:
-        reply_to.email_address = email_address
-        dao_update_reply_to_email(reply_to)
-    else:
+    if len(reply_to) == 0:
         reply_to = ServiceEmailReplyTo(service_id=service_id, email_address=email_address)
         dao_create_reply_to_email_address(reply_to)
+    elif len(reply_to) == 1:
+        reply_to[0].email_address = email_address
+        dao_update_reply_to_email(reply_to[0])
+    else:
+        raise InvalidRequest(
+            "Multiple reply to email addresses were found, this method should not be used.",
+            status_code=500
+        )
 
 
 @transactional
@@ -23,7 +28,7 @@ def dao_get_reply_to_by_service_id(service_id):
         ServiceEmailReplyTo
     ).filter(
         ServiceEmailReplyTo.service_id == service_id
-    ).first()
+    ).all()
     return reply_to
 
 

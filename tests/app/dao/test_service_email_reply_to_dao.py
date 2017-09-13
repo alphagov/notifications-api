@@ -25,8 +25,9 @@ def test_create_or_update_email_reply_to_updates_existing_entry(notify_db_sessio
 
     reply_to = dao_get_reply_to_by_service_id(service.id)
 
-    assert reply_to.service.id == service.id
-    assert reply_to.email_address == 'different@mail.com'
+    assert len(reply_to) == 1
+    assert reply_to[0].service.id == service.id
+    assert reply_to[0].email_address == 'different@mail.com'
 
 
 def test_create_or_update_email_reply_to_creates_new_entry(notify_db_session):
@@ -37,5 +38,5 @@ def test_create_or_update_email_reply_to_creates_new_entry(notify_db_session):
     reply_to = dao_get_reply_to_by_service_id(service.id)
 
     assert ServiceEmailReplyTo.query.count() == 1
-    assert reply_to.service.id == service.id
-    assert reply_to.email_address == 'test@mail.com'
+    assert reply_to[0].service.id == service.id
+    assert reply_to[0].email_address == 'test@mail.com'
