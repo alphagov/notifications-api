@@ -228,3 +228,23 @@ class BackfillProcessingTime(Command):
                 process_end_date.isoformat()
             ))
             send_processing_time_for_start_and_end(process_start_date, process_end_date)
+
+
+class PopulateServiceEmailReplyTo(Command):
+
+    def run(self):
+        services_to_update = """
+            INSERT INTO service_email_reply_to(id, service_id, email_address, is_default, created_at)
+            SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, reply_to_email_address, true, '{}'
+            FROM services
+            WHERE reply_to_email_address IS NOT NULL
+            AND id NOT IN(
+                SELECT service_id
+                FROM service_email_reply_to
+            )
+        """.format(datetime.utcnow())
+
+        result = db.session.execute(services_to_update)
+        db.session.commit()
+
+        print("Populated email reply to adderesses for {}".format(result.rowcount))
