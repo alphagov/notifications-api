@@ -5,6 +5,7 @@ from datetime import (
 
 from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
+from notifications_utils.s3 import s3upload
 
 from app.aws import s3
 from app import notify_celery
@@ -37,7 +38,7 @@ from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.models import LETTER_TYPE, JOB_STATUS_READY_TO_SEND
 from app.notifications.process_notifications import send_notification_to_queue
 from app.statsd_decorators import statsd
-from app.celery.tasks import process_job
+from app.celery.tasks import process_job, create_dvla_file_contents_for_notifications
 from app.config import QueueNames, TaskNames
 from app.utils import convert_utc_to_bst
 
@@ -319,3 +320,26 @@ def run_letter_jobs():
         queue=QueueNames.PROCESS_FTP
     )
     current_app.logger.info("Queued {} ready letter job ids onto {}".format(len(job_ids), QueueNames.PROCESS_FTP))
+
+
+@notify_celery.task(name="run-letter-notifications")
+@statsd(namespace="tasks")
+def run_letter_notifications():
+    notifications = dao_get_created_letter_api_notifications_that_dont_belong_to_jobs()
+
+    file_contents = create_dvla_file_contents_for_notifications(notifications)
+    s3upload(
+        filedata=file_contents + '\n',
+        region=current_app.config['AWS_REGION'],
+        bucket_name=current_app.config['DVLA_UPLOAD_BUCKET_NAME'],
+        file_location='2017-09-12-dvla-notifications.txt'
+    )
+
+    # set noti statuses to pending or something
+
+    notify_celery.send_task(
+        name=TaskNames.DVLA_NOTIFICATIONS,
+        kwargs={'date': '2017-09-12'},
+        queue=QueueNames.PROCESS_FTP
+    )
+    current_app.logger.info("Queued {} ready letter job ids onto {}".format(len(notifications), QueueNames.PROCESS_FTP))

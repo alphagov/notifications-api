@@ -17,7 +17,7 @@ from app.celery import tasks
 from app.celery.tasks import (
     s3,
     build_dvla_file,
-    create_dvla_file_contents,
+    create_dvla_file_contents_for_job,
     update_dvla_job_to_error,
     process_job,
     process_row,
@@ -1081,7 +1081,7 @@ def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_let
     mocked_send_task.assert_not_called()
 
 
-def test_create_dvla_file_contents(sample_letter_template, mocker):
+def test_create_dvla_file_contents_for_job(sample_letter_template, mocker):
     job = create_job(template=sample_letter_template, notification_count=2)
     create_notification(template=job.template, job=job, reference=1)
     create_notification(template=job.template, job=job, reference=2)
@@ -1089,7 +1089,7 @@ def test_create_dvla_file_contents(sample_letter_template, mocker):
     mocked_letter_template_instance = mocked_letter_template.return_value
     mocked_letter_template_instance.__str__.return_value = "dvla|string"
 
-    create_dvla_file_contents(job.id)
+    create_dvla_file_contents_for_job(job.id)
     calls = mocked_letter_template.call_args_list
     # Template
     assert calls[0][0][0]['subject'] == 'Template subject'

@@ -229,6 +229,11 @@ class Config(object):
             'task': 'run-letter-jobs',
             'schedule': crontab(hour=17, minute=30),
             'options': {'queue': QueueNames.PERIODIC}
+        },
+        'run-letter-notifications': {
+            'task': 'run-letter-notifications',
+            'schedule': crontab(hour=17, minute=35),
+            'options': {'queue': QueueNames.PERIODIC}
         }
     }
     CELERY_QUEUES = []
@@ -253,7 +258,10 @@ class Config(object):
     FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = None
     FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID = None
 
-    DVLA_UPLOAD_BUCKET_NAME = "{}-dvla-file-per-job".format(os.getenv('NOTIFY_ENVIRONMENT'))
+    DVLA_BUCKETS = {
+        'job': '{}-dvla-file-per-job'.format(os.getenv('NOTIFY_ENVIRONMENT')),
+        'notification': '{}-dvla-file-per-job'.format(os.getenv('NOTIFY_ENVIRONMENT'))
+    }
 
     API_KEY_LIMITS = {
         KEY_TYPE_TEAM: {

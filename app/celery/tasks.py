@@ -309,6 +309,10 @@ def update_job_to_sent_to_dvla(self, job_id):
                             "Updated {} job to {}".format(updated_count, job_id, JOB_STATUS_SENT_TO_DVLA))
 
 
+def update_notifications_to_sent_to_dvla(self, notification_references):
+
+
+
 @notify_celery.task(bind=True, name='update-letter-job-to-error')
 @statsd(namespace="tasks")
 def update_dvla_job_to_error(self, job_id):
@@ -316,7 +320,13 @@ def update_dvla_job_to_error(self, job_id):
     current_app.logger.info("Updated {} job to {}".format(job_id, JOB_STATUS_ERROR))
 
 
-def create_dvla_file_contents(job_id):
+def create_dvla_file_contents_for_job(job_id):
+    notifications = dao_get_all_notifications_for_job(job_id)
+
+    return create_dvla_file_contents_for_notifications(notifications)
+
+
+def create_dvla_file_contents_for_notifications(notifications):
     file_contents = '\n'.join(
         str(LetterDVLATemplate(
             notification.template.__dict__,
@@ -325,7 +335,7 @@ def create_dvla_file_contents(job_id):
             contact_block=notification.service.letter_contact_block,
             org_id=notification.service.dvla_organisation.id,
         ))
-        for notification in dao_get_all_notifications_for_job(job_id)
+        for notification in notifications
     )
     return file_contents
 
