@@ -559,7 +559,12 @@ def test_get_all_notifications_filter_multiple_query_parameters(client, sample_e
     assert json_response['notifications'][0]['id'] == str(older_notification.id)
 
 
-def test_get_all_notifications_renames_letter_statuses(client, sample_letter_notification, sample_notification):
+def test_get_all_notifications_renames_letter_statuses(
+    client,
+    sample_letter_notification,
+    sample_notification,
+    sample_email_notification,
+):
     auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
     response = client.get(
         path=url_for('v2_notifications.get_notifications'),
@@ -570,7 +575,7 @@ def test_get_all_notifications_renames_letter_statuses(client, sample_letter_not
     assert response.status_code == 200
 
     for noti in json_response['notifications']:
-        if noti['type'] == 'sms':
+        if noti['type'] == 'sms' or noti['type'] == 'email':
             assert noti['status'] == 'created'
         elif noti['type'] == 'letter':
             assert noti['status'] == 'accepted'
