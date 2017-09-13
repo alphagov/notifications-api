@@ -1,10 +1,5 @@
-import pytest
-
-from flask import url_for
-import json
-
-from app.models import InboundNumber
 from app.dao.inbound_numbers_dao import dao_get_inbound_number_for_service
+from app.models import ServiceSmsSender
 
 from tests.app.db import create_service, create_inbound_number
 
@@ -115,3 +110,22 @@ def test_rest_set_inbound_number_active_flag_off(
 
     inbound_number_from_db = dao_get_inbound_number_for_service(service.id)
     assert not inbound_number_from_db.active
+
+
+def test_allocate_inbound_number_insert_update_service_sms_sender(
+        admin_request, notify_db_session
+):
+    service = create_service()
+    inbound_number = create_inbound_number(number='123')
+
+    admin_request.post(
+        'inbound_number.post_allocate_inbound_number',
+        _expected_status=204,
+        service_id=service.id
+    )
+
+    service_sms_senders = ServiceSmsSender.query.all()
+    assert len(service_sms_senders) == 1
+    assert service_sms_senders[0].sms_sender == inbound_number.number
+    assert service_sms_senders[0].inbound_number_id == inbound_number.id
+    assert service_sms_senders[0].is_default
