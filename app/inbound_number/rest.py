@@ -7,6 +7,8 @@ from app.dao.inbound_numbers_dao import (
     dao_set_inbound_number_to_service,
     dao_set_inbound_number_active_flag
 )
+from app.dao.service_sms_sender_dao import insert_or_update_service_sms_sender
+from app.dao.services_dao import dao_fetch_service_by_id
 from app.errors import InvalidRequest, register_errors
 
 inbound_number_blueprint = Blueprint('inbound_number', __name__, url_prefix='/inbound-number')
@@ -42,6 +44,8 @@ def post_allocate_inbound_number(service_id):
 
     if len(available_numbers) > 0:
         dao_set_inbound_number_to_service(service_id, available_numbers[0])
+        service = dao_fetch_service_by_id(service_id)
+        insert_or_update_service_sms_sender(service, available_numbers[0].number, available_numbers[0].id)
         return jsonify(), 204
     else:
         raise InvalidRequest('No available inbound numbers', status_code=400)

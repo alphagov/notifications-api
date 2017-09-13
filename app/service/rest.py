@@ -22,6 +22,7 @@ from app.dao.service_inbound_api_dao import (
     reset_service_inbound_api,
     get_service_inbound_api
 )
+from app.dao.service_sms_sender_dao import insert_or_update_service_sms_sender
 from app.dao.services_dao import (
     dao_fetch_service_by_id,
     dao_fetch_all_services,
@@ -143,6 +144,8 @@ def update_service(service_id):
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())
     update_dict = service_schema.load(current_data).data
+    if 'sms_sender' in req_json:
+        insert_or_update_service_sms_sender(fetched_service, req_json['sms_sender'])
     dao_update_service(update_dict)
 
     if service_going_live:
