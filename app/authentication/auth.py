@@ -7,6 +7,8 @@ from notifications_python_client.errors import TokenDecodeError, TokenExpiredErr
 
 from app.dao.services_dao import dao_fetch_service_by_id_with_api_keys
 
+from ipaddress import IPv4Interface, ip_address
+
 
 class AuthError(Exception):
     def __init__(self, message, code):
@@ -57,20 +59,23 @@ def restrict_ip_sms():
         ip_route = request.headers.get("X-Forwarded-For")
         ip_list = ip_route.split(',')
         if len(ip_list) >= 3:
-            ip = ip_list[len(ip_list) - 3]
+            inbound_ip = ip_list[len(ip_list) - 3]
         current_app.logger.info("Inbound sms ip route list {}"
                                 .format(ip_route))
-    p0 = ip.split('.')
 
     # IP whitelist
     allowed_ips = current_app.config.get('SMS_INBOUND_WHITELIST')
     allowed = False
 
     for allowed_ip in allowed_ips:
-        p1 = allowed_ip.split('.')
-        if p0[0] == p1[0] and p0[1] == p1[1] and p0[2] == p1[2]:
+        masked_bits = ''
+        if (len(allowed_ip.split('/')) > 1):
+            masked_bits = allowed_ip.split('/')[1]
+        inbound_ip_str = inbound_ip + '/' + masked_bits
+        if IPv4Interface(allowed_ip).network == IPv4Interface(inbound_ip_str).network:
             allowed = True
             # return
+            break
         # else:
             # raise AuthError('Unknown source IP address from the SMS provider', 403)
 

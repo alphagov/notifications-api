@@ -313,7 +313,7 @@ def __create_token(service_id):
 def restrict_ip_sms_app():
     app = flask.Flask(__name__)
     app.config['TESTING'] = True
-    app.config['SMS_INBOUND_WHITELIST'] = ['111.111.111.111', '100.100.100.100']
+    app.config['SMS_INBOUND_WHITELIST'] = ['111.111.111.111/32', '200.200.200.200/24']
     blueprint = flask.Blueprint('restrict_ip_sms_app', __name__)
 
     @blueprint.route('/')
@@ -369,7 +369,7 @@ def test_allow_valid_ips_24bits(restrict_ip_sms_app):
     response = restrict_ip_sms_app.get(
         path='/',
         headers=[
-            ('X-Forwarded-For', '111.111.111.119, 222.222.222.222, 127.0.0.1'),
+            ('X-Forwarded-For', '200.200.200.222, 222.222.222.222, 127.0.0.1'),
         ]
     )
 
