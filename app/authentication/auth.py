@@ -80,7 +80,7 @@ def restrict_ip_sms():
                 'message': 'Inbound sms ip address',
                 'log_contents': {
                     'passed': allowed,
-                    'ip_address': ip
+                    'ip_address': inbound_ip
                 }
             })
             return
