@@ -1343,3 +1343,11 @@ class ServiceEmailReplyTo(db.Model):
     is_default = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    def serialize(self):
+        return {
+            'email_address': self.email_address,
+            'is_default': self.is_default,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at
+        }
