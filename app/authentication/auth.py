@@ -1,9 +1,10 @@
-from flask import request, _request_ctx_stack, current_app, g
-from sqlalchemy.exc import DataError
-from sqlalchemy.orm.exc import NoResultFound
+from ipaddress import IPv4Address, IPv4Network
 
+from flask import request, _request_ctx_stack, current_app, g
 from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
 from notifications_python_client.errors import TokenDecodeError, TokenExpiredError, TokenIssuerError
+from sqlalchemy.exc import DataError
+from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.services_dao import dao_fetch_service_by_id_with_api_keys
 
@@ -44,31 +45,50 @@ def requires_no_auth():
 
 
 def restrict_ip_sms():
+    # Check route of inbound sms (Experimental)
+    # Temporary custom header for route security
+    if request.headers.get("X-Custom-forwarder"):
+        current_app.logger.info("X-Custom-forwarder {}".format(request.headers.get("X-Custom-forwarder")))
+
+    # Check IP of SMS providers
     ip = ''
     if request.headers.get("X-Forwarded-For"):
         # X-Forwarded-For looks like "203.0.113.195, 70.41.3.18, 150.172.238.178"
         # Counting backwards and look at the IP at the 3rd last hop - hence, hop(end-3)
         ip_route = request.headers.get("X-Forwarded-For")
         ip_list = ip_route.split(',')
-        if len(ip_list) >= 3:
-            ip = ip_list[len(ip_list) - 3]
+
         current_app.logger.info("Inbound sms ip route list {}"
                                 .format(ip_route))
+        if len(ip_list) >= 3:
+            inbound_ip = IPv4Address(ip_list[len(ip_list) - 3])
 
-    # Temporary custom header for route security - to experiment if the header passes through
-    if request.headers.get("X-Custom-forwarder"):
-        current_app.logger.info("X-Custom-forwarder {}".format(request.headers.get("X-Custom-forwarder")))
+            # IP whitelist
+            allowed_ips = current_app.config.get('SMS_INBOUND_WHITELIST')
 
-    current_app.logger.info({
-        'message': 'Inbound sms ip address',
-        'log_contents': {
-            'passed': ip in current_app.config.get('SMS_INBOUND_WHITELIST'),
-            'ip_address': ip
-        }
-    })
+            allowed = any(
+                inbound_ip in IPv4Network(allowed_ip)
+                for allowed_ip in allowed_ips
+            )
 
-    return
-    # raise AuthError('Unknown source IP address from the SMS provider', 403)
+            # if allowed:
+            #    return
+            # else:
+            #    raise AuthError('Unknown source IP address from the SMS provider', 403)
+
+            current_app.logger.info({
+                'message': 'Inbound sms ip address',
+                'log_contents': {
+                    'passed': allowed,
+                    'ip_address': ip
+                }
+            })
+            return
+
+    current_app.logger.error('Traffic from unknown source or route, X-Forwarded-For="{}"'.format(
+        request.headers.get("X-Forwarded-For"))
+    )
+    # raise AuthError('Traffic from unknown source or route', 403)
 
 
 def requires_admin_auth():
