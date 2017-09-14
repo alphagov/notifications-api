@@ -19,6 +19,7 @@ from app.models import (
     KEY_TYPE_TEST,
     KEY_TYPE_TEAM,
     BRANDING_ORG,
+    BRANDING_GOVUK,
     BRANDING_BOTH)
 
 from tests.app.db import create_service, create_template, create_notification, create_inbound_number
@@ -424,6 +425,18 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
     assert options['govuk_banner'] == govuk_banner
     assert options['brand_colour'] == '#000000'
     assert options['brand_name'] == 'Justice League'
+
+
+def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_only(notify_db, sample_service):
+    sample_service.branding = BRANDING_GOVUK
+    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
+    sample_service.organisation = org
+    notify_db.session.add_all([sample_service, org])
+    notify_db.session.commit()
+
+    options = send_to_providers.get_html_email_options(sample_service)
+
+    assert options == {'govuk_banner': True}
 
 
 def test_get_html_email_renderer_prepends_logo_path(notify_api):
