@@ -367,7 +367,8 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, trial_mo
         Notification.status,
         Notification.service_id,
         func.count(Notification.id).label('count')
-    ).join(Service
+    ).join(
+        Service
     ).filter(
         func.date(Notification.created_at) == date.today(),
         Service.restricted == trial_mode_services

@@ -94,9 +94,10 @@ def get_services():
         services = dao_fetch_all_services_by_user(user_id, only_active)
     elif detailed:
         result = jsonify(data=get_detailed_services(start_date=start_date, end_date=end_date,
-                                                  only_active=only_active, include_from_test_key=include_from_test_key,
-                                                  trial_mode_services = trial_mode_services
-                                                  ))
+                                                    only_active=only_active,
+                                                    include_from_test_key=include_from_test_key,
+                                                    trial_mode_services=trial_mode_services
+                                                    ))
         return result
     else:
         services = dao_fetch_all_services(only_active)
@@ -361,7 +362,8 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
                           trial_mode_services=True):
     services = {service.id: service for service in dao_fetch_all_services(only_active)}
     if start_date == datetime.utcnow().date():
-        stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key, trial_mode_services=trial_mode_services)
+        stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key,
+                                                        trial_mode_services=trial_mode_services)
     else:
 
         stats = fetch_stats_by_date_range_for_all_services(start_date=start_date,
