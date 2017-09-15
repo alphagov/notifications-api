@@ -27,7 +27,7 @@ from app.dao.jobs_dao import (
     all_notifications_are_created_for_job,
     dao_get_all_notifications_for_job,
     dao_update_job_status)
-from app.dao.notifications_dao import get_notification_by_id, dao_update_notifications_sent_to_dvla
+from app.dao.notifications_dao import get_notification_by_id, dao_update_notifications_for_job_to_sent_to_dvla
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
@@ -279,11 +279,11 @@ def persist_letter(
 def build_dvla_file(self, job_id):
     try:
         if all_notifications_are_created_for_job(job_id):
-            file_contents = create_dvla_file_contents(job_id)
+            file_contents = create_dvla_file_contents_for_job(job_id)
             s3upload(
                 filedata=file_contents + '\n',
                 region=current_app.config['AWS_REGION'],
-                bucket_name=current_app.config['DVLA_UPLOAD_BUCKET_NAME'],
+                bucket_name=current_app.config['DVLA_BUCKETS']['job'],
                 file_location="{}-dvla-job.text".format(job_id)
             )
             dao_update_job_status(job_id, JOB_STATUS_READY_TO_SEND)
@@ -302,15 +302,22 @@ def update_job_to_sent_to_dvla(self, job_id):
     # and update all notifications for this job to sending, provider = DVLA
     provider = get_current_provider(LETTER_TYPE)
 
-    updated_count = dao_update_notifications_sent_to_dvla(job_id, provider.identifier)
+    updated_count = dao_update_notifications_for_job_to_sent_to_dvla(job_id, provider.identifier)
     dao_update_job_status(job_id, JOB_STATUS_SENT_TO_DVLA)
 
     current_app.logger.info("Updated {} letter notifications to sending. "
                             "Updated {} job to {}".format(updated_count, job_id, JOB_STATUS_SENT_TO_DVLA))
 
 
+@notify_celery.task(bind=True, name='update-notifications-to-sent')
+@statsd(namespace="tasks")
 def update_notifications_to_sent_to_dvla(self, notification_references):
+    # This task will be called by the FTP app to update notifications as sent to DVLA
+    provider = get_current_provider(LETTER_TYPE)
 
+    updated_count = dao_update_notifications_for_job_to_sent_to_dvla(references, provider.identifier)
+
+    current_app.logger.info("Updated {} letter notifications to sending. ".format(updated_count))
 
 
 @notify_celery.task(bind=True, name='update-letter-job-to-error')

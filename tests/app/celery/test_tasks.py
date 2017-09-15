@@ -1058,7 +1058,7 @@ def test_build_dvla_file(sample_letter_template, mocker):
     mocked_upload.assert_called_once_with(
         filedata="dvla|string\ndvla|string\n",
         region=current_app.config['AWS_REGION'],
-        bucket_name=current_app.config['DVLA_UPLOAD_BUCKET_NAME'],
+        bucket_name=current_app.config['DVLA_BUCKETS']['job'],
         file_location="{}-dvla-job.text".format(job.id)
     )
     assert Job.query.get(job.id).job_status == 'ready to send'

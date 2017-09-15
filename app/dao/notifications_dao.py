@@ -460,7 +460,22 @@ def is_delivery_slow_for_provider(
 
 @statsd(namespace="dao")
 @transactional
-def dao_update_notifications_sent_to_dvla(job_id, provider):
+def dao_update_notifications_for_job_to_sent_to_dvla(job_id, provider):
+    now = datetime.utcnow()
+    updated_count = db.session.query(
+        Notification).filter(Notification.job_id == job_id).update(
+        {'status': NOTIFICATION_SENDING, "sent_by": provider, "sent_at": now})
+
+    db.session.query(
+        NotificationHistory).filter(NotificationHistory.job_id == job_id).update(
+        {'status': NOTIFICATION_SENDING, "sent_by": provider, "sent_at": now, "updated_at": now})
+
+    return updated_count
+
+
+@statsd(namespace="dao")
+@transactional
+def dao_update_notifications_by_reference_sent_to_dvla(notification_references, provider):
     now = datetime.utcnow()
     updated_count = db.session.query(
         Notification).filter(Notification.job_id == job_id).update(
@@ -555,3 +570,29 @@ def dao_get_total_notifications_sent_per_day_for_performance_platform(start_date
         NotificationHistory.key_type != KEY_TYPE_TEST,
         NotificationHistory.notification_type != LETTER_TYPE
     ).one()
+
+
+def dao_set_created_live_letter_api_notifications_to_pending():
+    """
+    Sets all past scheduled jobs to pending, and then returns them for further processing.
+
+    this is used in the run_scheduled_jobs task, so we put a FOR UPDATE lock on the job table for the duration of
+    the transaction so that if the task is run more than once concurrently, one task will block the other select
+    from completing until it commits.
+    """
+    return db.session.query(
+        Notification.id
+    ).filter(
+        Notification.notification_type == LETTER_TYPE,
+        Notification.status == NOTIFICATION_CREATED,
+        Notification.key_type == KEY_TYPE_NORMAL,
+    ).with_for_update(
+    ).all()
+
+    for notification in notifications:
+        notification.notification_status = NOTIFICATION_PENDING
+
+    db.session.add_all(notifications)
+    db.session.commit()
+
+    return notifications
