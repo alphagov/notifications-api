@@ -25,7 +25,7 @@ def test_send_letter_jobs(client, mocker, sample_letter_template):
     assert response.status_code == 201
     assert json.loads(response.get_data())['data'] == {'response': "Task created to send files to DVLA"}
 
-    mock_celery.assert_called_once_with(name="send-files-to-dvla",
+    mock_celery.assert_called_once_with(name="send-jobs-to-dvla",
                                         args=(job_ids['job_ids'],),
                                         queue="process-ftp-tasks")
 

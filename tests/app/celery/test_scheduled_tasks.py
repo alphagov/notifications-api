@@ -690,6 +690,6 @@ def test_run_letter_jobs(client, mocker, sample_letter_template):
 
     run_letter_jobs()
 
-    mock_celery.assert_called_once_with(name=TaskNames.DVLA_FILES,
+    mock_celery.assert_called_once_with(name=TaskNames.DVLA_JOBS,
                                         args=(job_ids,),
                                         queue=QueueNames.PROCESS_FTP)
