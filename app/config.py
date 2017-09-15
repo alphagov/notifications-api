@@ -48,7 +48,8 @@ class QueueNames(object):
 
 
 class TaskNames(object):
-    DVLA_FILES = 'send-files-to-dvla'
+    DVLA_JOBS = 'send-jobs-to-dvla'
+    DVLA_NOTIFICATIONS = 'send-notifications-to-dvla'
 
 
 class Config(object):
@@ -226,7 +227,7 @@ class Config(object):
         },
         'run-letter-jobs': {
             'task': 'run-letter-jobs',
-            'schedule': crontab(minute=30, hour=17),
+            'schedule': crontab(hour=17, minute=30),
             'options': {'queue': QueueNames.PERIODIC}
         }
     }
