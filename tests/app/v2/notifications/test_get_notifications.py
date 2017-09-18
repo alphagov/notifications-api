@@ -9,6 +9,11 @@ from tests.app.db import (
     create_template,
     create_service)
 
+from tests.app.conftest import (
+    sample_notification,
+    sample_email_notification,
+)
+
 
 @pytest.mark.parametrize('billable_units, provider', [
     (1, 'mmg'),
@@ -231,6 +236,26 @@ def test_get_notification_adds_delivery_estimate_for_letters(
     json_response = json.loads(response.get_data(as_text=True))
     assert response.status_code == 200
     assert json_response['estimated_delivery'] == estimated_delivery
+
+
+@pytest.mark.parametrize('notification_mock', [
+    sample_notification,
+    sample_email_notification,
+])
+def test_get_notification_doesnt_have_delivery_estimate_for_non_letters(
+    client,
+    notify_db,
+    notify_db_session,
+    notification_mock,
+):
+    mocked_notification = notification_mock(notify_db, notify_db_session)
+    auth_header = create_authorization_header(service_id=mocked_notification.service_id)
+    response = client.get(
+        path='/v2/notifications/{}'.format(mocked_notification.id),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    assert response.status_code == 200
+    assert 'estimated_delivery' not in json.loads(response.get_data(as_text=True))
 
 
 def test_get_all_notifications_returns_200(client, sample_template):
