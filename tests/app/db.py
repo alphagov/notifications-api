@@ -25,7 +25,9 @@ from app.models import (
     SMS_TYPE,
     INBOUND_SMS_TYPE,
     KEY_TYPE_NORMAL,
-    ServiceInboundApi)
+    ServiceInboundApi,
+    ServiceEmailReplyTo
+)
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import dao_create_notification, dao_created_scheduled_notification
 from app.dao.templates_dao import dao_create_template
@@ -327,3 +329,21 @@ def create_monthly_billing_entry(
     db.session.commit()
 
     return entry
+
+
+def create_reply_to_email(
+    service,
+    email_address,
+    is_default=True
+):
+    data = {
+        'service': service,
+        'email_address': email_address,
+        'is_default': is_default,
+    }
+    reply_to = ServiceEmailReplyTo(**data)
+
+    db.session.add(reply_to)
+    db.session.commit()
+
+    return reply_to

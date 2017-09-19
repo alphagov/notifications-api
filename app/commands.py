@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
-from flask_script import Command, Manager, Option
+from flask_script import Command, Option
 
 from app import db
 from app.dao.monthly_billing_dao import (
@@ -16,6 +16,8 @@ from app.dao.services_dao import (
 )
 from app.dao.provider_rates_dao import create_provider_rates
 from app.dao.users_dao import (delete_model_user, delete_user_verify_codes)
+from app.utils import get_midnight_for_day_before, get_london_midnight_in_utc
+from app.performance_platform.processing_time import send_processing_time_for_start_and_end
 
 
 class CreateProviderRateCommand(Command):
@@ -49,7 +51,7 @@ class PurgeFunctionalTestDataCommand(Command):
         Option('-u', '-user-email-prefix', dest='user_email_prefix', help="Functional test user email prefix."),
     )
 
-    def run(self, service_name_prefix=None, user_email_prefix=None):
+    def run(self, user_email_prefix=None):
         if user_email_prefix:
             users = User.query.filter(User.email_address.like("{}%".format(user_email_prefix))).all()
             for usr in users:
@@ -167,33 +169,82 @@ class CustomDbScript(Command):
 
 
 class PopulateMonthlyBilling(Command):
-        option_list = (
-            Option('-y', '-year', dest="year", help="Use for integer value for year, e.g. 2017"),
+    option_list = (
+        Option('-y', '-year', dest="year", help="Use for integer value for year, e.g. 2017"),
+    )
+
+    def run(self, year):
+        service_ids = get_service_ids_that_need_billing_populated(
+            start_date=datetime(2016, 5, 1), end_date=datetime(2017, 8, 16)
         )
+        start, end = 1, 13
+        if year == '2016':
+            start = 4
 
-        def run(self, year):
-            service_ids = get_service_ids_that_need_billing_populated(
-                start_date=datetime(2016, 5, 1), end_date=datetime(2017, 8, 16)
-            )
-            start, end = 1, 13
-            if year == '2016':
-                start = 4
+        for service_id in service_ids:
+            print('Starting to populate data for service {}'.format(str(service_id)))
+            print('Starting populating monthly billing for {}'.format(year))
+            for i in range(start, end):
+                print('Population for {}-{}'.format(i, year))
+                self.populate(service_id, year, i)
 
-            for service_id in service_ids:
-                print('Starting to populate data for service {}'.format(str(service_id)))
-                print('Starting populating monthly billing for {}'.format(year))
-                for i in range(start, end):
-                    print('Population for {}-{}'.format(i, year))
-                    self.populate(service_id, year, i)
+    def populate(self, service_id, year, month):
+        create_or_update_monthly_billing(service_id, datetime(int(year), int(month), 1))
+        sms_res = get_monthly_billing_by_notification_type(
+            service_id, datetime(int(year), int(month), 1), SMS_TYPE
+        )
+        email_res = get_monthly_billing_by_notification_type(
+            service_id, datetime(int(year), int(month), 1), EMAIL_TYPE
+        )
+        print("Finished populating data for {} for service id {}".format(month, str(service_id)))
+        print('SMS: {}'.format(sms_res.monthly_totals))
+        print('Email: {}'.format(email_res.monthly_totals))
 
-        def populate(self, service_id, year, month):
-            create_or_update_monthly_billing(service_id, datetime(int(year), int(month), 1))
-            sms_res = get_monthly_billing_by_notification_type(
-                service_id, datetime(int(year), int(month), 1), SMS_TYPE
+
+class BackfillProcessingTime(Command):
+    option_list = (
+        Option('-s', '--start_date', dest='start_date', help="Date (%Y-%m-%d) start date inclusive"),
+        Option('-e', '--end_date', dest='end_date', help="Date (%Y-%m-%d) end date inclusive"),
+    )
+
+    def run(self, start_date, end_date):
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+
+        delta = end_date - start_date
+
+        print('Sending notification processing-time data for all days between {} and {}'.format(start_date, end_date))
+
+        for i in range(delta.days + 1):
+            # because the tz conversion funcs talk about midnight, and the midnight before last,
+            # we want to pretend we're running this from the next morning, so add one.
+            process_date = start_date + timedelta(days=i + 1)
+
+            process_start_date = get_midnight_for_day_before(process_date)
+            process_end_date = get_london_midnight_in_utc(process_date)
+
+            print('Sending notification processing-time for {} - {}'.format(
+                process_start_date.isoformat(),
+                process_end_date.isoformat()
+            ))
+            send_processing_time_for_start_and_end(process_start_date, process_end_date)
+
+
+class PopulateServiceEmailReplyTo(Command):
+
+    def run(self):
+        services_to_update = """
+            INSERT INTO service_email_reply_to(id, service_id, email_address, is_default, created_at)
+            SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, reply_to_email_address, true, '{}'
+            FROM services
+            WHERE reply_to_email_address IS NOT NULL
+            AND id NOT IN(
+                SELECT service_id
+                FROM service_email_reply_to
             )
-            email_res = get_monthly_billing_by_notification_type(
-                service_id, datetime(int(year), int(month), 1), EMAIL_TYPE
-            )
-            print("Finished populating data for {} for service id {}".format(month, str(service_id)))
-            print('SMS: {}'.format(sms_res.monthly_totals))
-            print('Email: {}'.format(email_res.monthly_totals))
+        """.format(datetime.utcnow())
+
+        result = db.session.execute(services_to_update)
+        db.session.commit()
+
+        print("Populated email reply to adderesses for {}".format(result.rowcount))

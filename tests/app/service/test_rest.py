@@ -12,11 +12,11 @@ from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
 from app.models import (
-    User, Organisation, Service, ServicePermission, Notification,
+    User, Organisation, Service, ServicePermission, Notification, ServiceEmailReplyTo,
     DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
-)
+    ServiceSmsSender)
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_service as create_service,
@@ -25,7 +25,7 @@ from tests.app.conftest import (
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
-from tests.app.db import create_template, create_service_inbound_api, create_notification
+from tests.app.db import create_template, create_service_inbound_api, create_notification, create_reply_to_email
 from tests.app.db import create_user
 
 
@@ -281,6 +281,10 @@ def test_create_service(client, sample_user):
     json_resp = json.loads(resp.get_data(as_text=True))
     assert json_resp['data']['name'] == 'created service'
     assert not json_resp['data']['research_mode']
+
+    service_sms_senders = ServiceSmsSender.query.filter_by(service_id=service_db.id).all()
+    assert len(service_sms_senders) == 1
+    assert service_sms_senders[0].sms_sender == service_db.sms_sender
 
 
 def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_uuid):
@@ -1390,6 +1394,10 @@ def test_set_sms_sender_for_service(client, sample_service):
     result = json.loads(resp.get_data(as_text=True))
     assert resp.status_code == 200
     assert result['data']['sms_sender'] == 'elevenchars'
+    service_sms_senders = ServiceSmsSender.query.filter_by(service_id=sample_service.id).all()
+    assert len(service_sms_senders) == 1
+    assert service_sms_senders[0].sms_sender == 'elevenchars'
+    assert service_sms_senders[0].is_default
 
 
 def test_set_sms_sender_for_service_rejects_invalid_characters(client, sample_service):
@@ -2123,3 +2131,70 @@ def test_is_service_name_unique_returns_400_when_name_does_not_exist(client):
     json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp["message"][0]["name"] == ["Can't be empty"]
     assert json_resp["message"][1]["email_from"] == ["Can't be empty"]
+
+
+def test_update_service_reply_to_email_address_upserts_email_reply_to(admin_request, sample_service):
+    response = admin_request.post(
+        'service.update_service',
+        service_id=sample_service.id,
+        _data={
+            'reply_to_email_address': 'new@mail.com'
+        },
+        _expected_status=200
+    )
+
+    service_reply_to_emails = ServiceEmailReplyTo.query.all()
+    assert len(service_reply_to_emails) == 1
+    assert service_reply_to_emails[0].email_address == 'new@mail.com'
+    assert service_reply_to_emails[0].is_default
+    assert response['data']['reply_to_email_address'] == 'new@mail.com'
+
+
+def test_get_email_reply_to_addresses_when_there_are_no_reply_to_email_addresses(client, sample_service):
+    response = client.get('/service/{}/email-reply-to'.format(sample_service.id),
+                          headers=[create_authorization_header()])
+
+    assert json.loads(response.get_data(as_text=True)) == []
+    assert response.status_code == 200
+
+
+def test_get_email_reply_to_addresses_with_one_email_address(client, notify_db, notify_db_session):
+    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    reply_to = create_reply_to_email(service, 'test@mail.com')
+    service.reply_to_email_address = 'test@mail.com'
+
+    response = client.get('/service/{}/email-reply-to'.format(service.id),
+                          headers=[create_authorization_header()])
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert len(json_response) == 1
+    assert json_response[0]['email_address'] == 'test@mail.com'
+    assert json_response[0]['is_default']
+    assert json_response[0]['created_at']
+    assert not json_response[0]['updated_at']
+    assert response.status_code == 200
+
+
+def test_get_email_reply_to_addresses_with_multiple_email_addresses(client, notify_db, notify_db_session):
+    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    reply_to_a = create_reply_to_email(service, 'test_a@mail.com')
+    reply_to_b = create_reply_to_email(service, 'test_b@mail.com', False)
+
+    service.reply_to_email_address = 'test_a@mail.com'
+
+    response = client.get('/service/{}/email-reply-to'.format(service.id),
+                          headers=[create_authorization_header()])
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert len(json_response) == 2
+    assert response.status_code == 200
+
+    assert json_response[0]['email_address'] == 'test_a@mail.com'
+    assert json_response[0]['is_default']
+    assert json_response[0]['created_at']
+    assert not json_response[0]['updated_at']
+
+    assert json_response[1]['email_address'] == 'test_b@mail.com'
+    assert not json_response[1]['is_default']
+    assert json_response[1]['created_at']
+    assert not json_response[1]['updated_at']

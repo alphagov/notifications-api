@@ -26,7 +26,7 @@ function configure_aws_logs {
 state_file = /home/vcap/logs/awslogs-state
 
 [/home/vcap/logs/app.log]
-file = /home/vcap/logs/app.log*.json
+file = /home/vcap/logs/app.log.json
 log_group_name = paas-${CW_APP_NAME}-application
 log_stream_name = {hostname}
 EOF

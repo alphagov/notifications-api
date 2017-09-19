@@ -5,11 +5,15 @@ from flask import json
 from app.variables import LETTER_TEST_API_FILENAME
 
 from tests import create_authorization_header
+from tests.app.db import create_job
 
 
-def test_send_letter_jobs(client, mocker):
+def test_send_letter_jobs(client, mocker, sample_letter_template):
     mock_celery = mocker.patch("app.letters.rest.notify_celery.send_task")
-    job_ids = {"job_ids": [str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())]}
+    job_1 = create_job(sample_letter_template)
+    job_2 = create_job(sample_letter_template)
+    job_3 = create_job(sample_letter_template)
+    job_ids = {"job_ids": [str(job_1.id), str(job_2.id), str(job_3.id)]}
 
     auth_header = create_authorization_header()
 
@@ -21,7 +25,7 @@ def test_send_letter_jobs(client, mocker):
     assert response.status_code == 201
     assert json.loads(response.get_data())['data'] == {'response': "Task created to send files to DVLA"}
 
-    mock_celery.assert_called_once_with(name="send-files-to-dvla",
+    mock_celery.assert_called_once_with(name="send-jobs-to-dvla",
                                         args=(job_ids['job_ids'],),
                                         queue="process-ftp-tasks")
 

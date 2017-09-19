@@ -10,7 +10,9 @@ from app.models import (
 from flask import json, current_app
 
 from app.models import Notification
+from app.schema_validation import validate
 from app.v2.errors import RateLimitError
+from app.v2.notifications.notification_schemas import post_sms_response, post_email_response
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_template as create_sample_template, sample_service,
@@ -38,6 +40,7 @@ def test_post_sms_notification_returns_201(client, sample_template_with_placehol
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 201
     resp_json = json.loads(response.get_data(as_text=True))
+    assert validate(resp_json, post_sms_response) == resp_json
     notifications = Notification.query.all()
     assert len(notifications) == 1
     notification_id = notifications[0].id
@@ -71,6 +74,7 @@ def test_post_sms_notification_uses_inbound_number_as_sender(client, sample_temp
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 201
     resp_json = json.loads(response.get_data(as_text=True))
+    assert validate(resp_json, post_sms_response) == resp_json
     notifications = Notification.query.all()
     assert len(notifications) == 1
     notification_id = notifications[0].id
@@ -170,6 +174,7 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 201
     resp_json = json.loads(response.get_data(as_text=True))
+    assert validate(resp_json, post_email_response) == resp_json
     notification = Notification.query.first()
     assert resp_json['id'] == str(notification.id)
     assert resp_json['reference'] == reference
@@ -178,7 +183,8 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
         .replace('((name))', 'Bob').replace('GOV.UK', u'GOV.\u200bUK')
     assert resp_json['content']['subject'] == sample_email_template_with_placeholders.subject \
         .replace('((name))', 'Bob')
-    assert resp_json['content']['from_email'] == sample_email_template_with_placeholders.service.email_from
+    assert resp_json['content']['from_email'] == "{}@{}".format(
+        sample_email_template_with_placeholders.service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN'])
     assert 'v2/notifications/{}'.format(notification.id) in resp_json['uri']
     assert resp_json['template']['id'] == str(sample_email_template_with_placeholders.id)
     assert resp_json['template']['version'] == sample_email_template_with_placeholders.version

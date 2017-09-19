@@ -1,5 +1,3 @@
-import uuid
-
 from datetime import datetime, timedelta
 from functools import partial
 from unittest.mock import call, patch, PropertyMock
@@ -44,7 +42,7 @@ from app.models import (
     SMS_TYPE, LETTER_TYPE,
     JOB_STATUS_READY_TO_SEND,
     MonthlyBilling)
-from app.utils import get_london_midnight_in_utc, convert_utc_to_bst
+from app.utils import get_london_midnight_in_utc
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
 from tests.app.conftest import (
     sample_job as create_sample_job,
@@ -683,7 +681,7 @@ def test_populate_monthly_billing_updates_correct_month_in_bst(sample_template):
 def test_run_letter_jobs(client, mocker, sample_letter_template):
     jobs = [create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND),
             create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND)]
-    job_ids = [str(job.id) for job in jobs]
+    job_ids = [str(j.id) for j in jobs]
     mocker.patch(
         "app.celery.scheduled_tasks.dao_get_letter_job_ids_by_status",
         return_value=job_ids
@@ -692,6 +690,6 @@ def test_run_letter_jobs(client, mocker, sample_letter_template):
 
     run_letter_jobs()
 
-    mock_celery.assert_called_once_with(name=TaskNames.DVLA_FILES,
+    mock_celery.assert_called_once_with(name=TaskNames.DVLA_JOBS,
                                         args=(job_ids,),
                                         queue=QueueNames.PROCESS_FTP)
