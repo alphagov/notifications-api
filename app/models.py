@@ -123,6 +123,7 @@ user_to_service = db.Table(
 BRANDING_GOVUK = 'govuk'
 BRANDING_ORG = 'org'
 BRANDING_BOTH = 'both'
+BRANDING_ORG_BANNER = 'org_banner'
 
 
 class BrandingTypes(db.Model):

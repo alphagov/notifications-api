@@ -20,7 +20,8 @@ from app.models import (
     KEY_TYPE_TEAM,
     BRANDING_ORG,
     BRANDING_GOVUK,
-    BRANDING_BOTH)
+    BRANDING_BOTH,
+    BRANDING_ORG_BANNER)
 
 from tests.app.db import create_service, create_template, create_notification, create_inbound_number
 
@@ -411,7 +412,8 @@ def test_get_html_email_renderer_should_return_for_normal_service(sample_service
 
 @pytest.mark.parametrize('branding_type, govuk_banner', [
     (BRANDING_ORG, False),
-    (BRANDING_BOTH, True)
+    (BRANDING_BOTH, True),
+    (BRANDING_ORG_BANNER, False)
 ])
 def test_get_html_email_renderer_with_branding_details(branding_type, govuk_banner, notify_db, sample_service):
     sample_service.branding = branding_type
@@ -426,6 +428,11 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
     assert options['brand_colour'] == '#000000'
     assert options['brand_name'] == 'Justice League'
 
+    if sample_service.branding == BRANDING_ORG_BANNER:
+        assert options['brand_banner'] is True
+    else:
+        assert options['brand_banner'] is False
+
 
 def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_only(notify_db, sample_service):
     sample_service.branding = BRANDING_GOVUK
@@ -436,7 +443,7 @@ def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_o
 
     options = send_to_providers.get_html_email_options(sample_service)
 
-    assert options == {'govuk_banner': True}
+    assert options == {'govuk_banner': True, 'brand_banner': False}
 
 
 def test_get_html_email_renderer_prepends_logo_path(notify_api):
