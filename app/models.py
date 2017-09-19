@@ -16,6 +16,7 @@ from notifications_utils.recipients import (
     InvalidPhoneError,
     InvalidEmailError
 )
+from notifications_utils.letter_timings import get_letter_timings
 
 from app.encryption import (
     hashpw,
@@ -1029,6 +1030,10 @@ class Notification(db.Model):
             serialized['line_5'] = self.personalisation.get('address_line_5')
             serialized['line_6'] = self.personalisation.get('address_line_6')
             serialized['postcode'] = self.personalisation['postcode']
+            serialized['estimated_delivery'] = \
+                get_letter_timings(serialized['created_at'])\
+                .earliest_delivery\
+                .strftime(DATETIME_FORMAT)
 
         return serialized
 
