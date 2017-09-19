@@ -568,12 +568,12 @@ def sample_notification(
 @pytest.fixture
 def sample_letter_notification(sample_letter_template):
     address = {
-        'addressline1': 'A1',
-        'addressline2': 'A2',
-        'addressline3': 'A3',
-        'addressline4': 'A4',
-        'addressline5': 'A5',
-        'addressline6': 'A6',
+        'address_line_1': 'A1',
+        'address_line_2': 'A2',
+        'address_line_3': 'A3',
+        'address_line_4': 'A4',
+        'address_line_5': 'A5',
+        'address_line_6': 'A6',
         'postcode': 'A_POST'
     }
     return create_notification(sample_letter_template, personalisation=address)

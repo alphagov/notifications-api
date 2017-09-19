@@ -15,9 +15,16 @@ from app.dao.provider_details_dao import (
 )
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE, NOTIFICATION_TECHNICAL_FAILURE, \
-    NOTIFICATION_SENT, NOTIFICATION_SENDING
-
+from app.models import (
+    SMS_TYPE,
+    KEY_TYPE_TEST,
+    BRANDING_ORG,
+    BRANDING_GOVUK,
+    EMAIL_TYPE,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_SENT,
+    NOTIFICATION_SENDING
+)
 from app.celery.statistics_tasks import create_initial_notification_statistic_tasks
 
 
@@ -168,7 +175,7 @@ def get_logo_url(base_url, logo_file):
 
 def get_html_email_options(service):
     govuk_banner = service.branding != BRANDING_ORG
-    if service.organisation:
+    if service.organisation and service.branding != BRANDING_GOVUK:
         logo_url = get_logo_url(
             current_app.config['ADMIN_BASE_URL'],
             service.organisation.logo
