@@ -182,7 +182,7 @@ class ServiceSchema(BaseSchema):
     dvla_organisation = field_for(models.Service, 'dvla_organisation')
     permissions = fields.Method("service_permissions")
     override_flag = False
-    reply_to_email_address = fields.Method("get_reply_to_email_address")
+    reply_to_email_address = fields.Method(method_name="get_reply_to_email_address")
 
     def get_free_sms_fragment_limit(selfs, service):
         return service.free_sms_fragment_limit()
@@ -195,7 +195,7 @@ class ServiceSchema(BaseSchema):
 
     class Meta:
         model = models.Service
-        dump_only = ['free_sms_fragment_limit']
+        dump_only = ['free_sms_fragment_limit', 'reply_to_email_address']
         exclude = (
             'updated_at',
             'created_at',
