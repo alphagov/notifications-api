@@ -40,7 +40,7 @@ def dao_update_reply_to_email(reply_to):
 
 
 @transactional
-def add_reply_to_email_address_for_service(service_id, email_address, is_default=True):
+def add_reply_to_email_address_for_service(service_id, email_address, is_default):
     old_default = _get_existing_default(service_id)
     if is_default:
         _reset_old_default_to_false(old_default)
@@ -53,7 +53,7 @@ def add_reply_to_email_address_for_service(service_id, email_address, is_default
 
 
 @transactional
-def update_reply_to_email_address(service_id, reply_to_id, email_address, is_default=True):
+def update_reply_to_email_address(service_id, reply_to_id, email_address, is_default):
     old_default = _get_existing_default(service_id)
     if is_default:
         _reset_old_default_to_false(old_default)

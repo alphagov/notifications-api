@@ -69,7 +69,9 @@ def test_dao_get_reply_to_by_service_id(notify_db_session):
 
 def test_add_reply_to_email_address_for_service_creates_first_email_for_service(notify_db_session):
     service = create_service()
-    add_reply_to_email_address_for_service(service_id=service.id, email_address='new@address.com')
+    add_reply_to_email_address_for_service(service_id=service.id,
+                                           email_address='new@address.com',
+                                           is_default=True)
 
     results = dao_get_reply_to_by_service_id(service_id=service.id)
     assert len(results) == 1
@@ -112,7 +114,8 @@ def test_add_reply_to_email_address_new_reply_to_is_default_existing_reply_to_is
 
 def test_add_reply_to_email_address_can_add_a_third_reply_to_address(sample_service):
     add_reply_to_email_address_for_service(service_id=sample_service.id,
-                                           email_address="first@address.com")
+                                           email_address="first@address.com",
+                                           is_default=True)
     add_reply_to_email_address_for_service(service_id=sample_service.id, email_address='second@address.com',
                                            is_default=False)
     add_reply_to_email_address_for_service(service_id=sample_service.id, email_address='third@address.com',
@@ -150,7 +153,8 @@ def test_add_reply_to_email_address_ensure_there_is_not_more_than_one_default(sa
 def test_update_reply_to_email_address(sample_service):
     first_reply_to = create_reply_to_email(service=sample_service, email_address="first@address.com")
     update_reply_to_email_address(service_id=sample_service.id, reply_to_id=first_reply_to.id,
-                                  email_address='change_address@email.com')
+                                  email_address='change_address@email.com',
+                                  is_default=True)
     updated_reply_to = ServiceEmailReplyTo.query.get(first_reply_to.id)
 
     assert updated_reply_to.email_address == 'change_address@email.com'
