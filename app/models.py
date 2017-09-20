@@ -1354,6 +1354,6 @@ class ServiceEmailReplyTo(db.Model):
         return {
             'email_address': self.email_address,
             'is_default': self.is_default,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at
+            'created_at': self.created_at.strftime(DATETIME_FORMAT),
+            'updated_at': self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
         }
