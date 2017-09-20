@@ -137,7 +137,8 @@ def sample_service(
     limit=1000,
     email_from=None,
     permissions=[SMS_TYPE, EMAIL_TYPE],
-    research_mode=None
+    research_mode=None,
+    letter_contact_block='London,\nSW1A 1AA',
 ):
     if user is None:
         user = create_user()
@@ -150,7 +151,7 @@ def sample_service(
         'restricted': restricted,
         'email_from': email_from,
         'created_by': user,
-        'letter_contact_block': 'London,\nSW1A 1AA'
+        'letter_contact_block': letter_contact_block,
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
@@ -179,6 +180,11 @@ def sample_service_full_permissions(notify_db, notify_db_session):
         service_name="sample service full permissions",
         permissions=SERVICE_PERMISSION_TYPES
     )
+
+
+@pytest.fixture(scope='function')
+def sample_service_custom_letter_contact_block(notify_db, notify_db_session):
+    return sample_service(notify_db, notify_db_session, letter_contact_block='((contact block))')
 
 
 @pytest.fixture(scope='function')
