@@ -7,5 +7,5 @@ add_service_email_reply_to_request = {
         "email_address": {"type": "string", "format": "email_address"},
         "is_default": {"type": "boolean"}
     },
-    "required": ["email_address"]
+    "required": ["email_address", "is_default"]
 }

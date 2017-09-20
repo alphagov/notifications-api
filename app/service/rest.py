@@ -533,6 +533,8 @@ def get_email_reply_to_addresses(service_id):
 
 @service_blueprint.route('/<uuid:service_id>/email-reply-to', methods=['POST'])
 def add_service_reply_to_email_address(service_id):
+    # validate the service exists, throws ResultNotFound exception.
+    dao_fetch_service_by_id(service_id)
     form = validate(request.get_json(), add_service_email_reply_to_request)
     new_reply_to = add_reply_to_email_address_for_service(service_id=service_id,
                                                           email_address=form['email_address'],
@@ -540,11 +542,13 @@ def add_service_reply_to_email_address(service_id):
     return jsonify(data=new_reply_to.serialize()), 201
 
 
-@service_blueprint.route('/<uuid:service_id>/email-reply-to/<uuid:id>', methods=['POST'])
-def update_service_reply_to_email_address(service_id, id):
+@service_blueprint.route('/<uuid:service_id>/email-reply-to/<uuid:reply_to_email_id>', methods=['POST'])
+def update_service_reply_to_email_address(service_id, reply_to_email_id):
+    # validate the service exists, throws ResultNotFound exception.
+    dao_fetch_service_by_id(service_id)
     form = validate(request.get_json(), add_service_email_reply_to_request)
     new_reply_to = update_reply_to_email_address(service_id=service_id,
-                                                 reply_to_id=id,
+                                                 reply_to_id=reply_to_email_id,
                                                  email_address=form['email_address'],
                                                  is_default=form.get('is_default', True))
     return jsonify(data=new_reply_to.serialize()), 200

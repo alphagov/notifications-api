@@ -138,6 +138,15 @@ def test_add_reply_to_email_address_ensures_first_reply_to_is_default(sample_ser
                                                email_address="first@address.com", is_default=False)
 
 
+def test_add_reply_to_email_address_ensure_there_is_not_more_than_one_default(sample_service):
+    create_reply_to_email(service=sample_service, email_address='first@email.com', is_default=True)
+    create_reply_to_email(service=sample_service, email_address='second@email.com', is_default=True)
+    with pytest.raises(Exception):
+        add_reply_to_email_address_for_service(service_id=sample_service.id,
+                                               email_address='third_email@address.com',
+                                               is_default=False)
+
+
 def test_update_reply_to_email_address(sample_service):
     first_reply_to = create_reply_to_email(service=sample_service, email_address="first@address.com")
     update_reply_to_email_address(service_id=sample_service.id, reply_to_id=first_reply_to.id,
