@@ -182,12 +182,16 @@ class ServiceSchema(BaseSchema):
     dvla_organisation = field_for(models.Service, 'dvla_organisation')
     permissions = fields.Method("service_permissions")
     override_flag = False
+    reply_to_email_address = fields.Method("get_reply_to_email_address")
 
     def get_free_sms_fragment_limit(selfs, service):
         return service.free_sms_fragment_limit()
 
     def service_permissions(self, service):
         return [p.permission for p in service.permissions]
+
+    def get_reply_to_email_address(self, service):
+        return service.get_default_reply_to_email_address()
 
     class Meta:
         model = models.Service

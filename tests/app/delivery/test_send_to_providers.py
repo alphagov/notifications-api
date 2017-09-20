@@ -23,7 +23,8 @@ from app.models import (
     BRANDING_BOTH,
     BRANDING_ORG_BANNER)
 
-from tests.app.db import create_service, create_template, create_notification, create_inbound_number
+from tests.app.db import create_service, create_template, create_notification, create_inbound_number, \
+    create_reply_to_email
 
 
 def test_should_return_highest_priority_active_provider(restore_provider_details):
@@ -386,7 +387,7 @@ def test_send_email_should_use_service_reply_to_email(
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     db_notification = create_notification(template=sample_email_template)
-    sample_service.reply_to_email_address = 'foo@bar.com'
+    create_reply_to_email(service=sample_service, email_address='foo@bar.com')
 
     send_to_providers.send_email_to_provider(
         db_notification,
@@ -398,7 +399,7 @@ def test_send_email_should_use_service_reply_to_email(
         ANY,
         body=ANY,
         html_body=ANY,
-        reply_to_address=sample_service.reply_to_email_address
+        reply_to_address=sample_service.get_default_reply_to_email_address()
     )
 
 
