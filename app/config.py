@@ -260,7 +260,7 @@ class Config(object):
 
     DVLA_BUCKETS = {
         'job': '{}-dvla-file-per-job'.format(os.getenv('NOTIFY_ENVIRONMENT')),
-        'notification': '{}-dvla-file-per-job'.format(os.getenv('NOTIFY_ENVIRONMENT'))
+        'notification': '{}-dvla-file-letter-api'.format(os.getenv('NOTIFY_ENVIRONMENT'))
     }
 
     API_KEY_LIMITS = {

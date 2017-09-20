@@ -27,7 +27,11 @@ from app.dao.jobs_dao import (
     all_notifications_are_created_for_job,
     dao_get_all_notifications_for_job,
     dao_update_job_status)
-from app.dao.notifications_dao import get_notification_by_id, dao_update_notifications_for_job_to_sent_to_dvla
+from app.dao.notifications_dao import (
+    get_notification_by_id,
+    dao_update_notifications_for_job_to_sent_to_dvla,
+    dao_update_notifications_by_reference
+)
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
@@ -309,22 +313,47 @@ def update_job_to_sent_to_dvla(self, job_id):
                             "Updated {} job to {}".format(updated_count, job_id, JOB_STATUS_SENT_TO_DVLA))
 
 
-@notify_celery.task(bind=True, name='update-notifications-to-sent')
-@statsd(namespace="tasks")
-def update_notifications_to_sent_to_dvla(self, notification_references):
-    # This task will be called by the FTP app to update notifications as sent to DVLA
-    provider = get_current_provider(LETTER_TYPE)
-
-    updated_count = dao_update_notifications_for_job_to_sent_to_dvla(references, provider.identifier)
-
-    current_app.logger.info("Updated {} letter notifications to sending. ".format(updated_count))
-
-
 @notify_celery.task(bind=True, name='update-letter-job-to-error')
 @statsd(namespace="tasks")
 def update_dvla_job_to_error(self, job_id):
     dao_update_job_status(job_id, JOB_STATUS_ERROR)
     current_app.logger.info("Updated {} job to {}".format(job_id, JOB_STATUS_ERROR))
+
+
+@notify_celery.task(bind=True, name='update-letter-notifications-to-sent')
+@statsd(namespace="tasks")
+def update_letter_notifications_to_sent_to_dvla(self, notification_references):
+    # This task will be called by the FTP app to update notifications as sent to DVLA
+    provider = get_current_provider(LETTER_TYPE)
+
+    updated_count = dao_update_notifications_by_reference(
+        notification_references,
+        {
+            'status': NOTIFICATION_SENDING,
+            'sent_by': provider.identifier,
+            'sent_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow()
+        }
+    )
+
+    current_app.logger.info("Updated {} letter notifications to sending".format(updated_count))
+
+
+@notify_celery.task(bind=True, name='update-letter-notifications-to-error')
+@statsd(namespace="tasks")
+def update_letter_notifications_to_error(self, notification_references):
+    # This task will be called by the FTP app to update notifications as sent to DVLA
+    provider = get_current_provider(LETTER_TYPE)
+
+    updated_count = dao_update_notifications_by_reference(
+        notification_references,
+        {
+            'status': NOTIFICATION_TECHNICAL_FAILURE,
+            'updated_at': datetime.utcnow()
+        }
+    )
+
+    current_app.logger.info("Updated {} letter notifications to technical-failure".format(updated_count))
 
 
 def create_dvla_file_contents_for_job(job_id):

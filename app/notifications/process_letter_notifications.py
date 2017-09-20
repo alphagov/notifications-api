@@ -26,10 +26,10 @@ def create_letter_api_job(template):
     return job
 
 
-def create_letter_notification(letter_data, job, api_key):
+def create_letter_notification(letter_data, template, api_key):
     notification = persist_notification(
-        template_id=job.template.id,
-        template_version=job.template.version,
+        template_id=template.id,
+        template_version=template.version,
         # we only accept addresses_with_underscores from the API (from CSV we also accept dashes, spaces etc)
         recipient=letter_data['personalisation']['address_line_1'],
         service=job.service,
@@ -37,8 +37,8 @@ def create_letter_notification(letter_data, job, api_key):
         notification_type=LETTER_TYPE,
         api_key_id=api_key.id,
         key_type=api_key.key_type,
-        job_id=job.id,
-        job_row_number=0,
+        job_id=None,
+        job_row_number=None,
         reference=create_random_identifier(),
         client_reference=letter_data.get('reference')
     )
