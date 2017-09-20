@@ -10,10 +10,12 @@ from app.models import (
     MOBILE_TYPE,
     EMAIL_TYPE,
     NOTIFICATION_CREATED,
+    NOTIFICATION_SENDING,
     NOTIFICATION_PENDING,
     NOTIFICATION_FAILED,
     NOTIFICATION_TECHNICAL_FAILURE,
-    NOTIFICATION_STATUS_TYPES_FAILED
+    NOTIFICATION_STATUS_TYPES_FAILED,
+    NOTIFICATION_STATUS_LETTER_ACCEPTED
 )
 from tests.app.conftest import (
     sample_template as create_sample_template,
@@ -55,8 +57,9 @@ def test_should_not_build_service_whitelist_from_invalid_contact(recipient_type,
 @pytest.mark.parametrize('initial_statuses, expected_statuses', [
     # passing in single statuses as strings
     (NOTIFICATION_FAILED, NOTIFICATION_STATUS_TYPES_FAILED),
-    (NOTIFICATION_CREATED, NOTIFICATION_CREATED),
-    (NOTIFICATION_TECHNICAL_FAILURE, NOTIFICATION_TECHNICAL_FAILURE),
+    (NOTIFICATION_STATUS_LETTER_ACCEPTED, [NOTIFICATION_SENDING, NOTIFICATION_CREATED]),
+    (NOTIFICATION_CREATED, [NOTIFICATION_CREATED]),
+    (NOTIFICATION_TECHNICAL_FAILURE, [NOTIFICATION_TECHNICAL_FAILURE]),
     # passing in lists containing single statuses
     ([NOTIFICATION_FAILED], NOTIFICATION_STATUS_TYPES_FAILED),
     ([NOTIFICATION_CREATED], [NOTIFICATION_CREATED]),
@@ -65,13 +68,17 @@ def test_should_not_build_service_whitelist_from_invalid_contact(recipient_type,
     ([NOTIFICATION_FAILED, NOTIFICATION_CREATED], NOTIFICATION_STATUS_TYPES_FAILED + [NOTIFICATION_CREATED]),
     ([NOTIFICATION_CREATED, NOTIFICATION_PENDING], [NOTIFICATION_CREATED, NOTIFICATION_PENDING]),
     ([NOTIFICATION_CREATED, NOTIFICATION_TECHNICAL_FAILURE], [NOTIFICATION_CREATED, NOTIFICATION_TECHNICAL_FAILURE]),
+    (
+        [NOTIFICATION_FAILED, NOTIFICATION_STATUS_LETTER_ACCEPTED],
+        NOTIFICATION_STATUS_TYPES_FAILED + [NOTIFICATION_SENDING, NOTIFICATION_CREATED]
+    ),
     # checking we don't end up with duplicates
     (
         [NOTIFICATION_FAILED, NOTIFICATION_CREATED, NOTIFICATION_TECHNICAL_FAILURE],
         NOTIFICATION_STATUS_TYPES_FAILED + [NOTIFICATION_CREATED]
     ),
 ])
-def test_status_conversion_handles_failed_statuses(initial_statuses, expected_statuses):
+def test_status_conversion(initial_statuses, expected_statuses):
     converted_statuses = Notification.substitute_status(initial_statuses)
     assert len(converted_statuses) == len(expected_statuses)
     assert set(converted_statuses) == set(expected_statuses)

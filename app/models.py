@@ -1,3 +1,4 @@
+import itertools
 import time
 import uuid
 import datetime
@@ -903,10 +904,10 @@ class Notification(db.Model):
         -
 
         > IN
-        ['failed', 'created']
+        ['failed', 'created', 'accepted']
 
         < OUT
-        ['technical-failure', 'temporary-failure', 'permanent-failure', 'created']
+        ['technical-failure', 'temporary-failure', 'permanent-failure', 'created', 'sending']
 
 
         :param status_or_statuses: a single status or list of statuses
@@ -914,18 +915,17 @@ class Notification(db.Model):
         """
 
         def _substitute_status_str(_status):
-            return NOTIFICATION_STATUS_TYPES_FAILED if _status == NOTIFICATION_FAILED else _status
+            return (
+                NOTIFICATION_STATUS_TYPES_FAILED if _status == NOTIFICATION_FAILED else
+                [NOTIFICATION_CREATED, NOTIFICATION_SENDING] if _status == NOTIFICATION_STATUS_LETTER_ACCEPTED else
+                [_status]
+            )
 
         def _substitute_status_seq(_statuses):
-            if NOTIFICATION_FAILED in _statuses:
-                _statuses = list(set(
-                    NOTIFICATION_STATUS_TYPES_FAILED + [_s for _s in _statuses if _s != NOTIFICATION_FAILED]
-                ))
-            return _statuses
+            return list(set(itertools.chain.from_iterable(_substitute_status_str(status) for status in _statuses)))
 
         if isinstance(status_or_statuses, str):
             return _substitute_status_str(status_or_statuses)
-
         return _substitute_status_seq(status_or_statuses)
 
     @property
