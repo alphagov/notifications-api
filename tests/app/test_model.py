@@ -21,7 +21,7 @@ from tests.app.conftest import (
     sample_template as create_sample_template,
     sample_notification_with_job as create_sample_notification_with_job
 )
-from tests.app.db import create_notification, create_service, create_inbound_number
+from tests.app.db import create_notification, create_service, create_inbound_number, create_reply_to_email
 from tests.conftest import set_config
 
 
@@ -256,3 +256,9 @@ def test_inbound_number_returns_from_number_config(client, notify_db_session):
         service = create_service(sms_sender=None)
 
     assert service.get_inbound_number() == 'test'
+
+
+def test_service_get_default_reply_to_email_address(sample_service):
+    create_reply_to_email(service=sample_service, email_address="default@email.com")
+
+    assert sample_service.get_default_reply_to_email_address() == 'default@email.com'

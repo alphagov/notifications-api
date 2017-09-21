@@ -213,19 +213,19 @@ def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
             assert json_resp['message'] == 'No result found'
 
 
-def test_get_service_by_id_and_user(notify_api, service_factory, sample_user):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            service = service_factory.get('new.service', sample_user)
-            auth_header = create_authorization_header()
-            resp = client.get(
-                '/service/{}?user_id={}'.format(service.id, sample_user.id),
-                headers=[auth_header]
-            )
-            assert resp.status_code == 200
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp['data']['name'] == service.name
-            assert json_resp['data']['id'] == str(service.id)
+def test_get_service_by_id_and_user(client, sample_service, sample_user):
+    sample_service.reply_to_email = 'something@service.com'
+    create_reply_to_email(service=sample_service, email_address='new@service.com')
+    auth_header = create_authorization_header()
+    resp = client.get(
+        '/service/{}?user_id={}'.format(sample_service.id, sample_user.id),
+        headers=[auth_header]
+    )
+    assert resp.status_code == 200
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert json_resp['data']['name'] == sample_service.name
+    assert json_resp['data']['id'] == str(sample_service.id)
+    assert json_resp['data']['reply_to_email_address'] == 'new@service.com'
 
 
 def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_user):
@@ -2161,7 +2161,6 @@ def test_get_email_reply_to_addresses_when_there_are_no_reply_to_email_addresses
 def test_get_email_reply_to_addresses_with_one_email_address(client, notify_db, notify_db_session):
     service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
     reply_to = create_reply_to_email(service, 'test@mail.com')
-    service.reply_to_email_address = 'test@mail.com'
 
     response = client.get('/service/{}/email-reply-to'.format(service.id),
                           headers=[create_authorization_header()])

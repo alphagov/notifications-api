@@ -109,13 +109,14 @@ def send_email_to_provider(notification):
         else:
             from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
                                                  current_app.config['NOTIFY_EMAIL_DOMAIN'])
+
             reference = provider.send_email(
                 from_address,
                 notification.to,
                 plain_text_email.subject,
                 body=str(plain_text_email),
                 html_body=str(html_email),
-                reply_to_address=service.reply_to_email_address,
+                reply_to_address=service.get_default_reply_to_email_address(),
             )
             notification.reference = reference
             update_notification(notification, provider)

@@ -202,7 +202,7 @@ class Service(db.Model, Versioned):
     email_from = db.Column(db.Text, index=False, unique=True, nullable=False)
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
-    reply_to_email_address = db.Column(db.Text, index=False, unique=False, nullable=True)
+    _reply_to_email_address = db.Column("reply_to_email_address", db.Text, index=False, unique=False, nullable=True)
     letter_contact_block = db.Column(db.Text, index=False, unique=False, nullable=True)
     sms_sender = db.Column(db.String(11), nullable=False, default=lambda: current_app.config['FROM_NUMBER'])
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
@@ -249,6 +249,13 @@ class Service(db.Model, Versioned):
             return self.inbound_number.number
         else:
             return self.sms_sender
+
+    def get_default_reply_to_email_address(self):
+        default_reply_to = [x for x in self.reply_to_email_addresses if x.is_default]
+        if len(default_reply_to) > 1:
+            raise Exception("There should only ever be one default")
+        else:
+            return default_reply_to[0].email_address if default_reply_to else None
 
 
 class InboundNumber(db.Model):
