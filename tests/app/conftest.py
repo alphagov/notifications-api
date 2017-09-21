@@ -172,7 +172,13 @@ def sample_service(
 
 @pytest.fixture(scope='function')
 def sample_service_full_permissions(notify_db, notify_db_session):
-    return sample_service(notify_db, notify_db_session, permissions=SERVICE_PERMISSION_TYPES)
+    return sample_service(
+        notify_db,
+        notify_db_session,
+        # ensure name doesn't clash with regular sample service
+        service_name="sample service full permissions",
+        permissions=SERVICE_PERMISSION_TYPES
+    )
 
 
 @pytest.fixture(scope='function')

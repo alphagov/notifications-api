@@ -45,11 +45,11 @@ from app.models import (
 from tests.app import load_example_csv
 from tests.conftest import set_config
 from tests.app.conftest import (
-    sample_service,
-    sample_template,
-    sample_job,
-    sample_email_template,
-    sample_notification
+    sample_service as create_sample_service,
+    sample_template as create_sample_template,
+    sample_job as create_sample_job,
+    sample_email_template as create_sample_email_template,
+    sample_notification as create_sample_notification
 )
 from tests.app.db import create_user, create_notification, create_job, create_service_inbound_api, create_inbound_sms
 
@@ -82,7 +82,7 @@ def test_should_have_decorated_tasks_functions():
 
 @pytest.fixture
 def email_job_with_placeholders(notify_db, notify_db_session, sample_email_template_with_placeholders):
-    return sample_job(notify_db, notify_db_session, template=sample_email_template_with_placeholders)
+    return create_sample_job(notify_db, notify_db_session, template=sample_email_template_with_placeholders)
 
 
 # -------------- process_job tests -------------- #
@@ -123,8 +123,8 @@ def test_should_process_sms_job(sample_job, mocker):
 def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db,
                                                                 notify_db_session,
                                                                 mocker):
-    service = sample_service(notify_db, notify_db_session, limit=9)
-    job = sample_job(notify_db, notify_db_session, service=service, notification_count=10)
+    service = create_sample_service(notify_db, notify_db_session, limit=9)
+    job = create_sample_job(notify_db, notify_db_session, service=service, notification_count=10)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mocker.patch('app.celery.tasks.process_row')
@@ -142,10 +142,10 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db,
 def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify_db,
                                                                           notify_db_session,
                                                                           mocker):
-    service = sample_service(notify_db, notify_db_session, limit=1)
-    job = sample_job(notify_db, notify_db_session, service=service)
+    service = create_sample_service(notify_db, notify_db_session, limit=1)
+    job = create_sample_job(notify_db, notify_db_session, service=service)
 
-    sample_notification(notify_db, notify_db_session, service=service, job=job)
+    create_sample_notification(notify_db, notify_db_session, service=service, job=job)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
     mocker.patch('app.celery.tasks.process_row')
@@ -161,11 +161,11 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify
 
 
 def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(notify_db, notify_db_session, mocker):
-    service = sample_service(notify_db, notify_db_session, limit=1)
-    template = sample_email_template(notify_db, notify_db_session, service=service)
-    job = sample_job(notify_db, notify_db_session, service=service, template=template)
+    service = create_sample_service(notify_db, notify_db_session, limit=1)
+    template = create_sample_email_template(notify_db, notify_db_session, service=service)
+    job = create_sample_job(notify_db, notify_db_session, service=service, template=template)
 
-    sample_notification(notify_db, notify_db_session, service=service, job=job)
+    create_sample_notification(notify_db, notify_db_session, service=service, job=job)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.process_row')
@@ -182,9 +182,9 @@ def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(noti
 
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, notify_db_session, mocker):
-    service = sample_service(notify_db, notify_db_session, limit=0)
-    template = sample_email_template(notify_db, notify_db_session, service=service)
-    job = sample_job(notify_db, notify_db_session, service=service, template=template)
+    service = create_sample_service(notify_db, notify_db_session, limit=0)
+    template = create_sample_email_template(notify_db, notify_db_session, service=service)
+    job = create_sample_job(notify_db, notify_db_session, service=service, template=template)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.process_row')
@@ -200,7 +200,7 @@ def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, not
 
 
 def test_should_not_process_job_if_already_pending(notify_db, notify_db_session, mocker):
-    job = sample_job(notify_db, notify_db_session, job_status='scheduled')
+    job = create_sample_job(notify_db, notify_db_session, job_status='scheduled')
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.process_row')
@@ -217,9 +217,9 @@ def test_should_not_process_job_if_already_pending(notify_db, notify_db_session,
 def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
                                                             notify_db_session,
                                                             mocker):
-    service = sample_service(notify_db, notify_db_session, limit=10)
-    template = sample_email_template(notify_db, notify_db_session, service=service)
-    job = sample_job(notify_db, notify_db_session, service=service, template=template, notification_count=10)
+    service = create_sample_service(notify_db, notify_db_session, limit=10)
+    template = create_sample_email_template(notify_db, notify_db_session, service=service)
+    job = create_sample_job(notify_db, notify_db_session, service=service, template=template, notification_count=10)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
@@ -429,11 +429,11 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
 
 
 def test_should_put_send_sms_task_in_research_mode_queue_if_research_mode_service(notify_db, notify_db_session, mocker):
-    service = sample_service(notify_db, notify_db_session)
+    service = create_sample_service(notify_db, notify_db_session)
     service.research_mode = True
     services_dao.dao_update_service(service)
 
-    template = sample_template(notify_db, notify_db_session, service=service)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
 
     notification = _notification_json(template, to="+447234123123")
 
@@ -457,8 +457,8 @@ def test_should_put_send_sms_task_in_research_mode_queue_if_research_mode_servic
 
 def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notify_db_session, mocker):
     user = create_user(mobile_number="07700 900890")
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(notify_db, notify_db_session, service=service)
+    service = create_sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
     notification = _notification_json(template, "+447700900890")  # The user’s own number, but in a different format
 
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
@@ -493,8 +493,8 @@ def test_should_send_sms_if_restricted_service_and_non_team_number_with_test_key
                                                                                  notify_db_session,
                                                                                  mocker):
     user = create_user(mobile_number="07700 900205")
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(notify_db, notify_db_session, service=service)
+    service = create_sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
 
     notification = _notification_json(template, "07700 900849")
     mocked_deliver_sms = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
@@ -519,8 +519,8 @@ def test_should_send_email_if_restricted_service_and_non_team_email_address_with
                                                                                           notify_db_session,
                                                                                           mocker):
     user = create_user()
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(
+    service = create_sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = create_sample_template(
         notify_db, notify_db_session, service=service, template_type='email', subject_line='Hello'
     )
 
@@ -545,8 +545,8 @@ def test_should_send_email_if_restricted_service_and_non_team_email_address_with
 
 def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db, notify_db_session, mocker):
     user = create_user(mobile_number="07700 900205")
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(notify_db, notify_db_session, service=service)
+    service = create_sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
 
     notification = _notification_json(template, "07700 900849")
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
@@ -564,8 +564,8 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
 
 def test_should_not_send_email_if_restricted_service_and_invalid_email_address(notify_db, notify_db_session, mocker):
     user = create_user()
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(
+    service = create_sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = create_sample_template(
         notify_db, notify_db_session, service=service, template_type='email', subject_line='Hello'
     )
     notification = _notification_json(template, to="test@example.com")
@@ -584,11 +584,11 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
 def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_service(
         notify_db, notify_db_session, mocker
 ):
-    service = sample_service(notify_db, notify_db_session)
+    service = create_sample_service(notify_db, notify_db_session)
     service.research_mode = True
     services_dao.dao_update_service(service)
 
-    template = sample_email_template(notify_db, notify_db_session, service=service)
+    template = create_sample_email_template(notify_db, notify_db_session, service=service)
 
     notification = _notification_json(template, to="test@test.com")
 
@@ -611,10 +611,10 @@ def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_serv
 
 
 def test_should_not_build_dvla_file_in_research_mode_for_letter_job(
-        mocker, sample_service, sample_letter_job, fake_uuid
+        mocker, sample_letter_job, fake_uuid
 ):
     test_encrypted_data = 'some encrypted data'
-    sample_service.research_mode = True
+    sample_letter_job.service.research_mode = True
 
     csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
     A1,A2,A3,A4,A_POST,Alice
@@ -633,10 +633,10 @@ def test_should_not_build_dvla_file_in_research_mode_for_letter_job(
 
 @freeze_time("2017-08-29 17:30:00")
 def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
-        mocker, sample_service, sample_letter_job, fake_uuid
+        mocker, sample_letter_job, fake_uuid
 ):
     test_encrypted_data = 'some encrypted data'
-    sample_service.research_mode = True
+    sample_letter_job.service.research_mode = True
 
     csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
     A1,A2,A3,A4,A_POST,Alice
@@ -654,7 +654,7 @@ def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
 
     persist_letter.apply_async.assert_called_once_with(
         (
-            str(sample_service.id),
+            str(sample_letter_job.service_id),
             fake_uuid,
             test_encrypted_data,
             datetime.utcnow().strftime(DATETIME_FORMAT)
@@ -737,8 +737,8 @@ def test_should_not_send_email_if_team_key_and_recipient_not_in_team(sample_emai
 def test_should_not_send_sms_if_team_key_and_recipient_not_in_team(notify_db, notify_db_session, mocker):
     assert Notification.query.count() == 0
     user = create_user(mobile_number="07700 900205")
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(notify_db, notify_db_session, service=service)
+    service = create_sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
 
     team_members = [user.mobile_number for user in service.users]
     assert "07890 300000" not in team_members
