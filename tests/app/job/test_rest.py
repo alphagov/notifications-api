@@ -187,7 +187,7 @@ def test_create_job_returns_403_if_service_is_not_active(client, fake_uuid, samp
 
 
 def test_create_job_returns_403_if_letter_template_type_and_service_in_trial(
-        client, fake_uuid, sample_service, sample_trial_letter_template, mocker):
+        client, fake_uuid, sample_trial_letter_template, mocker):
     data = {
         'id': fake_uuid,
         'service': str(sample_trial_letter_template.service.id),
@@ -198,7 +198,7 @@ def test_create_job_returns_403_if_letter_template_type_and_service_in_trial(
     }
     mock_job_dao = mocker.patch("app.dao.jobs_dao.dao_create_job")
     auth_header = create_authorization_header()
-    response = client.post('/service/{}/job'.format(sample_service.id),
+    response = client.post('/service/{}/job'.format(sample_trial_letter_template.service.id),
                            data=json.dumps(data),
                            headers=[('Content-Type', 'application/json'), auth_header])
 
