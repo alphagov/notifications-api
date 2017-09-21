@@ -26,6 +26,7 @@ from tests.app.db import (
     create_service,
     create_inbound_number,
     create_reply_to_email,
+    create_service_sms_sender,
     create_letter_contact
 )
 from tests.conftest import set_config
@@ -279,3 +280,8 @@ def test_service_get_default_contact_letter(sample_service):
 # this test will need to be removed after letter_contact_block is dropped
 def test_service_get_default_letter_contact_block_from_service(sample_service):
     assert sample_service.get_default_letter_contact() == sample_service.letter_contact_block
+
+
+def test_service_get_default_sms_sender(notify_db_session):
+    service = create_service(sms_sender='new_value')
+    assert service.get_default_sms_sender() == 'new_value'

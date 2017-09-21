@@ -27,8 +27,7 @@ from app.models import (
     INBOUND_SMS_TYPE,
     KEY_TYPE_NORMAL,
     ServiceInboundApi,
-    ServiceEmailReplyTo,
-    ServiceLetterContact
+    ServiceEmailReplyTo
 )
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import dao_create_notification, dao_created_scheduled_notification
@@ -71,7 +70,7 @@ def create_service(
         message_limit=1000,
         restricted=restricted,
         email_from=service_name.lower().replace(' ', '.'),
-        created_by=user or create_user(),
+        created_by=user or create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
         sms_sender=sms_sender,
     )
 
@@ -142,9 +141,6 @@ def create_notification(
         api_key = ApiKey.query.filter(ApiKey.service == template.service, ApiKey.key_type == key_type).first()
         if not api_key:
             api_key = create_api_key(template.service, key_type=key_type)
-
-    if template.template_type == LETTER_TYPE and reference is None:
-        reference = create_random_identifier()
 
     data = {
         'id': uuid.uuid4(),
@@ -352,6 +348,24 @@ def create_reply_to_email(
     db.session.commit()
 
     return reply_to
+
+
+def create_service_sms_sender(
+    service,
+    sms_sender,
+    is_default=True
+):
+    data = {
+        'service_id': service.id,
+        'sms_sender': sms_sender,
+        'is_default': is_default,
+    }
+    service_sms_sender = ServiceSmsSender(**data)
+
+    db.session.add(service_sms_sender)
+    db.session.commit()
+
+    return service_sms_sender
 
 
 def create_letter_contact(

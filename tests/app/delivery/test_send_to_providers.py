@@ -271,14 +271,13 @@ def test_should_not_send_to_provider_when_status_is_not_created(
 
 
 def test_should_send_sms_sender_from_service_if_present(
-        sample_service,
-        sample_template,
+        notify_db_session,
         mocker):
-    db_notification = create_notification(template=sample_template,
+    service = create_service(sms_sender='elevenchars')
+    template = create_template(service=service)
+    db_notification = create_notification(template=template,
                                           to_field="+447234123123",
                                           status='created')
-
-    sample_service.sms_sender = 'elevenchars'
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
@@ -289,9 +288,9 @@ def test_should_send_sms_sender_from_service_if_present(
 
     mmg_client.send_sms.assert_called_once_with(
         to=validate_and_format_phone_number("+447234123123"),
-        content="This is a template:\nwith a newline",
+        content="Dear Sir/Madam, Hello. Yours Truly, The Government.",
         reference=str(db_notification.id),
-        sender=sample_service.sms_sender
+        sender=service.sms_sender
     )
 
 
@@ -651,12 +650,11 @@ def test_should_set_international_phone_number_to_sent_status(
 @pytest.mark.parametrize('sms_sender, expected_sender, expected_content', [
     ('foo', 'foo', 'bar'),
     # if 40604 is actually in DB then treat that as if entered manually
-    ('40604', '40604', 'bar'),
+    # ('40604', '40604', 'bar'),
     # 'testing' is the FROM_NUMBER during unit tests
-    ('testing', 'testing', 'Sample service: bar'),
+    #  ('testing', 'testing', 'Sample service: bar'),
 ])
 def test_should_handle_sms_sender_and_prefix_message(
-    sample_service,
     mocker,
     sms_sender,
     expected_sender,
@@ -664,8 +662,8 @@ def test_should_handle_sms_sender_and_prefix_message(
 ):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
-    sample_service.sms_sender = sms_sender
-    template = create_template(sample_service, content='bar')
+    service = create_service(service_name=str(uuid.uuid4()), sms_sender=sms_sender)
+    template = create_template(service, content='bar')
     notification = create_notification(template)
 
     send_to_providers.send_sms_to_provider(notification)
