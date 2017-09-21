@@ -209,6 +209,7 @@ class ServiceSchema(BaseSchema):
             'service_sms_senders',
             'monthly_billing',
             'reply_to_email_addresses',
+            'letter_contacts',
         )
         strict = True
 
