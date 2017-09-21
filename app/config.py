@@ -49,7 +49,7 @@ class QueueNames(object):
 
 class TaskNames(object):
     DVLA_JOBS = 'send-jobs-to-dvla'
-    DVLA_NOTIFICATIONS = 'send-notifications-to-dvla'
+    DVLA_NOTIFICATIONS = 'send-api-notifications-to-dvla'
 
 
 class Config(object):
