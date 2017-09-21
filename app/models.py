@@ -1374,6 +1374,8 @@ class ServiceEmailReplyTo(db.Model):
 
     def serialize(self):
         return {
+            'id': str(self.id),
+            'service_id': str(self.service_id),
             'email_address': self.email_address,
             'is_default': self.is_default,
             'created_at': self.created_at.strftime(DATETIME_FORMAT),

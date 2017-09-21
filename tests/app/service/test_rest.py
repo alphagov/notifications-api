@@ -2186,11 +2186,15 @@ def test_get_email_reply_to_addresses_with_multiple_email_addresses(client, noti
     assert len(json_response) == 2
     assert response.status_code == 200
 
+    assert json_response[0]['id'] == str(reply_to_a.id)
+    assert json_response[0]['service_id'] == str(reply_to_a.service_id)
     assert json_response[0]['email_address'] == 'test_a@mail.com'
     assert json_response[0]['is_default']
     assert json_response[0]['created_at']
     assert not json_response[0]['updated_at']
 
+    assert json_response[1]['id'] == str(reply_to_b.id)
+    assert json_response[1]['service_id'] == str(reply_to_b.service_id)
     assert json_response[1]['email_address'] == 'test_b@mail.com'
     assert not json_response[1]['is_default']
     assert json_response[1]['created_at']
