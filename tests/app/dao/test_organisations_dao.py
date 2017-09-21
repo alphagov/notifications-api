@@ -21,18 +21,11 @@ def test_create_organisation(notify_db, notify_db_session):
 
 
 def test_create_organisation_without_name_or_colour_is_valid(notify_db, notify_db_session):
-    organisation = create_organisation(name=None, colour=None)
+    organisation = create_organisation(logo=None, name=None, colour=None)
 
     assert Organisation.query.count() == 1
     organisation_from_db = Organisation.query.first()
     assert organisation == organisation_from_db
-
-
-def test_create_organisation_without_logo_raises_error(notify_db, notify_db_session):
-    with pytest.raises(IntegrityError) as excinfo:
-        create_organisation(logo=None)
-    assert 'column "logo" violates not-null constraint' in str(excinfo.value)
-    assert Organisation.query.count() == 0
 
 
 def test_get_organisations_gets_all_organisations(notify_db, notify_db_session):

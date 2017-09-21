@@ -136,7 +136,7 @@ class Organisation(db.Model):
     __tablename__ = 'organisation'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     colour = db.Column(db.String(7), nullable=True)
-    logo = db.Column(db.String(255), nullable=False)
+    logo = db.Column(db.String(255), nullable=True)
     name = db.Column(db.String(255), nullable=True)
 
     def serialize(self):
