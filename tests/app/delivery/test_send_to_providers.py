@@ -459,6 +459,18 @@ def test_get_html_email_renderer_prepends_logo_path(notify_api):
     assert renderer['brand_logo'] == 'http://static-logos.notify.tools/justice-league.png'
 
 
+def test_get_html_email_renderer_handles_org_without_logo(notify_api):
+    Service = namedtuple('Service', ['branding', 'organisation'])
+    Organisation = namedtuple('Organisation', ['colour', 'name', 'logo'])
+
+    org = Organisation(colour='#000000', logo=None, name='Justice League')
+    service = Service(branding=BRANDING_ORG, organisation=org)
+
+    renderer = send_to_providers.get_html_email_options(service)
+
+    assert renderer['brand_logo'] is None
+
+
 @pytest.mark.parametrize('base_url, expected_url', [
     # don't change localhost to prevent errors when testing locally
     ('http://localhost:6012', 'http://static-logos.notify.tools/filename.png'),

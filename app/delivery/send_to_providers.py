@@ -179,10 +179,11 @@ def get_html_email_options(service):
     govuk_banner = service.branding not in (BRANDING_ORG, BRANDING_ORG_BANNER)
     brand_banner = service.branding == BRANDING_ORG_BANNER
     if service.organisation and service.branding != BRANDING_GOVUK:
+
         logo_url = get_logo_url(
             current_app.config['ADMIN_BASE_URL'],
             service.organisation.logo
-        )
+        ) if service.organisation.logo else None
 
         branding = {
             'brand_colour': service.organisation.colour,
