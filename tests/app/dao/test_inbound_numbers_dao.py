@@ -6,8 +6,8 @@ from app.dao.inbound_numbers_dao import (
     dao_get_inbound_number_for_service,
     dao_get_available_inbound_numbers,
     dao_set_inbound_number_to_service,
-    dao_set_inbound_number_active_flag
-)
+    dao_set_inbound_number_active_flag,
+    dao_allocate_number_for_service)
 from app.models import InboundNumber
 
 from tests.app.db import create_service, create_inbound_number
@@ -79,3 +79,21 @@ def test_set_inbound_number_active_flag(notify_db, notify_db_session, sample_ser
     inbound_number = dao_get_inbound_number_for_service(sample_service.id)
 
     assert inbound_number.active is active
+
+
+def test_dao_allocate_number_for_service(notify_db_session):
+    number = '078945612'
+    inbound_number = create_inbound_number(number=number)
+    service = create_service()
+
+    updated_inbound_number = dao_allocate_number_for_service(service_id=service.id, inbound_number_id=inbound_number.id)
+    assert service.get_inbound_number() == number
+    assert updated_inbound_number.service_id == service.id
+
+
+def test_dao_allocate_number_for_service(notify_db_session, sample_service):
+    number = '078945612'
+    inbound_number = create_inbound_number(number=number, service_id=sample_service.id)
+    service = create_service(service_name="Service needs an inbound number")
+    with pytest.raises(Exception):
+        dao_allocate_number_for_service(service_id=service.id, inbound_number_id=inbound_number.id)

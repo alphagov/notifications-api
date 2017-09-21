@@ -31,3 +31,17 @@ def dao_set_inbound_number_active_flag(service_id, active):
     inbound_number.active = active
 
     db.session.add(inbound_number)
+
+
+@transactional
+def dao_allocate_number_for_service(service_id, inbound_number_id):
+    updated = InboundNumber.query.filter_by(
+        id=inbound_number_id,
+        active=True,
+        service_id=None
+    ).update(
+        {"service_id": service_id}
+    )
+    if not updated:
+        raise Exception("Inbound number: {} is not available".format(inbound_number_id))
+    return InboundNumber.query.get(inbound_number_id)

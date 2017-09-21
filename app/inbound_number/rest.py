@@ -5,8 +5,8 @@ from app.dao.inbound_numbers_dao import (
     dao_get_inbound_number_for_service,
     dao_get_available_inbound_numbers,
     dao_set_inbound_number_to_service,
-    dao_set_inbound_number_active_flag
-)
+    dao_set_inbound_number_active_flag,
+    dao_allocate_number_for_service)
 from app.dao.service_sms_sender_dao import insert_or_update_service_sms_sender
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.errors import InvalidRequest, register_errors
@@ -55,3 +55,20 @@ def post_allocate_inbound_number(service_id):
 def post_set_inbound_number_off(service_id):
     dao_set_inbound_number_active_flag(service_id, active=False)
     return jsonify(), 204
+
+
+@inbound_number_blueprint.route('<uuid:inbound_number_id>/service/<uuid:service_id>', methods=['POST'])
+def allocate_inbound_number_to_service(inbound_number_id, service_id):
+    service = dao_fetch_service_by_id(service_id=service_id, only_active=True)
+    updated_inbound_number = dao_allocate_number_for_service(service_id=service_id, inbound_number_id=inbound_number_id)
+    insert_or_update_service_sms_sender(service=service,
+                                        sms_sender=updated_inbound_number.number,
+                                        inbound_number_id=inbound_number_id)
+    return jsonify(), 204
+
+
+@inbound_number_blueprint.route('/available', methods=['GET'])
+def get_available_inbound_numbers():
+    inbound_numbers = [i.serialize() for i in dao_get_available_inbound_numbers()]
+
+    return jsonify(data=inbound_numbers if inbound_numbers else [])
