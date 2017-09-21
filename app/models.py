@@ -257,6 +257,14 @@ class Service(db.Model, Versioned):
         else:
             return default_reply_to[0].email_address if default_reply_to else None
 
+    def get_default_letter_contact(self):
+        default_letter_contact = [x for x in self.letter_contacts if x.is_default]
+        if len(default_letter_contact) > 1:
+            raise Exception("There should only ever be one default")
+        else:
+            return default_letter_contact[0].contact_block if default_letter_contact else \
+                self.letter_contact_block  # need to update this to None after dropping the letter_contact_block column
+
 
 class InboundNumber(db.Model):
     __tablename__ = "inbound_numbers"
@@ -1377,6 +1385,30 @@ class ServiceEmailReplyTo(db.Model):
             'id': str(self.id),
             'service_id': str(self.service_id),
             'email_address': self.email_address,
+            'is_default': self.is_default,
+            'created_at': self.created_at.strftime(DATETIME_FORMAT),
+            'updated_at': self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
+        }
+
+
+class ServiceLetterContact(db.Model):
+    __tablename__ = "service_letter_contacts"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False, index=True, nullable=False)
+    service = db.relationship(Service, backref=db.backref("letter_contacts"))
+
+    contact_block = db.Column(db.Text, nullable=False, index=False, unique=False)
+    is_default = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    def serialize(self):
+        return {
+            'id': str(self.id),
+            'service_id': str(self.service_id),
+            'contact_block': self.contact_block,
             'is_default': self.is_default,
             'created_at': self.created_at.strftime(DATETIME_FORMAT),
             'updated_at': self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
