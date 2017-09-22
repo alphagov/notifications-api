@@ -46,8 +46,7 @@ from app.dao.service_whitelist_dao import (
     dao_add_and_commit_whitelisted_contacts,
     dao_remove_service_whitelist
 )
-from app.dao.service_email_reply_to_dao import create_or_update_email_reply_to, dao_get_reply_to_by_service_id, \
-    add_reply_to_email_address_for_service, update_reply_to_email_address, dao_get_reply_to_by_id
+from app.dao.service_email_reply_to_dao import create_or_update_email_reply_to, dao_get_reply_to_by_service_id
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_user_by_id
 from app.errors import (
@@ -58,7 +57,6 @@ from app.models import Service, ServiceInboundApi
 from app.schema_validation import validate
 from app.service import statistics
 from app.service.service_inbound_api_schema import service_inbound_api, update_service_inbound_api_schema
-from app.service.service_senders_schema import add_service_email_reply_to_request
 from app.service.utils import get_whitelist_objects
 from app.service.sender import send_notification_to_service_users
 from app.service.send_notification import send_one_off_notification
@@ -89,9 +87,6 @@ def get_services():
     # If start and end date are not set, we are expecting today's stats.
     today = str(datetime.utcnow().date())
 
-    # import pdb
-    # pdb.set_trace()
-
     start_date = datetime.strptime(request.args.get('start_date', today), '%Y-%m-%d').date()
     end_date = datetime.strptime(request.args.get('end_date', today), '%Y-%m-%d').date()
 
@@ -107,7 +102,6 @@ def get_services():
     else:
         services = dao_fetch_all_services(only_active)
     data = service_schema.dump(services, many=True).data
-
     return jsonify(data=data)
 
 
@@ -364,7 +358,7 @@ def get_detailed_service(service_id, today_only=False):
 
 
 def get_detailed_services(start_date, end_date, only_active=False, include_from_test_key=True,
-                          trial_mode_services=True):
+                          trial_mode_services=None):
     services = {service.id: service for service in dao_fetch_all_services(only_active)}
     if start_date == datetime.utcnow().date():
         stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key,
@@ -382,11 +376,7 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
     for service in services.values():
         if not hasattr(service, 'statistics'):
             service.statistics = statistics.create_zeroed_stats_dicts()
-    dd = detailed_service_schema.dump(services.values(), many=True).data
-    # import pdb
-    # pdb.set_trace()
-    return dd
-    # return detailed_service_schema.dump(services.values(), many=True).data
+    return detailed_service_schema.dump(services.values(), many=True).data
 
 
 @service_blueprint.route('/<uuid:service_id>/whitelist', methods=['GET'])
@@ -543,35 +533,6 @@ def create_one_off_notification(service_id):
 def get_email_reply_to_addresses(service_id):
     result = dao_get_reply_to_by_service_id(service_id)
     return jsonify([i.serialize() for i in result]), 200
-
-
-@service_blueprint.route('/<uuid:service_id>/email-reply-to/<uuid:reply_to_id>', methods=["GET"])
-def get_email_reply_to_address(service_id, reply_to_id):
-    result = dao_get_reply_to_by_id(service_id=service_id, reply_to_id=reply_to_id)
-    return jsonify(result.serialize()), 200
-
-
-@service_blueprint.route('/<uuid:service_id>/email-reply-to', methods=['POST'])
-def add_service_reply_to_email_address(service_id):
-    # validate the service exists, throws ResultNotFound exception.
-    dao_fetch_service_by_id(service_id)
-    form = validate(request.get_json(), add_service_email_reply_to_request)
-    new_reply_to = add_reply_to_email_address_for_service(service_id=service_id,
-                                                          email_address=form['email_address'],
-                                                          is_default=form.get('is_default', True))
-    return jsonify(data=new_reply_to.serialize()), 201
-
-
-@service_blueprint.route('/<uuid:service_id>/email-reply-to/<uuid:reply_to_email_id>', methods=['POST'])
-def update_service_reply_to_email_address(service_id, reply_to_email_id):
-    # validate the service exists, throws ResultNotFound exception.
-    dao_fetch_service_by_id(service_id)
-    form = validate(request.get_json(), add_service_email_reply_to_request)
-    new_reply_to = update_reply_to_email_address(service_id=service_id,
-                                                 reply_to_id=reply_to_email_id,
-                                                 email_address=form['email_address'],
-                                                 is_default=form.get('is_default', True))
-    return jsonify(data=new_reply_to.serialize()), 200
 
 
 @service_blueprint.route('/unique', methods=["GET"])
