@@ -40,7 +40,7 @@ def test_get_template_by_id_returns_200(client, sample_service, tmp_type, expect
         'body': template.content,
         "subject": expected_subject,
         'name': expected_name,
-        'personalisation': [],
+        'personalisation': {},
     }
 
     assert json_response == expected_response
@@ -52,7 +52,14 @@ def test_get_template_by_id_returns_200(client, sample_service, tmp_type, expect
             "template_type": SMS_TYPE,
             "content": "Hello ((placeholder)) ((conditional??yes))",
         },
-        ["placeholder", "conditional"]
+        {
+            "placeholder": {
+                "required": True
+            },
+            "conditional": {
+                "required": True
+            },
+        },
     ),
     (
         {
@@ -60,7 +67,14 @@ def test_get_template_by_id_returns_200(client, sample_service, tmp_type, expect
             "subject": "((subject))",
             "content": "((content))",
         },
-        ["subject", "content"]
+        {
+            "subject": {
+                "required": True
+            },
+            "content": {
+                "required": True
+            },
+        },
     ),
     (
         {
@@ -68,7 +82,17 @@ def test_get_template_by_id_returns_200(client, sample_service, tmp_type, expect
             "subject": "((letterSubject))",
             "content": "((letter_content))",
         },
-        ["letterSubject", "letter_content", "contact block"]
+        {
+            "letterSubject": {
+                "required": True,
+            },
+            "letter_content": {
+                "required": True,
+            },
+            "contact block": {
+                "required": True,
+            },
+        },
     )
 ])
 @pytest.mark.parametrize("version", valid_version_params)

@@ -548,7 +548,12 @@ class Template(db.Model):
             "body": self.content,
             "subject": self.subject if self.template_type != SMS_TYPE else None,
             "name": self.name,
-            "personalisation": list(self._as_utils_template().placeholders),
+            "personalisation": {
+                key: {
+                    'required': True,
+                }
+                for key in self._as_utils_template().placeholders
+            },
         }
 
         return serialized
