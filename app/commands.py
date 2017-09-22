@@ -248,3 +248,40 @@ class PopulateServiceEmailReplyTo(Command):
         db.session.commit()
 
         print("Populated email reply to adderesses for {}".format(result.rowcount))
+
+
+class PopulateServiceSmsSender(Command):
+
+    def run(self):
+        services_to_update = """
+            INSERT INTO service_sms_senders(id, service_id, sms_sender, inbound_number_id, is_default, created_at)
+            SELECT uuid_in(md5(random()::text || now()::text)::cstring), service_id, number, id, true, '{}'
+            FROM inbound_numbers
+            WHERE service_id NOT IN(
+                SELECT service_id
+                FROM service_sms_senders
+            )
+        """.format(datetime.utcnow())
+
+        services_to_update_from_services = """
+            INSERT INTO service_sms_senders(id, service_id, sms_sender, inbound_number_id, is_default, created_at)
+            SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, sms_sender, null, true, '{}'
+            FROM services
+            WHERE id NOT IN(
+                SELECT service_id
+                FROM service_sms_senders
+            )
+        """.format(datetime.utcnow())
+
+        result = db.session.execute(services_to_update)
+        second_result = db.session.execute(services_to_update_from_services)
+        db.session.commit()
+
+        services_count_query = db.session.execute("Select count(*) from services").fetchall()[0][0]
+
+        service_sms_sender_count_query = db.session.execute("Select count(*) from service_sms_senders").fetchall()[0][0]
+
+        print("Populated sms sender {} services from inbound_numbers".format(result.rowcount))
+        print("Populated sms sender {} services from services".format(second_result.rowcount))
+        print("{} services in table".format(services_count_query))
+        print("{} service_sms_senders".format(service_sms_sender_count_query))
