@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime, timedelta
 
 from sqlalchemy import asc, func
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, lazyload
 from flask import current_app
 
 from app import db
@@ -47,6 +47,9 @@ def dao_fetch_all_services(only_active=False):
     ).options(
         joinedload('users')
     )
+
+    # import pdb
+    # pdb.set_trace()
 
     if only_active:
         query = query.filter(Service.active)
@@ -358,7 +361,7 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
 
 
 @statsd(namespace='dao')
-def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, trial_mode_services=True):
+def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, trial_mode_services=None):
 
     # service_id = db.session.query(Service.id).filter(Service.restricted == True)
 
@@ -371,7 +374,7 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, trial_mo
         Service
     ).filter(
         func.date(Notification.created_at) == date.today(),
-        Service.restricted == trial_mode_services
+        # Service.restricted == trial_mode_services
     ).group_by(
         Notification.notification_type,
         Notification.status,
@@ -382,6 +385,9 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, trial_mo
 
     if not include_from_test_key:
         query = query.filter(Notification.key_type != KEY_TYPE_TEST)
+
+    if trial_mode_services is not None:
+        query = query.filter(Service.restricted == trial_mode_services)
 
     return query.all()
 

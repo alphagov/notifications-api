@@ -87,6 +87,9 @@ def get_services():
     # If start and end date are not set, we are expecting today's stats.
     today = str(datetime.utcnow().date())
 
+    # import pdb
+    # pdb.set_trace()
+
     start_date = datetime.strptime(request.args.get('start_date', today), '%Y-%m-%d').date()
     end_date = datetime.strptime(request.args.get('end_date', today), '%Y-%m-%d').date()
 
@@ -377,7 +380,11 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
     for service in services.values():
         if not hasattr(service, 'statistics'):
             service.statistics = statistics.create_zeroed_stats_dicts()
-    return detailed_service_schema.dump(services.values(), many=True).data
+    dd = detailed_service_schema.dump(services.values(), many=True).data
+    # import pdb
+    # pdb.set_trace()
+    return dd
+    # return detailed_service_schema.dump(services.values(), many=True).data
 
 
 @service_blueprint.route('/<uuid:service_id>/whitelist', methods=['GET'])
