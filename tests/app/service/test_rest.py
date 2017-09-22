@@ -2290,3 +2290,14 @@ def test_update_service_reply_to_email_address_404s_when_invalid_service_id(clie
     result = json.loads(response.get_data(as_text=True))
     assert result['result'] == 'error'
     assert result['message'] == 'No result found'
+
+
+def test_get_email_reply_to_address(client, notify_db, notify_db_session):
+    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    reply_to = create_reply_to_email(service, 'test_a@mail.com')
+
+    response = client.get('/service/{}/email-reply-to/{}'.format(service.id, reply_to.id),
+                          headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == reply_to.serialize()

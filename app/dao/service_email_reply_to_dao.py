@@ -13,6 +13,16 @@ def dao_get_reply_to_by_service_id(service_id):
     return reply_to
 
 
+def dao_get_reply_to_by_id(service_id, reply_to_id):
+    reply_to = db.session.query(
+        ServiceEmailReplyTo
+    ).filter(
+        ServiceEmailReplyTo.service_id == service_id,
+        ServiceEmailReplyTo.id == reply_to_id
+    ).order_by(ServiceEmailReplyTo.created_at).one()
+    return reply_to
+
+
 def create_or_update_email_reply_to(service_id, email_address):
     reply_to = dao_get_reply_to_by_service_id(service_id)
     if len(reply_to) == 0:
