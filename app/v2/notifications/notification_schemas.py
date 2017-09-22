@@ -1,4 +1,4 @@
-from app.models import NOTIFICATION_STATUS_TYPES, TEMPLATE_TYPES
+from app.models import NOTIFICATION_STATUS_TYPES, NOTIFICATION_STATUS_LETTER_ACCEPTED, TEMPLATE_TYPES
 from app.schema_validation.definitions import (uuid, personalisation, letter_personalisation)
 
 
@@ -59,7 +59,7 @@ get_notifications_request = {
         "status": {
             "type": "array",
             "items": {
-                "enum": NOTIFICATION_STATUS_TYPES
+                "enum": NOTIFICATION_STATUS_TYPES + [NOTIFICATION_STATUS_LETTER_ACCEPTED]
             }
         },
         "template_type": {

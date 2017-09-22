@@ -213,19 +213,19 @@ def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
             assert json_resp['message'] == 'No result found'
 
 
-def test_get_service_by_id_and_user(notify_api, service_factory, sample_user):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            service = service_factory.get('new.service', sample_user)
-            auth_header = create_authorization_header()
-            resp = client.get(
-                '/service/{}?user_id={}'.format(service.id, sample_user.id),
-                headers=[auth_header]
-            )
-            assert resp.status_code == 200
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp['data']['name'] == service.name
-            assert json_resp['data']['id'] == str(service.id)
+def test_get_service_by_id_and_user(client, sample_service, sample_user):
+    sample_service.reply_to_email = 'something@service.com'
+    create_reply_to_email(service=sample_service, email_address='new@service.com')
+    auth_header = create_authorization_header()
+    resp = client.get(
+        '/service/{}?user_id={}'.format(sample_service.id, sample_user.id),
+        headers=[auth_header]
+    )
+    assert resp.status_code == 200
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert json_resp['data']['name'] == sample_service.name
+    assert json_resp['data']['id'] == str(sample_service.id)
+    assert json_resp['data']['reply_to_email_address'] == 'new@service.com'
 
 
 def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_user):
@@ -2161,7 +2161,6 @@ def test_get_email_reply_to_addresses_when_there_are_no_reply_to_email_addresses
 def test_get_email_reply_to_addresses_with_one_email_address(client, notify_db, notify_db_session):
     service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
     reply_to = create_reply_to_email(service, 'test@mail.com')
-    service.reply_to_email_address = 'test@mail.com'
 
     response = client.get('/service/{}/email-reply-to'.format(service.id),
                           headers=[create_authorization_header()])
@@ -2180,8 +2179,6 @@ def test_get_email_reply_to_addresses_with_multiple_email_addresses(client, noti
     reply_to_a = create_reply_to_email(service, 'test_a@mail.com')
     reply_to_b = create_reply_to_email(service, 'test_b@mail.com', False)
 
-    service.reply_to_email_address = 'test_a@mail.com'
-
     response = client.get('/service/{}/email-reply-to'.format(service.id),
                           headers=[create_authorization_header()])
     json_response = json.loads(response.get_data(as_text=True))
@@ -2189,12 +2186,118 @@ def test_get_email_reply_to_addresses_with_multiple_email_addresses(client, noti
     assert len(json_response) == 2
     assert response.status_code == 200
 
+    assert json_response[0]['id'] == str(reply_to_a.id)
+    assert json_response[0]['service_id'] == str(reply_to_a.service_id)
     assert json_response[0]['email_address'] == 'test_a@mail.com'
     assert json_response[0]['is_default']
     assert json_response[0]['created_at']
     assert not json_response[0]['updated_at']
 
+    assert json_response[1]['id'] == str(reply_to_b.id)
+    assert json_response[1]['service_id'] == str(reply_to_b.service_id)
     assert json_response[1]['email_address'] == 'test_b@mail.com'
     assert not json_response[1]['is_default']
     assert json_response[1]['created_at']
     assert not json_response[1]['updated_at']
+
+
+def test_add_service_reply_to_email_address(client, sample_service):
+    data = json.dumps({"email_address": "new@reply.com", "is_default": True})
+    response = client.post('/service/{}/email-reply-to'.format(sample_service.id),
+                           data=data,
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 201
+    json_resp = json.loads(response.get_data(as_text=True))
+    results = ServiceEmailReplyTo.query.all()
+    assert len(results) == 1
+    assert json_resp['data'] == results[0].serialize()
+
+
+def test_add_service_reply_to_email_address_can_add_multiple_addresses(client, sample_service):
+    data = json.dumps({"email_address": "first@reply.com", "is_default": True})
+    client.post('/service/{}/email-reply-to'.format(sample_service.id),
+                data=data,
+                headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    second = json.dumps({"email_address": "second@reply.com", "is_default": True})
+    response = client.post('/service/{}/email-reply-to'.format(sample_service.id),
+                           data=second,
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    assert response.status_code == 201
+    json_resp = json.loads(response.get_data(as_text=True))
+    results = ServiceEmailReplyTo.query.all()
+    assert len(results) == 2
+    default = [x for x in results if x.is_default]
+    assert json_resp['data'] == default[0].serialize()
+    first_reply_to_not_default = [x for x in results if not x.is_default]
+    assert first_reply_to_not_default[0].email_address == 'first@reply.com'
+
+
+def test_add_service_reply_to_email_address_raise_exception_if_no_default(client, sample_service):
+    data = json.dumps({"email_address": "first@reply.com", "is_default": False})
+    response = client.post('/service/{}/email-reply-to'.format(sample_service.id),
+                           data=data,
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    assert response.status_code == 400
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp['message'] == 'You must have at least one reply to email address as the default.'
+
+
+def test_add_service_reply_to_email_address_404s_when_invalid_service_id(client, notify_db, notify_db_session):
+    response = client.post('/service/{}/email-reply-to'.format(uuid.uuid4()),
+                           data={},
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 404
+    result = json.loads(response.get_data(as_text=True))
+    assert result['result'] == 'error'
+    assert result['message'] == 'No result found'
+
+
+def test_update_service_reply_to_email_address(client, sample_service):
+    original_reply_to = create_reply_to_email(service=sample_service, email_address="some@email.com")
+    data = json.dumps({"email_address": "changed@reply.com", "is_default": True})
+    response = client.post('/service/{}/email-reply-to/{}'.format(sample_service.id, original_reply_to.id),
+                           data=data,
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+    results = ServiceEmailReplyTo.query.all()
+    assert len(results) == 1
+    assert json_resp['data'] == results[0].serialize()
+
+
+def test_update_service_reply_to_email_address_returns_400_when_no_default(client, sample_service):
+    original_reply_to = create_reply_to_email(service=sample_service, email_address="some@email.com")
+    data = json.dumps({"email_address": "changed@reply.com", "is_default": False})
+    response = client.post('/service/{}/email-reply-to/{}'.format(sample_service.id, original_reply_to.id),
+                           data=data,
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 400
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp['message'] == 'You must have at least one reply to email address as the default.'
+
+
+def test_update_service_reply_to_email_address_404s_when_invalid_service_id(client, notify_db, notify_db_session):
+    response = client.post('/service/{}/email-reply-to/{}'.format(uuid.uuid4(), uuid.uuid4()),
+                           data={},
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 404
+    result = json.loads(response.get_data(as_text=True))
+    assert result['result'] == 'error'
+    assert result['message'] == 'No result found'
+
+
+def test_get_email_reply_to_address(client, notify_db, notify_db_session):
+    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    reply_to = create_reply_to_email(service, 'test_a@mail.com')
+
+    response = client.get('/service/{}/email-reply-to/{}'.format(service.id, reply_to.id),
+                          headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == reply_to.serialize()

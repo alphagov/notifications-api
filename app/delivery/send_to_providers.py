@@ -19,6 +19,7 @@ from app.models import (
     SMS_TYPE,
     KEY_TYPE_TEST,
     BRANDING_ORG,
+    BRANDING_ORG_BANNER,
     BRANDING_GOVUK,
     EMAIL_TYPE,
     NOTIFICATION_TECHNICAL_FAILURE,
@@ -108,13 +109,14 @@ def send_email_to_provider(notification):
         else:
             from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
                                                  current_app.config['NOTIFY_EMAIL_DOMAIN'])
+
             reference = provider.send_email(
                 from_address,
                 notification.to,
                 plain_text_email.subject,
                 body=str(plain_text_email),
                 html_body=str(html_email),
-                reply_to_address=service.reply_to_email_address,
+                reply_to_address=service.get_default_reply_to_email_address(),
             )
             notification.reference = reference
             update_notification(notification, provider)
@@ -174,12 +176,14 @@ def get_logo_url(base_url, logo_file):
 
 
 def get_html_email_options(service):
-    govuk_banner = service.branding != BRANDING_ORG
+    govuk_banner = service.branding not in (BRANDING_ORG, BRANDING_ORG_BANNER)
+    brand_banner = service.branding == BRANDING_ORG_BANNER
     if service.organisation and service.branding != BRANDING_GOVUK:
+
         logo_url = get_logo_url(
             current_app.config['ADMIN_BASE_URL'],
             service.organisation.logo
-        )
+        ) if service.organisation.logo else None
 
         branding = {
             'brand_colour': service.organisation.colour,
@@ -189,7 +193,7 @@ def get_html_email_options(service):
     else:
         branding = {}
 
-    return dict(govuk_banner=govuk_banner, **branding)
+    return dict(govuk_banner=govuk_banner, brand_banner=brand_banner, **branding)
 
 
 def technical_failure(notification):
