@@ -316,12 +316,13 @@ def populate_monthly_billing():
 @statsd(namespace="tasks")
 def run_letter_jobs():
     job_ids = dao_get_letter_job_ids_by_status(JOB_STATUS_READY_TO_SEND)
-    notify_celery.send_task(
-        name=TaskNames.DVLA_JOBS,
-        args=(job_ids,),
-        queue=QueueNames.PROCESS_FTP
-    )
-    current_app.logger.info("Queued {} ready letter job ids onto {}".format(len(job_ids), QueueNames.PROCESS_FTP))
+    if job_ids:
+        notify_celery.send_task(
+            name=TaskNames.DVLA_JOBS,
+            args=(job_ids,),
+            queue=QueueNames.PROCESS_FTP
+        )
+        current_app.logger.info("Queued {} ready letter job ids onto {}".format(len(job_ids), QueueNames.PROCESS_FTP))
 
 
 @notify_celery.task(name="run-letter-notifications")
@@ -331,24 +332,25 @@ def run_letter_notifications():
 
     notifications = dao_set_created_live_letter_api_notifications_to_pending()
 
-    file_contents = create_dvla_file_contents_for_notifications(notifications)
+    if notifications:
+        file_contents = create_dvla_file_contents_for_notifications(notifications)
 
-    file_location = '{}-dvla-notifications.txt'.format(current_time)
-    s3upload(
-        filedata=file_contents + '\n',
-        region=current_app.config['AWS_REGION'],
-        bucket_name=current_app.config['DVLA_BUCKETS']['notification'],
-        file_location=file_location
-    )
-
-    notify_celery.send_task(
-        name=TaskNames.DVLA_NOTIFICATIONS,
-        kwargs={'filename': file_location},
-        queue=QueueNames.PROCESS_FTP
-    )
-    current_app.logger.info(
-        "Queued {} ready letter api notifications onto {}".format(
-            len(notifications),
-            QueueNames.PROCESS_FTP
+        file_location = '{}-dvla-notifications.txt'.format(current_time)
+        s3upload(
+            filedata=file_contents + '\n',
+            region=current_app.config['AWS_REGION'],
+            bucket_name=current_app.config['DVLA_BUCKETS']['notification'],
+            file_location=file_location
         )
-    )
+
+        notify_celery.send_task(
+            name=TaskNames.DVLA_NOTIFICATIONS,
+            kwargs={'filename': file_location},
+            queue=QueueNames.PROCESS_FTP
+        )
+        current_app.logger.info(
+            "Queued {} ready letter api notifications onto {}".format(
+                len(notifications),
+                QueueNames.PROCESS_FTP
+            )
+        )
