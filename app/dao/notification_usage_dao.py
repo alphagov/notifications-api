@@ -105,6 +105,7 @@ def is_between(date, start_date, end_date):
     return start_date <= date <= end_date
 
 
+@statsd(namespace="dao")
 def billing_data_per_month_query(rate, service_id, start_date, end_date, notification_type):
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
     if notification_type == SMS_TYPE:
