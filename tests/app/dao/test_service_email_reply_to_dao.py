@@ -61,13 +61,15 @@ def test_create_or_update_email_reply_to_raises_exception_if_multilple_email_add
 def test_dao_get_reply_to_by_service_id(notify_db_session):
     service = create_service()
     default_reply_to = create_reply_to_email(service=service, email_address='something@email.com')
+    second_reply_to = create_reply_to_email(service=service, email_address='second@email.com', is_default=False)
     another_reply_to = create_reply_to_email(service=service, email_address='another@email.com', is_default=False)
 
     results = dao_get_reply_to_by_service_id(service_id=service.id)
 
-    assert len(results) == 2
-    assert default_reply_to in results
-    assert another_reply_to in results
+    assert len(results) == 3
+    assert default_reply_to == results[0]
+    assert another_reply_to == results[1]
+    assert second_reply_to == results[2]
 
 
 def test_add_reply_to_email_address_for_service_creates_first_email_for_service(notify_db_session):
