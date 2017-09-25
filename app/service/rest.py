@@ -140,15 +140,16 @@ def update_service(service_id):
     # Capture the status change here as Marshmallow changes this later
     service_going_live = fetched_service.restricted and not req_json.get('restricted', True)
 
-    if 'reply_to_email_address' in req_json:
-        create_or_update_email_reply_to(fetched_service.id, req_json['reply_to_email_address'])
-
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())
     update_dict = service_schema.load(current_data).data
+    dao_update_service(update_dict)
+
+    if 'reply_to_email_address' in req_json:
+        create_or_update_email_reply_to(fetched_service.id, req_json['reply_to_email_address'])
+
     if 'sms_sender' in req_json:
         insert_or_update_service_sms_sender(fetched_service, req_json['sms_sender'])
-    dao_update_service(update_dict)
 
     if service_going_live:
         send_notification_to_service_users(
