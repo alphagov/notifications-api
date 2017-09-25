@@ -358,14 +358,17 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
 
 
 @statsd(namespace='dao')
-def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
+def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, trial_mode_services=None):
+
     query = db.session.query(
         Notification.notification_type,
         Notification.status,
         Notification.service_id,
         func.count(Notification.id).label('count')
+    ).join(
+        Service
     ).filter(
-        func.date(Notification.created_at) == date.today()
+        func.date(Notification.created_at) == date.today(),
     ).group_by(
         Notification.notification_type,
         Notification.status,
@@ -376,6 +379,9 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
 
     if not include_from_test_key:
         query = query.filter(Notification.key_type != KEY_TYPE_TEST)
+
+    if trial_mode_services is not None:
+        query = query.filter(Service.restricted == trial_mode_services)
 
     return query.all()
 

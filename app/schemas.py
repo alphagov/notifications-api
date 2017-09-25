@@ -263,7 +263,19 @@ class DetailedServiceSchema(BaseSchema):
             'organisation',
             'service_sms_senders',
             'monthly_billing',
-            'reply_to_email_addresses'
+            'reply_to_email_addresses',
+            'letter_contact_block',         # new exclude from here
+            'message_limit',
+            'email_from',
+            # 'free_sms_fragment_limit',
+            'inbound_api',
+            'dvla_organisation',
+            'whitelist',
+            'reply_to_email_address',
+            'sms_sender',
+            'permissions',
+            'inbound_number',
+            'inbound_sms'
         )
 
 
