@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from sqlalchemy.exc import IntegrityError
 
@@ -97,3 +99,9 @@ def test_dao_allocate_number_for_service(notify_db_session, sample_service):
     service = create_service(service_name="Service needs an inbound number")
     with pytest.raises(Exception):
         dao_allocate_number_for_service(service_id=service.id, inbound_number_id=inbound_number.id)
+
+
+def test_dao_allocate_number_for_service(notify_db_session, sample_service):
+    service = create_service(service_name="Service needs an inbound number")
+    with pytest.raises(Exception):
+        dao_allocate_number_for_service(service_id=service.id, inbound_number_id=uuid.uuid4())
