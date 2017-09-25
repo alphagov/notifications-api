@@ -20,6 +20,7 @@ manager.add_command('populate_monthly_billing', commands.PopulateMonthlyBilling)
 manager.add_command('backfill_processing_time', commands.BackfillProcessingTime)
 manager.add_command('populate_service_email_reply_to', commands.PopulateServiceEmailReplyTo)
 manager.add_command('populate_service_sms_sender', commands.PopulateServiceSmsSender)
+manager.add_command('populate_service_letter_contact', commands.PopulateServiceLetterContact)
 
 
 @manager.command
