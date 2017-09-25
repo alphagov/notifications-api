@@ -1,9 +1,12 @@
+import uuid
+
 import pytest
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.dao.service_email_reply_to_dao import (
     create_or_update_email_reply_to,
     dao_get_reply_to_by_service_id,
-    add_reply_to_email_address_for_service, update_reply_to_email_address)
+    add_reply_to_email_address_for_service, update_reply_to_email_address, dao_get_reply_to_by_id)
 from app.errors import InvalidRequest
 from app.models import ServiceEmailReplyTo
 from tests.app.db import create_reply_to_email, create_service
@@ -58,13 +61,15 @@ def test_create_or_update_email_reply_to_raises_exception_if_multilple_email_add
 def test_dao_get_reply_to_by_service_id(notify_db_session):
     service = create_service()
     default_reply_to = create_reply_to_email(service=service, email_address='something@email.com')
+    second_reply_to = create_reply_to_email(service=service, email_address='second@email.com', is_default=False)
     another_reply_to = create_reply_to_email(service=service, email_address='another@email.com', is_default=False)
 
     results = dao_get_reply_to_by_service_id(service_id=service.id)
 
-    assert len(results) == 2
-    assert default_reply_to in results
-    assert another_reply_to in results
+    assert len(results) == 3
+    assert default_reply_to == results[0]
+    assert another_reply_to == results[1]
+    assert second_reply_to == results[2]
 
 
 def test_add_reply_to_email_address_for_service_creates_first_email_for_service(notify_db_session):
@@ -191,3 +196,20 @@ def test_update_reply_to_email_address_raises_exception_if_single_reply_to_and_s
                                       reply_to_id=first_reply_to.id,
                                       email_address='should@fail.com',
                                       is_default=False)
+
+
+def test_dao_get_reply_to_by_id(sample_service):
+    reply_to = create_reply_to_email(service=sample_service, email_address='email@address.com')
+    result = dao_get_reply_to_by_id(service_id=sample_service.id, reply_to_id=reply_to.id)
+    assert result == reply_to
+
+
+def test_dao_get_reply_to_by_id_raises_sqlalchemy_error_when_reply_to_does_not_exist(sample_service):
+    with pytest.raises(SQLAlchemyError):
+        dao_get_reply_to_by_id(service_id=sample_service.id, reply_to_id=uuid.uuid4())
+
+
+def test_dao_get_reply_to_by_id_raises_sqlalchemy_error_when_service_does_not_exist(sample_service):
+    reply_to = create_reply_to_email(service=sample_service, email_address='email@address.com')
+    with pytest.raises(SQLAlchemyError):
+        dao_get_reply_to_by_id(service_id=uuid.uuid4(), reply_to_id=reply_to.id)

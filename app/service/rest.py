@@ -47,7 +47,7 @@ from app.dao.service_whitelist_dao import (
     dao_remove_service_whitelist
 )
 from app.dao.service_email_reply_to_dao import create_or_update_email_reply_to, dao_get_reply_to_by_service_id, \
-    add_reply_to_email_address_for_service, update_reply_to_email_address
+    add_reply_to_email_address_for_service, update_reply_to_email_address, dao_get_reply_to_by_id
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_user_by_id
 from app.errors import (
@@ -529,6 +529,12 @@ def create_one_off_notification(service_id):
 def get_email_reply_to_addresses(service_id):
     result = dao_get_reply_to_by_service_id(service_id)
     return jsonify([i.serialize() for i in result]), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/email-reply-to/<uuid:reply_to_id>', methods=["GET"])
+def get_email_reply_to_address(service_id, reply_to_id):
+    result = dao_get_reply_to_by_id(service_id=service_id, reply_to_id=reply_to_id)
+    return jsonify(result.serialize()), 200
 
 
 @service_blueprint.route('/<uuid:service_id>/email-reply-to', methods=['POST'])

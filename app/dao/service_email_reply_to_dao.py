@@ -1,3 +1,5 @@
+from sqlalchemy import desc
+
 from app import db
 from app.dao.dao_utils import transactional
 from app.errors import InvalidRequest
@@ -9,7 +11,17 @@ def dao_get_reply_to_by_service_id(service_id):
         ServiceEmailReplyTo
     ).filter(
         ServiceEmailReplyTo.service_id == service_id
-    ).order_by(ServiceEmailReplyTo.created_at).all()
+    ).order_by(desc(ServiceEmailReplyTo.is_default), desc(ServiceEmailReplyTo.created_at)).all()
+    return reply_to
+
+
+def dao_get_reply_to_by_id(service_id, reply_to_id):
+    reply_to = db.session.query(
+        ServiceEmailReplyTo
+    ).filter(
+        ServiceEmailReplyTo.service_id == service_id,
+        ServiceEmailReplyTo.id == reply_to_id
+    ).order_by(ServiceEmailReplyTo.created_at).one()
     return reply_to
 
 

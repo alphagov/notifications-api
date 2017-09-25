@@ -21,7 +21,13 @@ from tests.app.conftest import (
     sample_template as create_sample_template,
     sample_notification_with_job as create_sample_notification_with_job
 )
-from tests.app.db import create_notification, create_service, create_inbound_number, create_reply_to_email
+from tests.app.db import (
+    create_notification,
+    create_service,
+    create_inbound_number,
+    create_reply_to_email,
+    create_letter_contact
+)
 from tests.conftest import set_config
 
 
@@ -262,3 +268,14 @@ def test_service_get_default_reply_to_email_address(sample_service):
     create_reply_to_email(service=sample_service, email_address="default@email.com")
 
     assert sample_service.get_default_reply_to_email_address() == 'default@email.com'
+
+
+def test_service_get_default_contact_letter(sample_service):
+    create_letter_contact(service=sample_service, contact_block='London,\nNW1A 1AA')
+
+    assert sample_service.get_default_letter_contact() == 'London,\nNW1A 1AA'
+
+
+# this test will need to be removed after letter_contact_block is dropped
+def test_service_get_default_letter_contact_block_from_service(sample_service):
+    assert sample_service.get_default_letter_contact() == sample_service.letter_contact_block

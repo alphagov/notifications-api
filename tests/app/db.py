@@ -26,7 +26,8 @@ from app.models import (
     INBOUND_SMS_TYPE,
     KEY_TYPE_NORMAL,
     ServiceInboundApi,
-    ServiceEmailReplyTo
+    ServiceEmailReplyTo,
+    ServiceLetterContact
 )
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import dao_create_notification, dao_created_scheduled_notification
@@ -347,3 +348,21 @@ def create_reply_to_email(
     db.session.commit()
 
     return reply_to
+
+
+def create_letter_contact(
+    service,
+    contact_block,
+    is_default=True
+):
+    data = {
+        'service': service,
+        'contact_block': contact_block,
+        'is_default': is_default,
+    }
+    letter_content = ServiceLetterContact(**data)
+
+    db.session.add(letter_content)
+    db.session.commit()
+
+    return letter_content
