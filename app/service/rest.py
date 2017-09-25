@@ -46,8 +46,14 @@ from app.dao.service_whitelist_dao import (
     dao_add_and_commit_whitelisted_contacts,
     dao_remove_service_whitelist
 )
-from app.dao.service_email_reply_to_dao import create_or_update_email_reply_to, dao_get_reply_to_by_service_id, \
-    add_reply_to_email_address_for_service, update_reply_to_email_address, dao_get_reply_to_by_id
+from app.dao.service_email_reply_to_dao import (
+    add_reply_to_email_address_for_service,
+    create_or_update_email_reply_to,
+    dao_get_reply_to_by_id,
+    dao_get_reply_to_by_service_id,
+    update_reply_to_email_address
+)
+from app.dao.service_letter_contact_dao import create_or_update_letter_contact
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_user_by_id
 from app.errors import (
@@ -150,6 +156,9 @@ def update_service(service_id):
 
     if 'sms_sender' in req_json:
         insert_or_update_service_sms_sender(fetched_service, req_json['sms_sender'])
+
+    if 'letter_contact_block' in req_json:
+        create_or_update_letter_contact(fetched_service.id, req_json['letter_contact_block'])
 
     if service_going_live:
         send_notification_to_service_users(
