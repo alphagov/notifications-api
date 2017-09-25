@@ -165,27 +165,27 @@ class Config(object):
         },
         'delete-sms-notifications': {
             'task': 'delete-sms-notifications',
-            'schedule': crontab(minute=0, hour=0),
+            'schedule': crontab(hour=0, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'delete-email-notifications': {
             'task': 'delete-email-notifications',
-            'schedule': crontab(minute=20, hour=0),
+            'schedule': crontab(hour=0, minute=20),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'delete-letter-notifications': {
             'task': 'delete-letter-notifications',
-            'schedule': crontab(minute=40, hour=0),
+            'schedule': crontab(hour=0, minute=40),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'delete-inbound-sms': {
             'task': 'delete-inbound-sms',
-            'schedule': crontab(minute=0, hour=1),
+            'schedule': crontab(hour=1, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'send-daily-performance-platform-stats': {
             'task': 'send-daily-performance-platform-stats',
-            'schedule': crontab(minute=0, hour=2),
+            'schedule': crontab(hour=2, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'switch-current-sms-provider-on-slow-delivery': {
@@ -195,44 +195,44 @@ class Config(object):
         },
         'timeout-sending-notifications': {
             'task': 'timeout-sending-notifications',
-            'schedule': crontab(minute=0, hour=3),
+            'schedule': crontab(hour=3, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'remove_sms_email_jobs': {
             'task': 'remove_csv_files',
-            'schedule': crontab(minute=0, hour=4),
+            'schedule': crontab(hour=4, minute=0),
             'options': {'queue': QueueNames.PERIODIC},
             'kwargs': {'job_types': [EMAIL_TYPE, SMS_TYPE]}
         },
         'remove_letter_jobs': {
             'task': 'remove_csv_files',
-            'schedule': crontab(minute=20, hour=4),
+            'schedule': crontab(hour=4, minute=20),
             'options': {'queue': QueueNames.PERIODIC},
             'kwargs': {'job_types': [LETTER_TYPE]}
         },
         'remove_transformed_dvla_files': {
             'task': 'remove_transformed_dvla_files',
-            'schedule': crontab(minute=40, hour=4),
+            'schedule': crontab(hour=4, minute=40),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'timeout-job-statistics': {
             'task': 'timeout-job-statistics',
-            'schedule': crontab(minute=0, hour=5),
+            'schedule': crontab(hour=5, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'populate_monthly_billing': {
             'task': 'populate_monthly_billing',
-            'schedule': crontab(minute=10, hour=5),
+            'schedule': crontab(hour=5, minute=10),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'run-letter-jobs': {
             'task': 'run-letter-jobs',
-            'schedule': crontab(hour=17, minute=30),
+            'schedule': crontab(hour=5, minute=30),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'run-letter-notifications': {
             'task': 'run-letter-notifications',
-            'schedule': crontab(hour=17, minute=35),
+            'schedule': crontab(hour=5, minute=40),
             'options': {'queue': QueueNames.PERIODIC}
         }
     }
@@ -260,7 +260,7 @@ class Config(object):
 
     DVLA_BUCKETS = {
         'job': '{}-dvla-file-per-job'.format(os.getenv('NOTIFY_ENVIRONMENT')),
-        'notification': '{}-dvla-file-letter-api'.format(os.getenv('NOTIFY_ENVIRONMENT'))
+        'notification': '{}-dvla-letter-api-files'.format(os.getenv('NOTIFY_ENVIRONMENT'))
     }
 
     API_KEY_LIMITS = {
