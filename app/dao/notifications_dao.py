@@ -592,7 +592,7 @@ def dao_set_created_live_letter_api_notifications_to_pending():
         Notification.notification_type == LETTER_TYPE,
         Notification.status == NOTIFICATION_CREATED,
         Notification.key_type == KEY_TYPE_NORMAL,
-        Notification.api_key != None
+        Notification.api_key != None  # noqa
     ).with_for_update(
     ).all()
 

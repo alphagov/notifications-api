@@ -43,7 +43,6 @@ from app.v2.notifications.create_response import (
     create_post_email_response_from_notification,
     create_post_letter_response_from_notification
 )
-from app.variables import LETTER_TEST_API_FILENAME
 
 
 @v2_notification_blueprint.route('/<notification_type>', methods=['POST'])
