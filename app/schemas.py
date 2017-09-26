@@ -183,6 +183,7 @@ class ServiceSchema(BaseSchema):
     permissions = fields.Method("service_permissions")
     override_flag = False
     reply_to_email_address = fields.Method(method_name="get_reply_to_email_address")
+    letter_contact_block = fields.Method(method_name="get_letter_contact")
 
     def get_free_sms_fragment_limit(selfs, service):
         return service.free_sms_fragment_limit()
@@ -193,9 +194,12 @@ class ServiceSchema(BaseSchema):
     def get_reply_to_email_address(self, service):
         return service.get_default_reply_to_email_address()
 
+    def get_letter_contact(self, service):
+        return service.get_default_letter_contact()
+
     class Meta:
         model = models.Service
-        dump_only = ['free_sms_fragment_limit', 'reply_to_email_address']
+        dump_only = ['free_sms_fragment_limit', 'reply_to_email_address', 'letter_contact_block']
         exclude = (
             'updated_at',
             'created_at',
