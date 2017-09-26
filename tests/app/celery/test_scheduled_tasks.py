@@ -21,6 +21,7 @@ from app.celery.scheduled_tasks import (
     remove_transformed_dvla_files,
     run_scheduled_jobs,
     run_letter_jobs,
+    run_letter_api_notifications,
     s3,
     send_daily_performance_platform_stats,
     send_scheduled_notifications,
@@ -41,6 +42,11 @@ from app.models import (
     Service, Template,
     SMS_TYPE, LETTER_TYPE,
     JOB_STATUS_READY_TO_SEND,
+    JOB_STATUS_IN_PROGRESS,
+    JOB_STATUS_SENT_TO_DVLA,
+    NOTIFICATION_PENDING,
+    NOTIFICATION_CREATED,
+    KEY_TYPE_TEST,
     MonthlyBilling)
 from app.utils import get_london_midnight_in_utc
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
@@ -693,3 +699,73 @@ def test_run_letter_jobs(client, mocker, sample_letter_template):
     mock_celery.assert_called_once_with(name=TaskNames.DVLA_JOBS,
                                         args=(job_ids,),
                                         queue=QueueNames.PROCESS_FTP)
+
+
+def test_run_letter_jobs_does_nothing_if_no_ready_jobs(client, mocker, sample_letter_template):
+    job_ids = [
+        str(create_job(sample_letter_template, job_status=JOB_STATUS_IN_PROGRESS).id),
+        str(create_job(sample_letter_template, job_status=JOB_STATUS_SENT_TO_DVLA).id)
+    ]
+
+    mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
+
+    run_letter_jobs()
+
+    assert not mock_celery.called
+
+
+def test_run_letter_api_notifications_triggers_ftp_task(client, mocker, sample_letter_notification):
+    file_contents_mock = mocker.patch(
+        'app.celery.scheduled_tasks.create_dvla_file_contents_for_notifications',
+        return_value='foo\nbar'
+    )
+    s3upload = mocker.patch('app.celery.scheduled_tasks.s3upload')
+    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
+    filename = '2017-01-01T12:00:00-dvla-notifications.txt'
+
+    with freeze_time('2017-01-01 12:00:00'):
+        run_letter_api_notifications()
+
+    assert sample_letter_notification.status == NOTIFICATION_PENDING
+    file_contents_mock.assert_called_once_with([sample_letter_notification])
+    s3upload.assert_called_once_with(
+        # with trailing new line added
+        filedata='foo\nbar\n',
+        region='eu-west-1',
+        bucket_name='test-dvla-letter-api-files',
+        file_location=filename
+    )
+    mock_celery.assert_called_once_with(
+        name=TaskNames.DVLA_NOTIFICATIONS,
+        kwargs={'filename': filename},
+        queue=QueueNames.PROCESS_FTP
+    )
+
+def test_run_letter_api_notifications_does_nothing_if_no_created_notifications(
+    client,
+    mocker,
+    sample_letter_template,
+    sample_letter_job,
+    sample_api_key
+):
+    letter_job_notification = create_notification(
+        sample_letter_template,
+        job=sample_letter_job
+    )
+    pending_letter_notification = create_notification(
+        sample_letter_template,
+        status=NOTIFICATION_PENDING,
+        api_key=sample_api_key
+    )
+    test_api_key_notification = create_notification(
+        sample_letter_template,
+        key_type=KEY_TYPE_TEST
+    )
+
+    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
+
+    run_letter_api_notifications()
+
+    assert not mock_celery.called
+    assert letter_job_notification.status == NOTIFICATION_CREATED
+    assert test_api_key_notification.status == NOTIFICATION_CREATED

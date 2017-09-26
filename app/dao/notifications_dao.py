@@ -586,7 +586,7 @@ def dao_set_created_live_letter_api_notifications_to_pending():
     the transaction so that if the task is run more than once concurrently, one task will block the other select
     from completing until it commits.
     """
-    return db.session.query(
+    notifications = db.session.query(
         Notification
     ).filter(
         Notification.notification_type == LETTER_TYPE,
@@ -597,7 +597,7 @@ def dao_set_created_live_letter_api_notifications_to_pending():
     ).all()
 
     for notification in notifications:
-        notification.notification_status = NOTIFICATION_PENDING
+        notification.status = NOTIFICATION_PENDING
 
     db.session.add_all(notifications)
     db.session.commit()

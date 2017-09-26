@@ -325,9 +325,9 @@ def run_letter_jobs():
         current_app.logger.info("Queued {} ready letter job ids onto {}".format(len(job_ids), QueueNames.PROCESS_FTP))
 
 
-@notify_celery.task(name="run-letter-notifications")
+@notify_celery.task(name="run-letter-api-notifications")
 @statsd(namespace="tasks")
-def run_letter_notifications():
+def run_letter_api_notifications():
     current_time = datetime.utcnow().isoformat()
 
     notifications = dao_set_created_live_letter_api_notifications_to_pending()

@@ -230,8 +230,8 @@ class Config(object):
             'schedule': crontab(hour=5, minute=30),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'run-letter-notifications': {
-            'task': 'run-letter-notifications',
+        'run-letter-api-notifications': {
+            'task': 'run-letter-api-notifications',
             'schedule': crontab(hour=5, minute=40),
             'options': {'queue': QueueNames.PERIODIC}
         }
