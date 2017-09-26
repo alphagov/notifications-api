@@ -42,7 +42,10 @@ from app.dao.notifications_dao import (
     is_delivery_slow_for_provider,
     dao_update_notifications_for_job_to_sent_to_dvla,
     dao_get_notifications_by_to_field,
-    dao_created_scheduled_notification, dao_get_scheduled_notifications, set_scheduled_notification_to_processed)
+    dao_created_scheduled_notification,
+    dao_get_scheduled_notifications,
+    set_scheduled_notification_to_processed
+)
 
 from app.dao.services_dao import dao_update_service
 from tests.app.db import create_notification, create_api_key
