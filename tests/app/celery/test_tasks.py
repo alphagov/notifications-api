@@ -2,7 +2,6 @@ import json
 import uuid
 from datetime import datetime
 from unittest.mock import Mock
-
 import pytest
 import requests_mock
 from flask import current_app
@@ -29,14 +28,17 @@ from app.celery.tasks import (
 from app.config import QueueNames
 from app.dao import jobs_dao, services_dao
 from app.models import (
-    Notification,
+    EMAIL_TYPE,
+    JOB_STATUS_ERROR,
+    KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
-    KEY_TYPE_NORMAL,
-    SMS_TYPE,
-    EMAIL_TYPE,
     LETTER_TYPE,
-    Job)
+    SERVICE_PERMISSION_TYPES,
+    SMS_TYPE,
+    Job,
+    Notification
+)
 
 from tests.app import load_example_csv
 from tests.app.conftest import (
@@ -46,7 +48,16 @@ from tests.app.conftest import (
     sample_email_template as create_sample_email_template,
     sample_notification as create_sample_notification
 )
-from tests.app.db import create_user, create_notification, create_job, create_service_inbound_api, create_inbound_sms
+from tests.app.db import (
+    create_inbound_sms,
+    create_job,
+    create_letter_contact,
+    create_notification,
+    create_service_inbound_api,
+    create_service,
+    create_template,
+    create_user
+)
 
 
 class AnyStringWith(str):
@@ -1076,8 +1087,11 @@ def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_let
     mocked_send_task.assert_not_called()
 
 
-def test_create_dvla_file_contents_for_job(sample_letter_template, mocker):
-    job = create_job(template=sample_letter_template, notification_count=2)
+def test_create_dvla_file_contents(notify_db_session, mocker):
+    service = create_service(service_permissions=SERVICE_PERMISSION_TYPES)
+    create_letter_contact(service=service, contact_block='London,\nNW1A 1AA')
+    letter_template = create_template(service=service, template_type=LETTER_TYPE)
+    job = create_job(template=letter_template, notification_count=2)
     create_notification(template=job.template, job=job, reference=1)
     create_notification(template=job.template, job=job, reference=2)
     mocked_letter_template = mocker.patch("app.celery.tasks.LetterDVLATemplate")
@@ -1093,9 +1107,8 @@ def test_create_dvla_file_contents_for_job(sample_letter_template, mocker):
     # Personalisation
     assert not calls[0][0][1]
     assert not calls[1][0][1]
-
     # Named arguments
-    assert calls[1][1]['contact_block'] == 'London,\nSW1A 1AA'
+    assert calls[1][1]['contact_block'] == 'London,\nNW1A 1AA'
     assert calls[0][1]['notification_reference'] == '1'
     assert calls[1][1]['notification_reference'] == '2'
     assert calls[1][1]['org_id'] == '001'

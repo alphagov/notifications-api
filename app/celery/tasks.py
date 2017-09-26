@@ -370,7 +370,7 @@ def create_dvla_file_contents_for_notifications(notifications):
             notification.template.__dict__,
             notification.personalisation,
             notification_reference=notification.reference,
-            contact_block=notification.service.letter_contact_block,
+            contact_block=notification.service.get_default_letter_contact(),
             org_id=notification.service.dvla_organisation.id,
         ))
         for notification in notifications
