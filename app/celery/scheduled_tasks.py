@@ -335,17 +335,17 @@ def run_letter_notifications():
     if notifications:
         file_contents = create_dvla_file_contents_for_notifications(notifications)
 
-        file_location = '{}-dvla-notifications.txt'.format(current_time)
+        filename = '{}-dvla-notifications.txt'.format(current_time)
         s3upload(
             filedata=file_contents + '\n',
             region=current_app.config['AWS_REGION'],
             bucket_name=current_app.config['DVLA_BUCKETS']['notification'],
-            file_location=file_location
+            file_location=filename
         )
 
         notify_celery.send_task(
             name=TaskNames.DVLA_NOTIFICATIONS,
-            kwargs={'filename': file_location},
+            kwargs={'filename': filename},
             queue=QueueNames.PROCESS_FTP
         )
         current_app.logger.info(

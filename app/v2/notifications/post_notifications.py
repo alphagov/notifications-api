@@ -4,16 +4,23 @@ from flask import request, jsonify, current_app, abort
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
-from app.dao.jobs_dao import dao_update_job
-from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, PRIORITY, KEY_TYPE_TEST, KEY_TYPE_TEAM
-from app.celery.tasks import build_dvla_file, update_job_to_sent_to_dvla
+from app.models import (
+    SMS_TYPE,
+    EMAIL_TYPE,
+    LETTER_TYPE,
+    PRIORITY,
+    KEY_TYPE_TEST,
+    KEY_TYPE_TEAM,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_SENDING
+)
+from app.celery.tasks import update_letter_notifications_to_sent_to_dvla
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
     simulated_recipient,
     persist_scheduled_notification)
 from app.notifications.process_letter_notifications import (
-    create_letter_api_job,
     create_letter_notification
 )
 from app.notifications.validators import (
@@ -153,18 +160,17 @@ def process_letter_notification(*, letter_data, api_key, template):
     if api_key.service.restricted and api_key.key_type != KEY_TYPE_TEST:
         raise BadRequestError(message='Cannot send letters when service is in trial mode', status_code=403)
 
-    notification = create_letter_notification(letter_data, template, api_key)
+    should_send = not (api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST)
 
-    if api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST:
-        # distinguish real API jobs from test jobs by giving the test jobs a different filename
-        job.original_file_name = LETTER_TEST_API_FILENAME
-        dao_update_job(job)
-        update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
-    else:
-        build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
+    # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
+    status = NOTIFICATION_CREATED if should_send else NOTIFICATION_SENDING
 
-    current_app.logger.info("send job {} for api notification {} to build-dvla-file in the process-job queue".format(
-        job.id,
-        notification.id
-    ))
+    notification = create_letter_notification(letter_data, template, api_key, status=status)
+
+    if not should_send:
+        update_letter_notifications_to_sent_to_dvla.apply_async(
+            kwargs={'notification_references': [notification.reference]},
+            queue=QueueNames.RESEARCH_MODE
+        )
+
     return notification

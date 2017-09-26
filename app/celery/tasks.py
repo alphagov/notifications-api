@@ -46,7 +46,10 @@ from app.models import (
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_FINISHED,
     JOB_STATUS_READY_TO_SEND,
-    JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_ERROR)
+    JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_ERROR,
+    NOTIFICATION_SENDING,
+    NOTIFICATION_TECHNICAL_FAILURE
+)
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
@@ -343,7 +346,6 @@ def update_letter_notifications_to_sent_to_dvla(self, notification_references):
 @statsd(namespace="tasks")
 def update_letter_notifications_to_error(self, notification_references):
     # This task will be called by the FTP app to update notifications as sent to DVLA
-    provider = get_current_provider(LETTER_TYPE)
 
     updated_count = dao_update_notifications_by_reference(
         notification_references,

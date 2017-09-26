@@ -477,16 +477,18 @@ def dao_update_notifications_for_job_to_sent_to_dvla(job_id, provider):
 @transactional
 def dao_update_notifications_by_reference(references, update_dict):
     now = datetime.utcnow()
-    updated_count = Notification.query().filter(
+    updated_count = Notification.query.filter(
         Notification.reference.in_(references)
     ).update(
-        update_dict
+        update_dict,
+        synchronize_session=False
     )
 
-    NotificationHistory.query().filter(
+    NotificationHistory.query.filter(
         NotificationHistory.reference.in_(references)
     ).update(
-        update_dict
+        update_dict,
+        synchronize_session=False
     )
 
     return updated_count
@@ -585,11 +587,12 @@ def dao_set_created_live_letter_api_notifications_to_pending():
     from completing until it commits.
     """
     return db.session.query(
-        Notification.id
+        Notification
     ).filter(
         Notification.notification_type == LETTER_TYPE,
         Notification.status == NOTIFICATION_CREATED,
         Notification.key_type == KEY_TYPE_NORMAL,
+        Notification.api_key != None
     ).with_for_update(
     ).all()
 

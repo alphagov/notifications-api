@@ -5,7 +5,6 @@ from app.models import Job
 from app.models import JOB_STATUS_READY_TO_SEND
 from app.models import LETTER_TYPE
 from app.models import Notification
-from app.notifications.process_letter_notifications import create_letter_api_job
 from app.notifications.process_letter_notifications import create_letter_notification
 from app.v2.errors import InvalidRequest
 from app.variables import LETTER_API_FILENAME
