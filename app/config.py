@@ -339,6 +339,8 @@ class Test(Config):
         }
     }
 
+    SMS_INBOUND_WHITELIST = ['203.0.113.195']
+
 
 class Preview(Config):
     NOTIFY_EMAIL_DOMAIN = 'notify.works'

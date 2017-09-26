@@ -60,7 +60,7 @@ def restrict_ip_sms():
         current_app.logger.info("Inbound sms ip route list {}"
                                 .format(ip_route))
         if len(ip_list) >= 3:
-            inbound_ip = IPv4Address(ip_list[len(ip_list) - 3])
+            inbound_ip = IPv4Address(ip_list[len(ip_list) - 3].strip())
 
             # IP whitelist
             allowed_ips = current_app.config.get('SMS_INBOUND_WHITELIST')
@@ -70,10 +70,10 @@ def restrict_ip_sms():
                 for allowed_ip in allowed_ips
             )
 
-            # if allowed:
-            #    return
-            # else:
-            #    raise AuthError('Unknown source IP address from the SMS provider', 403)
+            if allowed:
+                return
+            else:
+                raise AuthError('Unknown source IP address from the SMS provider', 403)
 
             current_app.logger.info({
                 'message': 'Inbound sms ip address',
@@ -87,7 +87,7 @@ def restrict_ip_sms():
     current_app.logger.error('Traffic from unknown source or route, X-Forwarded-For="{}"'.format(
         request.headers.get("X-Forwarded-For"))
     )
-    # raise AuthError('Traffic from unknown source or route', 403)
+    raise AuthError('Traffic from unknown source or route', 403)
 
 
 def requires_admin_auth():
