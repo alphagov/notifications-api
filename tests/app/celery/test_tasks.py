@@ -25,9 +25,6 @@ from app.celery.tasks import (
     send_email,
     persist_letter,
     get_template_class,
-    update_job_to_sent_to_dvla,
-    update_letter_notifications_statuses,
-    process_updates_from_file,
     send_inbound_sms_to_service)
 from app.config import QueueNames
 from app.dao import jobs_dao, services_dao
@@ -39,11 +36,9 @@ from app.models import (
     SMS_TYPE,
     EMAIL_TYPE,
     LETTER_TYPE,
-    Job,
-    JOB_STATUS_ERROR)
+    Job)
 
 from tests.app import load_example_csv
-from tests.conftest import set_config
 from tests.app.conftest import (
     sample_service as create_sample_service,
     sample_template as create_sample_template,
@@ -642,7 +637,7 @@ def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
     A1,A2,A3,A4,A_POST,Alice
     """
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=csv)
-    mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
+    mock_update_job_task = mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
     mocker.patch('app.celery.tasks.persist_letter.apply_async')
     mocker.patch('app.celery.tasks.create_uuid', return_value=fake_uuid)
     mocker.patch('app.celery.tasks.encryption.encrypt', return_value=test_encrypted_data)
@@ -662,7 +657,7 @@ def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
         queue=QueueNames.RESEARCH_MODE
     )
 
-    update_job_to_sent_to_dvla.apply_async.assert_called_once_with(
+    mock_update_job_task.assert_called_once_with(
         [str(job.id)], queue=QueueNames.RESEARCH_MODE)
 
 
@@ -1112,73 +1107,6 @@ def test_dvla_letter_template(sample_letter_notification):
          "subject": sample_letter_notification.template.subject}
     letter = LetterDVLATemplate(t, sample_letter_notification.personalisation, "random-string")
     assert str(letter) == "140|500|001||random-string|||||||||||||A1||A2|A3|A4|A5|A6|A_POST|||||||||23 March 2017<cr><cr><h1>Template subject<normal><cr><cr>Dear Sir/Madam, Hello. Yours Truly, The Government.<cr><cr>"  # noqa
-
-
-def test_update_job_to_sent_to_dvla(sample_letter_template, sample_letter_job):
-    create_notification(template=sample_letter_template, job=sample_letter_job)
-    create_notification(template=sample_letter_template, job=sample_letter_job)
-    update_job_to_sent_to_dvla(job_id=sample_letter_job.id)
-
-    updated_notifications = Notification.query.all()
-    assert [(n.status == 'sending', n.sent_by == 'dvla') for n in updated_notifications]
-
-    assert 'sent to dvla' == Job.query.filter_by(id=sample_letter_job.id).one().job_status
-
-
-def test_update_dvla_job_to_error(sample_letter_template, sample_letter_job):
-    create_notification(template=sample_letter_template, job=sample_letter_job)
-    create_notification(template=sample_letter_template, job=sample_letter_job)
-    update_dvla_job_to_error(job_id=sample_letter_job.id)
-
-    updated_notifications = Notification.query.all()
-    for n in updated_notifications:
-        assert n.status == 'created'
-        assert not n.sent_by
-
-    assert 'error' == Job.query.filter_by(id=sample_letter_job.id).one().job_status
-
-
-def test_update_letter_notifications_statuses_raises_for_invalid_format(notify_api, mocker):
-    invalid_file = 'ref-foo|Sent|1|Unsorted\nref-bar|Sent|2'
-    mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=invalid_file)
-
-    with pytest.raises(TypeError):
-        update_letter_notifications_statuses(filename='foo.txt')
-
-
-def test_update_letter_notifications_statuses_calls_with_correct_bucket_location(notify_api, mocker):
-    s3_mock = mocker.patch('app.celery.tasks.s3.get_s3_object')
-
-    with set_config(notify_api, 'NOTIFY_EMAIL_DOMAIN', 'foo.bar'):
-        update_letter_notifications_statuses(filename='foo.txt')
-        s3_mock.assert_called_with('{}-ftp'.format(current_app.config['NOTIFY_EMAIL_DOMAIN']), 'foo.txt')
-
-
-def test_update_letter_notifications_statuses_builds_updates_from_content(notify_api, mocker):
-    valid_file = 'ref-foo|Sent|1|Unsorted\nref-bar|Sent|2|Sorted'
-    mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
-    update_mock = mocker.patch('app.celery.tasks.process_updates_from_file')
-
-    update_letter_notifications_statuses(filename='foo.txt')
-
-    update_mock.assert_called_with('ref-foo|Sent|1|Unsorted\nref-bar|Sent|2|Sorted')
-
-
-def test_update_letter_notifications_statuses_builds_updates_list(notify_api, mocker):
-    valid_file = 'ref-foo|Sent|1|Unsorted\nref-bar|Sent|2|Sorted'
-    updates = process_updates_from_file(valid_file)
-
-    assert len(updates) == 2
-
-    assert updates[0].reference == 'ref-foo'
-    assert updates[0].status == 'Sent'
-    assert updates[0].page_count == '1'
-    assert updates[0].cost_threshold == 'Unsorted'
-
-    assert updates[1].reference == 'ref-bar'
-    assert updates[1].status == 'Sent'
-    assert updates[1].page_count == '2'
-    assert updates[1].cost_threshold == 'Sorted'
 
 
 def test_send_inbound_sms_to_service_post_https_request_to_service(notify_api, sample_service):

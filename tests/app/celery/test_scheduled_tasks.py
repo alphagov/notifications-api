@@ -741,6 +741,7 @@ def test_run_letter_api_notifications_triggers_ftp_task(client, mocker, sample_l
         queue=QueueNames.PROCESS_FTP
     )
 
+
 def test_run_letter_api_notifications_does_nothing_if_no_created_notifications(
     client,
     mocker,
