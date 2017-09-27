@@ -329,14 +329,6 @@ def test_allows_api_calls_with_international_numbers_if_service_does_allow_int_s
 def test_check_service_email_reply_to_id_where_reply_to_id_is_none():
     assert check_service_email_reply_to_id(None, None) is None
 
-
-def test_check_service_email_reply_to_id_where_reply_to_id_is_not_found(sample_service, fake_uuid):
-    with pytest.raises(BadRequestError) as e:
-        check_service_email_reply_to_id(sample_service.id, fake_uuid)
-    assert e.value.status_code == 400
-    assert e.value.message == 'reply_to_id does not exist in database'
-
-
 def test_check_service_email_reply_to_id_where_reply_to_id_is_found(sample_service):
     reply_to_email = create_reply_to_email(sample_service, 'test@test.com')
     assert check_service_email_reply_to_id(sample_service.id, reply_to_email.id) is None
