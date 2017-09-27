@@ -19,6 +19,7 @@ manager.add_command('custom_db_script', commands.CustomDbScript)
 manager.add_command('populate_monthly_billing', commands.PopulateMonthlyBilling)
 manager.add_command('backfill_processing_time', commands.BackfillProcessingTime)
 manager.add_command('populate_service_email_reply_to', commands.PopulateServiceEmailReplyTo)
+manager.add_command('populate_service_sms_sender', commands.PopulateServiceSmsSender)
 
 
 @manager.command
