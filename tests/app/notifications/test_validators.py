@@ -10,7 +10,8 @@ from app.notifications.validators import (
     service_can_send_to_recipient,
     check_sms_content_char_count,
     check_service_over_api_rate_limit,
-    validate_and_format_recipient
+    validate_and_format_recipient,
+    check_service_email_reply_to_id
 )
 
 from app.v2.errors import (
@@ -322,3 +323,18 @@ def test_allows_api_calls_with_international_numbers_if_service_does_allow_int_s
     service = create_service(notify_db, notify_db_session, permissions=[SMS_TYPE, INTERNATIONAL_SMS_TYPE])
     result = validate_and_format_recipient('20-12-1234-1234', key_type, service, SMS_TYPE)
     assert result == '201212341234'
+
+
+@pytest.mark.parametrize('key_type', ['test', 'normal'])
+def test_check_service_email_reply_to_id_where_reply_to_id_is_none(
+        key_type, notify_db, notify_db_session):
+    assert check_service_email_reply_to_id(None, None) is None
+
+
+@pytest.mark.parametrize('key_type', ['test', 'normal'])
+def test_check_service_email_reply_to_id_where_reply_to_id_is_not_found(key_type, notify_db, notify_db_session):
+    service = create_service(notify_db, notify_db_session, permissions=[EMAIL_TYPE])
+    with pytest.raises(BadRequestError) as e:
+        check_service_email_reply_to_id(service.id, 1)
+    assert e.value.status_code == 400
+    assert e.value.message == 'reply_to_id does not exist in database'
