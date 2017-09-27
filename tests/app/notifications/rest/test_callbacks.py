@@ -255,30 +255,6 @@ def test_firetext_callback_should_update_notification_status_pending(client, not
     assert get_notification_by_id(notification.id).status == 'pending'
 
 
-def test_firetext_callback_should_update_multiple_notification_status_sent(
-    client,
-    notify_db,
-    notify_db_session,
-    mocker
-):
-    mocker.patch('app.statsd_client.incr')
-    notification1 = create_sample_notification(
-        notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
-    )
-    notification2 = create_sample_notification(
-        notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
-    )
-    notification3 = create_sample_notification(
-        notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
-    )
-    data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-        notification1.id)
-
-    firetext_post(client, data)
-    firetext_post(client, data)
-    firetext_post(client, data)
-
-
 def test_process_mmg_response_return_200_when_cid_is_send_sms_code(client):
     data = '{"reference": "10100164", "CID": "send-sms-code", "MSISDN": "447775349060", "status": "3", \
         "deliverytime": "2016-04-05 16:01:07"}'
