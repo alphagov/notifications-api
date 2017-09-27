@@ -23,6 +23,7 @@ from tests.app.conftest import (
     sample_service as create_service,
     sample_service_whitelist,
     sample_api_key)
+from tests.app.db import create_reply_to_email
 
 
 @pytest.mark.parametrize('key_type', ['test', 'team', 'normal'])
@@ -325,16 +326,24 @@ def test_allows_api_calls_with_international_numbers_if_service_does_allow_int_s
     assert result == '201212341234'
 
 
-@pytest.mark.parametrize('key_type', ['test', 'normal'])
-def test_check_service_email_reply_to_id_where_reply_to_id_is_none(
-        key_type, notify_db, notify_db_session):
+def test_check_service_email_reply_to_id_where_reply_to_id_is_none():
     assert check_service_email_reply_to_id(None, None) is None
 
 
-@pytest.mark.parametrize('key_type', ['test', 'normal'])
-def test_check_service_email_reply_to_id_where_reply_to_id_is_not_found(key_type, notify_db, notify_db_session):
-    service = create_service(notify_db, notify_db_session, permissions=[EMAIL_TYPE])
+def test_check_service_email_reply_to_id_where_reply_to_id_is_not_found(sample_service, fake_uuid):
     with pytest.raises(BadRequestError) as e:
-        check_service_email_reply_to_id(service.id, 1)
+        check_service_email_reply_to_id(sample_service.id, fake_uuid)
+    assert e.value.status_code == 400
+    assert e.value.message == 'reply_to_id does not exist in database'
+
+
+def test_check_service_email_reply_to_id_where_reply_to_id_is_found(sample_service):
+    reply_to_email = create_reply_to_email(sample_service, 'test@test.com')
+    assert check_service_email_reply_to_id(sample_service.id, reply_to_email.id) is None
+
+
+def test_check_service_email_reply_to_id_where_service_id_is_not_found(sample_service,  fake_uuid):
+    with pytest.raises(BadRequestError) as e:
+        check_service_email_reply_to_id(fake_uuid, fake_uuid)
     assert e.value.status_code == 400
     assert e.value.message == 'reply_to_id does not exist in database'
