@@ -1416,8 +1416,8 @@ class ServiceLetterContact(db.Model):
         }
 
 
-class NotificationSmsSender(db.Model):
-    __tablename__ = "notification_to_email_sender"
+class NotificationEmailReplyTo(db.Model):
+    __tablename__ = "notification_to_email_reply_to"
 
     notification_id = db.Column(
         UUID(as_uuid=True),
