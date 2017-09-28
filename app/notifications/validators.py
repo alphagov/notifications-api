@@ -135,7 +135,7 @@ def validate_template(template_id, personalisation, service, notification_type):
     return template, template_with_content
 
 
-def check_service_email_reply_to_id(service_id, reply_to_id ):
+def check_service_email_reply_to_id(service_id, reply_to_id):
     if not (reply_to_id is None):
         try:
             reply_to = dao_get_reply_to_by_id(service_id, reply_to_id)
