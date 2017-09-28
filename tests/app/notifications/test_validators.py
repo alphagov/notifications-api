@@ -334,7 +334,7 @@ def test_check_service_email_reply_to_id_where_reply_to_id_is_found(sample_servi
     assert check_service_email_reply_to_id(sample_service.id, reply_to_email.id) is None
 
 
-def test_check_service_email_reply_to_id_where_service_id_is_not_found(sample_service,  fake_uuid):
+def test_check_service_email_reply_to_id_where_service_id_is_not_found(sample_service, fake_uuid):
     with pytest.raises(BadRequestError) as e:
         check_service_email_reply_to_id(fake_uuid, fake_uuid)
     assert e.value.status_code == 400
