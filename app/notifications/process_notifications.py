@@ -3,6 +3,7 @@ from datetime import datetime
 
 from flask import current_app
 
+from notifications_utils.clients import redis
 from notifications_utils.recipients import (
     get_international_phone_info,
     validate_and_format_phone_number,
@@ -11,10 +12,8 @@ from notifications_utils.recipients import (
 
 from app import redis_store
 from app.celery import provider_tasks
-from notifications_utils.clients import redis
-
 from app.config import QueueNames
-from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE, ScheduledNotification
+from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE, NOTIFICATION_CREATED, ScheduledNotification
 from app.dao.notifications_dao import (dao_create_notification,
                                        dao_delete_notifications_and_history_by_id,
                                        dao_created_scheduled_notification)
@@ -52,7 +51,8 @@ def persist_notification(
     client_reference=None,
     notification_id=None,
     simulated=False,
-    created_by_id=None
+    created_by_id=None,
+    status=NOTIFICATION_CREATED
 ):
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:
@@ -73,7 +73,8 @@ def persist_notification(
         job_row_number=job_row_number,
         client_reference=client_reference,
         reference=reference,
-        created_by_id=created_by_id
+        created_by_id=created_by_id,
+        status=status
     )
 
     if notification_type == SMS_TYPE:

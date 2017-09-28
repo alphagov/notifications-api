@@ -1,7 +1,7 @@
 from datetime import datetime
 import uuid
 
-from app import db
+from app import db, create_random_identifier
 from app.dao.jobs_dao import dao_create_job
 from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.models import (
@@ -22,6 +22,7 @@ from app.models import (
     InboundNumber,
     Organisation,
     EMAIL_TYPE,
+    LETTER_TYPE,
     SMS_TYPE,
     INBOUND_SMS_TYPE,
     KEY_TYPE_NORMAL,
@@ -141,6 +142,9 @@ def create_notification(
         api_key = ApiKey.query.filter(ApiKey.service == template.service, ApiKey.key_type == key_type).first()
         if not api_key:
             api_key = create_api_key(template.service, key_type=key_type)
+
+    if template.template_type == LETTER_TYPE and reference is None:
+        reference = create_random_identifier()
 
     data = {
         'id': uuid.uuid4(),
