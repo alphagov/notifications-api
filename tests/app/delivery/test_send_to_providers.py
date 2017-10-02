@@ -650,19 +650,20 @@ def test_should_set_international_phone_number_to_sent_status(
 @pytest.mark.parametrize('sms_sender, expected_sender, expected_content', [
     ('foo', 'foo', 'bar'),
     # if 40604 is actually in DB then treat that as if entered manually
-    # ('40604', '40604', 'bar'),
+    ('40604', '40604', 'bar'),
     # 'testing' is the FROM_NUMBER during unit tests
-    #  ('testing', 'testing', 'Sample service: bar'),
+    ('testing', 'testing', 'Sample service: bar'),
 ])
 def test_should_handle_sms_sender_and_prefix_message(
     mocker,
     sms_sender,
     expected_sender,
-    expected_content
+    expected_content,
+    notify_db_session
 ):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
-    service = create_service(service_name=str(uuid.uuid4()), sms_sender=sms_sender)
+    service = create_service(sms_sender=sms_sender)
     template = create_template(service, content='bar')
     notification = create_notification(template)
 

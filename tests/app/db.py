@@ -27,8 +27,8 @@ from app.models import (
     INBOUND_SMS_TYPE,
     KEY_TYPE_NORMAL,
     ServiceInboundApi,
-    ServiceEmailReplyTo
-)
+    ServiceEmailReplyTo,
+    ServiceLetterContact, ServiceSmsSender)
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import dao_create_notification, dao_created_scheduled_notification
 from app.dao.templates_dao import dao_create_template

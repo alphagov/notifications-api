@@ -95,8 +95,8 @@ def test_update_letter_notifications_to_sent_to_dvla_updates_based_on_notificati
     client,
     sample_letter_template
 ):
-    first = create_notification(sample_letter_template)
-    second = create_notification(sample_letter_template)
+    first = create_notification(sample_letter_template, reference='first ref')
+    second = create_notification(sample_letter_template, reference='second ref')
 
     dt = datetime.utcnow()
     with freeze_time(dt):
@@ -113,8 +113,8 @@ def test_update_letter_notifications_to_error_updates_based_on_notification_refe
     client,
     sample_letter_template
 ):
-    first = create_notification(sample_letter_template)
-    second = create_notification(sample_letter_template)
+    first = create_notification(sample_letter_template, reference='first ref')
+    second = create_notification(sample_letter_template, reference='second ref')
 
     dt = datetime.utcnow()
     with freeze_time(dt):
