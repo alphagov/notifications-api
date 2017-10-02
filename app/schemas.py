@@ -183,6 +183,7 @@ class ServiceSchema(BaseSchema):
     permissions = fields.Method("service_permissions")
     override_flag = False
     reply_to_email_address = fields.Method(method_name="get_reply_to_email_address")
+    sms_sender = fields.Method(method_name="get_sms_sender")
 
     def get_free_sms_fragment_limit(selfs, service):
         return service.free_sms_fragment_limit()
@@ -192,6 +193,9 @@ class ServiceSchema(BaseSchema):
 
     def get_reply_to_email_address(self, service):
         return service.get_default_reply_to_email_address()
+
+    def get_sms_sender(self, service):
+        return service.get_default_sms_sender()
 
     class Meta:
         model = models.Service
