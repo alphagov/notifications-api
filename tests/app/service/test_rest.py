@@ -1548,8 +1548,7 @@ def test_get_services_with_detailed_flag_accepts_date_range(client, mocker):
         start_date=date(2001, 1, 1),
         end_date=date(2002, 2, 2),
         only_active=ANY,
-        include_from_test_key=ANY,
-        trial_mode_services=ANY
+        include_from_test_key=ANY
     )
     assert resp.status_code == 200
 
@@ -1566,8 +1565,7 @@ def test_get_services_with_detailed_flag_defaults_to_today(client, mocker):
         end_date=date(2002, 2, 2),
         include_from_test_key=ANY,
         only_active=ANY,
-        start_date=date(2002, 2, 2),
-        trial_mode_services=ANY
+        start_date=date(2002, 2, 2)
     )
 
     assert resp.status_code == 200
