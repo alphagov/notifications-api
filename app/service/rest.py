@@ -90,7 +90,6 @@ def get_services():
     detailed = request.args.get('detailed') == 'True'
     user_id = request.args.get('user_id', None)
     include_from_test_key = request.args.get('include_from_test_key', 'True') != 'False'
-    trial_mode_services = request.args.get('trial_mode_services')
 
     # If start and end date are not set, we are expecting today's stats.
     today = str(datetime.utcnow().date())
@@ -103,8 +102,7 @@ def get_services():
     elif detailed:
         result = jsonify(data=get_detailed_services(start_date=start_date, end_date=end_date,
                                                     only_active=only_active,
-                                                    include_from_test_key=include_from_test_key,
-                                                    trial_mode_services=trial_mode_services
+                                                    include_from_test_key=include_from_test_key
                                                     ))
         return result
     else:
@@ -369,12 +367,10 @@ def get_detailed_service(service_id, today_only=False):
     return detailed_service_schema.dump(service).data
 
 
-def get_detailed_services(start_date, end_date, only_active=False, include_from_test_key=True,
-                          trial_mode_services=None):
+def get_detailed_services(start_date, end_date, only_active=False, include_from_test_key=True):
     services = {service.id: service for service in dao_fetch_all_services(only_active)}
     if start_date == datetime.utcnow().date():
-        stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key,
-                                                        trial_mode_services=trial_mode_services)
+        stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key)
     else:
 
         stats = fetch_stats_by_date_range_for_all_services(start_date=start_date,
