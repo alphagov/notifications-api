@@ -12,7 +12,7 @@ from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
 from app.models import (
-    User, Organisation, Service, ServicePermission, Notification, ServiceEmailReplyTo,
+    User, Organisation, Service, ServicePermission, Notification, ServiceEmailReplyTo, ServiceLetterContact,
     DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
@@ -2304,3 +2304,21 @@ def test_get_email_reply_to_address(client, notify_db, notify_db_session):
 
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == reply_to.serialize()
+
+
+def test_update_service_letter_contact_upserts_letter_contact(admin_request, sample_service):
+    response = admin_request.post(
+        'service.update_service',
+        service_id=sample_service.id,
+        _data={
+            'letter_contact_block': 'Aberdeen, AB23 1XH'
+        },
+        _expected_status=200
+    )
+
+    letter_contacts = ServiceLetterContact.query.all()
+
+    assert len(letter_contacts) == 1
+    assert letter_contacts[0].contact_block == 'Aberdeen, AB23 1XH'
+    assert letter_contacts[0].is_default
+    assert response['data']['letter_contact_block'] == 'Aberdeen, AB23 1XH'
