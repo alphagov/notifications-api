@@ -18,6 +18,11 @@ from notifications_utils.recipients import (
     InvalidEmailError
 )
 from notifications_utils.letter_timings import get_letter_timings
+from notifications_utils.template import (
+    PlainTextEmailTemplate,
+    SMSMessageTemplate,
+    LetterDVLATemplate,
+)
 
 from app.encryption import (
     hashpw,
@@ -525,6 +530,22 @@ class Template(db.Model):
             _external=True
         )
 
+    def _as_utils_template(self):
+        if self.template_type == EMAIL_TYPE:
+            return PlainTextEmailTemplate(
+                {'content': self.content, 'subject': self.subject}
+            )
+        if self.template_type == SMS_TYPE:
+            return SMSMessageTemplate(
+                {'content': self.content}
+            )
+        if self.template_type == LETTER_TYPE:
+            return LetterDVLATemplate(
+                {'content': self.content, 'subject': self.subject},
+                notification_reference=1,
+                contact_block=self.service.letter_contact_block,
+            )
+
     def serialize(self):
         serialized = {
             "id": str(self.id),
@@ -536,6 +557,12 @@ class Template(db.Model):
             "body": self.content,
             "subject": self.subject if self.template_type != SMS_TYPE else None,
             "name": self.name,
+            "personalisation": {
+                key: {
+                    'required': True,
+                }
+                for key in self._as_utils_template().placeholders
+            },
         }
 
         return serialized
@@ -575,6 +602,9 @@ class TemplateHistory(db.Model):
                              index=True,
                              nullable=False,
                              default=NORMAL)
+
+    def _as_utils_template(self):
+        return Template._as_utils_template(self)
 
     def serialize(self):
         return Template.serialize(self)
