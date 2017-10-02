@@ -285,3 +285,23 @@ class PopulateServiceSmsSender(Command):
         print("Populated sms sender {} services from services".format(second_result.rowcount))
         print("{} services in table".format(services_count_query))
         print("{} service_sms_senders".format(service_sms_sender_count_query))
+
+
+class PopulateServiceLetterContact(Command):
+
+    def run(self):
+        services_to_update = """
+            INSERT INTO service_letter_contacts(id, service_id, contact_block, is_default, created_at)
+            SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, letter_contact_block, true, '{}'
+            FROM services
+            WHERE letter_contact_block IS NOT NULL
+            AND id NOT IN(
+                SELECT service_id
+                FROM service_letter_contacts
+            )
+        """.format(datetime.utcnow())
+
+        result = db.session.execute(services_to_update)
+        db.session.commit()
+
+        print("Populated letter contacts for {} services".format(result.rowcount))
