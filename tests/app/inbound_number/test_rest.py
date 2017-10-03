@@ -114,6 +114,25 @@ def test_rest_set_inbound_number_active_flag_off(
     assert not inbound_number_from_db.active
 
 
+def test_allocate_inbound_number_insert_update_service_sms_sender(
+        admin_request, notify_db_session
+):
+    service = create_service()
+    inbound_number = create_inbound_number(number='123')
+
+    admin_request.post(
+        'inbound_number.post_allocate_inbound_number',
+        _expected_status=204,
+        service_id=service.id
+    )
+
+    service_sms_senders = ServiceSmsSender.query.all()
+    assert len(service_sms_senders) == 1
+    assert service_sms_senders[0].sms_sender == inbound_number.number
+    assert service_sms_senders[0].inbound_number_id == inbound_number.id
+    assert service_sms_senders[0].is_default
+
+
 def test_allocate_inbound_number_to_service(admin_request, notify_db_session):
     service = create_service()
     inbound_number = create_inbound_number(number='1235468')
