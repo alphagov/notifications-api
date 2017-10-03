@@ -147,7 +147,6 @@ def update_service(service_id):
     fetched_service = dao_fetch_service_by_id(service_id)
     # Capture the status change here as Marshmallow changes this later
     service_going_live = fetched_service.restricted and not req_json.get('restricted', True)
-
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())
     update_dict = service_schema.load(current_data).data

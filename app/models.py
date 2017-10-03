@@ -208,8 +208,7 @@ class Service(db.Model, Versioned):
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     _reply_to_email_address = db.Column("reply_to_email_address", db.Text, index=False, unique=False, nullable=True)
-    letter_contact_block = db.Column(db.Text, index=False, unique=False, nullable=True)
-    # This column is now deprecated
+    _letter_contact_block = db.Column('letter_contact_block', db.Text, index=False, unique=False, nullable=True)
     sms_sender = db.Column(db.String(11), nullable=False, default=lambda: current_app.config['FROM_NUMBER'])
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
     organisation = db.relationship('Organisation')
@@ -268,8 +267,7 @@ class Service(db.Model, Versioned):
         if len(default_letter_contact) > 1:
             raise Exception("There should only ever be one default")
         else:
-            return default_letter_contact[0].contact_block if default_letter_contact else \
-                self.letter_contact_block  # need to update this to None after dropping the letter_contact_block column
+            return default_letter_contact[0].contact_block if default_letter_contact else None
 
 
 class InboundNumber(db.Model):
@@ -543,7 +541,7 @@ class Template(db.Model):
             return LetterDVLATemplate(
                 {'content': self.content, 'subject': self.subject},
                 notification_reference=1,
-                contact_block=self.service.letter_contact_block,
+                contact_block=self.service.get_default_letter_contact(),
             )
 
     def serialize(self):

@@ -274,8 +274,3 @@ def test_service_get_default_contact_letter(sample_service):
     create_letter_contact(service=sample_service, contact_block='London,\nNW1A 1AA')
 
     assert sample_service.get_default_letter_contact() == 'London,\nNW1A 1AA'
-
-
-# this test will need to be removed after letter_contact_block is dropped
-def test_service_get_default_letter_contact_block_from_service(sample_service):
-    assert sample_service.get_default_letter_contact() == sample_service.letter_contact_block

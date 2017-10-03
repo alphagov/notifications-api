@@ -46,7 +46,8 @@ from tests.app.db import (
     create_notification,
     create_service,
     create_api_key,
-    create_inbound_number
+    create_inbound_number,
+    create_letter_contact,
 )
 
 
@@ -138,7 +139,6 @@ def sample_service(
     email_from=None,
     permissions=[SMS_TYPE, EMAIL_TYPE],
     research_mode=None,
-    letter_contact_block='London,\nSW1A 1AA',
 ):
     if user is None:
         user = create_user()
@@ -150,8 +150,7 @@ def sample_service(
         'message_limit': limit,
         'restricted': restricted,
         'email_from': email_from,
-        'created_by': user,
-        'letter_contact_block': letter_contact_block,
+        'created_by': user
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
@@ -184,7 +183,9 @@ def sample_service_full_permissions(notify_db, notify_db_session):
 
 @pytest.fixture(scope='function')
 def sample_service_custom_letter_contact_block(notify_db, notify_db_session):
-    return sample_service(notify_db, notify_db_session, letter_contact_block='((contact block))')
+    service = sample_service(notify_db, notify_db_session)
+    create_letter_contact(service, contact_block='((contact block))')
+    return service
 
 
 @pytest.fixture(scope='function')
