@@ -157,7 +157,8 @@ post_email_request = {
         "email_address": {"type": "string", "format": "email_address"},
         "template_id": uuid,
         "personalisation": personalisation,
-        "scheduled_for": {"type": ["string", "null"], "format": "datetime"}
+        "scheduled_for": {"type": ["string", "null"], "format": "datetime"},
+        "email_reply_to_id": uuid
     },
     "required": ["email_address", "template_id"]
 }
