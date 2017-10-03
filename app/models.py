@@ -541,7 +541,7 @@ class Template(db.Model):
             return LetterDVLATemplate(
                 {'content': self.content, 'subject': self.subject},
                 notification_reference=1,
-                contact_block=self.service.letter_contact_block,
+                contact_block=self.service.get_default_letter_contact(),
             )
 
     def serialize(self):
