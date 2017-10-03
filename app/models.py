@@ -1422,7 +1422,7 @@ class NotificationEmailReplyTo(db.Model):
     notification_id = db.Column(
         UUID(as_uuid=True),
         db.ForeignKey('notifications.id'),
-        unique=False,
+        unique=True,
         index=True,
         nullable=False,
         primary_key=True

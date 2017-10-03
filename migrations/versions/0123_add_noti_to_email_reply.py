@@ -21,11 +21,10 @@ def upgrade():
     sa.ForeignKeyConstraint(['service_email_reply_to_id'], ['service_email_reply_to.id'], ),
     sa.PrimaryKeyConstraint('notification_id', 'service_email_reply_to_id')
     )
-    op.create_index(op.f('ix_notification_to_email_sender_notification_id'), 'notification_to_email_reply_to', ['notification_id'], unique=False)
-    op.create_index(op.f('ix_notification_to_email_sender_service_email_reply_to_id'), 'notification_to_email_reply_to', ['service_email_reply_to_id'], unique=False)
-
+    op.create_index(op.f('ix_notification_to_email_reply_to_notification_id'), 'notification_to_email_reply_to', ['notification_id'], unique=True)
+    op.create_index(op.f('ix_notification_to_email_reply_to_service_email_reply_to_id'), 'notification_to_email_reply_to', ['service_email_reply_to_id'], unique=False)
 
 def downgrade():
-    op.drop_index(op.f('ix_notification_to_email_sender_service_email_reply_to_id'), table_name='notification_to_email_reply_to')
-    op.drop_index(op.f('ix_notification_to_email_sender_notification_id'), table_name='notification_to_email_reply_to')
+    op.drop_index(op.f('ix_notification_to_email_reply_to_service_email_reply_to_id'), table_name='notification_to_email_reply_to')
+    op.drop_index(op.f('ix_notification_to_email_reply_to_notification_id'), table_name='notification_to_email_reply_to')
     op.drop_table('notification_to_email_reply_to')
