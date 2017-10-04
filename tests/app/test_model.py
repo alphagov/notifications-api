@@ -26,6 +26,7 @@ from tests.app.db import (
     create_service,
     create_inbound_number,
     create_reply_to_email,
+    create_service_sms_sender,
     create_letter_contact
 )
 from tests.conftest import set_config
@@ -274,3 +275,8 @@ def test_service_get_default_contact_letter(sample_service):
     create_letter_contact(service=sample_service, contact_block='London,\nNW1A 1AA')
 
     assert sample_service.get_default_letter_contact() == 'London,\nNW1A 1AA'
+
+
+def test_service_get_default_sms_sender(notify_db_session):
+    service = create_service(sms_sender='new_value')
+    assert service.get_default_sms_sender() == 'new_value'

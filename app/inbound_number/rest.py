@@ -36,6 +36,8 @@ def post_allocate_inbound_number(service_id):
     if inbound_number:
         if not inbound_number.active:
             dao_set_inbound_number_active_flag(service_id, active=True)
+            service = dao_fetch_service_by_id(service_id)
+            insert_or_update_service_sms_sender(service, inbound_number.number, inbound_number.id)
             return jsonify(), 204
         else:
             return jsonify(), 200

@@ -253,21 +253,19 @@ class Service(db.Model, Versioned):
         if self.inbound_number and self.inbound_number.active:
             return self.inbound_number.number
         else:
-            return self.sms_sender
+            return self.get_default_sms_sender()
+
+    def get_default_sms_sender(self):
+        default_sms_sender = [x for x in self.service_sms_senders if x.is_default]
+        return default_sms_sender[0].sms_sender
 
     def get_default_reply_to_email_address(self):
         default_reply_to = [x for x in self.reply_to_email_addresses if x.is_default]
-        if len(default_reply_to) > 1:
-            raise Exception("There should only ever be one default")
-        else:
-            return default_reply_to[0].email_address if default_reply_to else None
+        return default_reply_to[0].email_address if default_reply_to else None
 
     def get_default_letter_contact(self):
         default_letter_contact = [x for x in self.letter_contacts if x.is_default]
-        if len(default_letter_contact) > 1:
-            raise Exception("There should only ever be one default")
-        else:
-            return default_letter_contact[0].contact_block if default_letter_contact else None
+        return default_letter_contact[0].contact_block if default_letter_contact else None
 
 
 class InboundNumber(db.Model):
@@ -306,7 +304,7 @@ class ServiceSmsSender(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     sms_sender = db.Column(db.String(11), nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=True, index=True, nullable=False)
-    service = db.relationship(Service, backref=db.backref("service_sms_senders", uselist=False))
+    service = db.relationship(Service, backref=db.backref("service_sms_senders", uselist=True))
     is_default = db.Column(db.Boolean, nullable=False, default=True)
     inbound_number_id = db.Column(UUID(as_uuid=True), db.ForeignKey('inbound_numbers.id'),
                                   unique=True, index=True, nullable=True)
@@ -1030,7 +1028,7 @@ class Notification(db.Model):
             return NOTIFICATION_STATUS_LETTER_ACCEPTED
         else:
             # Currently can only be technical-failure
-            return status
+            return self.status
 
     def serialize_for_csv(self):
         created_at_in_bst = convert_utc_to_bst(self.created_at)
