@@ -25,7 +25,13 @@ from tests.app.conftest import (
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
-from tests.app.db import create_template, create_service_inbound_api, create_notification, create_reply_to_email
+from tests.app.db import (
+    create_template,
+    create_service_inbound_api,
+    create_notification,
+    create_reply_to_email,
+    create_letter_contact,
+)
 from tests.app.db import create_user
 
 
@@ -2320,3 +2326,54 @@ def test_update_service_letter_contact_upserts_letter_contact(admin_request, sam
     assert letter_contacts[0].contact_block == 'Aberdeen, AB23 1XH'
     assert letter_contacts[0].is_default
     assert response['data']['letter_contact_block'] == 'Aberdeen, AB23 1XH'
+
+
+def test_get_letter_contacts_when_there_are_no_letter_contacts(client, sample_service):
+    response = client.get('/service/{}/letter-contact'.format(sample_service.id),
+                          headers=[create_authorization_header()])
+
+    assert json.loads(response.get_data(as_text=True)) == []
+    assert response.status_code == 200
+
+
+def test_get_letter_contacts_with_one_letter_contact(client, notify_db, notify_db_session):
+    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    letter_contact = create_letter_contact(service, 'Aberdeen, AB23 1XH')
+
+    response = client.get('/service/{}/letter-contact'.format(service.id),
+                          headers=[create_authorization_header()])
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert len(json_response) == 1
+    assert json_response[0]['contact_block'] == 'Aberdeen, AB23 1XH'
+    assert json_response[0]['is_default']
+    assert json_response[0]['created_at']
+    assert not json_response[0]['updated_at']
+    assert response.status_code == 200
+
+
+def test_get_letter_contacts_with_multiple_letter_contacts(client, notify_db, notify_db_session):
+    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    letter_contact_a = create_letter_contact(service, 'Aberdeen, AB23 1XH')
+    letter_contact_b = create_letter_contact(service, 'London, E1 8QS', False)
+
+    response = client.get('/service/{}/letter-contact'.format(service.id),
+                          headers=[create_authorization_header()])
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert len(json_response) == 2
+    assert response.status_code == 200
+
+    assert json_response[0]['id'] == str(letter_contact_a.id)
+    assert json_response[0]['service_id'] == str(letter_contact_a.service_id)
+    assert json_response[0]['contact_block'] == 'Aberdeen, AB23 1XH'
+    assert json_response[0]['is_default']
+    assert json_response[0]['created_at']
+    assert not json_response[0]['updated_at']
+
+    assert json_response[1]['id'] == str(letter_contact_b.id)
+    assert json_response[1]['service_id'] == str(letter_contact_b.service_id)
+    assert json_response[1]['contact_block'] == 'London, E1 8QS'
+    assert not json_response[1]['is_default']
+    assert json_response[1]['created_at']
+    assert not json_response[1]['updated_at']

@@ -1,3 +1,5 @@
+from sqlalchemy import desc
+
 from app import db
 from app.dao.dao_utils import transactional
 from app.errors import InvalidRequest
@@ -10,7 +12,8 @@ def dao_get_letter_contacts_by_service_id(service_id):
     ).filter(
         ServiceLetterContact.service_id == service_id
     ).order_by(
-        ServiceLetterContact.created_at
+        desc(ServiceLetterContact.is_default),
+        desc(ServiceLetterContact.created_at)
     ).all()
 
     return letter_contacts
