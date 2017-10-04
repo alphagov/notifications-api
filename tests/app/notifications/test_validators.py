@@ -334,7 +334,7 @@ def test_check_service_email_reply_to_id_where_reply_to_id_is_not_found(sample_s
     with pytest.raises(BadRequestError) as e:
         check_service_email_reply_to_id(sample_service.id, fake_uuid)
     assert e.value.status_code == 400
-    assert e.value.message == 'reply_to_id does not exist in database'
+    assert e.value.message == 'email_reply_to_id does not exist in database'
 
 
 def test_check_service_email_reply_to_id_where_reply_to_id_is_found(sample_service):
