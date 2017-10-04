@@ -17,6 +17,7 @@ from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
 from app import redis_store
 from app.notifications.process_notifications import create_content_for_notification
 from app.utils import get_public_notify_type_text
+from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 
 
 def check_service_over_api_rate_limit(service, api_key):
@@ -132,3 +133,12 @@ def validate_template(template_id, personalisation, service, notification_type):
     if template.template_type == SMS_TYPE:
         check_sms_content_char_count(template_with_content.content_count)
     return template, template_with_content
+
+
+def check_service_email_reply_to_id(service_id, reply_to_id):
+    if not (reply_to_id is None):
+        try:
+            reply_to = dao_get_reply_to_by_id(service_id, reply_to_id)
+        except NoResultFound:
+            message = 'email_reply_to_id does not exist in database'
+            raise BadRequestError(message=message)
