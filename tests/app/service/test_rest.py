@@ -2377,3 +2377,23 @@ def test_get_letter_contacts_with_multiple_letter_contacts(client, notify_db, no
     assert not json_response[1]['is_default']
     assert json_response[1]['created_at']
     assert not json_response[1]['updated_at']
+
+
+def test_get_letter_contact_by_id(client, notify_db, notify_db_session):
+    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    letter_contact = create_letter_contact(service, 'London, E1 8QS')
+
+    response = client.get('/service/{}/letter-contact/{}'.format(service.id, letter_contact.id),
+                          headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == letter_contact.serialize()
+
+
+def test_get_letter_contact_return_404_when_invalid_contact_id(client, notify_db, notify_db_session):
+    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+
+    response = client.get('/service/{}/letter-contact/{}'.format(service.id, '93d59f88-4aa1-453c-9900-f61e2fc8a2de'),
+                          headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 404

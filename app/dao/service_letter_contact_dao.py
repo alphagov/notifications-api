@@ -19,6 +19,16 @@ def dao_get_letter_contacts_by_service_id(service_id):
     return letter_contacts
 
 
+def dao_get_letter_contact_by_id(service_id, letter_contact_id):
+    letter_contact = db.session.query(
+        ServiceLetterContact
+    ).filter(
+        ServiceLetterContact.service_id == service_id,
+        ServiceLetterContact.id == letter_contact_id
+    ).one()
+    return letter_contact
+
+
 def create_or_update_letter_contact(service_id, contact_block):
     letter_contacts = dao_get_letter_contacts_by_service_id(service_id)
     if len(letter_contacts) == 0:

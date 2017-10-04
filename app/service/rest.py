@@ -53,7 +53,11 @@ from app.dao.service_email_reply_to_dao import (
     dao_get_reply_to_by_service_id,
     update_reply_to_email_address
 )
-from app.dao.service_letter_contact_dao import dao_get_letter_contacts_by_service_id, create_or_update_letter_contact
+from app.dao.service_letter_contact_dao import (
+    dao_get_letter_contacts_by_service_id,
+    create_or_update_letter_contact,
+    dao_get_letter_contact_by_id
+)
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_user_by_id
 from app.errors import (
@@ -575,6 +579,12 @@ def update_service_reply_to_email_address(service_id, reply_to_email_id):
 def get_letter_contacts(service_id):
     result = dao_get_letter_contacts_by_service_id(service_id)
     return jsonify([i.serialize() for i in result]), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/letter-contact/<uuid:letter_contact_id>', methods=["GET"])
+def get_letter_contact_by_id(service_id, letter_contact_id):
+    result = dao_get_letter_contact_by_id(service_id=service_id, letter_contact_id=letter_contact_id)
+    return jsonify(result.serialize()), 200
 
 
 @service_blueprint.route('/unique', methods=["GET"])
