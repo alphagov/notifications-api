@@ -58,6 +58,7 @@ from app.dao.service_letter_contact_dao import (
     create_or_update_letter_contact,
     dao_get_letter_contact_by_id,
     add_letter_contact_for_service,
+    update_letter_contact
 )
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_user_by_id
@@ -600,6 +601,18 @@ def add_service_letter_contact(service_id):
                                                         contact_block=form['contact_block'],
                                                         is_default=form.get('is_default', True))
     return jsonify(data=new_letter_contact.serialize()), 201
+
+
+@service_blueprint.route('/<uuid:service_id>/letter-contact/<uuid:letter_contact_id>', methods=['POST'])
+def update_service_letter_contact(service_id, letter_contact_id):
+    # validate the service exists, throws ResultNotFound exception.
+    dao_fetch_service_by_id(service_id)
+    form = validate(request.get_json(), add_service_letter_contact_block_request)
+    new_reply_to = update_letter_contact(service_id=service_id,
+                                         letter_contact_id=letter_contact_id,
+                                         contact_block=form['contact_block'],
+                                         is_default=form.get('is_default', True))
+    return jsonify(data=new_reply_to.serialize()), 200
 
 
 @service_blueprint.route('/unique', methods=["GET"])

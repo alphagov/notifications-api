@@ -2451,3 +2451,40 @@ def test_add_service_letter_contact_block_404s_when_invalid_service_id(client, n
     result = json.loads(response.get_data(as_text=True))
     assert result['result'] == 'error'
     assert result['message'] == 'No result found'
+
+
+def test_update_service_letter_contact(client, sample_service):
+    original_letter_contact = create_letter_contact(service=sample_service, contact_block="Aberdeen, AB23 1XH")
+    data = json.dumps({"contact_block": "London, E1 8QS", "is_default": True})
+    response = client.post('/service/{}/letter-contact/{}'.format(sample_service.id, original_letter_contact.id),
+                           data=data,
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+    results = ServiceLetterContact.query.all()
+    assert len(results) == 1
+    assert json_resp['data'] == results[0].serialize()
+
+
+def test_update_service_letter_contact_returns_400_when_no_default(client, sample_service):
+    original_reply_to = create_letter_contact(service=sample_service, contact_block="Aberdeen, AB23 1XH")
+    data = json.dumps({"contact_block": "London, E1 8QS", "is_default": False})
+    response = client.post('/service/{}/letter-contact/{}'.format(sample_service.id, original_reply_to.id),
+                           data=data,
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 400
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp['message'] == 'You must have at least one letter contact as the default.'
+
+
+def test_update_service_letter_contact_returns_404_when_invalid_service_id(client, notify_db, notify_db_session):
+    response = client.post('/service/{}/letter-contact/{}'.format(uuid.uuid4(), uuid.uuid4()),
+                           data={},
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 404
+    result = json.loads(response.get_data(as_text=True))
+    assert result['result'] == 'error'
+    assert result['message'] == 'No result found'
