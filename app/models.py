@@ -257,23 +257,15 @@ class Service(db.Model, Versioned):
 
     def get_default_sms_sender(self):
         default_sms_sender = [x for x in self.service_sms_senders if x.is_default]
-        if len(default_sms_sender) > 1:
-            raise Exception("There should only ever be one default")
         return default_sms_sender[0].sms_sender
 
     def get_default_reply_to_email_address(self):
         default_reply_to = [x for x in self.reply_to_email_addresses if x.is_default]
-        if len(default_reply_to) > 1:
-            raise Exception("There should only ever be one default")
-        else:
-            return default_reply_to[0].email_address if default_reply_to else None
+        return default_reply_to[0].email_address if default_reply_to else None
 
     def get_default_letter_contact(self):
         default_letter_contact = [x for x in self.letter_contacts if x.is_default]
-        if len(default_letter_contact) > 1:
-            raise Exception("There should only ever be one default")
-        else:
-            return default_letter_contact[0].contact_block if default_letter_contact else None
+        return default_letter_contact[0].contact_block if default_letter_contact else None
 
 
 class InboundNumber(db.Model):
