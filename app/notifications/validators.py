@@ -140,6 +140,5 @@ def check_service_email_reply_to_id(service_id, reply_to_id):
         try:
             reply_to = dao_get_reply_to_by_id(service_id, reply_to_id)
         except NoResultFound:
-            message = 'reply_to_id does not exist in database'
-            raise BadRequestError(message=message,
-                                  fields=[{'template': message}])
+            message = 'email_reply_to_id does not exist in database'
+            raise BadRequestError(message=message)
