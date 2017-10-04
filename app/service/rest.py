@@ -56,7 +56,8 @@ from app.dao.service_email_reply_to_dao import (
 from app.dao.service_letter_contact_dao import (
     dao_get_letter_contacts_by_service_id,
     create_or_update_letter_contact,
-    dao_get_letter_contact_by_id
+    dao_get_letter_contact_by_id,
+    add_letter_contact_for_service,
 )
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_user_by_id
@@ -68,7 +69,10 @@ from app.models import Service, ServiceInboundApi
 from app.schema_validation import validate
 from app.service import statistics
 from app.service.service_inbound_api_schema import service_inbound_api, update_service_inbound_api_schema
-from app.service.service_senders_schema import add_service_email_reply_to_request
+from app.service.service_senders_schema import (
+    add_service_email_reply_to_request,
+    add_service_letter_contact_block_request,
+)
 from app.service.utils import get_whitelist_objects
 from app.service.sender import send_notification_to_service_users
 from app.service.send_notification import send_one_off_notification
@@ -585,6 +589,17 @@ def get_letter_contacts(service_id):
 def get_letter_contact_by_id(service_id, letter_contact_id):
     result = dao_get_letter_contact_by_id(service_id=service_id, letter_contact_id=letter_contact_id)
     return jsonify(result.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/letter-contact', methods=['POST'])
+def add_service_letter_contact(service_id):
+    # validate the service exists, throws ResultNotFound exception.
+    dao_fetch_service_by_id(service_id)
+    form = validate(request.get_json(), add_service_letter_contact_block_request)
+    new_letter_contact = add_letter_contact_for_service(service_id=service_id,
+                                                        contact_block=form['contact_block'],
+                                                        is_default=form.get('is_default', True))
+    return jsonify(data=new_letter_contact.serialize()), 201
 
 
 @service_blueprint.route('/unique', methods=["GET"])
