@@ -25,7 +25,13 @@ from tests.app.conftest import (
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
-from tests.app.db import create_template, create_service_inbound_api, create_notification, create_reply_to_email
+from tests.app.db import (
+    create_template,
+    create_service_inbound_api,
+    create_notification,
+    create_reply_to_email,
+    create_letter_contact,
+)
 from tests.app.db import create_user
 
 
@@ -2320,3 +2326,165 @@ def test_update_service_letter_contact_upserts_letter_contact(admin_request, sam
     assert letter_contacts[0].contact_block == 'Aberdeen, AB23 1XH'
     assert letter_contacts[0].is_default
     assert response['data']['letter_contact_block'] == 'Aberdeen, AB23 1XH'
+
+
+def test_get_letter_contacts_when_there_are_no_letter_contacts(client, sample_service):
+    response = client.get('/service/{}/letter-contact'.format(sample_service.id),
+                          headers=[create_authorization_header()])
+
+    assert json.loads(response.get_data(as_text=True)) == []
+    assert response.status_code == 200
+
+
+def test_get_letter_contacts_with_one_letter_contact(client, notify_db, notify_db_session):
+    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    letter_contact = create_letter_contact(service, 'Aberdeen, AB23 1XH')
+
+    response = client.get('/service/{}/letter-contact'.format(service.id),
+                          headers=[create_authorization_header()])
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert len(json_response) == 1
+    assert json_response[0]['contact_block'] == 'Aberdeen, AB23 1XH'
+    assert json_response[0]['is_default']
+    assert json_response[0]['created_at']
+    assert not json_response[0]['updated_at']
+    assert response.status_code == 200
+
+
+def test_get_letter_contacts_with_multiple_letter_contacts(client, notify_db, notify_db_session):
+    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    letter_contact_a = create_letter_contact(service, 'Aberdeen, AB23 1XH')
+    letter_contact_b = create_letter_contact(service, 'London, E1 8QS', False)
+
+    response = client.get('/service/{}/letter-contact'.format(service.id),
+                          headers=[create_authorization_header()])
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert len(json_response) == 2
+    assert response.status_code == 200
+
+    assert json_response[0]['id'] == str(letter_contact_a.id)
+    assert json_response[0]['service_id'] == str(letter_contact_a.service_id)
+    assert json_response[0]['contact_block'] == 'Aberdeen, AB23 1XH'
+    assert json_response[0]['is_default']
+    assert json_response[0]['created_at']
+    assert not json_response[0]['updated_at']
+
+    assert json_response[1]['id'] == str(letter_contact_b.id)
+    assert json_response[1]['service_id'] == str(letter_contact_b.service_id)
+    assert json_response[1]['contact_block'] == 'London, E1 8QS'
+    assert not json_response[1]['is_default']
+    assert json_response[1]['created_at']
+    assert not json_response[1]['updated_at']
+
+
+def test_get_letter_contact_by_id(client, notify_db, notify_db_session):
+    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    letter_contact = create_letter_contact(service, 'London, E1 8QS')
+
+    response = client.get('/service/{}/letter-contact/{}'.format(service.id, letter_contact.id),
+                          headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == letter_contact.serialize()
+
+
+def test_get_letter_contact_return_404_when_invalid_contact_id(client, notify_db, notify_db_session):
+    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+
+    response = client.get('/service/{}/letter-contact/{}'.format(service.id, '93d59f88-4aa1-453c-9900-f61e2fc8a2de'),
+                          headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 404
+
+
+def test_add_service_contact_block(client, sample_service):
+    data = json.dumps({"contact_block": "London, E1 8QS", "is_default": True})
+    response = client.post('/service/{}/letter-contact'.format(sample_service.id),
+                           data=data,
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 201
+    json_resp = json.loads(response.get_data(as_text=True))
+    results = ServiceLetterContact.query.all()
+    assert len(results) == 1
+    assert json_resp['data'] == results[0].serialize()
+
+
+def test_add_service_letter_contact_can_add_multiple_addresses(client, sample_service):
+    first = json.dumps({"contact_block": "London, E1 8QS", "is_default": True})
+    client.post('/service/{}/letter-contact'.format(sample_service.id),
+                data=first,
+                headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    second = json.dumps({"contact_block": "Aberdeen, AB23 1XH", "is_default": True})
+    response = client.post('/service/{}/letter-contact'.format(sample_service.id),
+                           data=second,
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    assert response.status_code == 201
+    json_resp = json.loads(response.get_data(as_text=True))
+    results = ServiceLetterContact.query.all()
+    assert len(results) == 2
+    default = [x for x in results if x.is_default]
+    assert json_resp['data'] == default[0].serialize()
+    first_letter_contact_not_default = [x for x in results if not x.is_default]
+    assert first_letter_contact_not_default[0].contact_block == 'London, E1 8QS'
+
+
+def test_add_service_letter_contact_block_raise_exception_if_no_default(client, sample_service):
+    data = json.dumps({"contact_block": "London, E1 8QS", "is_default": False})
+    response = client.post('/service/{}/letter-contact'.format(sample_service.id),
+                           data=data,
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    assert response.status_code == 400
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp['message'] == 'You must have at least one letter contact as the default.'
+
+
+def test_add_service_letter_contact_block_404s_when_invalid_service_id(client, notify_db, notify_db_session):
+    response = client.post('/service/{}/letter-contact'.format(uuid.uuid4()),
+                           data={},
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 404
+    result = json.loads(response.get_data(as_text=True))
+    assert result['result'] == 'error'
+    assert result['message'] == 'No result found'
+
+
+def test_update_service_letter_contact(client, sample_service):
+    original_letter_contact = create_letter_contact(service=sample_service, contact_block="Aberdeen, AB23 1XH")
+    data = json.dumps({"contact_block": "London, E1 8QS", "is_default": True})
+    response = client.post('/service/{}/letter-contact/{}'.format(sample_service.id, original_letter_contact.id),
+                           data=data,
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+    results = ServiceLetterContact.query.all()
+    assert len(results) == 1
+    assert json_resp['data'] == results[0].serialize()
+
+
+def test_update_service_letter_contact_returns_400_when_no_default(client, sample_service):
+    original_reply_to = create_letter_contact(service=sample_service, contact_block="Aberdeen, AB23 1XH")
+    data = json.dumps({"contact_block": "London, E1 8QS", "is_default": False})
+    response = client.post('/service/{}/letter-contact/{}'.format(sample_service.id, original_reply_to.id),
+                           data=data,
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 400
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp['message'] == 'You must have at least one letter contact as the default.'
+
+
+def test_update_service_letter_contact_returns_404_when_invalid_service_id(client, notify_db, notify_db_session):
+    response = client.post('/service/{}/letter-contact/{}'.format(uuid.uuid4(), uuid.uuid4()),
+                           data={},
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    assert response.status_code == 404
+    result = json.loads(response.get_data(as_text=True))
+    assert result['result'] == 'error'
+    assert result['message'] == 'No result found'

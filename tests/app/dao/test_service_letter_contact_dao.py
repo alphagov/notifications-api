@@ -1,9 +1,12 @@
+import uuid
 import pytest
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.dao.service_letter_contact_dao import (
     add_letter_contact_for_service,
     create_or_update_letter_contact,
     dao_get_letter_contacts_by_service_id,
+    dao_get_letter_contact_by_id,
     update_letter_contact
 )
 from app.errors import InvalidRequest
@@ -14,13 +17,15 @@ from tests.app.db import create_letter_contact, create_service
 def test_dao_get_letter_contacts_by_service_id(notify_db_session):
     service = create_service()
     default_letter_contact = create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
-    another_letter_contact = create_letter_contact(service=service, contact_block='Cardiff, CA1 2DB')
+    second_letter_contact = create_letter_contact(service=service, contact_block='Cardiff, CA1 2DB', is_default=False)
+    third_letter_contact = create_letter_contact(service=service, contact_block='London, E1 8QS', is_default=False)
 
     results = dao_get_letter_contacts_by_service_id(service_id=service.id)
 
-    assert len(results) == 2
-    assert default_letter_contact in results
-    assert another_letter_contact in results
+    assert len(results) == 3
+    assert default_letter_contact == results[0]
+    assert third_letter_contact == results[1]
+    assert second_letter_contact == results[2]
 
 
 def test_create_or_update_letter_contact_creates_new_entry(notify_db_session):
@@ -105,11 +110,11 @@ def test_add_another_letter_contact_as_default_overrides_existing(notify_db_sess
 
     assert len(results) == 2
 
-    assert results[0].contact_block == 'Edinburgh, ED1 1AA'
-    assert not results[0].is_default
+    assert results[0].contact_block == 'Swansea, SN1 3CC'
+    assert results[0].is_default
 
-    assert results[1].contact_block == 'Swansea, SN1 3CC'
-    assert results[1].is_default
+    assert results[1].contact_block == 'Edinburgh, ED1 1AA'
+    assert not results[1].is_default
 
 
 def test_add_letter_contact_does_not_override_default(notify_db_session):
@@ -182,11 +187,11 @@ def test_update_letter_contact_as_default_overides_existing_default(notify_db_se
     results = dao_get_letter_contacts_by_service_id(service_id=service.id)
     assert len(results) == 2
 
-    assert results[0].contact_block == 'Aberdeen, AB12 23X'
-    assert not results[0].is_default
+    assert results[0].contact_block == 'Warwick, W14 TSR'
+    assert results[0].is_default
 
-    assert results[1].contact_block == 'Warwick, W14 TSR'
-    assert results[1].is_default
+    assert results[1].contact_block == 'Aberdeen, AB12 23X'
+    assert not results[1].is_default
 
 
 def test_update_letter_contact_unset_default_for_only_letter_contact_raises_exception(notify_db_session):
@@ -200,3 +205,20 @@ def test_update_letter_contact_unset_default_for_only_letter_contact_raises_exce
             contact_block='Warwick, W14 TSR',
             is_default=False
         )
+
+
+def test_dao_get_letter_contact_by_id(sample_service):
+    letter_contact = create_letter_contact(service=sample_service, contact_block='Aberdeen, AB12 23X')
+    result = dao_get_letter_contact_by_id(service_id=sample_service.id, letter_contact_id=letter_contact.id)
+    assert result == letter_contact
+
+
+def test_dao_get_letter_contact_by_id_raises_sqlalchemy_error_when_letter_contact_does_not_exist(sample_service):
+    with pytest.raises(SQLAlchemyError):
+        dao_get_letter_contact_by_id(service_id=sample_service.id, letter_contact_id=uuid.uuid4())
+
+
+def test_dao_get_letter_contact_by_id_raises_sqlalchemy_error_when_service_does_not_exist(sample_service):
+    letter_contact = create_letter_contact(service=sample_service, contact_block='Some address')
+    with pytest.raises(SQLAlchemyError):
+        dao_get_letter_contact_by_id(service_id=uuid.uuid4(), letter_contact_id=letter_contact.id)

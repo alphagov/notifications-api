@@ -9,3 +9,16 @@ add_service_email_reply_to_request = {
     },
     "required": ["email_address", "is_default"]
 }
+
+
+add_service_letter_contact_block_request = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "POST service letter contact block",
+    "type": "object",
+    "title": "Add new letter contact block for service",
+    "properties": {
+        "contact_block": {"type": "string"},
+        "is_default": {"type": "boolean"}
+    },
+    "required": ["contact_block", "is_default"]
+}
