@@ -16,11 +16,11 @@ from app.models import (
 )
 from app.celery.tasks import update_letter_notifications_to_sent_to_dvla
 from app.notifications.process_notifications import (
+    persist_email_reply_to_id_for_notification,
     persist_notification,
-    send_notification_to_queue,
-    simulated_recipient,
     persist_scheduled_notification,
-    persist_email_reply_to_id_for_notification
+    send_notification_to_queue,
+    simulated_recipient
 )
 from app.notifications.process_letter_notifications import (
     create_letter_notification
@@ -143,7 +143,7 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
     )
 
     email_reply_to_id = form.get("email_reply_to_id", None)
-    if email_reply_to_id is not None:
+    if email_reply_to_id:
         persist_email_reply_to_id_for_notification(notification.id, email_reply_to_id)
 
     scheduled_for = form.get("scheduled_for", None)

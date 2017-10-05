@@ -28,8 +28,13 @@ from app.models import (
     Notification,
     NotificationHistory,
     NotificationStatistics,
-    Template,
+    NotificationEmailReplyTo,
+    ServiceEmailReplyTo,
     ScheduledNotification,
+    Template,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEST,
+    LETTER_TYPE,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
@@ -37,11 +42,7 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEST,
-    LETTER_TYPE,
-    NOTIFICATION_SENT,
-    NotificationEmailReplyTo,
-    ServiceEmailReplyTo
+    NOTIFICATION_SENT
 )
 
 from app.dao.dao_utils import transactional
