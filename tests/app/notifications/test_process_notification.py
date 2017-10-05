@@ -7,18 +7,20 @@ from sqlalchemy.exc import SQLAlchemyError
 from freezegun import freeze_time
 from collections import namedtuple
 
-from app.models import Template, Notification, NotificationHistory, ScheduledNotification
+from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_service_id
+from app.models import Template, Notification, NotificationHistory, ScheduledNotification, NotificationEmailReplyTo
 from app.notifications.process_notifications import (
     create_content_for_notification,
     persist_notification,
     send_notification_to_queue,
     simulated_recipient,
-    persist_scheduled_notification
-)
+    persist_scheduled_notification,
+    persist_email_reply_to_id_for_notification)
 from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
 from app.utils import cache_key_for_service_template_counter
 from app.v2.errors import BadRequestError
 from tests.app.conftest import sample_api_key as create_api_key
+from tests.app.db import create_reply_to_email
 
 
 def test_create_content_for_notification_passes(sample_email_template):
@@ -438,3 +440,15 @@ def test_persist_email_notification_stores_normalised_email(
 
     assert persisted_notification.to == recipient
     assert persisted_notification.normalised_to == expected_recipient_normalised
+
+
+def test_persist_email_reply_to_id_for_notification(sample_service, sample_notification):
+    create_reply_to_email(sample_service, "test@test.com")
+    reply_to_address = dao_get_reply_to_by_service_id(sample_service.id)
+    persist_email_reply_to_id_for_notification(sample_notification.id, reply_to_address[0].id)
+
+    email_reply_to = NotificationEmailReplyTo.query.all()
+
+    assert len(email_reply_to) == 1
+    assert email_reply_to[0].notification_id == sample_notification.id
+    assert email_reply_to[0].service_email_reply_to_id == reply_to_address[0].id

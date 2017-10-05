@@ -40,7 +40,7 @@ from app.models import (
     KEY_TYPE_NORMAL, KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_SENT,
-)
+    NotificationEmailReplyTo, ServiceEmailReplyTo)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
@@ -603,3 +603,23 @@ def dao_set_created_live_letter_api_notifications_to_pending():
     db.session.commit()
 
     return notifications
+
+
+@transactional
+def dao_create_notification_email_reply_to_mapping(notification_id, email_reply_to_id):
+    notification_email_reply_to = NotificationEmailReplyTo(
+        notification_id=notification_id,
+        service_email_reply_to_id=email_reply_to_id
+    )
+    db.session.add(notification_email_reply_to)
+
+
+def dao_get_notification_email_reply_for_notification(notification_id):
+    email_reply_to = ServiceEmailReplyTo.query.join(
+        NotificationEmailReplyTo
+    ).filter(
+        NotificationEmailReplyTo.notification_id == notification_id
+    ).all()
+
+    if len(email_reply_to) == 1:
+        return email_reply_to[0].email_address

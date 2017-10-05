@@ -19,7 +19,7 @@ from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
     simulated_recipient,
-    persist_scheduled_notification)
+    persist_scheduled_notification, persist_email_reply_to_id_for_notification)
 from app.notifications.process_letter_notifications import (
     create_letter_notification
 )
@@ -139,6 +139,10 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         client_reference=form.get('reference', None),
         simulated=simulated
     )
+
+    email_reply_to_id = form.get("email_reply_to_id", None)
+    if email_reply_to_id is not None:
+        persist_email_reply_to_id_for_notification(notification.id, email_reply_to_id)
 
     scheduled_for = form.get("scheduled_for", None)
     if scheduled_for:
