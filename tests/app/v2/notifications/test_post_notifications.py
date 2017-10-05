@@ -4,9 +4,13 @@ import pytest
 from freezegun import freeze_time
 
 from app.models import (
-    Notification, ScheduledNotification, SCHEDULE_NOTIFICATIONS,
-    EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, SMS_TYPE,
-    NotificationEmailReplyTo)
+    NotificationEmailReplyTo,
+    ScheduledNotification,
+    SCHEDULE_NOTIFICATIONS,
+    EMAIL_TYPE,
+    INTERNATIONAL_SMS_TYPE,
+    SMS_TYPE
+)
 from flask import json, current_app
 
 from app.models import Notification
@@ -15,8 +19,10 @@ from app.v2.errors import RateLimitError
 from app.v2.notifications.notification_schemas import post_sms_response, post_email_response
 from tests import create_authorization_header
 from tests.app.conftest import (
-    sample_template as create_sample_template, sample_service,
-    sample_template_without_sms_permission, sample_template_without_email_permission
+    sample_template as create_sample_template,
+    sample_service,
+    sample_template_without_email_permission,
+    sample_template_without_sms_permission
 )
 
 from tests.app.db import create_inbound_number, create_service, create_template, create_reply_to_email
@@ -501,7 +507,8 @@ def test_post_sms_notification_with_invalid_reply_to_email_id(
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 400
     resp_json = json.loads(response.get_data(as_text=True))
-    assert 'reply_to_id does not exist in database' in resp_json['errors'][0]['message']
+    assert 'reply_to_id {} does not exist in database for service id {}'.\
+        format(fake_uuid, sample_template_with_placeholders.service_id) in resp_json['errors'][0]['message']
     assert 'BadRequestError' in resp_json['errors'][0]['error']
 
 
@@ -540,7 +547,8 @@ def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sa
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 400
     resp_json = json.loads(response.get_data(as_text=True))
-    assert 'reply_to_id does not exist in database' in resp_json['errors'][0]['message']
+    assert 'reply_to_id {} does not exist in database for service id {}'.\
+        format(fake_uuid, sample_email_template.service_id) in resp_json['errors'][0]['message']
     assert 'BadRequestError' in resp_json['errors'][0]['error']
 
 

@@ -330,43 +330,23 @@ def test_check_service_email_reply_to_id_where_reply_to_id_is_none():
     assert check_service_email_reply_to_id(None, None) is None
 
 
-def test_check_service_email_reply_to_id_where_reply_to_id_is_not_found(sample_service, fake_uuid):
-    with pytest.raises(BadRequestError) as e:
-        check_service_email_reply_to_id(sample_service.id, fake_uuid)
-    assert e.value.status_code == 400
-    assert e.value.message == 'email_reply_to_id does not exist in database'
-
-
-def test_check_service_email_reply_to_id_where_reply_to_id_is_found(sample_service):
-    reply_to_email = create_reply_to_email(sample_service, 'test@test.com')
-    assert check_service_email_reply_to_id(sample_service.id, reply_to_email.id) is None
-
-
 def test_check_service_email_reply_to_id_where_service_id_is_not_found(sample_service, fake_uuid):
+    reply_to_address = create_reply_to_email(sample_service, "test@test.com")
     with pytest.raises(BadRequestError) as e:
-        check_service_email_reply_to_id(fake_uuid, fake_uuid)
+        check_service_email_reply_to_id(fake_uuid, reply_to_address.id)
     assert e.value.status_code == 400
-    assert e.value.message == 'email_reply_to_id does not exist in database'
-
-
-def test_check_service_email_reply_to_id_where_reply_to_id_is_none():
-    assert check_service_email_reply_to_id(None, None) is None
+    assert e.value.message == 'email_reply_to_id {} does not exist in database for service id {}'\
+        .format(reply_to_address.id, fake_uuid)
 
 
 def test_check_service_email_reply_to_id_where_reply_to_id_is_not_found(sample_service, fake_uuid):
     with pytest.raises(BadRequestError) as e:
         check_service_email_reply_to_id(sample_service.id, fake_uuid)
     assert e.value.status_code == 400
-    assert e.value.message == 'email_reply_to_id does not exist in database'
+    assert e.value.message == 'email_reply_to_id {} does not exist in database for service id {}'\
+        .format(fake_uuid, sample_service.id)
 
 
 def test_check_service_email_reply_to_id_where_reply_to_id_is_found(sample_service):
     reply_to_email = create_reply_to_email(sample_service, 'test@test.com')
     assert check_service_email_reply_to_id(sample_service.id, reply_to_email.id) is None
-
-
-def test_check_service_email_reply_to_id_where_service_id_is_not_found(sample_service, fake_uuid):
-    with pytest.raises(BadRequestError) as e:
-        check_service_email_reply_to_id(fake_uuid, fake_uuid)
-    assert e.value.status_code == 400
-    assert e.value.message == 'email_reply_to_id does not exist in database'

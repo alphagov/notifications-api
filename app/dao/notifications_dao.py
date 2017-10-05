@@ -40,7 +40,9 @@ from app.models import (
     KEY_TYPE_NORMAL, KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_SENT,
-    NotificationEmailReplyTo, ServiceEmailReplyTo)
+    NotificationEmailReplyTo,
+    ServiceEmailReplyTo
+)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
@@ -619,7 +621,7 @@ def dao_get_notification_email_reply_for_notification(notification_id):
         NotificationEmailReplyTo
     ).filter(
         NotificationEmailReplyTo.notification_id == notification_id
-    ).all()
+    ).first()
 
-    if len(email_reply_to) == 1:
-        return email_reply_to[0].email_address
+    if email_reply_to:
+        return email_reply_to.email_address

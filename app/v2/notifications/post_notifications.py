@@ -19,7 +19,9 @@ from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
     simulated_recipient,
-    persist_scheduled_notification, persist_email_reply_to_id_for_notification)
+    persist_scheduled_notification,
+    persist_email_reply_to_id_for_notification
+)
 from app.notifications.process_letter_notifications import (
     create_letter_notification
 )
