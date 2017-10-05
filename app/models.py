@@ -228,6 +228,10 @@ class Service(db.Model, Versioned):
         nullable=False,
         default=BRANDING_GOVUK
     )
+    organisation_type = db.Column(
+        db.String(255),
+        nullable=True,
+    )
 
     association_proxy('permissions', 'service_permission_types')
 
