@@ -227,12 +227,12 @@ class Config(object):
         },
         'run-letter-jobs': {
             'task': 'run-letter-jobs',
-            'schedule': crontab(hour=5, minute=30),
+            'schedule': crontab(hour=17, minute=30),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'run-letter-api-notifications': {
             'task': 'run-letter-api-notifications',
-            'schedule': crontab(hour=5, minute=40),
+            'schedule': crontab(hour=17, minute=40),
             'options': {'queue': QueueNames.PERIODIC}
         }
     }
