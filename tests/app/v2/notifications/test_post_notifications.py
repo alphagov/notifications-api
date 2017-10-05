@@ -507,7 +507,7 @@ def test_post_sms_notification_with_invalid_reply_to_email_id(
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 400
     resp_json = json.loads(response.get_data(as_text=True))
-    assert 'reply_to_id {} does not exist in database for service id {}'.\
+    assert 'email_reply_to_id {} does not exist in database for service id {}'.\
         format(fake_uuid, sample_template_with_placeholders.service_id) in resp_json['errors'][0]['message']
     assert 'BadRequestError' in resp_json['errors'][0]['error']
 
@@ -547,7 +547,7 @@ def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sa
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 400
     resp_json = json.loads(response.get_data(as_text=True))
-    assert 'reply_to_id {} does not exist in database for service id {}'.\
+    assert 'email_reply_to_id {} does not exist in database for service id {}'.\
         format(fake_uuid, sample_email_template.service_id) in resp_json['errors'][0]['message']
     assert 'BadRequestError' in resp_json['errors'][0]['error']
 
@@ -572,8 +572,7 @@ def test_post_email_notification_with_valid_reply_to_id_returns_201(client, samp
     assert resp_json['id'] == str(notification.id)
     assert mocked.called
 
-    email_reply_to = NotificationEmailReplyTo.query.all()
+    email_reply_to = NotificationEmailReplyTo.query.one()
 
-    assert len(email_reply_to) == 1
-    assert email_reply_to[0].notification_id == notification.id
-    assert email_reply_to[0].service_email_reply_to_id == reply_to_email.id
+    assert email_reply_to.notification_id == notification.id
+    assert email_reply_to.service_email_reply_to_id == reply_to_email.id
