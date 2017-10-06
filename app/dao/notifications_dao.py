@@ -28,8 +28,13 @@ from app.models import (
     Notification,
     NotificationHistory,
     NotificationStatistics,
-    Template,
+    NotificationEmailReplyTo,
+    ServiceEmailReplyTo,
     ScheduledNotification,
+    Template,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEST,
+    LETTER_TYPE,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
@@ -37,9 +42,7 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEST,
-    LETTER_TYPE,
-    NOTIFICATION_SENT,
+    NOTIFICATION_SENT
 )
 
 from app.dao.dao_utils import transactional
@@ -603,3 +606,23 @@ def dao_set_created_live_letter_api_notifications_to_pending():
     db.session.commit()
 
     return notifications
+
+
+@transactional
+def dao_create_notification_email_reply_to_mapping(notification_id, email_reply_to_id):
+    notification_email_reply_to = NotificationEmailReplyTo(
+        notification_id=notification_id,
+        service_email_reply_to_id=email_reply_to_id
+    )
+    db.session.add(notification_email_reply_to)
+
+
+def dao_get_notification_email_reply_for_notification(notification_id):
+    email_reply_to = ServiceEmailReplyTo.query.join(
+        NotificationEmailReplyTo
+    ).filter(
+        NotificationEmailReplyTo.notification_id == notification_id
+    ).first()
+
+    if email_reply_to:
+        return email_reply_to.email_address

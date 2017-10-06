@@ -6,10 +6,12 @@ import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
+from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_service_id
 from app.models import (
     Notification,
     NotificationHistory,
     Job,
+    NotificationEmailReplyTo,
     NotificationStatistics,
     ScheduledNotification,
     NOTIFICATION_STATUS_TYPES,
@@ -18,16 +20,24 @@ from app.models import (
     NOTIFICATION_DELIVERED,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
-    KEY_TYPE_TEST
+    KEY_TYPE_TEST,
 )
 
 from app.dao.notifications_dao import (
     dao_create_notification,
+    dao_create_notification_email_reply_to_mapping,
+    dao_created_scheduled_notification,
+    dao_delete_notifications_and_history_by_id,
+    dao_get_notifications_by_to_field,
     dao_get_last_template_usage,
+    dao_get_notification_email_reply_for_notification,
     dao_get_notification_statistics_for_service_and_day,
     dao_get_potential_notification_statistics_for_day,
+    dao_get_scheduled_notifications,
     dao_get_template_usage,
+    dao_timeout_notifications,
     dao_update_notification,
+    dao_update_notifications_for_job_to_sent_to_dvla,
     delete_notifications_created_more_than_a_week_ago_by_type,
     get_notification_by_id,
     get_notification_for_job,
@@ -35,20 +45,14 @@ from app.dao.notifications_dao import (
     get_notifications_for_job,
     get_notifications_for_service,
     get_total_sent_notifications_in_date_range,
-    update_notification_status_by_id,
-    update_notification_status_by_reference,
-    dao_delete_notifications_and_history_by_id,
-    dao_timeout_notifications,
     is_delivery_slow_for_provider,
-    dao_update_notifications_for_job_to_sent_to_dvla,
-    dao_get_notifications_by_to_field,
-    dao_created_scheduled_notification,
-    dao_get_scheduled_notifications,
-    set_scheduled_notification_to_processed
+    set_scheduled_notification_to_processed,
+    update_notification_status_by_id,
+    update_notification_status_by_reference
 )
 
 from app.dao.services_dao import dao_update_service
-from tests.app.db import create_notification, create_api_key
+from tests.app.db import create_notification, create_api_key, create_reply_to_email
 from tests.app.conftest import (
     sample_notification,
     sample_template,
@@ -1949,3 +1953,45 @@ def test_dao_get_notifications_by_to_field_orders_by_created_at_desc(sample_temp
     assert len(notifications) == 2
     assert notifications[0].id == notification.id
     assert notifications[1].id == notification_a_minute_ago.id
+
+
+def test_dao_create_notification_email_reply_to_mapping(sample_service, sample_notification):
+
+    create_reply_to_email(sample_service, "test@test.com")
+
+    reply_to_address = dao_get_reply_to_by_service_id(sample_service.id)
+
+    dao_create_notification_email_reply_to_mapping(sample_notification.id, reply_to_address[0].id)
+
+    email_reply_to = NotificationEmailReplyTo.query.all()
+
+    assert len(email_reply_to) == 1
+    assert email_reply_to[0].notification_id == sample_notification.id
+    assert email_reply_to[0].service_email_reply_to_id == reply_to_address[0].id
+
+
+def test_dao_create_multiple_notification_email_reply_to_mapping(sample_service, sample_notification):
+    reply_to_address = create_reply_to_email(sample_service, "test@test.com")
+
+    dao_create_notification_email_reply_to_mapping(sample_notification.id, reply_to_address.id)
+
+    with pytest.raises(IntegrityError) as e:
+        dao_create_notification_email_reply_to_mapping(sample_notification.id, reply_to_address.id)
+
+    assert 'duplicate key value' in str(e.value)
+
+    email_reply_to = NotificationEmailReplyTo.query.all()
+
+    assert len(email_reply_to) == 1
+    assert email_reply_to[0].notification_id == sample_notification.id
+    assert email_reply_to[0].service_email_reply_to_id == reply_to_address.id
+
+
+def test_dao_get_notification_ememail_reply_toail_reply_for_notification(sample_service, sample_notification):
+    reply_to_address = create_reply_to_email(sample_service, "test@test.com")
+    dao_create_notification_email_reply_to_mapping(sample_notification.id, reply_to_address.id)
+    assert dao_get_notification_email_reply_for_notification(sample_notification.id) == "test@test.com"
+
+
+def test_dao_get_notification_email_reply_for_notification_where_no_mapping(notify_db_session, fake_uuid):
+    assert dao_get_notification_email_reply_for_notification(fake_uuid) is None
