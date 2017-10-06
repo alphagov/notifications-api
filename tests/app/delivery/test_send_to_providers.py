@@ -6,7 +6,6 @@ from unittest.mock import ANY, call
 import pytest
 from notifications_utils.recipients import validate_and_format_phone_number
 from flask import current_app
-from requests_mock import mock
 
 import app
 from app import mmg_client, firetext_client
@@ -22,10 +21,17 @@ from app.models import (
     BRANDING_ORG,
     BRANDING_GOVUK,
     BRANDING_BOTH,
-    BRANDING_ORG_BANNER, NotificationEmailReplyTo)
+    BRANDING_ORG_BANNER
+)
 
-from tests.app.db import create_service, create_template, create_notification, create_inbound_number, \
-    create_reply_to_email, create_reply_to_email_for_notification
+from tests.app.db import (
+    create_service,
+    create_template,
+    create_notification,
+    create_inbound_number,
+    create_reply_to_email,
+    create_reply_to_email_for_notification
+)
 
 
 def test_should_return_highest_priority_active_provider(restore_provider_details):
