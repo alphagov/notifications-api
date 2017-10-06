@@ -28,7 +28,7 @@ from app.models import (
     KEY_TYPE_NORMAL,
     ServiceInboundApi,
     ServiceEmailReplyTo,
-    ServiceLetterContact, ServiceSmsSender)
+    ServiceLetterContact, ServiceSmsSender, NotificationEmailReplyTo)
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import dao_create_notification, dao_created_scheduled_notification
 from app.dao.templates_dao import dao_create_template
@@ -384,3 +384,21 @@ def create_letter_contact(
     db.session.commit()
 
     return letter_content
+
+
+def create_reply_to_email_for_notification(
+    notification_id,
+    service,
+    email_address,
+    is_default=True
+):
+    reply_to = create_reply_to_email(service, email_address, is_default)
+
+    notification_email_reply_to = NotificationEmailReplyTo(
+        notification_id=str(notification_id),
+        service_email_reply_to_id=str(reply_to.id)
+    )
+    db.session.add(notification_email_reply_to)
+    db.session.commit()
+
+    return reply_to

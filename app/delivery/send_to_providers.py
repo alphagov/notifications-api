@@ -8,7 +8,7 @@ from notifications_utils.recipients import (
 from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTemplate, SMSMessageTemplate
 
 from app import clients, statsd_client, create_uuid
-from app.dao.notifications_dao import dao_update_notification
+from app.dao.notifications_dao import dao_update_notification, dao_get_notification_email_reply_for_notification
 from app.dao.provider_details_dao import (
     get_provider_details_by_notification_type,
     dao_toggle_sms_provider
@@ -110,13 +110,18 @@ def send_email_to_provider(notification):
             from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
                                                  current_app.config['NOTIFY_EMAIL_DOMAIN'])
 
+            email_reply_to = dao_get_notification_email_reply_for_notification(notification.id)
+
+            if not email_reply_to:
+                email_reply_to = service.get_default_reply_to_email_address()
+
             reference = provider.send_email(
                 from_address,
                 notification.to,
                 plain_text_email.subject,
                 body=str(plain_text_email),
                 html_body=str(html_email),
-                reply_to_address=service.get_default_reply_to_email_address(),
+                reply_to_address=email_reply_to,
             )
             notification.reference = reference
             update_notification(notification, provider)
