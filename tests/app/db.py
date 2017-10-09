@@ -1,34 +1,33 @@
 from datetime import datetime
 import uuid
 
-from app import db, create_random_identifier
+from app import db
 from app.dao.jobs_dao import dao_create_job
 from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.models import (
     ApiKey,
-    EMAIL_TYPE,
-    SMS_TYPE,
-    KEY_TYPE_NORMAL,
-    Service,
-    User,
-    Template,
-    MonthlyBilling,
-    Notification,
-    ScheduledNotification,
-    ServicePermission,
-    Rate,
-    Job,
     InboundSms,
     InboundNumber,
+    Job,
+    MonthlyBilling,
+    Notification,
+    NotificationEmailReplyTo,
     Organisation,
+    Rate,
+    Service,
+    ServiceEmailReplyTo,
+    ServiceInboundApi,
+    ServiceLetterContact,
+    ScheduledNotification,
+    ServicePermission,
+    ServiceSmsSender,
+    Template,
+    User,
     EMAIL_TYPE,
-    LETTER_TYPE,
     SMS_TYPE,
     INBOUND_SMS_TYPE,
-    KEY_TYPE_NORMAL,
-    ServiceInboundApi,
-    ServiceEmailReplyTo,
-    ServiceLetterContact, ServiceSmsSender)
+    KEY_TYPE_NORMAL
+)
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import dao_create_notification, dao_created_scheduled_notification
 from app.dao.templates_dao import dao_create_template
@@ -384,3 +383,21 @@ def create_letter_contact(
     db.session.commit()
 
     return letter_content
+
+
+def create_reply_to_email_for_notification(
+    notification_id,
+    service,
+    email_address,
+    is_default=True
+):
+    reply_to = create_reply_to_email(service, email_address, is_default)
+
+    notification_email_reply_to = NotificationEmailReplyTo(
+        notification_id=str(notification_id),
+        service_email_reply_to_id=str(reply_to.id)
+    )
+    db.session.add(notification_email_reply_to)
+    db.session.commit()
+
+    return reply_to

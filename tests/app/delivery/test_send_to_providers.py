@@ -21,10 +21,17 @@ from app.models import (
     BRANDING_ORG,
     BRANDING_GOVUK,
     BRANDING_BOTH,
-    BRANDING_ORG_BANNER)
+    BRANDING_ORG_BANNER
+)
 
-from tests.app.db import create_service, create_template, create_notification, create_inbound_number, \
-    create_reply_to_email
+from tests.app.db import (
+    create_service,
+    create_template,
+    create_notification,
+    create_inbound_number,
+    create_reply_to_email,
+    create_reply_to_email_for_notification
+)
 
 
 def test_should_return_highest_priority_active_provider(restore_provider_details):
@@ -696,4 +703,66 @@ def test_should_use_inbound_number_as_sender_if_set(
         content=ANY,
         reference=str(notification.id),
         sender=inbound_number.number
+    )
+
+
+def test_send_email_to_provider_get_linked_email_reply_to_default_is_false(
+        sample_service,
+        sample_email_template,
+        mocker):
+    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+
+    db_notification = create_notification(template=sample_email_template)
+    create_reply_to_email(service=sample_service, email_address='foo@bar.com')
+
+    reply_to = create_reply_to_email_for_notification(
+        db_notification.id,
+        sample_service,
+        "test@test.com",
+        is_default=False
+    )
+
+    send_to_providers.send_email_to_provider(
+        db_notification,
+    )
+
+    app.aws_ses_client.send_email.assert_called_once_with(
+        ANY,
+        ANY,
+        ANY,
+        body=ANY,
+        html_body=ANY,
+        reply_to_address=reply_to.email_address
+    )
+
+
+def test_send_email_to_provider_get_linked_email_reply_to_create_service_email_after_notification_mapping(
+        sample_service,
+        sample_email_template,
+        mocker):
+    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+
+    db_notification = create_notification(template=sample_email_template)
+
+    reply_to = create_reply_to_email_for_notification(
+        db_notification.id,
+        sample_service,
+        "test@test.com"
+    )
+
+    create_reply_to_email(service=sample_service, email_address='foo@bar.com', is_default=False)
+
+    send_to_providers.send_email_to_provider(
+        db_notification,
+    )
+
+    app.aws_ses_client.send_email.assert_called_once_with(
+        ANY,
+        ANY,
+        ANY,
+        body=ANY,
+        html_body=ANY,
+        reply_to_address=reply_to.email_address
     )
