@@ -22,15 +22,24 @@ from app.models import (
     NOTIFICATION_DELIVERED,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
-    KEY_TYPE_TEST)
+    KEY_TYPE_TEST
+)
 
 from app.dao.notifications_dao import (
     dao_create_notification,
+    dao_create_notification_email_reply_to_mapping,
+    dao_created_scheduled_notification,
+    dao_delete_notifications_and_history_by_id,
     dao_get_last_template_usage,
+    dao_get_notification_email_reply_for_notification,
+    dao_get_notifications_by_to_field,
     dao_get_notification_statistics_for_service_and_day,
     dao_get_potential_notification_statistics_for_day,
+    dao_get_scheduled_notifications,
     dao_get_template_usage,
+    dao_timeout_notifications,
     dao_update_notification,
+    dao_update_notifications_for_job_to_sent_to_dvla,
     delete_notifications_created_more_than_a_week_ago_by_type,
     delete_notification_to_email_reply_to_more_than_a_week_ago,
     get_notification_by_id,
@@ -39,18 +48,10 @@ from app.dao.notifications_dao import (
     get_notifications_for_job,
     get_notifications_for_service,
     get_total_sent_notifications_in_date_range,
-    update_notification_status_by_id,
-    update_notification_status_by_reference,
-    dao_delete_notifications_and_history_by_id,
-    dao_timeout_notifications,
     is_delivery_slow_for_provider,
-    dao_update_notifications_for_job_to_sent_to_dvla,
-    dao_get_notifications_by_to_field,
-    dao_created_scheduled_notification,
-    dao_get_scheduled_notifications,
     set_scheduled_notification_to_processed,
-    dao_get_notification_email_reply_for_notification,
-    dao_create_notification_email_reply_to_mapping
+    update_notification_status_by_id,
+    update_notification_status_by_reference
 )
 
 from app.dao.services_dao import dao_update_service
