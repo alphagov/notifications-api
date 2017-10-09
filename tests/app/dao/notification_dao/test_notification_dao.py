@@ -6,7 +6,7 @@ import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
-from app.dao.service_email_reply_to_dao import dao_create_reply_to_email_address, dao_get_reply_to_by_service_id
+from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_service_id
 from app.models import (
     Job,
     Notification,
