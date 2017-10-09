@@ -27,6 +27,7 @@ from app.dao.notifications_dao import (
     dao_timeout_notifications,
     is_delivery_slow_for_provider,
     delete_notifications_created_more_than_a_week_ago_by_type,
+    delete_notification_to_email_reply_to_more_than_a_week_ago,
     dao_get_scheduled_notifications,
     set_scheduled_notification_to_processed,
     dao_set_created_live_letter_api_notifications_to_pending,
@@ -118,6 +119,17 @@ def delete_sms_notifications_older_than_seven_days():
 @statsd(namespace="tasks")
 def delete_email_notifications_older_than_seven_days():
     try:
+        start = datetime.utcnow()
+        deleted_noti_to_reply_to = delete_notification_to_email_reply_to_more_than_a_week_ago()
+        current_app.logger.info(
+            "Delete {} job started {} finished {} deleted {} notification to email reply to mappings".format(
+                'email',
+                start,
+                datetime.utcnow(),
+                deleted_noti_to_reply_to
+            )
+        )
+
         start = datetime.utcnow()
         deleted = delete_notifications_created_more_than_a_week_ago_by_type('email')
         current_app.logger.info(

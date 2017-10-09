@@ -26,14 +26,15 @@ from app.dao.date_util import get_financial_year
 from app.models import (
     Service,
     Notification,
+    NotificationEmailReplyTo,
     NotificationHistory,
     NotificationStatistics,
-    NotificationEmailReplyTo,
-    ServiceEmailReplyTo,
     ScheduledNotification,
+    ServiceEmailReplyTo,
     Template,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
+    EMAIL_TYPE,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
@@ -371,6 +372,22 @@ def delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
     deleted = db.session.query(Notification).filter(
         func.date(Notification.created_at) < seven_days_ago,
         Notification.notification_type == notification_type,
+    ).delete(synchronize_session='fetch')
+    db.session.commit()
+    return deleted
+
+
+@statsd(namespace="dao")
+def delete_notification_to_email_reply_to_more_than_a_week_ago():
+    seven_days_ago = date.today() - timedelta(days=7)
+
+    subq = db.session.query(Notification.id).filter(
+        func.date(Notification.created_at) < seven_days_ago
+    ).subquery()
+    deleted = db.session.query(
+        NotificationEmailReplyTo
+    ).filter(
+        NotificationEmailReplyTo.notification_id.in_(subq)
     ).delete(synchronize_session='fetch')
     db.session.commit()
     return deleted

@@ -6,49 +6,51 @@ import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
-from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_service_id
+from app.dao.service_email_reply_to_dao import dao_create_reply_to_email_address, dao_get_reply_to_by_service_id
 from app.models import (
-    Notification,
-    NotificationHistory,
     Job,
+    Notification,
     NotificationEmailReplyTo,
+    NotificationHistory,
     NotificationStatistics,
     ScheduledNotification,
+    ServiceEmailReplyTo,
+    EMAIL_TYPE,
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_FAILED,
     NOTIFICATION_SENT,
     NOTIFICATION_DELIVERED,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
-    KEY_TYPE_TEST,
-)
+    KEY_TYPE_TEST)
 
 from app.dao.notifications_dao import (
     dao_create_notification,
-    dao_create_notification_email_reply_to_mapping,
-    dao_created_scheduled_notification,
-    dao_delete_notifications_and_history_by_id,
-    dao_get_notifications_by_to_field,
     dao_get_last_template_usage,
-    dao_get_notification_email_reply_for_notification,
     dao_get_notification_statistics_for_service_and_day,
     dao_get_potential_notification_statistics_for_day,
-    dao_get_scheduled_notifications,
     dao_get_template_usage,
-    dao_timeout_notifications,
     dao_update_notification,
-    dao_update_notifications_for_job_to_sent_to_dvla,
     delete_notifications_created_more_than_a_week_ago_by_type,
+    delete_notification_to_email_reply_to_more_than_a_week_ago,
     get_notification_by_id,
     get_notification_for_job,
     get_notification_with_personalisation,
     get_notifications_for_job,
     get_notifications_for_service,
     get_total_sent_notifications_in_date_range,
-    is_delivery_slow_for_provider,
-    set_scheduled_notification_to_processed,
     update_notification_status_by_id,
-    update_notification_status_by_reference
+    update_notification_status_by_reference,
+    dao_delete_notifications_and_history_by_id,
+    dao_timeout_notifications,
+    is_delivery_slow_for_provider,
+    dao_update_notifications_for_job_to_sent_to_dvla,
+    dao_get_notifications_by_to_field,
+    dao_created_scheduled_notification,
+    dao_get_scheduled_notifications,
+    set_scheduled_notification_to_processed,
+    dao_get_notification_email_reply_for_notification,
+    dao_create_notification_email_reply_to_mapping
 )
 
 from app.dao.services_dao import dao_update_service
@@ -997,6 +999,42 @@ def test_should_delete_notifications_by_type_after_seven_days(
         notifications_to_check = remaining_letter_notifications
 
     for notification in notifications_to_check:
+        assert notification.created_at.date() >= date(2016, 1, 3)
+
+
+@freeze_time("2016-01-10 12:00:00.000000")
+def test_should_delete_notification_to_email_reply_to_after_seven_days(
+    notify_db, notify_db_session, sample_service,
+):
+    assert len(Notification.query.all()) == 0
+
+    reply_to = create_reply_to_email(sample_service, 'test@example.com')
+
+    email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
+
+    # create one notification a day between 1st and 10th from 11:00 to 19:00 of each type
+    for i in range(1, 11):
+        past_date = '2016-01-{0:02d}  {0:02d}:00:00.000000'.format(i)
+        with freeze_time(past_date):
+            notification = create_notification(email_template)
+            dao_create_notification_email_reply_to_mapping(notification.id, reply_to.id)
+
+    all_notifications = Notification.query.all()
+    assert len(all_notifications) == 10
+
+    all_notification_email_reply_to = NotificationEmailReplyTo.query.all()
+    assert len(all_notification_email_reply_to) == 10
+
+    # Records before 3rd should be deleted
+    delete_notification_to_email_reply_to_more_than_a_week_ago()
+    delete_notifications_created_more_than_a_week_ago_by_type(EMAIL_TYPE)
+    remaining_email_notifications = Notification.query.filter_by(notification_type=EMAIL_TYPE).all()
+    remaining_notification_to_email_reply_to = NotificationEmailReplyTo.query.filter_by().all()
+
+    assert len(remaining_email_notifications) == 8
+    assert len(remaining_notification_to_email_reply_to) == 8
+
+    for notification in remaining_email_notifications:
         assert notification.created_at.date() >= date(2016, 1, 3)
 
 
@@ -1987,7 +2025,7 @@ def test_dao_create_multiple_notification_email_reply_to_mapping(sample_service,
     assert email_reply_to[0].service_email_reply_to_id == reply_to_address.id
 
 
-def test_dao_get_notification_ememail_reply_toail_reply_for_notification(sample_service, sample_notification):
+def test_dao_get_notification_email_reply_for_notification(sample_service, sample_notification):
     reply_to_address = create_reply_to_email(sample_service, "test@test.com")
     dao_create_notification_email_reply_to_mapping(sample_notification.id, reply_to_address.id)
     assert dao_get_notification_email_reply_for_notification(sample_notification.id) == "test@test.com"
