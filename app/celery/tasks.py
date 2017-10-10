@@ -29,6 +29,7 @@ from app.dao.jobs_dao import (
     dao_update_job_status)
 from app.dao.notifications_dao import (
     get_notification_by_id,
+    dao_get_total_notifications_for_job_id,
     dao_update_notifications_for_job_to_sent_to_dvla,
     dao_update_notifications_by_reference
 )
@@ -85,6 +86,8 @@ def process_job(job_id):
     TemplateClass = get_template_class(db_template.template_type)
     template = TemplateClass(db_template.__dict__)
 
+    current_app.logger.info("Starting job {} processing {} notifications".format(job_id, job.notification_count))
+
     for row_number, recipient, personalisation in RecipientCSV(
             s3.get_job_from_s3(str(service.id), str(job_id)),
             template_type=template.template_type,
@@ -92,14 +95,21 @@ def process_job(job_id):
     ).enumerated_recipients_and_personalisation:
         process_row(row_number, recipient, personalisation, template, job, service)
 
-    if template.template_type == LETTER_TYPE:
-        if service.research_mode:
-            update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
-        else:
-            build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
-            current_app.logger.info("send job {} to build-dvla-file in the {} queue".format(job_id, QueueNames.JOBS))
+    notification_total_in_db = dao_get_total_notifications_for_job_id(job.id)
+
+    if job.notification_count != notification_total_in_db:
+        current_app.logger.error("Job {} is missing {} notifications".format(
+            job.id, notification_total_in_db - notification_total_in_db))
+        job.job_status = JOB_STATUS_ERROR
     else:
-        job.job_status = JOB_STATUS_FINISHED
+        if template.template_type == LETTER_TYPE:
+            if service.research_mode:
+                update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
+            else:
+                build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
+                current_app.logger.info("send job {} to build-dvla-file in the {} queue".format(job_id, QueueNames.JOBS))
+        else:
+            job.job_status = JOB_STATUS_FINISHED
 
     finished = datetime.utcnow()
     job.processing_started = start

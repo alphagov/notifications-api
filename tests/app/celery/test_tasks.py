@@ -360,6 +360,29 @@ def test_should_process_all_sms_job(sample_job_with_placeholdered_template,
     assert job.job_status == 'finished'
 
 
+def test_should_error_log_missing_notifications(
+        sample_job_with_placeholdered_template, mocker):
+    multiple_sms = load_example_csv('multiple_sms').strip()
+    num_phone_numbers_after_header = len(multiple_sms.split('\n')[1:])
+    sample_job_with_placeholdered_template.notification_count = num_phone_numbers_after_header
+
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=multiple_sms)
+    mocker.patch('app.celery.tasks.send_sms.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+    # deliberately return wrong total notifications to trigger error log
+    mocker.patch(
+        'app.celery.tasks.dao_get_total_notifications_for_job_id',
+        return_value=num_phone_numbers_after_header - 1
+    )
+    error_log = mocker.patch('app.celery.tasks.current_app.logger.error')
+
+    process_job(sample_job_with_placeholdered_template.id)
+
+    job = jobs_dao.dao_get_job_by_id(sample_job_with_placeholdered_template.id)
+    assert job.job_status == 'error'
+    assert error_log.called
+
 # -------------- process_row tests -------------- #
 
 

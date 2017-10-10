@@ -35,6 +35,7 @@ from app.dao.notifications_dao import (
     dao_get_potential_notification_statistics_for_day,
     dao_get_scheduled_notifications,
     dao_get_template_usage,
+    dao_get_total_notifications_for_job_id,
     dao_timeout_notifications,
     dao_update_notification,
     dao_update_notifications_for_job_to_sent_to_dvla,
@@ -52,7 +53,12 @@ from app.dao.notifications_dao import (
 )
 
 from app.dao.services_dao import dao_update_service
-from tests.app.db import create_notification, create_api_key, create_reply_to_email
+from tests.app.db import (
+    create_api_key,
+    create_job,
+    create_notification,
+    create_reply_to_email
+)
 from tests.app.conftest import (
     sample_notification,
     sample_template,
@@ -1995,3 +2001,13 @@ def test_dao_get_notification_ememail_reply_toail_reply_for_notification(sample_
 
 def test_dao_get_notification_email_reply_for_notification_where_no_mapping(notify_db_session, fake_uuid):
     assert dao_get_notification_email_reply_for_notification(fake_uuid) is None
+
+
+def test_dao_get_total_notifications_for_job_id(sample_job):
+    job = create_job(sample_job.template)
+    create_notification(sample_job.template, job=sample_job)
+    create_notification(sample_job.template, job=sample_job)
+    create_notification(sample_job.template, job=sample_job)
+    create_notification(sample_job.template, job=job)
+
+    assert dao_get_total_notifications_for_job_id(sample_job.id) == 3
