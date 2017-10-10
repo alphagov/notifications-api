@@ -211,6 +211,7 @@ class Service(db.Model, Versioned):
     _letter_contact_block = db.Column('letter_contact_block', db.Text, index=False, unique=False, nullable=True)
     sms_sender = db.Column(db.String(11), nullable=False, default=lambda: current_app.config['FROM_NUMBER'])
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
+    free_sms_fragment_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
     organisation = db.relationship('Organisation')
     dvla_organisation_id = db.Column(
         db.String,
@@ -229,10 +230,6 @@ class Service(db.Model, Versioned):
     )
 
     association_proxy('permissions', 'service_permission_types')
-
-    @staticmethod
-    def free_sms_fragment_limit():
-        return current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
     @classmethod
     def from_json(cls, data):
