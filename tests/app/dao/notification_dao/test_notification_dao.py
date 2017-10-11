@@ -41,7 +41,6 @@ from app.dao.notifications_dao import (
     dao_update_notification,
     dao_update_notifications_for_job_to_sent_to_dvla,
     delete_notifications_created_more_than_a_week_ago_by_type,
-    delete_notification_to_email_reply_to_more_than_a_week_ago,
     get_notification_by_id,
     get_notification_for_job,
     get_notification_with_personalisation,
@@ -1027,7 +1026,6 @@ def test_should_delete_notification_to_email_reply_to_after_seven_days(
     assert len(all_notification_email_reply_to) == 10
 
     # Records before 3rd should be deleted
-    delete_notification_to_email_reply_to_more_than_a_week_ago()
     delete_notifications_created_more_than_a_week_ago_by_type(EMAIL_TYPE)
     remaining_email_notifications = Notification.query.filter_by(notification_type=EMAIL_TYPE).all()
     remaining_notification_to_email_reply_to = NotificationEmailReplyTo.query.filter_by().all()

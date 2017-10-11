@@ -32,9 +32,9 @@ from app.models import (
     ScheduledNotification,
     ServiceEmailReplyTo,
     Template,
+    EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
-    EMAIL_TYPE,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
@@ -367,29 +367,26 @@ def _filter_query(query, filter_dict=None):
 
 
 @statsd(namespace="dao")
+@transactional
 def delete_notifications_created_more_than_a_week_ago_by_type(notification_type):
     seven_days_ago = date.today() - timedelta(days=7)
+
+    # Following could be refactored when NotificationSmsReplyTo and NotificationLetterContact in models.py
+    if notification_type == EMAIL_TYPE:
+        subq = db.session.query(Notification.id).filter(
+            func.date(Notification.created_at) < seven_days_ago,
+            Notification.notification_type == notification_type
+        ).subquery()
+        deleted = db.session.query(
+            NotificationEmailReplyTo
+        ).filter(
+            NotificationEmailReplyTo.notification_id.in_(subq)
+        ).delete(synchronize_session='fetch')
+
     deleted = db.session.query(Notification).filter(
         func.date(Notification.created_at) < seven_days_ago,
         Notification.notification_type == notification_type,
     ).delete(synchronize_session='fetch')
-    db.session.commit()
-    return deleted
-
-
-@statsd(namespace="dao")
-def delete_notification_to_email_reply_to_more_than_a_week_ago():
-    seven_days_ago = date.today() - timedelta(days=7)
-
-    subq = db.session.query(Notification.id).filter(
-        func.date(Notification.created_at) < seven_days_ago
-    ).subquery()
-    deleted = db.session.query(
-        NotificationEmailReplyTo
-    ).filter(
-        NotificationEmailReplyTo.notification_id.in_(subq)
-    ).delete(synchronize_session='fetch')
-    db.session.commit()
     return deleted
 
 
