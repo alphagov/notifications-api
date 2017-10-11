@@ -116,3 +116,5 @@ On the server
 ```
 python server_commands.py purge_functional_test_data -u <functional tests user name prefix> # Remove the user and associated services.
 ```
+
+Test
