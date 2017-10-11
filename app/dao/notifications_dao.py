@@ -442,16 +442,6 @@ def get_total_sent_notifications_in_date_range(start_date, end_date, notificatio
     return result or 0
 
 
-def dao_get_total_notifications_for_job_id(job_id):
-    result = db.session.query(
-        func.count(Notification.id).label('count')
-    ).filter(
-        Notification.job_id == job_id
-    ).scalar()
-
-    return result or 0
-
-
 def is_delivery_slow_for_provider(
     sent_at,
     provider,

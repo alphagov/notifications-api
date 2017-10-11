@@ -32,6 +32,7 @@ from app.models import (
     EMAIL_TYPE,
     JOB_STATUS_ERROR,
     JOB_STATUS_FINISHED,
+    JOB_STATUS_SENT_TO_DVLA,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
@@ -1234,6 +1235,14 @@ def test_job_incomplete_raises_job_incomplete_error(sample_job):
     assert e.value.message == 'Job {} did not complete'.format(sample_job.id)
 
 
-def test_job_finished_does_not_raises_job_incomplete_error(sample_job):
-    sample_job.job_status = JOB_STATUS_FINISHED
+@pytest.mark.parametrize('job_status,notification_type',
+    [
+        (JOB_STATUS_FINISHED, SMS_TYPE),
+        (JOB_STATUS_SENT_TO_DVLA, LETTER_TYPE)
+    ]
+)
+def test_job_finished_does_not_raises_job_incomplete_error(
+        sample_job, job_status, notification_type):
+    sample_job.job_status = job_status
+    sample_job.template.template_type = notification_type
     check_job_status(str(sample_job.id))

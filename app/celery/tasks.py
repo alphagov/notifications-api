@@ -29,7 +29,6 @@ from app.dao.jobs_dao import (
     dao_update_job_status)
 from app.dao.notifications_dao import (
     get_notification_by_id,
-    dao_get_total_notifications_for_job_id,
     dao_update_notifications_for_job_to_sent_to_dvla,
     dao_update_notifications_by_reference
 )
@@ -89,8 +88,7 @@ def process_job(job_id):
 
     current_app.logger.info("Starting job {} processing {} notifications".format(job_id, job.notification_count))
 
-    if template.template_type != LETTER_TYPE:
-        check_job_status.apply_async([str(job.id)], queue=QueueNames.JOBS)
+    check_job_status.apply_async([str(job.id)], queue=QueueNames.JOBS)
 
     for row_number, recipient, personalisation in RecipientCSV(
             s3.get_job_from_s3(str(service.id), str(job_id)),
@@ -334,7 +332,9 @@ def update_dvla_job_to_error(self, job_id):
 @statsd(namespace="tasks")
 def check_job_status(self, job_id):
     job = dao_get_job_by_id(job_id)
-    if job.job_status != JOB_STATUS_FINISHED:
+
+    if (job.template.template_type == LETTER_TYPE and job.job_status != JOB_STATUS_SENT_TO_DVLA) or\
+            (job.template.template_type != LETTER_TYPE and job.job_status != JOB_STATUS_FINISHED):
         raise JobIncompleteError("Job {} did not complete".format(job_id))
 
 
