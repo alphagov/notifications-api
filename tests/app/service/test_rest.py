@@ -162,7 +162,7 @@ def test_get_service_by_id_returns_free_sms_limit(client, sample_service):
     )
     assert resp.status_code == 200
     json_resp = json.loads(resp.get_data(as_text=True))
-    assert json_resp['data']['free_sms_fragment_limit'] == 250000
+    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
 
 def test_get_detailed_service_by_id_returns_free_sms_limit(client, sample_service):
@@ -174,7 +174,7 @@ def test_get_detailed_service_by_id_returns_free_sms_limit(client, sample_servic
     )
     assert resp.status_code == 200
     json_resp = json.loads(resp.get_data(as_text=True))
-    assert json_resp['data']['free_sms_fragment_limit'] == 250000
+    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
 
 def test_get_service_list_has_default_permissions(client, service_factory):
@@ -257,7 +257,9 @@ def test_create_service(client, sample_user):
         'restricted': False,
         'active': False,
         'email_from': 'created.service',
-        'created_by': str(sample_user.id)}
+        'created_by': str(sample_user.id),
+    }
+
     auth_header = create_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     resp = client.post(
@@ -272,6 +274,7 @@ def test_create_service(client, sample_user):
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
+    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
     service_db = Service.query.get(json_resp['data']['id'])
     assert service_db.name == 'created service'
@@ -291,6 +294,29 @@ def test_create_service(client, sample_user):
     service_sms_senders = ServiceSmsSender.query.filter_by(service_id=service_db.id).all()
     assert len(service_sms_senders) == 1
     assert service_sms_senders[0].sms_sender == service_db.sms_sender
+
+
+def test_create_service_with_free_sms_fragment_limit(client, sample_user):
+    data = {
+        'name': 'created service',
+        'user_id': str(sample_user.id),
+        'message_limit': 1000,
+        'restricted': False,
+        'active': False,
+        'email_from': 'created.service',
+        'created_by': str(sample_user.id),
+        'free_sms_fragment_limit': 9999
+    }
+
+    auth_header = create_authorization_header()
+    headers = [('Content-Type', 'application/json'), auth_header]
+    resp = client.post(
+        '/service',
+        data=json.dumps(data),
+        headers=headers)
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert resp.status_code == 201
+    assert json_resp['data']['free_sms_fragment_limit'] == 9999
 
 
 def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_uuid):

@@ -134,9 +134,14 @@ def get_service_by_id(service_id):
 @service_blueprint.route('', methods=['POST'])
 def create_service():
     data = request.get_json()
+
     if not data.get('user_id', None):
         errors = {'user_id': ['Missing data for required field.']}
         raise InvalidRequest(errors, status_code=400)
+
+    # TODO: to be removed when front-end is updated
+    if 'free_sms_fragment_limit' not in data:
+        data['free_sms_fragment_limit'] = current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
     # validate json with marshmallow
     service_schema.load(request.get_json())
@@ -147,6 +152,7 @@ def create_service():
     valid_service = Service.from_json(data)
 
     dao_create_service(valid_service, user)
+
     return jsonify(data=service_schema.dump(valid_service).data), 201
 
 
