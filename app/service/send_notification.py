@@ -3,17 +3,17 @@ from app.notifications.validators import (
     check_service_over_daily_message_limit,
     validate_and_format_recipient,
     validate_template,
-)
+    check_service_email_reply_to_id)
 from app.notifications.process_notifications import (
     create_content_for_notification,
     persist_notification,
     send_notification_to_queue,
-)
+    persist_email_reply_to_id_for_notification)
 from app.models import (
     KEY_TYPE_NORMAL,
     PRIORITY,
     SMS_TYPE,
-)
+    EMAIL_TYPE)
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id
 from app.dao.users_dao import get_user_by_id
@@ -63,6 +63,10 @@ def send_one_off_notification(service_id, post_data):
         key_type=KEY_TYPE_NORMAL,
         created_by_id=post_data['created_by']
     )
+    sender_id = post_data.get('sender_id', None)
+    if sender_id and template.template_type == EMAIL_TYPE:
+        check_service_email_reply_to_id(service_id, sender_id)
+        persist_email_reply_to_id_for_notification(notification.id, sender_id)
 
     queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
     send_notification_to_queue(

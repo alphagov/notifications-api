@@ -138,7 +138,7 @@ def validate_template(template_id, personalisation, service, notification_type):
 def check_service_email_reply_to_id(service_id, reply_to_id):
     if not (reply_to_id is None):
         try:
-            reply_to = dao_get_reply_to_by_id(service_id, reply_to_id)
+            dao_get_reply_to_by_id(service_id, reply_to_id)
         except NoResultFound:
             message = 'email_reply_to_id {} does not exist in database for service id {}'\
                 .format(reply_to_id, service_id)
