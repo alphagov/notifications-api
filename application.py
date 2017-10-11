@@ -21,6 +21,8 @@ manager.add_command('backfill_processing_time', commands.BackfillProcessingTime)
 manager.add_command('populate_service_email_reply_to', commands.PopulateServiceEmailReplyTo)
 manager.add_command('populate_service_sms_sender', commands.PopulateServiceSmsSender)
 manager.add_command('populate_service_letter_contact', commands.PopulateServiceLetterContact)
+manager.add_command('populate_service_and_service_history_free_sms_fragment_limit',
+                    commands.PopulateServiceAndServiceHistoryFreeSmsFragmentLimit)
 
 
 @manager.command
