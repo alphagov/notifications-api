@@ -1,5 +1,5 @@
 import json
-from datetime import (datetime)
+from datetime import datetime
 from collections import namedtuple
 
 from flask import current_app
@@ -54,6 +54,7 @@ from app.models import (
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
+from app.v2.errors import JobIncompleteError
 from notifications_utils.s3 import s3upload
 
 
@@ -88,6 +89,9 @@ def process_job(job_id):
 
     current_app.logger.info("Starting job {} processing {} notifications".format(job_id, job.notification_count))
 
+    if template.template_type != LETTER_TYPE:
+        check_job_status.apply_async([str(job.id)], queue=QueueNames.JOBS)
+
     for row_number, recipient, personalisation in RecipientCSV(
             s3.get_job_from_s3(str(service.id), str(job_id)),
             template_type=template.template_type,
@@ -95,21 +99,14 @@ def process_job(job_id):
     ).enumerated_recipients_and_personalisation:
         process_row(row_number, recipient, personalisation, template, job, service)
 
-    notification_total_in_db = dao_get_total_notifications_for_job_id(job.id)
-
-    if job.notification_count != notification_total_in_db:
-        current_app.logger.error("Job {} is missing {} notifications".format(
-            job.id, notification_total_in_db - notification_total_in_db))
-        job.job_status = JOB_STATUS_ERROR
-    else:
-        if template.template_type == LETTER_TYPE:
-            if service.research_mode:
-                update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
-            else:
-                build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
-                current_app.logger.info("send job {} to build-dvla-file in the {} queue".format(job_id, QueueNames.JOBS))
+    if template.template_type == LETTER_TYPE:
+        if service.research_mode:
+            update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
         else:
-            job.job_status = JOB_STATUS_FINISHED
+            build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
+            current_app.logger.info("send job {} to build-dvla-file in the {} queue".format(job_id, QueueNames.JOBS))
+    else:
+        job.job_status = JOB_STATUS_FINISHED
 
     finished = datetime.utcnow()
     job.processing_started = start
@@ -331,6 +328,14 @@ def update_job_to_sent_to_dvla(self, job_id):
 def update_dvla_job_to_error(self, job_id):
     dao_update_job_status(job_id, JOB_STATUS_ERROR)
     current_app.logger.info("Updated {} job to {}".format(job_id, JOB_STATUS_ERROR))
+
+
+@notify_celery.task(bind=True, name='check-job-status', countdown=3600)
+@statsd(namespace="tasks")
+def check_job_status(self, job_id):
+    job = dao_get_job_by_id(job_id)
+    if job.job_status != JOB_STATUS_FINISHED:
+        raise JobIncompleteError("Job {} did not complete".format(job_id))
 
 
 @notify_celery.task(bind=True, name='update-letter-notifications-to-sent')
