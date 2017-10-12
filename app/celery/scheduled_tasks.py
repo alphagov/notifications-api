@@ -3,6 +3,7 @@ from datetime import (
     timedelta
 )
 
+from celery.signals import worker_process_shutdown
 from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
 from notifications_utils.s3 import s3upload
@@ -43,6 +44,11 @@ from app.statsd_decorators import statsd
 from app.celery.tasks import process_job, create_dvla_file_contents_for_notifications
 from app.config import QueueNames, TaskNames
 from app.utils import convert_utc_to_bst
+
+
+@worker_process_shutdown.connect
+def worker_process_shutdown(sender, signal, pid, exitcode):
+    current_app.logger.info('Scheduled tasks worker shutdown:: PID: {} Exitcode: {}'.format(pid, exitcode))
 
 
 @notify_celery.task(name="remove_csv_files")
