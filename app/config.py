@@ -19,7 +19,6 @@ if os.environ.get('VCAP_SERVICES'):
 
 
 class QueueNames(object):
-    CHECK_JOBS = 'check-job-status-tasks'
     PERIODIC = 'periodic-tasks'
     PRIORITY = 'priority-tasks'
     DATABASE = 'database-tasks'
@@ -35,7 +34,6 @@ class QueueNames(object):
     @staticmethod
     def all_queues():
         return [
-            QueueNames.CHECK_JOBS,
             QueueNames.PRIORITY,
             QueueNames.PERIODIC,
             QueueNames.DATABASE,
