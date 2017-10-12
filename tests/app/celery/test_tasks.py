@@ -16,9 +16,7 @@ from app.celery import tasks
 from app.celery.tasks import (
     s3,
     build_dvla_file,
-    check_job_status,
     create_dvla_file_contents_for_job,
-    update_dvla_job_to_error,
     process_job,
     process_row,
     send_sms,
@@ -30,9 +28,6 @@ from app.config import QueueNames
 from app.dao import jobs_dao, services_dao
 from app.models import (
     EMAIL_TYPE,
-    JOB_STATUS_ERROR,
-    JOB_STATUS_FINISHED,
-    JOB_STATUS_SENT_TO_DVLA,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
@@ -42,7 +37,6 @@ from app.models import (
     Job,
     Notification
 )
-from app.v2.errors import JobIncompleteError
 
 from tests.app import load_example_csv
 from tests.app.conftest import (
@@ -100,7 +94,6 @@ def email_job_with_placeholders(notify_db, notify_db_session, sample_email_templ
 
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_should_process_sms_job(sample_job, mocker):
-    mocker.patch('app.celery.tasks.check_job_status.apply_async')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
@@ -137,7 +130,6 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db,
     service = create_sample_service(notify_db, notify_db_session, limit=9)
     job = create_sample_job(notify_db, notify_db_session, service=service, notification_count=10)
 
-    mocker.patch('app.celery.tasks.check_job_status.apply_async')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mocker.patch('app.celery.tasks.process_row')
     mocker.patch('app.celery.tasks.build_dvla_file')
@@ -159,7 +151,6 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify
 
     create_sample_notification(notify_db, notify_db_session, service=service, job=job)
 
-    mocker.patch('app.celery.tasks.check_job_status.apply_async')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
     mocker.patch('app.celery.tasks.process_row')
     mocker.patch('app.celery.tasks.build_dvla_file')
@@ -180,7 +171,6 @@ def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(noti
 
     create_sample_notification(notify_db, notify_db_session, service=service, job=job)
 
-    mocker.patch('app.celery.tasks.check_job_status.apply_async')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.process_row')
     mocker.patch('app.celery.tasks.build_dvla_file')
@@ -200,7 +190,6 @@ def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, not
     template = create_sample_email_template(notify_db, notify_db_session, service=service)
     job = create_sample_job(notify_db, notify_db_session, service=service, template=template)
 
-    mocker.patch('app.celery.tasks.check_job_status.apply_async')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.process_row')
     mocker.patch('app.celery.tasks.build_dvla_file')
@@ -217,7 +206,6 @@ def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, not
 def test_should_not_process_job_if_already_pending(notify_db, notify_db_session, mocker):
     job = create_sample_job(notify_db, notify_db_session, job_status='scheduled')
 
-    mocker.patch('app.celery.tasks.check_job_status.apply_async')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.process_row')
     mocker.patch('app.celery.tasks.build_dvla_file')
@@ -237,7 +225,6 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
     template = create_sample_email_template(notify_db, notify_db_session, service=service)
     job = create_sample_job(notify_db, notify_db_session, service=service, template=template, notification_count=10)
 
-    mocker.patch('app.celery.tasks.check_job_status.apply_async')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
@@ -265,7 +252,6 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
 def test_should_not_create_send_task_for_empty_file(sample_job, mocker):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('empty'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
-    mocker.patch('app.celery.tasks.check_job_status.apply_async')
 
     process_job(sample_job.id)
 
@@ -283,7 +269,6 @@ def test_should_process_email_job(email_job_with_placeholders, mocker):
     email_csv = """email_address,name
     test@test.com,foo
     """
-    mocker.patch('app.celery.tasks.check_job_status.apply_async')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=email_csv)
     mocker.patch('app.celery.tasks.send_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
@@ -322,7 +307,6 @@ def test_should_process_letter_job(sample_letter_job, mocker):
     process_row_mock = mocker.patch('app.celery.tasks.process_row')
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
     mocker.patch('app.celery.tasks.build_dvla_file')
-    mocker.patch('app.celery.tasks.check_job_status.apply_async')
 
     process_job(sample_letter_job.id)
 
@@ -353,7 +337,6 @@ def test_should_process_letter_job(sample_letter_job, mocker):
 
 def test_should_process_all_sms_job(sample_job_with_placeholdered_template,
                                     mocker):
-    mocker.patch('app.celery.tasks.check_job_status.apply_async')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mocker.patch('app.celery.tasks.send_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
@@ -458,7 +441,6 @@ def test_should_put_send_sms_task_in_research_mode_queue_if_research_mode_servic
 
     notification = _notification_json(template, to="+447234123123")
 
-    mocker.patch('app.celery.tasks.check_job_status.apply_async')
     mocked_deliver_sms = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     notification_id = uuid.uuid4()
@@ -641,7 +623,6 @@ def test_should_not_build_dvla_file_in_research_mode_for_letter_job(
     csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
     A1,A2,A3,A4,A_POST,Alice
     """
-    mocker.patch('app.celery.tasks.check_job_status.apply_async')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=csv)
     mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
     mocker.patch('app.celery.tasks.persist_letter.apply_async')
@@ -664,7 +645,6 @@ def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
     csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
     A1,A2,A3,A4,A_POST,Alice
     """
-    mocker.patch('app.celery.tasks.check_job_status.apply_async')
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=csv)
     mock_update_job_task = mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
     mocker.patch('app.celery.tasks.persist_letter.apply_async')
@@ -1224,25 +1204,3 @@ def test_send_inbound_sms_to_service_does_not_retries_if_request_returns_404(not
         send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
 
     mocked.call_count == 0
-
-
-def test_job_incomplete_raises_job_incomplete_error(sample_job):
-    assert sample_job.job_status != JOB_STATUS_FINISHED
-    with pytest.raises(JobIncompleteError) as e:
-        check_job_status(str(sample_job.id))
-
-    assert e.value.status_code == 500
-    assert e.value.message == 'Job {} did not complete'.format(sample_job.id)
-
-
-@pytest.mark.parametrize('job_status,notification_type',
-    [
-        (JOB_STATUS_FINISHED, SMS_TYPE),
-        (JOB_STATUS_SENT_TO_DVLA, LETTER_TYPE)
-    ]
-)
-def test_job_finished_does_not_raises_job_incomplete_error(
-        sample_job, job_status, notification_type):
-    sample_job.job_status = job_status
-    sample_job.template.template_type = notification_type
-    check_job_status(str(sample_job.id))

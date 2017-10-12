@@ -29,7 +29,7 @@ from app.celery.scheduled_tasks import (
     timeout_job_statistics,
     timeout_notifications,
     populate_monthly_billing,
-    send_total_sent_notifications_to_performance_platform)
+    send_total_sent_notifications_to_performance_platform, check_job_status)
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -47,8 +47,9 @@ from app.models import (
     NOTIFICATION_PENDING,
     NOTIFICATION_CREATED,
     KEY_TYPE_TEST,
-    MonthlyBilling)
+    MonthlyBilling, JOB_STATUS_FINISHED)
 from app.utils import get_london_midnight_in_utc
+from app.v2.errors import JobIncompleteError
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
 from tests.app.conftest import (
     sample_job as create_sample_job,
@@ -743,7 +744,6 @@ def test_run_letter_api_notifications_triggers_ftp_task(client, mocker, sample_l
 
 
 def test_run_letter_api_notifications_does_nothing_if_no_created_notifications(
-    client,
     mocker,
     sample_letter_template,
     sample_letter_job,
@@ -753,7 +753,7 @@ def test_run_letter_api_notifications_does_nothing_if_no_created_notifications(
         sample_letter_template,
         job=sample_letter_job
     )
-    pending_letter_notification = create_notification(
+    create_notification(
         sample_letter_template,
         status=NOTIFICATION_PENDING,
         api_key=sample_api_key
@@ -770,3 +770,55 @@ def test_run_letter_api_notifications_does_nothing_if_no_created_notifications(
     assert not mock_celery.called
     assert letter_job_notification.status == NOTIFICATION_CREATED
     assert test_api_key_notification.status == NOTIFICATION_CREATED
+
+
+def test_check_job_status_task_raises_job_incomplete_error(sample_template):
+    job = create_job(template=sample_template, notification_count=3,
+                     created_at=datetime.utcnow() - timedelta(minutes=31),
+                     processing_started=datetime.utcnow() - timedelta(minutes=31),
+                     job_status=JOB_STATUS_IN_PROGRESS)
+    create_notification(template=sample_template, job=job)
+    with pytest.raises(expected_exception=JobIncompleteError) as e:
+        check_job_status()
+    assert e.value.message == "Job(s) ['{}'] have not completed.".format(str(job.id))
+
+
+def test_check_job_status_task_raises_job_incomplete_error_when_scheduled_job_is_not_complete(sample_template):
+    job = create_job(template=sample_template, notification_count=3,
+                     created_at=datetime.utcnow() - timedelta(hours=2),
+                     scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+                     processing_started=datetime.utcnow() - timedelta(minutes=31),
+                     job_status=JOB_STATUS_IN_PROGRESS)
+    with pytest.raises(expected_exception=JobIncompleteError) as e:
+        check_job_status()
+    assert e.value.message == "Job(s) ['{}'] have not completed.".format(str(job.id))
+
+
+def test_check_job_status_task_raises_job_incomplete_error_for_multiple_jobs(sample_template):
+    job = create_job(template=sample_template, notification_count=3,
+                     created_at=datetime.utcnow() - timedelta(hours=2),
+                     scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+                     processing_started=datetime.utcnow() - timedelta(minutes=31),
+                     job_status=JOB_STATUS_IN_PROGRESS)
+    job_2 = create_job(template=sample_template, notification_count=3,
+                       created_at=datetime.utcnow() - timedelta(hours=2),
+                       scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+                       processing_started=datetime.utcnow() - timedelta(minutes=31),
+                       job_status=JOB_STATUS_IN_PROGRESS)
+    with pytest.raises(expected_exception=JobIncompleteError) as e:
+        check_job_status()
+    assert str(job.id) in e.value.message
+    assert str(job_2.id) in e.value.message
+
+
+def test_check_job_status_task_does_not_raise_error(sample_template):
+    job = create_job(template=sample_template, notification_count=3,
+                     created_at=datetime.utcnow() - timedelta(hours=2),
+                     scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+                     processing_started=datetime.utcnow() - timedelta(minutes=31),
+                     job_status=JOB_STATUS_FINISHED)
+    job_2 = create_job(template=sample_template, notification_count=3,
+                       created_at=datetime.utcnow() - timedelta(minutes=31),
+                       processing_started=datetime.utcnow() - timedelta(minutes=31),
+                       job_status=JOB_STATUS_FINISHED)
+    check_job_status()

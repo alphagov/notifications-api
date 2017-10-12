@@ -6,9 +6,15 @@ from flask import current_app
 from notifications_utils.recipients import (
     RecipientCSV
 )
-from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate, LetterDVLATemplate
-from requests import HTTPError
-from requests import request
+from notifications_utils.template import (
+    SMSMessageTemplate,
+    WithSubjectTemplate,
+    LetterDVLATemplate
+)
+from requests import (
+    HTTPError,
+    request
+)
 from sqlalchemy.exc import SQLAlchemyError
 from app import (
     create_uuid,
@@ -53,7 +59,6 @@ from app.models import (
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
-from app.v2.errors import JobIncompleteError
 from notifications_utils.s3 import s3upload
 
 
@@ -79,6 +84,7 @@ def process_job(job_id):
         return
 
     job.job_status = JOB_STATUS_IN_PROGRESS
+    job.processing_started = start
     dao_update_job(job)
 
     db_template = dao_get_template_by_id(job.template_id, job.template_version)
@@ -87,8 +93,6 @@ def process_job(job_id):
     template = TemplateClass(db_template.__dict__)
 
     current_app.logger.info("Starting job {} processing {} notifications".format(job_id, job.notification_count))
-
-    check_job_status.apply_async([str(job.id)], queue=QueueNames.JOBS)
 
     for row_number, recipient, personalisation in RecipientCSV(
             s3.get_job_from_s3(str(service.id), str(job_id)),
@@ -107,7 +111,6 @@ def process_job(job_id):
         job.job_status = JOB_STATUS_FINISHED
 
     finished = datetime.utcnow()
-    job.processing_started = start
     job.processing_finished = finished
     dao_update_job(job)
     current_app.logger.info(
@@ -326,16 +329,6 @@ def update_job_to_sent_to_dvla(self, job_id):
 def update_dvla_job_to_error(self, job_id):
     dao_update_job_status(job_id, JOB_STATUS_ERROR)
     current_app.logger.info("Updated {} job to {}".format(job_id, JOB_STATUS_ERROR))
-
-
-@notify_celery.task(bind=True, name='check-job-status', countdown=3600)
-@statsd(namespace="tasks")
-def check_job_status(self, job_id):
-    job = dao_get_job_by_id(job_id)
-
-    if (job.template.template_type == LETTER_TYPE and job.job_status != JOB_STATUS_SENT_TO_DVLA) or\
-            (job.template.template_type != LETTER_TYPE and job.job_status != JOB_STATUS_FINISHED):
-        raise JobIncompleteError("Job {} did not complete".format(job_id))
 
 
 @notify_celery.task(bind=True, name='update-letter-notifications-to-sent')
