@@ -48,7 +48,7 @@ from app.utils import convert_utc_to_bst
 
 @worker_process_shutdown.connect
 def worker_process_shutdown(sender, signal, pid, exitcode):
-    current_app.logger.info('Scheduled tasks worker shutdown:: PID: {} Exitcode: {}'.format(pid, exitcode))
+    current_app.logger.info('Scheduled tasks worker shutdown: PID: {} Exitcode: {}'.format(pid, exitcode))
 
 
 @notify_celery.task(name="remove_csv_files")
