@@ -5,6 +5,7 @@ export NOTIFY_ENVIRONMENT='test'
 export ADMIN_CLIENT_SECRET='dev-notify-secret-key'
 export ADMIN_BASE_URL='http://localhost:6012'
 export FROM_NUMBER='from_number'
+export FREE_SMS_TIER_FRAGMENT_COUNT='250000'
 export MMG_URL="https://api.mmg.co.uk/json/api.php"
 export MMG_API_KEY='mmg-secret-key'
 export LOADTESTING_API_KEY="loadtesting"
