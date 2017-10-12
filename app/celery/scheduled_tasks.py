@@ -371,7 +371,7 @@ def check_job_status():
     and scheduled_at or created_at is older that 30 minutes.
     if any results then
         raise error
-        process the rows in the csv thatgit c are missing (in another task) just do the check here.
+        process the rows in the csv that are missing (in another task) just do the check here.
     """
     thirty_minutes_ago = datetime.utcnow() - timedelta(minutes=30)
     thirty_five_minutes_ago = datetime.utcnow() - timedelta(minutes=35)
