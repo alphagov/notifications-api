@@ -107,21 +107,31 @@ def process_job(job_id):
     ).enumerated_recipients_and_personalisation:
         process_row(row_number, recipient, personalisation, template, job, service)
 
+    job_complete(job, service, template, False, start)
+
+
+def job_complete(job, service, template, resumed, start=None):
     if template.template_type == LETTER_TYPE:
         if service.research_mode:
             update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
         else:
             build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
-            current_app.logger.info("send job {} to build-dvla-file in the {} queue".format(job_id, QueueNames.JOBS))
+            current_app.logger.info("send job {} to build-dvla-file in the {} queue".format(job.id, QueueNames.JOBS))
     else:
         job.job_status = JOB_STATUS_FINISHED
 
     finished = datetime.utcnow()
     job.processing_finished = finished
     dao_update_job(job)
-    current_app.logger.info(
-        "Job {} created at {} started at {} finished at {}".format(job_id, job.created_at, start, finished)
-    )
+
+    if resumed:
+        current_app.logger.info(
+            "Resumed Job {} completed at {}".format(job.id, job.created_at, start, finished)
+        )
+    else:
+        current_app.logger.info(
+            "Job {} created at {} started at {} finished at {}".format(job.id, job.created_at, start, finished)
+        )
 
 
 def process_row(row_number, recipient, personalisation, template, job, service):

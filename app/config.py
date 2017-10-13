@@ -50,6 +50,7 @@ class QueueNames(object):
 class TaskNames(object):
     DVLA_JOBS = 'send-jobs-to-dvla'
     DVLA_NOTIFICATIONS = 'send-api-notifications-to-dvla'
+    PROCESS_INCOMPLETE_JOBS = 'process-incomplete-jobs'
 
 
 class Config(object):
