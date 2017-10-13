@@ -129,9 +129,10 @@ def test_should_call_delete_sms_notifications_more_than_week_in_task(notify_api,
 
 
 def test_should_call_delete_email_notifications_more_than_week_in_task(notify_api, mocker):
-    mocked = mocker.patch('app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago_by_type')
+    mocked_notifications = mocker.patch(
+        'app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago_by_type')
     delete_email_notifications_older_than_seven_days()
-    mocked.assert_called_once_with('email')
+    mocked_notifications.assert_called_once_with('email')
 
 
 def test_should_call_delete_letter_notifications_more_than_week_in_task(notify_api, mocker):
