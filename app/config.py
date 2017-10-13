@@ -234,6 +234,11 @@ class Config(object):
             'task': 'run-letter-api-notifications',
             'schedule': crontab(hour=17, minute=40),
             'options': {'queue': QueueNames.PERIODIC}
+        },
+        'check-job-status': {
+            'task': 'check-job-status',
+            'schedule': crontab(),
+            'options': {'queue': QueueNames.PERIODIC}
         }
     }
     CELERY_QUEUES = []

@@ -9,7 +9,7 @@ def app_for_test(mocker):
     import flask
     from flask import Blueprint
     from app.authentication.auth import AuthError
-    from app.v2.errors import BadRequestError, TooManyRequestsError
+    from app.v2.errors import BadRequestError, TooManyRequestsError, JobIncompleteError
 
     app = flask.Flask(__name__)
     app.config['TESTING'] = True
@@ -38,6 +38,10 @@ def app_for_test(mocker):
     @blue.route("raise_data_error", methods=["GET"])
     def raising_data_error():
         raise DataError("There was a db problem", "params", "orig")
+
+    @blue.route("raise_job_incomplete_error", methods=["GET"])
+    def raising_job_incomplete_error():
+        raise JobIncompleteError("Raising job incomplete error")
 
     @blue.route("raise_exception", methods=["GET"])
     def raising_exception():
@@ -105,6 +109,16 @@ def test_data_errors(app_for_test):
             error = json.loads(response.get_data(as_text=True))
             assert error == {"status_code": 404,
                              "errors": [{"error": "DataError", "message": "No result found"}]}
+
+
+def test_job_incomplete_errors(app_for_test):
+    with app_for_test.test_request_context():
+        with app_for_test.test_client() as client:
+            response = client.get(url_for('v2_under_test.raising_job_incomplete_error'))
+            assert response.status_code == 500
+            error = json.loads(response.get_data(as_text=True))
+            assert error == {"status_code": 500,
+                             "errors": [{"error": "JobIncompleteError", "message": "Raising job incomplete error"}]}
 
 
 def test_internal_server_error_handler(app_for_test):

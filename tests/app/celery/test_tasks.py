@@ -17,7 +17,6 @@ from app.celery.tasks import (
     s3,
     build_dvla_file,
     create_dvla_file_contents_for_job,
-    update_dvla_job_to_error,
     process_job,
     process_row,
     send_sms,
@@ -29,7 +28,6 @@ from app.config import QueueNames
 from app.dao import jobs_dao, services_dao
 from app.models import (
     EMAIL_TYPE,
-    JOB_STATUS_ERROR,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,

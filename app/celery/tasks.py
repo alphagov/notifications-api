@@ -1,5 +1,5 @@
 import json
-from datetime import (datetime)
+from datetime import datetime
 from collections import namedtuple
 
 from celery.signals import worker_process_init, worker_process_shutdown
@@ -7,9 +7,15 @@ from flask import current_app
 from notifications_utils.recipients import (
     RecipientCSV
 )
-from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate, LetterDVLATemplate
-from requests import HTTPError
-from requests import request
+from notifications_utils.template import (
+    SMSMessageTemplate,
+    WithSubjectTemplate,
+    LetterDVLATemplate
+)
+from requests import (
+    HTTPError,
+    request
+)
 from sqlalchemy.exc import SQLAlchemyError
 from app import (
     create_uuid,
@@ -84,12 +90,15 @@ def process_job(job_id):
         return
 
     job.job_status = JOB_STATUS_IN_PROGRESS
+    job.processing_started = start
     dao_update_job(job)
 
     db_template = dao_get_template_by_id(job.template_id, job.template_version)
 
     TemplateClass = get_template_class(db_template.template_type)
     template = TemplateClass(db_template.__dict__)
+
+    current_app.logger.info("Starting job {} processing {} notifications".format(job_id, job.notification_count))
 
     for row_number, recipient, personalisation in RecipientCSV(
             s3.get_job_from_s3(str(service.id), str(job_id)),
@@ -108,7 +117,6 @@ def process_job(job_id):
         job.job_status = JOB_STATUS_FINISHED
 
     finished = datetime.utcnow()
-    job.processing_started = start
     job.processing_finished = finished
     dao_update_job(job)
     current_app.logger.info(

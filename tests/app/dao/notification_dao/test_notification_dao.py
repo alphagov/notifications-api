@@ -52,7 +52,12 @@ from app.dao.notifications_dao import (
 )
 
 from app.dao.services_dao import dao_update_service
-from tests.app.db import create_notification, create_api_key, create_reply_to_email
+from tests.app.db import (
+    create_api_key,
+    create_job,
+    create_notification,
+    create_reply_to_email
+)
 from tests.app.conftest import (
     sample_notification,
     sample_template,
