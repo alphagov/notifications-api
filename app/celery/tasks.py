@@ -2,6 +2,7 @@ import json
 from datetime import (datetime)
 from collections import namedtuple
 
+from celery.signals import worker_process_init, worker_process_shutdown
 from flask import current_app
 from notifications_utils.recipients import (
     RecipientCSV
@@ -54,6 +55,11 @@ from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
 from notifications_utils.s3 import s3upload
+
+
+@worker_process_shutdown.connect
+def worker_process_shutdown(sender, signal, pid, exitcode):
+    current_app.logger.info('Tasks worker shutdown: PID: {} Exitcode: {}'.format(pid, exitcode))
 
 
 @notify_celery.task(name="process-job")
