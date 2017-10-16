@@ -181,7 +181,7 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
     assert response.status_code == 201
     resp_json = json.loads(response.get_data(as_text=True))
     assert validate(resp_json, post_email_response) == resp_json
-    notification = Notification.query.first()
+    notification = Notification.query.one()
     assert resp_json['id'] == str(notification.id)
     assert resp_json['reference'] == reference
     assert notification.reference is None

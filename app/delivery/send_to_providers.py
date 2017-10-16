@@ -25,6 +25,7 @@ from app.models import (
     BRANDING_ORG_BANNER,
     BRANDING_GOVUK,
     EMAIL_TYPE,
+    NOTIFICATION_CREATED,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_SENT,
     NOTIFICATION_SENDING
@@ -54,8 +55,17 @@ def send_sms_to_provider(notification):
 
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
             notification.billable_units = 0
-            send_sms_response(provider.get_name(), str(notification.id), notification.to)
             update_notification(notification, provider)
+            try:
+                send_sms_response(provider.get_name(), str(notification.id), notification.to)
+            except:
+                # when we retry, we only do anything if the notification is in created - it's currently in sending,
+                # so set it back so that we actually attempt the callback again
+                notification.sent_at = None
+                notification.sent_by = None
+                notification.status = NOTIFICATION_CREATED
+                dao_update_notification(notification)
+                raise
         else:
             try:
                 provider.send_sms(
