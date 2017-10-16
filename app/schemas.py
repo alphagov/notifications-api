@@ -175,16 +175,19 @@ class ProviderDetailsHistorySchema(BaseSchema):
 
 class ServiceSchema(BaseSchema):
 
+    free_sms_fragment_limit = fields.Method(method_name='get_free_sms_fragment_limit')
     created_by = field_for(models.Service, 'created_by', required=True)
     organisation = field_for(models.Service, 'organisation')
     branding = field_for(models.Service, 'branding')
     dvla_organisation = field_for(models.Service, 'dvla_organisation')
-    free_sms_fragment_limit = field_for(models.Service, 'free_sms_fragment_limit')
     permissions = fields.Method("service_permissions")
     override_flag = False
     reply_to_email_address = fields.Method(method_name="get_reply_to_email_address")
     sms_sender = fields.Method(method_name="get_sms_sender")
     letter_contact_block = fields.Method(method_name="get_letter_contact")
+
+    def get_free_sms_fragment_limit(selfs, service):
+        return service.free_sms_fragment_limit()
 
     def service_permissions(self, service):
         return [p.permission for p in service.permissions]
@@ -200,7 +203,7 @@ class ServiceSchema(BaseSchema):
 
     class Meta:
         model = models.Service
-        dump_only = ['reply_to_email_address', 'letter_contact_block']
+        dump_only = ['free_sms_fragment_limit', 'reply_to_email_address', 'letter_contact_block']
         exclude = (
             'updated_at',
             'created_at',
@@ -248,6 +251,11 @@ class ServiceSchema(BaseSchema):
 
 class DetailedServiceSchema(BaseSchema):
     statistics = fields.Dict()
+
+    free_sms_fragment_limit = fields.Method(method_name='get_free_sms_fragment_limit')
+
+    def get_free_sms_fragment_limit(selfs, service):
+        return service.free_sms_fragment_limit()
 
     class Meta:
         model = models.Service
