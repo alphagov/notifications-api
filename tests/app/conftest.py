@@ -139,6 +139,7 @@ def sample_service(
     email_from=None,
     permissions=[SMS_TYPE, EMAIL_TYPE],
     research_mode=None,
+    free_sms_fragment_limit=250000
 ):
     if user is None:
         user = create_user()
@@ -150,7 +151,8 @@ def sample_service(
         'message_limit': limit,
         'restricted': restricted,
         'email_from': email_from,
-        'created_by': user
+        'created_by': user,
+        'free_sms_fragment_limit': free_sms_fragment_limit
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
