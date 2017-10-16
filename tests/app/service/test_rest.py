@@ -162,7 +162,7 @@ def test_get_service_by_id_returns_free_sms_limit(client, sample_service):
     )
     assert resp.status_code == 200
     json_resp = json.loads(resp.get_data(as_text=True))
-    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
+    assert json_resp['data']['free_sms_fragment_limit'] == 250000
 
 
 def test_get_detailed_service_by_id_returns_free_sms_limit(client, sample_service):
@@ -174,7 +174,7 @@ def test_get_detailed_service_by_id_returns_free_sms_limit(client, sample_servic
     )
     assert resp.status_code == 200
     json_resp = json.loads(resp.get_data(as_text=True))
-    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
+    assert json_resp['data']['free_sms_fragment_limit'] == 250000
 
 
 def test_get_service_list_has_default_permissions(client, service_factory):
@@ -272,7 +272,6 @@ def test_create_service(client, sample_user):
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
-    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
     service_db = Service.query.get(json_resp['data']['id'])
     assert service_db.name == 'created service'
@@ -315,49 +314,6 @@ def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_u
             assert resp.status_code == 400
             assert json_resp['result'] == 'error'
             assert 'Missing data for required field.' in json_resp['message']['user_id']
-
-
-def test_create_service_free_sms_fragment_limit_is_optional(client, sample_user):
-    data1 = {
-        'name': 'service 1',
-        'user_id': str(sample_user.id),
-        'message_limit': 1000,
-        'restricted': False,
-        'active': False,
-        'email_from': 'sample_user.email1',
-        'created_by': str(sample_user.id),
-        'free_sms_fragment_limit': 9999
-    }
-
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.post(
-        '/service',
-        data=json.dumps(data1),
-        headers=headers)
-    json_resp = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 201
-    assert json_resp['data']['free_sms_fragment_limit'] == 9999
-
-    data2 = {
-        'name': 'service 2',
-        'user_id': str(sample_user.id),
-        'message_limit': 1000,
-        'restricted': False,
-        'active': False,
-        'email_from': 'sample_user.email2',
-        'created_by': str(sample_user.id),
-    }
-
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.post(
-        '/service',
-        data=json.dumps(data2),
-        headers=headers)
-    json_resp = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 201
-    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
 
 def test_should_error_if_created_by_missing(notify_api, sample_user):
@@ -592,36 +548,6 @@ def test_update_service_flags_will_remove_service_permissions(client, notify_db,
 
     permissions = ServicePermission.query.filter_by(service_id=service.id).all()
     assert set([p.permission for p in permissions]) == set([SMS_TYPE, EMAIL_TYPE])
-
-
-def test_update_service_free_sms_fragment_limit(client, notify_db, sample_service):
-    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
-    notify_db.session.add(org)
-    notify_db.session.commit()
-
-    auth_header = create_authorization_header()
-    resp = client.get(
-        '/service/{}'.format(sample_service.id),
-        headers=[auth_header]
-    )
-    json_resp = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 200
-    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
-
-    data = {
-        'free_sms_fragment_limit': 9999
-    }
-
-    auth_header = create_authorization_header()
-
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    result = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 200
-    assert result['data']['free_sms_fragment_limit'] == 9999
 
 
 def test_update_permissions_will_override_permission_flags(client, service_with_no_permissions):
