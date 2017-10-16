@@ -54,8 +54,8 @@ def send_sms_to_provider(notification):
 
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
             notification.billable_units = 0
-            update_notification(notification, provider)
             send_sms_response(provider.get_name(), str(notification.id), notification.to)
+            update_notification(notification, provider)
         else:
             try:
                 provider.send_sms(
