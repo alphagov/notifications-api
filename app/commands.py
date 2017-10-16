@@ -305,3 +305,27 @@ class PopulateServiceLetterContact(Command):
         db.session.commit()
 
         print("Populated letter contacts for {} services".format(result.rowcount))
+
+
+class PopulateServiceAndServiceHistoryFreeSmsFragmentLimit(Command):
+
+    def run(self):
+        services_to_update = """
+            UPDATE services
+            SET free_sms_fragment_limit = 250000
+            WHERE free_sms_fragment_limit IS NULL
+        """
+
+        services_history_to_update = """
+            UPDATE services_history
+            SET free_sms_fragment_limit = 250000
+            WHERE free_sms_fragment_limit IS NULL
+        """
+
+        services_result = db.session.execute(services_to_update)
+        services_history_result = db.session.execute(services_history_to_update)
+
+        db.session.commit()
+
+        print("Populated free sms fragment limits for {} services".format(services_result.rowcount))
+        print("Populated free sms fragment limits for {} services history".format(services_history_result.rowcount))
