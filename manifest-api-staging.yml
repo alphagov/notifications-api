@@ -4,7 +4,6 @@ inherit: manifest-api-base.yml
 
 routes:
   - route: notify-api-staging.cloudapps.digital
-  - route: api-paas.staging-notify.works
   - route: api.staging-notify.works
 instances: 2
 memory: 1G

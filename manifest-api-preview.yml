@@ -4,7 +4,6 @@ inherit: manifest-api-base.yml
 
 routes:
   - route: notify-api-preview.cloudapps.digital
-  - route: api-paas.notify.works
   - route: api.notify.works
 
 instances: 1
