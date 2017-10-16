@@ -6,6 +6,7 @@ from unittest.mock import ANY, call
 import pytest
 from notifications_utils.recipients import validate_and_format_phone_number
 from flask import current_app
+from requests import HTTPError
 
 import app
 from app import mmg_client, firetext_client
@@ -233,6 +234,20 @@ def test_should_call_send_sms_response_task_if_research_mode(
     assert persisted_notification.sent_at <= datetime.utcnow()
     assert persisted_notification.sent_by == 'mmg'
     assert not persisted_notification.personalisation
+
+
+def test_should_leave_as_created_if_fake_callback_function_fails(sample_notification, mocker):
+    mocker.patch('app.delivery.send_to_providers.send_sms_response', side_effect=HTTPError)
+
+    sample_notification.key_type = KEY_TYPE_TEST
+
+    with pytest.raises(HTTPError):
+        send_to_providers.send_sms_to_provider(
+            sample_notification
+        )
+    assert sample_notification.status == 'created'
+    assert sample_notification.sent_at is None
+    assert sample_notification.sent_by is None
 
 
 @pytest.mark.parametrize('research_mode,key_type', [
