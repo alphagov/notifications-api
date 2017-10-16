@@ -18,6 +18,11 @@ manager.add_command('purge_functional_test_data', commands.PurgeFunctionalTestDa
 manager.add_command('custom_db_script', commands.CustomDbScript)
 manager.add_command('populate_monthly_billing', commands.PopulateMonthlyBilling)
 manager.add_command('backfill_processing_time', commands.BackfillProcessingTime)
+manager.add_command('populate_service_email_reply_to', commands.PopulateServiceEmailReplyTo)
+manager.add_command('populate_service_sms_sender', commands.PopulateServiceSmsSender)
+manager.add_command('populate_service_letter_contact', commands.PopulateServiceLetterContact)
+manager.add_command('populate_service_and_service_history_free_sms_fragment_limit',
+                    commands.PopulateServiceAndServiceHistoryFreeSmsFragmentLimit)
 
 
 @manager.command

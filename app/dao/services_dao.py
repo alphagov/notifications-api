@@ -11,6 +11,7 @@ from app.dao.dao_utils import (
     version_class
 )
 from app.dao.notifications_dao import get_financial_year
+from app.dao.service_sms_sender_dao import insert_service_sms_sender
 from app.models import (
     NotificationStatistics,
     ProviderStatistics,
@@ -33,8 +34,8 @@ from app.models import (
     TEMPLATE_TYPES,
     JobStatistics,
     SMS_TYPE,
-    EMAIL_TYPE
-)
+    EMAIL_TYPE,
+    ServiceSmsSender)
 from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
@@ -163,6 +164,7 @@ def dao_create_service(service, user, service_id=None, service_permissions=[SMS_
         service_permission = ServicePermission(service_id=service.id, permission=permission)
         service.permissions.append(service_permission)
 
+    insert_service_sms_sender(service, service.sms_sender)
     db.session.add(service)
 
 
@@ -212,6 +214,7 @@ def delete_service_and_all_associated_db_objects(service):
     subq = db.session.query(Template.id).filter_by(service=service).subquery()
     _delete_commit(TemplateRedacted.query.filter(TemplateRedacted.template_id.in_(subq)))
 
+    _delete_commit(ServiceSmsSender.query.filter_by(service=service))
     _delete_commit(NotificationStatistics.query.filter_by(service=service))
     _delete_commit(ProviderStatistics.query.filter_by(service=service))
     _delete_commit(InvitedUser.query.filter_by(service=service))
@@ -356,13 +359,14 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
 
 @statsd(namespace='dao')
 def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
+
     query = db.session.query(
         Notification.notification_type,
         Notification.status,
         Notification.service_id,
         func.count(Notification.id).label('count')
     ).filter(
-        func.date(Notification.created_at) == date.today()
+        func.date(Notification.created_at) == date.today(),
     ).group_by(
         Notification.notification_type,
         Notification.status,

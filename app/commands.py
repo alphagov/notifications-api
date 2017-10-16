@@ -228,3 +228,104 @@ class BackfillProcessingTime(Command):
                 process_end_date.isoformat()
             ))
             send_processing_time_for_start_and_end(process_start_date, process_end_date)
+
+
+class PopulateServiceEmailReplyTo(Command):
+
+    def run(self):
+        services_to_update = """
+            INSERT INTO service_email_reply_to(id, service_id, email_address, is_default, created_at)
+            SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, reply_to_email_address, true, '{}'
+            FROM services
+            WHERE reply_to_email_address IS NOT NULL
+            AND id NOT IN(
+                SELECT service_id
+                FROM service_email_reply_to
+            )
+        """.format(datetime.utcnow())
+
+        result = db.session.execute(services_to_update)
+        db.session.commit()
+
+        print("Populated email reply to adderesses for {}".format(result.rowcount))
+
+
+class PopulateServiceSmsSender(Command):
+
+    def run(self):
+        services_to_update = """
+            INSERT INTO service_sms_senders(id, service_id, sms_sender, inbound_number_id, is_default, created_at)
+            SELECT uuid_in(md5(random()::text || now()::text)::cstring), service_id, number, id, true, '{}'
+            FROM inbound_numbers
+            WHERE service_id NOT IN(
+                SELECT service_id
+                FROM service_sms_senders
+            )
+        """.format(datetime.utcnow())
+
+        services_to_update_from_services = """
+            INSERT INTO service_sms_senders(id, service_id, sms_sender, inbound_number_id, is_default, created_at)
+            SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, sms_sender, null, true, '{}'
+            FROM services
+            WHERE id NOT IN(
+                SELECT service_id
+                FROM service_sms_senders
+            )
+        """.format(datetime.utcnow())
+
+        result = db.session.execute(services_to_update)
+        second_result = db.session.execute(services_to_update_from_services)
+        db.session.commit()
+
+        services_count_query = db.session.execute("Select count(*) from services").fetchall()[0][0]
+
+        service_sms_sender_count_query = db.session.execute("Select count(*) from service_sms_senders").fetchall()[0][0]
+
+        print("Populated sms sender {} services from inbound_numbers".format(result.rowcount))
+        print("Populated sms sender {} services from services".format(second_result.rowcount))
+        print("{} services in table".format(services_count_query))
+        print("{} service_sms_senders".format(service_sms_sender_count_query))
+
+
+class PopulateServiceLetterContact(Command):
+
+    def run(self):
+        services_to_update = """
+            INSERT INTO service_letter_contacts(id, service_id, contact_block, is_default, created_at)
+            SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, letter_contact_block, true, '{}'
+            FROM services
+            WHERE letter_contact_block IS NOT NULL
+            AND id NOT IN(
+                SELECT service_id
+                FROM service_letter_contacts
+            )
+        """.format(datetime.utcnow())
+
+        result = db.session.execute(services_to_update)
+        db.session.commit()
+
+        print("Populated letter contacts for {} services".format(result.rowcount))
+
+
+class PopulateServiceAndServiceHistoryFreeSmsFragmentLimit(Command):
+
+    def run(self):
+        services_to_update = """
+            UPDATE services
+            SET free_sms_fragment_limit = 250000
+            WHERE free_sms_fragment_limit IS NULL
+        """
+
+        services_history_to_update = """
+            UPDATE services_history
+            SET free_sms_fragment_limit = 250000
+            WHERE free_sms_fragment_limit IS NULL
+        """
+
+        services_result = db.session.execute(services_to_update)
+        services_history_result = db.session.execute(services_history_to_update)
+
+        db.session.commit()
+
+        print("Populated free sms fragment limits for {} services".format(services_result.rowcount))
+        print("Populated free sms fragment limits for {} services history".format(services_history_result.rowcount))

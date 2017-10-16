@@ -4,20 +4,28 @@ import pytest
 from freezegun import freeze_time
 
 from app.models import (
-    Notification, ScheduledNotification, SCHEDULE_NOTIFICATIONS,
-    EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, SMS_TYPE
+    NotificationEmailReplyTo,
+    ScheduledNotification,
+    SCHEDULE_NOTIFICATIONS,
+    EMAIL_TYPE,
+    INTERNATIONAL_SMS_TYPE,
+    SMS_TYPE
 )
 from flask import json, current_app
 
 from app.models import Notification
+from app.schema_validation import validate
 from app.v2.errors import RateLimitError
+from app.v2.notifications.notification_schemas import post_sms_response, post_email_response
 from tests import create_authorization_header
 from tests.app.conftest import (
-    sample_template as create_sample_template, sample_service,
-    sample_template_without_sms_permission, sample_template_without_email_permission
+    sample_template as create_sample_template,
+    sample_service,
+    sample_template_without_email_permission,
+    sample_template_without_sms_permission
 )
 
-from tests.app.db import create_inbound_number, create_service, create_template
+from tests.app.db import create_inbound_number, create_service, create_template, create_reply_to_email
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -38,6 +46,7 @@ def test_post_sms_notification_returns_201(client, sample_template_with_placehol
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 201
     resp_json = json.loads(response.get_data(as_text=True))
+    assert validate(resp_json, post_sms_response) == resp_json
     notifications = Notification.query.all()
     assert len(notifications) == 1
     notification_id = notifications[0].id
@@ -71,6 +80,7 @@ def test_post_sms_notification_uses_inbound_number_as_sender(client, sample_temp
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 201
     resp_json = json.loads(response.get_data(as_text=True))
+    assert validate(resp_json, post_sms_response) == resp_json
     notifications = Notification.query.all()
     assert len(notifications) == 1
     notification_id = notifications[0].id
@@ -170,6 +180,7 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 201
     resp_json = json.loads(response.get_data(as_text=True))
+    assert validate(resp_json, post_email_response) == resp_json
     notification = Notification.query.first()
     assert resp_json['id'] == str(notification.id)
     assert resp_json['reference'] == reference
@@ -178,7 +189,8 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
         .replace('((name))', 'Bob').replace('GOV.UK', u'GOV.\u200bUK')
     assert resp_json['content']['subject'] == sample_email_template_with_placeholders.subject \
         .replace('((name))', 'Bob')
-    assert resp_json['content']['from_email'] == sample_email_template_with_placeholders.service.email_from
+    assert resp_json['content']['from_email'] == "{}@{}".format(
+        sample_email_template_with_placeholders.service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN'])
     assert 'v2/notifications/{}'.format(notification.id) in resp_json['uri']
     assert resp_json['template']['id'] == str(sample_email_template_with_placeholders.id)
     assert resp_json['template']['version'] == sample_email_template_with_placeholders.version
@@ -471,3 +483,96 @@ def test_post_notification_raises_bad_request_if_not_valid_notification_type(cli
     assert response.status_code == 404
     error_json = json.loads(response.get_data(as_text=True))
     assert 'The requested URL was not found on the server.' in error_json['message']
+
+
+@pytest.mark.parametrize("reference", [None, "reference_from_client"])
+def test_post_sms_notification_with_invalid_reply_to_email_id(
+        client,
+        sample_template_with_placeholders,
+        reference,
+        fake_uuid):
+    data = {
+        'phone_number': '+447700900855',
+        'template_id': str(sample_template_with_placeholders.id),
+        'personalisation': {' Name': 'Jo'},
+        'email_reply_to_id': fake_uuid
+    }
+    if reference:
+        data.update({"reference": reference})
+    auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
+
+    response = client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 400
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert 'email_reply_to_id {} does not exist in database for service id {}'.\
+        format(fake_uuid, sample_template_with_placeholders.service_id) in resp_json['errors'][0]['message']
+    assert 'BadRequestError' in resp_json['errors'][0]['error']
+
+
+def test_post_email_notification_with_valid_reply_to_id_returns_201(client, sample_email_template, mocker):
+    reply_to_email = create_reply_to_email(sample_email_template.service, 'test@test.com')
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    data = {
+        "email_address": sample_email_template.service.users[0].email_address,
+        "template_id": sample_email_template.id,
+        'email_reply_to_id': reply_to_email.id
+    }
+    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+    response = client.post(
+        path="v2/notifications/email",
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 201
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert validate(resp_json, post_email_response) == resp_json
+    notification = Notification.query.first()
+    assert resp_json['id'] == str(notification.id)
+    assert mocked.called
+
+
+def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sample_email_template, mocker, fake_uuid):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    data = {
+        "email_address": sample_email_template.service.users[0].email_address,
+        "template_id": sample_email_template.id,
+        'email_reply_to_id': fake_uuid
+    }
+    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+    response = client.post(
+        path="v2/notifications/email",
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 400
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert 'email_reply_to_id {} does not exist in database for service id {}'.\
+        format(fake_uuid, sample_email_template.service_id) in resp_json['errors'][0]['message']
+    assert 'BadRequestError' in resp_json['errors'][0]['error']
+
+
+def test_post_email_notification_with_valid_reply_to_id_returns_201(client, sample_email_template, mocker):
+    reply_to_email = create_reply_to_email(sample_email_template.service, 'test@test.com')
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    data = {
+        "email_address": sample_email_template.service.users[0].email_address,
+        "template_id": sample_email_template.id,
+        'email_reply_to_id': reply_to_email.id
+    }
+    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+    response = client.post(
+        path="v2/notifications/email",
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 201
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert validate(resp_json, post_email_response) == resp_json
+    notification = Notification.query.first()
+    assert resp_json['id'] == str(notification.id)
+    assert mocked.called
+
+    email_reply_to = NotificationEmailReplyTo.query.one()
+
+    assert email_reply_to.notification_id == notification.id
+    assert email_reply_to.service_email_reply_to_id == reply_to_email.id

@@ -14,14 +14,37 @@ from tests.app.notifications.test_notifications_ses_callback import ses_confirma
 from tests.app.conftest import sample_notification as create_sample_notification
 
 
-def test_dvla_callback_returns_400_with_invalid_request(client):
-    data = json.dumps({"foo": "bar"})
-    response = client.post(
+def firetext_post(client, data):
+    return client.post(
+        path='/notifications/sms/firetext',
+        data=data,
+        headers=[
+            ('Content-Type', 'application/x-www-form-urlencoded'),
+            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')
+        ])
+
+
+def mmg_post(client, data):
+    return client.post(
+        path='/notifications/sms/mmg',
+        data=data,
+        headers=[
+            ('Content-Type', 'application/json'),
+            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')
+        ])
+
+
+def dvla_post(client, data):
+    return client.post(
         path='/notifications/letter/dvla',
         data=data,
         headers=[('Content-Type', 'application/json')]
     )
 
+
+def test_dvla_callback_returns_400_with_invalid_request(client):
+    data = json.dumps({"foo": "bar"})
+    response = dvla_post(client, data)
     assert response.status_code == 400
 
 
@@ -29,12 +52,7 @@ def test_dvla_callback_autoconfirms_subscription(client, mocker):
     autoconfirm_mock = mocker.patch('app.notifications.notifications_letter_callback.autoconfirm_subscription')
 
     data = ses_confirmation_callback()
-    response = client.post(
-        path='/notifications/letter/dvla',
-        data=data,
-        headers=[('Content-Type', 'application/json')]
-    )
-
+    response = dvla_post(client, data)
     assert response.status_code == 200
     assert autoconfirm_mock.called
 
@@ -45,11 +63,7 @@ def test_dvla_callback_autoconfirm_does_not_call_update_letter_notifications_tas
         mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
 
     data = ses_confirmation_callback()
-    response = client.post(
-        path='/notifications/letter/dvla',
-        data=data,
-        headers=[('Content-Type', 'application/json')]
-    )
+    response = dvla_post(client, data)
 
     assert response.status_code == 200
     assert autoconfirm_mock.called
@@ -60,11 +74,7 @@ def test_dvla_callback_calls_update_letter_notifications_task(client, mocker):
     update_task = \
         mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
     data = _sample_sns_s3_callback()
-    response = client.post(
-        path='/notifications/letter/dvla',
-        data=data,
-        headers=[('Content-Type', 'application/json')]
-    )
+    response = dvla_post(client, data)
 
     assert response.status_code == 200
     assert update_task.called
@@ -74,31 +84,23 @@ def test_dvla_callback_calls_update_letter_notifications_task(client, mocker):
 def test_dvla_callback_does_not_raise_error_parsing_json_for_plaintext_header(client, mocker):
     mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
     data = _sample_sns_s3_callback()
-    response = client.post(
-        path='/notifications/letter/dvla',
-        data=data,
-        headers=[('Content-Type', 'text/plain')]
-    )
+    response = dvla_post(client, data)
 
     assert response.status_code == 200
 
 
 def test_firetext_callback_should_not_need_auth(client, mocker):
     mocker.patch('app.statsd_client.incr')
-    response = client.post(
-        path='/notifications/sms/firetext',
-        data='mobile=441234123123&status=0&reference=send-sms-code&time=2016-03-10 14:17:00',
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+    data = 'mobile=441234123123&status=0&reference=send-sms-code&time=2016-03-10 14:17:00'
 
+    response = firetext_post(client, data)
     assert response.status_code == 200
 
 
 def test_firetext_callback_should_return_400_if_empty_reference(client, mocker):
     mocker.patch('app.statsd_client.incr')
-    response = client.post(
-        path='/notifications/sms/firetext',
-        data='mobile=441234123123&status=0&reference=&time=2016-03-10 14:17:00',
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+    data = 'mobile=441234123123&status=0&reference=&time=2016-03-10 14:17:00'
+    response = firetext_post(client, data)
 
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 400
@@ -108,11 +110,8 @@ def test_firetext_callback_should_return_400_if_empty_reference(client, mocker):
 
 def test_firetext_callback_should_return_400_if_no_reference(client, mocker):
     mocker.patch('app.statsd_client.incr')
-    response = client.post(
-        path='/notifications/sms/firetext',
-        data='mobile=441234123123&status=0&time=2016-03-10 14:17:00',
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
-
+    data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00'
+    response = firetext_post(client, data)
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 400
     assert json_resp['result'] == 'error'
@@ -121,11 +120,8 @@ def test_firetext_callback_should_return_400_if_no_reference(client, mocker):
 
 def test_firetext_callback_should_return_200_if_send_sms_reference(client, mocker):
     mocker.patch('app.statsd_client.incr')
-    response = client.post(
-        path='/notifications/sms/firetext',
-        data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference=send-sms-code',
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
-
+    data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference=send-sms-code'
+    response = firetext_post(client, data)
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 200
     assert json_resp['result'] == 'success'
@@ -134,11 +130,8 @@ def test_firetext_callback_should_return_200_if_send_sms_reference(client, mocke
 
 def test_firetext_callback_should_return_400_if_no_status(client, mocker):
     mocker.patch('app.statsd_client.incr')
-    response = client.post(
-        path='/notifications/sms/firetext',
-        data='mobile=441234123123&time=2016-03-10 14:17:00&reference=send-sms-code',
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
-
+    data = 'mobile=441234123123&time=2016-03-10 14:17:00&reference=send-sms-code'
+    response = firetext_post(client, data)
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 400
     assert json_resp['result'] == 'error'
@@ -147,10 +140,8 @@ def test_firetext_callback_should_return_400_if_no_status(client, mocker):
 
 def test_firetext_callback_should_return_400_if_unknown_status(client, mocker):
     mocker.patch('app.statsd_client.incr')
-    response = client.post(
-        path='/notifications/sms/firetext',
-        data='mobile=441234123123&status=99&time=2016-03-10 14:17:00&reference={}'.format(uuid.uuid4()),
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+    data = 'mobile=441234123123&status=99&time=2016-03-10 14:17:00&reference={}'.format(uuid.uuid4())
+    response = firetext_post(client, data)
 
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 400
@@ -160,11 +151,8 @@ def test_firetext_callback_should_return_400_if_unknown_status(client, mocker):
 
 def test_firetext_callback_returns_200_when_notification_id_not_found_or_already_updated(client, mocker):
     mocker.patch('app.statsd_client.incr')
-    response = client.post(
-        path='/notifications/sms/firetext',
-        data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference=1234',
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
-
+    data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference=1234'
+    response = firetext_post(client, data)
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 400
     assert json_resp['result'] == 'error'
@@ -179,12 +167,9 @@ def test_callback_should_return_200_if_cannot_find_notification_id(
 ):
     mocker.patch('app.statsd_client.incr')
     missing_notification_id = uuid.uuid4()
-    response = client.post(
-        path='/notifications/sms/firetext',
-        data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-            missing_notification_id
-        ),
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+    data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
+        missing_notification_id)
+    response = firetext_post(client, data)
 
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 200
@@ -206,13 +191,9 @@ def test_firetext_callback_should_update_notification_status(
 
     original = get_notification_by_id(notification.id)
     assert original.status == 'sending'
-
-    response = client.post(
-        path='/notifications/sms/firetext',
-        data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-            notification.id
-        ),
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+    data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
+        notification.id)
+    response = firetext_post(client, data)
 
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 200
@@ -241,12 +222,9 @@ def test_firetext_callback_should_update_notification_status_failed(
     original = get_notification_by_id(notification.id)
     assert original.status == 'sending'
 
-    response = client.post(
-        path='/notifications/sms/firetext',
-        data='mobile=441234123123&status=1&time=2016-03-10 14:17:00&reference={}'.format(
-            notification.id
-        ),
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+    data = 'mobile=441234123123&status=1&time=2016-03-10 14:17:00&reference={}'.format(
+        notification.id)
+    response = firetext_post(client, data)
 
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 200
@@ -264,13 +242,9 @@ def test_firetext_callback_should_update_notification_status_pending(client, not
     )
     original = get_notification_by_id(notification.id)
     assert original.status == 'sending'
-
-    response = client.post(
-        path='/notifications/sms/firetext',
-        data='mobile=441234123123&status=2&time=2016-03-10 14:17:00&reference={}'.format(
-            notification.id
-        ),
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+    data = 'mobile=441234123123&status=2&time=2016-03-10 14:17:00&reference={}'.format(
+        notification.id)
+    response = firetext_post(client, data)
 
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 200
@@ -281,52 +255,11 @@ def test_firetext_callback_should_update_notification_status_pending(client, not
     assert get_notification_by_id(notification.id).status == 'pending'
 
 
-def test_firetext_callback_should_update_multiple_notification_status_sent(
-    client,
-    notify_db,
-    notify_db_session,
-    mocker
-):
-    mocker.patch('app.statsd_client.incr')
-    notification1 = create_sample_notification(
-        notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
-    )
-    notification2 = create_sample_notification(
-        notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
-    )
-    notification3 = create_sample_notification(
-        notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
-    )
-
-    client.post(
-        path='/notifications/sms/firetext',
-        data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-            notification1.id
-        ),
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
-
-    client.post(
-        path='/notifications/sms/firetext',
-        data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-            notification2.id
-        ),
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
-
-    client.post(
-        path='/notifications/sms/firetext',
-        data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-            notification3.id
-        ),
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
-
-
 def test_process_mmg_response_return_200_when_cid_is_send_sms_code(client):
     data = '{"reference": "10100164", "CID": "send-sms-code", "MSISDN": "447775349060", "status": "3", \
         "deliverytime": "2016-04-05 16:01:07"}'
 
-    response = client.post(path='notifications/sms/mmg',
-                           data=data,
-                           headers=[('Content-Type', 'application/json')])
+    response = mmg_post(client, data)
     assert response.status_code == 200
     json_data = json.loads(response.data)
     assert json_data['result'] == 'success'
@@ -345,9 +278,8 @@ def test_process_mmg_response_returns_200_when_cid_is_valid_notification_id(
                        "status": "3",
                        "deliverytime": "2016-04-05 16:01:07"})
 
-    response = client.post(path='notifications/sms/mmg',
-                           data=data,
-                           headers=[('Content-Type', 'application/json')])
+    response = mmg_post(client, data)
+
     assert response.status_code == 200
     json_data = json.loads(response.data)
     assert json_data['result'] == 'success'
@@ -367,9 +299,7 @@ def test_process_mmg_response_status_5_updates_notification_with_permanently_fai
                        "MSISDN": "447777349060",
                        "status": 5})
 
-    response = client.post(path='notifications/sms/mmg',
-                           data=data,
-                           headers=[('Content-Type', 'application/json')])
+    response = mmg_post(client, data)
     assert response.status_code == 200
     json_data = json.loads(response.data)
     assert json_data['result'] == 'success'
@@ -388,9 +318,7 @@ def test_process_mmg_response_status_2_updates_notification_with_permanently_fai
                        "MSISDN": "447777349060",
                        "status": 2})
 
-    response = client.post(path='notifications/sms/mmg',
-                           data=data,
-                           headers=[('Content-Type', 'application/json')])
+    response = mmg_post(client, data)
     assert response.status_code == 200
     json_data = json.loads(response.data)
     assert json_data['result'] == 'success'
@@ -410,9 +338,7 @@ def test_process_mmg_response_status_4_updates_notification_with_temporary_faile
                        "MSISDN": "447777349060",
                        "status": 4})
 
-    response = client.post(path='notifications/sms/mmg',
-                           data=data,
-                           headers=[('Content-Type', 'application/json')])
+    response = mmg_post(client, data)
     assert response.status_code == 200
     json_data = json.loads(response.data)
     assert json_data['result'] == 'success'
@@ -431,9 +357,7 @@ def test_process_mmg_response_unknown_status_updates_notification_with_failed(
                        "MSISDN": "447777349060",
                        "status": 10})
 
-    response = client.post(path='notifications/sms/mmg',
-                           data=data,
-                           headers=[('Content-Type', 'application/json')])
+    response = mmg_post(client, data)
     assert response.status_code == 200
     json_data = json.loads(response.data)
     assert json_data['result'] == 'success'
@@ -448,9 +372,7 @@ def test_process_mmg_response_returns_400_for_malformed_data(client):
                        "no_status": 00,
                        "deliverytime": "2016-04-05 16:01:07"})
 
-    response = client.post(path='notifications/sms/mmg',
-                           data=data,
-                           headers=[('Content-Type', 'application/json')])
+    response = mmg_post(client, data)
     assert response.status_code == 400
     json_data = json.loads(response.data)
     assert json_data['result'] == 'error'
@@ -463,9 +385,7 @@ def test_mmg_callback_returns_200_when_notification_id_not_found_or_already_upda
     data = '{"reference": "10100164", "CID": "send-sms-code", "MSISDN": "447775349060", "status": "3", \
              "deliverytime": "2016-04-05 16:01:07"}'
 
-    response = client.post(path='notifications/sms/mmg',
-                           data=data,
-                           headers=[('Content-Type', 'application/json')])
+    response = mmg_post(client, data)
     assert response.status_code == 200
 
 
@@ -484,9 +404,7 @@ def test_process_mmg_response_records_statsd(notify_db, notify_db_session, clien
                            "status": "3",
                            "deliverytime": "2016-04-05 16:01:07"})
 
-        client.post(path='notifications/sms/mmg',
-                    data=data,
-                    headers=[('Content-Type', 'application/json')])
+        mmg_post(client, data)
 
         app.statsd_client.incr.assert_any_call("callback.mmg.delivered")
         app.statsd_client.timing_with_dates.assert_any_call(
@@ -503,12 +421,9 @@ def test_firetext_callback_should_record_statsd(client, notify_db, notify_db_ses
             notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
         )
 
-        client.post(
-            path='/notifications/sms/firetext',
-            data='mobile=441234123123&status=0&time=2016-03-10 14:17:00&code=101&reference={}'.format(
-                notification.id
-            ),
-            headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+        data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00&code=101&reference={}'.format(
+            notification.id)
+        firetext_post(client, data)
 
         app.statsd_client.timing_with_dates.assert_any_call(
             "callback.firetext.elapsed-time", datetime.utcnow(), notification.sent_at

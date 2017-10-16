@@ -7,7 +7,7 @@ post_create_organisation_schema = {
         "name": {"type": ["string", "null"]},
         "logo": {"type": ["string", "null"]}
     },
-    "required": ["logo"]
+    "required": []
 }
 
 post_update_organisation_schema = {

@@ -1,5 +1,4 @@
 import itertools
-import json
 from datetime import datetime
 
 from flask import (
@@ -11,7 +10,7 @@ from flask import (
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 
-from app.dao import notification_usage_dao, notifications_dao
+from app.dao import notifications_dao
 from app.dao.dao_utils import dao_rollback
 from app.dao.api_key_dao import (
     save_model_api_key,
@@ -23,6 +22,7 @@ from app.dao.service_inbound_api_dao import (
     reset_service_inbound_api,
     get_service_inbound_api
 )
+from app.dao.service_sms_sender_dao import insert_or_update_service_sms_sender
 from app.dao.services_dao import (
     dao_fetch_service_by_id,
     dao_fetch_all_services,
@@ -46,6 +46,20 @@ from app.dao.service_whitelist_dao import (
     dao_add_and_commit_whitelisted_contacts,
     dao_remove_service_whitelist
 )
+from app.dao.service_email_reply_to_dao import (
+    add_reply_to_email_address_for_service,
+    create_or_update_email_reply_to,
+    dao_get_reply_to_by_id,
+    dao_get_reply_to_by_service_id,
+    update_reply_to_email_address
+)
+from app.dao.service_letter_contact_dao import (
+    dao_get_letter_contacts_by_service_id,
+    create_or_update_letter_contact,
+    dao_get_letter_contact_by_id,
+    add_letter_contact_for_service,
+    update_letter_contact
+)
 from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_user_by_id
 from app.errors import (
@@ -56,6 +70,10 @@ from app.models import Service, ServiceInboundApi
 from app.schema_validation import validate
 from app.service import statistics
 from app.service.service_inbound_api_schema import service_inbound_api, update_service_inbound_api_schema
+from app.service.service_senders_schema import (
+    add_service_email_reply_to_request,
+    add_service_letter_contact_block_request,
+)
 from app.service.utils import get_whitelist_objects
 from app.service.sender import send_notification_to_service_users
 from app.service.send_notification import send_one_off_notification
@@ -91,9 +109,11 @@ def get_services():
     if user_id:
         services = dao_fetch_all_services_by_user(user_id, only_active)
     elif detailed:
-        return jsonify(data=get_detailed_services(start_date=start_date, end_date=end_date,
-                                                  only_active=only_active, include_from_test_key=include_from_test_key
-                                                  ))
+        result = jsonify(data=get_detailed_services(start_date=start_date, end_date=end_date,
+                                                    only_active=only_active,
+                                                    include_from_test_key=include_from_test_key
+                                                    ))
+        return result
     else:
         services = dao_fetch_all_services(only_active)
     data = service_schema.dump(services, many=True).data
@@ -118,6 +138,10 @@ def create_service():
         errors = {'user_id': ['Missing data for required field.']}
         raise InvalidRequest(errors, status_code=400)
 
+    # TODO: to be removed when front-end is updated
+    if 'free_sms_fragment_limit' not in data:
+        data['free_sms_fragment_limit'] = current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
+
     # validate json with marshmallow
     service_schema.load(request.get_json())
 
@@ -132,14 +156,23 @@ def create_service():
 
 @service_blueprint.route('/<uuid:service_id>', methods=['POST'])
 def update_service(service_id):
+    req_json = request.get_json()
     fetched_service = dao_fetch_service_by_id(service_id)
     # Capture the status change here as Marshmallow changes this later
-    service_going_live = fetched_service.restricted and not request.get_json().get('restricted', True)
-
+    service_going_live = fetched_service.restricted and not req_json.get('restricted', True)
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())
     update_dict = service_schema.load(current_data).data
     dao_update_service(update_dict)
+
+    if 'reply_to_email_address' in req_json:
+        create_or_update_email_reply_to(fetched_service.id, req_json['reply_to_email_address'])
+
+    if 'sms_sender' in req_json:
+        insert_or_update_service_sms_sender(fetched_service, req_json['sms_sender'])
+
+    if 'letter_contact_block' in req_json:
+        create_or_update_letter_contact(fetched_service.id, req_json['letter_contact_block'])
 
     if service_going_live:
         send_notification_to_service_users(
@@ -514,6 +547,76 @@ def handle_sql_errror(e):
 def create_one_off_notification(service_id):
     resp = send_one_off_notification(service_id, request.get_json())
     return jsonify(resp), 201
+
+
+@service_blueprint.route('/<uuid:service_id>/email-reply-to', methods=["GET"])
+def get_email_reply_to_addresses(service_id):
+    result = dao_get_reply_to_by_service_id(service_id)
+    return jsonify([i.serialize() for i in result]), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/email-reply-to/<uuid:reply_to_id>', methods=["GET"])
+def get_email_reply_to_address(service_id, reply_to_id):
+    result = dao_get_reply_to_by_id(service_id=service_id, reply_to_id=reply_to_id)
+    return jsonify(result.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/email-reply-to', methods=['POST'])
+def add_service_reply_to_email_address(service_id):
+    # validate the service exists, throws ResultNotFound exception.
+    dao_fetch_service_by_id(service_id)
+    form = validate(request.get_json(), add_service_email_reply_to_request)
+    new_reply_to = add_reply_to_email_address_for_service(service_id=service_id,
+                                                          email_address=form['email_address'],
+                                                          is_default=form.get('is_default', True))
+    return jsonify(data=new_reply_to.serialize()), 201
+
+
+@service_blueprint.route('/<uuid:service_id>/email-reply-to/<uuid:reply_to_email_id>', methods=['POST'])
+def update_service_reply_to_email_address(service_id, reply_to_email_id):
+    # validate the service exists, throws ResultNotFound exception.
+    dao_fetch_service_by_id(service_id)
+    form = validate(request.get_json(), add_service_email_reply_to_request)
+    new_reply_to = update_reply_to_email_address(service_id=service_id,
+                                                 reply_to_id=reply_to_email_id,
+                                                 email_address=form['email_address'],
+                                                 is_default=form.get('is_default', True))
+    return jsonify(data=new_reply_to.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/letter-contact', methods=["GET"])
+def get_letter_contacts(service_id):
+    result = dao_get_letter_contacts_by_service_id(service_id)
+    return jsonify([i.serialize() for i in result]), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/letter-contact/<uuid:letter_contact_id>', methods=["GET"])
+def get_letter_contact_by_id(service_id, letter_contact_id):
+    result = dao_get_letter_contact_by_id(service_id=service_id, letter_contact_id=letter_contact_id)
+    return jsonify(result.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/letter-contact', methods=['POST'])
+def add_service_letter_contact(service_id):
+    # validate the service exists, throws ResultNotFound exception.
+    dao_fetch_service_by_id(service_id)
+    form = validate(request.get_json(), add_service_letter_contact_block_request)
+    new_letter_contact = add_letter_contact_for_service(service_id=service_id,
+                                                        contact_block=form['contact_block'],
+                                                        is_default=form.get('is_default', True))
+    return jsonify(data=new_letter_contact.serialize()), 201
+
+
+@service_blueprint.route('/<uuid:service_id>/letter-contact/<uuid:letter_contact_id>', methods=['POST'])
+def update_service_letter_contact(service_id, letter_contact_id):
+    # validate the service exists, throws ResultNotFound exception.
+    dao_fetch_service_by_id(service_id)
+    form = validate(request.get_json(), add_service_letter_contact_block_request)
+    new_reply_to = update_letter_contact(service_id=service_id,
+                                         letter_contact_id=letter_contact_id,
+                                         contact_block=form['contact_block'],
+                                         is_default=form.get('is_default', True))
+    return jsonify(data=new_reply_to.serialize()), 200
 
 
 @service_blueprint.route('/unique', methods=["GET"])

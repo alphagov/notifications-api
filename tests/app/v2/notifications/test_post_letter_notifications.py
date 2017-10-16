@@ -11,13 +11,21 @@ from app.models import KEY_TYPE_TEAM
 from app.models import KEY_TYPE_TEST
 from app.models import LETTER_TYPE
 from app.models import Notification
+from app.models import NOTIFICATION_SENDING
 from app.models import SMS_TYPE
+from app.schema_validation import validate
 from app.v2.errors import RateLimitError
-from app.variables import LETTER_TEST_API_FILENAME
-from app.variables import LETTER_API_FILENAME
+from app.v2.notifications.notification_schemas import post_letter_response
 
 from tests import create_authorization_header
 from tests.app.db import create_service, create_template
+
+
+test_address = {
+    'address_line_1': 'test 1',
+    'address_line_2': 'test 2',
+    'postcode': 'test pc'
+}
 
 
 def letter_request(client, data, service_id, key_type=KEY_TYPE_NORMAL, _expected_status=201):
@@ -36,7 +44,6 @@ def letter_request(client, data, service_id, key_type=KEY_TYPE_NORMAL, _expected
 
 @pytest.mark.parametrize('reference', [None, 'reference_from_client'])
 def test_post_letter_notification_returns_201(client, sample_letter_template, mocker, reference):
-    mocked = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
     data = {
         'template_id': str(sample_letter_template.id),
         'personalisation': {
@@ -53,8 +60,8 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
 
     resp_json = letter_request(client, data, service_id=sample_letter_template.service_id)
 
-    job = Job.query.one()
-    assert job.original_file_name == LETTER_API_FILENAME
+    assert validate(resp_json, post_letter_response) == resp_json
+    assert Job.query.count() == 0
     notification = Notification.query.one()
     notification_id = notification.id
     assert resp_json['id'] == str(notification_id)
@@ -72,8 +79,6 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
     )
     assert not resp_json['scheduled_for']
 
-    mocked.assert_called_once_with([str(job.id)], queue='job-tasks')
-
 
 def test_post_letter_notification_returns_400_and_missing_template(
     client,
@@ -81,7 +86,7 @@ def test_post_letter_notification_returns_400_and_missing_template(
 ):
     data = {
         'template_id': str(uuid.uuid4()),
-        'personalisation': {'address_line_1': '', 'address_line_2': '', 'postcode': ''}
+        'personalisation': test_address
     }
 
     error_json = letter_request(client, data, service_id=sample_service_full_permissions.id, _expected_status=400)
@@ -90,12 +95,33 @@ def test_post_letter_notification_returns_400_and_missing_template(
     assert error_json['errors'] == [{'error': 'BadRequestError', 'message': 'Template not found'}]
 
 
+def test_post_letter_notification_returns_400_for_empty_personalisation(
+    client,
+    sample_service_full_permissions,
+    sample_letter_template
+):
+    data = {
+        'template_id': str(sample_letter_template.id),
+        'personalisation': {'address_line_1': '', 'address_line_2': '', 'postcode': ''}
+    }
+
+    error_json = letter_request(client, data, service_id=sample_service_full_permissions.id, _expected_status=400)
+
+    assert error_json['status_code'] == 400
+    assert all([e['error'] == 'ValidationError' for e in error_json['errors']])
+    assert set([e['message'] for e in error_json['errors']]) == set([
+        'personalisation address_line_1 is required',
+        'personalisation address_line_2 is required',
+        'personalisation postcode is required'
+    ])
+
+
 def test_notification_returns_400_for_missing_template_field(
     client,
     sample_service_full_permissions
 ):
     data = {
-        'personalisation': {'address_line_1': '', 'address_line_2': '', 'postcode': ''}
+        'personalisation': test_address
     }
 
     error_json = letter_request(client, data, service_id=sample_service_full_permissions.id, _expected_status=400)
@@ -147,7 +173,7 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
 
     data = {
         'template_id': str(sample_letter_template.id),
-        'personalisation': {'address_line_1': '', 'address_line_2': '', 'postcode': ''}
+        'personalisation': test_address
     }
 
     error_json = letter_request(client, data, service_id=sample_letter_template.service_id, _expected_status=429)
@@ -175,7 +201,7 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
 
     data = {
         'template_id': str(template.id),
-        'personalisation': {'address_line_1': '', 'address_line_2': '', 'postcode': ''}
+        'personalisation': test_address
     }
 
     error_json = letter_request(client, data, service_id=service.id, _expected_status=400)
@@ -189,15 +215,14 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
     (True, KEY_TYPE_NORMAL),
     (False, KEY_TYPE_TEST)
 ])
-def test_post_letter_notification_doesnt_queue_task(
+def test_post_letter_notification_queues_success(
     client,
     notify_db_session,
     mocker,
     research_mode,
     key_type
 ):
-    real_task = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
-    fake_task = mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
+    fake_task = mocker.patch('app.celery.tasks.update_letter_notifications_to_sent_to_dvla.apply_async')
 
     service = create_service(research_mode=research_mode, service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type=LETTER_TYPE)
@@ -209,10 +234,12 @@ def test_post_letter_notification_doesnt_queue_task(
 
     letter_request(client, data, service_id=service.id, key_type=key_type)
 
-    job = Job.query.one()
-    assert job.original_file_name == LETTER_TEST_API_FILENAME
-    assert not real_task.called
-    fake_task.assert_called_once_with([str(job.id)], queue='research-mode-tasks')
+    notification = Notification.query.one()
+    assert notification.status == NOTIFICATION_SENDING
+    fake_task.assert_called_once_with(
+        kwargs={'notification_references': [notification.reference]},
+        queue='research-mode-tasks'
+    )
 
 
 def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_template):
@@ -251,17 +278,23 @@ def test_post_letter_notification_doesnt_send_in_trial(client, sample_trial_lett
         {'error': 'BadRequestError', 'message': 'Cannot send letters when service is in trial mode'}]
 
 
-def test_post_letter_notification_calls_update_job_sent_to_dvla_when_service_is_in_trial_mode_but_using_test_key(
-        client, sample_trial_letter_template, mocker):
-    build_dvla_task = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
-    update_job_task = mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
+def test_post_letter_notification_fakes_dvla_when_service_is_in_trial_mode_but_using_test_key(
+    client,
+    sample_trial_letter_template,
+    mocker
+):
+    update_task = mocker.patch('app.celery.tasks.update_letter_notifications_to_sent_to_dvla.apply_async')
 
     data = {
         "template_id": sample_trial_letter_template.id,
         "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
     }
-    letter_request(client, data=data, service_id=sample_trial_letter_template.service_id,
-                   key_type=KEY_TYPE_TEST)
-    job = Job.query.one()
-    update_job_task.assert_called_once_with([str(job.id)], queue='research-mode-tasks')
-    assert not build_dvla_task.called
+
+    letter_request(client, data=data, service_id=sample_trial_letter_template.service_id, key_type=KEY_TYPE_TEST)
+
+    notification = Notification.query.one()
+    assert notification.status == NOTIFICATION_SENDING
+    update_task.assert_called_once_with(
+        kwargs={'notification_references': [notification.reference]},
+        queue='research-mode-tasks'
+    )

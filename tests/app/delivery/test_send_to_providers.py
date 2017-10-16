@@ -19,9 +19,19 @@ from app.models import (
     KEY_TYPE_TEST,
     KEY_TYPE_TEAM,
     BRANDING_ORG,
-    BRANDING_BOTH)
+    BRANDING_GOVUK,
+    BRANDING_BOTH,
+    BRANDING_ORG_BANNER
+)
 
-from tests.app.db import create_service, create_template, create_notification, create_inbound_number
+from tests.app.db import (
+    create_service,
+    create_template,
+    create_notification,
+    create_inbound_number,
+    create_reply_to_email,
+    create_reply_to_email_for_notification
+)
 
 
 def test_should_return_highest_priority_active_provider(restore_provider_details):
@@ -268,14 +278,13 @@ def test_should_not_send_to_provider_when_status_is_not_created(
 
 
 def test_should_send_sms_sender_from_service_if_present(
-        sample_service,
-        sample_template,
+        notify_db_session,
         mocker):
-    db_notification = create_notification(template=sample_template,
+    service = create_service(sms_sender='elevenchars')
+    template = create_template(service=service)
+    db_notification = create_notification(template=template,
                                           to_field="+447234123123",
                                           status='created')
-
-    sample_service.sms_sender = 'elevenchars'
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
@@ -286,9 +295,9 @@ def test_should_send_sms_sender_from_service_if_present(
 
     mmg_client.send_sms.assert_called_once_with(
         to=validate_and_format_phone_number("+447234123123"),
-        content="This is a template:\nwith a newline",
+        content="Dear Sir/Madam, Hello. Yours Truly, The Government.",
         reference=str(db_notification.id),
-        sender=sample_service.sms_sender
+        sender=service.sms_sender
     )
 
 
@@ -384,7 +393,7 @@ def test_send_email_should_use_service_reply_to_email(
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     db_notification = create_notification(template=sample_email_template)
-    sample_service.reply_to_email_address = 'foo@bar.com'
+    create_reply_to_email(service=sample_service, email_address='foo@bar.com')
 
     send_to_providers.send_email_to_provider(
         db_notification,
@@ -396,7 +405,7 @@ def test_send_email_should_use_service_reply_to_email(
         ANY,
         body=ANY,
         html_body=ANY,
-        reply_to_address=sample_service.reply_to_email_address
+        reply_to_address=sample_service.get_default_reply_to_email_address()
     )
 
 
@@ -410,7 +419,8 @@ def test_get_html_email_renderer_should_return_for_normal_service(sample_service
 
 @pytest.mark.parametrize('branding_type, govuk_banner', [
     (BRANDING_ORG, False),
-    (BRANDING_BOTH, True)
+    (BRANDING_BOTH, True),
+    (BRANDING_ORG_BANNER, False)
 ])
 def test_get_html_email_renderer_with_branding_details(branding_type, govuk_banner, notify_db, sample_service):
     sample_service.branding = branding_type
@@ -425,6 +435,23 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
     assert options['brand_colour'] == '#000000'
     assert options['brand_name'] == 'Justice League'
 
+    if sample_service.branding == BRANDING_ORG_BANNER:
+        assert options['brand_banner'] is True
+    else:
+        assert options['brand_banner'] is False
+
+
+def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_only(notify_db, sample_service):
+    sample_service.branding = BRANDING_GOVUK
+    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
+    sample_service.organisation = org
+    notify_db.session.add_all([sample_service, org])
+    notify_db.session.commit()
+
+    options = send_to_providers.get_html_email_options(sample_service)
+
+    assert options == {'govuk_banner': True, 'brand_banner': False}
+
 
 def test_get_html_email_renderer_prepends_logo_path(notify_api):
     Service = namedtuple('Service', ['branding', 'organisation'])
@@ -436,6 +463,18 @@ def test_get_html_email_renderer_prepends_logo_path(notify_api):
     renderer = send_to_providers.get_html_email_options(service)
 
     assert renderer['brand_logo'] == 'http://static-logos.notify.tools/justice-league.png'
+
+
+def test_get_html_email_renderer_handles_org_without_logo(notify_api):
+    Service = namedtuple('Service', ['branding', 'organisation'])
+    Organisation = namedtuple('Organisation', ['colour', 'name', 'logo'])
+
+    org = Organisation(colour='#000000', logo=None, name='Justice League')
+    service = Service(branding=BRANDING_ORG, organisation=org)
+
+    renderer = send_to_providers.get_html_email_options(service)
+
+    assert renderer['brand_logo'] is None
 
 
 @pytest.mark.parametrize('base_url, expected_url', [
@@ -623,16 +662,16 @@ def test_should_set_international_phone_number_to_sent_status(
     ('testing', 'testing', 'Sample service: bar'),
 ])
 def test_should_handle_sms_sender_and_prefix_message(
-    sample_service,
     mocker,
     sms_sender,
     expected_sender,
-    expected_content
+    expected_content,
+    notify_db_session
 ):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
-    sample_service.sms_sender = sms_sender
-    template = create_template(sample_service, content='bar')
+    service = create_service(sms_sender=sms_sender)
+    template = create_template(service, content='bar')
     notification = create_notification(template)
 
     send_to_providers.send_sms_to_provider(notification)
@@ -664,4 +703,66 @@ def test_should_use_inbound_number_as_sender_if_set(
         content=ANY,
         reference=str(notification.id),
         sender=inbound_number.number
+    )
+
+
+def test_send_email_to_provider_get_linked_email_reply_to_default_is_false(
+        sample_service,
+        sample_email_template,
+        mocker):
+    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+
+    db_notification = create_notification(template=sample_email_template)
+    create_reply_to_email(service=sample_service, email_address='foo@bar.com')
+
+    reply_to = create_reply_to_email_for_notification(
+        db_notification.id,
+        sample_service,
+        "test@test.com",
+        is_default=False
+    )
+
+    send_to_providers.send_email_to_provider(
+        db_notification,
+    )
+
+    app.aws_ses_client.send_email.assert_called_once_with(
+        ANY,
+        ANY,
+        ANY,
+        body=ANY,
+        html_body=ANY,
+        reply_to_address=reply_to.email_address
+    )
+
+
+def test_send_email_to_provider_get_linked_email_reply_to_create_service_email_after_notification_mapping(
+        sample_service,
+        sample_email_template,
+        mocker):
+    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+
+    db_notification = create_notification(template=sample_email_template)
+
+    reply_to = create_reply_to_email_for_notification(
+        db_notification.id,
+        sample_service,
+        "test@test.com"
+    )
+
+    create_reply_to_email(service=sample_service, email_address='foo@bar.com', is_default=False)
+
+    send_to_providers.send_email_to_provider(
+        db_notification,
+    )
+
+    app.aws_ses_client.send_email.assert_called_once_with(
+        ANY,
+        ANY,
+        ANY,
+        body=ANY,
+        html_body=ANY,
+        reply_to_address=reply_to.email_address
     )

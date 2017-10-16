@@ -54,7 +54,7 @@ def test_post_create_organisation(admin_request, notify_db_session):
     assert data['logo'] == response['data']['logo']
 
 
-def test_post_create_organisation_without_logo_raises_error(admin_request, notify_db_session):
+def test_post_create_organisation_without_logo_is_ok(admin_request, notify_db_session):
     data = {
         'name': 'test organisation',
         'colour': '#0000ff',
@@ -62,9 +62,8 @@ def test_post_create_organisation_without_logo_raises_error(admin_request, notif
     response = admin_request.post(
         'organisation.create_organisation',
         _data=data,
-        _expected_status=400
+        _expected_status=201,
     )
-    assert response['errors'][0]['message'] == "logo is a required property"
 
 
 def test_post_create_organisation_without_name_or_colour_is_valid(admin_request, notify_db_session):

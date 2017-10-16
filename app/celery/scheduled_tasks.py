@@ -3,8 +3,11 @@ from datetime import (
     timedelta
 )
 
+from celery.signals import worker_process_shutdown
 from flask import current_app
+from sqlalchemy import or_, and_
 from sqlalchemy.exc import SQLAlchemyError
+from notifications_utils.s3 import s3upload
 
 from app.aws import s3
 from app import notify_celery
@@ -16,8 +19,8 @@ from app.dao.invited_user_dao import delete_invitations_created_more_than_two_da
 from app.dao.jobs_dao import (
     dao_get_letter_job_ids_by_status,
     dao_set_scheduled_jobs_to_pending,
-    dao_get_jobs_older_than_limited_by
-)
+    dao_get_jobs_older_than_limited_by,
+    dao_get_job_by_id)
 from app.dao.monthly_billing_dao import (
     get_service_ids_that_need_billing_populated,
     create_or_update_monthly_billing
@@ -27,19 +30,28 @@ from app.dao.notifications_dao import (
     is_delivery_slow_for_provider,
     delete_notifications_created_more_than_a_week_ago_by_type,
     dao_get_scheduled_notifications,
-    set_scheduled_notification_to_processed)
+    set_scheduled_notification_to_processed,
+    dao_set_created_live_letter_api_notifications_to_pending,
+)
 from app.dao.statistics_dao import dao_timeout_job_statistics
 from app.dao.provider_details_dao import (
     get_current_provider,
     dao_toggle_sms_provider
 )
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
-from app.models import LETTER_TYPE, JOB_STATUS_READY_TO_SEND
+from app.models import LETTER_TYPE, JOB_STATUS_READY_TO_SEND, JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_FINISHED, Job, \
+    EMAIL_TYPE, SMS_TYPE, JOB_STATUS_IN_PROGRESS
 from app.notifications.process_notifications import send_notification_to_queue
 from app.statsd_decorators import statsd
-from app.celery.tasks import process_job
+from app.celery.tasks import process_job, create_dvla_file_contents_for_notifications
 from app.config import QueueNames, TaskNames
 from app.utils import convert_utc_to_bst
+from app.v2.errors import JobIncompleteError
+
+
+@worker_process_shutdown.connect
+def worker_process_shutdown(sender, signal, pid, exitcode):
+    current_app.logger.info('Scheduled tasks worker shutdown: PID: {} Exitcode: {}'.format(pid, exitcode))
 
 
 @notify_celery.task(name="remove_csv_files")
@@ -313,9 +325,68 @@ def populate_monthly_billing():
 @statsd(namespace="tasks")
 def run_letter_jobs():
     job_ids = dao_get_letter_job_ids_by_status(JOB_STATUS_READY_TO_SEND)
-    notify_celery.send_task(
-        name=TaskNames.DVLA_FILES,
-        args=(job_ids,),
-        queue=QueueNames.PROCESS_FTP
-    )
-    current_app.logger.info("Queued {} ready letter job ids onto {}".format(len(job_ids), QueueNames.PROCESS_FTP))
+    if job_ids:
+        notify_celery.send_task(
+            name=TaskNames.DVLA_JOBS,
+            args=(job_ids,),
+            queue=QueueNames.PROCESS_FTP
+        )
+        current_app.logger.info("Queued {} ready letter job ids onto {}".format(len(job_ids), QueueNames.PROCESS_FTP))
+
+
+@notify_celery.task(name="run-letter-api-notifications")
+@statsd(namespace="tasks")
+def run_letter_api_notifications():
+    current_time = datetime.utcnow().isoformat()
+
+    notifications = dao_set_created_live_letter_api_notifications_to_pending()
+
+    if notifications:
+        file_contents = create_dvla_file_contents_for_notifications(notifications)
+
+        filename = '{}-dvla-notifications.txt'.format(current_time)
+        s3upload(
+            filedata=file_contents + '\n',
+            region=current_app.config['AWS_REGION'],
+            bucket_name=current_app.config['DVLA_BUCKETS']['notification'],
+            file_location=filename
+        )
+
+        notify_celery.send_task(
+            name=TaskNames.DVLA_NOTIFICATIONS,
+            kwargs={'filename': filename},
+            queue=QueueNames.PROCESS_FTP
+        )
+        current_app.logger.info(
+            "Queued {} ready letter api notifications onto {}".format(
+                len(notifications),
+                QueueNames.PROCESS_FTP
+            )
+        )
+
+
+@notify_celery.task(name='check-job-status')
+@statsd(namespace="tasks")
+def check_job_status():
+    """
+    every x minutes do this check
+    select
+    from jobs
+    where job_status == 'in progress'
+    and template_type in ('sms', 'email')
+    and scheduled_at or created_at is older that 30 minutes.
+    if any results then
+        raise error
+        process the rows in the csv that are missing (in another task) just do the check here.
+    """
+    thirty_minutes_ago = datetime.utcnow() - timedelta(minutes=30)
+    thirty_five_minutes_ago = datetime.utcnow() - timedelta(minutes=35)
+
+    jobs_not_complete_after_30_minutes = Job.query.filter(
+        Job.job_status == JOB_STATUS_IN_PROGRESS,
+        and_(thirty_five_minutes_ago < Job.processing_started, Job.processing_started < thirty_minutes_ago)
+    ).all()
+
+    job_ids = [str(x.id) for x in jobs_not_complete_after_30_minutes]
+    if job_ids:
+        raise JobIncompleteError("Job(s) {} have not completed.".format(job_ids))

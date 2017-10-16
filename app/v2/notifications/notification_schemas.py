@@ -1,4 +1,4 @@
-from app.models import NOTIFICATION_STATUS_TYPES, TEMPLATE_TYPES
+from app.models import NOTIFICATION_STATUS_TYPES, NOTIFICATION_STATUS_LETTER_ACCEPTED, TEMPLATE_TYPES
 from app.schema_validation.definitions import (uuid, personalisation, letter_personalisation)
 
 
@@ -59,7 +59,7 @@ get_notifications_request = {
         "status": {
             "type": "array",
             "items": {
-                "enum": NOTIFICATION_STATUS_TYPES
+                "enum": NOTIFICATION_STATUS_TYPES + [NOTIFICATION_STATUS_LETTER_ACCEPTED]
             }
         },
         "template_type": {
@@ -157,7 +157,8 @@ post_email_request = {
         "email_address": {"type": "string", "format": "email_address"},
         "template_id": uuid,
         "personalisation": personalisation,
-        "scheduled_for": {"type": ["string", "null"], "format": "datetime"}
+        "scheduled_for": {"type": ["string", "null"], "format": "datetime"},
+        "email_reply_to_id": uuid
     },
     "required": ["email_address", "template_id"]
 }
@@ -177,7 +178,7 @@ email_content = {
 
 post_email_response = {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "POST sms notification response schema",
+    "description": "POST email notification response schema",
     "type": "object",
     "title": "response v2/notifications/email",
     "properties": {

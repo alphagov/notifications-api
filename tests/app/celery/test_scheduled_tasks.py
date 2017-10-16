@@ -21,6 +21,7 @@ from app.celery.scheduled_tasks import (
     remove_transformed_dvla_files,
     run_scheduled_jobs,
     run_letter_jobs,
+    run_letter_api_notifications,
     s3,
     send_daily_performance_platform_stats,
     send_scheduled_notifications,
@@ -28,7 +29,7 @@ from app.celery.scheduled_tasks import (
     timeout_job_statistics,
     timeout_notifications,
     populate_monthly_billing,
-    send_total_sent_notifications_to_performance_platform)
+    send_total_sent_notifications_to_performance_platform, check_job_status)
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -41,8 +42,14 @@ from app.models import (
     Service, Template,
     SMS_TYPE, LETTER_TYPE,
     JOB_STATUS_READY_TO_SEND,
-    MonthlyBilling)
+    JOB_STATUS_IN_PROGRESS,
+    JOB_STATUS_SENT_TO_DVLA,
+    NOTIFICATION_PENDING,
+    NOTIFICATION_CREATED,
+    KEY_TYPE_TEST,
+    MonthlyBilling, JOB_STATUS_FINISHED)
 from app.utils import get_london_midnight_in_utc
+from app.v2.errors import JobIncompleteError
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
 from tests.app.conftest import (
     sample_job as create_sample_job,
@@ -120,9 +127,10 @@ def test_should_call_delete_sms_notifications_more_than_week_in_task(notify_api,
 
 
 def test_should_call_delete_email_notifications_more_than_week_in_task(notify_api, mocker):
-    mocked = mocker.patch('app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago_by_type')
+    mocked_notifications = mocker.patch(
+        'app.celery.scheduled_tasks.delete_notifications_created_more_than_a_week_ago_by_type')
     delete_email_notifications_older_than_seven_days()
-    mocked.assert_called_once_with('email')
+    mocked_notifications.assert_called_once_with('email')
 
 
 def test_should_call_delete_letter_notifications_more_than_week_in_task(notify_api, mocker):
@@ -690,6 +698,128 @@ def test_run_letter_jobs(client, mocker, sample_letter_template):
 
     run_letter_jobs()
 
-    mock_celery.assert_called_once_with(name=TaskNames.DVLA_FILES,
+    mock_celery.assert_called_once_with(name=TaskNames.DVLA_JOBS,
                                         args=(job_ids,),
                                         queue=QueueNames.PROCESS_FTP)
+
+
+def test_run_letter_jobs_does_nothing_if_no_ready_jobs(client, mocker, sample_letter_template):
+    job_ids = [
+        str(create_job(sample_letter_template, job_status=JOB_STATUS_IN_PROGRESS).id),
+        str(create_job(sample_letter_template, job_status=JOB_STATUS_SENT_TO_DVLA).id)
+    ]
+
+    mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
+
+    run_letter_jobs()
+
+    assert not mock_celery.called
+
+
+def test_run_letter_api_notifications_triggers_ftp_task(client, mocker, sample_letter_notification):
+    file_contents_mock = mocker.patch(
+        'app.celery.scheduled_tasks.create_dvla_file_contents_for_notifications',
+        return_value='foo\nbar'
+    )
+    s3upload = mocker.patch('app.celery.scheduled_tasks.s3upload')
+    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
+    filename = '2017-01-01T12:00:00-dvla-notifications.txt'
+
+    with freeze_time('2017-01-01 12:00:00'):
+        run_letter_api_notifications()
+
+    assert sample_letter_notification.status == NOTIFICATION_PENDING
+    file_contents_mock.assert_called_once_with([sample_letter_notification])
+    s3upload.assert_called_once_with(
+        # with trailing new line added
+        filedata='foo\nbar\n',
+        region='eu-west-1',
+        bucket_name='test-dvla-letter-api-files',
+        file_location=filename
+    )
+    mock_celery.assert_called_once_with(
+        name=TaskNames.DVLA_NOTIFICATIONS,
+        kwargs={'filename': filename},
+        queue=QueueNames.PROCESS_FTP
+    )
+
+
+def test_run_letter_api_notifications_does_nothing_if_no_created_notifications(
+    mocker,
+    sample_letter_template,
+    sample_letter_job,
+    sample_api_key
+):
+    letter_job_notification = create_notification(
+        sample_letter_template,
+        job=sample_letter_job
+    )
+    create_notification(
+        sample_letter_template,
+        status=NOTIFICATION_PENDING,
+        api_key=sample_api_key
+    )
+    test_api_key_notification = create_notification(
+        sample_letter_template,
+        key_type=KEY_TYPE_TEST
+    )
+
+    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
+
+    run_letter_api_notifications()
+
+    assert not mock_celery.called
+    assert letter_job_notification.status == NOTIFICATION_CREATED
+    assert test_api_key_notification.status == NOTIFICATION_CREATED
+
+
+def test_check_job_status_task_raises_job_incomplete_error(sample_template):
+    job = create_job(template=sample_template, notification_count=3,
+                     created_at=datetime.utcnow() - timedelta(minutes=31),
+                     processing_started=datetime.utcnow() - timedelta(minutes=31),
+                     job_status=JOB_STATUS_IN_PROGRESS)
+    create_notification(template=sample_template, job=job)
+    with pytest.raises(expected_exception=JobIncompleteError) as e:
+        check_job_status()
+    assert e.value.message == "Job(s) ['{}'] have not completed.".format(str(job.id))
+
+
+def test_check_job_status_task_raises_job_incomplete_error_when_scheduled_job_is_not_complete(sample_template):
+    job = create_job(template=sample_template, notification_count=3,
+                     created_at=datetime.utcnow() - timedelta(hours=2),
+                     scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+                     processing_started=datetime.utcnow() - timedelta(minutes=31),
+                     job_status=JOB_STATUS_IN_PROGRESS)
+    with pytest.raises(expected_exception=JobIncompleteError) as e:
+        check_job_status()
+    assert e.value.message == "Job(s) ['{}'] have not completed.".format(str(job.id))
+
+
+def test_check_job_status_task_raises_job_incomplete_error_for_multiple_jobs(sample_template):
+    job = create_job(template=sample_template, notification_count=3,
+                     created_at=datetime.utcnow() - timedelta(hours=2),
+                     scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+                     processing_started=datetime.utcnow() - timedelta(minutes=31),
+                     job_status=JOB_STATUS_IN_PROGRESS)
+    job_2 = create_job(template=sample_template, notification_count=3,
+                       created_at=datetime.utcnow() - timedelta(hours=2),
+                       scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+                       processing_started=datetime.utcnow() - timedelta(minutes=31),
+                       job_status=JOB_STATUS_IN_PROGRESS)
+    with pytest.raises(expected_exception=JobIncompleteError) as e:
+        check_job_status()
+    assert str(job.id) in e.value.message
+    assert str(job_2.id) in e.value.message
+
+
+def test_check_job_status_task_does_not_raise_error(sample_template):
+    job = create_job(template=sample_template, notification_count=3,
+                     created_at=datetime.utcnow() - timedelta(hours=2),
+                     scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+                     processing_started=datetime.utcnow() - timedelta(minutes=31),
+                     job_status=JOB_STATUS_FINISHED)
+    job_2 = create_job(template=sample_template, notification_count=3,
+                       created_at=datetime.utcnow() - timedelta(minutes=31),
+                       processing_started=datetime.utcnow() - timedelta(minutes=31),
+                       job_status=JOB_STATUS_FINISHED)
+    check_job_status()

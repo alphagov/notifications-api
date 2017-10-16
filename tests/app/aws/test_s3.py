@@ -39,7 +39,7 @@ def test_remove_transformed_dvla_file_makes_correct_call(notify_api, mocker):
     remove_transformed_dvla_file(fake_uuid)
 
     s3_mock.assert_has_calls([
-        call(current_app.config['DVLA_UPLOAD_BUCKET_NAME'], '{}-dvla-job.text'.format(fake_uuid)),
+        call(current_app.config['DVLA_BUCKETS']['job'], '{}-dvla-job.text'.format(fake_uuid)),
         call().delete()
     ])
 

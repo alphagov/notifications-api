@@ -8,16 +8,27 @@ from notifications_utils.recipients import (
 from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTemplate, SMSMessageTemplate
 
 from app import clients, statsd_client, create_uuid
-from app.dao.notifications_dao import dao_update_notification
+from app.dao.notifications_dao import (
+    dao_update_notification,
+    dao_get_notification_email_reply_for_notification
+)
 from app.dao.provider_details_dao import (
     get_provider_details_by_notification_type,
     dao_toggle_sms_provider
 )
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import SMS_TYPE, KEY_TYPE_TEST, BRANDING_ORG, EMAIL_TYPE, NOTIFICATION_TECHNICAL_FAILURE, \
-    NOTIFICATION_SENT, NOTIFICATION_SENDING
-
+from app.models import (
+    SMS_TYPE,
+    KEY_TYPE_TEST,
+    BRANDING_ORG,
+    BRANDING_ORG_BANNER,
+    BRANDING_GOVUK,
+    EMAIL_TYPE,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_SENT,
+    NOTIFICATION_SENDING
+)
 from app.celery.statistics_tasks import create_initial_notification_statistic_tasks
 
 
@@ -101,13 +112,19 @@ def send_email_to_provider(notification):
         else:
             from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
                                                  current_app.config['NOTIFY_EMAIL_DOMAIN'])
+
+            email_reply_to = dao_get_notification_email_reply_for_notification(notification.id)
+
+            if not email_reply_to:
+                email_reply_to = service.get_default_reply_to_email_address()
+
             reference = provider.send_email(
                 from_address,
                 notification.to,
                 plain_text_email.subject,
                 body=str(plain_text_email),
                 html_body=str(html_email),
-                reply_to_address=service.reply_to_email_address,
+                reply_to_address=email_reply_to,
             )
             notification.reference = reference
             update_notification(notification, provider)
@@ -167,12 +184,14 @@ def get_logo_url(base_url, logo_file):
 
 
 def get_html_email_options(service):
-    govuk_banner = service.branding != BRANDING_ORG
-    if service.organisation:
+    govuk_banner = service.branding not in (BRANDING_ORG, BRANDING_ORG_BANNER)
+    brand_banner = service.branding == BRANDING_ORG_BANNER
+    if service.organisation and service.branding != BRANDING_GOVUK:
+
         logo_url = get_logo_url(
             current_app.config['ADMIN_BASE_URL'],
             service.organisation.logo
-        )
+        ) if service.organisation.logo else None
 
         branding = {
             'brand_colour': service.organisation.colour,
@@ -182,7 +201,7 @@ def get_html_email_options(service):
     else:
         branding = {}
 
-    return dict(govuk_banner=govuk_banner, **branding)
+    return dict(govuk_banner=govuk_banner, brand_banner=brand_banner, **branding)
 
 
 def technical_failure(notification):

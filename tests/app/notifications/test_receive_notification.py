@@ -19,6 +19,26 @@ from tests.app.db import create_inbound_number, create_service
 from tests.app.conftest import sample_service
 
 
+def firetext_post(client, data):
+    return client.post(
+        path='/notifications/sms/receive/firetext',
+        data=data,
+        headers=[
+            ('Content-Type', 'application/x-www-form-urlencoded'),
+            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')
+        ])
+
+
+def mmg_post(client, data):
+    return client.post(
+        path='/notifications/sms/receive/mmg',
+        data=json.dumps(data),
+        headers=[
+            ('Content-Type', 'application/json'),
+            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')
+        ])
+
+
 def test_receive_notification_returns_received_to_mmg(client, mocker, sample_service_full_permissions):
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     data = {
@@ -30,9 +50,7 @@ def test_receive_notification_returns_received_to_mmg(client, mocker, sample_ser
         "Channel": "SMS",
         "DateRecieved": "2012-06-27 12:33:00"
     }
-    response = client.post(path='/notifications/sms/receive/mmg',
-                           data=json.dumps(data),
-                           headers=[('Content-Type', 'application/json')])
+    response = mmg_post(client, data)
 
     assert response.status_code == 200
     assert response.get_data(as_text=True) == 'RECEIVED'
@@ -62,11 +80,7 @@ def test_receive_notification_from_mmg_without_permissions_does_not_persist(
         "Channel": "SMS",
         "DateRecieved": "2012-06-27 12:33:00"
     }
-    response = client.post(
-        path='/notifications/sms/receive/mmg',
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json')]
-    )
+    response = mmg_post(client, data)
 
     assert response.status_code == 200
     assert response.get_data(as_text=True) == 'RECEIVED'
@@ -93,11 +107,7 @@ def test_receive_notification_from_firetext_without_permissions_does_not_persist
         "app.notifications.receive_notifications.has_inbound_sms_permissions", return_value=False)
 
     data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
-    response = client.post(
-        path='/notifications/sms/receive/firetext',
-        data=data,
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')]
-    )
+    response = firetext_post(client, data)
 
     assert response.status_code == 200
     result = json.loads(response.get_data(as_text=True))
@@ -117,7 +127,7 @@ def test_receive_notification_without_permissions_does_not_create_inbound_even_w
     mocked_has_permissions = mocker.patch(
         "app.notifications.receive_notifications.has_inbound_sms_permissions", return_value=False)
 
-    data = json.dumps({
+    data = {
         "ID": "1234",
         "MSISDN": "447700900855",
         "Message": "Some message to notify",
@@ -125,11 +135,9 @@ def test_receive_notification_without_permissions_does_not_create_inbound_even_w
         "Number": inbound_number.number,
         "Channel": "SMS",
         "DateRecieved": "2012-06-27 12:33:00"
-    })
+    }
 
-    response = client.post(path='/notifications/sms/receive/mmg',
-                           data=data,
-                           headers=[('Content-Type', 'application/json')])
+    response = mmg_post(client, data)
 
     assert response.status_code == 200
     assert len(InboundSms.query.all()) == 0
@@ -235,9 +243,7 @@ def test_receive_notification_error_if_not_single_matching_service(client, notif
         'DateRecieved': '2017-01-02 03:04:05',
         'ID': 'bar',
     }
-    response = client.post(path='/notifications/sms/receive/mmg',
-                           data=json.dumps(data),
-                           headers=[('Content-Type', 'application/json')])
+    response = mmg_post(client, data)
 
     # we still return 'RECEIVED' to MMG
     assert response.status_code == 200
@@ -254,10 +260,7 @@ def test_receive_notification_returns_received_to_firetext(notify_db_session, cl
 
     data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 
-    response = client.post(
-        path='/notifications/sms/receive/firetext',
-        data=data,
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+    response = firetext_post(client, data)
 
     assert response.status_code == 200
     result = json.loads(response.get_data(as_text=True))
@@ -278,10 +281,7 @@ def test_receive_notification_from_firetext_persists_message(notify_db_session, 
 
     data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 
-    response = client.post(
-        path='/notifications/sms/receive/firetext',
-        data=data,
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+    response = firetext_post(client, data)
 
     assert response.status_code == 200
     result = json.loads(response.get_data(as_text=True))
@@ -307,10 +307,7 @@ def test_receive_notification_from_firetext_persists_message_with_normalized_pho
 
     data = "source=(+44)7999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 
-    response = client.post(
-        path='/notifications/sms/receive/firetext',
-        data=data,
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+    response = firetext_post(client, data)
 
     assert response.status_code == 200
     result = json.loads(response.get_data(as_text=True))
@@ -330,10 +327,7 @@ def test_returns_ok_to_firetext_if_mismatched_sms_sender(notify_db_session, clie
 
     data = "source=(+44)7999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 
-    response = client.post(
-        path='/notifications/sms/receive/firetext',
-        data=data,
-        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
+    response = firetext_post(client, data)
 
     assert response.status_code == 200
     result = json.loads(response.get_data(as_text=True))

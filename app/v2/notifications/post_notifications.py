@@ -4,16 +4,25 @@ from flask import request, jsonify, current_app, abort
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
-from app.dao.jobs_dao import dao_update_job
-from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, PRIORITY, KEY_TYPE_TEST, KEY_TYPE_TEAM
-from app.celery.tasks import build_dvla_file, update_job_to_sent_to_dvla
+from app.models import (
+    SMS_TYPE,
+    EMAIL_TYPE,
+    LETTER_TYPE,
+    PRIORITY,
+    KEY_TYPE_TEST,
+    KEY_TYPE_TEAM,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_SENDING
+)
+from app.celery.tasks import update_letter_notifications_to_sent_to_dvla
 from app.notifications.process_notifications import (
+    persist_email_reply_to_id_for_notification,
     persist_notification,
+    persist_scheduled_notification,
     send_notification_to_queue,
-    simulated_recipient,
-    persist_scheduled_notification)
+    simulated_recipient
+)
 from app.notifications.process_letter_notifications import (
-    create_letter_api_job,
     create_letter_notification
 )
 from app.notifications.validators import (
@@ -21,7 +30,8 @@ from app.notifications.validators import (
     check_rate_limiting,
     check_service_can_schedule_notification,
     check_service_has_permission,
-    validate_template
+    validate_template,
+    check_service_email_reply_to_id
 )
 from app.schema_validation import validate
 from app.v2.errors import BadRequestError
@@ -36,7 +46,6 @@ from app.v2.notifications.create_response import (
     create_post_email_response_from_notification,
     create_post_letter_response_from_notification
 )
-from app.variables import LETTER_TEST_API_FILENAME
 
 
 @v2_notification_blueprint.route('/<notification_type>', methods=['POST'])
@@ -53,9 +62,13 @@ def post_notification(notification_type):
     check_service_has_permission(notification_type, authenticated_service.permissions)
 
     scheduled_for = form.get("scheduled_for", None)
+    service_email_reply_to_id = form.get("email_reply_to_id", None)
+
     check_service_can_schedule_notification(authenticated_service.permissions, scheduled_for)
 
     check_rate_limiting(authenticated_service, api_user)
+
+    check_service_email_reply_to_id(str(authenticated_service.id), service_email_reply_to_id)
 
     template, template_with_content = validate_template(
         form['template_id'],
@@ -88,7 +101,7 @@ def post_notification(notification_type):
         create_resp_partial = functools.partial(
             create_post_email_response_from_notification,
             subject=template_with_content.subject,
-            email_from=authenticated_service.email_from
+            email_from='{}@{}'.format(authenticated_service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN'])
         )
     elif notification_type == LETTER_TYPE:
         create_resp_partial = functools.partial(
@@ -129,6 +142,10 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         simulated=simulated
     )
 
+    email_reply_to_id = form.get("email_reply_to_id", None)
+    if email_reply_to_id:
+        persist_email_reply_to_id_for_notification(notification.id, email_reply_to_id)
+
     scheduled_for = form.get("scheduled_for", None)
     if scheduled_for:
         persist_scheduled_notification(notification.id, form["scheduled_for"])
@@ -151,21 +168,19 @@ def process_letter_notification(*, letter_data, api_key, template):
         raise BadRequestError(message='Cannot send letters with a team api key', status_code=403)
 
     if api_key.service.restricted and api_key.key_type != KEY_TYPE_TEST:
-            raise BadRequestError(message='Cannot send letters when service is in trial mode', status_code=403)
+        raise BadRequestError(message='Cannot send letters when service is in trial mode', status_code=403)
 
-    job = create_letter_api_job(template)
-    notification = create_letter_notification(letter_data, job, api_key)
+    should_send = not (api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST)
 
-    if api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST:
-        # distinguish real API jobs from test jobs by giving the test jobs a different filename
-        job.original_file_name = LETTER_TEST_API_FILENAME
-        dao_update_job(job)
-        update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
-    else:
-        build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
+    # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
+    status = NOTIFICATION_CREATED if should_send else NOTIFICATION_SENDING
 
-    current_app.logger.info("send job {} for api notification {} to build-dvla-file in the process-job queue".format(
-        job.id,
-        notification.id
-    ))
+    notification = create_letter_notification(letter_data, template, api_key, status=status)
+
+    if not should_send:
+        update_letter_notifications_to_sent_to_dvla.apply_async(
+            kwargs={'notification_references': [notification.reference]},
+            queue=QueueNames.RESEARCH_MODE
+        )
+
     return notification

@@ -26,10 +26,16 @@ from app.dao.date_util import get_financial_year
 from app.models import (
     Service,
     Notification,
+    NotificationEmailReplyTo,
     NotificationHistory,
     NotificationStatistics,
-    Template,
     ScheduledNotification,
+    ServiceEmailReplyTo,
+    Template,
+    EMAIL_TYPE,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEST,
+    LETTER_TYPE,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
@@ -37,9 +43,7 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEST,
-    LETTER_TYPE,
-    NOTIFICATION_SENT,
+    NOTIFICATION_SENT
 )
 
 from app.dao.dao_utils import transactional
@@ -363,13 +367,26 @@ def _filter_query(query, filter_dict=None):
 
 
 @statsd(namespace="dao")
+@transactional
 def delete_notifications_created_more_than_a_week_ago_by_type(notification_type):
     seven_days_ago = date.today() - timedelta(days=7)
+
+    # Following could be refactored when NotificationSmsReplyTo and NotificationLetterContact in models.py
+    if notification_type == EMAIL_TYPE:
+        subq = db.session.query(Notification.id).filter(
+            func.date(Notification.created_at) < seven_days_ago,
+            Notification.notification_type == notification_type
+        ).subquery()
+        deleted = db.session.query(
+            NotificationEmailReplyTo
+        ).filter(
+            NotificationEmailReplyTo.notification_id.in_(subq)
+        ).delete(synchronize_session='fetch')
+
     deleted = db.session.query(Notification).filter(
         func.date(Notification.created_at) < seven_days_ago,
         Notification.notification_type == notification_type,
     ).delete(synchronize_session='fetch')
-    db.session.commit()
     return deleted
 
 
@@ -460,7 +477,7 @@ def is_delivery_slow_for_provider(
 
 @statsd(namespace="dao")
 @transactional
-def dao_update_notifications_sent_to_dvla(job_id, provider):
+def dao_update_notifications_for_job_to_sent_to_dvla(job_id, provider):
     now = datetime.utcnow()
     updated_count = db.session.query(
         Notification).filter(Notification.job_id == job_id).update(
@@ -469,6 +486,27 @@ def dao_update_notifications_sent_to_dvla(job_id, provider):
     db.session.query(
         NotificationHistory).filter(NotificationHistory.job_id == job_id).update(
         {'status': NOTIFICATION_SENDING, "sent_by": provider, "sent_at": now, "updated_at": now})
+
+    return updated_count
+
+
+@statsd(namespace="dao")
+@transactional
+def dao_update_notifications_by_reference(references, update_dict):
+    now = datetime.utcnow()
+    updated_count = Notification.query.filter(
+        Notification.reference.in_(references)
+    ).update(
+        update_dict,
+        synchronize_session=False
+    )
+
+    NotificationHistory.query.filter(
+        NotificationHistory.reference.in_(references)
+    ).update(
+        update_dict,
+        synchronize_session=False
+    )
 
     return updated_count
 
@@ -555,3 +593,50 @@ def dao_get_total_notifications_sent_per_day_for_performance_platform(start_date
         NotificationHistory.key_type != KEY_TYPE_TEST,
         NotificationHistory.notification_type != LETTER_TYPE
     ).one()
+
+
+def dao_set_created_live_letter_api_notifications_to_pending():
+    """
+    Sets all past scheduled jobs to pending, and then returns them for further processing.
+
+    this is used in the run_scheduled_jobs task, so we put a FOR UPDATE lock on the job table for the duration of
+    the transaction so that if the task is run more than once concurrently, one task will block the other select
+    from completing until it commits.
+    """
+    notifications = db.session.query(
+        Notification
+    ).filter(
+        Notification.notification_type == LETTER_TYPE,
+        Notification.status == NOTIFICATION_CREATED,
+        Notification.key_type == KEY_TYPE_NORMAL,
+        Notification.api_key != None  # noqa
+    ).with_for_update(
+    ).all()
+
+    for notification in notifications:
+        notification.status = NOTIFICATION_PENDING
+
+    db.session.add_all(notifications)
+    db.session.commit()
+
+    return notifications
+
+
+@transactional
+def dao_create_notification_email_reply_to_mapping(notification_id, email_reply_to_id):
+    notification_email_reply_to = NotificationEmailReplyTo(
+        notification_id=notification_id,
+        service_email_reply_to_id=email_reply_to_id
+    )
+    db.session.add(notification_email_reply_to)
+
+
+def dao_get_notification_email_reply_for_notification(notification_id):
+    email_reply_to = ServiceEmailReplyTo.query.join(
+        NotificationEmailReplyTo
+    ).filter(
+        NotificationEmailReplyTo.notification_id == notification_id
+    ).first()
+
+    if email_reply_to:
+        return email_reply_to.email_address

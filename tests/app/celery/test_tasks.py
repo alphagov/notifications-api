@@ -2,7 +2,6 @@ import json
 import uuid
 from datetime import datetime
 from unittest.mock import Mock
-
 import pytest
 import requests_mock
 from flask import current_app
@@ -17,41 +16,46 @@ from app.celery import tasks
 from app.celery.tasks import (
     s3,
     build_dvla_file,
-    create_dvla_file_contents,
-    update_dvla_job_to_error,
+    create_dvla_file_contents_for_job,
     process_job,
     process_row,
     send_sms,
     send_email,
     persist_letter,
     get_template_class,
-    update_job_to_sent_to_dvla,
-    update_letter_notifications_statuses,
-    process_updates_from_file,
     send_inbound_sms_to_service)
 from app.config import QueueNames
 from app.dao import jobs_dao, services_dao
 from app.models import (
-    Notification,
+    EMAIL_TYPE,
+    KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
-    KEY_TYPE_NORMAL,
-    SMS_TYPE,
-    EMAIL_TYPE,
     LETTER_TYPE,
+    SERVICE_PERMISSION_TYPES,
+    SMS_TYPE,
     Job,
-    JOB_STATUS_ERROR)
+    Notification
+)
 
 from tests.app import load_example_csv
-from tests.conftest import set_config
 from tests.app.conftest import (
-    sample_service,
-    sample_template,
-    sample_job,
-    sample_email_template,
-    sample_notification
+    sample_service as create_sample_service,
+    sample_template as create_sample_template,
+    sample_job as create_sample_job,
+    sample_email_template as create_sample_email_template,
+    sample_notification as create_sample_notification
 )
-from tests.app.db import create_user, create_notification, create_job, create_service_inbound_api, create_inbound_sms
+from tests.app.db import (
+    create_inbound_sms,
+    create_job,
+    create_letter_contact,
+    create_notification,
+    create_service_inbound_api,
+    create_service,
+    create_template,
+    create_user
+)
 
 
 class AnyStringWith(str):
@@ -82,7 +86,7 @@ def test_should_have_decorated_tasks_functions():
 
 @pytest.fixture
 def email_job_with_placeholders(notify_db, notify_db_session, sample_email_template_with_placeholders):
-    return sample_job(notify_db, notify_db_session, template=sample_email_template_with_placeholders)
+    return create_sample_job(notify_db, notify_db_session, template=sample_email_template_with_placeholders)
 
 
 # -------------- process_job tests -------------- #
@@ -123,8 +127,8 @@ def test_should_process_sms_job(sample_job, mocker):
 def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db,
                                                                 notify_db_session,
                                                                 mocker):
-    service = sample_service(notify_db, notify_db_session, limit=9)
-    job = sample_job(notify_db, notify_db_session, service=service, notification_count=10)
+    service = create_sample_service(notify_db, notify_db_session, limit=9)
+    job = create_sample_job(notify_db, notify_db_session, service=service, notification_count=10)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mocker.patch('app.celery.tasks.process_row')
@@ -142,10 +146,10 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(notify_db,
 def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify_db,
                                                                           notify_db_session,
                                                                           mocker):
-    service = sample_service(notify_db, notify_db_session, limit=1)
-    job = sample_job(notify_db, notify_db_session, service=service)
+    service = create_sample_service(notify_db, notify_db_session, limit=1)
+    job = create_sample_job(notify_db, notify_db_session, service=service)
 
-    sample_notification(notify_db, notify_db_session, service=service, job=job)
+    create_sample_notification(notify_db, notify_db_session, service=service, job=job)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
     mocker.patch('app.celery.tasks.process_row')
@@ -161,11 +165,11 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(notify
 
 
 def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(notify_db, notify_db_session, mocker):
-    service = sample_service(notify_db, notify_db_session, limit=1)
-    template = sample_email_template(notify_db, notify_db_session, service=service)
-    job = sample_job(notify_db, notify_db_session, service=service, template=template)
+    service = create_sample_service(notify_db, notify_db_session, limit=1)
+    template = create_sample_email_template(notify_db, notify_db_session, service=service)
+    job = create_sample_job(notify_db, notify_db_session, service=service, template=template)
 
-    sample_notification(notify_db, notify_db_session, service=service, job=job)
+    create_sample_notification(notify_db, notify_db_session, service=service, job=job)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.process_row')
@@ -182,9 +186,9 @@ def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(noti
 
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, notify_db_session, mocker):
-    service = sample_service(notify_db, notify_db_session, limit=0)
-    template = sample_email_template(notify_db, notify_db_session, service=service)
-    job = sample_job(notify_db, notify_db_session, service=service, template=template)
+    service = create_sample_service(notify_db, notify_db_session, limit=0)
+    template = create_sample_email_template(notify_db, notify_db_session, service=service)
+    job = create_sample_job(notify_db, notify_db_session, service=service, template=template)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.process_row')
@@ -200,7 +204,7 @@ def test_should_not_process_email_job_if_would_exceed_send_limits(notify_db, not
 
 
 def test_should_not_process_job_if_already_pending(notify_db, notify_db_session, mocker):
-    job = sample_job(notify_db, notify_db_session, job_status='scheduled')
+    job = create_sample_job(notify_db, notify_db_session, job_status='scheduled')
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3')
     mocker.patch('app.celery.tasks.process_row')
@@ -217,9 +221,9 @@ def test_should_not_process_job_if_already_pending(notify_db, notify_db_session,
 def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
                                                             notify_db_session,
                                                             mocker):
-    service = sample_service(notify_db, notify_db_session, limit=10)
-    template = sample_email_template(notify_db, notify_db_session, service=service)
-    job = sample_job(notify_db, notify_db_session, service=service, template=template, notification_count=10)
+    service = create_sample_service(notify_db, notify_db_session, limit=10)
+    template = create_sample_email_template(notify_db, notify_db_session, service=service)
+    job = create_sample_job(notify_db, notify_db_session, service=service, template=template, notification_count=10)
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_email'))
     mocker.patch('app.celery.tasks.send_email.apply_async')
@@ -429,11 +433,11 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
 
 
 def test_should_put_send_sms_task_in_research_mode_queue_if_research_mode_service(notify_db, notify_db_session, mocker):
-    service = sample_service(notify_db, notify_db_session)
+    service = create_sample_service(notify_db, notify_db_session)
     service.research_mode = True
     services_dao.dao_update_service(service)
 
-    template = sample_template(notify_db, notify_db_session, service=service)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
 
     notification = _notification_json(template, to="+447234123123")
 
@@ -457,8 +461,8 @@ def test_should_put_send_sms_task_in_research_mode_queue_if_research_mode_servic
 
 def test_should_send_sms_if_restricted_service_and_valid_number(notify_db, notify_db_session, mocker):
     user = create_user(mobile_number="07700 900890")
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(notify_db, notify_db_session, service=service)
+    service = create_sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
     notification = _notification_json(template, "+447700900890")  # The user’s own number, but in a different format
 
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
@@ -493,8 +497,8 @@ def test_should_send_sms_if_restricted_service_and_non_team_number_with_test_key
                                                                                  notify_db_session,
                                                                                  mocker):
     user = create_user(mobile_number="07700 900205")
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(notify_db, notify_db_session, service=service)
+    service = create_sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
 
     notification = _notification_json(template, "07700 900849")
     mocked_deliver_sms = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
@@ -519,8 +523,8 @@ def test_should_send_email_if_restricted_service_and_non_team_email_address_with
                                                                                           notify_db_session,
                                                                                           mocker):
     user = create_user()
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(
+    service = create_sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = create_sample_template(
         notify_db, notify_db_session, service=service, template_type='email', subject_line='Hello'
     )
 
@@ -545,8 +549,8 @@ def test_should_send_email_if_restricted_service_and_non_team_email_address_with
 
 def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db, notify_db_session, mocker):
     user = create_user(mobile_number="07700 900205")
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(notify_db, notify_db_session, service=service)
+    service = create_sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
 
     notification = _notification_json(template, "07700 900849")
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
@@ -564,8 +568,8 @@ def test_should_not_send_sms_if_restricted_service_and_invalid_number(notify_db,
 
 def test_should_not_send_email_if_restricted_service_and_invalid_email_address(notify_db, notify_db_session, mocker):
     user = create_user()
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(
+    service = create_sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = create_sample_template(
         notify_db, notify_db_session, service=service, template_type='email', subject_line='Hello'
     )
     notification = _notification_json(template, to="test@example.com")
@@ -584,11 +588,11 @@ def test_should_not_send_email_if_restricted_service_and_invalid_email_address(n
 def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_service(
         notify_db, notify_db_session, mocker
 ):
-    service = sample_service(notify_db, notify_db_session)
+    service = create_sample_service(notify_db, notify_db_session)
     service.research_mode = True
     services_dao.dao_update_service(service)
 
-    template = sample_email_template(notify_db, notify_db_session, service=service)
+    template = create_sample_email_template(notify_db, notify_db_session, service=service)
 
     notification = _notification_json(template, to="test@test.com")
 
@@ -611,10 +615,10 @@ def test_should_put_send_email_task_in_research_mode_queue_if_research_mode_serv
 
 
 def test_should_not_build_dvla_file_in_research_mode_for_letter_job(
-        mocker, sample_service, sample_letter_job, fake_uuid
+        mocker, sample_letter_job, fake_uuid
 ):
     test_encrypted_data = 'some encrypted data'
-    sample_service.research_mode = True
+    sample_letter_job.service.research_mode = True
 
     csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
     A1,A2,A3,A4,A_POST,Alice
@@ -633,16 +637,16 @@ def test_should_not_build_dvla_file_in_research_mode_for_letter_job(
 
 @freeze_time("2017-08-29 17:30:00")
 def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
-        mocker, sample_service, sample_letter_job, fake_uuid
+        mocker, sample_letter_job, fake_uuid
 ):
     test_encrypted_data = 'some encrypted data'
-    sample_service.research_mode = True
+    sample_letter_job.service.research_mode = True
 
     csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
     A1,A2,A3,A4,A_POST,Alice
     """
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=csv)
-    mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
+    mock_update_job_task = mocker.patch('app.celery.tasks.update_job_to_sent_to_dvla.apply_async')
     mocker.patch('app.celery.tasks.persist_letter.apply_async')
     mocker.patch('app.celery.tasks.create_uuid', return_value=fake_uuid)
     mocker.patch('app.celery.tasks.encryption.encrypt', return_value=test_encrypted_data)
@@ -654,7 +658,7 @@ def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
 
     persist_letter.apply_async.assert_called_once_with(
         (
-            str(sample_service.id),
+            str(sample_letter_job.service_id),
             fake_uuid,
             test_encrypted_data,
             datetime.utcnow().strftime(DATETIME_FORMAT)
@@ -662,7 +666,7 @@ def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
         queue=QueueNames.RESEARCH_MODE
     )
 
-    update_job_to_sent_to_dvla.apply_async.assert_called_once_with(
+    mock_update_job_task.assert_called_once_with(
         [str(job.id)], queue=QueueNames.RESEARCH_MODE)
 
 
@@ -737,8 +741,8 @@ def test_should_not_send_email_if_team_key_and_recipient_not_in_team(sample_emai
 def test_should_not_send_sms_if_team_key_and_recipient_not_in_team(notify_db, notify_db_session, mocker):
     assert Notification.query.count() == 0
     user = create_user(mobile_number="07700 900205")
-    service = sample_service(notify_db, notify_db_session, user=user, restricted=True)
-    template = sample_template(notify_db, notify_db_session, service=service)
+    service = create_sample_service(notify_db, notify_db_session, user=user, restricted=True)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
 
     team_members = [user.mobile_number for user in service.users]
     assert "07890 300000" not in team_members
@@ -1058,7 +1062,7 @@ def test_build_dvla_file(sample_letter_template, mocker):
     mocked_upload.assert_called_once_with(
         filedata="dvla|string\ndvla|string\n",
         region=current_app.config['AWS_REGION'],
-        bucket_name=current_app.config['DVLA_UPLOAD_BUCKET_NAME'],
+        bucket_name=current_app.config['DVLA_BUCKETS']['job'],
         file_location="{}-dvla-job.text".format(job.id)
     )
     assert Job.query.get(job.id).job_status == 'ready to send'
@@ -1081,15 +1085,18 @@ def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_let
     mocked_send_task.assert_not_called()
 
 
-def test_create_dvla_file_contents(sample_letter_template, mocker):
-    job = create_job(template=sample_letter_template, notification_count=2)
+def test_create_dvla_file_contents(notify_db_session, mocker):
+    service = create_service(service_permissions=SERVICE_PERMISSION_TYPES)
+    create_letter_contact(service=service, contact_block='London,\nNW1A 1AA')
+    letter_template = create_template(service=service, template_type=LETTER_TYPE)
+    job = create_job(template=letter_template, notification_count=2)
     create_notification(template=job.template, job=job, reference=1)
     create_notification(template=job.template, job=job, reference=2)
     mocked_letter_template = mocker.patch("app.celery.tasks.LetterDVLATemplate")
     mocked_letter_template_instance = mocked_letter_template.return_value
     mocked_letter_template_instance.__str__.return_value = "dvla|string"
 
-    create_dvla_file_contents(job.id)
+    create_dvla_file_contents_for_job(job.id)
     calls = mocked_letter_template.call_args_list
     # Template
     assert calls[0][0][0]['subject'] == 'Template subject'
@@ -1098,9 +1105,8 @@ def test_create_dvla_file_contents(sample_letter_template, mocker):
     # Personalisation
     assert not calls[0][0][1]
     assert not calls[1][0][1]
-
     # Named arguments
-    assert calls[1][1]['contact_block'] == 'London,\nSW1A 1AA'
+    assert calls[1][1]['contact_block'] == 'London,\nNW1A 1AA'
     assert calls[0][1]['notification_reference'] == '1'
     assert calls[1][1]['notification_reference'] == '2'
     assert calls[1][1]['org_id'] == '001'
@@ -1112,73 +1118,6 @@ def test_dvla_letter_template(sample_letter_notification):
          "subject": sample_letter_notification.template.subject}
     letter = LetterDVLATemplate(t, sample_letter_notification.personalisation, "random-string")
     assert str(letter) == "140|500|001||random-string|||||||||||||A1||A2|A3|A4|A5|A6|A_POST|||||||||23 March 2017<cr><cr><h1>Template subject<normal><cr><cr>Dear Sir/Madam, Hello. Yours Truly, The Government.<cr><cr>"  # noqa
-
-
-def test_update_job_to_sent_to_dvla(sample_letter_template, sample_letter_job):
-    create_notification(template=sample_letter_template, job=sample_letter_job)
-    create_notification(template=sample_letter_template, job=sample_letter_job)
-    update_job_to_sent_to_dvla(job_id=sample_letter_job.id)
-
-    updated_notifications = Notification.query.all()
-    assert [(n.status == 'sending', n.sent_by == 'dvla') for n in updated_notifications]
-
-    assert 'sent to dvla' == Job.query.filter_by(id=sample_letter_job.id).one().job_status
-
-
-def test_update_dvla_job_to_error(sample_letter_template, sample_letter_job):
-    create_notification(template=sample_letter_template, job=sample_letter_job)
-    create_notification(template=sample_letter_template, job=sample_letter_job)
-    update_dvla_job_to_error(job_id=sample_letter_job.id)
-
-    updated_notifications = Notification.query.all()
-    for n in updated_notifications:
-        assert n.status == 'created'
-        assert not n.sent_by
-
-    assert 'error' == Job.query.filter_by(id=sample_letter_job.id).one().job_status
-
-
-def test_update_letter_notifications_statuses_raises_for_invalid_format(notify_api, mocker):
-    invalid_file = 'ref-foo|Sent|1|Unsorted\nref-bar|Sent|2'
-    mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=invalid_file)
-
-    with pytest.raises(TypeError):
-        update_letter_notifications_statuses(filename='foo.txt')
-
-
-def test_update_letter_notifications_statuses_calls_with_correct_bucket_location(notify_api, mocker):
-    s3_mock = mocker.patch('app.celery.tasks.s3.get_s3_object')
-
-    with set_config(notify_api, 'NOTIFY_EMAIL_DOMAIN', 'foo.bar'):
-        update_letter_notifications_statuses(filename='foo.txt')
-        s3_mock.assert_called_with('{}-ftp'.format(current_app.config['NOTIFY_EMAIL_DOMAIN']), 'foo.txt')
-
-
-def test_update_letter_notifications_statuses_builds_updates_from_content(notify_api, mocker):
-    valid_file = 'ref-foo|Sent|1|Unsorted\nref-bar|Sent|2|Sorted'
-    mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
-    update_mock = mocker.patch('app.celery.tasks.process_updates_from_file')
-
-    update_letter_notifications_statuses(filename='foo.txt')
-
-    update_mock.assert_called_with('ref-foo|Sent|1|Unsorted\nref-bar|Sent|2|Sorted')
-
-
-def test_update_letter_notifications_statuses_builds_updates_list(notify_api, mocker):
-    valid_file = 'ref-foo|Sent|1|Unsorted\nref-bar|Sent|2|Sorted'
-    updates = process_updates_from_file(valid_file)
-
-    assert len(updates) == 2
-
-    assert updates[0].reference == 'ref-foo'
-    assert updates[0].status == 'Sent'
-    assert updates[0].page_count == '1'
-    assert updates[0].cost_threshold == 'Unsorted'
-
-    assert updates[1].reference == 'ref-bar'
-    assert updates[1].status == 'Sent'
-    assert updates[1].page_count == '2'
-    assert updates[1].cost_threshold == 'Sorted'
 
 
 def test_send_inbound_sms_to_service_post_https_request_to_service(notify_api, sample_service):

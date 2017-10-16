@@ -10,7 +10,8 @@ from app.notifications.validators import (
     service_can_send_to_recipient,
     check_sms_content_char_count,
     check_service_over_api_rate_limit,
-    validate_and_format_recipient
+    validate_and_format_recipient,
+    check_service_email_reply_to_id
 )
 
 from app.v2.errors import (
@@ -22,6 +23,7 @@ from tests.app.conftest import (
     sample_service as create_service,
     sample_service_whitelist,
     sample_api_key)
+from tests.app.db import create_reply_to_email
 
 
 @pytest.mark.parametrize('key_type', ['test', 'team', 'normal'])
@@ -322,3 +324,29 @@ def test_allows_api_calls_with_international_numbers_if_service_does_allow_int_s
     service = create_service(notify_db, notify_db_session, permissions=[SMS_TYPE, INTERNATIONAL_SMS_TYPE])
     result = validate_and_format_recipient('20-12-1234-1234', key_type, service, SMS_TYPE)
     assert result == '201212341234'
+
+
+def test_check_service_email_reply_to_id_where_reply_to_id_is_none():
+    assert check_service_email_reply_to_id(None, None) is None
+
+
+def test_check_service_email_reply_to_id_where_service_id_is_not_found(sample_service, fake_uuid):
+    reply_to_address = create_reply_to_email(sample_service, "test@test.com")
+    with pytest.raises(BadRequestError) as e:
+        check_service_email_reply_to_id(fake_uuid, reply_to_address.id)
+    assert e.value.status_code == 400
+    assert e.value.message == 'email_reply_to_id {} does not exist in database for service id {}'\
+        .format(reply_to_address.id, fake_uuid)
+
+
+def test_check_service_email_reply_to_id_where_reply_to_id_is_not_found(sample_service, fake_uuid):
+    with pytest.raises(BadRequestError) as e:
+        check_service_email_reply_to_id(sample_service.id, fake_uuid)
+    assert e.value.status_code == 400
+    assert e.value.message == 'email_reply_to_id {} does not exist in database for service id {}'\
+        .format(fake_uuid, sample_service.id)
+
+
+def test_check_service_email_reply_to_id_where_reply_to_id_is_found(sample_service):
+    reply_to_email = create_reply_to_email(sample_service, 'test@test.com')
+    assert check_service_email_reply_to_id(sample_service.id, reply_to_email.id) is None

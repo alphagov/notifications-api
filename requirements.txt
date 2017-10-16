@@ -1,14 +1,12 @@
 boto3==1.4.7
+cffi==1.11.0 # pyup: != 1.11.1 # 1.11.1 is missing .whl
 celery==3.1.25 # pyup: <4
 docopt==0.6.2
-# ignore flask-bcrypt - when upgrading, it installs an invalid version of bcrypt that isn't removed when a different
-# branch runs, so can cause other PR builds to fail on jenkins.
-# TODO: Upgrade flask-bcrypt in a safe way
-Flask-Bcrypt==0.6.2 # pyup: ignore
+Flask-Bcrypt==0.7.1
 Flask-Marshmallow==0.8.0
 Flask-Migrate==2.1.1
 Flask-Script==2.0.6
-Flask-SQLAlchemy==2.2
+Flask-SQLAlchemy==2.3.2
 Flask==0.12.2
 gunicorn==19.7.1
 iso8601==0.1.12
@@ -17,18 +15,17 @@ marshmallow-sqlalchemy==0.13.1
 marshmallow==2.13.6
 monotonic==1.3
 psycopg2==2.7.3.1
-PyJWT==1.5.2
-six==1.10.0
-SQLAlchemy-Utils==0.32.14
-SQLAlchemy==1.1.13
+PyJWT==1.5.3
+SQLAlchemy-Utils==0.32.18
+SQLAlchemy==1.1.14
 statsd==3.2.1
 
-notifications-python-client==4.3.1
+notifications-python-client==4.4.0
 
 # PaaS
 awscli>=1.11,<1.12
 awscli-cwlogs>=1.4,<1.5
 
-git+https://github.com/alphagov/notifications-utils.git@20.0.0#egg=notifications-utils==20.0.0
+git+https://github.com/alphagov/notifications-utils.git@21.3.1#egg=notifications-utils==21.3.1
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3

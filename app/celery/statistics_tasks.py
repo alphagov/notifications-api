@@ -1,3 +1,4 @@
+from celery.signals import worker_process_shutdown
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import notify_celery
@@ -21,6 +22,11 @@ def create_initial_notification_statistic_tasks(notification):
 def create_outcome_notification_statistic_tasks(notification):
     if notification.job_id and notification.status in NOTIFICATION_STATUS_TYPES_COMPLETED:
         record_outcome_job_statistics.apply_async((str(notification.id),), queue=QueueNames.STATISTICS)
+
+
+@worker_process_shutdown.connect
+def worker_process_shutdown(sender, signal, pid, exitcode):
+    current_app.logger.info('Statistics worker shutdown: PID: {} Exitcode: {}'.format(pid, exitcode))
 
 
 @notify_celery.task(bind=True, name='record_initial_job_statistics', max_retries=20, default_retry_delay=10)

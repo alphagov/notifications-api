@@ -46,7 +46,8 @@ from tests.app.db import (
     create_notification,
     create_service,
     create_api_key,
-    create_inbound_number
+    create_inbound_number,
+    create_letter_contact,
 )
 
 
@@ -137,7 +138,8 @@ def sample_service(
     limit=1000,
     email_from=None,
     permissions=[SMS_TYPE, EMAIL_TYPE],
-    research_mode=None
+    research_mode=None,
+    free_sms_fragment_limit=250000
 ):
     if user is None:
         user = create_user()
@@ -150,7 +152,7 @@ def sample_service(
         'restricted': restricted,
         'email_from': email_from,
         'created_by': user,
-        'letter_contact_block': 'London,\nSW1A 1AA'
+        'free_sms_fragment_limit': free_sms_fragment_limit
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
@@ -172,7 +174,20 @@ def sample_service(
 
 @pytest.fixture(scope='function')
 def sample_service_full_permissions(notify_db, notify_db_session):
-    return sample_service(notify_db, notify_db_session, permissions=SERVICE_PERMISSION_TYPES)
+    return sample_service(
+        notify_db,
+        notify_db_session,
+        # ensure name doesn't clash with regular sample service
+        service_name="sample service full permissions",
+        permissions=SERVICE_PERMISSION_TYPES
+    )
+
+
+@pytest.fixture(scope='function')
+def sample_service_custom_letter_contact_block(notify_db, notify_db_session):
+    service = sample_service(notify_db, notify_db_session)
+    create_letter_contact(service, contact_block='((contact block))')
+    return service
 
 
 @pytest.fixture(scope='function')
@@ -568,12 +583,12 @@ def sample_notification(
 @pytest.fixture
 def sample_letter_notification(sample_letter_template):
     address = {
-        'addressline1': 'A1',
-        'addressline2': 'A2',
-        'addressline3': 'A3',
-        'addressline4': 'A4',
-        'addressline5': 'A5',
-        'addressline6': 'A6',
+        'address_line_1': 'A1',
+        'address_line_2': 'A2',
+        'address_line_3': 'A3',
+        'address_line_4': 'A4',
+        'address_line_5': 'A5',
+        'address_line_6': 'A6',
         'postcode': 'A_POST'
     }
     return create_notification(sample_letter_template, personalisation=address)

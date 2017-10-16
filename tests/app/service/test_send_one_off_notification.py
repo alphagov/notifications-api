@@ -7,9 +7,14 @@ from notifications_utils.recipients import InvalidPhoneError
 from app.v2.errors import BadRequestError, TooManyRequestsError
 from app.config import QueueNames
 from app.service.send_notification import send_one_off_notification
-from app.models import KEY_TYPE_NORMAL, PRIORITY, SMS_TYPE
+from app.models import (
+    KEY_TYPE_NORMAL,
+    PRIORITY,
+    SMS_TYPE,
+    NotificationEmailReplyTo,
+    Notification)
 
-from tests.app.db import create_user
+from tests.app.db import create_user, create_reply_to_email
 
 
 @pytest.fixture
@@ -178,3 +183,37 @@ def test_send_one_off_notification_fails_if_created_by_other_service(sample_temp
         send_one_off_notification(sample_template.service_id, post_data)
 
     assert e.value.message == 'Can’t create notification - Test User is not part of the "Sample service" service'
+
+
+def test_send_one_off_notification_should_add_email_reply_to_id_for_email(sample_email_template, celery_mock):
+    reply_to_email = create_reply_to_email(sample_email_template.service, 'test@test.com')
+    data = {
+        'to': 'ok@ok.com',
+        'template_id': str(sample_email_template.id),
+        'sender_id': reply_to_email.id,
+        'created_by': str(sample_email_template.service.created_by_id)
+    }
+
+    notification_id = send_one_off_notification(service_id=sample_email_template.service.id, post_data=data)
+    notification = Notification.query.get(notification_id['id'])
+    celery_mock.assert_called_once_with(
+        notification=notification,
+        research_mode=False,
+        queue=None
+    )
+    mapping_row = NotificationEmailReplyTo.query.filter_by(notification_id=notification_id['id']).first()
+    assert mapping_row.service_email_reply_to_id == reply_to_email.id
+
+
+def test_send_one_off_notification_should_throw_exception_if_reply_to_id_doesnot_exist(
+        sample_email_template, celery_mock
+):
+    data = {
+        'to': 'ok@ok.com',
+        'template_id': str(sample_email_template.id),
+        'sender_id': str(uuid.uuid4()),
+        'created_by': str(sample_email_template.service.created_by_id)
+    }
+
+    with pytest.raises(expected_exception=BadRequestError):
+        send_one_off_notification(service_id=sample_email_template.service.id, post_data=data)

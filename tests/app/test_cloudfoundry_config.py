@@ -213,7 +213,7 @@ def test_sms_inbound_config():
 def test_performance_platform_config():
     extract_cloudfoundry_config()
 
-    assert os.environ['PERFORMANCE_PLATFORM_ENDPOINTS'] == json.dumps({
+    assert json.loads(os.environ['PERFORMANCE_PLATFORM_ENDPOINTS']) == {
         'foo': 'my_token',
         'bar': 'other_token'
-    })
+    }

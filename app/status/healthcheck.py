@@ -22,7 +22,7 @@ def show_status():
         return jsonify(status="ok"), 200
     else:
         return jsonify(
-            status="ok",
+            status="ok",  # This should be considered part of the public API
             travis_commit=version.__travis_commit__,
             travis_build_number=version.__travis_job_number__,
             build_time=version.__time__,

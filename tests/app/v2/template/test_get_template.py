@@ -40,9 +40,79 @@ def test_get_template_by_id_returns_200(client, sample_service, tmp_type, expect
         'body': template.content,
         "subject": expected_subject,
         'name': expected_name,
+        'personalisation': {},
     }
 
     assert json_response == expected_response
+
+
+@pytest.mark.parametrize("create_template_args, expected_personalisation", [
+    (
+        {
+            "template_type": SMS_TYPE,
+            "content": "Hello ((placeholder)) ((conditional??yes))",
+        },
+        {
+            "placeholder": {
+                "required": True
+            },
+            "conditional": {
+                "required": True
+            },
+        },
+    ),
+    (
+        {
+            "template_type": EMAIL_TYPE,
+            "subject": "((subject))",
+            "content": "((content))",
+        },
+        {
+            "subject": {
+                "required": True
+            },
+            "content": {
+                "required": True
+            },
+        },
+    ),
+    (
+        {
+            "template_type": LETTER_TYPE,
+            "subject": "((letterSubject))",
+            "content": "((letter_content))",
+        },
+        {
+            "letterSubject": {
+                "required": True,
+            },
+            "letter_content": {
+                "required": True,
+            },
+            "contact block": {
+                "required": True,
+            },
+        },
+    )
+])
+@pytest.mark.parametrize("version", valid_version_params)
+def test_get_template_by_id_returns_placeholders(
+    client,
+    sample_service_custom_letter_contact_block,
+    version,
+    create_template_args,
+    expected_personalisation,
+):
+    template = create_template(sample_service_custom_letter_contact_block, **create_template_args)
+    auth_header = create_authorization_header(service_id=sample_service_custom_letter_contact_block.id)
+
+    version_path = '/version/{}'.format(version) if version else ''
+
+    response = client.get(path='/v2/template/{}{}'.format(template.id, version_path),
+                          headers=[('Content-Type', 'application/json'), auth_header])
+
+    json_response = json.loads(response.get_data(as_text=True))
+    assert json_response['personalisation'] == expected_personalisation
 
 
 def test_get_template_with_non_existent_template_id_returns_404(client, fake_uuid, sample_service):
