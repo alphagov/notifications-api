@@ -3,7 +3,8 @@ from datetime import datetime
 
 from flask import current_app
 from notifications_utils.recipients import (
-    validate_and_format_phone_number
+    validate_and_format_phone_number,
+    validate_and_format_email_address
 )
 from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTemplate, SMSMessageTemplate
 
@@ -130,11 +131,11 @@ def send_email_to_provider(notification):
 
             reference = provider.send_email(
                 from_address,
-                notification.to,
+                validate_and_format_email_address(notification.to),
                 plain_text_email.subject,
                 body=str(plain_text_email),
                 html_body=str(html_email),
-                reply_to_address=email_reply_to,
+                reply_to_address=validate_and_format_email_address(email_reply_to) if email_reply_to else None,
             )
             notification.reference = reference
             update_notification(notification, provider)
