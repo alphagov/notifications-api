@@ -22,8 +22,8 @@ from app.models import (
     NOTIFICATION_DELIVERED,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
-    KEY_TYPE_TEST
-)
+    KEY_TYPE_TEST,
+    JOB_STATUS_IN_PROGRESS)
 
 from app.dao.notifications_dao import (
     dao_create_notification,
@@ -50,8 +50,8 @@ from app.dao.notifications_dao import (
     is_delivery_slow_for_provider,
     set_scheduled_notification_to_processed,
     update_notification_status_by_id,
-    update_notification_status_by_reference
-)
+    update_notification_status_by_reference,
+    dao_get_last_notification_added_for_job_id)
 
 from app.dao.services_dao import dao_update_service
 from tests.app.db import (
@@ -2037,3 +2037,31 @@ def test_dao_get_notification_email_reply_for_notification(sample_service, sampl
 
 def test_dao_get_notification_email_reply_for_notification_where_no_mapping(notify_db_session, fake_uuid):
     assert dao_get_notification_email_reply_for_notification(fake_uuid) is None
+
+
+def test_dao_get_last_notification_added_for_job_id_valid_job_id(sample_template):
+    job = create_job(template=sample_template, notification_count=10,
+                     created_at=datetime.utcnow() - timedelta(hours=2),
+                     scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+                     processing_started=datetime.utcnow() - timedelta(minutes=31),
+                     job_status=JOB_STATUS_IN_PROGRESS)
+    create_notification(sample_template, job, 0)
+    create_notification(sample_template, job, 1)
+    last = create_notification(sample_template, job, 2)
+
+    assert dao_get_last_notification_added_for_job_id(job.id) == last
+
+
+def test_dao_get_last_notification_added_for_job_id_no_notifications(sample_template):
+    job = create_job(template=sample_template, notification_count=10,
+                     created_at=datetime.utcnow() - timedelta(hours=2),
+                     scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+                     processing_started=datetime.utcnow() - timedelta(minutes=31),
+                     job_status=JOB_STATUS_IN_PROGRESS)
+
+    assert dao_get_last_notification_added_for_job_id(job.id) is None
+
+
+def test_dao_get_last_notification_added_for_job_id_no_notifications(sample_template, fake_uuid):
+
+    assert dao_get_last_notification_added_for_job_id(fake_uuid) is None

@@ -34,11 +34,11 @@ from app.models import (
     Job,
     Notification,
     EMAIL_TYPE,
-    JOB_STATUS_FINISHED,
-    JOB_STATUS_IN_PROGRESS,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
+    JOB_STATUS_FINISHED,
+    JOB_STATUS_IN_PROGRESS,
     LETTER_TYPE,
     SERVICE_PERMISSION_TYPES,
     SMS_TYPE
@@ -1226,12 +1226,12 @@ def test_check_job_status_task_does_not_raise_error(sample_template):
     check_job_status()
 
 
-def test_process_incomplete_job(mocker, sample_template):
+def test_process_incomplete_job_sms(mocker, sample_template):
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     send_sms = mocker.patch('app.celery.tasks.send_sms.apply_async')
 
-    job = create_job(template=sample_template, notification_count=3,
+    job = create_job(template=sample_template, notification_count=10,
                      created_at=datetime.utcnow() - timedelta(hours=2),
                      scheduled_for=datetime.utcnow() - timedelta(minutes=31),
                      processing_started=datetime.utcnow() - timedelta(minutes=31),
@@ -1256,7 +1256,7 @@ def test_process_incomplete_job_with_notifications_all_sent(mocker, sample_templ
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mock_send_sms = mocker.patch('app.celery.tasks.send_sms.apply_async')
 
-    job = create_job(template=sample_template, notification_count=3,
+    job = create_job(template=sample_template, notification_count=10,
                      created_at=datetime.utcnow() - timedelta(hours=2),
                      scheduled_for=datetime.utcnow() - timedelta(minutes=31),
                      processing_started=datetime.utcnow() - timedelta(minutes=31),
@@ -1281,15 +1281,15 @@ def test_process_incomplete_job_with_notifications_all_sent(mocker, sample_templ
 
     assert completed_job.job_status == JOB_STATUS_FINISHED
 
-    assert mock_send_sms.call_count == 0  # There are 10 in the file and we've added two already
+    assert mock_send_sms.call_count == 0  # There are 10 in the file and we've added 10 it should not have been called
 
 
-def test_process_incomplete_jobs(mocker, sample_template):
+def test_process_incomplete_jobs_sms(mocker, sample_template):
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mock_send_sms = mocker.patch('app.celery.tasks.send_sms.apply_async')
 
-    job = create_job(template=sample_template, notification_count=3,
+    job = create_job(template=sample_template, notification_count=10,
                      created_at=datetime.utcnow() - timedelta(hours=2),
                      scheduled_for=datetime.utcnow() - timedelta(minutes=31),
                      processing_started=datetime.utcnow() - timedelta(minutes=31),
@@ -1300,7 +1300,7 @@ def test_process_incomplete_jobs(mocker, sample_template):
 
     assert Notification.query.filter(Notification.job_id == job.id).count() == 3
 
-    job2 = create_job(template=sample_template, notification_count=3,
+    job2 = create_job(template=sample_template, notification_count=10,
                       created_at=datetime.utcnow() - timedelta(hours=2),
                       scheduled_for=datetime.utcnow() - timedelta(minutes=31),
                       processing_started=datetime.utcnow() - timedelta(minutes=31),
@@ -1331,7 +1331,7 @@ def test_process_incomplete_jobs_no_notifications_added(mocker, sample_template)
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mock_send_sms = mocker.patch('app.celery.tasks.send_sms.apply_async')
 
-    job = create_job(template=sample_template, notification_count=3,
+    job = create_job(template=sample_template, notification_count=10,
                      created_at=datetime.utcnow() - timedelta(hours=2),
                      scheduled_for=datetime.utcnow() - timedelta(minutes=31),
                      processing_started=datetime.utcnow() - timedelta(minutes=31),
@@ -1356,7 +1356,7 @@ def test_process_incomplete_jobs(mocker):
     jobs = []
     process_incomplete_jobs(jobs)
 
-    assert mock_send_sms.call_count == 0  # There are 20 in total over 2 jobs we've added 8 already
+    assert mock_send_sms.call_count == 0  # There are no jobs to process so it will not have been called
 
 
 def test_process_incomplete_job_no_job_in_database(mocker, fake_uuid):
@@ -1367,4 +1367,54 @@ def test_process_incomplete_job_no_job_in_database(mocker, fake_uuid):
     with pytest.raises(expected_exception=Exception) as e:
         process_incomplete_job(fake_uuid)
 
-    assert mock_send_sms.call_count == 0  # There are 20 in total over 2 jobs we've added 8 already
+    assert mock_send_sms.call_count == 0  # There is no job in the db it will not have been called
+
+
+def test_process_incomplete_job_email(mocker, sample_email_template):
+
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_email'))
+    mock_email_sender = mocker.patch('app.celery.tasks.send_email.apply_async')
+
+    job = create_job(template=sample_email_template, notification_count=10,
+                     created_at=datetime.utcnow() - timedelta(hours=2),
+                     scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+                     processing_started=datetime.utcnow() - timedelta(minutes=31),
+                     job_status=JOB_STATUS_IN_PROGRESS)
+
+    create_notification(sample_email_template, job, 0)
+    create_notification(sample_email_template, job, 1)
+
+    assert Notification.query.filter(Notification.job_id == job.id).count() == 2
+
+    process_incomplete_job(str(job.id))
+
+    completed_job = Job.query.filter(Job.id == job.id).one()
+
+    assert completed_job.job_status == JOB_STATUS_FINISHED
+
+    assert mock_email_sender.call_count == 8  # There are 10 in the file and we've added two already
+
+
+def test_process_incomplete_job_letter(mocker, sample_letter_template):
+
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_letter'))
+    mock_letter_sender = mocker.patch('app.celery.tasks.persist_letter.apply_async')
+
+    job = create_job(template=sample_letter_template, notification_count=10,
+                     created_at=datetime.utcnow() - timedelta(hours=2),
+                     scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+                     processing_started=datetime.utcnow() - timedelta(minutes=31),
+                     job_status=JOB_STATUS_IN_PROGRESS)
+
+    create_notification(sample_letter_template, job, 0)
+    create_notification(sample_letter_template, job, 1)
+
+    assert Notification.query.filter(Notification.job_id == job.id).count() == 2
+
+    process_incomplete_job(str(job.id))
+
+    completed_job = Job.query.filter(Job.id == job.id).one()
+
+    assert completed_job.job_status == JOB_STATUS_FINISHED
+
+    assert mock_letter_sender.call_count == 8

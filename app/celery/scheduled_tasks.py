@@ -42,8 +42,8 @@ from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.models import (
     Job,
     LETTER_TYPE,
-    JOB_STATUS_READY_TO_SEND,
-    JOB_STATUS_IN_PROGRESS
+    JOB_STATUS_IN_PROGRESS,
+    JOB_STATUS_READY_TO_SEND
 )
 from app.notifications.process_notifications import send_notification_to_queue
 from app.statsd_decorators import statsd
