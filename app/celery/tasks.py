@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from collections import namedtuple
 
-from celery.signals import worker_process_init, worker_process_shutdown
+from celery.signals import worker_process_shutdown
 from flask import current_app
 from notifications_utils.recipients import (
     RecipientCSV
@@ -37,25 +37,27 @@ from app.dao.jobs_dao import (
 from app.dao.notifications_dao import (
     get_notification_by_id,
     dao_update_notifications_for_job_to_sent_to_dvla,
-    dao_update_notifications_by_reference
-)
+    dao_update_notifications_by_reference,
+    dao_get_last_notification_added_for_job_id)
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
+    Job,
+    Notification,
     EMAIL_TYPE,
-    SMS_TYPE,
-    LETTER_TYPE,
-    KEY_TYPE_NORMAL,
     JOB_STATUS_CANCELLED,
-    JOB_STATUS_PENDING,
-    JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_FINISHED,
+    JOB_STATUS_IN_PROGRESS,
+    JOB_STATUS_PENDING,
     JOB_STATUS_READY_TO_SEND,
     JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_ERROR,
+    KEY_TYPE_NORMAL,
+    LETTER_TYPE,
     NOTIFICATION_SENDING,
-    NOTIFICATION_TECHNICAL_FAILURE
+    NOTIFICATION_TECHNICAL_FAILURE,
+    SMS_TYPE,
 )
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
@@ -107,11 +109,11 @@ def process_job(job_id):
     ).enumerated_recipients_and_personalisation:
         process_row(row_number, recipient, personalisation, template, job, service)
 
-    job_complete(job, service, template, False, start)
+    job_complete(job, service, template.template_type, start=start)
 
 
-def job_complete(job, service, template, resumed, start=None):
-    if template.template_type == LETTER_TYPE:
+def job_complete(job, service, template_type, resumed=False, start=None):
+    if template_type == LETTER_TYPE:
         if service.research_mode:
             update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
         else:
@@ -492,3 +494,40 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
                                service_id, inbound_api.url, e))
             except self.MaxRetriesExceededError:
                 current_app.logger.exception('Retry: send_inbound_sms_to_service has retried the max number of times')
+
+
+@notify_celery.task(name='process-incomplete-jobs')
+@statsd(namespace="tasks")
+def process_incomplete_jobs(job_ids):
+    current_app.logger.info("Resuming Job(s) {}".format(job_ids))
+    for job_id in job_ids:
+        process_incomplete_job(job_id)
+
+
+def process_incomplete_job(job_id):
+
+    job = dao_get_job_by_id(job_id)
+
+    last_notification_added = dao_get_last_notification_added_for_job_id(job_id)
+
+    if last_notification_added:
+        resume_from_row = last_notification_added.job_row_number
+    else:
+        resume_from_row = -1  # The first row in the csv with a number is row 0
+
+    current_app.logger.info("Resuming job {} from row {}".format(job_id, resume_from_row))
+
+    db_template = dao_get_template_by_id(job.template_id, job.template_version)
+
+    TemplateClass = get_template_class(db_template.template_type)
+    template = TemplateClass(db_template.__dict__)
+
+    for row_number, recipient, personalisation in RecipientCSV(
+            s3.get_job_from_s3(str(job.service_id), str(job.id)),
+            template_type=template.template_type,
+            placeholders=template.placeholders
+    ).enumerated_recipients_and_personalisation:
+        if row_number > resume_from_row:
+            process_row(row_number, recipient, personalisation, template, job, job.service)
+
+    job_complete(job, job.service, template, resumed=True)

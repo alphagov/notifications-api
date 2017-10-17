@@ -640,3 +640,14 @@ def dao_get_notification_email_reply_for_notification(notification_id):
 
     if email_reply_to:
         return email_reply_to.email_address
+
+
+@statsd(namespace="dao")
+def dao_get_last_notification_added_for_job_id(job_id):
+    last_notification_added = Notification.query.filter(
+        Notification.job_id == job_id
+    ).order_by(
+        Notification.job_row_number.desc()
+    ).first()
+
+    return last_notification_added

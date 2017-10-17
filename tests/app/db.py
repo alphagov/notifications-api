@@ -109,7 +109,7 @@ def create_notification(
     template,
     job=None,
     job_row_number=None,
-    to_field='+447700900855',
+    to_field=None,
     status='created',
     reference=None,
     created_at=None,
@@ -130,6 +130,9 @@ def create_notification(
 ):
     if created_at is None:
         created_at = datetime.utcnow()
+
+    if to_field is None:
+        to_field = '+447700900855' if template.template_type == SMS_TYPE else 'test@example.com'
 
     if status != 'created':
         sent_at = sent_at or datetime.utcnow()

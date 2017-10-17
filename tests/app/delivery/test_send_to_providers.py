@@ -781,3 +781,61 @@ def test_send_email_to_provider_get_linked_email_reply_to_create_service_email_a
         html_body=ANY,
         reply_to_address=reply_to.email_address
     )
+
+
+def test_send_email_to_provider_should_format_reply_to_email_address(
+        sample_service,
+        sample_email_template,
+        mocker):
+    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+
+    db_notification = create_notification(template=sample_email_template)
+
+    reply_to = create_reply_to_email_for_notification(
+        db_notification.id,
+        sample_service,
+        "test@test.com\t"
+    )
+
+    send_to_providers.send_email_to_provider(
+        db_notification,
+    )
+
+    app.aws_ses_client.send_email.assert_called_once_with(
+        ANY,
+        ANY,
+        ANY,
+        body=ANY,
+        html_body=ANY,
+        reply_to_address="test@test.com"
+    )
+
+
+def test_send_sms_to_provider_should_format_phone_number(sample_notification, mocker):
+    sample_notification.to = '+44 (7123) 123-123'
+    send_mock = mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+
+    send_to_providers.send_sms_to_provider(sample_notification)
+
+    assert send_mock.call_args[1]['to'] == '447123123123'
+
+
+def test_send_email_to_provider_should_format_email_address(sample_email_notification, mocker):
+    sample_email_notification.to = 'test@example.com\t'
+    send_mock = mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+
+    send_to_providers.send_email_to_provider(sample_email_notification)
+
+    # to_addresses
+    send_mock.assert_called_once_with(
+        ANY,
+        # to_addresses
+        'test@example.com',
+        ANY,
+        body=ANY,
+        html_body=ANY,
+        reply_to_address=ANY,
+    )
