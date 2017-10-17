@@ -9,6 +9,7 @@ from freezegun import freeze_time
 
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
+    check_job_status,
     delete_dvla_response_files_older_than_seven_days,
     delete_email_notifications_older_than_seven_days,
     delete_inbound_sms_older_than_seven_days,
@@ -22,14 +23,15 @@ from app.celery.scheduled_tasks import (
     run_scheduled_jobs,
     run_letter_jobs,
     run_letter_api_notifications,
+    populate_monthly_billing,
     s3,
     send_daily_performance_platform_stats,
     send_scheduled_notifications,
+    send_total_sent_notifications_to_performance_platform,
     switch_current_sms_provider_on_slow_delivery,
     timeout_job_statistics,
-    timeout_notifications,
-    populate_monthly_billing,
-    send_total_sent_notifications_to_performance_platform, check_job_status)
+    timeout_notifications
+)
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -47,7 +49,8 @@ from app.models import (
     NOTIFICATION_PENDING,
     NOTIFICATION_CREATED,
     KEY_TYPE_TEST,
-    MonthlyBilling, JOB_STATUS_FINISHED)
+    MonthlyBilling
+)
 from app.utils import get_london_midnight_in_utc
 from app.v2.errors import JobIncompleteError
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
@@ -773,7 +776,8 @@ def test_run_letter_api_notifications_does_nothing_if_no_created_notifications(
     assert test_api_key_notification.status == NOTIFICATION_CREATED
 
 
-def test_check_job_status_task_raises_job_incomplete_error(sample_template):
+def test_check_job_status_task_raises_job_incomplete_error(mocker, sample_template):
+    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
     job = create_job(template=sample_template, notification_count=3,
                      created_at=datetime.utcnow() - timedelta(minutes=31),
                      processing_started=datetime.utcnow() - timedelta(minutes=31),
@@ -783,8 +787,15 @@ def test_check_job_status_task_raises_job_incomplete_error(sample_template):
         check_job_status()
     assert e.value.message == "Job(s) ['{}'] have not completed.".format(str(job.id))
 
+    mock_celery.assert_called_once_with(
+        name=TaskNames.PROCESS_INCOMPLETE_JOBS,
+        args=([str(job.id)],),
+        queue=QueueNames.JOBS
+    )
 
-def test_check_job_status_task_raises_job_incomplete_error_when_scheduled_job_is_not_complete(sample_template):
+
+def test_check_job_status_task_raises_job_incomplete_error_when_scheduled_job_is_not_complete(mocker, sample_template):
+    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
     job = create_job(template=sample_template, notification_count=3,
                      created_at=datetime.utcnow() - timedelta(hours=2),
                      scheduled_for=datetime.utcnow() - timedelta(minutes=31),
@@ -794,8 +805,15 @@ def test_check_job_status_task_raises_job_incomplete_error_when_scheduled_job_is
         check_job_status()
     assert e.value.message == "Job(s) ['{}'] have not completed.".format(str(job.id))
 
+    mock_celery.assert_called_once_with(
+        name=TaskNames.PROCESS_INCOMPLETE_JOBS,
+        args=([str(job.id)],),
+        queue=QueueNames.JOBS
+    )
 
-def test_check_job_status_task_raises_job_incomplete_error_for_multiple_jobs(sample_template):
+
+def test_check_job_status_task_raises_job_incomplete_error_for_multiple_jobs(mocker, sample_template):
+    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
     job = create_job(template=sample_template, notification_count=3,
                      created_at=datetime.utcnow() - timedelta(hours=2),
                      scheduled_for=datetime.utcnow() - timedelta(minutes=31),
@@ -811,15 +829,8 @@ def test_check_job_status_task_raises_job_incomplete_error_for_multiple_jobs(sam
     assert str(job.id) in e.value.message
     assert str(job_2.id) in e.value.message
 
-
-def test_check_job_status_task_does_not_raise_error(sample_template):
-    job = create_job(template=sample_template, notification_count=3,
-                     created_at=datetime.utcnow() - timedelta(hours=2),
-                     scheduled_for=datetime.utcnow() - timedelta(minutes=31),
-                     processing_started=datetime.utcnow() - timedelta(minutes=31),
-                     job_status=JOB_STATUS_FINISHED)
-    job_2 = create_job(template=sample_template, notification_count=3,
-                       created_at=datetime.utcnow() - timedelta(minutes=31),
-                       processing_started=datetime.utcnow() - timedelta(minutes=31),
-                       job_status=JOB_STATUS_FINISHED)
-    check_job_status()
+    mock_celery.assert_called_once_with(
+        name=TaskNames.PROCESS_INCOMPLETE_JOBS,
+        args=([str(job_2.id), str(job.id)],),
+        queue=QueueNames.JOBS
+    )

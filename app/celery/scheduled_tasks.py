@@ -5,7 +5,7 @@ from datetime import (
 
 from celery.signals import worker_process_shutdown
 from flask import current_app
-from sqlalchemy import or_, and_
+from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 from notifications_utils.s3 import s3upload
 
@@ -19,8 +19,8 @@ from app.dao.invited_user_dao import delete_invitations_created_more_than_two_da
 from app.dao.jobs_dao import (
     dao_get_letter_job_ids_by_status,
     dao_set_scheduled_jobs_to_pending,
-    dao_get_jobs_older_than_limited_by,
-    dao_get_job_by_id)
+    dao_get_jobs_older_than_limited_by
+)
 from app.dao.monthly_billing_dao import (
     get_service_ids_that_need_billing_populated,
     create_or_update_monthly_billing
@@ -39,11 +39,18 @@ from app.dao.provider_details_dao import (
     dao_toggle_sms_provider
 )
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
-from app.models import LETTER_TYPE, JOB_STATUS_READY_TO_SEND, JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_FINISHED, Job, \
-    EMAIL_TYPE, SMS_TYPE, JOB_STATUS_IN_PROGRESS
+from app.models import (
+    Job,
+    LETTER_TYPE,
+    JOB_STATUS_IN_PROGRESS,
+    JOB_STATUS_READY_TO_SEND
+)
 from app.notifications.process_notifications import send_notification_to_queue
 from app.statsd_decorators import statsd
-from app.celery.tasks import process_job, create_dvla_file_contents_for_notifications
+from app.celery.tasks import (
+    create_dvla_file_contents_for_notifications,
+    process_job
+)
 from app.config import QueueNames, TaskNames
 from app.utils import convert_utc_to_bst
 from app.v2.errors import JobIncompleteError
@@ -389,4 +396,9 @@ def check_job_status():
 
     job_ids = [str(x.id) for x in jobs_not_complete_after_30_minutes]
     if job_ids:
+        notify_celery.send_task(
+            name=TaskNames.PROCESS_INCOMPLETE_JOBS,
+            args=(job_ids,),
+            queue=QueueNames.JOBS
+        )
         raise JobIncompleteError("Job(s) {} have not completed.".format(job_ids))
