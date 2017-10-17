@@ -117,9 +117,13 @@ def register_blueprint(application):
     ses_callback_blueprint.before_request(requires_no_auth)
     application.register_blueprint(ses_callback_blueprint)
 
-    sms_callback_blueprint.before_request(restrict_ip_sms)
+    # delivery receipts
+    # TODO: make sure research mode can still trigger sms callbacks, then re-enable this
+    # sms_callback_blueprint.before_request(restrict_ip_sms)
+    sms_callback_blueprint.before_request(requires_no_auth)
     application.register_blueprint(sms_callback_blueprint)
 
+    # inbound sms
     receive_notifications_blueprint.before_request(restrict_ip_sms)
     application.register_blueprint(receive_notifications_blueprint)
 
