@@ -700,7 +700,7 @@ def test_should_send_sms_template_to_and_persist_with_job_id(sample_job, sample_
     assert persisted_notification.template_id == sample_job.template.id
     assert persisted_notification.status == 'created'
     assert not persisted_notification.sent_at
-    assert persisted_notification.created_at <= now
+    assert persisted_notification.created_at >= now
     assert not persisted_notification.sent_by
     assert persisted_notification.job_row_number == 2
     assert persisted_notification.api_key_id == sample_api_key.id
@@ -794,7 +794,7 @@ def test_should_use_email_template_and_persist(sample_email_template_with_placeh
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template_with_placeholders.id
     assert persisted_notification.template_version == sample_email_template_with_placeholders.version
-    assert persisted_notification.created_at == now
+    assert persisted_notification.created_at >= now
     assert not persisted_notification.sent_at
     assert persisted_notification.status == 'created'
     assert not persisted_notification.sent_by
@@ -831,7 +831,7 @@ def test_send_email_should_use_template_version_from_job_not_latest(sample_email
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template.id
     assert persisted_notification.template_version == version_on_notification
-    assert persisted_notification.created_at == now
+    assert persisted_notification.created_at >= now
     assert not persisted_notification.sent_at
     assert persisted_notification.status == 'created'
     assert not persisted_notification.sent_by
@@ -857,7 +857,7 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template_with_placeholders.id
     assert persisted_notification.status == 'created'
-    assert persisted_notification.created_at == now
+    assert persisted_notification.created_at >= now
     assert not persisted_notification.sent_by
     assert persisted_notification.personalisation == {"name": "Jo"}
     assert not persisted_notification.reference
@@ -883,7 +883,7 @@ def test_should_use_email_template_and_persist_without_personalisation(sample_em
     persisted_notification = Notification.query.one()
     assert persisted_notification.to == 'my_email@my_email.com'
     assert persisted_notification.template_id == sample_email_template.id
-    assert persisted_notification.created_at == now
+    assert persisted_notification.created_at >= now
     assert not persisted_notification.sent_at
     assert persisted_notification.status == 'created'
     assert not persisted_notification.sent_by
@@ -1019,7 +1019,7 @@ def test_persist_letter_saves_letter_to_database(sample_letter_job, mocker):
     assert notification_db.template_id == sample_letter_job.template.id
     assert notification_db.template_version == sample_letter_job.template.version
     assert notification_db.status == 'created'
-    assert notification_db.created_at == created_at
+    assert notification_db.created_at >= created_at
     assert notification_db.notification_type == 'letter'
     assert notification_db.sent_at is None
     assert notification_db.sent_by is None
