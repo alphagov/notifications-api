@@ -177,6 +177,19 @@ def test_get_detailed_service_by_id_returns_free_sms_limit(client, sample_servic
     assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
 
+@pytest.mark.parametrize('endpoint', ['/service/{}', '/service/{}?detailed=True'])
+def test_get_service_by_id_returns_organisation_type(client, sample_service, endpoint):
+
+    auth_header = create_authorization_header()
+    resp = client.get(
+        endpoint.format(sample_service.id),
+        headers=[auth_header]
+    )
+    assert resp.status_code == 200
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert json_resp['data']['organisation_type'] is None
+
+
 def test_get_service_list_has_default_permissions(client, service_factory):
     service_factory.get('one')
     service_factory.get('one')
@@ -499,7 +512,8 @@ def test_update_service(client, notify_db, sample_service):
         'email_from': 'updated.service.name',
         'created_by': str(sample_service.created_by.id),
         'organisation': str(org.id),
-        'dvla_organisation': DVLA_ORG_LAND_REGISTRY
+        'dvla_organisation': DVLA_ORG_LAND_REGISTRY,
+        'organisation_type': 'foo',
     }
 
     auth_header = create_authorization_header()
@@ -515,6 +529,7 @@ def test_update_service(client, notify_db, sample_service):
     assert result['data']['email_from'] == 'updated.service.name'
     assert result['data']['organisation'] == str(org.id)
     assert result['data']['dvla_organisation'] == DVLA_ORG_LAND_REGISTRY
+    assert result['data']['organisation_type'] == 'foo'
 
 
 def test_update_service_flags(client, sample_service):
