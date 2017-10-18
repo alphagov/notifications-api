@@ -148,9 +148,9 @@ def process_row(row_number, recipient, personalisation, template, job, service):
     })
 
     send_fns = {
-        SMS_TYPE: send_sms,
-        EMAIL_TYPE: send_email,
-        LETTER_TYPE: persist_letter
+        SMS_TYPE: save_sms,
+        EMAIL_TYPE: save_email,
+        LETTER_TYPE: save_letter
     }
 
     send_fn = send_fns[template_type]
@@ -160,7 +160,6 @@ def process_row(row_number, recipient, personalisation, template, job, service):
             str(service.id),
             create_uuid(),
             encrypted,
-            datetime.utcnow().strftime(DATETIME_FORMAT)
         ),
         queue=QueueNames.DATABASE if not service.research_mode else QueueNames.RESEARCH_MODE
     )
@@ -228,6 +227,55 @@ def send_sms(self,
         handle_exception(self, notification, notification_id, e)
 
 
+@notify_celery.task(bind=True, name="save-sms", max_retries=5, default_retry_delay=300)
+@statsd(namespace="tasks")
+def save_sms(self,
+             service_id,
+             notification_id,
+             encrypted_notification,
+             api_key_id=None,
+             key_type=KEY_TYPE_NORMAL):
+    notification = encryption.decrypt(encrypted_notification)
+    service = dao_fetch_service_by_id(service_id)
+
+    if not service_allowed_to_send_to(notification['to'], service, key_type):
+        current_app.logger.info(
+            "SMS {} failed as restricted service".format(notification_id)
+        )
+        return
+
+    try:
+        saved_notification = persist_notification(
+            template_id=notification['template'],
+            template_version=notification['template_version'],
+            recipient=notification['to'],
+            service=service,
+            personalisation=notification.get('personalisation'),
+            notification_type=SMS_TYPE,
+            api_key_id=api_key_id,
+            key_type=key_type,
+            created_at=datetime.utcnow(),
+            job_id=notification.get('job', None),
+            job_row_number=notification.get('row_number', None),
+            notification_id=notification_id
+        )
+
+        provider_tasks.deliver_sms.apply_async(
+            [str(saved_notification.id)],
+            queue=QueueNames.SEND_SMS if not service.research_mode else QueueNames.RESEARCH_MODE
+        )
+
+        current_app.logger.info(
+            "SMS {} created at {} for job {}".format(
+                saved_notification.id,
+                saved_notification.created_at,
+                notification.get('job', None))
+        )
+
+    except SQLAlchemyError as e:
+        handle_exception(self, notification, notification_id, e)
+
+
 @notify_celery.task(bind=True, name="send-email", max_retries=5, default_retry_delay=300)
 @statsd(namespace="tasks")
 def send_email(self,
@@ -270,6 +318,47 @@ def send_email(self,
         handle_exception(self, notification, notification_id, e)
 
 
+@notify_celery.task(bind=True, name="save-email", max_retries=5, default_retry_delay=300)
+@statsd(namespace="tasks")
+def save_email(self,
+               service_id,
+               notification_id,
+               encrypted_notification,
+               api_key_id=None,
+               key_type=KEY_TYPE_NORMAL):
+    notification = encryption.decrypt(encrypted_notification)
+    service = dao_fetch_service_by_id(service_id)
+
+    if not service_allowed_to_send_to(notification['to'], service, key_type):
+        current_app.logger.info("Email {} failed as restricted service".format(notification_id))
+        return
+
+    try:
+        saved_notification = persist_notification(
+            template_id=notification['template'],
+            template_version=notification['template_version'],
+            recipient=notification['to'],
+            service=service,
+            personalisation=notification.get('personalisation'),
+            notification_type=EMAIL_TYPE,
+            api_key_id=api_key_id,
+            key_type=key_type,
+            created_at=datetime.utcnow(),
+            job_id=notification.get('job', None),
+            job_row_number=notification.get('row_number', None),
+            notification_id=notification_id
+        )
+
+        provider_tasks.deliver_email.apply_async(
+            [str(saved_notification.id)],
+            queue=QueueNames.SEND_EMAIL if not service.research_mode else QueueNames.RESEARCH_MODE
+        )
+
+        current_app.logger.info("Email {} created at {}".format(saved_notification.id, saved_notification.created_at))
+    except SQLAlchemyError as e:
+        handle_exception(self, notification, notification_id, e)
+
+
 @notify_celery.task(bind=True, name="persist-letter", max_retries=5, default_retry_delay=300)
 @statsd(namespace="tasks")
 def persist_letter(
@@ -303,6 +392,42 @@ def persist_letter(
         )
 
         current_app.logger.info("Letter {} created at {}".format(saved_notification.id, created_at))
+    except SQLAlchemyError as e:
+        handle_exception(self, notification, notification_id, e)
+
+
+@notify_celery.task(bind=True, name="save-letter", max_retries=5, default_retry_delay=300)
+@statsd(namespace="tasks")
+def save_letter(
+    self,
+    service_id,
+    notification_id,
+    encrypted_notification,
+):
+    notification = encryption.decrypt(encrypted_notification)
+
+    # we store the recipient as just the first item of the person's address
+    recipient = notification['personalisation']['addressline1']
+
+    service = dao_fetch_service_by_id(service_id)
+    try:
+        saved_notification = persist_notification(
+            template_id=notification['template'],
+            template_version=notification['template_version'],
+            recipient=recipient,
+            service=service,
+            personalisation=notification['personalisation'],
+            notification_type=LETTER_TYPE,
+            api_key_id=None,
+            key_type=KEY_TYPE_NORMAL,
+            created_at=datetime.utcnow(),
+            job_id=notification['job'],
+            job_row_number=notification['row_number'],
+            notification_id=notification_id,
+            reference=create_random_identifier()
+        )
+
+        current_app.logger.info("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
 
