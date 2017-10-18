@@ -101,7 +101,7 @@ def test_dao_add_sms_sender_for_service_switches_default(notify_db_session):
 
 def test_dao_update_service_sms_sender(notify_db_session):
     service = create_service(sms_sender='first_sms')
-    service_sms_senders = ServiceSmsSender.query.filter_by(service_id =service.id).all()
+    service_sms_senders = ServiceSmsSender.query.filter_by(service_id=service.id).all()
     assert len(service_sms_senders) == 1
     sms_sender_to_update = service_sms_senders[0]
 

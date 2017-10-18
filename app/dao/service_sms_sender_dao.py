@@ -107,5 +107,3 @@ def _raise_when_no_default(old_default):
     # check that the update is not updating the only default to false
     if not old_default:
         raise Exception("You must have at least one letter contact as the default.", 400)
-
-
