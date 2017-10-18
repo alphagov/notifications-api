@@ -392,7 +392,7 @@ def check_job_status():
     jobs_not_complete_after_30_minutes = Job.query.filter(
         Job.job_status == JOB_STATUS_IN_PROGRESS,
         and_(thirty_five_minutes_ago < Job.processing_started, Job.processing_started < thirty_minutes_ago)
-    ).all()
+    ).order_by(Job.processing_started).all()
 
     job_ids = [str(x.id) for x in jobs_not_complete_after_30_minutes]
     if job_ids:
