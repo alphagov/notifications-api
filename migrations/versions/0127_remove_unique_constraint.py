@@ -1,15 +1,15 @@
 """
 
-Revision ID: 0126_remove_unique_constraint
-Revises: 0125_add_organisation_type
+Revision ID: 0127_remove_unique_constraint
+Revises: 0126_add_annual_billing
 Create Date: 2017-10-17 16:47:37.826333
 
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = '0126_remove_unique_constraint'
-down_revision = '0125_add_organisation_type'
+revision = '0127_remove_unique_constraint'
+down_revision = '0126_add_annual_billing'
 
 
 def upgrade():
