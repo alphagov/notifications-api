@@ -2584,7 +2584,7 @@ def test_add_service_sms_sender_can_add_multiple_senders(client, notify_db_sessi
                            headers=[('Content-Type', 'application/json'), create_authorization_header()]
                            )
     assert response.status_code == 201
-    resp_json = json.loads(response.get_data(as_text=True))['data']
+    resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json['sms_sender'] == 'second'
     assert not resp_json['is_default']
     senders = ServiceSmsSender.query.all()
@@ -2606,7 +2606,7 @@ def test_add_service_sms_sender_when_it_is_an_inbound_number(client, notify_db_s
     assert response.status_code == 201
     updated_number = InboundNumber.query.get(inbound_number.id)
     assert updated_number.service_id == service.id
-    resp_json = json.loads(response.get_data(as_text=True))['data']
+    resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json['sms_sender'] == inbound_number.number
     assert resp_json['inbound_number_id'] == str(inbound_number.id)
     assert not resp_json['is_default']
@@ -2623,7 +2623,7 @@ def test_add_service_sms_sender_switches_default(client, notify_db_session):
                            headers=[('Content-Type', 'application/json'), create_authorization_header()]
                            )
     assert response.status_code == 201
-    resp_json = json.loads(response.get_data(as_text=True))['data']
+    resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json['sms_sender'] == 'second'
     assert not resp_json['inbound_number_id']
     assert resp_json['is_default']
@@ -2658,7 +2658,7 @@ def test_update_service_sms_sender(client, notify_db_session):
                            headers=[('Content-Type', 'application/json'), create_authorization_header()]
                            )
     assert response.status_code == 200
-    resp_json = json.loads(response.get_data(as_text=True))['data']
+    resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json['sms_sender'] == 'second'
     assert not resp_json['inbound_number_id']
     assert not resp_json['is_default']
@@ -2676,9 +2676,8 @@ def test_update_service_sms_sender_switches_default(client, notify_db_session):
                            headers=[('Content-Type', 'application/json'), create_authorization_header()]
                            )
     assert response.status_code == 200
-    resp_json = json.loads(response.get_data(as_text=True))['data']
+    resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json['sms_sender'] == 'second'
-    print(resp_json)
     assert not resp_json['inbound_number_id']
     assert resp_json['is_default']
     sms_senders = ServiceSmsSender.query.filter_by(sms_sender='first').first()
@@ -2727,7 +2726,7 @@ def test_get_service_sms_sender_by_id(client, notify_db_session):
                           headers=[('Content-Type', 'application/json'), create_authorization_header()]
                           )
     assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True))['data'] == service_sms_sender.serialize()
+    assert json.loads(response.get_data(as_text=True)) == service_sms_sender.serialize()
 
 
 def test_get_service_sms_sender_by_id_returns_404_when_service_does_not_exist(client, notify_db_session):
@@ -2758,7 +2757,7 @@ def test_get_service_sms_senders_for_service(client, notify_db_session):
                           headers=[('Content-Type', 'application/json'), create_authorization_header()]
                           )
     assert response.status_code == 200
-    json_resp = json.loads(response.get_data(as_text=True))['data']
+    json_resp = json.loads(response.get_data(as_text=True))
     assert len(json_resp) == 2
     assert json_resp[0]['is_default']
     assert json_resp[0]['sms_sender'] == 'first'
@@ -2771,4 +2770,4 @@ def test_get_service_sms_senders_for_service_returns_empty_list_when_service_doe
                           headers=[('Content-Type', 'application/json'), create_authorization_header()]
                           )
     assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True))['data'] == []
+    assert json.loads(response.get_data(as_text=True)) == []

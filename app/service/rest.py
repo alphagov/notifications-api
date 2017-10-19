@@ -641,7 +641,7 @@ def add_service_sms_sender(service_id):
                                                     is_default=form['is_default'],
                                                     inbound_number_id=inbound_number_id
                                                     )
-    return jsonify(data=new_sms_sender.serialize()), 201
+    return jsonify(new_sms_sender.serialize()), 201
 
 
 @service_blueprint.route('/<uuid:service_id>/sms-sender/<uuid:sms_sender_id>', methods=['POST'])
@@ -659,20 +659,20 @@ def update_service_sms_sender(service_id, sms_sender_id):
                                                    is_default=form['is_default'],
                                                    sms_sender=form['sms_sender']
                                                    )
-    return jsonify(data=new_sms_sender.serialize()), 200
+    return jsonify(new_sms_sender.serialize()), 200
 
 
 @service_blueprint.route('/<uuid:service_id>/sms-sender/<uuid:sms_sender_id>', methods=['GET'])
 def get_service_sms_sender_by_id(service_id, sms_sender_id):
     sms_sender = dao_get_service_sms_senders_by_id(service_id=service_id,
                                                    service_sms_sender_id=sms_sender_id)
-    return jsonify(data=sms_sender.serialize()), 200
+    return jsonify(sms_sender.serialize()), 200
 
 
 @service_blueprint.route('/<uuid:service_id>/sms-sender', methods=['GET'])
 def get_service_sms_senders_for_service(service_id):
     sms_senders = dao_get_sms_senders_by_service_id(service_id=service_id)
-    return jsonify(data=[sms_sender.serialize() for sms_sender in sms_senders]), 200
+    return jsonify([sms_sender.serialize() for sms_sender in sms_senders]), 200
 
 
 @service_blueprint.route('/unique', methods=["GET"])
