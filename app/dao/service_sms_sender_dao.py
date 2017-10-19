@@ -1,3 +1,5 @@
+from sqlalchemy import desc
+
 from app import db
 from app.dao.dao_utils import transactional
 from app.models import ServiceSmsSender
@@ -42,7 +44,7 @@ def dao_get_service_sms_senders_by_id(service_id, service_sms_sender_id):
 
 
 def dao_get_sms_senders_by_service_id(service_id):
-    return ServiceSmsSender.query.filter_by(service_id=service_id).all()
+    return ServiceSmsSender.query.filter_by(service_id=service_id).order_by(desc(ServiceSmsSender.is_default)).all()
 
 
 @transactional

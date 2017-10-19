@@ -317,9 +317,9 @@ class ServiceSmsSender(db.Model):
         return {
             "id": str(self.id),
             "sms_sender": self.sms_sender,
-            "service_id": self.service_id,
+            "service_id": str(self.service_id),
             "is_default": self.is_default,
-            "inbound_number_id": self.inbound_number_id,
+            "inbound_number_id": str(self.inbound_number_id) if self.inbound_number_id else None,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
         }

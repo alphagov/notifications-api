@@ -24,7 +24,7 @@ from app.dao.service_inbound_api_dao import (
     get_service_inbound_api
 )
 from app.dao.service_sms_sender_dao import insert_or_update_service_sms_sender, dao_add_sms_sender_for_service, \
-    dao_update_service_sms_sender, dao_get_service_sms_senders_by_id
+    dao_update_service_sms_sender, dao_get_service_sms_senders_by_id, dao_get_sms_senders_by_service_id
 from app.dao.services_dao import (
     dao_fetch_service_by_id,
     dao_fetch_all_services,
@@ -653,6 +653,19 @@ def update_service_sms_sender(service_id, sms_sender_id):
                                                    sms_sender=form['sms_sender']
                                                    )
     return jsonify(data=new_sms_sender.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/sms-sender/<uuid:sms_sender_id>', methods=['GET'])
+def get_service_sms_sender_by_id(service_id, sms_sender_id):
+    sms_sender = dao_get_service_sms_senders_by_id(service_id=service_id,
+                                                   service_sms_sender_id=sms_sender_id)
+    return jsonify(data=sms_sender.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/sms-sender', methods=['GET'])
+def get_service_sms_senders_for_service(service_id):
+    sms_senders = dao_get_sms_senders_by_service_id(service_id=service_id)
+    return jsonify(data=[sms_sender.serialize() for sms_sender in sms_senders]), 200
 
 
 @service_blueprint.route('/unique', methods=["GET"])
