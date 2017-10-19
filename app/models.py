@@ -313,6 +313,17 @@ class ServiceSmsSender(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
+    def serialize(self):
+        return {
+            "id": str(self.id),
+            "sms_sender": self.sms_sender,
+            "service_id": self.service_id,
+            "is_default": self.is_default,
+            "inbound_number_id": self.inbound_number_id,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+        }
+
 
 class ServicePermission(db.Model):
     __tablename__ = "service_permissions"

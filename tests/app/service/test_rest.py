@@ -12,25 +12,29 @@ from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
 from app.models import (
-    User, Organisation, Service, ServicePermission, Notification, ServiceEmailReplyTo, ServiceLetterContact,
+    User, Organisation, Service, ServicePermission, Notification,
+    ServiceEmailReplyTo, ServiceLetterContact,
+    ServiceSmsSender, InboundNumber,
     DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
-    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
-    ServiceSmsSender)
+    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE
+)
 from tests import create_authorization_header
 from tests.app.conftest import (
-    sample_service as create_service,
     sample_user_service_permission as create_user_service_permission,
     sample_notification as create_sample_notification,
     sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
 from tests.app.db import (
+    create_service,
     create_template,
     create_service_inbound_api,
     create_notification,
     create_reply_to_email,
     create_letter_contact,
+    create_inbound_number,
+    create_service_sms_sender
 )
 from tests.app.db import create_user
 
@@ -563,7 +567,7 @@ def test_update_service_flags(client, sample_service):
 
 @pytest.fixture(scope='function')
 def service_with_no_permissions(notify_db, notify_db_session):
-    return create_service(notify_db, notify_db_session, permissions=[])
+    return create_service(service_permissions=[])
 
 
 def test_update_service_flags_with_service_without_default_service_permissions(client, service_with_no_permissions):
@@ -586,8 +590,7 @@ def test_update_service_flags_with_service_without_default_service_permissions(c
 def test_update_service_flags_will_remove_service_permissions(client, notify_db, notify_db_session):
     auth_header = create_authorization_header()
 
-    service = create_service(
-        notify_db, notify_db_session, permissions=[SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE])
+    service = create_service(service_permissions=[SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE])
 
     assert INTERNATIONAL_SMS_TYPE in [p.permission for p in service.permissions]
 
@@ -781,8 +784,6 @@ def test_should_not_update_service_with_duplicate_name(notify_api,
         with notify_api.test_client() as client:
             service_name = "another name"
             service = create_service(
-                notify_db,
-                notify_db_session,
                 service_name=service_name,
                 user=sample_user,
                 email_from='another.name')
@@ -814,8 +815,6 @@ def test_should_not_update_service_with_duplicate_email_from(notify_api,
             email_from = "duplicate.name"
             service_name = "duplicate name"
             service = create_service(
-                notify_db,
-                notify_db_session,
                 service_name=service_name,
                 user=sample_user,
                 email_from=email_from)
@@ -1338,8 +1337,8 @@ def test_set_reply_to_email_for_service(notify_api, sample_service):
 
 def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context(), notify_api.test_client() as client:
-        service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
-        service_2 = create_service(notify_db, notify_db_session, service_name="2", email_from='2')
+        service_1 = create_service(service_name="1", email_from='1')
+        service_2 = create_service(service_name="2", email_from='2')
 
         create_sample_notification(notify_db, notify_db_session, service=service_2)
 
@@ -1362,7 +1361,7 @@ def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notif
 
 
 def test_get_notification_for_service_without_uuid(client, notify_db, notify_db_session):
-    service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
+    service_1 = create_service(service_name="1", email_from='1')
     response = client.get(
         path='/service/{}/notifications/{}'.format(service_1.id, 'foo'),
         headers=[create_authorization_header()]
@@ -1372,8 +1371,8 @@ def test_get_notification_for_service_without_uuid(client, notify_db, notify_db_
 
 def test_get_notification_for_service(client, notify_db, notify_db_session):
 
-    service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
-    service_2 = create_service(notify_db, notify_db_session, service_name="2", email_from='2')
+    service_1 = create_service(service_name="1", email_from='1')
+    service_2 = create_service(service_name="2", email_from='2')
 
     service_1_notifications = [
         create_sample_notification(notify_db, notify_db_session, service=service_1),
@@ -1669,8 +1668,8 @@ def test_get_services_with_detailed_flag_defaults_to_today(client, mocker):
 def test_get_detailed_services_groups_by_service(notify_db, notify_db_session):
     from app.service.rest import get_detailed_services
 
-    service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
-    service_2 = create_service(notify_db, notify_db_session, service_name="2", email_from='2')
+    service_1 = create_service(service_name="1", email_from='1')
+    service_2 = create_service(service_name="2", email_from='2')
 
     create_sample_notification(notify_db, notify_db_session, service=service_1, status='created')
     create_sample_notification(notify_db, notify_db_session, service=service_2, status='created')
@@ -1698,8 +1697,8 @@ def test_get_detailed_services_groups_by_service(notify_db, notify_db_session):
 def test_get_detailed_services_includes_services_with_no_notifications(notify_db, notify_db_session):
     from app.service.rest import get_detailed_services
 
-    service_1 = create_service(notify_db, notify_db_session, service_name="1", email_from='1')
-    service_2 = create_service(notify_db, notify_db_session, service_name="2", email_from='2')
+    service_1 = create_service(service_name="1", email_from='1')
+    service_2 = create_service(service_name="2", email_from='2')
 
     create_sample_notification(notify_db, notify_db_session, service=service_1)
 
@@ -1892,11 +1891,7 @@ def test_search_for_notification_by_to_field_return_multiple_matches(client, not
 def test_update_service_calls_send_notification_as_service_becomes_live(notify_db, notify_db_session, client, mocker):
     send_notification_mock = mocker.patch('app.service.rest.send_notification_to_service_users')
 
-    restricted_service = create_service(
-        notify_db,
-        notify_db_session,
-        restricted=True
-    )
+    restricted_service = create_service(restricted=True)
 
     data = {
         "restricted": False
@@ -2213,8 +2208,7 @@ def test_is_service_name_unique_returns_200_if_unique(client):
                           ("something unique", "something.unique")
                           ])
 def test_is_service_name_unique_returns_200_and_false(client, notify_db, notify_db_session, name, email_from):
-    create_service(notify_db=notify_db, notify_db_session=notify_db_session,
-                   service_name='something unique', email_from='something.unique')
+    create_service(service_name='something unique', email_from='something.unique')
     response = client.get('/service/unique?name={}&email_from={}'.format(name, email_from),
                           headers=[create_authorization_header()])
     assert response.status_code == 200
@@ -2255,7 +2249,7 @@ def test_get_email_reply_to_addresses_when_there_are_no_reply_to_email_addresses
 
 
 def test_get_email_reply_to_addresses_with_one_email_address(client, notify_db, notify_db_session):
-    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    service = create_service()
     reply_to = create_reply_to_email(service, 'test@mail.com')
 
     response = client.get('/service/{}/email-reply-to'.format(service.id),
@@ -2271,7 +2265,7 @@ def test_get_email_reply_to_addresses_with_one_email_address(client, notify_db, 
 
 
 def test_get_email_reply_to_addresses_with_multiple_email_addresses(client, notify_db, notify_db_session):
-    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    service = create_service()
     reply_to_a = create_reply_to_email(service, 'test_a@mail.com')
     reply_to_b = create_reply_to_email(service, 'test_b@mail.com', False)
 
@@ -2389,7 +2383,7 @@ def test_update_service_reply_to_email_address_404s_when_invalid_service_id(clie
 
 
 def test_get_email_reply_to_address(client, notify_db, notify_db_session):
-    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    service = create_service()
     reply_to = create_reply_to_email(service, 'test_a@mail.com')
 
     response = client.get('/service/{}/email-reply-to/{}'.format(service.id, reply_to.id),
@@ -2426,7 +2420,7 @@ def test_get_letter_contacts_when_there_are_no_letter_contacts(client, sample_se
 
 
 def test_get_letter_contacts_with_one_letter_contact(client, notify_db, notify_db_session):
-    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    service = create_service()
     letter_contact = create_letter_contact(service, 'Aberdeen, AB23 1XH')
 
     response = client.get('/service/{}/letter-contact'.format(service.id),
@@ -2442,7 +2436,7 @@ def test_get_letter_contacts_with_one_letter_contact(client, notify_db, notify_d
 
 
 def test_get_letter_contacts_with_multiple_letter_contacts(client, notify_db, notify_db_session):
-    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    service = create_service()
     letter_contact_a = create_letter_contact(service, 'Aberdeen, AB23 1XH')
     letter_contact_b = create_letter_contact(service, 'London, E1 8QS', False)
 
@@ -2469,7 +2463,7 @@ def test_get_letter_contacts_with_multiple_letter_contacts(client, notify_db, no
 
 
 def test_get_letter_contact_by_id(client, notify_db, notify_db_session):
-    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    service = create_service()
     letter_contact = create_letter_contact(service, 'London, E1 8QS')
 
     response = client.get('/service/{}/letter-contact/{}'.format(service.id, letter_contact.id),
@@ -2480,7 +2474,7 @@ def test_get_letter_contact_by_id(client, notify_db, notify_db_session):
 
 
 def test_get_letter_contact_return_404_when_invalid_contact_id(client, notify_db, notify_db_session):
-    service = create_service(notify_db=notify_db, notify_db_session=notify_db_session)
+    service = create_service()
 
     response = client.get('/service/{}/letter-contact/{}'.format(service.id, '93d59f88-4aa1-453c-9900-f61e2fc8a2de'),
                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
@@ -2573,6 +2567,151 @@ def test_update_service_letter_contact_returns_404_when_invalid_service_id(clien
                            data={},
                            headers=[('Content-Type', 'application/json'), create_authorization_header()])
 
+    assert response.status_code == 404
+    result = json.loads(response.get_data(as_text=True))
+    assert result['result'] == 'error'
+    assert result['message'] == 'No result found'
+
+
+def test_add_service_sms_sender_can_add_multiple_senders(client, notify_db_session):
+    service = create_service()
+    data = {
+        "sms_sender": 'second',
+        "is_default": False,
+    }
+    response = client.post('/service/{}/sms-sender'.format(service.id),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()]
+                           )
+    assert response.status_code == 201
+    resp_json = json.loads(response.get_data(as_text=True))['data']
+    assert resp_json['sms_sender'] == 'second'
+    assert not resp_json['is_default']
+    senders = ServiceSmsSender.query.all()
+    assert len(senders) == 2
+
+
+def test_add_service_sms_sender_when_it_is_an_inbound_number(client, notify_db_session):
+    service = create_service()
+    inbound_number = create_inbound_number(number='12345')
+    data = {
+        "sms_sender": inbound_number.number,
+        "is_default": False,
+        "inbound_number_id": str(inbound_number.id)
+    }
+    response = client.post('/service/{}/sms-sender'.format(service.id),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()]
+                           )
+    assert response.status_code == 201
+    updated_number = InboundNumber.query.get(inbound_number.id)
+    assert updated_number.service_id == service.id
+    resp_json = json.loads(response.get_data(as_text=True))['data']
+    assert resp_json['sms_sender'] == inbound_number.number
+    assert resp_json['inbound_number_id'] == str(inbound_number.id)
+    assert not resp_json['is_default']
+
+
+def test_add_service_sms_sender_switches_default(client, notify_db_session):
+    service = create_service(sms_sender='first')
+    data = {
+        "sms_sender": 'second',
+        "is_default": True,
+    }
+    response = client.post('/service/{}/sms-sender'.format(service.id),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()]
+                           )
+    assert response.status_code == 201
+    resp_json = json.loads(response.get_data(as_text=True))['data']
+    assert resp_json['sms_sender'] == 'second'
+    assert not resp_json['inbound_number_id']
+    assert resp_json['is_default']
+    sms_senders = ServiceSmsSender.query.filter_by(sms_sender='first').first()
+    assert not sms_senders.is_default
+
+
+def test_add_service_sms_sender_return_404_when_service_does_not_exist(client):
+    data = {
+        "sms_sender": '12345',
+        "is_default": False
+    }
+    response = client.post('/service/{}/sms-sender'.format(uuid.uuid4()),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()]
+                           )
+    assert response.status_code == 404
+    result = json.loads(response.get_data(as_text=True))
+    assert result['result'] == 'error'
+    assert result['message'] == 'No result found'
+
+
+def test_update_service_sms_sender(client, notify_db_session):
+    service = create_service()
+    service_sms_sender = create_service_sms_sender(service=service, sms_sender='1235', is_default=False)
+    data = {
+        "sms_sender": 'second',
+        "is_default": False,
+    }
+    response = client.post('/service/{}/sms-sender/{}'.format(service.id, service_sms_sender.id),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()]
+                           )
+    assert response.status_code == 200
+    resp_json = json.loads(response.get_data(as_text=True))['data']
+    assert resp_json['sms_sender'] == 'second'
+    assert not resp_json['inbound_number_id']
+    assert not resp_json['is_default']
+
+
+def test_update_service_sms_sender_switches_default(client, notify_db_session):
+    service = create_service(sms_sender='first')
+    service_sms_sender = create_service_sms_sender(service=service, sms_sender='1235', is_default=False)
+    data = {
+        "sms_sender": 'second',
+        "is_default": True,
+    }
+    response = client.post('/service/{}/sms-sender/{}'.format(service.id, service_sms_sender.id),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()]
+                           )
+    assert response.status_code == 200
+    resp_json = json.loads(response.get_data(as_text=True))['data']
+    assert resp_json['sms_sender'] == 'second'
+    assert not resp_json['inbound_number_id']
+    assert resp_json['is_default']
+    sms_senders = ServiceSmsSender.query.filter_by(sms_sender='first').first()
+    assert not sms_senders.is_default
+
+
+def test_update_service_sms_sender_does_not_allow_sender_update_for_inbound_number(client, notify_db_session):
+    service = create_service()
+    inbound_number = create_inbound_number('12345', service_id=service.id)
+    service_sms_sender = create_service_sms_sender(service=service,
+                                                   sms_sender='1235',
+                                                   is_default=False,
+                                                   inbound_number_id=inbound_number.id)
+    data = {
+        "sms_sender": 'second',
+        "is_default": True,
+        "inbound_number_id": str(inbound_number.id)
+    }
+    response = client.post('/service/{}/sms-sender/{}'.format(service.id, service_sms_sender.id),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()]
+                           )
+    assert response.status_code == 400
+
+
+def test_update_service_sms_sender_return_404_when_service_does_not_exist(client):
+    data = {
+        "sms_sender": '12345',
+        "is_default": False
+    }
+    response = client.post('/service/{}/sms-sender/{}'.format(uuid.uuid4(), uuid.uuid4()),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()]
+                           )
     assert response.status_code == 404
     result = json.loads(response.get_data(as_text=True))
     assert result['result'] == 'error'

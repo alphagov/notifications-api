@@ -63,12 +63,13 @@ def create_service(
     research_mode=False,
     active=True,
     do_create_inbound_number=True,
+    email_from=None
 ):
     service = Service(
         name=service_name,
         message_limit=1000,
         restricted=restricted,
-        email_from=service_name.lower().replace(' ', '.'),
+        email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
         created_by=user or create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
         sms_sender=sms_sender,
     )
@@ -355,12 +356,14 @@ def create_reply_to_email(
 def create_service_sms_sender(
     service,
     sms_sender,
-    is_default=True
+    is_default=True,
+    inbound_number_id=None
 ):
     data = {
         'service_id': service.id,
         'sms_sender': sms_sender,
         'is_default': is_default,
+        'inbound_number_id': inbound_number_id
     }
     service_sms_sender = ServiceSmsSender(**data)
 
