@@ -187,6 +187,7 @@ class AnnualBilling(db.Model):
     free_sms_fragment_limit = db.Column(db.Integer, nullable=False, index=False, unique=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    UniqueConstraint('financial_year_start', 'service_id', name='ix_annual_billing_service_id')
 
     def serialize(self):
         return {
