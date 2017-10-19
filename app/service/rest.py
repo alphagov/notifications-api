@@ -634,10 +634,13 @@ def add_service_sms_sender(service_id):
     dao_fetch_service_by_id(service_id)
     form = validate(request.get_json(), add_service_sms_sender_request)
     inbound_number_id = form.get('inbound_number_id', None)
+    sms_sender = form.get('sms_sender')
     if inbound_number_id:
-        dao_allocate_number_for_service(service_id=service_id, inbound_number_id=inbound_number_id)
+        updated_number = dao_allocate_number_for_service(service_id=service_id, inbound_number_id=inbound_number_id)
+        # the sms_sender in the form is the inbound_number_id from client, use number from table.
+        sms_sender = updated_number.number
     new_sms_sender = dao_add_sms_sender_for_service(service_id=service_id,
-                                                    sms_sender=form['sms_sender'],
+                                                    sms_sender=sms_sender,
                                                     is_default=form['is_default'],
                                                     inbound_number_id=inbound_number_id
                                                     )

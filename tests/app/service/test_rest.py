@@ -2595,7 +2595,7 @@ def test_add_service_sms_sender_when_it_is_an_inbound_number(client, notify_db_s
     service = create_service()
     inbound_number = create_inbound_number(number='12345')
     data = {
-        "sms_sender": inbound_number.number,
+        "sms_sender": str(inbound_number.id),
         "is_default": False,
         "inbound_number_id": str(inbound_number.id)
     }
