@@ -179,6 +179,26 @@ class ServicePermissionTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
+class AnnualBilling(db.Model):
+    __tablename__ = "annual_billing"
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False, index=True, nullable=False)
+    financial_year_start = db.Column(db.Integer, nullable=False, default=True, unique=False)
+    free_sms_fragment_limit = db.Column(db.Integer, nullable=False, index=False, unique=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+
+    def serialize(self):
+        return {
+            'id': str(self.id),
+            'service_id': str(self.service_id),
+            'free_sms_fragment_limit': str(self.free_sms_fragment_limit),
+            'financial_year_start': str(self.financial_year_start),
+            'created_at': self.created_at.strftime(DATETIME_FORMAT),
+            'updated_at': self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
+        }
+
+
 class Service(db.Model, Versioned):
     __tablename__ = 'services'
 
@@ -213,6 +233,7 @@ class Service(db.Model, Versioned):
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
     free_sms_fragment_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
     organisation = db.relationship('Organisation')
+    annual_billing = db.relationship('AnnualBilling')
     dvla_organisation_id = db.Column(
         db.String,
         db.ForeignKey('dvla_organisation.id'),
@@ -1462,23 +1483,3 @@ class NotificationEmailReplyTo(db.Model):
         nullable=False,
         primary_key=True
     )
-
-
-class AnnualBilling(db.Model):
-    __tablename__ = "annual_billing"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False, index=True, nullable=False)
-    financial_year_start = db.Column(db.Integer, nullable=False, default=True)
-    free_sms_fragment_limit = db.Column(db.Integer, nullable=False, index=False, unique=False)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-
-    def serialize(self):
-        return {
-            'id': str(self.id),
-            'service_id': str(self.service_id),
-            'free_sms_fragment_limit': str(self.free_sms_fragment_limit),
-            'financial_year_start': str(self.financial_year_start),
-            'created_at': self.created_at.strftime(DATETIME_FORMAT),
-            'updated_at': self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
-        }
