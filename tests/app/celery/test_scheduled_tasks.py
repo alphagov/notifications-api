@@ -831,6 +831,6 @@ def test_check_job_status_task_raises_job_incomplete_error_for_multiple_jobs(moc
 
     mock_celery.assert_called_once_with(
         name=TaskNames.PROCESS_INCOMPLETE_JOBS,
-        args=([str(job_2.id), str(job.id)],),
+        args=([str(job.id), str(job_2.id)],),
         queue=QueueNames.JOBS
     )
