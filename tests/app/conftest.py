@@ -137,7 +137,7 @@ def sample_service(
     restricted=False,
     limit=1000,
     email_from=None,
-    permissions=[SMS_TYPE, EMAIL_TYPE],
+    permissions=None,
     research_mode=None,
     free_sms_fragment_limit=250000
 ):
@@ -166,7 +166,7 @@ def sample_service(
         if user not in service.users:
             dao_add_user_to_service(service, user)
 
-    if INBOUND_SMS_TYPE in permissions:
+    if permissions and INBOUND_SMS_TYPE in permissions:
         create_inbound_number('12345', service_id=service.id)
 
     return service

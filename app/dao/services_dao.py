@@ -35,10 +35,18 @@ from app.models import (
     JobStatistics,
     SMS_TYPE,
     EMAIL_TYPE,
-    ServiceSmsSender)
+    INTERNATIONAL_SMS_TYPE,
+    ServiceSmsSender,
+)
 from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
+
+DEFAULT_SERVICE_PERMISSIONS = [
+    SMS_TYPE,
+    EMAIL_TYPE,
+    INTERNATIONAL_SMS_TYPE,
+]
 
 
 def dao_fetch_all_services(only_active=False):
@@ -146,12 +154,15 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
 
 @transactional
 @version_class(Service)
-def dao_create_service(service, user, service_id=None, service_permissions=[SMS_TYPE, EMAIL_TYPE]):
+def dao_create_service(service, user, service_id=None, service_permissions=None):
     # the default property does not appear to work when there is a difference between the sqlalchemy schema and the
     # db schema (ie: during a migration), so we have to set sms_sender manually here. After the GOVUK sms_sender
     # migration is completed, this code should be able to be removed.
     if not service.sms_sender:
         service.sms_sender = current_app.config['FROM_NUMBER']
+
+    if service_permissions is None:
+        service_permissions = DEFAULT_SERVICE_PERMISSIONS
 
     from app.dao.permissions_dao import permission_dao
     service.users.append(user)

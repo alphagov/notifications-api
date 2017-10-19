@@ -310,9 +310,14 @@ def test_should_not_rate_limit_if_limiting_is_disabled(
 
 
 @pytest.mark.parametrize('key_type', ['test', 'normal'])
-def test_rejects_api_calls_with_international_numbers_if_service_does_not_allow_int_sms(sample_service, key_type):
+def test_rejects_api_calls_with_international_numbers_if_service_does_not_allow_int_sms(
+    key_type,
+    notify_db,
+    notify_db_session,
+):
+    service = create_service(notify_db, notify_db_session, permissions=[SMS_TYPE])
     with pytest.raises(BadRequestError) as e:
-        validate_and_format_recipient('20-12-1234-1234', key_type, sample_service, SMS_TYPE)
+        validate_and_format_recipient('20-12-1234-1234', key_type, service, SMS_TYPE)
     assert e.value.status_code == 400
     assert e.value.message == 'Cannot send to international mobile numbers'
     assert e.value.fields == []
