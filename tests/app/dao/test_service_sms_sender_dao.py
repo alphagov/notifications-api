@@ -66,9 +66,9 @@ def test_dao_get_sms_senders_by_service_id(notify_db_session):
     assert len(results) == 2
     for x in results:
         if x.is_default:
-            x.sms_sender = 'first_sms'
+            assert x.sms_sender == 'first_sms'
         else:
-            x == second_sender
+            assert x == second_sender
 
 
 def test_dao_add_sms_sender_for_service(notify_db_session):
