@@ -247,7 +247,7 @@ class PopulateServiceEmailReplyTo(Command):
         result = db.session.execute(services_to_update)
         db.session.commit()
 
-        print("Populated email reply to adderesses for {}".format(result.rowcount))
+        print("Populated email reply to addresses for {}".format(result.rowcount))
 
 
 class PopulateServiceSmsSender(Command):
@@ -329,3 +329,25 @@ class PopulateServiceAndServiceHistoryFreeSmsFragmentLimit(Command):
 
         print("Populated free sms fragment limits for {} services".format(services_result.rowcount))
         print("Populated free sms fragment limits for {} services history".format(services_history_result.rowcount))
+
+
+class PopulateAnnualBilling(Command):
+    def run(self):
+        financial_year = [2016, 2017, 2018]
+
+        for fy in financial_year:
+            populate_data = """
+            INSERT INTO annual_billing(id, service_id, free_sms_fragment_limit, financial_year_start,
+                    created_at, updated_at)
+                SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, 250000, {}, '{}', '{}'
+                FROM services
+                WHERE id NOT IN(
+                    SELECT service_id
+                    FROM annual_billing
+                    WHERE financial_year_start={})
+            """.format(fy, datetime.utcnow(), datetime.utcnow(), fy)
+
+            services_result1 = db.session.execute(populate_data)
+            db.session.commit()
+
+            print("Populated annual billing {} for {} services".format(fy, services_result1.rowcount))

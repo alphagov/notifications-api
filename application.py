@@ -23,6 +23,8 @@ manager.add_command('populate_service_sms_sender', commands.PopulateServiceSmsSe
 manager.add_command('populate_service_letter_contact', commands.PopulateServiceLetterContact)
 manager.add_command('populate_service_and_service_history_free_sms_fragment_limit',
                     commands.PopulateServiceAndServiceHistoryFreeSmsFragmentLimit)
+manager.add_command('populate_annual_billing',
+                    commands.PopulateAnnualBilling)
 
 
 @manager.command
