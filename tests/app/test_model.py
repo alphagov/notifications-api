@@ -10,12 +10,14 @@ from app.models import (
     MOBILE_TYPE,
     EMAIL_TYPE,
     NOTIFICATION_CREATED,
+    NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
     NOTIFICATION_PENDING,
     NOTIFICATION_FAILED,
-    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_STATUS_LETTER_ACCEPTED,
+    NOTIFICATION_STATUS_LETTER_RECEIVED,
     NOTIFICATION_STATUS_TYPES_FAILED,
-    NOTIFICATION_STATUS_LETTER_ACCEPTED
+    NOTIFICATION_TECHNICAL_FAILURE
 )
 from tests.app.conftest import (
     sample_template as create_sample_template,
@@ -71,6 +73,7 @@ def test_should_not_build_service_whitelist_from_invalid_contact(recipient_type,
     ([NOTIFICATION_FAILED], NOTIFICATION_STATUS_TYPES_FAILED),
     ([NOTIFICATION_CREATED], [NOTIFICATION_CREATED]),
     ([NOTIFICATION_TECHNICAL_FAILURE], [NOTIFICATION_TECHNICAL_FAILURE]),
+    (NOTIFICATION_STATUS_LETTER_RECEIVED, NOTIFICATION_DELIVERED),
     # passing in lists containing multiple statuses
     ([NOTIFICATION_FAILED, NOTIFICATION_CREATED], NOTIFICATION_STATUS_TYPES_FAILED + [NOTIFICATION_CREATED]),
     ([NOTIFICATION_CREATED, NOTIFICATION_PENDING], [NOTIFICATION_CREATED, NOTIFICATION_PENDING]),
@@ -132,7 +135,8 @@ def test_notification_for_csv_returns_correct_job_row_number(notify_db, notify_d
     ('sms', 'sent', 'Sent internationally'),
     ('letter', 'created', 'Accepted'),
     ('letter', 'sending', 'Accepted'),
-    ('letter', 'technical-failure', 'Technical failure')
+    ('letter', 'technical-failure', 'Technical failure'),
+    ('letter', 'delivered', 'Received')
 ])
 def test_notification_for_csv_returns_formatted_status(
     notify_db,
