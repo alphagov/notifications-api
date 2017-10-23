@@ -2798,3 +2798,28 @@ def test_get_platform_stats(client, notify_db_session):
                          ['sms', 'delivered', 3],
                          ['sms', 'sending', 1],
                          ['letter', 'sending', 2]]
+
+
+def test_get_platform_stats_creates_zero_stats(client, notify_db_session):
+    service_1 = create_service(service_name='Service 1')
+    service_2 = create_service(service_name='Service 2')
+    sms_template = create_template(service=service_1)
+    email_template = create_template(service=service_2, template_type=EMAIL_TYPE)
+    letter_template = create_template(service=service_2, template_type=LETTER_TYPE)
+    create_notification(template=sms_template, status='sending')
+    create_notification(template=sms_template, status='delivered')
+    create_notification(template=sms_template, status='delivered')
+    create_notification(template=sms_template, status='delivered')
+    create_notification(template=email_template, status='temporary-failure')
+    create_notification(template=email_template, status='delivered')
+
+    response = client.get('/service/platform-stats',
+                          headers=[('Content-Type', 'application/json'), create_authorization_header()]
+                          )
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+    print(json_resp)
+    assert json_resp == {'email': {'failed': 1, 'requested': 2, 'delivered': 1},
+                         'sms': {'failed': 0, 'requested': 4, 'delivered': 3},
+                         'letter': {'failed': 0, 'requested': 0, 'delivered': 0}
+                         }

@@ -116,7 +116,9 @@ def get_platform_stats():
                                                                 end_date=end_date,
                                                                 include_from_test_key=include_from_test_key
                                                                 )
-    result = jsonify(data)
+    stats = statistics.format_statistics(data)
+
+    result = jsonify(stats)
     return result
 
 
