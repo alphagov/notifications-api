@@ -46,8 +46,8 @@ from app.dao.services_dao import (
     dao_suspend_service,
     dao_resume_service,
     dao_fetch_monthly_historical_stats_for_service,
-    dao_fetch_monthly_historical_stats_by_template_for_service
-)
+    dao_fetch_monthly_historical_stats_by_template_for_service,
+    fetch_aggregate_stats_by_date_range_for_all_services)
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
     dao_add_and_commit_whitelisted_contacts,
@@ -101,6 +101,23 @@ from app.utils import pagination_links
 service_blueprint = Blueprint('service', __name__)
 
 register_errors(service_blueprint)
+
+
+@service_blueprint.route('/platform-stats', methods=['GET'])
+def get_platform_stats():
+    include_from_test_key = request.args.get('include_from_test_key', 'True') != 'False'
+
+    # If start and end date are not set, we are expecting today's stats.
+    today = str(datetime.utcnow().date())
+
+    start_date = datetime.strptime(request.args.get('start_date', today), '%Y-%m-%d').date()
+    end_date = datetime.strptime(request.args.get('end_date', today), '%Y-%m-%d').date()
+    data = fetch_aggregate_stats_by_date_range_for_all_services(start_date=start_date,
+                                                                end_date=end_date,
+                                                                include_from_test_key=include_from_test_key
+                                                                )
+    result = jsonify(data)
+    return result
 
 
 @service_blueprint.route('', methods=['GET'])
