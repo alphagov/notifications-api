@@ -7,10 +7,14 @@ from flask import current_app
 from app.models import (
     Job,
     Notification,
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_FAILED,
     NOTIFICATION_SENDING,
     NOTIFICATION_CREATED,
-    NOTIFICATION_TECHNICAL_FAILURE
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_STATUS_LETTER_RECEIVED
 )
+from app.dao.notifications_dao import dao_update_notifications_by_reference
 from app.celery.tasks import (
     update_job_to_sent_to_dvla,
     update_dvla_job_to_error,
@@ -89,6 +93,20 @@ def test_update_letter_notifications_statuses_builds_updates_list(notify_api, mo
     assert updates[1].status == 'Sent'
     assert updates[1].page_count == '2'
     assert updates[1].cost_threshold == 'Sorted'
+
+
+def test_update_letter_notifications_statuses_persisted(notify_api, mocker, sample_letter_template):
+    sent_letter = create_notification(sample_letter_template, reference='ref-foo', status=NOTIFICATION_SENDING)
+    failed_letter = create_notification(sample_letter_template, reference='ref-bar', status=NOTIFICATION_SENDING)
+
+    valid_file = '{}|Sent|1|Unsorted\n{}|Failed|2|Sorted'.format(
+        sent_letter.reference, failed_letter.reference)
+    mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
+
+    update_letter_notifications_statuses(filename='foo.txt')
+
+    assert sent_letter.status == NOTIFICATION_DELIVERED
+    assert failed_letter.status == NOTIFICATION_FAILED
 
 
 def test_update_letter_notifications_to_sent_to_dvla_updates_based_on_notification_references(

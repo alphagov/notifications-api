@@ -36,6 +36,7 @@ from app.dao.jobs_dao import (
     dao_update_job_status)
 from app.dao.notifications_dao import (
     get_notification_by_id,
+    update_notification_status_by_reference,
     dao_update_notifications_for_job_to_sent_to_dvla,
     dao_update_notifications_by_reference,
     dao_get_last_notification_added_for_job_id)
@@ -46,6 +47,7 @@ from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
     Job,
     Notification,
+    DVLA_STATUS_SENT,
     EMAIL_TYPE,
     JOB_STATUS_CANCELLED,
     JOB_STATUS_FINISHED,
@@ -55,6 +57,8 @@ from app.models import (
     JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_ERROR,
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_FAILED,
     NOTIFICATION_SENDING,
     NOTIFICATION_TECHNICAL_FAILURE,
     SMS_TYPE,
@@ -443,8 +447,21 @@ def update_letter_notifications_statuses(self, filename):
         raise
     else:
         for update in notification_updates:
-            current_app.logger.info('DVLA update: {}'.format(str(update)))
-            # TODO: Update notifications with desired status
+            status = NOTIFICATION_DELIVERED if update.status == DVLA_STATUS_SENT else NOTIFICATION_FAILED
+            notification = update_notification_status_by_reference(
+                update.reference,
+                status
+            )
+
+            if not notification:
+                msg = "Update letter notification file {filename} failed: notification either not found " \
+                    "or already updated from delivered. Status {status} for notification reference {reference}".format(
+                        filename=filename, status=status, reference=update.reference)
+                current_app.logger.error(msg)
+            else:
+                current_app.logger.info(
+                    'DVLA file: {filename}, notification updated to {status}: {reference}'.format(
+                        filename=filename, status=status, reference=str(update.reference)))
 
 
 def process_updates_from_file(response_file):
