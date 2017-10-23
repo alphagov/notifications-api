@@ -2793,11 +2793,9 @@ def test_get_platform_stats(client, notify_db_session):
                           )
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
-    assert json_resp == [['email', 'delivered', 1],
-                         ['email', 'temporary-failure', 1],
-                         ['sms', 'delivered', 3],
-                         ['sms', 'sending', 1],
-                         ['letter', 'sending', 2]]
+    assert json_resp['email'] == {'delivered': 1, 'requested': 2, 'failed': 1}
+    assert json_resp['letter'] == {'delivered': 0, 'requested': 2, 'failed': 0}
+    assert json_resp['sms'] == {'delivered': 3, 'requested': 4, 'failed': 0}
 
 
 def test_get_platform_stats_creates_zero_stats(client, notify_db_session):
@@ -2805,7 +2803,6 @@ def test_get_platform_stats_creates_zero_stats(client, notify_db_session):
     service_2 = create_service(service_name='Service 2')
     sms_template = create_template(service=service_1)
     email_template = create_template(service=service_2, template_type=EMAIL_TYPE)
-    letter_template = create_template(service=service_2, template_type=LETTER_TYPE)
     create_notification(template=sms_template, status='sending')
     create_notification(template=sms_template, status='delivered')
     create_notification(template=sms_template, status='delivered')
@@ -2818,8 +2815,6 @@ def test_get_platform_stats_creates_zero_stats(client, notify_db_session):
                           )
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
-    print(json_resp)
-    assert json_resp == {'email': {'failed': 1, 'requested': 2, 'delivered': 1},
-                         'sms': {'failed': 0, 'requested': 4, 'delivered': 3},
-                         'letter': {'failed': 0, 'requested': 0, 'delivered': 0}
-                         }
+    assert json_resp['email'] == {'failed': 1, 'requested': 2, 'delivered': 1}
+    assert json_resp['letter'] == {'failed': 0, 'requested': 0, 'delivered': 0}
+    assert json_resp['sms'] == {'failed': 0, 'requested': 4, 'delivered': 3}
