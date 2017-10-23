@@ -207,7 +207,14 @@ def test_get_service_list_has_default_permissions(client, service_factory):
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
     assert len(json_resp['data']) == 3
-    assert all([set(json['permissions']) == set([EMAIL_TYPE, SMS_TYPE]) for json in json_resp['data']])
+    assert all(
+        set(
+            json['permissions']
+        ) == set([
+            EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE,
+        ])
+        for json in json_resp['data']
+    )
 
 
 def test_get_service_by_id_has_default_service_permissions(client, sample_service):
@@ -218,7 +225,11 @@ def test_get_service_by_id_has_default_service_permissions(client, sample_servic
     )
     json_resp = json.loads(resp.get_data(as_text=True))
 
-    assert set(json_resp['data']['permissions']) == set([EMAIL_TYPE, SMS_TYPE])
+    assert set(
+        json_resp['data']['permissions']
+    ) == set([
+        EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE,
+    ])
 
 
 def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
