@@ -179,6 +179,27 @@ class ServicePermissionTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
+class AnnualBilling(db.Model):
+    __tablename__ = "annual_billing"
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False, index=True, nullable=False)
+    financial_year_start = db.Column(db.Integer, nullable=False, default=True, unique=False)
+    free_sms_fragment_limit = db.Column(db.Integer, nullable=False, index=False, unique=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    UniqueConstraint('financial_year_start', 'service_id', name='ix_annual_billing_service_id')
+
+    def serialize(self):
+        return {
+            'id': str(self.id),
+            'service_id': str(self.service_id),
+            'free_sms_fragment_limit': str(self.free_sms_fragment_limit),
+            'financial_year_start': str(self.financial_year_start),
+            'created_at': self.created_at.strftime(DATETIME_FORMAT),
+            'updated_at': self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
+        }
+
+
 class Service(db.Model, Versioned):
     __tablename__ = 'services'
 
@@ -213,6 +234,7 @@ class Service(db.Model, Versioned):
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
     free_sms_fragment_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
     organisation = db.relationship('Organisation')
+    annual_billing = db.relationship('AnnualBilling')
     dvla_organisation_id = db.Column(
         db.String,
         db.ForeignKey('dvla_organisation.id'),
@@ -227,6 +249,10 @@ class Service(db.Model, Versioned):
         index=True,
         nullable=False,
         default=BRANDING_GOVUK
+    )
+    organisation_type = db.Column(
+        db.String(255),
+        nullable=True,
     )
 
     association_proxy('permissions', 'service_permission_types')
@@ -300,7 +326,7 @@ class ServiceSmsSender(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     sms_sender = db.Column(db.String(11), nullable=False)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=True, index=True, nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship(Service, backref=db.backref("service_sms_senders", uselist=True))
     is_default = db.Column(db.Boolean, nullable=False, default=True)
     inbound_number_id = db.Column(UUID(as_uuid=True), db.ForeignKey('inbound_numbers.id'),
@@ -308,6 +334,17 @@ class ServiceSmsSender(db.Model):
     inbound_number = db.relationship(InboundNumber, backref=db.backref("inbound_number", uselist=False))
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    def serialize(self):
+        return {
+            "id": str(self.id),
+            "sms_sender": self.sms_sender,
+            "service_id": str(self.service_id),
+            "is_default": self.is_default,
+            "inbound_number_id": str(self.inbound_number_id) if self.inbound_number_id else None,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+        }
 
 
 class ServicePermission(db.Model):

@@ -328,17 +328,26 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
     assert not deliver_mock.called
 
 
-def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(client, sample_service, sample_template):
+def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(
+    client,
+    notify_db,
+    notify_db_session,
+):
+
+    service = sample_service(notify_db, notify_db_session, permissions=[SMS_TYPE])
+    template = create_sample_template(notify_db, notify_db_session, service=service)
+
     data = {
         'phone_number': '20-12-1234-1234',
-        'template_id': sample_template.id
+        'template_id': template.id
     }
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_authorization_header(service_id=service.id)
 
     response = client.post(
         path='/v2/notifications/sms',
         data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
 
     assert response.status_code == 400
     assert response.headers['Content-type'] == 'application/json'
@@ -378,18 +387,20 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_notification(
     ]
 
 
-def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(notify_db, notify_db_session, client, mocker):
-
-    service = sample_service(notify_db, notify_db_session, permissions=[SMS_TYPE, INTERNATIONAL_SMS_TYPE])
-    template = create_sample_template(notify_db, notify_db_session, service=service)
+def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(
+    sample_service,
+    sample_template,
+    client,
+    mocker,
+):
 
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     data = {
         'phone_number': '20-12-1234-1234',
-        'template_id': template.id
+        'template_id': sample_template.id
     }
-    auth_header = create_authorization_header(service_id=service.id)
+    auth_header = create_authorization_header(service_id=sample_service.id)
 
     response = client.post(
         path='/v2/notifications/sms',
