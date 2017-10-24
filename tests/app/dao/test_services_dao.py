@@ -772,6 +772,7 @@ def test_dao_suspend_service_marks_service_as_inactive_and_expires_api_keys(samp
                          [("5", "1", "4"),  # a date range less than 7 days ago returns test and normal notifications
                           ("9", "8", "1"),  # a date range older than 9 days does not return test notifications.
                           ("8", "4", "2")])  # a date range that starts more than 7 days ago
+@freeze_time('2017-10-23T00:00:00')
 def test_fetch_stats_by_date_range_for_all_services_returns_test_notifications(notify_db,
                                                                                notify_db_session,
                                                                                start_delta,
@@ -785,6 +786,33 @@ def test_fetch_stats_by_date_range_for_all_services_returns_test_notifications(n
     create_noti(created_at=datetime.now() - timedelta(days=4), key_type='test')
     create_noti(created_at=datetime.now() - timedelta(days=8), key_type='test')
     create_noti(created_at=datetime.now() - timedelta(days=8), key_type='normal')
+
+    start_date = (datetime.utcnow() - timedelta(days=int(start_delta))).date()
+    end_date = (datetime.utcnow() - timedelta(days=int(end_delta))).date()
+
+    results = fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True)
+
+    assert len(results) == 1
+    assert results[0] == ('sms', 'created', result_one.service_id, int(expected))
+
+
+@pytest.mark.parametrize("start_delta, end_delta, expected",
+                         [("5", "1", "4"),  # a date range less than 7 days ago returns test and normal notifications
+                          ("9", "8", "1"),  # a date range older than 9 days does not return test notifications.
+                          ("8", "4", "2")])  # a date range that starts more than 7 days ago
+@freeze_time('2017-10-23T23:00:00')
+def test_fetch_stats_by_date_range_during_bst_hour_for_all_services_returns_test_notifications(
+    notify_db, notify_db_session, start_delta, end_delta, expected
+):
+    create_noti = functools.partial(create_notification, notify_db, notify_db_session)
+    result_one = create_noti(created_at=datetime.now(), key_type='test')
+    create_noti(created_at=datetime.now() - timedelta(days=2), key_type='test')
+    create_noti(created_at=datetime.now() - timedelta(days=3), key_type='test')
+    create_noti(created_at=datetime.now() - timedelta(days=4), key_type='normal')
+    create_noti(created_at=datetime.now() - timedelta(days=4), key_type='test')
+    create_noti(created_at=datetime.now() - timedelta(days=8), key_type='normal')
+    create_noti(created_at=datetime.now() - timedelta(days=9), key_type='normal')
+    create_noti(created_at=datetime.now() - timedelta(days=9), key_type='test')
 
     start_date = (datetime.utcnow() - timedelta(days=int(start_delta))).date()
     end_date = (datetime.utcnow() - timedelta(days=int(end_delta))).date()
