@@ -191,12 +191,8 @@ class AnnualBilling(db.Model):
 
     def serialize(self):
         return {
-            'id': str(self.id),
-            'service_id': str(self.service_id),
-            'free_sms_fragment_limit': str(self.free_sms_fragment_limit),
-            'financial_year_start': str(self.financial_year_start),
-            'created_at': self.created_at.strftime(DATETIME_FORMAT),
-            'updated_at': self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
+            'free_sms_fragment_limit': self.free_sms_fragment_limit,
+            'financial_year_start': self.financial_year_start,
         }
 
 
@@ -234,7 +230,6 @@ class Service(db.Model, Versioned):
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
     free_sms_fragment_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
     organisation = db.relationship('Organisation')
-    annual_billing = db.relationship('AnnualBilling')
     dvla_organisation_id = db.Column(
         db.String,
         db.ForeignKey('dvla_organisation.id'),
