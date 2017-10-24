@@ -13,8 +13,7 @@ from app.models import SMS_TYPE, EMAIL_TYPE
 from app.utils import convert_utc_to_bst
 from app.dao.annual_billing_dao import (dao_get_free_sms_fragment_limit_for_year,
                                         dao_get_all_free_sms_fragment_limit,
-                                        dao_create_new_annual_billing_for_year,
-                                        dao_update_new_free_sms_fragment_limit_for_year)
+                                        dao_create_or_update_annual_billing_for_year)
 from app.billing.billing_schemas import create_or_update_free_sms_fragment_limit_schema
 from app.errors import InvalidRequest
 from app.schema_validation import validate
@@ -96,17 +95,6 @@ def _transform_billing_for_month(billing_for_month):
     }
 
 
-# @billing_blueprint.route('/annual-billing', methods=["GET"])
-# def get_annual_billing(service_id):
-#
-#     results = dao_get_annual_billing(service_id)
-#
-#     if len(results)==0:
-#         raise InvalidRequest('no annual billing information for this service', status_code=404)
-#
-#     return jsonify(data=[row.serialize() for row in results]), 200
-
-
 @billing_blueprint.route('/free-sms-fragment-limit', methods=["GET"])
 def get_free_sms_fragment_limit(service_id):
 
@@ -136,13 +124,13 @@ def create_or_update_free_sms_fragment_limit(service_id):
 
     result = dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start)
 
-    annual_billing = AnnualBilling(service_id=service_id, financial_year_start=financial_year_start,
-                                   free_sms_fragment_limit=free_sms_fragment_limit)
-
-    if result is None:
-        dao_create_new_annual_billing_for_year(annual_billing)
+    if result:
+        result.free_sms_fragment_limit = free_sms_fragment_limit
+        dao_create_or_update_annual_billing_for_year(result)
 
     else:
-        dao_update_new_free_sms_fragment_limit_for_year(annual_billing)
+        annual_billing = AnnualBilling(service_id=service_id, financial_year_start=financial_year_start,
+                                       free_sms_fragment_limit=free_sms_fragment_limit)
+        dao_create_or_update_annual_billing_for_year(annual_billing)
 
     return jsonify(data=form), 201

@@ -13,8 +13,9 @@ def dao_get_annual_billing(service_id):
     ).all()
 
 
-def dao_create_new_annual_billing_for_year(annual_billing):
-    annual_billing.id = create_uuid()
+def dao_create_or_update_annual_billing_for_year(annual_billing):
+    if annual_billing.id is None:
+        annual_billing.id = create_uuid()
     db.session.add(annual_billing)
     db.session.commit()
 
@@ -32,8 +33,3 @@ def dao_get_all_free_sms_fragment_limit(service_id):
     return AnnualBilling.query.filter_by(
         service_id=service_id,
     ).all()
-
-
-def dao_update_new_free_sms_fragment_limit_for_year(annual_billing):
-    db.session.add(annual_billing)
-    db.session.commit()
