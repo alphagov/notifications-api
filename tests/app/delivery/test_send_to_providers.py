@@ -32,8 +32,8 @@ from tests.app.db import (
     create_notification,
     create_inbound_number,
     create_reply_to_email,
-    create_reply_to_email_for_notification,
-    create_service_sms_sender)
+    create_reply_to_email_for_notification
+)
 
 
 def test_should_return_highest_priority_active_provider(restore_provider_details):
