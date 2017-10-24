@@ -2,6 +2,17 @@
 
 inherit: manifest-api-base.yml
 
+services:
+  - notify-aws
+  - notify-config
+  - notify-db
+  - mmg
+  - firetext
+  - hosted-graphite
+  - redis
+  - performance-platform
+  - logit-ssl-syslog-drain
+
 routes:
   - route: notify-api-preview.cloudapps.digital
   - route: api.notify.works

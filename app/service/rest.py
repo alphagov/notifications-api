@@ -17,12 +17,19 @@ from app.dao.api_key_dao import (
     get_model_api_keys,
     get_unsigned_secret,
     expire_api_key)
+from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.service_inbound_api_dao import (
     save_service_inbound_api,
     reset_service_inbound_api,
     get_service_inbound_api
 )
-from app.dao.service_sms_sender_dao import insert_or_update_service_sms_sender
+from app.dao.service_sms_sender_dao import (
+    insert_or_update_service_sms_sender,
+    dao_add_sms_sender_for_service,
+    dao_update_service_sms_sender,
+    dao_get_service_sms_senders_by_id,
+    dao_get_sms_senders_by_service_id
+)
 from app.dao.services_dao import (
     dao_fetch_service_by_id,
     dao_fetch_all_services,
@@ -39,8 +46,8 @@ from app.dao.services_dao import (
     dao_suspend_service,
     dao_resume_service,
     dao_fetch_monthly_historical_stats_for_service,
-    dao_fetch_monthly_historical_stats_by_template_for_service
-)
+    dao_fetch_monthly_historical_stats_by_template_for_service,
+    fetch_aggregate_stats_by_date_range_for_all_services)
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
     dao_add_and_commit_whitelisted_contacts,
@@ -70,11 +77,14 @@ from app.errors import (
 from app.models import Service, ServiceInboundApi, AnnualBilling
 from app.schema_validation import validate
 from app.service import statistics
-from app.service.service_inbound_api_schema import service_inbound_api, update_service_inbound_api_schema
+from app.service.service_inbound_api_schema import (
+    service_inbound_api,
+    update_service_inbound_api_schema
+)
 from app.service.service_senders_schema import (
     add_service_email_reply_to_request,
     add_service_letter_contact_block_request,
-)
+    add_service_sms_sender_request)
 from app.service.utils import get_whitelist_objects
 from app.service.sender import send_notification_to_service_users
 from app.service.send_notification import send_one_off_notification
@@ -93,6 +103,25 @@ from app.dao.notifications_dao import get_financial_year
 service_blueprint = Blueprint('service', __name__)
 
 register_errors(service_blueprint)
+
+
+@service_blueprint.route('/platform-stats', methods=['GET'])
+def get_platform_stats():
+    include_from_test_key = request.args.get('include_from_test_key', 'True') != 'False'
+
+    # If start and end date are not set, we are expecting today's stats.
+    today = str(datetime.utcnow().date())
+
+    start_date = datetime.strptime(request.args.get('start_date', today), '%Y-%m-%d').date()
+    end_date = datetime.strptime(request.args.get('end_date', today), '%Y-%m-%d').date()
+    data = fetch_aggregate_stats_by_date_range_for_all_services(start_date=start_date,
+                                                                end_date=end_date,
+                                                                include_from_test_key=include_from_test_key
+                                                                )
+    stats = statistics.format_statistics(data)
+
+    result = jsonify(stats)
+    return result
 
 
 @service_blueprint.route('', methods=['GET'])
@@ -619,6 +648,55 @@ def update_service_letter_contact(service_id, letter_contact_id):
                                          contact_block=form['contact_block'],
                                          is_default=form.get('is_default', True))
     return jsonify(data=new_reply_to.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/sms-sender', methods=['POST'])
+def add_service_sms_sender(service_id):
+    dao_fetch_service_by_id(service_id)
+    form = validate(request.get_json(), add_service_sms_sender_request)
+    inbound_number_id = form.get('inbound_number_id', None)
+    sms_sender = form.get('sms_sender')
+    if inbound_number_id:
+        updated_number = dao_allocate_number_for_service(service_id=service_id, inbound_number_id=inbound_number_id)
+        # the sms_sender in the form is the inbound_number_id from client, use number from table.
+        sms_sender = updated_number.number
+    new_sms_sender = dao_add_sms_sender_for_service(service_id=service_id,
+                                                    sms_sender=sms_sender,
+                                                    is_default=form['is_default'],
+                                                    inbound_number_id=inbound_number_id
+                                                    )
+    return jsonify(new_sms_sender.serialize()), 201
+
+
+@service_blueprint.route('/<uuid:service_id>/sms-sender/<uuid:sms_sender_id>', methods=['POST'])
+def update_service_sms_sender(service_id, sms_sender_id):
+    form = validate(request.get_json(), add_service_sms_sender_request)
+
+    sms_sender_to_update = dao_get_service_sms_senders_by_id(service_id=service_id,
+                                                             service_sms_sender_id=sms_sender_id)
+    if sms_sender_to_update.inbound_number_id and form['sms_sender'] != sms_sender_to_update.sms_sender:
+        raise InvalidRequest("You can not change the inbound number for service {}".format(service_id),
+                             status_code=400)
+
+    new_sms_sender = dao_update_service_sms_sender(service_id=service_id,
+                                                   service_sms_sender_id=sms_sender_id,
+                                                   is_default=form['is_default'],
+                                                   sms_sender=form['sms_sender']
+                                                   )
+    return jsonify(new_sms_sender.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/sms-sender/<uuid:sms_sender_id>', methods=['GET'])
+def get_service_sms_sender_by_id(service_id, sms_sender_id):
+    sms_sender = dao_get_service_sms_senders_by_id(service_id=service_id,
+                                                   service_sms_sender_id=sms_sender_id)
+    return jsonify(sms_sender.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/sms-sender', methods=['GET'])
+def get_service_sms_senders_for_service(service_id):
+    sms_senders = dao_get_sms_senders_by_service_id(service_id=service_id)
+    return jsonify([sms_sender.serialize() for sms_sender in sms_senders]), 200
 
 
 @service_blueprint.route('/unique', methods=["GET"])
