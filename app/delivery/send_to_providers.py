@@ -73,7 +73,7 @@ def send_sms_to_provider(notification):
                     to=validate_and_format_phone_number(notification.to, international=notification.international),
                     content=str(template),
                     reference=str(notification.id),
-                    sender=service.get_inbound_number()
+                    sender=service.get_default_sms_sender()
                 )
             except Exception as e:
                 dao_toggle_sms_provider(provider.name)

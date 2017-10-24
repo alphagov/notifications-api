@@ -12,6 +12,7 @@ import app
 from app import mmg_client, firetext_client
 from app.dao import (provider_details_dao, notifications_dao)
 from app.dao.provider_details_dao import dao_switch_sms_provider_to_provider_with_identifier
+from app.dao.service_sms_sender_dao import dao_add_sms_sender_for_service
 from app.delivery import send_to_providers
 from app.models import (
     Notification,
@@ -31,8 +32,8 @@ from tests.app.db import (
     create_notification,
     create_inbound_number,
     create_reply_to_email,
-    create_reply_to_email_for_notification
-)
+    create_reply_to_email_for_notification,
+    create_service_sms_sender)
 
 
 def test_should_return_highest_priority_active_provider(restore_provider_details):
@@ -699,14 +700,18 @@ def test_should_handle_sms_sender_and_prefix_message(
     )
 
 
-def test_should_use_inbound_number_as_sender_if_set(
-    sample_service,
-    mocker
+def test_should_use_inbound_number_as_sender_if_default_sms_sender(
+        notify_db_session,
+        mocker
 ):
-    sample_service.sms_sender = 'test sender'
-    template = create_template(sample_service, content='bar')
+    service = create_service(sms_sender='test sender')
+    inbound_number = create_inbound_number('1')
+    dao_add_sms_sender_for_service(service_id=service.id,
+                                   sms_sender=inbound_number.number,
+                                   is_default=True,
+                                   inbound_number_id=inbound_number.id)
+    template = create_template(service, content='bar')
     notification = create_notification(template)
-    inbound_number = create_inbound_number('1', service_id=sample_service.id)
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
@@ -718,6 +723,32 @@ def test_should_use_inbound_number_as_sender_if_set(
         content=ANY,
         reference=str(notification.id),
         sender=inbound_number.number
+    )
+
+
+def test_should_use_default_sms_sender(
+        notify_db_session,
+        mocker
+):
+    service = create_service(sms_sender='test sender')
+    inbound_number = create_inbound_number('1')
+    dao_add_sms_sender_for_service(service_id=service.id,
+                                   sms_sender=inbound_number.number,
+                                   is_default=False,
+                                   inbound_number_id=inbound_number.id)
+    template = create_template(service, content='bar')
+    notification = create_notification(template)
+
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+
+    send_to_providers.send_sms_to_provider(notification)
+
+    mmg_client.send_sms.assert_called_once_with(
+        to=ANY,
+        content=ANY,
+        reference=str(notification.id),
+        sender='test sender'
     )
 
 
