@@ -16,15 +16,14 @@ def test_ses_callback_should_not_need_auth(client):
         data=ses_notification_callback(),
         headers=[('Content-Type', 'text/plain; charset=UTF-8')]
     )
-    assert response.status_code == 404
+    assert response.status_code == 400
 
 
 def test_ses_callback_should_fail_if_invalid_json(client, mocker):
     stats_mock = mocker.patch(
         'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
     )
-    errors, status, _ = process_ses_response('nonsense')
-    assert status == 400
+    errors = process_ses_response('nonsense')
     assert errors == 'SES callback failed: invalid json'
     stats_mock.assert_not_called()
 
@@ -34,8 +33,7 @@ def test_ses_callback_should_fail_if_invalid_notification_type(client, mocker):
         'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
     )
 
-    errors, status, _ = process_ses_response(json.loads(ses_invalid_notification_type_callback()))
-    assert status == 400
+    errors = process_ses_response(json.loads(ses_invalid_notification_type_callback()))
     assert errors == 'SES callback failed: status Unknown not found'
     stats_mock.assert_not_called()
 
@@ -45,8 +43,7 @@ def test_ses_callback_should_fail_if_missing_message_id(client, mocker):
         'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
     )
 
-    errors, status, _ = process_ses_response(json.loads(ses_missing_notification_id_callback()))
-    assert status == 400
+    errors = process_ses_response(json.loads(ses_missing_notification_id_callback()))
     assert errors == 'SES callback failed: messageId missing'
     stats_mock.assert_not_called()
 
@@ -56,8 +53,7 @@ def test_ses_callback_should_fail_if_notification_cannot_be_found(notify_db, not
         'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
     )
 
-    errors, status, _ = process_ses_response(json.loads(ses_invalid_notification_id_callback()))
-    assert status == 404
+    errors = process_ses_response(json.loads(ses_invalid_notification_id_callback()))
     assert errors == 'SES callback failed: notification either not found or already updated from sending. Status delivered for notification reference missing'  # noqa
     stats_mock.assert_not_called()
 
@@ -86,10 +82,8 @@ def test_ses_callback_should_update_notification_status(
 
         assert get_notification_by_id(notification.id).status == 'sending'
 
-        _, status, res = process_ses_response(json.loads(ses_notification_callback()))
-        assert status == 200
-        assert res['result'] == 'success'
-        assert res['message'] == 'SES callback succeeded'
+        errors = process_ses_response(json.loads(ses_notification_callback()))
+        assert errors is None
         assert get_notification_by_id(notification.id).status == 'delivered'
         statsd_client.timing_with_dates.assert_any_call(
             "callback.ses.elapsed-time", datetime.utcnow(), notification.sent_at
@@ -133,13 +127,10 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
         sent_at=datetime.utcnow(),
         status='sending')
 
-    resp1 = process_ses_response(json.loads(ses_notification_callback(ref='ref1')))
-    resp2 = process_ses_response(json.loads(ses_notification_callback(ref='ref2')))
-    resp3 = process_ses_response(json.loads(ses_notification_callback(ref='ref3')))
+    assert process_ses_response(json.loads(ses_notification_callback(ref='ref1'))) is None
+    assert process_ses_response(json.loads(ses_notification_callback(ref='ref2'))) is None
+    assert process_ses_response(json.loads(ses_notification_callback(ref='ref3'))) is None
 
-    assert resp1[1] == 200
-    assert resp2[1] == 200
-    assert resp3[1] == 200
     stats_mock.assert_has_calls([
         call(notification1),
         call(notification2),
@@ -166,12 +157,7 @@ def test_ses_callback_should_set_status_to_temporary_failure(client,
         sent_at=datetime.utcnow()
     )
     assert get_notification_by_id(notification.id).status == 'sending'
-
-    _, status, res = process_ses_response(json.loads(ses_soft_bounce_callback()))
-
-    assert status == 200
-    assert res['result'] == 'success'
-    assert res['message'] == 'SES callback succeeded'
+    assert process_ses_response(json.loads(ses_soft_bounce_callback())) is None
     assert get_notification_by_id(notification.id).status == 'temporary-failure'
     stats_mock.assert_called_once_with(notification)
 
@@ -195,9 +181,7 @@ def test_ses_callback_should_not_set_status_once_status_is_delivered(client,
     )
 
     assert get_notification_by_id(notification.id).status == 'delivered'
-    error, status, _ = process_ses_response(json.loads(ses_soft_bounce_callback()))
-
-    assert status == 404
+    error = process_ses_response(json.loads(ses_soft_bounce_callback()))
     assert error == 'SES callback failed: notification either not found or already updated from sending. Status temporary-failure for notification reference ref'  # noqa
     assert get_notification_by_id(notification.id).status == 'delivered'
     stats_mock.assert_not_called()
@@ -222,11 +206,7 @@ def test_ses_callback_should_set_status_to_permanent_failure(client,
     )
 
     assert get_notification_by_id(notification.id).status == 'sending'
-    _, status, res = process_ses_response(json.loads(ses_hard_bounce_callback()))
-
-    assert status == 200
-    assert res['result'] == 'success'
-    assert res['message'] == 'SES callback succeeded'
+    assert process_ses_response(json.loads(ses_hard_bounce_callback())) is None
     assert get_notification_by_id(notification.id).status == 'permanent-failure'
     stats_mock.assert_called_once_with(notification)
 
