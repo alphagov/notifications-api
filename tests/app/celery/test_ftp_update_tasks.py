@@ -7,21 +7,21 @@ from flask import current_app
 from app.models import (
     Job,
     Notification,
+    NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_FAILED,
     NOTIFICATION_SENDING,
-    NOTIFICATION_CREATED,
-    NOTIFICATION_TECHNICAL_FAILURE,
-    NOTIFICATION_STATUS_LETTER_RECEIVED
+    NOTIFICATION_STATUS_LETTER_RECEIVED,
+    NOTIFICATION_TECHNICAL_FAILURE
 )
 from app.dao.notifications_dao import dao_update_notifications_by_reference
 from app.celery.tasks import (
-    update_job_to_sent_to_dvla,
+    process_updates_from_file,
     update_dvla_job_to_error,
+    update_job_to_sent_to_dvla,
     update_letter_notifications_statuses,
-    update_letter_notifications_to_sent_to_dvla,
     update_letter_notifications_to_error,
-    process_updates_from_file
+    update_letter_notifications_to_sent_to_dvla
 )
 
 from tests.app.db import create_notification
