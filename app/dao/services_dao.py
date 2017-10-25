@@ -371,7 +371,7 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
 @statsd(namespace='dao')
 def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
 
-    query = db.session.query(
+    subquery = db.session.query(
         Notification.notification_type,
         Notification.status,
         Notification.service_id,
@@ -382,12 +382,25 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
         Notification.notification_type,
         Notification.status,
         Notification.service_id
-    ).order_by(
-        Notification.service_id
     )
 
     if not include_from_test_key:
-        query = query.filter(Notification.key_type != KEY_TYPE_TEST)
+        subquery = subquery.filter(Notification.key_type != KEY_TYPE_TEST)
+
+    subquery = subquery.subquery()
+
+    query = db.session.query(
+        Service.id.label('service_id'),
+        Service.name,
+        Service.restricted,
+        Service.research_mode,
+        subquery.c.notification_type,
+        subquery.c.status,
+        subquery.c.count
+    ).join(
+        subquery,
+        subquery.c.service_id == Service.id
+    ).order_by(Service.id)
 
     return query.all()
 
