@@ -275,8 +275,6 @@ class Service(db.Model, Versioned):
     def get_inbound_number(self):
         if self.inbound_number and self.inbound_number.active:
             return self.inbound_number.number
-        else:
-            return self.get_default_sms_sender()
 
     def get_default_sms_sender(self):
         default_sms_sender = [x for x in self.service_sms_senders if x.is_default]

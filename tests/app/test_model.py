@@ -252,17 +252,11 @@ def test_inbound_number_returns_inbound_number(client, notify_db_session):
     assert service.get_inbound_number() == inbound_number.number
 
 
-def test_inbound_number_returns_sms_sender(client, notify_db_session):
-    service = create_service(sms_sender='testing')
-
-    assert service.get_inbound_number() == service.sms_sender
-
-
-def test_inbound_number_returns_from_number_config(client, notify_db_session):
+def test_inbound_number_returns_none_when_no_inbound_number(client, notify_db_session):
     with set_config(client.application, 'FROM_NUMBER', 'test'):
         service = create_service(sms_sender=None)
 
-    assert service.get_inbound_number() == 'test'
+    assert not service.get_inbound_number()
 
 
 def test_service_get_default_reply_to_email_address(sample_service):
