@@ -9,7 +9,7 @@ from app.models import (
     Notification,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
-    NOTIFICATION_FAILED,
+    NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_SENDING,
     NOTIFICATION_STATUS_LETTER_RECEIVED,
     NOTIFICATION_TECHNICAL_FAILURE
@@ -106,7 +106,7 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
     update_letter_notifications_statuses(filename='foo.txt')
 
     assert sent_letter.status == NOTIFICATION_DELIVERED
-    assert failed_letter.status == NOTIFICATION_FAILED
+    assert failed_letter.status == NOTIFICATION_TECHNICAL_FAILURE
 
 
 def test_update_letter_notifications_to_sent_to_dvla_updates_based_on_notification_references(

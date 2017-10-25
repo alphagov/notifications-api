@@ -47,7 +47,7 @@ from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
     Job,
     Notification,
-    DVLA_STATUS_SENT,
+    DVLA_RESPONSE_STATUS_SENT,
     EMAIL_TYPE,
     JOB_STATUS_CANCELLED,
     JOB_STATUS_FINISHED,
@@ -58,7 +58,6 @@ from app.models import (
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
     NOTIFICATION_DELIVERED,
-    NOTIFICATION_FAILED,
     NOTIFICATION_SENDING,
     NOTIFICATION_TECHNICAL_FAILURE,
     SMS_TYPE,
@@ -447,7 +446,8 @@ def update_letter_notifications_statuses(self, filename):
         raise
     else:
         for update in notification_updates:
-            status = NOTIFICATION_DELIVERED if update.status == DVLA_STATUS_SENT else NOTIFICATION_FAILED
+            status = NOTIFICATION_DELIVERED if update.status == DVLA_RESPONSE_STATUS_SENT \
+                else NOTIFICATION_TECHNICAL_FAILURE
             notification = update_notification_status_by_reference(
                 update.reference,
                 status
