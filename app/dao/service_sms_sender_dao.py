@@ -83,6 +83,14 @@ def dao_update_service_sms_sender(service_id, service_sms_sender_id, is_default,
     return sms_sender_to_update
 
 
+@transactional
+def update_existing_sms_sender_with_inbound_number(service_sms_sender, sms_sender, inbound_number_id):
+    service_sms_sender.sms_sender = sms_sender
+    service_sms_sender.inbound_number_id = inbound_number_id
+    db.session.add(service_sms_sender)
+    return service_sms_sender
+
+
 def _get_existing_default(service_id):
     sms_senders = dao_get_sms_senders_by_service_id(service_id=service_id)
     if sms_senders:

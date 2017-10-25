@@ -6,9 +6,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.dao.service_sms_sender_dao import (
     insert_or_update_service_sms_sender,
     dao_add_sms_sender_for_service,
-    dao_update_service_sms_sender, dao_get_service_sms_senders_by_id, dao_get_sms_senders_by_service_id)
+    dao_update_service_sms_sender,
+    dao_get_service_sms_senders_by_id,
+    dao_get_sms_senders_by_service_id,
+    update_existing_sms_sender_with_inbound_number)
 from app.models import ServiceSmsSender
-from tests.app.db import create_service
+from tests.app.db import create_service, create_inbound_number
 
 
 def test_update_service_sms_sender_updates_existing_row(notify_db_session):
@@ -145,3 +148,27 @@ def test_dao_update_service_sms_sender_raises_exception_when_no_default_after_up
                                       service_sms_sender_id=sms_sender.id,
                                       is_default=False,
                                       sms_sender="updated")
+
+
+def test_update_existing_sms_sender_with_inbound_number(notify_db_session):
+    service = create_service(sms_sender='testing')
+    inbound_number = create_inbound_number(number='12345', service_id=service.id)
+
+    existing_sms_sender = ServiceSmsSender.query.filter_by(service_id=service.id).one()
+    sms_sender = update_existing_sms_sender_with_inbound_number(
+        service_sms_sender=existing_sms_sender, sms_sender=inbound_number.number, inbound_number_id=inbound_number.id)
+
+    assert sms_sender.inbound_number_id == inbound_number.id
+    assert sms_sender.sms_sender == inbound_number.number
+    assert sms_sender.is_default
+
+
+def test_update_existing_sms_sender_with_inbound_number_raises_exception_if_inbound_number_does_not_exist(
+        notify_db_session
+):
+    service = create_service(sms_sender='testing')
+    existing_sms_sender = ServiceSmsSender.query.filter_by(service_id=service.id).one()
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        update_existing_sms_sender_with_inbound_number(service_sms_sender=existing_sms_sender,
+                                                       sms_sender='blah',
+                                                       inbound_number_id=uuid.uuid4())
