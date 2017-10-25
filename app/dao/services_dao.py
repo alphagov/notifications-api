@@ -413,8 +413,7 @@ def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_fro
 
     if start_date >= datetime.utcnow() - timedelta(days=7):
         table = Notification
-
-    query = db.session.query(
+    subquery = db.session.query(
         table.notification_type,
         table.status,
         table.service_id,
@@ -426,12 +425,23 @@ def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_fro
         table.notification_type,
         table.status,
         table.service_id
-    ).order_by(
-        table.service_id
     )
-
     if not include_from_test_key:
-        query = query.filter(table.key_type != KEY_TYPE_TEST)
+        subquery = subquery.filter(table.key_type != KEY_TYPE_TEST)
+    subquery = subquery.subquery()
+
+    query = db.session.query(
+        Service.id.label('service_id'),
+        Service.name,
+        Service.restricted,
+        Service.research_mode,
+        subquery.c.notification_type,
+        subquery.c.status,
+        subquery.c.count
+    ).join(
+        subquery,
+        subquery.c.service_id == Service.id
+    ).order_by(Service.id)
 
     return query.all()
 

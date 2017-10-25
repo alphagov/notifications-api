@@ -409,7 +409,7 @@ def get_detailed_service(service_id, today_only=False):
 
 
 def get_detailed_services(start_date, end_date, only_active=False, include_from_test_key=True):
-    services = {service.id: service for service in dao_fetch_all_services(only_active)}
+    services_old = {service.id: service for service in dao_fetch_all_services(only_active)}
     if start_date == datetime.utcnow().date():
         stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key)
     else:
@@ -417,15 +417,18 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
         stats = fetch_stats_by_date_range_for_all_services(start_date=start_date,
                                                            end_date=end_date,
                                                            include_from_test_key=include_from_test_key)
-
+    services = {service.service_id: service for service in stats}
     for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
         services[service_id].statistics = statistics.format_statistics(rows)
+
+    # for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
+    #     services[service_id].statistics = statistics.format_statistics(rows)
 
     # if service has not sent anything, query will not have set statistics correctly
     for service in services.values():
         if not hasattr(service, 'statistics'):
             service.statistics = statistics.create_zeroed_stats_dicts()
-    return detailed_service_schema.dump(services.values(), many=True).data
+    return services
 
 
 @service_blueprint.route('/<uuid:service_id>/whitelist', methods=['GET'])
