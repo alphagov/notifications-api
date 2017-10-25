@@ -28,8 +28,8 @@ from app.dao.service_sms_sender_dao import (
     dao_add_sms_sender_for_service,
     dao_update_service_sms_sender,
     dao_get_service_sms_senders_by_id,
-    dao_get_sms_senders_by_service_id
-)
+    dao_get_sms_senders_by_service_id,
+    update_existing_sms_sender_with_inbound_number)
 from app.dao.services_dao import (
     dao_fetch_service_by_id,
     dao_fetch_all_services,
@@ -654,10 +654,22 @@ def add_service_sms_sender(service_id):
     form = validate(request.get_json(), add_service_sms_sender_request)
     inbound_number_id = form.get('inbound_number_id', None)
     sms_sender = form.get('sms_sender')
+
     if inbound_number_id:
         updated_number = dao_allocate_number_for_service(service_id=service_id, inbound_number_id=inbound_number_id)
-        # the sms_sender in the form is the inbound_number_id from client, use number from table.
+        # the sms_sender in the form is not set, use the inbound number
         sms_sender = updated_number.number
+        existing_sms_sender = dao_get_sms_senders_by_service_id(service_id)
+        # we don't want to create a new sms sender for the service if we are allocating an inbound number.
+        if len(existing_sms_sender) == 1:
+            update_existing_sms_sender = existing_sms_sender[0]
+            new_sms_sender = update_existing_sms_sender_with_inbound_number(
+                service_sms_sender=update_existing_sms_sender,
+                sms_sender=sms_sender,
+                inbound_number_id=inbound_number_id)
+
+            return jsonify(new_sms_sender.serialize()), 201
+
     new_sms_sender = dao_add_sms_sender_for_service(service_id=service_id,
                                                     sms_sender=sms_sender,
                                                     is_default=form['is_default'],
