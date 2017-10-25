@@ -20,7 +20,7 @@ SQLAlchemy-Utils==0.32.19
 SQLAlchemy==1.1.14
 statsd==3.2.1
 
-notifications-python-client==4.4.0
+notifications-python-client==4.5.0
 
 # PaaS
 awscli>=1.11,<1.12
