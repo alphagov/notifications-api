@@ -1,8 +1,4 @@
-# from datetime import datetime, timedelta
-# import uuid
-# import functools
-# import pytest
-
+from app.service.utils import get_current_financial_year_start_year
 from app.models import AnnualBilling
 from app.dao.annual_billing_dao import (
     dao_create_or_update_annual_billing_for_year,
@@ -10,23 +6,13 @@ from app.dao.annual_billing_dao import (
 )
 
 
-def test_dao_create_get_free_sms_fragment_limit(notify_db_session, sample_service):
-    years = [2015, 2016, 2017]
-    free_limit_data = [1000, 2000, 3000]
-    for i in range(0, len(years)):
-        data = AnnualBilling(
-            free_sms_fragment_limit=free_limit_data[i],
-            financial_year_start=years[i],
-            service_id=sample_service.id,
-        )
-        dao_create_or_update_annual_billing_for_year(data)
+def test_sample_service_has_free_sms_fragment_limit(notify_db_session, sample_service):
 
-    for i in range(0, len(years)):
-        free_limit = dao_get_free_sms_fragment_limit_for_year(sample_service.id, years[i])
+    free_limit = dao_get_free_sms_fragment_limit_for_year(sample_service.id, get_current_financial_year_start_year())
 
-        assert free_limit.free_sms_fragment_limit == free_limit_data[i]
-        assert free_limit.financial_year_start == years[i]
-        assert free_limit.service_id == sample_service.id
+    assert free_limit.free_sms_fragment_limit == 250000
+    assert free_limit.financial_year_start == get_current_financial_year_start_year()
+    assert free_limit.service_id == sample_service.id
 
 
 def test_dao_update_free_sms_fragment_limit(notify_db_session, sample_service):

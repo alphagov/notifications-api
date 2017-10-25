@@ -259,15 +259,19 @@ def test_transform_billing_calculates_with_different_rate_multipliers(sample_ser
 def test_get_free_sms_fragment_limit(client, sample_service):
     years = [2016, 2017, 2018]
     sms_allowance = [1000, 2000, 3000]
+
     for i in range(0, len(years)):
         y = years[i]
         sms_l = sms_allowance[i]
-        data = AnnualBilling(
-            free_sms_fragment_limit=sms_l,
-            financial_year_start=y,
-            service_id=sample_service.id,
-        )
-        dao_create_or_update_annual_billing_for_year(data)
+        annual_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, years[i])
+        if annual_billing:
+            annual_billing.free_sms_fragment_limit = sms_allowance[i]
+        else:
+            annual_billing = AnnualBilling(service_id=sample_service.id,
+                                           financial_year_start=years[i],
+                                           free_sms_fragment_limit=sms_allowance[i])
+
+        dao_create_or_update_annual_billing_for_year(annual_billing)
 
     response = client.get('service/{}/billing/free-sms-fragment-limit?financial_year_start=2017'
                           .format(sample_service.id),
@@ -348,13 +352,12 @@ def test_update_free_sms_fragment_limit(client, sample_service):
 def test_get_free_sms_fragment_limit_year_return_correct_data(client, sample_service):
     years = [2015, 2016, 2017]
     limits = [1000, 2000, 3000]
+
     for i in range(0, len(years)):
-        data = AnnualBilling(
-            free_sms_fragment_limit=limits[i],
-            financial_year_start=years[i],
-            service_id=sample_service.id,
-        )
-        dao_create_or_update_annual_billing_for_year(data)
+        annual_billing = {'financial_year_start': years[i], 'free_sms_fragment_limit': limits[i]}
+        response = client.post('service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
+                               data=json.dumps(annual_billing),
+                               headers=[('Content-Type', 'application/json'), create_authorization_header()])
 
     for i in range(0, len(years)):
         response_get = client.get(
@@ -365,16 +368,15 @@ def test_get_free_sms_fragment_limit_year_return_correct_data(client, sample_ser
         assert json_resp['data']['free_sms_fragment_limit'] == limits[i]
 
 
-def test_get_free_sms_fragment_limit_for_all_year(client, sample_service):
+def test_get_free_sms_fragment_limit_for_all_years(client, sample_service):
     years = [2015, 2016, 2017]
     limits = [1000, 2000, 3000]
+
     for i in range(0, len(years)):
-        data = AnnualBilling(
-            free_sms_fragment_limit=limits[i],
-            financial_year_start=years[i],
-            service_id=sample_service.id,
-        )
-        dao_create_or_update_annual_billing_for_year(data)
+        annual_billing = {'financial_year_start': years[i], 'free_sms_fragment_limit': limits[i]}
+        response = client.post('service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
+                               data=json.dumps(annual_billing),
+                               headers=[('Content-Type', 'application/json'), create_authorization_header()])
 
     response_get = client.get(
         # Not specify a particular year to return all data for that service

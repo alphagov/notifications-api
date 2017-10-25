@@ -68,6 +68,7 @@ def create_service(
     service = Service(
         name=service_name,
         message_limit=1000,
+        free_sms_fragment_limit=7777,
         restricted=restricted,
         email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
         created_by=user or create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),

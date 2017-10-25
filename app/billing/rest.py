@@ -126,11 +126,10 @@ def create_or_update_free_sms_fragment_limit(service_id):
 
     if result:
         result.free_sms_fragment_limit = free_sms_fragment_limit
-        dao_create_or_update_annual_billing_for_year(result)
-
     else:
-        annual_billing = AnnualBilling(service_id=service_id, financial_year_start=financial_year_start,
-                                       free_sms_fragment_limit=free_sms_fragment_limit)
-        dao_create_or_update_annual_billing_for_year(annual_billing)
+        result = AnnualBilling(service_id=service_id, financial_year_start=financial_year_start,
+                               free_sms_fragment_limit=free_sms_fragment_limit)
+
+    dao_create_or_update_annual_billing_for_year(result)
 
     return jsonify(data=form), 201

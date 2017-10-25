@@ -170,8 +170,8 @@ def create_service():
         raise InvalidRequest(errors, status_code=400)
 
     # TODO: to be removed when front-end is updated
-    if 'free_sms_fragment_limit' not in data:
-        data['free_sms_fragment_limit'] = current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
+    # if 'free_sms_fragment_limit' not in data:
+    #     data['free_sms_fragment_limit'] = current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
     # validate json with marshmallow
     service_schema.load(request.get_json())

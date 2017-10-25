@@ -179,23 +179,6 @@ class ServicePermissionTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
-class AnnualBilling(db.Model):
-    __tablename__ = "annual_billing"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False, index=True, nullable=False)
-    financial_year_start = db.Column(db.Integer, nullable=False, default=True, unique=False)
-    free_sms_fragment_limit = db.Column(db.Integer, nullable=False, index=False, unique=False)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    UniqueConstraint('financial_year_start', 'service_id', name='ix_annual_billing_service_id')
-
-    def serialize(self):
-        return {
-            'free_sms_fragment_limit': self.free_sms_fragment_limit,
-            'financial_year_start': self.financial_year_start,
-        }
-
-
 class Service(db.Model, Versioned):
     __tablename__ = 'services'
 
@@ -284,6 +267,24 @@ class Service(db.Model, Versioned):
     def get_default_letter_contact(self):
         default_letter_contact = [x for x in self.letter_contacts if x.is_default]
         return default_letter_contact[0].contact_block if default_letter_contact else None
+
+
+class AnnualBilling(db.Model):
+    __tablename__ = "annual_billing"
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False, index=True, nullable=False)
+    financial_year_start = db.Column(db.Integer, nullable=False, default=True, unique=False)
+    free_sms_fragment_limit = db.Column(db.Integer, nullable=False, index=False, unique=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    UniqueConstraint('financial_year_start', 'service_id', name='ix_annual_billing_service_id')
+    service = db.relationship(Service, backref=db.backref("annual_billing", uselist=True))
+
+    def serialize(self):
+        return {
+            'free_sms_fragment_limit': self.free_sms_fragment_limit,
+            'financial_year_start': self.financial_year_start,
+        }
 
 
 class InboundNumber(db.Model):

@@ -37,10 +37,12 @@ from app.models import (
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
     ServiceSmsSender,
+    AnnualBilling
 )
 from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
+from app.dao.annual_billing_dao import insert_annual_billing
 
 DEFAULT_SERVICE_PERMISSIONS = [
     SMS_TYPE,
@@ -164,6 +166,9 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
     if service_permissions is None:
         service_permissions = DEFAULT_SERVICE_PERMISSIONS
 
+    if service.free_sms_fragment_limit is None:
+        service.free_sms_fragment_limit = current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
+
     from app.dao.permissions_dao import permission_dao
     service.users.append(user)
     permission_dao.add_default_service_permissions_for_user(user, service)
@@ -176,6 +181,7 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
         service.permissions.append(service_permission)
 
     insert_service_sms_sender(service, service.sms_sender)
+    insert_annual_billing(service)
     db.session.add(service)
 
 
@@ -238,6 +244,7 @@ def delete_service_and_all_associated_db_objects(service):
     _delete_commit(ServicePermission.query.filter_by(service_id=service.id))
     _delete_commit(ApiKey.query.filter_by(service=service))
     _delete_commit(ApiKey.get_history_model().query.filter_by(service_id=service.id))
+    _delete_commit(AnnualBilling.query.filter_by(service_id=service.id))
 
     verify_codes = VerifyCode.query.join(User).filter(User.id.in_([x.id for x in service.users]))
     list(map(db.session.delete, verify_codes))
