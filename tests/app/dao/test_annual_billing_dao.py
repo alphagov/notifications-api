@@ -8,6 +8,7 @@ from app.dao.annual_billing_dao import (
 
 def test_sample_service_has_free_sms_fragment_limit(notify_db_session, sample_service):
 
+    # when sample_service was created, it automatically create an entry in the annual_billing table
     free_limit = dao_get_free_sms_fragment_limit_for_year(sample_service.id, get_current_financial_year_start_year())
 
     assert free_limit.free_sms_fragment_limit == 250000
@@ -16,7 +17,7 @@ def test_sample_service_has_free_sms_fragment_limit(notify_db_session, sample_se
 
 
 def test_dao_update_free_sms_fragment_limit(notify_db_session, sample_service):
-    year = 2016
+    year = 1999
     old_limit = 1000
     new_limit = 9999
 

@@ -171,8 +171,7 @@ def test_should_remove_user_from_service(sample_user):
                       email_from="email_from",
                       message_limit=1000,
                       restricted=False,
-                      created_by=sample_user,
-                      free_sms_fragment_limit=9999)
+                      created_by=sample_user)
     dao_create_service(service, sample_user)
     new_user = User(
         name='Test User',

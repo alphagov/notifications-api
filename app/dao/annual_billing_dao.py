@@ -11,7 +11,7 @@ from app.service.utils import get_current_financial_year_start_year
 def dao_get_annual_billing(service_id):
     return AnnualBilling.query.filter_by(
         service_id=service_id,
-    ).all()
+    ).order_by(AnnualBilling.financial_year_start).all()
 
 
 def dao_create_or_update_annual_billing_for_year(annual_billing):
@@ -31,7 +31,7 @@ def dao_get_all_free_sms_fragment_limit(service_id):
 
     return AnnualBilling.query.filter_by(
         service_id=service_id,
-    ).all()
+    ).order_by(AnnualBilling.financial_year_start).all()
 
 
 def insert_annual_billing(service):

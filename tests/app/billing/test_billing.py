@@ -256,46 +256,6 @@ def test_transform_billing_calculates_with_different_rate_multipliers(sample_ser
     })
 
 
-def test_get_free_sms_fragment_limit(client, sample_service):
-    years = [2016, 2017, 2018]
-    sms_allowance = [1000, 2000, 3000]
-
-    for i in range(0, len(years)):
-        y = years[i]
-        sms_l = sms_allowance[i]
-        annual_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, years[i])
-        if annual_billing:
-            annual_billing.free_sms_fragment_limit = sms_allowance[i]
-        else:
-            annual_billing = AnnualBilling(service_id=sample_service.id,
-                                           financial_year_start=years[i],
-                                           free_sms_fragment_limit=sms_allowance[i])
-
-        dao_create_or_update_annual_billing_for_year(annual_billing)
-
-    response = client.get('service/{}/billing/free-sms-fragment-limit?financial_year_start=2017'
-                          .format(sample_service.id),
-                          headers=[('Content-Type', 'application/json'), create_authorization_header()])
-
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 200
-
-    assert json_resp['data']['free_sms_fragment_limit'] == 2000
-    assert json_resp['data']['financial_year_start'] == 2017
-
-    response = client.get(
-        'service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()])
-
-    json_resp = json.loads(response.get_data(as_text=True))
-
-    assert len(json_resp['data']) == 3
-    assert response.status_code == 200
-    for i in range(0, len(years)):
-        assert json_resp['data'][i]['free_sms_fragment_limit'] == sms_allowance[i]
-        assert json_resp['data'][i]['financial_year_start'] == years[i]
-
-
 def test_create_update_free_sms_fragment_limit_invalid_schema(client, sample_service):
 
     response = client.post('service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
@@ -385,6 +345,17 @@ def test_get_free_sms_fragment_limit_for_all_years(client, sample_service):
     json_resp = json.loads(response_get.get_data(as_text=True))
     assert response_get.status_code == 200
     assert len(json_resp['data']) == 3
+    print(json_resp)
     for i in [0, 1, 2]:
         assert json_resp['data'][i]['free_sms_fragment_limit'] == limits[i]
         assert json_resp['data'][i]['financial_year_start'] == years[i]
+
+
+def test_get_free_sms_fragment_limit_no_year_data_return_404(client, sample_service):
+
+    response_get = client.get(
+        'service/{}/billing/free-sms-fragment-limit?financial_year_start={}'.format(sample_service.id, 1999),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    json_resp = json.loads(response_get.get_data(as_text=True))
+
+    assert response_get.status_code == 404
