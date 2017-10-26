@@ -100,10 +100,10 @@ def _transform_billing_for_month(billing_for_month):
 @billing_blueprint.route('/free-sms-fragment-limit/current-year', methods=["GET"])
 def get_free_sms_fragment_limit(service_id):
 
-    financial_year_start = request.args.get('financial_year_start')
-
     if request.path.split('/')[-1] == 'current-year':
         financial_year_start = get_current_financial_year_start_year()
+    else:
+        financial_year_start = request.args.get('financial_year_start')
 
     if financial_year_start is None:
         results = dao_get_all_free_sms_fragment_limit(service_id)
@@ -122,7 +122,12 @@ def get_free_sms_fragment_limit(service_id):
 @billing_blueprint.route('/free-sms-fragment-limit', methods=["POST"])
 def create_or_update_free_sms_fragment_limit(service_id):
 
-    form = validate(request.get_json(), create_or_update_free_sms_fragment_limit_schema)
+    dict_arg = request.get_json()
+
+    if 'financial_year_start' not in dict_arg:
+        dict_arg['financial_year_start'] = get_current_financial_year_start_year()
+
+    form = validate(dict_arg, create_or_update_free_sms_fragment_limit_schema)
 
     financial_year_start = form.get('financial_year_start')
     free_sms_fragment_limit = form.get('free_sms_fragment_limit')

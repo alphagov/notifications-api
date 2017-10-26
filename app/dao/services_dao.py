@@ -376,9 +376,9 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
 
 
 @statsd(namespace='dao')
-def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
+def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_active=True):
 
-    query = db.session.query(
+    subquery = db.session.query(
         Notification.notification_type,
         Notification.status,
         Notification.service_id,
@@ -389,26 +389,43 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
         Notification.notification_type,
         Notification.status,
         Notification.service_id
-    ).order_by(
-        Notification.service_id
     )
 
     if not include_from_test_key:
-        query = query.filter(Notification.key_type != KEY_TYPE_TEST)
+        subquery = subquery.filter(Notification.key_type != KEY_TYPE_TEST)
+
+    subquery = subquery.subquery()
+
+    query = db.session.query(
+        Service.id.label('service_id'),
+        Service.name,
+        Service.restricted,
+        Service.research_mode,
+        Service.active,
+        Service.created_at,
+        subquery.c.notification_type,
+        subquery.c.status,
+        subquery.c.count
+    ).outerjoin(
+        subquery,
+        subquery.c.service_id == Service.id
+    ).order_by(Service.id)
+
+    if only_active:
+        query = query.filter(Service.active)
 
     return query.all()
 
 
 @statsd(namespace='dao')
-def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True):
+def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True, only_active=True):
     start_date = get_london_midnight_in_utc(start_date)
     end_date = get_london_midnight_in_utc(end_date + timedelta(days=1))
     table = NotificationHistory
 
     if start_date >= datetime.utcnow() - timedelta(days=7):
         table = Notification
-
-    query = db.session.query(
+    subquery = db.session.query(
         table.notification_type,
         table.status,
         table.service_id,
@@ -420,12 +437,27 @@ def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_fro
         table.notification_type,
         table.status,
         table.service_id
-    ).order_by(
-        table.service_id
     )
-
     if not include_from_test_key:
-        query = query.filter(table.key_type != KEY_TYPE_TEST)
+        subquery = subquery.filter(table.key_type != KEY_TYPE_TEST)
+    subquery = subquery.subquery()
+
+    query = db.session.query(
+        Service.id.label('service_id'),
+        Service.name,
+        Service.restricted,
+        Service.research_mode,
+        Service.active,
+        Service.created_at,
+        subquery.c.notification_type,
+        subquery.c.status,
+        subquery.c.count
+    ).outerjoin(
+        subquery,
+        subquery.c.service_id == Service.id
+    ).order_by(Service.id)
+    if only_active:
+        query = query.filter(Service.active)
 
     return query.all()
 

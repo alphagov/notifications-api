@@ -682,7 +682,7 @@ def test_dao_fetch_todays_stats_for_all_services_includes_all_services(notify_db
     assert stats == sorted(stats, key=lambda x: x.service_id)
 
 
-def test_dao_fetch_todays_stats_for_all_services_only_includes_today(notify_db):
+def test_dao_fetch_todays_stats_for_all_services_only_includes_today(notify_db, notify_db_session):
     with freeze_time('2001-01-01T23:59:00'):
         just_before_midnight_yesterday = create_notification(notify_db, None, to_field='1', status='delivered')
 
@@ -711,12 +711,15 @@ def test_dao_fetch_todays_stats_for_all_services_groups_correctly(notify_db, not
     create_notification(notify_db, notify_db_session, service=service2)
 
     stats = dao_fetch_todays_stats_for_all_services()
-
     assert len(stats) == 4
-    assert ('sms', 'created', service1.id, 2) in stats
-    assert ('sms', 'failed', service1.id, 1) in stats
-    assert ('email', 'created', service1.id, 1) in stats
-    assert ('sms', 'created', service2.id, 1) in stats
+    assert (service1.id, service1.name, service1.restricted, service1.research_mode, service1.active,
+            service1.created_at, 'sms', 'created', 2) in stats
+    assert (service1.id, service1.name, service1.restricted, service1.research_mode, service1.active,
+            service1.created_at, 'sms', 'failed', 1) in stats
+    assert (service1.id, service1.name, service1.restricted, service1.research_mode, service1.active,
+            service1.created_at, 'email', 'created', 1) in stats
+    assert (service2.id, service2.name, service2.restricted, service2.research_mode, service2.active,
+            service2.created_at, 'sms', 'created', 1) in stats
 
 
 def test_dao_fetch_todays_stats_for_all_services_includes_all_keys_by_default(notify_db, notify_db_session):
@@ -754,7 +757,9 @@ def test_fetch_stats_by_date_range_for_all_services(notify_db, notify_db_session
     results = fetch_stats_by_date_range_for_all_services(start_date, end_date)
 
     assert len(results) == 1
-    assert results[0] == ('sms', 'created', result_one.service_id, 2)
+    assert results[0] == (result_one.service.id, result_one.service.name, result_one.service.restricted,
+                          result_one.service.research_mode, result_one.service.active,
+                          result_one.service.created_at, 'sms', 'created', 2)
 
 
 @freeze_time('2001-01-01T23:59:00')
@@ -793,7 +798,9 @@ def test_fetch_stats_by_date_range_for_all_services_returns_test_notifications(n
     results = fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True)
 
     assert len(results) == 1
-    assert results[0] == ('sms', 'created', result_one.service_id, int(expected))
+    assert results[0] == (result_one.service.id, result_one.service.name, result_one.service.restricted,
+                          result_one.service.research_mode, result_one.service.active, result_one.service.created_at,
+                          'sms', 'created', int(expected))
 
 
 @pytest.mark.parametrize("start_delta, end_delta, expected",
@@ -820,7 +827,9 @@ def test_fetch_stats_by_date_range_during_bst_hour_for_all_services_returns_test
     results = fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True)
 
     assert len(results) == 1
-    assert results[0] == ('sms', 'created', result_one.service_id, int(expected))
+    assert results[0] == (result_one.service.id, result_one.service.name, result_one.service.restricted,
+                          result_one.service.research_mode, result_one.service.active, result_one.service.created_at,
+                          'sms', 'created', int(expected))
 
 
 @freeze_time('2001-01-01T23:59:00')
