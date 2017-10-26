@@ -32,7 +32,9 @@ def sns_callback_handler():
         current_app.logger.error(errors)
         raise InvalidRequest(errors, 400)
 
-    return 200
+    return jsonify(
+        result="success", message="SES callback succeeded"
+    ), 200
 
 
 def process_ses_response(ses_request):
