@@ -1753,8 +1753,7 @@ def test_get_detailed_services_only_includes_todays_notifications(notify_db, not
 
 @pytest.mark.parametrize(
     'set_time',
-    ['2017-03-28T12:00:00']
-        #, '2017-01-28T12:00:00', '2017-01-02T12:00:00', '2017-10-31T12:00:00']
+    ['2017-03-28T12:00:00', '2017-01-28T12:00:00', '2017-01-02T12:00:00', '2017-10-31T12:00:00']
 )
 def test_get_detailed_services_for_date_range(notify_db, notify_db_session, set_time):
     from app.service.rest import get_detailed_services

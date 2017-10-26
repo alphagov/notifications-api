@@ -369,7 +369,7 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
 
 
 @statsd(namespace='dao')
-def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
+def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_active=True):
 
     subquery = db.session.query(
         Notification.notification_type,
@@ -394,19 +394,24 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True):
         Service.name,
         Service.restricted,
         Service.research_mode,
+        Service.active,
+        Service.created_at,
         subquery.c.notification_type,
         subquery.c.status,
         subquery.c.count
-    ).join(
+    ).outerjoin(
         subquery,
         subquery.c.service_id == Service.id
     ).order_by(Service.id)
+
+    if only_active:
+        query = query.filter(Service.active)
 
     return query.all()
 
 
 @statsd(namespace='dao')
-def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True):
+def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True, only_active=True):
     start_date = get_london_midnight_in_utc(start_date)
     end_date = get_london_midnight_in_utc(end_date + timedelta(days=1))
     table = NotificationHistory
@@ -435,13 +440,17 @@ def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_fro
         Service.name,
         Service.restricted,
         Service.research_mode,
+        Service.active,
+        Service.created_at,
         subquery.c.notification_type,
         subquery.c.status,
         subquery.c.count
-    ).join(
+    ).outerjoin(
         subquery,
         subquery.c.service_id == Service.id
     ).order_by(Service.id)
+    if only_active:
+        query = query.filter(Service.active)
 
     return query.all()
 

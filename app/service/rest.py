@@ -409,26 +409,33 @@ def get_detailed_service(service_id, today_only=False):
 
 
 def get_detailed_services(start_date, end_date, only_active=False, include_from_test_key=True):
-    services_old = {service.id: service for service in dao_fetch_all_services(only_active)}
     if start_date == datetime.utcnow().date():
-        stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key)
+        stats = dao_fetch_todays_stats_for_all_services(include_from_test_key=include_from_test_key,
+                                                        only_active=only_active)
     else:
 
         stats = fetch_stats_by_date_range_for_all_services(start_date=start_date,
                                                            end_date=end_date,
-                                                           include_from_test_key=include_from_test_key)
-    services = {service.service_id: service for service in stats}
+                                                           include_from_test_key=include_from_test_key,
+                                                           only_active=only_active)
+    results = []
     for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
-        services[service_id].statistics = statistics.format_statistics(rows)
-
-    # for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
-    #     services[service_id].statistics = statistics.format_statistics(rows)
-
-    # if service has not sent anything, query will not have set statistics correctly
-    for service in services.values():
-        if not hasattr(service, 'statistics'):
-            service.statistics = statistics.create_zeroed_stats_dicts()
-    return services
+        rows = list(rows)
+        if rows[0].count is None:
+            s = statistics.create_zeroed_stats_dicts()
+        else:
+            s = statistics.format_statistics(rows)
+        results.append({
+            'id': str(rows[0].service_id),
+            'name': rows[0].name,
+            'notification_type': rows[0].notification_type,
+            'research_mode': rows[0].research_mode,
+            'restricted': rows[0].restricted,
+            'active': rows[0].active,
+            'created_at': rows[0].created_at,
+            'statistics': s
+        })
+    return results
 
 
 @service_blueprint.route('/<uuid:service_id>/whitelist', methods=['GET'])
