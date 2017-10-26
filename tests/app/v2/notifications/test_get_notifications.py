@@ -393,7 +393,7 @@ def test_get_all_notifications_filter_by_status_invalid_status(client, sample_no
     assert json_response['status_code'] == 400
     assert len(json_response['errors']) == 1
     assert json_response['errors'][0]['message'] == "status elephant is not one of [created, sending, sent, " \
-        "delivered, pending, failed, technical-failure, temporary-failure, permanent-failure, accepted]"
+        "delivered, pending, failed, technical-failure, temporary-failure, permanent-failure, accepted, received]"
 
 
 def test_get_all_notifications_filter_by_multiple_statuses(client, sample_template):
@@ -583,14 +583,25 @@ def test_get_all_notifications_renames_letter_statuses(
             pytest.fail()
 
 
-def test_get_notifications_renames_letter_statuses(client, sample_letter_notification):
-    auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
+@pytest.mark.parametrize('db_status,expected_status', [
+    ('created', 'accepted'),
+    ('sending', 'accepted'),
+    ('delivered', 'received'),
+    ('pending', 'pending'),
+    ('technical-failure', 'technical-failure')
+])
+def test_get_notifications_renames_letter_statuses(client, sample_letter_template, db_status, expected_status):
+    letter_noti = create_notification(
+        sample_letter_template,
+        status=db_status,
+        personalisation={'address_line_1': 'Mr Foo', 'address_line_2': '1 Bar Street', 'postcode': 'N1'}
+    )
+    auth_header = create_authorization_header(service_id=letter_noti.service_id)
     response = client.get(
-        path=url_for('v2_notifications.get_notification_by_id', id=sample_letter_notification.id),
+        path=url_for('v2_notifications.get_notification_by_id', id=letter_noti.id),
         headers=[('Content-Type', 'application/json'), auth_header]
     )
 
     json_response = json.loads(response.get_data(as_text=True))
     assert response.status_code == 200
-
-    assert json_response['status'] == 'accepted'
+    assert json_response['status'] == expected_status

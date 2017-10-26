@@ -873,7 +873,9 @@ NOTIFICATION_STATUS_TYPES_NON_BILLABLE = list(set(NOTIFICATION_STATUS_TYPES) - s
 NOTIFICATION_STATUS_TYPES_ENUM = db.Enum(*NOTIFICATION_STATUS_TYPES, name='notify_status_type')
 
 NOTIFICATION_STATUS_LETTER_ACCEPTED = 'accepted'
-NOTIFICATION_STATUS_LETTER_ACCEPTED_PRETTY = 'Accepted'
+NOTIFICATION_STATUS_LETTER_RECEIVED = 'received'
+
+DVLA_RESPONSE_STATUS_SENT = 'Sent'
 
 
 class NotificationStatusTypes(db.Model):
@@ -984,6 +986,14 @@ class Notification(db.Model):
         ['technical-failure', 'temporary-failure', 'permanent-failure', 'created', 'sending']
 
 
+        -
+
+        > IN
+        'delivered'
+
+        < OUT
+        ['received']
+
         :param status_or_statuses: a single status or list of statuses
         :return: a single status or list with the current failure statuses substituted for 'failure'
         """
@@ -992,6 +1002,7 @@ class Notification(db.Model):
             return (
                 NOTIFICATION_STATUS_TYPES_FAILED if _status == NOTIFICATION_FAILED else
                 [NOTIFICATION_CREATED, NOTIFICATION_SENDING] if _status == NOTIFICATION_STATUS_LETTER_ACCEPTED else
+                NOTIFICATION_DELIVERED if _status == NOTIFICATION_STATUS_LETTER_RECEIVED else
                 [_status]
             )
 
@@ -1040,8 +1051,9 @@ class Notification(db.Model):
             },
             'letter': {
                 'technical-failure': 'Technical failure',
-                'sending': NOTIFICATION_STATUS_LETTER_ACCEPTED_PRETTY,
-                'created': NOTIFICATION_STATUS_LETTER_ACCEPTED_PRETTY,
+                'sending': 'Accepted',
+                'created': 'Accepted',
+                'delivered': 'Received'
             }
         }[self.template.template_type].get(self.status, self.status)
 
@@ -1056,8 +1068,10 @@ class Notification(db.Model):
         # get the two code flows mixed up at all
         assert self.notification_type == LETTER_TYPE
 
-        if self.status == NOTIFICATION_CREATED or NOTIFICATION_SENDING:
+        if self.status in [NOTIFICATION_CREATED, NOTIFICATION_SENDING]:
             return NOTIFICATION_STATUS_LETTER_ACCEPTED
+        elif self.status == NOTIFICATION_DELIVERED:
+            return NOTIFICATION_STATUS_LETTER_RECEIVED
         else:
             # Currently can only be technical-failure
             return self.status
