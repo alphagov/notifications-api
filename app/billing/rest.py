@@ -18,6 +18,7 @@ from app.billing.billing_schemas import create_or_update_free_sms_fragment_limit
 from app.errors import InvalidRequest
 from app.schema_validation import validate
 from app.models import AnnualBilling
+from app.service.utils import get_current_financial_year_start_year
 
 billing_blueprint = Blueprint(
     'billing',
@@ -96,9 +97,13 @@ def _transform_billing_for_month(billing_for_month):
 
 
 @billing_blueprint.route('/free-sms-fragment-limit', methods=["GET"])
+@billing_blueprint.route('/free-sms-fragment-limit/current-year', methods=["GET"])
 def get_free_sms_fragment_limit(service_id):
 
     financial_year_start = request.args.get('financial_year_start')
+
+    if request.path.split('/')[-1] == 'current-year':
+        financial_year_start = get_current_financial_year_start_year()
 
     if financial_year_start is None:
         results = dao_get_all_free_sms_fragment_limit(service_id)

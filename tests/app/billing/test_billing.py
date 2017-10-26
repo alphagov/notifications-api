@@ -369,3 +369,12 @@ def test_get_free_sms_fragment_limit_unknown_service_id_return_404(client):
         headers=[('Content-Type', 'application/json'), create_authorization_header()])
     json_resp = json.loads(response_get.get_data(as_text=True))
     assert response_get.status_code == 404
+
+
+def test_get_free_sms_fragment_limit_current_year(client, sample_service):
+    response = client.get(
+        'service/{}/billing/free-sms-fragment-limit/current-year'.format(sample_service.id, True),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 200
+    assert json_resp['data']['free_sms_fragment_limit'] == 250000
