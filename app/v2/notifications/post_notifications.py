@@ -95,7 +95,7 @@ def post_notification(notification_type):
     if notification_type == SMS_TYPE:
         create_resp_partial = functools.partial(
             create_post_sms_response_from_notification,
-            from_number=authenticated_service.get_inbound_number()
+            from_number=authenticated_service.get_default_sms_sender()
         )
     elif notification_type == EMAIL_TYPE:
         create_resp_partial = functools.partial(
