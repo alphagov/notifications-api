@@ -2622,12 +2622,13 @@ def test_add_service_sms_sender_can_add_multiple_senders(client, notify_db_sessi
     assert len(senders) == 2
 
 
-def test_add_service_sms_sender_when_it_is_an_inbound_number(client, notify_db_session):
-    service = create_service()
+def test_add_service_sms_sender_when_it_is_an_inbound_number_updates_the_only_existing_sms_sender(
+        client, notify_db_session):
+    service = create_service(sms_sender='GOVUK')
     inbound_number = create_inbound_number(number='12345')
     data = {
         "sms_sender": str(inbound_number.id),
-        "is_default": False,
+        "is_default": True,
         "inbound_number_id": str(inbound_number.id)
     }
     response = client.post('/service/{}/sms-sender'.format(service.id),
@@ -2640,7 +2641,36 @@ def test_add_service_sms_sender_when_it_is_an_inbound_number(client, notify_db_s
     resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json['sms_sender'] == inbound_number.number
     assert resp_json['inbound_number_id'] == str(inbound_number.id)
-    assert not resp_json['is_default']
+    assert resp_json['is_default']
+
+    senders = ServiceSmsSender.query.all()
+    assert len(senders) == 1
+
+
+def test_add_service_sms_sender_when_it_is_an_inbound_number_inserts_new_sms_sender_when_more_than_one(
+        client, notify_db_session):
+    service = create_service(sms_sender='GOVUK')
+    create_service_sms_sender(service=service, sms_sender="second", is_default=False)
+    inbound_number = create_inbound_number(number='12345')
+    data = {
+        "sms_sender": str(inbound_number.id),
+        "is_default": True,
+        "inbound_number_id": str(inbound_number.id)
+    }
+    response = client.post('/service/{}/sms-sender'.format(service.id),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()]
+                           )
+    assert response.status_code == 201
+    updated_number = InboundNumber.query.get(inbound_number.id)
+    assert updated_number.service_id == service.id
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert resp_json['sms_sender'] == inbound_number.number
+    assert resp_json['inbound_number_id'] == str(inbound_number.id)
+    assert resp_json['is_default']
+
+    senders = ServiceSmsSender.query.filter_by(service_id=service.id).all()
+    assert len(senders) == 3
 
 
 def test_add_service_sms_sender_switches_default(client, notify_db_session):

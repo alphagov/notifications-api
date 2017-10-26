@@ -8,7 +8,6 @@ from app.models import (
     ScheduledNotification,
     SCHEDULE_NOTIFICATIONS,
     EMAIL_TYPE,
-    INTERNATIONAL_SMS_TYPE,
     SMS_TYPE
 )
 from flask import json, current_app
@@ -25,7 +24,11 @@ from tests.app.conftest import (
     sample_template_without_sms_permission
 )
 
-from tests.app.db import create_inbound_number, create_service, create_template, create_reply_to_email
+from tests.app.db import (
+    create_service,
+    create_template,
+    create_reply_to_email
+)
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -64,15 +67,16 @@ def test_post_sms_notification_returns_201(client, sample_template_with_placehol
     assert mocked.called
 
 
-def test_post_sms_notification_uses_inbound_number_as_sender(client, sample_template_with_placeholders, mocker):
+def test_post_sms_notification_uses_inbound_number_as_sender(client, notify_db_session, mocker):
+    service = create_service(sms_sender='1', do_create_inbound_number=True)
+    template = create_template(service=service, content="Hello (( Name))\nYour thing is due soon")
     mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
     data = {
         'phone_number': '+447700900855',
-        'template_id': str(sample_template_with_placeholders.id),
+        'template_id': str(template.id),
         'personalisation': {' Name': 'Jo'}
     }
-    inbound_number = create_inbound_number('1', service_id=sample_template_with_placeholders.service_id)
-    auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
+    auth_header = create_authorization_header(service_id=service.id)
 
     response = client.post(
         path='/v2/notifications/sms',
@@ -85,7 +89,8 @@ def test_post_sms_notification_uses_inbound_number_as_sender(client, sample_temp
     assert len(notifications) == 1
     notification_id = notifications[0].id
     assert resp_json['id'] == str(notification_id)
-    assert resp_json['content']['from_number'] == inbound_number.number
+    assert resp_json['content']['from_number'] == '1'
+    mocked.assert_called_once_with([str(notification_id)], queue='send-sms-tasks')
 
 
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
