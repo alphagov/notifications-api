@@ -34,7 +34,7 @@ def dao_get_all_free_sms_fragment_limit(service_id):
     ).order_by(AnnualBilling.financial_year_start).all()
 
 
-def insert_annual_billing(service):
+def dao_insert_annual_billing(service):
     """
     This method is called from create_service which is wrapped in a transaction.
     """

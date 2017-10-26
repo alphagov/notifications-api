@@ -42,7 +42,7 @@ from app.models import (
 from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
-from app.dao.annual_billing_dao import insert_annual_billing
+from app.dao.annual_billing_dao import dao_insert_annual_billing
 
 DEFAULT_SERVICE_PERMISSIONS = [
     SMS_TYPE,
@@ -181,7 +181,7 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
         service.permissions.append(service_permission)
 
     insert_service_sms_sender(service, service.sms_sender)
-    insert_annual_billing(service)
+    dao_insert_annual_billing(service)
     db.session.add(service)
 
 

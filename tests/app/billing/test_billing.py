@@ -17,6 +17,7 @@ from tests import create_authorization_header
 from app.dao.annual_billing_dao import (dao_get_free_sms_fragment_limit_for_year,
                                         dao_create_or_update_annual_billing_for_year)
 from app.models import AnnualBilling
+import uuid
 
 APR_2016_MONTH_START = datetime(2016, 3, 31, 23, 00, 00)
 APR_2016_MONTH_END = datetime(2016, 4, 30, 22, 59, 59, 99999)
@@ -358,4 +359,13 @@ def test_get_free_sms_fragment_limit_no_year_data_return_404(client, sample_serv
         headers=[('Content-Type', 'application/json'), create_authorization_header()])
     json_resp = json.loads(response_get.get_data(as_text=True))
 
+    assert response_get.status_code == 404
+
+
+def test_get_free_sms_fragment_limit_unknown_service_id_return_404(client):
+
+    response_get = client.get(
+        'service/{}/billing/free-sms-fragment-limit'.format(uuid.uuid4()),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    json_resp = json.loads(response_get.get_data(as_text=True))
     assert response_get.status_code == 404
