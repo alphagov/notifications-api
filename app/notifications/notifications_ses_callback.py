@@ -15,7 +15,6 @@ from app.dao import (
 )
 from app.celery.statistics_tasks import create_outcome_notification_statistic_tasks
 from app.notifications.process_client_response import validate_callback_data
-from app.notifications.utils import autoconfirm_subscription
 
 ses_callback_blueprint = Blueprint('notifications_ses_callback', __name__)
 
@@ -27,26 +26,33 @@ register_errors(ses_callback_blueprint)
 
 
 @ses_callback_blueprint.route('/notifications/email/ses', methods=['POST'])
-def process_ses_response():
+def sns_callback_handler():
+    errors = process_ses_response(json.loads(request.data))
+    if errors:
+        current_app.logger.error(errors)
+        raise InvalidRequest(errors, 400)
+
+    return jsonify(
+        result="success", message="SES callback succeeded"
+    ), 200
+
+
+def process_ses_response(ses_request):
     client_name = 'SES'
     try:
-        ses_request = json.loads(request.data)
 
-        subscribed_topic = autoconfirm_subscription(ses_request)
-        if subscribed_topic:
-            current_app.logger.info("Automatically subscribed to topic: {}".format(subscribed_topic))
-            return jsonify(
-                result="success", message="SES callback succeeded"
-            ), 200
+        # TODO: remove this check once the sns_callback_handler is removed
+        if not isinstance(ses_request, dict):
+            ses_request = json.loads(ses_request)
 
         errors = validate_callback_data(data=ses_request, fields=['Message'], client_name=client_name)
         if errors:
-            raise InvalidRequest(errors, status_code=400)
+            return errors
 
         ses_message = json.loads(ses_request['Message'])
         errors = validate_callback_data(data=ses_message, fields=['notificationType'], client_name=client_name)
         if errors:
-            raise InvalidRequest(errors, status_code=400)
+            return errors
 
         notification_type = ses_message['notificationType']
         if notification_type == 'Bounce':
@@ -58,7 +64,7 @@ def process_ses_response():
             aws_response_dict = get_aws_responses(notification_type)
         except KeyError:
             error = "{} callback failed: status {} not found".format(client_name, notification_type)
-            raise InvalidRequest(error, status_code=400)
+            return error
 
         notification_status = aws_response_dict['notification_status']
 
@@ -71,7 +77,7 @@ def process_ses_response():
             if not notification:
                 error = "SES callback failed: notification either not found or already updated " \
                         "from sending. Status {} for notification reference {}".format(notification_status, reference)
-                raise InvalidRequest(error, status_code=404)
+                return error
 
             if not aws_response_dict['success']:
                 current_app.logger.info(
@@ -96,14 +102,12 @@ def process_ses_response():
 
             create_outcome_notification_statistic_tasks(notification)
 
-            return jsonify(
-                result="success", message="SES callback succeeded"
-            ), 200
+            return
 
         except KeyError:
-            message = "SES callback failed: messageId missing"
-            raise InvalidRequest(message, status_code=400)
+            error = "SES callback failed: messageId missing"
+            return error
 
-    except ValueError as ex:
+    except ValueError:
         error = "{} callback failed: invalid json".format(client_name)
-        raise InvalidRequest(error, status_code=400)
+        return error
