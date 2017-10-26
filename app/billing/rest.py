@@ -105,13 +105,13 @@ def get_free_sms_fragment_limit(service_id):
 
         if len(results) == 0:
             raise InvalidRequest('no annual billing information for this service', status_code=404)
-        return jsonify(data=[row.serialize() for row in results]), 200
+        return jsonify(data=[row.serialize_free_sms_items() for row in results]), 200
     else:
         result = dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start)
         if result is None:
             raise InvalidRequest('no free-sms-fragment-limit-info for this service and year', status_code=404)
 
-        return jsonify(data=result.serialize()), 200
+        return jsonify(data=result.serialize_free_sms_items()), 200
 
 
 @billing_blueprint.route('/free-sms-fragment-limit', methods=["POST"])

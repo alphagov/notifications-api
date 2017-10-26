@@ -288,30 +288,30 @@ def test_create_free_sms_fragment_limit(client, sample_service):
 
 def test_update_free_sms_fragment_limit(client, sample_service):
 
-    data_old = {'financial_year_start': 2015, 'free_sms_fragment_limit': 1000}
+    data_old = {'financial_year_start': 2016, 'free_sms_fragment_limit': 1000}
     response = client.post('service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
                            data=json.dumps(data_old),
                            headers=[('Content-Type', 'application/json'), create_authorization_header()])
 
-    data_new = {'financial_year_start': 2015, 'free_sms_fragment_limit': 9999}
+    data_new = {'financial_year_start': 2016, 'free_sms_fragment_limit': 9999}
     response = client.post('service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
                            data=json.dumps(data_new),
                            headers=[('Content-Type', 'application/json'), create_authorization_header()])
 
     response_get = client.get(
-        'service/{}/billing/free-sms-fragment-limit?financial_year_start=2015'.format(sample_service.id),
+        'service/{}/billing/free-sms-fragment-limit?financial_year_start=2016'.format(sample_service.id),
         headers=[('Content-Type', 'application/json'), create_authorization_header()])
 
     json_resp = json.loads(response_get.get_data(as_text=True))
 
     assert response.status_code == 201
     assert response_get.status_code == 200
-    assert json_resp['data']['financial_year_start'] == 2015
+    assert json_resp['data']['financial_year_start'] == 2016
     assert json_resp['data']['free_sms_fragment_limit'] == 9999
 
 
 def test_get_free_sms_fragment_limit_year_return_correct_data(client, sample_service):
-    years = [2015, 2016, 2017]
+    years = [2016, 2017, 2018]
     limits = [1000, 2000, 3000]
 
     for i in range(0, len(years)):
@@ -330,7 +330,7 @@ def test_get_free_sms_fragment_limit_year_return_correct_data(client, sample_ser
 
 
 def test_get_free_sms_fragment_limit_for_all_years(client, sample_service):
-    years = [2015, 2016, 2017]
+    years = [2016, 2017, 2018]
     limits = [1000, 2000, 3000]
 
     for i in range(0, len(years)):

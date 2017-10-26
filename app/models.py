@@ -278,10 +278,27 @@ class AnnualBilling(db.Model):
     UniqueConstraint('financial_year_start', 'service_id', name='ix_annual_billing_service_id')
     service = db.relationship(Service, backref=db.backref("annual_billing", uselist=True))
 
-    def serialize(self):
+    def serialize_free_sms_items(self):
         return {
             'free_sms_fragment_limit': self.free_sms_fragment_limit,
             'financial_year_start': self.financial_year_start,
+        }
+
+    def serialize(self):
+        def serialize_service():
+            return {
+                "id": str(self.service_id),
+                "name": self.service.name
+            }
+
+        return{
+            "id": str(self.id),
+            'free_sms_fragment_limit': self.free_sms_fragment_limit,
+            'service_id': self.service_id,
+            'financial_year_start': self.financial_year_start,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+            "service": serialize_service() if self.service else None,
         }
 
 
