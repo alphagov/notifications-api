@@ -51,7 +51,7 @@ from app.dao.notifications_dao import (
     set_scheduled_notification_to_processed,
     update_notification_status_by_id,
     update_notification_status_by_reference,
-    dao_get_last_notification_added_for_job_id)
+    dao_get_last_notification_added_for_job_id, dao_update_notifications_by_reference)
 
 from app.dao.services_dao import dao_update_service
 from tests.app.db import (
@@ -2065,3 +2065,38 @@ def test_dao_get_last_notification_added_for_job_id_no_notifications(sample_temp
 def test_dao_get_last_notification_added_for_job_id_no_notifications(sample_template, fake_uuid):
 
     assert dao_get_last_notification_added_for_job_id(fake_uuid) is None
+
+
+def test_dao_update_notifications_by_reference_updated_notificaitons_and_history(sample_template):
+    notification_0 = create_notification(template=sample_template, reference='noref')
+    notification_1 = create_notification(template=sample_template, reference='ref')
+    notification_2 = create_notification(template=sample_template, reference='ref')
+
+    updated_count = dao_update_notifications_by_reference(references=['ref'],
+                                                          update_dict={"status": "delivered",
+                                                                       "billable_units": 2}
+                                                          )
+    assert updated_count == 2
+    updated_1 = Notification.query.get(notification_1.id)
+    assert updated_1.billable_units == 2
+    assert updated_1.status == 'delivered'
+    updated_2 = Notification.query.get(notification_2.id)
+    assert updated_2.billable_units == 2
+    assert updated_2.status == 'delivered'
+
+    updated_history_1 = NotificationHistory.query.get(notification_1.id)
+    assert updated_history_1.billable_units == 2
+    assert updated_history_1.status == 'delivered'
+    updated_history_2 = Notification.query.get(notification_2.id)
+    assert updated_history_2.billable_units == 2
+    assert updated_history_2.status == 'delivered'
+
+    assert notification_0 == Notification.query.get(notification_0.id)
+
+
+def test_dao_update_notifications_by_reference_returns_zero_when_no_notifications_to_update(notify_db):
+    updated_count = dao_update_notifications_by_reference(references=['ref'],
+                                                          update_dict={"status": "delivered",
+                                                                       "billable_units": 2}
+                                                          )
+    assert updated_count == 0
