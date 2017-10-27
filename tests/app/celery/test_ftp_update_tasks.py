@@ -109,7 +109,7 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
     assert sent_letter.updated_at
     assert failed_letter.status == NOTIFICATION_TECHNICAL_FAILURE
     assert failed_letter.billable_units == 2
-    assert failed_letter.updated
+    assert failed_letter.updated_at
 
 
 def test_update_letter_notifications_to_sent_to_dvla_updates_based_on_notification_references(
