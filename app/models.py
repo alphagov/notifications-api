@@ -337,7 +337,7 @@ class ServiceSmsSender(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     sms_sender = db.Column(db.String(11), nullable=False)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False, unique=False)
     service = db.relationship(Service, backref=db.backref("service_sms_senders", uselist=True))
     is_default = db.Column(db.Boolean, nullable=False, default=True)
     inbound_number_id = db.Column(UUID(as_uuid=True), db.ForeignKey('inbound_numbers.id'),
@@ -894,7 +894,7 @@ DVLA_RESPONSE_STATUS_SENT = 'Sent'
 class NotificationStatusTypes(db.Model):
     __tablename__ = 'notification_status_types'
 
-    name = db.Column(db.String(255), primary_key=True)
+    name = db.Column(db.String(), primary_key=True)
 
 
 class Notification(db.Model):
@@ -1515,6 +1515,27 @@ class NotificationEmailReplyTo(db.Model):
     service_email_reply_to_id = db.Column(
         UUID(as_uuid=True),
         db.ForeignKey('service_email_reply_to.id'),
+        unique=False,
+        index=True,
+        nullable=False,
+        primary_key=True
+    )
+
+
+class NotificationSmsSender(db.Model):
+    __tablename__ = "notification_to_sms_sender"
+
+    notification_id = db.Column(
+        UUID(as_uuid=True),
+        db.ForeignKey('notifications.id'),
+        unique=True,
+        index=True,
+        nullable=False,
+        primary_key=True
+    )
+    service_sms_sender_id = db.Column(
+        UUID(as_uuid=True),
+        db.ForeignKey('service_sms_senders.id'),
         unique=False,
         index=True,
         nullable=False,
