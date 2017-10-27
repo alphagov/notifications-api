@@ -50,6 +50,11 @@ PRIORITY = 'priority'
 TEMPLATE_PROCESS_TYPE = [NORMAL, PRIORITY]
 
 
+SMS_AUTH_TYPE = 'sms_auth'
+EMAIL_AUTH_TYPE = 'email_auth'
+USER_AUTH_TYPE = [SMS_AUTH_TYPE, EMAIL_AUTH_TYPE]
+
+
 def filter_null_value_fields(obj):
     return dict(
         filter(lambda x: x[1] is not None, obj.items())
@@ -100,6 +105,7 @@ class User(db.Model):
     state = db.Column(db.String, nullable=False, default='pending')
     platform_admin = db.Column(db.Boolean, nullable=False, default=False)
     current_session_id = db.Column(UUID(as_uuid=True), nullable=True)
+    auth_type = db.Column(db.String, db.ForeignKey('auth_type.name'), index=True, nullable=False, default=SMS_AUTH_TYPE)
 
     services = db.relationship(
         'Service',
@@ -1245,6 +1251,13 @@ class InvitedUser(db.Model):
     status = db.Column(
         db.Enum(*INVITED_USER_STATUS_TYPES, name='invited_users_status_types'), nullable=False, default='pending')
     permissions = db.Column(db.String, nullable=False)
+    auth_type = db.Column(
+        db.String,
+        db.ForeignKey('auth_type.name'),
+        index=True,
+        nullable=False,
+        default=SMS_AUTH_TYPE
+    )
 
     # would like to have used properties for this but haven't found a way to make them
     # play nice with marshmallow yet
@@ -1549,3 +1562,9 @@ class NotificationSmsSender(db.Model):
         nullable=False,
         primary_key=True
     )
+
+
+class AuthType(db.Model):
+    __tablename__ = 'auth_type'
+
+    name = db.Column(db.String, primary_key=True)
