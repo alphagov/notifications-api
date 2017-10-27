@@ -33,20 +33,19 @@ from app.dao.jobs_dao import (
     dao_get_job_by_id,
     all_notifications_are_created_for_job,
     dao_get_all_notifications_for_job,
-    dao_update_job_status)
+    dao_update_job_status
+)
 from app.dao.notifications_dao import (
     get_notification_by_id,
-    update_notification_status_by_reference,
     dao_update_notifications_for_job_to_sent_to_dvla,
     dao_update_notifications_by_reference,
-    dao_get_last_notification_added_for_job_id)
+    dao_get_last_notification_added_for_job_id
+)
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
-    Job,
-    Notification,
     DVLA_RESPONSE_STATUS_SENT,
     EMAIL_TYPE,
     JOB_STATUS_CANCELLED,
@@ -449,9 +448,12 @@ def update_letter_notifications_statuses(self, filename):
         for update in notification_updates:
             status = NOTIFICATION_DELIVERED if update.status == DVLA_RESPONSE_STATUS_SENT \
                 else NOTIFICATION_TECHNICAL_FAILURE
-            notification = update_notification_status_by_reference(
-                update.reference,
-                status
+            notification = dao_update_notifications_by_reference(
+                references=[update.reference],
+                update_dict={"status": status,
+                             "billable_units": update.page_count,
+                             "updated_at": datetime.utcnow()
+                             }
             )
 
             if not notification:
