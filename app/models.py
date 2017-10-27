@@ -168,9 +168,17 @@ class DVLAOrganisation(db.Model):
 INTERNATIONAL_SMS_TYPE = 'international_sms'
 INBOUND_SMS_TYPE = 'inbound_sms'
 SCHEDULE_NOTIFICATIONS = 'schedule_notifications'
+EMAIL_AUTH = 'email_auth'
 
-SERVICE_PERMISSION_TYPES = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
-                            SCHEDULE_NOTIFICATIONS]
+SERVICE_PERMISSION_TYPES = [
+    EMAIL_TYPE,
+    SMS_TYPE,
+    LETTER_TYPE,
+    INTERNATIONAL_SMS_TYPE,
+    INBOUND_SMS_TYPE,
+    SCHEDULE_NOTIFICATIONS,
+    EMAIL_AUTH,
+]
 
 
 class ServicePermissionTypes(db.Model):
