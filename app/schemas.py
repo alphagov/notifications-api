@@ -87,6 +87,7 @@ class UserSchema(BaseSchema):
     permissions = fields.Method("user_permissions", dump_only=True)
     password_changed_at = field_for(models.User, 'password_changed_at', format='%Y-%m-%d %H:%M:%S.%f')
     created_at = field_for(models.User, 'created_at', format='%Y-%m-%d %H:%M:%S.%f')
+    auth_type = field_for(models.User, 'auth_type')
 
     def user_permissions(self, usr):
         retval = {}
@@ -505,6 +506,7 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
 
 
 class InvitedUserSchema(BaseSchema):
+    auth_type = field_for(models.InvitedUser, 'auth_type')
 
     class Meta:
         model = models.InvitedUser
