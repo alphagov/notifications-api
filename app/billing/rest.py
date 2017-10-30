@@ -106,17 +106,34 @@ def get_free_sms_fragment_limit(service_id):
         financial_year_start = request.args.get('financial_year_start')
 
     if financial_year_start is None:
-        results = dao_get_all_free_sms_fragment_limit(service_id)
-
-        if len(results) == 0:
-            raise InvalidRequest('no annual billing information for this service', status_code=404)
-        return jsonify(data=[row.serialize_free_sms_items() for row in results]), 200
+        # return a list of all entries related to the service
+        sms_list = dao_get_all_free_sms_fragment_limit(service_id)
+        if len(sms_list) == 0:
+            raise InvalidRequest('no free-sms-fragment-limit list for this service in DB', status_code=404)
+        return jsonify([row.serialize_free_sms_items() for row in sms_list]), 200
     else:
         result = dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start)
-        if result is None:
-            raise InvalidRequest('no free-sms-fragment-limit-info for this service and year', status_code=404)
 
-        return jsonify(data=result.serialize_free_sms_items()), 200
+        if result is None:
+            # An entry does not exist in annual_billing table for that service and year. If it is a past year,
+            # we return the oldest entry.
+            # If it is the current or future years, we create an entry in the db table using the newest record,
+            # and return that number.  If all fails, we return InvalidRequest.
+            sms_list = dao_get_all_free_sms_fragment_limit(service_id)
+            if len(sms_list) == 0:
+                raise InvalidRequest('no free-sms-fragment-limit entry for this service in DB', status_code=404)
+
+            if int(financial_year_start) < get_current_financial_year_start_year():
+                result = sms_list[0]
+            else:
+                result = sms_list[-1]   # The newest entry
+
+                new_sms = AnnualBilling(service_id=service_id, financial_year_start=financial_year_start,
+                                        free_sms_fragment_limit=result.free_sms_fragment_limit)
+
+                dao_create_or_update_annual_billing_for_year(new_sms)
+
+        return jsonify(result.serialize_free_sms_items()), 200
 
 
 @billing_blueprint.route('/free-sms-fragment-limit', methods=["POST"])

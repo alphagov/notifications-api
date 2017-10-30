@@ -374,9 +374,9 @@ def test_create_service_free_sms_fragment_limit_is_optional(client, sample_user)
                                 .format(service_id, get_current_financial_year_start_year()),
                                 headers=[('Content-Type', 'application/json'), create_authorization_header()])
     json_resp = json.loads(annual_billing.get_data(as_text=True))
-    assert json_resp['data']['free_sms_fragment_limit'] == 9999
+    assert json_resp['free_sms_fragment_limit'] == 9999
     # TODO: Remove this after the new data is used
-    assert json_resp['data']['free_sms_fragment_limit'] == 9999
+    assert json_resp['free_sms_fragment_limit'] == 9999
 
     data2 = {
         'name': 'service 2',
@@ -402,9 +402,9 @@ def test_create_service_free_sms_fragment_limit_is_optional(client, sample_user)
                                 .format(service_id, get_current_financial_year_start_year()),
                                 headers=[('Content-Type', 'application/json'), create_authorization_header()])
     json_resp = json.loads(annual_billing.get_data(as_text=True))
-    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
+    assert json_resp['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
     # TODO: Remove this after the new data is used
-    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
+    assert json_resp['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
 
 def test_should_error_if_created_by_missing(notify_api, sample_user):

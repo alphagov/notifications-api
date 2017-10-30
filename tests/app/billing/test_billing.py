@@ -282,8 +282,8 @@ def test_create_free_sms_fragment_limit(client, sample_service):
     json_resp = json.loads(response_get.get_data(as_text=True))
     assert response.status_code == 201
     assert response_get.status_code == 200
-    assert json_resp['data']['financial_year_start'] == 2017
-    assert json_resp['data']['free_sms_fragment_limit'] == 250
+    assert json_resp['financial_year_start'] == 2017
+    assert json_resp['free_sms_fragment_limit'] == 250
 
 
 def test_update_free_sms_fragment_limit(client, sample_service):
@@ -306,8 +306,8 @@ def test_update_free_sms_fragment_limit(client, sample_service):
 
     assert response.status_code == 201
     assert response_get.status_code == 200
-    assert json_resp['data']['financial_year_start'] == 2016
-    assert json_resp['data']['free_sms_fragment_limit'] == 9999
+    assert json_resp['financial_year_start'] == 2016
+    assert json_resp['free_sms_fragment_limit'] == 9999
 
 
 def test_get_free_sms_fragment_limit_year_return_correct_data(client, sample_service):
@@ -326,7 +326,7 @@ def test_get_free_sms_fragment_limit_year_return_correct_data(client, sample_ser
             headers=[('Content-Type', 'application/json'), create_authorization_header()])
         json_resp = json.loads(response_get.get_data(as_text=True))
         assert response_get.status_code == 200
-        assert json_resp['data']['free_sms_fragment_limit'] == limits[i]
+        assert json_resp['free_sms_fragment_limit'] == limits[i]
 
 
 def test_get_free_sms_fragment_limit_for_all_years(client, sample_service):
@@ -345,19 +345,18 @@ def test_get_free_sms_fragment_limit_for_all_years(client, sample_service):
         headers=[('Content-Type', 'application/json'), create_authorization_header()])
     json_resp = json.loads(response_get.get_data(as_text=True))
     assert response_get.status_code == 200
-    assert len(json_resp['data']) == 3
+    assert len(json_resp) == 3
     print(json_resp)
     for i in [0, 1, 2]:
-        assert json_resp['data'][i]['free_sms_fragment_limit'] == limits[i]
-        assert json_resp['data'][i]['financial_year_start'] == years[i]
+        assert json_resp[i]['free_sms_fragment_limit'] == limits[i]
+        assert json_resp[i]['financial_year_start'] == years[i]
 
 
-def test_get_free_sms_fragment_limit_no_year_data_return_404(client, sample_service):
+def test_get_free_sms_fragment_limit_no_service_return_404(client, sample_service):
 
     response_get = client.get(
-        'service/{}/billing/free-sms-fragment-limit?financial_year_start={}'.format(sample_service.id, 1999),
+        'service/{}/billing/free-sms-fragment-limit?financial_year_start={}'.format(uuid.uuid4(), 1999),
         headers=[('Content-Type', 'application/json'), create_authorization_header()])
-    json_resp = json.loads(response_get.get_data(as_text=True))
 
     assert response_get.status_code == 404
 
@@ -378,7 +377,7 @@ def test_get_free_sms_fragment_limit_current_year(client, sample_service):
     json_resp = json.loads(response.get_data(as_text=True))
 
     assert response.status_code == 200
-    assert json_resp['data']['free_sms_fragment_limit'] == 250000
+    assert json_resp['free_sms_fragment_limit'] == 250000
 
 
 def test_post_free_sms_fragment_limit_current_year(client, sample_service):
@@ -395,5 +394,58 @@ def test_post_free_sms_fragment_limit_current_year(client, sample_service):
 
     assert response.status_code == 201
     assert response_get.status_code == 200
-    assert json_resp['data']['financial_year_start'] == get_current_financial_year_start_year()
-    assert json_resp['data']['free_sms_fragment_limit'] == 7777
+    assert json_resp['financial_year_start'] == get_current_financial_year_start_year()
+    assert json_resp['free_sms_fragment_limit'] == 7777
+
+
+def test_get_free_sms_fragment_limit_past_year_get_db_oldest_record(client, sample_service):
+    response = client.get(
+        'service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    sms_list = json.loads(response.get_data(as_text=True))
+    past_year = sms_list[0]['financial_year_start'] - 1
+
+    # create an older entry than the one created in sample service has an entry already
+    annual_billing = {'financial_year_start': past_year, 'free_sms_fragment_limit': 1000}
+    response = client.post('service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
+                           data=json.dumps(annual_billing),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    response = client.get(
+        'service/{}/billing/free-sms-fragment-limit?financial_year_start={}'.format(sample_service.id, past_year - 2),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    json_resp = json.loads(response.get_data(as_text=True))
+
+    assert response.status_code == 200
+    assert json_resp['free_sms_fragment_limit'] == 1000
+
+
+def test_get_free_sms_fragment_limit_future_year_get_and_create_db_newest_record(client, sample_service):
+
+    response = client.get(
+        'service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    sms_list = json.loads(response.get_data(as_text=True))
+    next_year = sms_list[-1]['financial_year_start'] + 1
+
+    # create an older entry than the one created in sample service has an entry already
+    annual_billing = {'financial_year_start': next_year, 'free_sms_fragment_limit': 1000}
+    response = client.post('service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
+                           data=json.dumps(annual_billing),
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    # request one year ahead that record doesn't exist yet
+    response = client.get(
+        'service/{}/billing/free-sms-fragment-limit?financial_year_start={}'.format(sample_service.id, next_year + 2),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    json_resp = json.loads(response.get_data(as_text=True))
+
+    # get a list of request and see if the newe
+    response = client.get(
+        'service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    sms_new_list = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 200
+    assert len(sms_new_list) == 3
+    assert sms_new_list[0]['free_sms_fragment_limit'] == 250000
+    assert sms_new_list[1]['free_sms_fragment_limit'] == 1000
+    assert sms_new_list[2]['free_sms_fragment_limit'] == 1000
