@@ -1,34 +1,30 @@
 import json
 import pytest
 
-from flask import url_for
+from flask import url_for, current_app
 from freezegun import freeze_time
 
-from app.models import (
-    User,
-    Permission,
-    MANAGE_SETTINGS,
-    MANAGE_TEMPLATES,
-    Notification,
-    SMS_AUTH_TYPE,
-    EMAIL_AUTH_TYPE
-)
+import app
+from app.models import (User, Permission, MANAGE_SETTINGS, MANAGE_TEMPLATES, Notification)
 from app.dao.permissions_dao import default_service_permissions
 from tests import create_authorization_header
 
 
-def test_get_user_list(admin_request, sample_service):
+def test_get_user_list(client, sample_service):
     """
     Tests GET endpoint '/' to retrieve entire user list.
     """
-    json_resp = admin_request.get('user.get_user')
-
-    # it may have the notify user in the DB still :weary:
-    assert len(json_resp['data']) >= 1
+    header = create_authorization_header()
+    response = client.get(url_for('user.get_user'),
+                          headers=[header])
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert len(json_resp['data']) == 1
     sample_user = sample_service.users[0]
     expected_permissions = default_service_permissions
-    fetched = next(x for x in json_resp['data'] if x['id'] == str(sample_user.id))
+    fetched = json_resp['data'][0]
 
+    assert str(sample_user.id) == fetched['id']
     assert sample_user.name == fetched['name']
     assert sample_user.mobile_number == fetched['mobile_number']
     assert sample_user.email_address == fetched['email_address']
@@ -56,7 +52,6 @@ def test_get_user(client, sample_service):
     assert sample_user.mobile_number == fetched['mobile_number']
     assert sample_user.email_address == fetched['email_address']
     assert sample_user.state == fetched['state']
-    assert fetched['auth_type'] == SMS_AUTH_TYPE
     assert sorted(expected_permissions) == sorted(fetched['permissions'][str(sample_service.id)])
 
 
@@ -73,8 +68,7 @@ def test_post_user(client, notify_db, notify_db_session):
         "logged_in_at": None,
         "state": "active",
         "failed_login_count": 0,
-        "permissions": {},
-        "auth_type": EMAIL_AUTH_TYPE
+        "permissions": {}
     }
     auth_header = create_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
@@ -87,25 +81,6 @@ def test_post_user(client, notify_db, notify_db_session):
     json_resp = json.loads(resp.get_data(as_text=True))
     assert json_resp['data']['email_address'] == user.email_address
     assert json_resp['data']['id'] == str(user.id)
-    assert user.auth_type == EMAIL_AUTH_TYPE
-
-
-
-def test_post_user_without_auth_type(admin_client, notify_db_session):
-    assert User.query.count() == 0
-    data = {
-        "name": "Test User",
-        "email_address": "user@digital.cabinet-office.gov.uk",
-        "password": "password",
-        "mobile_number": "+447700900986",
-        "permissions": {},
-    }
-
-    json_resp = admin_client.post('user.create_user', data=data, _expected_status=201)
-
-    user = User.query.filter_by(email_address='user@digital.cabinet-office.gov.uk').first()
-    assert json_resp['data']['id'] == str(user.id)
-    assert user.auth_type == EMAIL_AUTH_TYPE
 
 
 def test_post_user_missing_attribute_email(client, notify_db, notify_db_session):
