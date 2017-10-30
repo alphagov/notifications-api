@@ -390,7 +390,6 @@ def delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
             notification_sender_mapping_table.notification_id.in_(subq)
         ).delete(synchronize_session='fetch')
 
-
     deleted = db.session.query(Notification).filter(
         func.date(Notification.created_at) < seven_days_ago,
         Notification.notification_type == notification_type,
