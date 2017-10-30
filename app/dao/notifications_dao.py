@@ -33,6 +33,7 @@ from app.models import (
     ServiceEmailReplyTo,
     Template,
     EMAIL_TYPE,
+    SMS_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     LETTER_TYPE,
@@ -374,16 +375,21 @@ def delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
     seven_days_ago = date.today() - timedelta(days=7)
 
     # Following could be refactored when NotificationSmsReplyTo and NotificationLetterContact in models.py
-    if notification_type == EMAIL_TYPE:
+    if notification_type in [EMAIL_TYPE, SMS_TYPE]:
         subq = db.session.query(Notification.id).filter(
             func.date(Notification.created_at) < seven_days_ago,
             Notification.notification_type == notification_type
         ).subquery()
-        deleted = db.session.query(
-            NotificationEmailReplyTo
+        if notification_type == EMAIL_TYPE:
+            notification_sender_mapping_table = NotificationEmailReplyTo
+        if notification_type == SMS_TYPE:
+            notification_sender_mapping_table = NotificationSmsSender
+        db.session.query(
+            notification_sender_mapping_table
         ).filter(
-            NotificationEmailReplyTo.notification_id.in_(subq)
+            notification_sender_mapping_table.notification_id.in_(subq)
         ).delete(synchronize_session='fetch')
+
 
     deleted = db.session.query(Notification).filter(
         func.date(Notification.created_at) < seven_days_ago,

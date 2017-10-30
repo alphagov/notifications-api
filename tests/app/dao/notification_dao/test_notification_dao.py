@@ -22,7 +22,7 @@ from app.models import (
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
-    JOB_STATUS_IN_PROGRESS, NotificationSmsSender)
+    JOB_STATUS_IN_PROGRESS, NotificationSmsSender, SMS_TYPE)
 
 from app.dao.notifications_dao import (
     dao_create_notification,
@@ -1041,6 +1041,38 @@ def test_should_delete_notification_to_email_reply_to_after_seven_days(
     assert len(remaining_notification_to_email_reply_to) == 8
 
     for notification in remaining_email_notifications:
+        assert notification.created_at.date() >= date(2016, 1, 3)
+
+
+@freeze_time("2016-01-10 12:00:00.000000")
+def test_should_delete_notification_to_sms_sender_after_seven_days(
+    sample_template
+):
+    assert len(Notification.query.all()) == 0
+
+    sms_sender = create_service_sms_sender(service=sample_template.service, sms_sender='123456', is_default=False)
+
+    # create one notification a day between 1st and 10th from 11:00 to 19:00 of each type
+    for i in range(1, 11):
+        past_date = '2016-01-{0:02d}  {0:02d}:00:00.000000'.format(i)
+        with freeze_time(past_date):
+            notification = create_notification(template=sample_template, sms_sender_id=sms_sender.id)
+
+    all_notifications = Notification.query.all()
+    assert len(all_notifications) == 10
+
+    all_notification_sms_senders = NotificationSmsSender.query.all()
+    assert len(all_notification_sms_senders) == 10
+
+    # Records before 3rd should be deleted
+    delete_notifications_created_more_than_a_week_ago_by_type(SMS_TYPE)
+    remaining_notifications = Notification.query.filter_by(notification_type=SMS_TYPE).all()
+    remaining_notification_to_sms_sender = NotificationSmsSender.query.filter_by().all()
+
+    assert len(remaining_notifications) == 8
+    assert len(remaining_notification_to_sms_sender) == 8
+
+    for notification in remaining_notifications:
         assert notification.created_at.date() >= date(2016, 1, 3)
 
 
