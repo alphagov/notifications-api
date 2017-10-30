@@ -14,7 +14,6 @@ from app.models import (
     NotificationHistory,
     NotificationStatistics,
     ScheduledNotification,
-    ServiceEmailReplyTo,
     EMAIL_TYPE,
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_FAILED,
@@ -23,7 +22,7 @@ from app.models import (
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
-    JOB_STATUS_IN_PROGRESS)
+    JOB_STATUS_IN_PROGRESS, NotificationSmsSender)
 
 from app.dao.notifications_dao import (
     dao_create_notification,
@@ -51,15 +50,18 @@ from app.dao.notifications_dao import (
     set_scheduled_notification_to_processed,
     update_notification_status_by_id,
     update_notification_status_by_reference,
-    dao_get_last_notification_added_for_job_id, dao_update_notifications_by_reference)
+    dao_get_last_notification_added_for_job_id,
+    dao_update_notifications_by_reference,
+    dao_create_notification_sms_sender_mapping
+)
 
 from app.dao.services_dao import dao_update_service
 from tests.app.db import (
     create_api_key,
     create_job,
     create_notification,
-    create_reply_to_email
-)
+    create_reply_to_email,
+    create_service_sms_sender)
 from tests.app.conftest import (
     sample_notification,
     sample_template,
@@ -2100,3 +2102,13 @@ def test_dao_update_notifications_by_reference_returns_zero_when_no_notification
                                                                        "billable_units": 2}
                                                           )
     assert updated_count == 0
+
+
+def test_dao_create_notification_sms_sender_mapping(sample_notification):
+    sms_sender = create_service_sms_sender(service=sample_notification.service, sms_sender='123456')
+    dao_create_notification_sms_sender_mapping(notification_id=sample_notification.id,
+                                               sms_sender_id=sms_sender.id)
+    notification_to_senders = NotificationSmsSender.query.all()
+    assert len(notification_to_senders) == 1
+    assert notification_to_senders[0].notification_id == sample_notification.id
+    assert notification_to_senders[0].service_sms_sender_id == sms_sender.id

@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 from notifications_utils.recipients import InvalidPhoneError
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.v2.errors import BadRequestError, TooManyRequestsError
 from app.config import QueueNames
@@ -12,9 +13,11 @@ from app.models import (
     PRIORITY,
     SMS_TYPE,
     NotificationEmailReplyTo,
-    Notification)
+    Notification,
+    NotificationSmsSender
+)
 
-from tests.app.db import create_user, create_reply_to_email
+from tests.app.db import create_user, create_reply_to_email, create_service_sms_sender
 
 
 @pytest.fixture
@@ -206,7 +209,7 @@ def test_send_one_off_notification_should_add_email_reply_to_id_for_email(sample
 
 
 def test_send_one_off_notification_should_throw_exception_if_reply_to_id_doesnot_exist(
-        sample_email_template, celery_mock
+        sample_email_template
 ):
     data = {
         'to': 'ok@ok.com',
@@ -215,5 +218,39 @@ def test_send_one_off_notification_should_throw_exception_if_reply_to_id_doesnot
         'created_by': str(sample_email_template.service.created_by_id)
     }
 
-    with pytest.raises(expected_exception=BadRequestError):
+    with pytest.raises(expected_exception=SQLAlchemyError):
         send_one_off_notification(service_id=sample_email_template.service.id, post_data=data)
+
+
+def test_send_one_off_notification_should_add_sms_sender_mapping_for_sms(sample_template, celery_mock):
+    sms_sender = create_service_sms_sender(service=sample_template.service, sms_sender='123456')
+    data = {
+        'to': '07700 900 001',
+        'template_id': str(sample_template.id),
+        'sender_id': sms_sender.id,
+        'created_by': str(sample_template.service.created_by_id)
+    }
+
+    notification_id = send_one_off_notification(service_id=sample_template.service.id, post_data=data)
+    notification = Notification.query.get(notification_id['id'])
+    celery_mock.assert_called_once_with(
+        notification=notification,
+        research_mode=False,
+        queue=None
+    )
+    mapping_row = NotificationSmsSender.query.filter_by(notification_id=notification_id['id']).first()
+    assert mapping_row.service_sms_sender_id == sms_sender.id
+
+
+def test_send_one_off_notification_should_throw_exception_if_sms_sender_id_doesnot_exist(
+        sample_template
+):
+    data = {
+        'to': '07700 900 001',
+        'template_id': str(sample_template.id),
+        'sender_id': str(uuid.uuid4()),
+        'created_by': str(sample_template.service.created_by_id)
+    }
+
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        send_one_off_notification(service_id=sample_template.service.id, post_data=data)

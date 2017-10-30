@@ -17,7 +17,8 @@ from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE, NOTIFI
 from app.dao.notifications_dao import (dao_create_notification,
                                        dao_delete_notifications_and_history_by_id,
                                        dao_created_scheduled_notification,
-                                       dao_create_notification_email_reply_to_mapping)
+                                       dao_create_notification_email_reply_to_mapping,
+                                       dao_create_notification_sms_sender_mapping)
 from app.v2.errors import BadRequestError
 from app.utils import get_template_instance, cache_key_for_service_template_counter, convert_bst_to_utc
 
@@ -146,3 +147,7 @@ def persist_scheduled_notification(notification_id, scheduled_for):
 
 def persist_email_reply_to_id_for_notification(notification_id, email_reply_to_id):
     dao_create_notification_email_reply_to_mapping(notification_id, email_reply_to_id)
+
+
+def persist_sms_sender_id_for_notification(notification_id, sms_sender_id):
+    dao_create_notification_sms_sender_mapping(notification_id, sms_sender_id)

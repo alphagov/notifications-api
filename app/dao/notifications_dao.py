@@ -43,8 +43,8 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
-    NOTIFICATION_SENT
-)
+    NOTIFICATION_SENT,
+    NotificationSmsSender)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
@@ -650,3 +650,12 @@ def dao_get_last_notification_added_for_job_id(job_id):
     ).first()
 
     return last_notification_added
+
+
+@transactional
+def dao_create_notification_sms_sender_mapping(notification_id, sms_sender_id):
+    notification_to_sms_sender = NotificationSmsSender(
+        notification_id=notification_id,
+        service_sms_sender_id=sms_sender_id
+    )
+    db.session.add(notification_to_sms_sender)
