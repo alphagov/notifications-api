@@ -106,7 +106,8 @@ def notify_db_session(notify_db):
                             "template_process_type",
                             "dvla_organisation",
                             "notification_status_types",
-                            "service_permission_types"]:
+                            "service_permission_types",
+                            "auth_type"]:
             notify_db.engine.execute(tbl.delete())
     notify_db.session.commit()
 
