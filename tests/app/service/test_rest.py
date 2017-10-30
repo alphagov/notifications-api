@@ -37,6 +37,7 @@ from tests.app.db import (
     create_service_sms_sender
 )
 from tests.app.db import create_user
+from app.service.utils import get_current_financial_year_start_year
 
 
 def test_get_service_list(client, service_factory):
@@ -300,6 +301,7 @@ def test_create_service(client, sample_user):
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
+    # TODO: Remove this after the new data is used
     assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
     service_db = Service.query.get(json_resp['data']['id'])
@@ -365,6 +367,15 @@ def test_create_service_free_sms_fragment_limit_is_optional(client, sample_user)
         headers=headers)
     json_resp = json.loads(resp.get_data(as_text=True))
     assert resp.status_code == 201
+
+    # Test data from the new annual billing table
+    service_id = json_resp['data']['id']
+    annual_billing = client.get('service/{}/billing/free-sms-fragment-limit?financial_year_start={}'
+                                .format(service_id, get_current_financial_year_start_year()),
+                                headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    json_resp = json.loads(annual_billing.get_data(as_text=True))
+    assert json_resp['data']['free_sms_fragment_limit'] == 9999
+    # TODO: Remove this after the new data is used
     assert json_resp['data']['free_sms_fragment_limit'] == 9999
 
     data2 = {
@@ -385,6 +396,14 @@ def test_create_service_free_sms_fragment_limit_is_optional(client, sample_user)
         headers=headers)
     json_resp = json.loads(resp.get_data(as_text=True))
     assert resp.status_code == 201
+    # Test data from the new annual billing table
+    service_id = json_resp['data']['id']
+    annual_billing = client.get('service/{}/billing/free-sms-fragment-limit?financial_year_start={}'
+                                .format(service_id, get_current_financial_year_start_year()),
+                                headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    json_resp = json.loads(annual_billing.get_data(as_text=True))
+    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
+    # TODO: Remove this after the new data is used
     assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
 
@@ -623,6 +642,7 @@ def test_update_service_flags_will_remove_service_permissions(client, notify_db,
     assert set([p.permission for p in permissions]) == set([SMS_TYPE, EMAIL_TYPE])
 
 
+# TODO: Remove after new table is created and verified
 def test_update_service_free_sms_fragment_limit(client, notify_db, sample_service):
     org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
     notify_db.session.add(org)

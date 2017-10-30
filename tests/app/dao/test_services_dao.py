@@ -104,7 +104,7 @@ def test_cannot_create_two_services_with_same_name(sample_user):
                        email_from="email_from1",
                        message_limit=1000,
                        restricted=False,
-                       created_by=sample_user)
+                       created_by=sample_user,)
 
     service2 = Service(name="service_name",
                        email_from="email_from2",
