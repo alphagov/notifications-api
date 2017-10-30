@@ -29,7 +29,11 @@ from app.models import (
     KEY_TYPE_NORMAL
 )
 from app.dao.users_dao import save_model_user
-from app.dao.notifications_dao import dao_create_notification, dao_created_scheduled_notification
+from app.dao.notifications_dao import (
+    dao_create_notification,
+    dao_created_scheduled_notification,
+    dao_create_notification_sms_sender_mapping
+)
 from app.dao.templates_dao import dao_create_template
 from app.dao.services_dao import dao_create_service
 from app.dao.service_permissions_dao import dao_add_service_permission
@@ -128,6 +132,7 @@ def create_notification(
     scheduled_for=None,
     normalised_to=None,
     one_off=False,
+    sms_sender_id=None
 ):
     if created_at is None:
         created_at = datetime.utcnow()
@@ -184,6 +189,9 @@ def create_notification(
         if status != 'created':
             scheduled_notification.pending = False
         dao_created_scheduled_notification(scheduled_notification)
+    if sms_sender_id:
+        dao_create_notification_sms_sender_mapping(notification_id=notification.id,
+                                                   sms_sender_id=sms_sender_id)
     return notification
 
 

@@ -32,8 +32,8 @@ from tests.app.db import (
     create_notification,
     create_inbound_number,
     create_reply_to_email,
-    create_reply_to_email_for_notification
-)
+    create_reply_to_email_for_notification,
+    create_service_sms_sender)
 
 
 def test_should_return_highest_priority_active_provider(restore_provider_details):
@@ -340,6 +340,28 @@ def test_should_send_sms_with_downgraded_content(notify_db_session, mocker):
         content=gsm_message,
         reference=ANY,
         sender=ANY
+    )
+
+
+def test_send_sms_should_use_service_sms_sender(
+        sample_service,
+        sample_template,
+        mocker):
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+
+    sms_sender = create_service_sms_sender(service=sample_service, sms_sender='123456', is_default=False)
+    db_notification = create_notification(template=sample_template, sms_sender_id=sms_sender.id)
+
+    send_to_providers.send_sms_to_provider(
+        db_notification,
+    )
+
+    app.mmg_client.send_sms.assert_called_once_with(
+        to=ANY,
+        content=ANY,
+        reference=ANY,
+        sender=sms_sender.sms_sender
     )
 
 

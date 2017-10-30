@@ -44,7 +44,9 @@ from app.models import (
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_SENT,
-    NotificationSmsSender)
+    NotificationSmsSender,
+    ServiceSmsSender
+)
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
@@ -659,3 +661,14 @@ def dao_create_notification_sms_sender_mapping(notification_id, sms_sender_id):
         service_sms_sender_id=sms_sender_id
     )
     db.session.add(notification_to_sms_sender)
+
+
+def dao_get_notification_sms_sender_mapping(notification_id):
+    sms_sender = ServiceSmsSender.query.join(
+        NotificationSmsSender
+    ).filter(
+        NotificationSmsSender.notification_id == notification_id
+    ).first()
+
+    if sms_sender:
+        return sms_sender.sms_sender

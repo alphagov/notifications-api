@@ -52,8 +52,8 @@ from app.dao.notifications_dao import (
     update_notification_status_by_reference,
     dao_get_last_notification_added_for_job_id,
     dao_update_notifications_by_reference,
-    dao_create_notification_sms_sender_mapping
-)
+    dao_create_notification_sms_sender_mapping,
+    dao_get_notification_sms_sender_mapping)
 
 from app.dao.services_dao import dao_update_service
 from tests.app.db import (
@@ -2112,3 +2112,16 @@ def test_dao_create_notification_sms_sender_mapping(sample_notification):
     assert len(notification_to_senders) == 1
     assert notification_to_senders[0].notification_id == sample_notification.id
     assert notification_to_senders[0].service_sms_sender_id == sms_sender.id
+
+
+def test_dao_get_notification_sms_sender_mapping(sample_notification):
+    sms_sender = create_service_sms_sender(service=sample_notification.service, sms_sender='123456')
+    dao_create_notification_sms_sender_mapping(notification_id=sample_notification.id,
+                                               sms_sender_id=sms_sender.id)
+    notification_to_sender = dao_get_notification_sms_sender_mapping(sample_notification.id)
+    assert notification_to_sender == '123456'
+
+
+def test_dao_get_notification_sms_sender_mapping_returns_none(sample_notification):
+    notification_to_sender = dao_get_notification_sms_sender_mapping(sample_notification.id)
+    assert not notification_to_sender
