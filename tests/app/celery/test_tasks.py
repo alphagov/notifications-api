@@ -1398,7 +1398,15 @@ def test_process_ses_results(notify_db, notify_db_session, sample_email_template
     assert process_ses_results(response=response) is None
 
 
+def test_process_ses_results_does_not_retry_if_errors(notify_db, mocker):
+    mocked = mocker.patch('app.celery.tasks.process_ses_results.retry')
+    response = json.loads(ses_notification_callback())
+    process_ses_results(response=response)
+    assert mocked.call_count == 0
+
+
 def test_process_ses_results_retry_called(notify_db, mocker):
+    mocker.patch("app.dao.notifications_dao.update_notification_status_by_reference", side_effect=Exception("EXPECTED"))
     mocked = mocker.patch('app.celery.tasks.process_ses_results.retry')
     response = json.loads(ses_notification_callback())
     process_ses_results(response=response)

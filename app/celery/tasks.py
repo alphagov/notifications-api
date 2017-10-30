@@ -555,7 +555,10 @@ def process_incomplete_job(job_id):
 @notify_celery.task(bind=True, name="process-ses-result", max_retries=5, default_retry_delay=300)
 @statsd(namespace="tasks")
 def process_ses_results(self, response):
-    errors = process_ses_response(response)
-    if errors:
-        current_app.logger.error(errors)
+    try:
+        errors = process_ses_response(response)
+        if errors:
+            current_app.logger.error(errors)
+    except Exception:
+        current_app.logger.exception('Error processing SES results')
         self.retry(queue=QueueNames.RETRY, exc="SES responses processed with error")
