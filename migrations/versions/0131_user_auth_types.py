@@ -21,16 +21,12 @@ def upgrade():
     )
     op.execute("INSERT INTO auth_type VALUES ('email_auth'), ('sms_auth')")
 
-    op.add_column('users', sa.Column('auth_type', sa.String(), nullable=True))
-    op.execute("UPDATE users SET auth_type='sms_auth'")
-    op.alter_column('users', 'auth_type', nullable=False)
+    op.add_column('users', sa.Column('auth_type', sa.String(), nullable=False, server_default='sms_auth'))
 
     op.create_index(op.f('ix_users_auth_type'), 'users', ['auth_type'], unique=False)
     op.create_foreign_key(None, 'users', 'auth_type', ['auth_type'], ['name'])
 
-    op.add_column('invited_users', sa.Column('auth_type', sa.String(), nullable=True))
-    op.execute("UPDATE invited_users SET auth_type='sms_auth'")
-    op.alter_column('invited_users', 'auth_type', nullable=False)
+    op.add_column('invited_users', sa.Column('auth_type', sa.String(), nullable=False, server_default='sms_auth'))
 
     op.create_index(op.f('ix_invited_users_auth_type'), 'invited_users', ['auth_type'], unique=False)
     op.create_foreign_key(None, 'invited_users', 'auth_type', ['auth_type'], ['name'])
