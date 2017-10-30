@@ -493,7 +493,6 @@ def dao_update_notifications_for_job_to_sent_to_dvla(job_id, provider):
 @statsd(namespace="dao")
 @transactional
 def dao_update_notifications_by_reference(references, update_dict):
-    now = datetime.utcnow()
     updated_count = Notification.query.filter(
         Notification.reference.in_(references)
     ).update(
