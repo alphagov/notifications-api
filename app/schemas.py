@@ -107,6 +107,7 @@ class UserSchema(BaseSchema):
 
 
 class UserUpdateAttributeSchema(BaseSchema):
+    auth_type = field_for(models.User, 'auth_type')
 
     class Meta:
         model = models.User
