@@ -23,8 +23,8 @@ manager.add_command('populate_service_sms_sender', commands.PopulateServiceSmsSe
 manager.add_command('populate_service_letter_contact', commands.PopulateServiceLetterContact)
 manager.add_command('populate_service_and_service_history_free_sms_fragment_limit',
                     commands.PopulateServiceAndServiceHistoryFreeSmsFragmentLimit)
-manager.add_command('populate_annual_billing',
-                    commands.PopulateAnnualBilling)
+manager.add_command('populate_annual_billing', commands.PopulateAnnualBilling)
+manager.add_command('rerun_build_dvla_file', commands.ReRunBuildDvlaFileForJob)
 
 
 @manager.command
