@@ -13,7 +13,6 @@ from app.dao.dao_utils import (
 from app.dao.date_util import get_financial_year
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
 from app.models import (
-    NotificationStatistics,
     ProviderStatistics,
     VerifyCode,
     ApiKey,
@@ -232,7 +231,6 @@ def delete_service_and_all_associated_db_objects(service):
     _delete_commit(TemplateRedacted.query.filter(TemplateRedacted.template_id.in_(subq)))
 
     _delete_commit(ServiceSmsSender.query.filter_by(service=service))
-    _delete_commit(NotificationStatistics.query.filter_by(service=service))
     _delete_commit(ProviderStatistics.query.filter_by(service=service))
     _delete_commit(InvitedUser.query.filter_by(service=service))
     _delete_commit(Permission.query.filter_by(service=service))

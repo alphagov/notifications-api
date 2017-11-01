@@ -1,6 +1,7 @@
 from sqlalchemy import func
 
 from app import db
+from app.dao.date_util import get_financial_year
 from app.models import (
     NotificationHistory,
     SMS_TYPE,
@@ -8,7 +9,6 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES_BILLABLE,
     KEY_TYPE_TEST
 )
-from app.dao.notifications_dao import get_financial_year
 
 
 def get_fragment_count(service_id, year=None):

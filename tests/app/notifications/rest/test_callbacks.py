@@ -9,7 +9,6 @@ import app.celery.tasks
 from app.dao.notifications_dao import (
     get_notification_by_id
 )
-from app.models import NotificationStatistics
 from tests.app.notifications.test_notifications_ses_callback import ses_confirmation_callback
 from tests.app.conftest import sample_notification as create_sample_notification
 
@@ -429,10 +428,6 @@ def test_firetext_callback_should_record_statsd(client, notify_db, notify_db_ses
             "callback.firetext.elapsed-time", datetime.utcnow(), notification.sent_at
         )
         app.statsd_client.incr.assert_any_call("callback.firetext.delivered")
-
-
-def get_notification_stats(service_id):
-    return NotificationStatistics.query.filter_by(service_id=service_id).one()
 
 
 def _sample_sns_s3_callback():

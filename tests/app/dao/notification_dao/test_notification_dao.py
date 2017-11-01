@@ -13,7 +13,6 @@ from app.models import (
     NotificationEmailReplyTo,
     NotificationHistory,
     NotificationSmsSender,
-    NotificationStatistics,
     ScheduledNotification,
     EMAIL_TYPE,
     SMS_TYPE,
@@ -38,8 +37,6 @@ from app.dao.notifications_dao import (
     dao_get_notification_email_reply_for_notification,
     dao_get_notifications_by_to_field,
     dao_get_notification_sms_sender_mapping,
-    dao_get_notification_statistics_for_service_and_day,
-    dao_get_potential_notification_statistics_for_day,
     dao_get_scheduled_notifications,
     dao_get_template_usage,
     dao_timeout_notifications,
@@ -79,7 +76,6 @@ from tests.app.conftest import (
 def test_should_have_decorated_notifications_dao_functions():
     assert dao_get_last_template_usage.__wrapped__.__name__ == 'dao_get_last_template_usage'  # noqa
     assert dao_get_template_usage.__wrapped__.__name__ == 'dao_get_template_usage'  # noqa
-    assert dao_get_potential_notification_statistics_for_day.__wrapped__.__name__ == 'dao_get_potential_notification_statistics_for_day'  # noqa
     assert dao_create_notification.__wrapped__.__name__ == 'dao_create_notification'  # noqa
     assert update_notification_status_by_id.__wrapped__.__name__ == 'update_notification_status_by_id'  # noqa
     assert dao_update_notification.__wrapped__.__name__ == 'dao_update_notification'  # noqa
@@ -581,31 +577,10 @@ def test_should_return_zero_count_if_no_notification_with_reference():
     assert not update_notification_status_by_reference('something', 'delivered')
 
 
-def test_should_return_none_if_no_statistics_for_a_service_for_a_day(sample_template, mmg_provider):
-    data = _notification_json(sample_template)
-
-    notification = Notification(**data)
-    dao_create_notification(notification)
-    assert not dao_get_notification_statistics_for_service_and_day(
-        sample_template.service.id, (datetime.utcnow() - timedelta(days=1)).date())
-
-
-def test_should_be_able_to_get_all_statistics_for_a_service(sample_template, mmg_provider):
-    data = _notification_json(sample_template)
-
-    notification_1 = Notification(**data)
-    notification_2 = Notification(**data)
-    notification_3 = Notification(**data)
-    dao_create_notification(notification_1)
-    dao_create_notification(notification_2)
-    dao_create_notification(notification_3)
-
-
 def test_create_notification_creates_notification_with_personalisation(notify_db, notify_db_session,
                                                                        sample_template_with_placeholders,
                                                                        sample_job, mmg_provider):
     assert Notification.query.count() == 0
-    assert NotificationStatistics.query.count() == 0
 
     data = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                                template=sample_template_with_placeholders,
@@ -628,7 +603,6 @@ def test_create_notification_creates_notification_with_personalisation(notify_db
 
 def test_save_notification_creates_sms(sample_template, sample_job, mmg_provider):
     assert Notification.query.count() == 0
-    assert NotificationStatistics.query.count() == 0
 
     data = _notification_json(sample_template, job_id=sample_job.id)
 
@@ -649,7 +623,6 @@ def test_save_notification_creates_sms(sample_template, sample_job, mmg_provider
 
 def test_save_notification_and_create_email(sample_email_template, sample_job):
     assert Notification.query.count() == 0
-    assert NotificationStatistics.query.count() == 0
 
     data = _notification_json(sample_email_template, job_id=sample_job.id)
 
@@ -773,7 +746,6 @@ def test_not_save_notification_and_not_create_stats_on_commit_error(sample_templ
 
     assert Notification.query.count() == 0
     assert Job.query.get(sample_job.id).notifications_sent == 0
-    assert NotificationStatistics.query.count() == 0
 
 
 def test_save_notification_and_increment_job(sample_template, sample_job, mmg_provider):

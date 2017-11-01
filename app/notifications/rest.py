@@ -34,9 +34,7 @@ from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
     notification_with_personalisation_schema,
-    notifications_filter_schema,
-    notifications_statistics_schema,
-    day_schema
+    notifications_filter_schema
 )
 from app.service.utils import service_allowed_to_send_to
 from app.utils import pagination_links, get_template_instance, get_public_notify_type_text
@@ -84,16 +82,6 @@ def get_all_notifications():
             **request.args.to_dict()
         )
     ), 200
-
-
-@notifications.route('/notifications/statistics')
-def get_notification_statistics_for_day():
-    data = day_schema.load(request.args).data
-    statistics = notifications_dao.dao_get_potential_notification_statistics_for_day(
-        day=data['day']
-    )
-    data, errors = notifications_statistics_schema.dump(statistics, many=True)
-    return jsonify(data=data), 200
 
 
 @notifications.route('/notifications/<string:notification_type>', methods=['POST'])
