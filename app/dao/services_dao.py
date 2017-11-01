@@ -10,7 +10,7 @@ from app.dao.dao_utils import (
     transactional,
     version_class
 )
-from app.dao.notifications_dao import get_financial_year
+from app.dao.date_util import get_financial_year
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
 from app.models import (
     NotificationStatistics,

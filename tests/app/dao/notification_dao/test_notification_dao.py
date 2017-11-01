@@ -12,10 +12,11 @@ from app.models import (
     Notification,
     NotificationEmailReplyTo,
     NotificationHistory,
+    NotificationSmsSender,
     NotificationStatistics,
     ScheduledNotification,
-    ServiceEmailReplyTo,
     EMAIL_TYPE,
+    SMS_TYPE,
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_FAILED,
     NOTIFICATION_SENT,
@@ -23,16 +24,20 @@ from app.models import (
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
-    JOB_STATUS_IN_PROGRESS)
+    JOB_STATUS_IN_PROGRESS
+)
 
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_create_notification_email_reply_to_mapping,
+    dao_create_notification_sms_sender_mapping,
     dao_created_scheduled_notification,
     dao_delete_notifications_and_history_by_id,
+    dao_get_last_notification_added_for_job_id,
     dao_get_last_template_usage,
     dao_get_notification_email_reply_for_notification,
     dao_get_notifications_by_to_field,
+    dao_get_notification_sms_sender_mapping,
     dao_get_notification_statistics_for_service_and_day,
     dao_get_potential_notification_statistics_for_day,
     dao_get_scheduled_notifications,
@@ -40,6 +45,7 @@ from app.dao.notifications_dao import (
     dao_timeout_notifications,
     dao_update_notification,
     dao_update_notifications_for_job_to_sent_to_dvla,
+    dao_update_notifications_by_reference,
     delete_notifications_created_more_than_a_week_ago_by_type,
     get_notification_by_id,
     get_notification_for_job,
@@ -50,16 +56,16 @@ from app.dao.notifications_dao import (
     is_delivery_slow_for_provider,
     set_scheduled_notification_to_processed,
     update_notification_status_by_id,
-    update_notification_status_by_reference,
-    dao_get_last_notification_added_for_job_id, dao_update_notifications_by_reference)
+    update_notification_status_by_reference
+)
 
 from app.dao.services_dao import dao_update_service
 from tests.app.db import (
     create_api_key,
     create_job,
     create_notification,
-    create_reply_to_email
-)
+    create_reply_to_email,
+    create_service_sms_sender)
 from tests.app.conftest import (
     sample_notification,
     sample_template,
@@ -1039,6 +1045,38 @@ def test_should_delete_notification_to_email_reply_to_after_seven_days(
     assert len(remaining_notification_to_email_reply_to) == 8
 
     for notification in remaining_email_notifications:
+        assert notification.created_at.date() >= date(2016, 1, 3)
+
+
+@freeze_time("2016-01-10 12:00:00.000000")
+def test_should_delete_notification_to_sms_sender_after_seven_days(
+    sample_template
+):
+    assert len(Notification.query.all()) == 0
+
+    sms_sender = create_service_sms_sender(service=sample_template.service, sms_sender='123456', is_default=False)
+
+    # create one notification a day between 1st and 10th from 11:00 to 19:00 of each type
+    for i in range(1, 11):
+        past_date = '2016-01-{0:02d}  {0:02d}:00:00.000000'.format(i)
+        with freeze_time(past_date):
+            notification = create_notification(template=sample_template, sms_sender_id=sms_sender.id)
+
+    all_notifications = Notification.query.all()
+    assert len(all_notifications) == 10
+
+    all_notification_sms_senders = NotificationSmsSender.query.all()
+    assert len(all_notification_sms_senders) == 10
+
+    # Records before 3rd should be deleted
+    delete_notifications_created_more_than_a_week_ago_by_type(SMS_TYPE)
+    remaining_notifications = Notification.query.filter_by(notification_type=SMS_TYPE).all()
+    remaining_notification_to_sms_sender = NotificationSmsSender.query.filter_by().all()
+
+    assert len(remaining_notifications) == 8
+    assert len(remaining_notification_to_sms_sender) == 8
+
+    for notification in remaining_notifications:
         assert notification.created_at.date() >= date(2016, 1, 3)
 
 
@@ -2100,3 +2138,26 @@ def test_dao_update_notifications_by_reference_returns_zero_when_no_notification
                                                                        "billable_units": 2}
                                                           )
     assert updated_count == 0
+
+
+def test_dao_create_notification_sms_sender_mapping(sample_notification):
+    sms_sender = create_service_sms_sender(service=sample_notification.service, sms_sender='123456')
+    dao_create_notification_sms_sender_mapping(notification_id=sample_notification.id,
+                                               sms_sender_id=sms_sender.id)
+    notification_to_senders = NotificationSmsSender.query.all()
+    assert len(notification_to_senders) == 1
+    assert notification_to_senders[0].notification_id == sample_notification.id
+    assert notification_to_senders[0].service_sms_sender_id == sms_sender.id
+
+
+def test_dao_get_notification_sms_sender_mapping(sample_notification):
+    sms_sender = create_service_sms_sender(service=sample_notification.service, sms_sender='123456')
+    dao_create_notification_sms_sender_mapping(notification_id=sample_notification.id,
+                                               sms_sender_id=sms_sender.id)
+    notification_to_sender = dao_get_notification_sms_sender_mapping(sample_notification.id)
+    assert notification_to_sender == '123456'
+
+
+def test_dao_get_notification_sms_sender_mapping_returns_none(sample_notification):
+    notification_to_sender = dao_get_notification_sms_sender_mapping(sample_notification.id)
+    assert not notification_to_sender
