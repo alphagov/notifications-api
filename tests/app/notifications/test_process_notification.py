@@ -8,15 +8,23 @@ from freezegun import freeze_time
 from collections import namedtuple
 
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_service_id
-from app.models import Template, Notification, NotificationHistory, ScheduledNotification, NotificationEmailReplyTo, \
-    NotificationSmsSender
+from app.models import (
+    Notification,
+    NotificationHistory,
+    NotificationEmailReplyTo,
+    NotificationSmsSender,
+    ScheduledNotification,
+    Template
+)
 from app.notifications.process_notifications import (
     create_content_for_notification,
     persist_notification,
-    send_notification_to_queue,
-    simulated_recipient,
+    persist_email_reply_to_id_for_notification,
     persist_scheduled_notification,
-    persist_email_reply_to_id_for_notification, persist_sms_sender_id_for_notification)
+    persist_sms_sender_id_for_notification,
+    send_notification_to_queue,
+    simulated_recipient
+)
 from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
 from app.utils import cache_key_for_service_template_counter
 from app.v2.errors import BadRequestError

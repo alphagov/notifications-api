@@ -137,9 +137,9 @@ def validate_template(template_id, personalisation, service, notification_type):
 
 
 def check_service_email_reply_to_id(service_id, reply_to_id, notification_type):
-    if not (reply_to_id is None):
+    if reply_to_id:
         if notification_type != EMAIL_TYPE:
-            message = 'You sent a email_reply_to_id for a {} notification type'.format(notification_type)
+            message = 'email_reply_to_id is not a valid option for {} notification'.format(notification_type)
             raise BadRequestError(message=message)
         try:
             dao_get_reply_to_by_id(service_id, reply_to_id)
@@ -150,9 +150,9 @@ def check_service_email_reply_to_id(service_id, reply_to_id, notification_type):
 
 
 def check_service_sms_sender_id(service_id, sms_sender_id, notification_type):
-    if not (sms_sender_id is None):
+    if sms_sender_id:
         if notification_type != SMS_TYPE:
-            message = 'You sent a sms_sender_id for a {} notification type'.format(notification_type)
+            message = 'sms_sender_id is not a valid option for {} notification'.format(notification_type)
             raise BadRequestError(message=message)
         try:
             dao_get_service_sms_senders_by_id(service_id, sms_sender_id)

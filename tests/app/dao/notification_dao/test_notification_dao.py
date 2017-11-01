@@ -12,9 +12,11 @@ from app.models import (
     Notification,
     NotificationEmailReplyTo,
     NotificationHistory,
+    NotificationSmsSender,
     NotificationStatistics,
     ScheduledNotification,
     EMAIL_TYPE,
+    SMS_TYPE,
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_FAILED,
     NOTIFICATION_SENT,
@@ -22,16 +24,20 @@ from app.models import (
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
-    JOB_STATUS_IN_PROGRESS, NotificationSmsSender, SMS_TYPE)
+    JOB_STATUS_IN_PROGRESS
+)
 
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_create_notification_email_reply_to_mapping,
+    dao_create_notification_sms_sender_mapping,
     dao_created_scheduled_notification,
     dao_delete_notifications_and_history_by_id,
+    dao_get_last_notification_added_for_job_id,
     dao_get_last_template_usage,
     dao_get_notification_email_reply_for_notification,
     dao_get_notifications_by_to_field,
+    dao_get_notification_sms_sender_mapping,
     dao_get_notification_statistics_for_service_and_day,
     dao_get_potential_notification_statistics_for_day,
     dao_get_scheduled_notifications,
@@ -39,6 +45,7 @@ from app.dao.notifications_dao import (
     dao_timeout_notifications,
     dao_update_notification,
     dao_update_notifications_for_job_to_sent_to_dvla,
+    dao_update_notifications_by_reference,
     delete_notifications_created_more_than_a_week_ago_by_type,
     get_notification_by_id,
     get_notification_for_job,
@@ -49,11 +56,8 @@ from app.dao.notifications_dao import (
     is_delivery_slow_for_provider,
     set_scheduled_notification_to_processed,
     update_notification_status_by_id,
-    update_notification_status_by_reference,
-    dao_get_last_notification_added_for_job_id,
-    dao_update_notifications_by_reference,
-    dao_create_notification_sms_sender_mapping,
-    dao_get_notification_sms_sender_mapping)
+    update_notification_status_by_reference
+)
 
 from app.dao.services_dao import dao_update_service
 from tests.app.db import (
