@@ -119,7 +119,8 @@ post_sms_request = {
         "phone_number": {"type": "string", "format": "phone_number"},
         "template_id": uuid,
         "personalisation": personalisation,
-        "scheduled_for": {"type": ["string", "null"], "format": "datetime"}
+        "scheduled_for": {"type": ["string", "null"], "format": "datetime"},
+        "sms_sender_id": uuid
     },
     "required": ["phone_number", "template_id"]
 }

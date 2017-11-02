@@ -87,6 +87,7 @@ class UserSchema(BaseSchema):
     permissions = fields.Method("user_permissions", dump_only=True)
     password_changed_at = field_for(models.User, 'password_changed_at', format='%Y-%m-%d %H:%M:%S.%f')
     created_at = field_for(models.User, 'created_at', format='%Y-%m-%d %H:%M:%S.%f')
+    auth_type = field_for(models.User, 'auth_type')
 
     def user_permissions(self, usr):
         retval = {}
@@ -106,6 +107,7 @@ class UserSchema(BaseSchema):
 
 
 class UserUpdateAttributeSchema(BaseSchema):
+    auth_type = field_for(models.User, 'auth_type')
 
     class Meta:
         model = models.User
@@ -323,18 +325,6 @@ class TemplateHistorySchema(BaseSchema):
         model = models.TemplateHistory
 
 
-class NotificationsStatisticsSchema(BaseSchema):
-    class Meta:
-        model = models.NotificationStatistics
-        strict = True
-
-    @pre_dump
-    def handle_date_str(self, in_data):
-        if isinstance(in_data, dict) and 'day' in in_data:
-            in_data['day'] = datetime.strptime(in_data['day'], '%Y-%m-%d').date()
-        return in_data
-
-
 class ApiKeySchema(BaseSchema):
 
     created_by = field_for(models.ApiKey, 'created_by', required=True)
@@ -505,6 +495,7 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
 
 
 class InvitedUserSchema(BaseSchema):
+    auth_type = field_for(models.InvitedUser, 'auth_type')
 
     class Meta:
         model = models.InvitedUser
@@ -670,7 +661,6 @@ notification_with_personalisation_schema = NotificationWithPersonalisationSchema
 invited_user_schema = InvitedUserSchema()
 permission_schema = PermissionSchema()
 email_data_request_schema = EmailDataSchema()
-notifications_statistics_schema = NotificationsStatisticsSchema()
 notifications_filter_schema = NotificationsFilterSchema()
 service_history_schema = ServiceHistorySchema()
 api_key_history_schema = ApiKeyHistorySchema()

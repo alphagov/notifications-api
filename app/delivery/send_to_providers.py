@@ -11,8 +11,8 @@ from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTempla
 from app import clients, statsd_client, create_uuid
 from app.dao.notifications_dao import (
     dao_update_notification,
-    dao_get_notification_email_reply_for_notification
-)
+    dao_get_notification_email_reply_for_notification,
+    dao_get_notification_sms_sender_mapping)
 from app.dao.provider_details_dao import (
     get_provider_details_by_notification_type,
     dao_toggle_sms_provider
@@ -69,11 +69,15 @@ def send_sms_to_provider(notification):
                 raise
         else:
             try:
+                sms_sender = dao_get_notification_sms_sender_mapping(notification.id)
+                if not sms_sender:
+                    sms_sender = service.get_default_sms_sender()
+
                 provider.send_sms(
                     to=validate_and_format_phone_number(notification.to, international=notification.international),
                     content=str(template),
                     reference=str(notification.id),
-                    sender=service.get_default_sms_sender()
+                    sender=sms_sender
                 )
             except Exception as e:
                 dao_toggle_sms_provider(provider.name)

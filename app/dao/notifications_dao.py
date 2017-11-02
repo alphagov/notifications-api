@@ -14,7 +14,7 @@ from notifications_utils.recipients import (
     InvalidEmailError,
 )
 from werkzeug.datastructures import MultiDict
-from sqlalchemy import (desc, func, or_, and_, asc)
+from sqlalchemy import (desc, func, or_, asc)
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import case
 from sqlalchemy.sql import functions
@@ -22,17 +22,15 @@ from notifications_utils.international_billing_rates import INTERNATIONAL_BILLIN
 
 from app import db, create_uuid
 from app.dao import days_ago
-from app.dao.date_util import get_financial_year
 from app.models import (
-    Service,
     Notification,
     NotificationEmailReplyTo,
     NotificationHistory,
-    NotificationStatistics,
     ScheduledNotification,
     ServiceEmailReplyTo,
     Template,
     EMAIL_TYPE,
+    SMS_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     LETTER_TYPE,
@@ -43,67 +41,13 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
-    NOTIFICATION_SENT
+    NOTIFICATION_SENT,
+    NotificationSmsSender,
+    ServiceSmsSender
 )
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
-
-
-def dao_get_notification_statistics_for_service_and_day(service_id, day):
-    # only used by stat-updating code in tasks.py
-    return NotificationStatistics.query.filter_by(
-        service_id=service_id,
-        day=day
-    ).order_by(desc(NotificationStatistics.day)).first()
-
-
-@statsd(namespace="dao")
-def dao_get_potential_notification_statistics_for_day(day):
-    all_services = db.session.query(
-        Service.id,
-        NotificationStatistics
-    ).outerjoin(
-        NotificationStatistics,
-        and_(
-            Service.id == NotificationStatistics.service_id,
-            or_(
-                NotificationStatistics.day == day,
-                NotificationStatistics.day == None  # noqa
-            )
-        )
-    ).order_by(
-        asc(Service.created_at)
-    )
-
-    notification_statistics = []
-    for service_notification_stats_pair in all_services:
-        if service_notification_stats_pair.NotificationStatistics:
-            notification_statistics.append(
-                service_notification_stats_pair.NotificationStatistics
-            )
-        else:
-            notification_statistics.append(
-                create_notification_statistics_dict(
-                    service_notification_stats_pair,
-                    day
-                )
-            )
-    return notification_statistics
-
-
-def create_notification_statistics_dict(service_id, day):
-    return {
-        'id': None,
-        'emails_requested': 0,
-        'emails_delivered': 0,
-        'emails_failed': 0,
-        'sms_requested': 0,
-        'sms_delivered': 0,
-        'sms_failed': 0,
-        'day': day.isoformat(),
-        'service': service_id
-    }
 
 
 @statsd(namespace="dao")
@@ -372,15 +316,19 @@ def delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
     seven_days_ago = date.today() - timedelta(days=7)
 
     # Following could be refactored when NotificationSmsReplyTo and NotificationLetterContact in models.py
-    if notification_type == EMAIL_TYPE:
+    if notification_type in [EMAIL_TYPE, SMS_TYPE]:
         subq = db.session.query(Notification.id).filter(
             func.date(Notification.created_at) < seven_days_ago,
             Notification.notification_type == notification_type
         ).subquery()
-        deleted = db.session.query(
-            NotificationEmailReplyTo
+        if notification_type == EMAIL_TYPE:
+            notification_sender_mapping_table = NotificationEmailReplyTo
+        if notification_type == SMS_TYPE:
+            notification_sender_mapping_table = NotificationSmsSender
+        db.session.query(
+            notification_sender_mapping_table
         ).filter(
-            NotificationEmailReplyTo.notification_id.in_(subq)
+            notification_sender_mapping_table.notification_id.in_(subq)
         ).delete(synchronize_session='fetch')
 
     deleted = db.session.query(Notification).filter(
@@ -650,3 +598,23 @@ def dao_get_last_notification_added_for_job_id(job_id):
     ).first()
 
     return last_notification_added
+
+
+@transactional
+def dao_create_notification_sms_sender_mapping(notification_id, sms_sender_id):
+    notification_to_sms_sender = NotificationSmsSender(
+        notification_id=notification_id,
+        service_sms_sender_id=sms_sender_id
+    )
+    db.session.add(notification_to_sms_sender)
+
+
+def dao_get_notification_sms_sender_mapping(notification_id):
+    sms_sender = ServiceSmsSender.query.join(
+        NotificationSmsSender
+    ).filter(
+        NotificationSmsSender.notification_id == notification_id
+    ).first()
+
+    if sms_sender:
+        return sms_sender.sms_sender

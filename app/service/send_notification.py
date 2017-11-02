@@ -2,13 +2,13 @@ from app.config import QueueNames
 from app.notifications.validators import (
     check_service_over_daily_message_limit,
     validate_and_format_recipient,
-    validate_template,
-    check_service_email_reply_to_id)
+    validate_template)
 from app.notifications.process_notifications import (
-    create_content_for_notification,
     persist_notification,
     send_notification_to_queue,
-    persist_email_reply_to_id_for_notification)
+    persist_email_reply_to_id_for_notification,
+    persist_sms_sender_id_for_notification
+)
 from app.models import (
     KEY_TYPE_NORMAL,
     PRIORITY,
@@ -64,9 +64,11 @@ def send_one_off_notification(service_id, post_data):
         created_by_id=post_data['created_by']
     )
     sender_id = post_data.get('sender_id', None)
-    if sender_id and template.template_type == EMAIL_TYPE:
-        check_service_email_reply_to_id(service_id, sender_id)
-        persist_email_reply_to_id_for_notification(notification.id, sender_id)
+    if sender_id:
+        if template.template_type == EMAIL_TYPE:
+            persist_email_reply_to_id_for_notification(notification.id, sender_id)
+        if template.template_type == SMS_TYPE:
+            persist_sms_sender_id_for_notification(notification.id, sender_id)
 
     queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
     send_notification_to_queue(

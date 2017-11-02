@@ -8,6 +8,7 @@ from notifications_utils.recipients import (
 from notifications_utils.clients.redis import rate_limit_cache_key, daily_limit_cache_key
 
 from app.dao import services_dao, templates_dao
+from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.models import (
     INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE,
     KEY_TYPE_TEST, KEY_TYPE_TEAM, SCHEDULE_NOTIFICATIONS
@@ -135,11 +136,27 @@ def validate_template(template_id, personalisation, service, notification_type):
     return template, template_with_content
 
 
-def check_service_email_reply_to_id(service_id, reply_to_id):
-    if not (reply_to_id is None):
+def check_service_email_reply_to_id(service_id, reply_to_id, notification_type):
+    if reply_to_id:
+        if notification_type != EMAIL_TYPE:
+            message = 'email_reply_to_id is not a valid option for {} notification'.format(notification_type)
+            raise BadRequestError(message=message)
         try:
             dao_get_reply_to_by_id(service_id, reply_to_id)
         except NoResultFound:
             message = 'email_reply_to_id {} does not exist in database for service id {}'\
                 .format(reply_to_id, service_id)
+            raise BadRequestError(message=message)
+
+
+def check_service_sms_sender_id(service_id, sms_sender_id, notification_type):
+    if sms_sender_id:
+        if notification_type != SMS_TYPE:
+            message = 'sms_sender_id is not a valid option for {} notification'.format(notification_type)
+            raise BadRequestError(message=message)
+        try:
+            dao_get_service_sms_senders_by_id(service_id, sms_sender_id)
+        except NoResultFound:
+            message = 'sms_sender_id {} does not exist in database for service id {}'\
+                .format(sms_sender_id, service_id)
             raise BadRequestError(message=message)
