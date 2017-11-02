@@ -351,3 +351,14 @@ class PopulateAnnualBilling(Command):
             db.session.commit()
 
             print("Populated annual billing {} for {} services".format(fy, services_result1.rowcount))
+
+
+class ReRunBuildDvlaFileForJob(Command):
+    option_list = (
+        Option('-j', '--job_id', dest='job_id', help="Enter the job id to rebuild the dvla file for"),
+    )
+
+    def run(self, job_id):
+        from app.celery.tasks import build_dvla_file
+        from app.config import QueueNames
+        build_dvla_file.apply_async([job_id], queue=QueueNames.JOBS)

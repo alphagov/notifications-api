@@ -28,7 +28,6 @@ from tests.app.db import (
     create_service,
     create_inbound_number,
     create_reply_to_email,
-    create_service_sms_sender,
     create_letter_contact
 )
 from tests.conftest import set_config

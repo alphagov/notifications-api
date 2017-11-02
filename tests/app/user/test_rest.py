@@ -546,3 +546,15 @@ def test_update_user_resets_failed_login_count_if_updating_password(client, samp
 
     assert resp.status_code == 200
     assert user.failed_login_count == 0
+
+
+def test_update_user_auth_type(admin_request, sample_user):
+    assert sample_user.auth_type == 'sms_auth'
+    resp = admin_request.post(
+        'user.update_user_attribute',
+        user_id=sample_user.id,
+        _data={'auth_type': 'email_auth'},
+    )
+
+    assert resp['data']['id'] == str(sample_user.id)
+    assert resp['data']['auth_type'] == 'email_auth'

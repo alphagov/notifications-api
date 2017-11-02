@@ -8,14 +8,15 @@ from app.models import (
     ScheduledNotification,
     SCHEDULE_NOTIFICATIONS,
     EMAIL_TYPE,
-    SMS_TYPE
-)
+    SMS_TYPE,
+    NotificationSmsSender)
 from flask import json, current_app
 
 from app.models import Notification
 from app.schema_validation import validate
 from app.v2.errors import RateLimitError
 from app.v2.notifications.notification_schemas import post_sms_response, post_email_response
+from app.v2.notifications.post_notifications import persist_sender_to_notification_mapping
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_template as create_sample_template,
@@ -27,8 +28,8 @@ from tests.app.conftest import (
 from tests.app.db import (
     create_service,
     create_template,
-    create_reply_to_email
-)
+    create_reply_to_email,
+    create_service_sms_sender, create_notification)
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -91,6 +92,34 @@ def test_post_sms_notification_uses_inbound_number_as_sender(client, notify_db_s
     assert resp_json['id'] == str(notification_id)
     assert resp_json['content']['from_number'] == '1'
     mocked.assert_called_once_with([str(notification_id)], queue='send-sms-tasks')
+
+
+def test_post_sms_notification_returns_201_with_sms_sender_id(
+        client, sample_template_with_placeholders, mocker
+):
+
+    sms_sender = create_service_sms_sender(service=sample_template_with_placeholders.service, sms_sender='123456')
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    data = {
+        'phone_number': '+447700900855',
+        'template_id': str(sample_template_with_placeholders.id),
+        'personalisation': {' Name': 'Jo'},
+        'sms_sender_id': str(sms_sender.id)
+    }
+    auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
+
+    response = client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 201
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert validate(resp_json, post_sms_response) == resp_json
+    notification_to_sms_sender = NotificationSmsSender.query.all()
+    assert len(notification_to_sms_sender) == 1
+    assert str(notification_to_sms_sender[0].notification_id) == resp_json['id']
+    assert notification_to_sms_sender[0].service_sms_sender_id == sms_sender.id
+    mocked.assert_called_once_with([resp_json['id']], queue='send-sms-tasks')
 
 
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
@@ -501,30 +530,40 @@ def test_post_notification_raises_bad_request_if_not_valid_notification_type(cli
     assert 'The requested URL was not found on the server.' in error_json['message']
 
 
-@pytest.mark.parametrize("reference", [None, "reference_from_client"])
-def test_post_sms_notification_with_invalid_reply_to_email_id(
+@pytest.mark.parametrize("notification_type",
+                         ['sms', 'email'])
+def test_post_notification_with_wrong_type_of_sender(
         client,
-        sample_template_with_placeholders,
-        reference,
+        sample_template,
+        sample_email_template,
+        notification_type,
         fake_uuid):
-    data = {
-        'phone_number': '+447700900855',
-        'template_id': str(sample_template_with_placeholders.id),
-        'personalisation': {' Name': 'Jo'},
-        'email_reply_to_id': fake_uuid
-    }
-    if reference:
-        data.update({"reference": reference})
-    auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
+    if notification_type == EMAIL_TYPE:
+        template = sample_email_template
+        form_label = 'sms_sender_id'
+        data = {
+            'email_address': 'test@test.com',
+            'template_id': str(sample_email_template.id),
+            form_label: fake_uuid
+        }
+    elif notification_type == SMS_TYPE:
+        template = sample_template
+        form_label = 'email_reply_to_id'
+        data = {
+            'phone_number': '+447700900855',
+            'template_id': str(template.id),
+            form_label: fake_uuid
+        }
+    auth_header = create_authorization_header(service_id=template.service_id)
 
     response = client.post(
-        path='/v2/notifications/sms',
+        path='/v2/notifications/{}'.format(notification_type),
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 400
     resp_json = json.loads(response.get_data(as_text=True))
-    assert 'email_reply_to_id {} does not exist in database for service id {}'.\
-        format(fake_uuid, sample_template_with_placeholders.service_id) in resp_json['errors'][0]['message']
+    assert '{} is not a valid option for {} notification'.\
+        format(form_label, notification_type) in resp_json['errors'][0]['message']
     assert 'BadRequestError' in resp_json['errors'][0]['error']
 
 
@@ -592,3 +631,37 @@ def test_post_email_notification_with_valid_reply_to_id_returns_201(client, samp
 
     assert email_reply_to.notification_id == notification.id
     assert email_reply_to.service_email_reply_to_id == reply_to_email.id
+
+
+def test_persist_sender_to_notification_mapping_for_email(notify_db_session):
+    service = create_service()
+    template = create_template(service=service, template_type=EMAIL_TYPE)
+    sender = create_reply_to_email(service=service, email_address='reply@test.com', is_default=False)
+    form = {
+        "email_address": "recipient@test.com",
+        "template_id": str(template.id),
+        'email_reply_to_id': str(sender.id)
+    }
+    notification = create_notification(template=template)
+    persist_sender_to_notification_mapping(form=form, notification=notification)
+    notification_to_email_reply_to = NotificationEmailReplyTo.query.all()
+    assert len(notification_to_email_reply_to) == 1
+    assert notification_to_email_reply_to[0].notification_id == notification.id
+    assert notification_to_email_reply_to[0].service_email_reply_to_id == sender.id
+
+
+def test_persist_sender_to_notification_mapping_for_sms(notify_db_session):
+    service = create_service()
+    template = create_template(service=service, template_type=SMS_TYPE)
+    sender = create_service_sms_sender(service=service, sms_sender='12345', is_default=False)
+    form = {
+        'phone_number': '+447700900855',
+        'template_id': str(template.id),
+        'sms_sender_id': str(sender.id)
+    }
+    notification = create_notification(template=template)
+    persist_sender_to_notification_mapping(form=form, notification=notification)
+    notification_to_sms_sender = NotificationSmsSender.query.all()
+    assert len(notification_to_sms_sender) == 1
+    assert notification_to_sms_sender[0].notification_id == notification.id
+    assert notification_to_sms_sender[0].service_sms_sender_id == sender.id

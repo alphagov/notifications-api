@@ -304,6 +304,7 @@ cf-rollback: ## Rollbacks the app to the previous release
 .PHONY: cf-push
 cf-push:
 	$(if ${CF_APP},,$(error Must specify CF_APP))
+	cf target -o ${CF_ORG} -s ${CF_SPACE}
 	cf push ${CF_APP} -f ${CF_MANIFEST_FILE}
 
 .PHONY: check-if-migrations-to-run
