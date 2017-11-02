@@ -502,11 +502,22 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
         },
         timeout=60
     )
+    current_app.logger.info('send_inbound_sms_to_service sending {} to {}, response {}'.format(
+        inbound_sms_id,
+        inbound_api.url,
+        response.status_code
+    ))
+
     try:
         response.raise_for_status()
     except HTTPError as e:
-        current_app.logger.exception("Exception raised in send_inbound_sms_to_service for service_id: {} and url: {}. "
-                                     "\n{}".format(service_id, inbound_api.url, e))
+        current_app.logger.warning(
+            "send_inbound_sms_to_service request failed for service_id: {} and url: {}. exc: {}".format(
+                service_id,
+                inbound_api.url,
+                e
+            )
+        )
         if e.response.status_code >= 500:
             try:
                 self.retry(queue=QueueNames.RETRY,
