@@ -1,12 +1,13 @@
 import itertools
 
+from app.dao.date_util import get_financial_year
 from app.models import (
     ServiceWhitelist,
     MOBILE_TYPE, EMAIL_TYPE,
     KEY_TYPE_TEST, KEY_TYPE_TEAM, KEY_TYPE_NORMAL)
 
 from notifications_utils.recipients import allowed_to_send_to
-from app.dao.notifications_dao import get_financial_year
+
 from datetime import datetime
 
 

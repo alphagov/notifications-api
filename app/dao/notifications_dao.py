@@ -14,7 +14,7 @@ from notifications_utils.recipients import (
     InvalidEmailError,
 )
 from werkzeug.datastructures import MultiDict
-from sqlalchemy import (desc, func, or_, and_, asc)
+from sqlalchemy import (desc, func, or_, asc)
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import case
 from sqlalchemy.sql import functions
@@ -22,13 +22,10 @@ from notifications_utils.international_billing_rates import INTERNATIONAL_BILLIN
 
 from app import db, create_uuid
 from app.dao import days_ago
-from app.dao.date_util import get_financial_year
 from app.models import (
-    Service,
     Notification,
     NotificationEmailReplyTo,
     NotificationHistory,
-    NotificationStatistics,
     ScheduledNotification,
     ServiceEmailReplyTo,
     Template,
@@ -51,62 +48,6 @@ from app.models import (
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
-
-
-def dao_get_notification_statistics_for_service_and_day(service_id, day):
-    # only used by stat-updating code in tasks.py
-    return NotificationStatistics.query.filter_by(
-        service_id=service_id,
-        day=day
-    ).order_by(desc(NotificationStatistics.day)).first()
-
-
-@statsd(namespace="dao")
-def dao_get_potential_notification_statistics_for_day(day):
-    all_services = db.session.query(
-        Service.id,
-        NotificationStatistics
-    ).outerjoin(
-        NotificationStatistics,
-        and_(
-            Service.id == NotificationStatistics.service_id,
-            or_(
-                NotificationStatistics.day == day,
-                NotificationStatistics.day == None  # noqa
-            )
-        )
-    ).order_by(
-        asc(Service.created_at)
-    )
-
-    notification_statistics = []
-    for service_notification_stats_pair in all_services:
-        if service_notification_stats_pair.NotificationStatistics:
-            notification_statistics.append(
-                service_notification_stats_pair.NotificationStatistics
-            )
-        else:
-            notification_statistics.append(
-                create_notification_statistics_dict(
-                    service_notification_stats_pair,
-                    day
-                )
-            )
-    return notification_statistics
-
-
-def create_notification_statistics_dict(service_id, day):
-    return {
-        'id': None,
-        'emails_requested': 0,
-        'emails_delivered': 0,
-        'emails_failed': 0,
-        'sms_requested': 0,
-        'sms_delivered': 0,
-        'sms_failed': 0,
-        'day': day.isoformat(),
-        'service': service_id
-    }
 
 
 @statsd(namespace="dao")
