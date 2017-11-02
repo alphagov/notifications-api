@@ -37,7 +37,7 @@ from tests.app.db import (
     create_service_sms_sender
 )
 from tests.app.db import create_user
-from app.service.utils import get_current_financial_year_start_year
+from app.dao.date_util import get_current_financial_year_start_year
 
 
 def test_get_service_list(client, service_factory):
