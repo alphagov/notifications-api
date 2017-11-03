@@ -45,3 +45,12 @@ def get_month_start_and_end_date_in_utc(month_year):
     first_day = datetime(month_year.year, month_year.month, 1, 0, 0, 0)
     last_day = datetime(month_year.year, month_year.month, num_days, 23, 59, 59, 99999)
     return convert_bst_to_utc(first_day), convert_bst_to_utc(last_day)
+
+
+def get_current_financial_year_start_year():
+    now = datetime.now()
+    financial_year_start = now.year
+    start_date, end_date = get_financial_year(now.year)
+    if now < start_date:
+        financial_year_start = financial_year_start - 1
+    return financial_year_start

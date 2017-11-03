@@ -26,7 +26,8 @@ from app.models import (
     EMAIL_TYPE,
     SMS_TYPE,
     INBOUND_SMS_TYPE,
-    KEY_TYPE_NORMAL
+    KEY_TYPE_NORMAL,
+    AnnualBilling,
 )
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import (
@@ -415,3 +416,17 @@ def create_reply_to_email_for_notification(
     db.session.commit()
 
     return reply_to
+
+
+def create_annual_billing(
+    service_id, free_sms_fragment_limit, financial_year_start
+):
+    annual_billing = AnnualBilling(
+        service_id=service_id,
+        free_sms_fragment_limit=free_sms_fragment_limit,
+        financial_year_start=financial_year_start
+    )
+    db.session.add(annual_billing)
+    db.session.commit()
+
+    return annual_billing

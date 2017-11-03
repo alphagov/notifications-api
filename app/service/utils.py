@@ -54,12 +54,3 @@ def service_allowed_to_send_to(recipient, service, key_type):
                 whitelist_members
             )
         )
-
-
-def get_current_financial_year_start_year():
-    now = datetime.now()
-    financial_year_start = now.year
-    start_date, end_date = get_financial_year(now.year)
-    if now < start_date:
-        financial_year_start = financial_year_start - 1
-    return financial_year_start

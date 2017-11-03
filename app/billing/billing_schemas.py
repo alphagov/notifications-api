@@ -10,5 +10,5 @@ create_or_update_free_sms_fragment_limit_schema = {
         "free_sms_fragment_limit": {"type": "integer", "minimum": 1},
         "financial_year_start": {"type": "integer", "minimum": 2016}
     },
-    "required": ["free_sms_fragment_limit", "financial_year_start"]
+    "required": ["free_sms_fragment_limit"]
 }
