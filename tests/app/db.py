@@ -68,7 +68,7 @@ def create_service(
     research_mode=False,
     active=True,
     email_from=None,
-    prefix_sms=None,
+    prefix_sms=True,
 ):
     service = Service(
         name=service_name,
