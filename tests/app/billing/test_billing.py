@@ -332,7 +332,7 @@ def test_update_free_sms_fragment_limit(client, sample_service):
 def test_get_free_sms_fragment_limit_current_year(client, sample_service):
 
     current_year = get_current_financial_year_start_year()
-    create_annual_billing(sample_service.id, 9999, current_year - 1)
+    create_annual_billing(sample_service.id, free_sms_fragment_limit=9999, financial_year_start=current_year - 1)
 
     response_get = client.get(
         'service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
