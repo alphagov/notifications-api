@@ -16,7 +16,7 @@ def test_ses_callback_should_not_need_auth(client):
         data=ses_notification_callback(),
         headers=[('Content-Type', 'text/plain; charset=UTF-8')]
     )
-    assert response.status_code == 400
+    assert response.status_code == 200
 
 
 def test_ses_callback_should_fail_if_invalid_json(client, mocker):
@@ -45,16 +45,6 @@ def test_ses_callback_should_fail_if_missing_message_id(client, mocker):
 
     errors = process_ses_response(json.loads(ses_missing_notification_id_callback()))
     assert errors == 'SES callback failed: messageId missing'
-    stats_mock.assert_not_called()
-
-
-def test_ses_callback_should_fail_if_notification_cannot_be_found(notify_db, notify_db_session, client, mocker):
-    stats_mock = mocker.patch(
-        'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
-    )
-
-    errors = process_ses_response(json.loads(ses_invalid_notification_id_callback()))
-    assert errors == 'SES callback failed: notification either not found or already updated from sending. Status delivered for notification reference missing'  # noqa
     stats_mock.assert_not_called()
 
 
@@ -180,9 +170,6 @@ def test_ses_callback_should_not_set_status_once_status_is_delivered(client,
         sent_at=datetime.utcnow()
     )
 
-    assert get_notification_by_id(notification.id).status == 'delivered'
-    error = process_ses_response(json.loads(ses_soft_bounce_callback()))
-    assert error == 'SES callback failed: notification either not found or already updated from sending. Status temporary-failure for notification reference ref'  # noqa
     assert get_notification_by_id(notification.id).status == 'delivered'
     stats_mock.assert_not_called()
 

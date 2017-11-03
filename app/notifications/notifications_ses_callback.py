@@ -76,7 +76,7 @@ def process_ses_response(ses_request):
             )
             if not notification:
                 warning = "SES callback failed: notification either not found or already updated " \
-                        "from sending. Status {} for notification reference {}".format(notification_status, reference)
+                          "from sending. Status {} for notification reference {}".format(notification_status, reference)
                 current_app.logger.warning(warning)
                 return
 
