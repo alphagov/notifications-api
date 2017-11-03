@@ -1,6 +1,8 @@
 from datetime import datetime
+import pytz
 import uuid
 
+from app import DATETIME_FORMAT
 from app import db
 from app.dao.jobs_dao import dao_create_job
 from app.dao.service_inbound_api_dao import save_service_inbound_api
@@ -247,10 +249,10 @@ def create_inbound_sms(
 ):
     inbound = InboundSms(
         service=service,
-        created_at=created_at or datetime.utcnow(),
+        created_at=created_at or datetime.utcnow().strftime(DATETIME_FORMAT),
         notify_number=notify_number or service.sms_sender,
         user_number=user_number,
-        provider_date=provider_date or datetime.utcnow(),
+        provider_date=provider_date or datetime.utcnow().strftime(DATETIME_FORMAT),
         provider_reference=provider_reference or 'foo',
         content=content,
         provider=provider
