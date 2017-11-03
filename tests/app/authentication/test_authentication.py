@@ -372,3 +372,66 @@ def test_allow_valid_ips_bits(restrict_ip_sms_app):
     )
 
     assert response.status_code == 200
+
+
+@pytest.fixture
+def route_secret_app_1():
+    app = flask.Flask(__name__)
+    app.config['TESTING'] = True
+    app.config['ROUTE_SECRET_KEY_1'] = "key_1"
+    app.config['ROUTE_SECRET_KEY_2'] = ""
+    app.config['SMS_INBOUND_WHITELIST'] = ['111.111.111.111/32', '200.200.200.0/24']
+    blueprint = flask.Blueprint('route_secret_app_1', __name__)
+
+    @blueprint.route('/')
+    def test_endpoint():
+        return 'OK', 200
+
+    blueprint.before_request(restrict_ip_sms)
+    app.register_blueprint(blueprint)
+
+    with app.test_request_context(), app.test_client() as client:
+        yield client
+
+
+def test_route_secret_key_1_is_used(route_secret_app_1):
+    response = route_secret_app_1.get(
+        path='/',
+        headers=[
+            ('X-Custom-forwarder', 'some key 1'),
+            ('X-Forwarded-For', '200.200.200.222, 222.222.222.222, 127.0.0.1'),
+        ]
+    )
+    assert response.status_code == 200
+
+
+@pytest.fixture
+def route_secret_app_2():
+    app = flask.Flask(__name__)
+    app.config['TESTING'] = True
+    app.config['ROUTE_SECRET_KEY_1'] = "key_1"
+    app.config['ROUTE_SECRET_KEY_2'] = "key_2"
+    app.config['SMS_INBOUND_WHITELIST'] = ['111.111.111.111/32', '200.200.200.0/24']
+    blueprint = flask.Blueprint('route_secret_app_2', __name__)
+
+    @blueprint.route('/')
+    def test_endpoint():
+        return 'OK', 200
+
+    blueprint.before_request(restrict_ip_sms)
+    app.register_blueprint(blueprint)
+
+    with app.test_request_context(), app.test_client() as client:
+        yield client
+
+
+def test_can_use_secret_route_key_2(route_secret_app_2):
+
+    response = route_secret_app_2.get(
+        path='/',
+        headers=[
+            ('X-Custom-forwarder', 'key_2'),
+            ('X-Forwarded-For', '200.200.200.222, 222.222.222.222, 127.0.0.1'),
+        ]
+    )
+    assert response.status_code == 200

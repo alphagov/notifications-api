@@ -287,6 +287,8 @@ class Config(object):
     FREE_SMS_TIER_FRAGMENT_COUNT = 250000
 
     SMS_INBOUND_WHITELIST = json.loads(os.environ.get('SMS_INBOUND_WHITELIST', '[]'))
+    ROUTE_SECRET_KEY_1 = os.environ['ROUTE_SECRET_KEY_1']
+    ROUTE_SECRET_KEY_2 = os.environ['ROUTE_SECRET_KEY_2']
 
     # Format is as follows:
     # {"dataset_1": "token_1", ...}
