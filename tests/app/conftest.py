@@ -871,7 +871,7 @@ def email_verification_template(notify_db,
     return create_custom_template(
         service=service,
         user=user,
-        template_config_name='EMAIL_VERIFY_CODE_TEMPLATE_ID',
+        template_config_name='NEW_USER_EMAIL_VERIFICATION_TEMPLATE_ID',
         content='((user_name)) use ((url)) to complete registration',
         template_type='email'
     )

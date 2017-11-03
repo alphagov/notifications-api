@@ -261,14 +261,14 @@ def test_send_sms_code_returns_204_when_too_many_codes_already_created(client, s
     assert VerifyCode.query.count() == 10
 
 
-def test_send_user_email_verification(client,
-                                      sample_user,
-                                      mocker,
-                                      email_verification_template):
+def test_send_new_user_email_verification(client,
+                                          sample_user,
+                                          mocker,
+                                          email_verification_template):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     auth_header = create_authorization_header()
     resp = client.post(
-        url_for('user.send_user_email_verification', user_id=str(sample_user.id)),
+        url_for('user.send_new_user_email_verification', user_id=str(sample_user.id)),
         data=json.dumps({}),
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 204
@@ -284,7 +284,7 @@ def test_send_email_verification_returns_404_for_bad_input_data(client, notify_d
     uuid_ = uuid.uuid4()
     auth_header = create_authorization_header()
     resp = client.post(
-        url_for('user.send_user_email_verification', user_id=uuid_),
+        url_for('user.send_new_user_email_verification', user_id=uuid_),
         data=json.dumps({}),
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 404

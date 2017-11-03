@@ -171,7 +171,7 @@ def send_user_email_code(user_id):
 
     create_user_code(user_to_send_to, uuid.uuid4(), EMAIL_TYPE)
 
-    template = dao_get_template_by_id(current_app.config['EMAIL_CODE_TEMPLATE_ID'])
+    template = dao_get_template_by_id(current_app.config['EMAIL_2FA_TEMPLATE_ID'])
     personalisation = {'url': _create_2fa_url(user_to_send_to)},
 
     create_2fa_code(template, user_to_send_to.email_address, personalisation)
@@ -238,13 +238,13 @@ def send_user_confirm_new_email(user_id):
 
 
 @user_blueprint.route('/<uuid:user_id>/email-verification', methods=['POST'])
-def send_user_email_verification(user_id):
+def send_new_user_email_verification(user_id):
     # when registering, we verify all users' email addresses using this function
     user_to_send_to = get_user_by_id(user_id=user_id)
     secret_code = create_secret_code()
     create_user_code(user_to_send_to, secret_code, 'email')
 
-    template = dao_get_template_by_id(current_app.config['EMAIL_VERIFY_CODE_TEMPLATE_ID'])
+    template = dao_get_template_by_id(current_app.config['NEW_USER_EMAIL_VERIFICATION_TEMPLATE_ID'])
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
 
     saved_notification = persist_notification(
