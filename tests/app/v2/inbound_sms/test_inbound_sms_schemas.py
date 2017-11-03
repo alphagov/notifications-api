@@ -1,11 +1,7 @@
-import uuid
-
 import pytest
 from flask import json
 from jsonschema.exceptions import ValidationError
 
-from app.dao.api_key_dao import save_model_api_key
-from app.models import ApiKey, KEY_TYPE_NORMAL, EMAIL_TYPE, SMS_TYPE, TEMPLATE_TYPES
 from app.v2.inbound_sms.inbound_sms_schemas import get_inbound_sms_response, get_inbound_sms_single_response
 from app.schema_validation import validate
 
@@ -42,23 +38,17 @@ invalid_inbound_sms_list = {
 }
 
 
-def _get_inbound_sms(client, inbound_sms, url):
-    auth_header = create_authorization_header(service_id=inbound_sms.service_id)
-    response = client.get(url, headers=[auth_header])
-    return json.loads(response.get_data(as_text=True))
-
-
 def test_get_inbound_sms_contract(client, sample_inbound_sms):
-    response_json = _get_inbound_sms(
-        client,
-        sample_inbound_sms,
-        '/v2/inbound_sms/{}'.format(sample_inbound_sms.user_number)
-    )
-    res = validate(response_json, get_inbound_sms_response)
+    auth_header = create_authorization_header(service_id=sample_inbound_sms.service_id)
+    response = client.get('/v2/inbound_sms/{}'.format(sample_inbound_sms.user_number), headers=[auth_header])
+    response_json = json.loads(response.get_data(as_text=True))
+
+    assert validate(response_json, get_inbound_sms_response)['inbound_sms_list'][0] \
+        == sample_inbound_sms.serialize()
 
 
 def test_valid_inbound_sms_json():
-    validate(valid_inbound_sms, get_inbound_sms_single_response)
+    assert validate(valid_inbound_sms, get_inbound_sms_single_response) == valid_inbound_sms
 
 
 def test_valid_inbound_sms_list_json():
