@@ -48,7 +48,7 @@ def send_sms_to_provider(notification):
         )
         template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
 
-        sender_has_been_customised = (not service.prefix_sms_with_service_name())
+        sender_has_been_customised = (not service.get_prefix_sms_with_service_name())
 
         template = SMSMessageTemplate(
             template_model.__dict__,

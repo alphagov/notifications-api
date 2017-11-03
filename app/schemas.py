@@ -203,7 +203,7 @@ class ServiceSchema(BaseSchema):
         return service.get_default_letter_contact()
 
     def get_prefix_sms_with_service_name(self, service):
-        return service.prefix_sms_with_service_name()
+        return service.get_prefix_sms_with_service_name()
 
     class Meta:
         model = models.Service
