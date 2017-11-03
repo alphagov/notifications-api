@@ -366,14 +366,6 @@ class JobSchema(BaseSchema):
         strict = True
 
 
-class RequestVerifyCodeSchema(ma.Schema):
-
-    class Meta:
-        strict = True
-
-    to = fields.Str(required=False)
-
-
 class NotificationSchema(ma.Schema):
 
     class Meta:
@@ -653,7 +645,6 @@ api_key_schema = ApiKeySchema()
 api_key_schema_load_json = ApiKeySchema(load_json=True)
 job_schema = JobSchema()
 job_schema_load_json = JobSchema(load_json=True)
-request_verify_code_schema = RequestVerifyCodeSchema()
 sms_admin_notification_schema = SmsAdminNotificationSchema()
 sms_template_notification_schema = SmsTemplateNotificationSchema()
 job_sms_template_notification_schema = JobSmsTemplateNotificationSchema()
