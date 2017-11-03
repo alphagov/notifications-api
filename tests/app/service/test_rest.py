@@ -156,6 +156,7 @@ def test_get_service_by_id(client, sample_service):
     assert json_resp['data']['branding'] == 'govuk'
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
+    assert json_resp['data']['prefix_sms_with_service_name'] is True
 
 
 def test_get_service_by_id_returns_free_sms_limit(client, sample_service):
@@ -1559,6 +1560,36 @@ def test_set_sms_sender_for_service_rejects_null(client, sample_service):
     assert resp.status_code == 400
     assert result['result'] == 'error'
     assert result['message'] == {'sms_sender': ['Field may not be null.']}
+
+
+@pytest.mark.parametrize('default_sms_sender, should_prefix', [
+    (None, True),  # None means use default
+    ('Foo', False),
+])
+def test_prefixing_messages_based_on_sms_sender(
+    client,
+    notify_db_session,
+    default_sms_sender,
+    should_prefix,
+):
+    service = create_service(
+        sms_sender=default_sms_sender or current_app.config['FROM_NUMBER']
+    )
+    create_service_sms_sender(
+        service=service,
+        sms_sender='ignored',
+        is_default=False,
+    )
+
+    result = client.get(
+        url_for(
+            'service.get_service_by_id',
+            service_id=service.id
+        ),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    service = json.loads(result.get_data(as_text=True))['data']
+    assert service['prefix_sms_with_service_name'] == should_prefix
 
 
 @pytest.mark.parametrize('today_only,stats', [
