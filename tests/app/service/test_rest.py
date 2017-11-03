@@ -1562,18 +1562,18 @@ def test_set_sms_sender_for_service_rejects_null(client, sample_service):
     assert result['message'] == {'sms_sender': ['Field may not be null.']}
 
 
-@pytest.mark.parametrize('default_sms_sender, should_prefix', [
-    (None, True),  # None means use default
-    ('Foo', False),
+@pytest.mark.parametrize('service_attribute, should_prefix', [
+    (True, True),
+    (False, False),
 ])
 def test_prefixing_messages_based_on_sms_sender(
     client,
     notify_db_session,
-    default_sms_sender,
+    service_attribute,
     should_prefix,
 ):
     service = create_service(
-        sms_sender=default_sms_sender or current_app.config['FROM_NUMBER']
+        prefix_sms=service_attribute
     )
     create_service_sms_sender(
         service=service,

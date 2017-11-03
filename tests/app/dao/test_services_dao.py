@@ -93,6 +93,7 @@ def test_create_service(sample_user):
     assert service_db.branding == BRANDING_GOVUK
     assert service_db.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
     assert service_db.research_mode is False
+    assert service_db.prefix_sms is True
     assert service.active is True
     assert sample_user in service_db.users
 
