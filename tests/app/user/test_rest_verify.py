@@ -275,6 +275,7 @@ def test_send_new_user_email_verification(client,
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 204
     notification = Notification.query.first()
+    assert VerifyCode.query.count() == 0
     mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
 
 

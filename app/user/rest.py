@@ -171,10 +171,14 @@ def send_user_email_code(user_id):
     if not user_to_send_to:
         return jsonify({}), 204
 
-    create_user_code(user_to_send_to, str(uuid.uuid4()), EMAIL_TYPE)
+    secret_code = str(uuid.uuid4())
+    create_user_code(user_to_send_to, secret_code, EMAIL_TYPE)
 
     template = dao_get_template_by_id(current_app.config['EMAIL_2FA_TEMPLATE_ID'])
-    personalisation = {'name': user_to_send_to.name, 'url': _create_2fa_url(user_to_send_to, data.get('next'))}
+    personalisation = {
+        'name': user_to_send_to.name,
+        'url': _create_2fa_url(user_to_send_to, secret_code, data.get('next'))
+    }
 
     create_2fa_code(template, user_to_send_to.email_address, personalisation)
 
@@ -243,8 +247,6 @@ def send_user_confirm_new_email(user_id):
 def send_new_user_email_verification(user_id):
     # when registering, we verify all users' email addresses using this function
     user_to_send_to = get_user_by_id(user_id=user_id)
-    secret_code = create_secret_code()
-    create_user_code(user_to_send_to, secret_code, 'email')
 
     template = dao_get_template_by_id(current_app.config['NEW_USER_EMAIL_VERIFICATION_TEMPLATE_ID'])
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
@@ -256,7 +258,7 @@ def send_new_user_email_verification(user_id):
         service=service,
         personalisation={
             'name': user_to_send_to.name,
-            'url': _create_verification_url(user_to_send_to, secret_code)
+            'url': _create_verification_url(user_to_send_to)
         },
         notification_type=EMAIL_TYPE,
         api_key_id=None,
@@ -374,8 +376,8 @@ def _create_reset_password_url(email):
     return url_with_token(data, url, current_app.config)
 
 
-def _create_verification_url(user, secret_code):
-    data = json.dumps({'user_id': str(user.id), 'email': user.email_address, 'secret_code': secret_code})
+def _create_verification_url(user):
+    data = json.dumps({'user_id': str(user.id), 'email': user.email_address})
     url = '/verify-email/'
     return url_with_token(data, url, current_app.config)
 
@@ -386,8 +388,8 @@ def _create_confirmation_url(user, email_address):
     return url_with_token(data, url, current_app.config)
 
 
-def _create_2fa_url(user, next_redir):
-    data = json.dumps({'user_id': str(user.id), 'email': user.email_address})
+def _create_2fa_url(user, secret_code, next_redir):
+    data = json.dumps({'user_id': str(user.id), 'secret_code': secret_code})
     url = '/email-auth/'
     ret = url_with_token(data, url, current_app.config)
     if next_redir:
