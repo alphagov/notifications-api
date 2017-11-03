@@ -6,7 +6,8 @@ post_verify_code_schema = {
         'code': {'type': 'string'},
         'code_type': {'type': 'string'},
     },
-    'required': ['code', 'code_type']
+    'required': ['code', 'code_type'],
+    'additionalProperties': False
 }
 
 
@@ -15,11 +16,13 @@ post_send_user_email_code_schema = {
     'description': 'POST schema for generating a 2fa email',
     'type': 'object',
     'properties': {
-        # doesn't need 'to' as we'll just grab user.email_address
+        # doesn't need 'to' as we'll just grab user.email_address. but lets keep it
+        # as allowed to keep admin code cleaner, but only as null to prevent confusion
+        'to': {'type': 'null'},
         'next': {'type': ['string', 'null']},
     },
     'required': [],
-    'additionalProperties': []
+    'additionalProperties': False
 }
 
 
@@ -31,5 +34,5 @@ post_send_user_sms_code_schema = {
         'to': {'type': ['string', 'null']},
     },
     'required': [],
-    'additionalProperties': []
+    'additionalProperties': False
 }

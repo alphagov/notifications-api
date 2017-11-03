@@ -1,6 +1,7 @@
 import json
 import uuid
 from datetime import datetime
+from urllib.parse import urlencode
 
 from flask import (jsonify, request, Blueprint, current_app)
 
@@ -157,7 +158,7 @@ def send_user_sms_code(user_id):
     mobile = data.get('to') or user_to_send_to.mobile_number
     template = dao_get_template_by_id(current_app.config['SMS_CODE_TEMPLATE_ID'])
 
-    personalisation = {'verify_code': secret_code},
+    personalisation = {'verify_code': secret_code}
 
     create_2fa_code(template, mobile, personalisation)
     return jsonify({}), 204
@@ -165,14 +166,15 @@ def send_user_sms_code(user_id):
 
 @user_blueprint.route('/<uuid:user_id>/email-code', methods=['POST'])
 def send_user_email_code(user_id):
-    user_to_send_to = validate_2fa_call(user_id, request.get_json(), post_send_user_email_code_schema)
+    data = request.get_json()
+    user_to_send_to = validate_2fa_call(user_id, data, post_send_user_email_code_schema)
     if not user_to_send_to:
         return jsonify({}), 204
 
-    create_user_code(user_to_send_to, uuid.uuid4(), EMAIL_TYPE)
+    create_user_code(user_to_send_to, str(uuid.uuid4()), EMAIL_TYPE)
 
     template = dao_get_template_by_id(current_app.config['EMAIL_2FA_TEMPLATE_ID'])
-    personalisation = {'url': _create_2fa_url(user_to_send_to)},
+    personalisation = {'name': user_to_send_to.name, 'url': _create_2fa_url(user_to_send_to, data.get('next'))}
 
     create_2fa_code(template, user_to_send_to.email_address, personalisation)
 
@@ -384,10 +386,10 @@ def _create_confirmation_url(user, email_address):
     return url_with_token(data, url, current_app.config)
 
 
-def _create_2fa_url(user, next_redir=None):
+def _create_2fa_url(user, next_redir):
     data = json.dumps({'user_id': str(user.id), 'email': user.email_address})
     url = '/email-auth/'
     ret = url_with_token(data, url, current_app.config)
     if next_redir:
-        ret += '?next={}'.format(next_redir)
+        ret += '?{}'.format(urlencode({'next': next_redir}))
     return ret

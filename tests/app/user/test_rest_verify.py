@@ -9,11 +9,13 @@ import pytest
 from flask import url_for, current_app
 from freezegun import freeze_time
 
+from app.dao.users_dao import create_user_code
 from app.dao.services_dao import dao_update_service, dao_fetch_service_by_id
 from app.models import (
     VerifyCode,
     User,
-    Notification
+    Notification,
+    EMAIL_TYPE
 )
 from app import db
 import app.celery.tasks
@@ -334,3 +336,75 @@ def test_reset_failed_login_count_returns_404_when_user_does_not_exist(client):
                        data={},
                        headers=[('Content-Type', 'application/json'), create_authorization_header()])
     assert resp.status_code == 404
+
+
+def test_send_user_email_code(admin_request, mocker, sample_user, email_2fa_code_template):
+    deliver_email = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    data = {
+        'to': None
+    }
+    admin_request.post(
+        'user.send_user_email_code',
+        user_id=sample_user.id,
+        _data=data,
+        _expected_status=204
+    )
+    noti = Notification.query.one()
+    assert noti.to == sample_user.email_address
+    assert str(noti.template_id) == current_app.config['EMAIL_2FA_TEMPLATE_ID']
+    assert noti.personalisation['name'] == 'Test User'
+    deliver_email.assert_called_once_with(
+        [str(noti.id)],
+        queue='notify-internal-tasks'
+    )
+
+
+def test_send_user_email_code_with_urlencoded_next_param(admin_request, mocker, sample_user, email_2fa_code_template):
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    data = {
+        'to': None,
+        'next': '/services'
+    }
+    admin_request.post(
+        'user.send_user_email_code',
+        user_id=sample_user.id,
+        _data=data,
+        _expected_status=204
+    )
+    noti = Notification.query.one()
+    code = VerifyCode.query.one()
+    assert noti.personalisation['url'].endswith('?next=%2Fservices')
+
+
+def test_send_email_code_returns_404_for_bad_input_data(admin_request):
+    resp = admin_request.post(
+        'user.send_user_email_code',
+        user_id=uuid.uuid4(),
+        _data={},
+        _expected_status=404
+    )
+    assert resp['message'] == 'No result found'
+
+
+@freeze_time('2016-01-01T12:00:00')
+def test_user_verify_email_code(admin_request, sample_user):
+    magic_code = str(uuid.uuid4())
+    verify_code = create_user_code(sample_user, magic_code, EMAIL_TYPE)
+
+    data = {
+        'code_type': 'email',
+        'code': magic_code
+    }
+
+    admin_request.post(
+        'user.verify_user_code',
+        user_id=sample_user.id,
+        _data=data,
+        _expected_status=204
+    )
+
+    assert verify_code.code_used
+    assert sample_user.logged_in_at == datetime.utcnow()
+    assert sample_user.current_session_id is not None
