@@ -48,7 +48,7 @@ def restrict_ip_sms():
     # Check route of inbound sms (Experimental)
     # Temporary custom header for route security
     if request.headers.get("X-Custom-forwarder"):
-        current_app.logger.info("X-Custom-forwarder {}".format(request.headers.get("X-Custom-forwarder")))
+        current_app.logger.info("X-Custom-forwarder received")
 
     # Check IP of SMS providers
     if request.headers.get("X-Forwarded-For"):
