@@ -47,11 +47,14 @@ def send_sms_to_provider(notification):
             "Starting sending SMS {} to provider at {}".format(notification.id, datetime.utcnow())
         )
         template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
+
+        sender_has_been_customised = (not service.get_prefix_sms_with_service_name())
+
         template = SMSMessageTemplate(
             template_model.__dict__,
             values=notification.personalisation,
             prefix=service.name,
-            sender=service.sms_sender not in {None, current_app.config['FROM_NUMBER']}
+            sender=sender_has_been_customised,
         )
 
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:

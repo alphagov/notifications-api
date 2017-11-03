@@ -722,6 +722,39 @@ def test_should_handle_sms_sender_and_prefix_message(
     )
 
 
+@pytest.mark.parametrize('sms_sender, prefix_setting, expected_content', [
+    ('foo', True, 'Sample service: bar'),
+    ('foo', False, 'bar'),
+    ('foo', None, 'bar'),
+    # 'testing' is the default SMS sender in unit tests
+    ('testing', None, 'Sample service: bar'),
+    ('testing', False, 'bar'),
+])
+def test_should_handle_sms_prefix_setting(
+    mocker,
+    sms_sender,
+    prefix_setting,
+    expected_content,
+    notify_db_session
+):
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
+    service = create_service(
+        sms_sender=sms_sender,
+        prefix_sms=prefix_setting,
+    )
+    template = create_template(service, content='bar')
+    notification = create_notification(template)
+
+    send_to_providers.send_sms_to_provider(notification)
+    mmg_client.send_sms.assert_called_once_with(
+        content=expected_content,
+        sender=ANY,
+        to=ANY,
+        reference=ANY,
+    )
+
+
 def test_should_use_inbound_number_as_sender_if_default_sms_sender(
         notify_db_session,
         mocker

@@ -224,6 +224,7 @@ class Service(db.Model, Versioned):
     _reply_to_email_address = db.Column("reply_to_email_address", db.Text, index=False, unique=False, nullable=True)
     _letter_contact_block = db.Column('letter_contact_block', db.Text, index=False, unique=False, nullable=True)
     sms_sender = db.Column(db.String(11), nullable=False, default=lambda: current_app.config['FROM_NUMBER'])
+    prefix_sms = db.Column(db.Boolean, nullable=True)
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
     free_sms_fragment_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
     organisation = db.relationship('Organisation')
@@ -279,6 +280,11 @@ class Service(db.Model, Versioned):
     def get_default_letter_contact(self):
         default_letter_contact = [x for x in self.letter_contacts if x.is_default]
         return default_letter_contact[0].contact_block if default_letter_contact else None
+
+    def get_prefix_sms_with_service_name(self):
+        if self.prefix_sms is not None:
+            return self.prefix_sms
+        return self.get_default_sms_sender() == current_app.config['FROM_NUMBER']
 
 
 class AnnualBilling(db.Model):

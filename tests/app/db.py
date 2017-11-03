@@ -68,7 +68,8 @@ def create_service(
     research_mode=False,
     active=True,
     do_create_inbound_number=True,
-    email_from=None
+    email_from=None,
+    prefix_sms=None,
 ):
     service = Service(
         name=service_name,
@@ -77,6 +78,7 @@ def create_service(
         email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
         created_by=user or create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
         sms_sender=sms_sender,
+        prefix_sms=prefix_sms,
     )
 
     dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
