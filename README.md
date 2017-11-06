@@ -44,6 +44,9 @@ export FIRETEXT_API_KEY='FIRETEXT_ACTUAL_KEY'
 export STATSD_PREFIX='YOU_OWN_PREFIX'
 export NOTIFICATION_QUEUE_PREFIX='YOUR_OWN_PREFIX'
 export REDIS_URL="redis://localhost:6379/0"
+export FLASK_APP=application.py
+export FLASK_DEBUG=1
+export WERKZEUG_DEBUG_PIN=off
 "> environment.sh
 ```
 

@@ -1,4 +1,3 @@
-from flask_script import Manager, Server
 from flask_migrate import Migrate, MigrateCommand
 from app import (create_app, db, commands)
 import os
@@ -16,11 +15,10 @@ os.environ['NOTIFY_API_ENVIRONMENT'] = configs[environment]
 
 application = create_app()
 
-manager = Manager(application)
 migrate = Migrate(application, db)
-manager.add_command('db', MigrateCommand)
-manager.add_command('purge_functional_test_data', commands.PurgeFunctionalTestDataCommand)
-manager.add_command('custom_db_script', commands.CustomDbScript)
+application.add_command('db', MigrateCommand)
+application.add_command('purge_functional_test_data', commands.PurgeFunctionalTestDataCommand)
+application.add_command('custom_db_script', commands.CustomDbScript)
 
 if __name__ == '__main__':
     manager.run()
