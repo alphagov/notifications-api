@@ -75,9 +75,10 @@ def process_ses_response(ses_request):
                 notification_status
             )
             if not notification:
-                error = "SES callback failed: notification either not found or already updated " \
-                        "from sending. Status {} for notification reference {}".format(notification_status, reference)
-                return error
+                warning = "SES callback failed: notification either not found or already updated " \
+                          "from sending. Status {} for notification reference {}".format(notification_status, reference)
+                current_app.logger.warning(warning)
+                return
 
             if not aws_response_dict['success']:
                 current_app.logger.info(
