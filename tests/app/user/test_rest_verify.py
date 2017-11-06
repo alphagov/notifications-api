@@ -15,7 +15,8 @@ from app.models import (
     VerifyCode,
     User,
     Notification,
-    EMAIL_TYPE
+    EMAIL_TYPE,
+    SMS_TYPE
 )
 from app import db
 import app.celery.tasks
@@ -409,3 +410,27 @@ def test_user_verify_email_code(admin_request, sample_user):
     assert verify_code.code_used
     assert sample_user.logged_in_at == datetime.utcnow()
     assert sample_user.current_session_id is not None
+
+
+@pytest.mark.parametrize('code_type', [EMAIL_TYPE, SMS_TYPE])
+@freeze_time('2016-01-01T12:00:00')
+def test_user_verify_email_code_fails_if_code_already_used(admin_request, sample_user, code_type):
+    magic_code = str(uuid.uuid4())
+    verify_code = create_user_code(sample_user, magic_code, code_type)
+    verify_code.code_used = True
+
+    data = {
+        'code_type': code_type,
+        'code': magic_code
+    }
+
+    admin_request.post(
+        'user.verify_user_code',
+        user_id=sample_user.id,
+        _data=data,
+        _expected_status=400
+    )
+
+    assert verify_code.code_used
+    assert sample_user.logged_in_at is None
+    assert sample_user.current_session_id is None
