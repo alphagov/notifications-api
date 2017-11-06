@@ -15,22 +15,69 @@ from app.v2.inbound_sms import v2_inbound_sms_blueprint
 
 @v2_inbound_sms_blueprint.route("/<user_number>", methods=['GET'])
 def get_inbound_sms_by_number(user_number):
+    _data = request.args.to_dict(flat=False)
+
+    # flat=False makes everything a list, but we only ever allow one value for "older_than"
+    if 'older_than' in _data:
+        _data['older_than'] = _data['older_than'][0]
+
     try:
-        validate_and_format_phone_number(user_number)
+        user_number = validate_and_format_phone_number(user_number)
     except InvalidPhoneError as e:
         raise BadRequestError(message=str(e))
 
-    inbound_sms = inbound_sms_dao.dao_get_inbound_sms_for_service(
-        authenticated_service.id, user_number=user_number
+    paginated_inbound_sms = inbound_sms_dao.dao_get_paginated_inbound_sms_for_service(
+        authenticated_service.id,
+        user_number=user_number,
+        older_than=_data.get('older_than'),
+        page_size=current_app.config.get('API_PAGE_SIZE')
     )
 
-    return jsonify(inbound_sms_list=[i.serialize() for i in inbound_sms]), 200
+    return jsonify(
+        inbound_sms_list=[i.serialize() for i in paginated_inbound_sms],
+        links=_build_links(
+            paginated_inbound_sms,
+            endpoint='get_inbound_sms_by_number',
+            user_number=user_number
+        )
+    ), 200
 
 
 @v2_inbound_sms_blueprint.route("", methods=['GET'])
 def get_all_inbound_sms():
-    all_inbound_sms = inbound_sms_dao.dao_get_inbound_sms_for_service(
-        authenticated_service.id
+    _data = request.args.to_dict(flat=False)
+
+    # flat=False makes everything a list, but we only ever allow one value for "older_than"
+    if 'older_than' in _data:
+        _data['older_than'] = _data['older_than'][0]
+
+    paginated_inbound_sms = inbound_sms_dao.dao_get_paginated_inbound_sms_for_service(
+        authenticated_service.id,
+        older_than=_data.get('older_than'),
+        page_size=current_app.config.get('API_PAGE_SIZE')
     )
 
-    return jsonify(inbound_sms_list=[i.serialize() for i in all_inbound_sms]), 200
+    return jsonify(
+        inbound_sms_list=[i.serialize() for i in paginated_inbound_sms],
+        links=_build_links(paginated_inbound_sms, endpoint='get_all_inbound_sms')
+    ), 200
+
+
+def _build_links(inbound_sms_list, endpoint, user_number=None):
+    _links = {
+        'current': url_for(
+            "v2_inbound_sms.{}".format(endpoint),
+            user_number=user_number,
+            _external=True,
+        ),
+    }
+
+    if inbound_sms_list:
+        _links['next'] = url_for(
+            "v2_inbound_sms.{}".format(endpoint),
+            user_number=user_number,
+            older_than=inbound_sms_list[-1].id,
+            _external=True,
+        )
+
+    return _links

@@ -43,8 +43,21 @@ get_inbound_sms_response = {
                 "$ref": "#/definitions/inbound_sms"
             }
         },
+        "links": {
+            "type": "object",
+            "properties": {
+                "current": {
+                    "type": "string"
+                },
+                "next": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": False,
+            "required": ["current"]
+        }
     },
-    "required": ["inbound_sms_list"],
+    "required": ["inbound_sms_list", "links"],
     "definitions": {
         "inbound_sms": get_inbound_sms_single_response
     }
