@@ -36,7 +36,6 @@ def dao_get_paginated_inbound_sms_for_service(
     service_id,
     user_number=None,
     older_than=None,
-    page=1,
     page_size=None
 ):
     if page_size is None:
@@ -44,7 +43,7 @@ def dao_get_paginated_inbound_sms_for_service(
 
     filters = [InboundSms.service_id == service_id]
 
-    if older_than is not None:
+    if older_than:
         older_than_created_at = db.session.query(
             InboundSms.created_at).filter(InboundSms.id == older_than).as_scalar()
         filters.append(InboundSms.created_at < older_than_created_at)
@@ -55,7 +54,6 @@ def dao_get_paginated_inbound_sms_for_service(
     query = InboundSms.query.filter(*filters)
 
     return query.order_by(desc(InboundSms.created_at)).paginate(
-        page=page,
         per_page=page_size
     ).items
 
