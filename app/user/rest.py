@@ -130,9 +130,11 @@ def verify_user_code(user_id):
     if user_to_verify.failed_login_count >= current_app.config.get('MAX_VERIFY_CODE_COUNT'):
         raise InvalidRequest("Code not found", status_code=404)
     if not code:
+        # only relevant from sms
         increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code not found", status_code=404)
     if datetime.utcnow() > code.expiry_datetime or code.code_used:
+        # sms and email
         increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code has expired", status_code=400)
 
@@ -234,7 +236,7 @@ def send_user_confirm_new_email(user_id):
             'url': _create_confirmation_url(user=user_to_send_to, email_address=email['email']),
             'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/support'
         },
-        notification_type=EMAIL_TYPE,
+        notification_type=template.template_type,
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL
     )
@@ -260,7 +262,7 @@ def send_new_user_email_verification(user_id):
             'name': user_to_send_to.name,
             'url': _create_verification_url(user_to_send_to)
         },
-        notification_type=EMAIL_TYPE,
+        notification_type=template.template_type,
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL
     )
@@ -286,7 +288,7 @@ def send_already_registered_email(user_id):
             'forgot_password_url': current_app.config['ADMIN_BASE_URL'] + '/forgot-password',
             'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/support'
         },
-        notification_type=EMAIL_TYPE,
+        notification_type=template.template_type,
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL
     )
@@ -348,7 +350,7 @@ def send_user_reset_password():
             'user_name': user_to_send_to.name,
             'url': _create_reset_password_url(user_to_send_to.email_address)
         },
-        notification_type=EMAIL_TYPE,
+        notification_type=template.template_type,
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL
     )

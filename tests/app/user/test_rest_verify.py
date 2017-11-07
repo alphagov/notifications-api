@@ -12,9 +12,9 @@ from freezegun import freeze_time
 from app.dao.users_dao import create_user_code
 from app.dao.services_dao import dao_update_service, dao_fetch_service_by_id
 from app.models import (
-    VerifyCode,
-    User,
     Notification,
+    User,
+    VerifyCode,
     EMAIL_TYPE,
     SMS_TYPE
 )
