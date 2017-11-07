@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from urllib.parse import urlencode
 
-from flask import (jsonify, request, Blueprint, current_app)
+from flask import (jsonify, request, Blueprint, current_app, abort)
 
 from app.config import QueueNames
 from app.dao.users_dao import (
@@ -23,7 +23,7 @@ from app.dao.users_dao import (
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import SMS_TYPE, KEY_TYPE_NORMAL, EMAIL_TYPE, Service
+from app.models import KEY_TYPE_NORMAL, Service, SMS_TYPE, EMAIL_TYPE
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue
@@ -147,59 +147,66 @@ def verify_user_code(user_id):
     return jsonify({}), 204
 
 
-@user_blueprint.route('/<uuid:user_id>/sms-code', methods=['POST'])
-def send_user_sms_code(user_id):
-    data = request.get_json()
-    user_to_send_to = validate_2fa_call(user_id, data, post_send_user_sms_code_schema)
-    if not user_to_send_to:
-        return jsonify({}), 204
+@user_blueprint.route('/<uuid:user_id>/<code_type>-code', methods=['POST'])
+def send_user_2fa_code(user_id, code_type):
+    user_to_send_to = get_user_by_id(user_id=user_id)
+
+    if count_user_verify_codes(user_to_send_to) >= current_app.config.get('MAX_VERIFY_CODE_COUNT'):
+        # Prevent more than `MAX_VERIFY_CODE_COUNT` active verify codes at a time
+        current_app.logger.warn('Too many verify codes created for user {}'.format(user_to_send_to.id))
+    else:
+        data = request.get_json()
+        if code_type == SMS_TYPE:
+            validate(data, post_send_user_sms_code_schema)
+            send_user_sms_code(user_to_send_to, data)
+        elif code_type == EMAIL_TYPE:
+            validate(data, post_send_user_email_code_schema)
+            send_user_email_code(user_to_send_to, data)
+        else:
+            abort(404)
+
+    return '{}', 204
+
+
+def send_user_sms_code(user_to_send_to, data):
+    recipient = data.get('to') or user_to_send_to.mobile_number
 
     secret_code = create_secret_code()
-    create_user_code(user_to_send_to, secret_code, SMS_TYPE)
-
-    mobile = data.get('to') or user_to_send_to.mobile_number
-    template = dao_get_template_by_id(current_app.config['SMS_CODE_TEMPLATE_ID'])
-
     personalisation = {'verify_code': secret_code}
 
-    create_2fa_code(template, mobile, personalisation)
-    return jsonify({}), 204
+    create_2fa_code(
+        current_app.config['SMS_CODE_TEMPLATE_ID'],
+        user_to_send_to,
+        secret_code,
+        recipient,
+        personalisation
+    )
 
 
-@user_blueprint.route('/<uuid:user_id>/email-code', methods=['POST'])
-def send_user_email_code(user_id):
-    data = request.get_json()
-    user_to_send_to = validate_2fa_call(user_id, data, post_send_user_email_code_schema)
-    if not user_to_send_to:
-        return jsonify({}), 204
+def send_user_email_code(user_to_send_to, data):
+    recipient = user_to_send_to.email_address
 
     secret_code = str(uuid.uuid4())
-    create_user_code(user_to_send_to, secret_code, EMAIL_TYPE)
-
-    template = dao_get_template_by_id(current_app.config['EMAIL_2FA_TEMPLATE_ID'])
     personalisation = {
         'name': user_to_send_to.name,
         'url': _create_2fa_url(user_to_send_to, secret_code, data.get('next'))
     }
 
-    create_2fa_code(template, user_to_send_to.email_address, personalisation)
-
-    return '{}', 204
-
-
-def validate_2fa_call(user_id, data, schema):
-    validate(data, schema)
-    user_to_send_to = get_user_by_id(user_id=user_id)
-
-    if count_user_verify_codes(user_to_send_to) >= current_app.config.get('MAX_VERIFY_CODE_COUNT'):
-        # Prevent more than `MAX_VERIFY_CODE_COUNT` active verify codes at a time
-        current_app.logger.warn('Max verify code has exceeded for user {}'.format(user_to_send_to.id))
-        return
-
-    return user_to_send_to
+    create_2fa_code(
+        current_app.config['EMAIL_2FA_TEMPLATE_ID'],
+        user_to_send_to,
+        secret_code,
+        recipient,
+        personalisation
+    )
 
 
-def create_2fa_code(template, recipient, personalisation):
+def create_2fa_code(template_id, user_to_send_to, secret_code, recipient, personalisation):
+    template = dao_get_template_by_id(template_id)
+
+    # save the code in the VerifyCode table
+    create_user_code(user_to_send_to, secret_code, template.template_type)
+
     saved_notification = persist_notification(
         template_id=template.id,
         template_version=template.version,

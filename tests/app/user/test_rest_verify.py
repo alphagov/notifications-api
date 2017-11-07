@@ -185,7 +185,7 @@ def test_send_user_sms_code(client,
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     resp = client.post(
-        url_for('user.send_user_sms_code', user_id=sample_user.id),
+        url_for('user.send_user_2fa_code', code_type='sms', user_id=sample_user.id),
         data=json.dumps({}),
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 204
@@ -218,7 +218,7 @@ def test_send_user_code_for_sms_with_optional_to_field(client,
     auth_header = create_authorization_header()
 
     resp = client.post(
-        url_for('user.send_user_sms_code', user_id=sample_user.id),
+        url_for('user.send_user_2fa_code', code_type='sms', user_id=sample_user.id),
         data=json.dumps({'to': to_number}),
         headers=[('Content-Type', 'application/json'), auth_header])
 
@@ -236,7 +236,7 @@ def test_send_sms_code_returns_404_for_bad_input_data(client):
     uuid_ = uuid.uuid4()
     auth_header = create_authorization_header()
     resp = client.post(
-        url_for('user.send_user_sms_code', user_id=uuid_),
+        url_for('user.send_user_2fa_code', code_type='sms', user_id=uuid_),
         data=json.dumps({}),
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 404
@@ -257,7 +257,7 @@ def test_send_sms_code_returns_204_when_too_many_codes_already_created(client, s
     assert VerifyCode.query.count() == 10
     auth_header = create_authorization_header()
     resp = client.post(
-        url_for('user.send_user_sms_code', user_id=sample_user.id),
+        url_for('user.send_user_2fa_code', code_type='sms', user_id=sample_user.id),
         data=json.dumps({}),
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 204
@@ -347,7 +347,8 @@ def test_send_user_email_code(admin_request, mocker, sample_user, email_2fa_code
         'to': None
     }
     admin_request.post(
-        'user.send_user_email_code',
+        'user.send_user_2fa_code',
+        code_type='email',
         user_id=sample_user.id,
         _data=data,
         _expected_status=204
@@ -370,7 +371,8 @@ def test_send_user_email_code_with_urlencoded_next_param(admin_request, mocker, 
         'next': '/services'
     }
     admin_request.post(
-        'user.send_user_email_code',
+        'user.send_user_2fa_code',
+        code_type='email',
         user_id=sample_user.id,
         _data=data,
         _expected_status=204
@@ -382,7 +384,8 @@ def test_send_user_email_code_with_urlencoded_next_param(admin_request, mocker, 
 
 def test_send_email_code_returns_404_for_bad_input_data(admin_request):
     resp = admin_request.post(
-        'user.send_user_email_code',
+        'user.send_user_2fa_code',
+        code_type='email',
         user_id=uuid.uuid4(),
         _data={},
         _expected_status=404
