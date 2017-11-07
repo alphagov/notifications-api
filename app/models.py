@@ -283,11 +283,6 @@ class Service(db.Model, Versioned):
         default_letter_contact = [x for x in self.letter_contacts if x.is_default]
         return default_letter_contact[0].contact_block if default_letter_contact else None
 
-    def get_prefix_sms_with_service_name(self):
-        if self.prefix_sms is not None:
-            return self.prefix_sms
-        return self.get_default_sms_sender() == current_app.config['FROM_NUMBER']
-
 
 class AnnualBilling(db.Model):
     __tablename__ = "annual_billing"

@@ -158,7 +158,6 @@ def test_get_service_by_id(client, sample_service):
     assert json_resp['data']['branding'] == 'govuk'
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
-    assert json_resp['data']['prefix_sms_with_service_name'] is True
     assert json_resp['data']['prefix_sms'] is True
 
 
@@ -1546,7 +1545,7 @@ def test_prefixing_messages_based_on_prefix_sms(
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
     service = json.loads(result.get_data(as_text=True))['data']
-    assert service['prefix_sms_with_service_name'] == should_prefix
+    assert service['prefix_sms'] == should_prefix
 
 
 @pytest.mark.parametrize('posted_value, stored_value, returned_value', [
@@ -1567,10 +1566,6 @@ def test_set_sms_prefixing_for_service(
         _data={'prefix_sms': posted_value},
     )
     assert result['data']['prefix_sms'] == stored_value
-    # This derived value will go away eventually, once we’ve done a migration
-    assert result['data']['prefix_sms_with_service_name'] == returned_value
-    # The derived value is dependent on the service sending from the platform’s
-    # default from number
     assert result['data']['sms_sender'] == current_app.config['FROM_NUMBER']
 
 
