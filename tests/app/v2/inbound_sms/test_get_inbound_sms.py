@@ -38,14 +38,20 @@ def test_get_all_inbound_sms_returns_200(
     ('v2_inbound_sms.get_all_inbound_sms', None),
     ('v2_inbound_sms.get_inbound_sms_by_number', '447700900111')
 ])
-def test_get_all_inbound_sms_generate_page_links(
+def test_get_inbound_sms_generate_page_links(
         client, sample_service, mocker, inbound_sms_path, user_number
 ):
-    mocker.patch.dict("app.v2.inbound_sms.get_inbound_sms.current_app.config", {"API_PAGE_SIZE": 1})
+    mocker.patch.dict(
+        "app.v2.inbound_sms.get_inbound_sms.current_app.config",
+        {"API_PAGE_SIZE": 2}
+    )
     all_inbound_sms = [
         create_inbound_sms(service=sample_service, user_number='447700900111', content='Hi'),
         create_inbound_sms(service=sample_service, user_number='447700900111'),
+        create_inbound_sms(service=sample_service, user_number='447700900111', content='End'),
     ]
+
+    reversed_inbound_sms = sorted(all_inbound_sms, key=lambda sms: sms.created_at, reverse=True)
 
     auth_header = create_authorization_header(service_id=sample_service.id)
     response = client.get(
@@ -55,7 +61,7 @@ def test_get_all_inbound_sms_generate_page_links(
     assert response.status_code == 200
 
     json_response = json.loads(response.get_data(as_text=True))
-    expected_inbound_sms_list = [all_inbound_sms[-1].serialize()]
+    expected_inbound_sms_list = [i.serialize() for i in reversed_inbound_sms[:2]]
 
     assert json_response['inbound_sms_list'] == expected_inbound_sms_list
     assert url_for(
@@ -65,8 +71,78 @@ def test_get_all_inbound_sms_generate_page_links(
     assert url_for(
         inbound_sms_path,
         user_number=user_number,
-        older_than=all_inbound_sms[-1].id,
+        older_than=reversed_inbound_sms[1].id,
         _external=True) == json_response['links']['next']
+
+
+@pytest.mark.parametrize('inbound_sms_path,user_number', [
+    ('v2_inbound_sms.get_all_inbound_sms', None),
+    ('v2_inbound_sms.get_inbound_sms_by_number', '447700900111')
+])
+def test_get_next_inbound_sms_will_get_correct_inbound_sms_list(
+        client, sample_service, mocker, inbound_sms_path, user_number
+):
+    mocker.patch.dict(
+        "app.v2.inbound_sms.get_inbound_sms.current_app.config",
+        {"API_PAGE_SIZE": 2}
+    )
+    all_inbound_sms = [
+        create_inbound_sms(service=sample_service, user_number='447700900111', content='1'),
+        create_inbound_sms(service=sample_service, user_number='447700900111', content='2'),
+        create_inbound_sms(service=sample_service, user_number='447700900111', content='3'),
+        create_inbound_sms(service=sample_service, user_number='447700900111', content='4'),
+    ]
+    reversed_inbound_sms = sorted(all_inbound_sms, key=lambda sms: sms.created_at, reverse=True)
+
+    auth_header = create_authorization_header(service_id=sample_service.id)
+    response = client.get(
+        path=url_for(inbound_sms_path, user_number=user_number, older_than=reversed_inbound_sms[1].id),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 200
+
+    json_response = json.loads(response.get_data(as_text=True))
+    expected_inbound_sms_list = [i.serialize() for i in reversed_inbound_sms[2:]]
+
+    assert json_response['inbound_sms_list'] == expected_inbound_sms_list
+    assert url_for(
+        inbound_sms_path,
+        user_number=user_number,
+        _external=True) == json_response['links']['current']
+    assert url_for(
+        inbound_sms_path,
+        user_number=user_number,
+        older_than=reversed_inbound_sms[3].id,
+        _external=True) == json_response['links']['next']
+
+
+@pytest.mark.parametrize('inbound_sms_path,user_number', [
+    ('v2_inbound_sms.get_all_inbound_sms', None),
+    ('v2_inbound_sms.get_inbound_sms_by_number', '447700900111')
+])
+def test_get_next_inbound_sms_at_end_will_return_empty_inbound_sms_list(
+        client, sample_inbound_sms, mocker, inbound_sms_path, user_number
+):
+    mocker.patch.dict(
+        "app.v2.inbound_sms.get_inbound_sms.current_app.config",
+        {"API_PAGE_SIZE": 1}
+    )
+
+    auth_header = create_authorization_header(service_id=sample_inbound_sms.service.id)
+    response = client.get(
+        path=url_for(inbound_sms_path, user_number=user_number, older_than=sample_inbound_sms.id),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 200
+
+    json_response = json.loads(response.get_data(as_text=True))
+    expected_inbound_sms_list = []
+    assert json_response['inbound_sms_list'] == expected_inbound_sms_list
+    assert url_for(
+        inbound_sms_path,
+        user_number=user_number,
+        _external=True) == json_response['links']['current']
+    assert 'next' not in json_response['links'].keys()
 
 
 def test_get_all_inbound_sms_for_no_inbound_sms_returns_200(
@@ -87,16 +163,22 @@ def test_get_all_inbound_sms_for_no_inbound_sms_returns_200(
     assert json_response == expected_response
 
 
+@pytest.mark.parametrize('requested_number', [
+    '447700900111',
+    '+447700900111',
+    '07700900111'
+])
 def test_get_inbound_sms_by_number_returns_200(
-        client, sample_service
+        client, sample_service, requested_number
 ):
     sample_inbound_sms1 = create_inbound_sms(service=sample_service, user_number='447700900111')
     create_inbound_sms(service=sample_service, user_number='447700900112')
     sample_inbound_sms2 = create_inbound_sms(service=sample_service, user_number='447700900111')
+    create_inbound_sms(service=sample_service, user_number='447700900113')
 
     auth_header = create_authorization_header(service_id=sample_service.id)
     response = client.get(
-        path='/v2/received-text-messages/{}'.format('07700900111'),
+        path='/v2/received-text-messages/{}'.format(requested_number),
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 200
