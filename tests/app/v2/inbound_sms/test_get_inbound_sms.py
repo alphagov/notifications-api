@@ -25,7 +25,7 @@ def test_get_all_inbound_sms_returns_200(
     assert response.status_code == 200
     assert response.headers['Content-type'] == 'application/json'
 
-    json_response = json.loads(response.get_data(as_text=True))['inbound_sms_list']
+    json_response = json.loads(response.get_data(as_text=True))['received_text_messages']
 
     reversed_all_inbound_sms = sorted(all_inbound_sms, key=lambda sms: sms.created_at, reverse=True)
 
@@ -63,7 +63,7 @@ def test_get_inbound_sms_generate_page_links(
     json_response = json.loads(response.get_data(as_text=True))
     expected_inbound_sms_list = [i.serialize() for i in reversed_inbound_sms[:2]]
 
-    assert json_response['inbound_sms_list'] == expected_inbound_sms_list
+    assert json_response['received_text_messages'] == expected_inbound_sms_list
     assert url_for(
         inbound_sms_path,
         user_number=user_number,
@@ -104,7 +104,7 @@ def test_get_next_inbound_sms_will_get_correct_inbound_sms_list(
     json_response = json.loads(response.get_data(as_text=True))
     expected_inbound_sms_list = [i.serialize() for i in reversed_inbound_sms[2:]]
 
-    assert json_response['inbound_sms_list'] == expected_inbound_sms_list
+    assert json_response['received_text_messages'] == expected_inbound_sms_list
     assert url_for(
         inbound_sms_path,
         user_number=user_number,
@@ -137,7 +137,7 @@ def test_get_next_inbound_sms_at_end_will_return_empty_inbound_sms_list(
 
     json_response = json.loads(response.get_data(as_text=True))
     expected_inbound_sms_list = []
-    assert json_response['inbound_sms_list'] == expected_inbound_sms_list
+    assert json_response['received_text_messages'] == expected_inbound_sms_list
     assert url_for(
         inbound_sms_path,
         user_number=user_number,
@@ -156,7 +156,7 @@ def test_get_all_inbound_sms_for_no_inbound_sms_returns_200(
     assert response.status_code == 200
     assert response.headers['Content-type'] == 'application/json'
 
-    json_response = json.loads(response.get_data(as_text=True))['inbound_sms_list']
+    json_response = json.loads(response.get_data(as_text=True))['received_text_messages']
 
     expected_response = []
 
@@ -184,7 +184,7 @@ def test_get_inbound_sms_by_number_returns_200(
     assert response.status_code == 200
     assert response.headers['Content-type'] == 'application/json'
 
-    json_response = json.loads(response.get_data(as_text=True))['inbound_sms_list']
+    json_response = json.loads(response.get_data(as_text=True))['received_text_messages']
 
     expected_response = [sample_inbound_sms2.serialize(), sample_inbound_sms1.serialize()]
 
@@ -202,7 +202,7 @@ def test_get_inbound_sms_for_no_inbound_sms_returns_200(
     assert response.status_code == 200
     assert response.headers['Content-type'] == 'application/json'
 
-    json_response = json.loads(response.get_data(as_text=True))['inbound_sms_list']
+    json_response = json.loads(response.get_data(as_text=True))['received_text_messages']
 
     expected_response = []
 
@@ -218,7 +218,7 @@ def test_get_inbound_sms_by_nonexistent_number(client, sample_service):
     assert response.status_code == 200
     assert response.headers['Content-type'] == 'application/json'
 
-    json_response = json.loads(response.get_data(as_text=True))['inbound_sms_list']
+    json_response = json.loads(response.get_data(as_text=True))['received_text_messages']
     expected_response = []
 
     assert json_response == expected_response

@@ -36,7 +36,7 @@ get_inbound_sms_response = {
     "description": "GET list of inbound sms response schema",
     "type": "object",
     "properties": {
-        "inbound_sms_list": {
+        "received_text_messages": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -57,7 +57,7 @@ get_inbound_sms_response = {
             "required": ["current"]
         }
     },
-    "required": ["inbound_sms_list", "links"],
+    "required": ["received_text_messages", "links"],
     "definitions": {
         "inbound_sms": get_inbound_sms_single_response
     }

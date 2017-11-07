@@ -34,7 +34,7 @@ def get_inbound_sms_by_number(user_number):
     )
 
     return jsonify(
-        inbound_sms_list=[i.serialize() for i in paginated_inbound_sms],
+        received_text_messages=[i.serialize() for i in paginated_inbound_sms],
         links=_build_links(
             paginated_inbound_sms,
             endpoint='get_inbound_sms_by_number',
@@ -58,7 +58,7 @@ def get_all_inbound_sms():
     )
 
     return jsonify(
-        inbound_sms_list=[i.serialize() for i in paginated_inbound_sms],
+        received_text_messages=[i.serialize() for i in paginated_inbound_sms],
         links=_build_links(paginated_inbound_sms, endpoint='get_all_inbound_sms')
     ), 200
 

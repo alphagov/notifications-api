@@ -20,7 +20,7 @@ valid_inbound_sms = {
 }
 
 valid_inbound_sms_list = {
-    "inbound_sms_list": [valid_inbound_sms],
+    "received_text_messages": [valid_inbound_sms],
     "links": {
         "current": valid_inbound_sms["id"]
     }
@@ -38,7 +38,7 @@ invalid_inbound_sms = {
 }
 
 invalid_inbound_sms_list = {
-    "inbound_sms_list": [invalid_inbound_sms]
+    "received_text_messages": [invalid_inbound_sms]
 }
 
 
@@ -47,7 +47,7 @@ def test_get_inbound_sms_contract(client, sample_inbound_sms):
     response = client.get('/v2/received-text-messages/{}'.format(sample_inbound_sms.user_number), headers=[auth_header])
     response_json = json.loads(response.get_data(as_text=True))
 
-    assert validate(response_json, get_inbound_sms_response)['inbound_sms_list'][0] \
+    assert validate(response_json, get_inbound_sms_response)['received_text_messages'][0] \
         == sample_inbound_sms.serialize()
 
 
