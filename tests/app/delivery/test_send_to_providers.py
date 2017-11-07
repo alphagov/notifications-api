@@ -311,7 +311,7 @@ def test_should_send_sms_sender_from_service_if_present(
 
     mmg_client.send_sms.assert_called_once_with(
         to=validate_and_format_phone_number("+447234123123"),
-        content="Dear Sir/Madam, Hello. Yours Truly, The Government.",
+        content="Sample service: Dear Sir/Madam, Hello. Yours Truly, The Government.",
         reference=str(db_notification.id),
         sender=service.sms_sender
     )
@@ -692,23 +692,26 @@ def test_should_set_international_phone_number_to_sent_status(
     assert notification.status == 'sent'
 
 
-@pytest.mark.parametrize('sms_sender, expected_sender, expected_content', [
-    ('foo', 'foo', 'bar'),
+@pytest.mark.parametrize('sms_sender, expected_sender, prefix_sms, expected_content', [
+    ('foo', 'foo', False, 'bar'),
+    ('foo', 'foo', True, 'Sample service: bar'),
     # if 40604 is actually in DB then treat that as if entered manually
-    ('40604', '40604', 'bar'),
+    ('40604', '40604', False, 'bar'),
     # 'testing' is the FROM_NUMBER during unit tests
-    ('testing', 'testing', 'Sample service: bar'),
+    ('testing', 'testing', True, 'Sample service: bar'),
+    ('testing', 'testing', False, 'bar'),
 ])
 def test_should_handle_sms_sender_and_prefix_message(
     mocker,
     sms_sender,
+    prefix_sms,
     expected_sender,
     expected_content,
     notify_db_session
 ):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
-    service = create_service(sms_sender=sms_sender)
+    service = create_service(sms_sender=sms_sender, prefix_sms=prefix_sms)
     template = create_template(service, content='bar')
     notification = create_notification(template)
 
@@ -725,7 +728,7 @@ def test_should_handle_sms_sender_and_prefix_message(
 @pytest.mark.parametrize('sms_sender, prefix_setting, expected_content', [
     ('foo', True, 'Sample service: bar'),
     ('foo', False, 'bar'),
-    ('foo', None, 'bar'),
+    ('foo', None, 'Sample service: bar'),
     # 'testing' is the default SMS sender in unit tests
     ('testing', None, 'Sample service: bar'),
     ('testing', False, 'bar'),
