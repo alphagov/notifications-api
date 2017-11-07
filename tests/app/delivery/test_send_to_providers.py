@@ -33,7 +33,10 @@ from tests.app.db import (
     create_inbound_number,
     create_reply_to_email,
     create_reply_to_email_for_notification,
-    create_service_sms_sender)
+    create_service_sms_sender,
+    create_service_with_inbound_number,
+    create_service_with_defined_sms_sender
+)
 
 
 def test_should_return_highest_priority_active_provider(restore_provider_details):
@@ -291,30 +294,6 @@ def test_should_not_send_to_provider_when_status_is_not_created(
     app.mmg_client.send_sms.assert_not_called()
     response_mock.assert_not_called()
     stats_mock.assert_not_called()
-
-
-def test_should_send_sms_sender_from_service_if_present(
-        notify_db_session,
-        mocker):
-    service = create_service(sms_sender='elevenchars')
-    template = create_template(service=service)
-    db_notification = create_notification(template=template,
-                                          to_field="+447234123123",
-                                          status='created')
-
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
-
-    send_to_providers.send_sms_to_provider(
-        db_notification
-    )
-
-    mmg_client.send_sms.assert_called_once_with(
-        to=validate_and_format_phone_number("+447234123123"),
-        content="Dear Sir/Madam, Hello. Yours Truly, The Government.",
-        reference=str(db_notification.id),
-        sender=service.sms_sender
-    )
 
 
 def test_should_send_sms_with_downgraded_content(notify_db_session, mocker):
@@ -708,7 +687,7 @@ def test_should_handle_sms_sender_and_prefix_message(
 ):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
-    service = create_service(sms_sender=sms_sender)
+    service = create_service_with_defined_sms_sender(sms_sender_value=sms_sender)
     template = create_template(service, content='bar')
     notification = create_notification(template)
 
@@ -739,9 +718,8 @@ def test_should_handle_sms_prefix_setting(
 ):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
-    service = create_service(
-        sms_sender=sms_sender,
-        prefix_sms=prefix_setting,
+    service = create_service_with_defined_sms_sender(
+        sms_sender_value=sms_sender, prefix_sms=prefix_setting
     )
     template = create_template(service, content='bar')
     notification = create_notification(template)
@@ -759,12 +737,8 @@ def test_should_use_inbound_number_as_sender_if_default_sms_sender(
         notify_db_session,
         mocker
 ):
-    service = create_service(sms_sender='test sender')
-    inbound_number = create_inbound_number('1')
-    dao_add_sms_sender_for_service(service_id=service.id,
-                                   sms_sender=inbound_number.number,
-                                   is_default=True,
-                                   inbound_number_id=inbound_number.id)
+    service = create_service_with_inbound_number(inbound_number='inbound')
+    create_service_sms_sender(service=service, sms_sender="sms_sender", is_default=False)
     template = create_template(service, content='bar')
     notification = create_notification(template)
 
@@ -777,7 +751,7 @@ def test_should_use_inbound_number_as_sender_if_default_sms_sender(
         to=ANY,
         content=ANY,
         reference=str(notification.id),
-        sender=inbound_number.number
+        sender='inbound'
     )
 
 
@@ -785,12 +759,7 @@ def test_should_use_default_sms_sender(
         notify_db_session,
         mocker
 ):
-    service = create_service(sms_sender='test sender')
-    inbound_number = create_inbound_number('1')
-    dao_add_sms_sender_for_service(service_id=service.id,
-                                   sms_sender=inbound_number.number,
-                                   is_default=False,
-                                   inbound_number_id=inbound_number.id)
+    service = create_service_with_defined_sms_sender(sms_sender_value="test sender")
     template = create_template(service, content='bar')
     notification = create_notification(template)
 
