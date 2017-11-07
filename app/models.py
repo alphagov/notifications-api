@@ -1555,3 +1555,37 @@ class AuthType(db.Model):
     __tablename__ = 'auth_type'
 
     name = db.Column(db.String, primary_key=True)
+
+
+class StatsTemplateUsageByMonth(db.Model):
+    __tablename__ = "stats_template_usage_by_month"
+
+    template_id = db.Column(
+        UUID(as_uuid=True),
+        db.ForeignKey('templates.id'),
+        unique=False,
+        index=True,
+        nullable=False,
+        primary_key=True
+    )
+    month = db.Column(
+        db.Integer,
+        nullable=False,
+        index=True,
+        unique=False,
+        primary_key=True,
+        default=datetime.datetime.month
+    )
+    year = db.Column(
+        db.Integer,
+        nullable=False,
+        index=True,
+        unique=False,
+        primary_key=True,
+        default=datetime.datetime.year
+    )
+    count = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0
+    )
