@@ -1,6 +1,18 @@
 from app.schema_validation.definitions import uuid
 
 
+get_inbound_sms_request = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "schema for query parameters allowed when getting list of received text messages",
+    "type": "object",
+    "properties": {
+        "older_than": uuid,
+        "user_number": {"type": "string"}
+    },
+    "additionalProperties": False,
+}
+
+
 get_inbound_sms_single_response = {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "description": "GET inbound sms schema response",
@@ -29,6 +41,7 @@ get_inbound_sms_single_response = {
         "user_number", "created_at", "service_id",
         "notify_number", "content"
     ],
+    "additionalProperties": False,
 }
 
 get_inbound_sms_response = {
@@ -60,5 +73,6 @@ get_inbound_sms_response = {
     "required": ["received_text_messages", "links"],
     "definitions": {
         "inbound_sms": get_inbound_sms_single_response
-    }
+    },
+    "additionalProperties": False,
 }

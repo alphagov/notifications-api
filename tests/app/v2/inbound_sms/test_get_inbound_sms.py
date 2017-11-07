@@ -1,8 +1,6 @@
-import datetime
 import pytest
 from flask import json, url_for
 
-from app import DATETIME_FORMAT
 from tests import create_authorization_header
 from tests.app.db import create_inbound_sms
 
@@ -34,12 +32,9 @@ def test_get_all_inbound_sms_returns_200(
     assert json_response == expected_response
 
 
-@pytest.mark.parametrize('inbound_sms_path,user_number', [
-    ('v2_inbound_sms.get_all_inbound_sms', None),
-    ('v2_inbound_sms.get_inbound_sms_by_number', '447700900111')
-])
+@pytest.mark.parametrize('user_number', [None, '447700900111'])
 def test_get_inbound_sms_generate_page_links(
-        client, sample_service, mocker, inbound_sms_path, user_number
+        client, sample_service, mocker, user_number
 ):
     mocker.patch.dict(
         "app.v2.inbound_sms.get_inbound_sms.current_app.config",
@@ -55,7 +50,7 @@ def test_get_inbound_sms_generate_page_links(
 
     auth_header = create_authorization_header(service_id=sample_service.id)
     response = client.get(
-        path=url_for(inbound_sms_path, user_number=user_number),
+        url_for('v2_inbound_sms.get_inbound_sms', user_number=user_number),
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 200
@@ -65,22 +60,19 @@ def test_get_inbound_sms_generate_page_links(
 
     assert json_response['received_text_messages'] == expected_inbound_sms_list
     assert url_for(
-        inbound_sms_path,
+        'v2_inbound_sms.get_inbound_sms',
         user_number=user_number,
         _external=True) == json_response['links']['current']
     assert url_for(
-        inbound_sms_path,
+        'v2_inbound_sms.get_inbound_sms',
         user_number=user_number,
         older_than=reversed_inbound_sms[1].id,
         _external=True) == json_response['links']['next']
 
 
-@pytest.mark.parametrize('inbound_sms_path,user_number', [
-    ('v2_inbound_sms.get_all_inbound_sms', None),
-    ('v2_inbound_sms.get_inbound_sms_by_number', '447700900111')
-])
+@pytest.mark.parametrize('user_number', [None, '447700900111'])
 def test_get_next_inbound_sms_will_get_correct_inbound_sms_list(
-        client, sample_service, mocker, inbound_sms_path, user_number
+        client, sample_service, mocker, user_number
 ):
     mocker.patch.dict(
         "app.v2.inbound_sms.get_inbound_sms.current_app.config",
@@ -96,7 +88,7 @@ def test_get_next_inbound_sms_will_get_correct_inbound_sms_list(
 
     auth_header = create_authorization_header(service_id=sample_service.id)
     response = client.get(
-        path=url_for(inbound_sms_path, user_number=user_number, older_than=reversed_inbound_sms[1].id),
+        path=url_for('v2_inbound_sms.get_inbound_sms', user_number=user_number, older_than=reversed_inbound_sms[1].id),
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 200
@@ -106,22 +98,19 @@ def test_get_next_inbound_sms_will_get_correct_inbound_sms_list(
 
     assert json_response['received_text_messages'] == expected_inbound_sms_list
     assert url_for(
-        inbound_sms_path,
+        'v2_inbound_sms.get_inbound_sms',
         user_number=user_number,
         _external=True) == json_response['links']['current']
     assert url_for(
-        inbound_sms_path,
+        'v2_inbound_sms.get_inbound_sms',
         user_number=user_number,
         older_than=reversed_inbound_sms[3].id,
         _external=True) == json_response['links']['next']
 
 
-@pytest.mark.parametrize('inbound_sms_path,user_number', [
-    ('v2_inbound_sms.get_all_inbound_sms', None),
-    ('v2_inbound_sms.get_inbound_sms_by_number', '447700900111')
-])
+@pytest.mark.parametrize('user_number', [None, '447700900111'])
 def test_get_next_inbound_sms_at_end_will_return_empty_inbound_sms_list(
-        client, sample_inbound_sms, mocker, inbound_sms_path, user_number
+        client, sample_inbound_sms, mocker, user_number
 ):
     mocker.patch.dict(
         "app.v2.inbound_sms.get_inbound_sms.current_app.config",
@@ -130,7 +119,7 @@ def test_get_next_inbound_sms_at_end_will_return_empty_inbound_sms_list(
 
     auth_header = create_authorization_header(service_id=sample_inbound_sms.service.id)
     response = client.get(
-        path=url_for(inbound_sms_path, user_number=user_number, older_than=sample_inbound_sms.id),
+        path=url_for('v2_inbound_sms.get_inbound_sms', user_number=user_number, older_than=sample_inbound_sms.id),
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 200
@@ -139,7 +128,7 @@ def test_get_next_inbound_sms_at_end_will_return_empty_inbound_sms_list(
     expected_inbound_sms_list = []
     assert json_response['received_text_messages'] == expected_inbound_sms_list
     assert url_for(
-        inbound_sms_path,
+        'v2_inbound_sms.get_inbound_sms',
         user_number=user_number,
         _external=True) == json_response['links']['current']
     assert 'next' not in json_response['links'].keys()
@@ -178,7 +167,7 @@ def test_get_inbound_sms_by_number_returns_200(
 
     auth_header = create_authorization_header(service_id=sample_service.id)
     response = client.get(
-        path='/v2/received-text-messages/{}'.format(requested_number),
+        path='/v2/received-text-messages?user_number={}'.format(requested_number),
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 200
@@ -209,10 +198,27 @@ def test_get_inbound_sms_for_no_inbound_sms_returns_200(
     assert json_response == expected_response
 
 
+def test_get_inbound_sms_with_invalid_query_string_returns_400(client, sample_service):
+    auth_header = create_authorization_header(service_id=sample_service.id)
+    response = client.get(
+        path='/v2/received-text-messages?usernumber=447700900000',
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 400
+    assert response.headers['Content-type'] == 'application/json'
+
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert json_response['status_code'] == 400
+    assert json_response['errors'][0]['error'] == 'ValidationError'
+    assert json_response['errors'][0]['message'] == \
+        'Additional properties are not allowed (usernumber was unexpected)'
+
+
 def test_get_inbound_sms_by_nonexistent_number(client, sample_service):
     auth_header = create_authorization_header(service_id=sample_service.id)
     response = client.get(
-        path='/v2/received-text-messages/447700900000',
+        path='/v2/received-text-messages?user_number=447700900000',
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 200
@@ -233,7 +239,7 @@ def test_get_inbound_sms_by_invalid_number(
         client, sample_service, invalid_number, expected_message):
     auth_header = create_authorization_header(service_id=sample_service.id)
     response = client.get(
-        path='/v2/received-text-messages/{}'.format(invalid_number),
+        path='/v2/received-text-messages?user_number={}'.format(invalid_number),
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 400
