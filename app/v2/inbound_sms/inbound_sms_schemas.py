@@ -7,7 +7,6 @@ get_inbound_sms_request = {
     "type": "object",
     "properties": {
         "older_than": uuid,
-        "user_number": {"type": "string"}
     },
     "additionalProperties": False,
 }
