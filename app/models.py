@@ -563,7 +563,7 @@ class Template(db.Model):
         nullable=False,
         default=NORMAL
     )
-    
+
     redact_personalisation = association_proxy('template_redacted', 'redact_personalisation')
 
     def get_link(self):

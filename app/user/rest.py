@@ -77,23 +77,6 @@ def create_user():
     return jsonify(data=user_schema.dump(user_to_create).data), 201
 
 
-@user_blueprint.route('/<uuid:user_id>', methods=['PUT'])
-def update_user(user_id):
-    user_to_update = get_user_by_id(user_id=user_id)
-    req_json = request.get_json()
-    update_dct, errors = user_schema_load_json.load(req_json)
-    # TODO don't let password be updated in this PUT method (currently used by the forgot password flow)
-    pwd = req_json.get('password', None)
-    if pwd is not None:
-        if not pwd:
-            errors.update({'password': ['Invalid data for field']})
-            raise InvalidRequest(errors, status_code=400)
-        else:
-            reset_failed_login_count(user_to_update)
-    save_model_user(user_to_update, update_dict=update_dct, pwd=pwd)
-    return jsonify(data=user_schema.dump(user_to_update).data), 200
-
-
 @user_blueprint.route('/<uuid:user_id>', methods=['POST'])
 def update_user_attribute(user_id):
     user_to_update = get_user_by_id(user_id=user_id)

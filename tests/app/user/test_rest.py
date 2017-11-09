@@ -208,42 +208,6 @@ def test_cannot_create_user_with_empty_strings(admin_request, notify_db_session)
     }
 
 
-def test_put_user(client, sample_service):
-    """
-    Tests PUT endpoint '/' to update a user.
-    """
-    assert User.query.count() == 1
-    sample_user = sample_service.users[0]
-    sample_user.failed_login_count = 1
-    new_email = 'new@digital.cabinet-office.gov.uk'
-    data = {
-        'name': sample_user.name,
-        'email_address': new_email,
-        'mobile_number': sample_user.mobile_number
-    }
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.put(
-        url_for('user.update_user', user_id=sample_user.id),
-        data=json.dumps(data),
-        headers=headers)
-    assert resp.status_code == 200
-    assert User.query.count() == 1
-    json_resp = json.loads(resp.get_data(as_text=True))
-    assert json_resp['data']['email_address'] == new_email
-    expected_permissions = default_service_permissions
-    fetched = json_resp['data']
-
-    assert str(sample_user.id) == fetched['id']
-    assert sample_user.name == fetched['name']
-    assert sample_user.mobile_number == fetched['mobile_number']
-    assert new_email == fetched['email_address']
-    assert sample_user.state == fetched['state']
-    assert sorted(expected_permissions) == sorted(fetched['permissions'][str(sample_service.id)])
-    # password wasn't updated, so failed_login_count stays the same
-    assert sample_user.failed_login_count == 1
-
-
 @pytest.mark.parametrize('user_attribute, user_value', [
     ('name', 'New User'),
     ('email_address', 'newuser@mail.com'),
@@ -265,63 +229,6 @@ def test_post_user_attribute(client, sample_user, user_attribute, user_value):
     assert resp.status_code == 200
     json_resp = json.loads(resp.get_data(as_text=True))
     assert json_resp['data'][user_attribute] == user_value
-
-
-def test_put_user_update_password(client, sample_service):
-    """
-    Tests PUT endpoint '/' to update a user including their password.
-    """
-    assert User.query.count() == 1
-    sample_user = sample_service.users[0]
-    new_password = '1234567890'
-    data = {
-        'name': sample_user.name,
-        'email_address': sample_user.email_address,
-        'mobile_number': sample_user.mobile_number,
-        'password': new_password
-    }
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.put(
-        url_for('user.update_user', user_id=sample_user.id),
-        data=json.dumps(data),
-        headers=headers)
-    assert resp.status_code == 200
-    assert User.query.count() == 1
-    json_resp = json.loads(resp.get_data(as_text=True))
-    assert json_resp['data']['password_changed_at'] is not None
-    data = {'password': new_password}
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.post(
-        url_for('user.verify_user_password', user_id=str(sample_user.id)),
-        data=json.dumps(data),
-        headers=headers)
-    assert resp.status_code == 204
-
-
-def test_put_user_not_exists(client, sample_user, fake_uuid):
-    """
-    Tests PUT endpoint '/' to update a user doesn't exist.
-    """
-    assert User.query.count() == 1
-    new_email = 'new@digital.cabinet-office.gov.uk'
-    data = {'email_address': new_email}
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.put(
-        url_for('user.update_user', user_id=fake_uuid),
-        data=json.dumps(data),
-        headers=headers)
-    assert resp.status_code == 404
-    assert User.query.count() == 1
-    user = User.query.filter_by(id=str(sample_user.id)).first()
-    json_resp = json.loads(resp.get_data(as_text=True))
-    assert json_resp['result'] == "error"
-    assert json_resp['message'] == 'No result found'
-
-    assert user == sample_user
-    assert user.email_address != new_email
 
 
 def test_get_user_by_email(client, sample_service):
@@ -576,25 +483,6 @@ def test_update_user_password_saves_correctly(client, sample_service):
         data=json.dumps(data),
         headers=headers)
     assert resp.status_code == 204
-
-
-def test_update_user_resets_failed_login_count_if_updating_password(client, sample_service):
-    user = sample_service.users[0]
-    user.failed_login_count = 1
-
-    resp = client.put(
-        url_for('user.update_user', user_id=user.id),
-        data=json.dumps({
-            'name': user.name,
-            'email_address': user.email_address,
-            'mobile_number': user.mobile_number,
-            'password': 'foo'
-        }),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()]
-    )
-
-    assert resp.status_code == 200
-    assert user.failed_login_count == 0
 
 
 def test_activate_user(admin_request, sample_user):
