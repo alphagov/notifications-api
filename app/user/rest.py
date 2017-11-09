@@ -91,6 +91,17 @@ def update_user_attribute(user_id):
     return jsonify(data=user_schema.dump(user_to_update).data), 200
 
 
+@user_blueprint.route('/<uuid:user_id>/activate', methods=['POST'])
+def activate_user(user_id):
+    user = get_user_by_id(user_id=user_id)
+    if user.state == 'active':
+        raise InvalidRequest('User already active', status_code=400)
+
+    user.state = 'active'
+    save_model_user(user)
+    return jsonify(data=user_schema.dump(user).data), 200
+
+
 @user_blueprint.route('/<uuid:user_id>/reset-failed-login-count', methods=['POST'])
 def user_reset_failed_login_count(user_id):
     user_to_update = get_user_by_id(user_id=user_id)
