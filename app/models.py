@@ -645,6 +645,11 @@ class TemplateHistory(db.Model):
                              nullable=False,
                              default=NORMAL)
 
+    template_redacted = db.relationship('TemplateRedacted', foreign_keys=[id],
+                                        primaryjoin='TemplateRedacted.template_id == TemplateHistory.id')
+
+    redact_personalisation = association_proxy('template_redacted', 'redact_personalisation')
+
     def get_link(self):
         return url_for(
             "v2_template.get_template_by_id",
