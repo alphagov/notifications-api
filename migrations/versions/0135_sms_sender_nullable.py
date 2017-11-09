@@ -1,7 +1,7 @@
 """
 
-Revision ID: 2054e740350f
-Revises: 0132_add_sms_prefix_setting
+Revision ID: 0135_sms_sender_nullable
+Revises: 0134_add_email_2fa_template
 Create Date: 2017-11-06 15:44:59.471977
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '0133_sms_sender_nullable'
-down_revision = '0132_add_sms_prefix_setting'
+revision = '0135_sms_sender_nullable'
+down_revision = '0134_add_email_2fa_template'
 
 
 def upgrade():

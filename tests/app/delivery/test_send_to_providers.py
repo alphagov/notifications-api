@@ -671,23 +671,26 @@ def test_should_set_international_phone_number_to_sent_status(
     assert notification.status == 'sent'
 
 
-@pytest.mark.parametrize('sms_sender, expected_sender, expected_content', [
-    ('foo', 'foo', 'bar'),
+@pytest.mark.parametrize('sms_sender, expected_sender, prefix_sms, expected_content', [
+    ('foo', 'foo', False, 'bar'),
+    ('foo', 'foo', True, 'Sample service: bar'),
     # if 40604 is actually in DB then treat that as if entered manually
-    ('40604', '40604', 'bar'),
+    ('40604', '40604', False, 'bar'),
     # 'testing' is the FROM_NUMBER during unit tests
-    ('testing', 'testing', 'Sample service: bar'),
+    ('testing', 'testing', True, 'Sample service: bar'),
+    ('testing', 'testing', False, 'bar'),
 ])
 def test_should_handle_sms_sender_and_prefix_message(
     mocker,
     sms_sender,
+    prefix_sms,
     expected_sender,
     expected_content,
     notify_db_session
 ):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
-    service = create_service_with_defined_sms_sender(sms_sender_value=sms_sender)
+    service = create_service_with_defined_sms_sender(sms_sender_value=sms_sender, prefix_sms=prefix_sms)
     template = create_template(service, content='bar')
     notification = create_notification(template)
 
@@ -696,38 +699,6 @@ def test_should_handle_sms_sender_and_prefix_message(
     mmg_client.send_sms.assert_called_once_with(
         content=expected_content,
         sender=expected_sender,
-        to=ANY,
-        reference=ANY,
-    )
-
-
-@pytest.mark.parametrize('sms_sender, prefix_setting, expected_content', [
-    ('foo', True, 'Sample service: bar'),
-    ('foo', False, 'bar'),
-    ('foo', None, 'bar'),
-    # 'testing' is the default SMS sender in unit tests
-    ('testing', None, 'Sample service: bar'),
-    ('testing', False, 'bar'),
-])
-def test_should_handle_sms_prefix_setting(
-    mocker,
-    sms_sender,
-    prefix_setting,
-    expected_content,
-    notify_db_session
-):
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
-    service = create_service_with_defined_sms_sender(
-        sms_sender_value=sms_sender, prefix_sms=prefix_setting
-    )
-    template = create_template(service, content='bar')
-    notification = create_notification(template)
-
-    send_to_providers.send_sms_to_provider(notification)
-    mmg_client.send_sms.assert_called_once_with(
-        content=expected_content,
-        sender=ANY,
         to=ANY,
         reference=ANY,
     )

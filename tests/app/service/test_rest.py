@@ -8,7 +8,6 @@ import pytest
 from flask import url_for, current_app
 from freezegun import freeze_time
 
-from app.dao.service_sms_sender_dao import dao_add_sms_sender_for_service
 from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
@@ -35,7 +34,9 @@ from tests.app.db import (
     create_reply_to_email,
     create_letter_contact,
     create_inbound_number,
-    create_service_sms_sender
+    create_service_sms_sender,
+    create_service_with_defined_sms_sender,
+    create_service_with_inbound_number
 )
 from tests.app.db import create_user
 from app.dao.date_util import get_current_financial_year_start_year
@@ -322,7 +323,7 @@ def test_create_service(client, sample_user):
 
     service_sms_senders = ServiceSmsSender.query.filter_by(service_id=service_db.id).all()
     assert len(service_sms_senders) == 1
-    assert service_sms_senders[0].sms_sender == service_db.get_default_sms_sender()
+    assert service_sms_senders[0].sms_sender == current_app.config['FROM_NUMBER']
 
 
 def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_uuid):
@@ -1505,24 +1506,17 @@ def test_get_only_api_created_notifications_for_service(
     assert resp['notifications'][0]['id'] == str(without_job.id)
 
 
-@pytest.mark.parametrize('default_sms_sender, should_prefix', [
-    (None, True),  # None means use default
-    ('Foo', False),
+@pytest.mark.parametrize('should_prefix', [
+    True,
+    False,
 ])
-def test_prefixing_messages_based_on_sms_sender(
+def test_prefixing_messages_based_on_prefix_sms(
     client,
     notify_db_session,
-    default_sms_sender,
     should_prefix,
 ):
-    service = create_service()
-    if default_sms_sender:
-        # add another sms sender that is the default.
-        dao_add_sms_sender_for_service(service_id=service.id, sms_sender=default_sms_sender, is_default=True)
-    create_service_sms_sender(
-        service=service,
-        sms_sender='ignored',
-        is_default=False,
+    service = create_service(
+        prefix_sms=should_prefix
     )
 
     result = client.get(
@@ -2632,7 +2626,7 @@ def test_add_service_sms_sender_can_add_multiple_senders(client, notify_db_sessi
 
 def test_add_service_sms_sender_when_it_is_an_inbound_number_updates_the_only_existing_sms_sender(
         client, notify_db_session):
-    service = create_service()
+    service = create_service_with_defined_sms_sender(sms_sender_value='GOVUK')
     inbound_number = create_inbound_number(number='12345')
     data = {
         "sms_sender": str(inbound_number.id),
@@ -2657,7 +2651,7 @@ def test_add_service_sms_sender_when_it_is_an_inbound_number_updates_the_only_ex
 
 def test_add_service_sms_sender_when_it_is_an_inbound_number_inserts_new_sms_sender_when_more_than_one(
         client, notify_db_session):
-    service = create_service()
+    service = create_service_with_defined_sms_sender(sms_sender_value='GOVUK')
     create_service_sms_sender(service=service, sms_sender="second", is_default=False)
     inbound_number = create_inbound_number(number='12345')
     data = {
@@ -2682,7 +2676,7 @@ def test_add_service_sms_sender_when_it_is_an_inbound_number_inserts_new_sms_sen
 
 
 def test_add_service_sms_sender_switches_default(client, notify_db_session):
-    service = create_service()
+    service = create_service_with_defined_sms_sender(sms_sender_value='first')
     data = {
         "sms_sender": 'second',
         "is_default": True,
@@ -2696,7 +2690,7 @@ def test_add_service_sms_sender_switches_default(client, notify_db_session):
     assert resp_json['sms_sender'] == 'second'
     assert not resp_json['inbound_number_id']
     assert resp_json['is_default']
-    sms_senders = ServiceSmsSender.query.filter_by(sms_sender='testing').first()
+    sms_senders = ServiceSmsSender.query.filter_by(sms_sender='first').first()
     assert not sms_senders.is_default
 
 
@@ -2734,7 +2728,7 @@ def test_update_service_sms_sender(client, notify_db_session):
 
 
 def test_update_service_sms_sender_switches_default(client, notify_db_session):
-    service = create_service()
+    service = create_service_with_defined_sms_sender(sms_sender_value='first')
     service_sms_sender = create_service_sms_sender(service=service, sms_sender='1235', is_default=False)
     data = {
         "sms_sender": 'second',
@@ -2749,7 +2743,7 @@ def test_update_service_sms_sender_switches_default(client, notify_db_session):
     assert resp_json['sms_sender'] == 'second'
     assert not resp_json['inbound_number_id']
     assert resp_json['is_default']
-    sms_senders = ServiceSmsSender.query.filter_by(sms_sender='testing').first()
+    sms_senders = ServiceSmsSender.query.filter_by(sms_sender='first').first()
     assert not sms_senders.is_default
 
 
@@ -2809,10 +2803,8 @@ def test_get_service_sms_sender_by_id_returns_404_when_service_does_not_exist(cl
 
 
 def test_get_service_sms_sender_by_id_returns_404_when_sms_sender_does_not_exist(client, notify_db_session):
-    service_sms_sender = create_service_sms_sender(service=create_service(),
-                                                   sms_sender='1235',
-                                                   is_default=False)
-    response = client.get('/service/{}/sms-sender/{}'.format(service_sms_sender.service_id, uuid.uuid4()),
+    service = create_service()
+    response = client.get('/service/{}/sms-sender/{}'.format(service.id, uuid.uuid4()),
                           headers=[('Content-Type', 'application/json'), create_authorization_header()]
                           )
     assert response.status_code == 404

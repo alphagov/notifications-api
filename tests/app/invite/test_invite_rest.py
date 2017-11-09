@@ -115,6 +115,7 @@ def test_get_all_invited_users_by_service(client, notify_db, notify_db_session, 
     for invite in json_resp['data']:
         assert invite['service'] == str(sample_service.id)
         assert invite['from_user'] == str(invite_from.id)
+        assert invite['auth_type'] == SMS_AUTH_TYPE
         assert invite['id']
 
 

@@ -865,13 +865,31 @@ def sms_code_template(notify_db,
 
 
 @pytest.fixture(scope='function')
+def email_2fa_code_template(notify_db, notify_db_session):
+    service, user = notify_service(notify_db, notify_db_session)
+    return create_custom_template(
+        service=service,
+        user=user,
+        template_config_name='EMAIL_2FA_TEMPLATE_ID',
+        content=(
+            'Hi ((name)),'
+            ''
+            'To sign in to GOV.​UK Notify please open this link:'
+            '((url))'
+        ),
+        subject='Sign in to GOV.UK Notify',
+        template_type='email'
+    )
+
+
+@pytest.fixture(scope='function')
 def email_verification_template(notify_db,
                                 notify_db_session):
     service, user = notify_service(notify_db, notify_db_session)
     return create_custom_template(
         service=service,
         user=user,
-        template_config_name='EMAIL_VERIFY_CODE_TEMPLATE_ID',
+        template_config_name='NEW_USER_EMAIL_VERIFICATION_TEMPLATE_ID',
         content='((user_name)) use ((url)) to complete registration',
         template_type='email'
     )
