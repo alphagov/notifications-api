@@ -1181,8 +1181,7 @@ class NotificationHistory(db.Model, HistoryModel):
     job_row_number = db.Column(db.Integer, nullable=True)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False)
     service = db.relationship('Service')
-    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), index=True, unique=False)
-    template = db.relationship('Template')
+    template_id = db.Column(UUID(as_uuid=True), index=True, unique=False)
     template_version = db.Column(db.Integer, nullable=False)
     api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), index=True, unique=False)
     api_key = db.relationship('ApiKey')
@@ -1211,6 +1210,14 @@ class NotificationHistory(db.Model, HistoryModel):
 
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
+
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ['template_id', 'template_version'],
+            ['templates_history.id', 'templates_history.version'],
+        ),
+        {}
+    )
 
     @classmethod
     def from_original(cls, notification):

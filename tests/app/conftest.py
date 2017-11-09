@@ -679,7 +679,7 @@ def sample_notification_history(
     notification_history = NotificationHistory(
         id=uuid.uuid4(),
         service=sample_template.service,
-        template=sample_template,
+        template_id=sample_template.id,
         template_version=sample_template.version,
         status=status,
         created_at=created_at,
