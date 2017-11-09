@@ -1,7 +1,7 @@
 """
 
-Revision ID: 0134_stats_template_usage
-Revises: 0133_set_services_sms_prefix
+Revision ID: 0135_stats_template_usage
+Revises: 0134_add_email_2fa_template
 Create Date: 2017-11-07 14:35:04.798561
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '0134_stats_template_usage'
-down_revision = '0133_set_services_sms_prefix'
+revision = '0135_stats_template_usage'
+down_revision = '0134_add_email_2fa_template'
 
 
 def upgrade():
