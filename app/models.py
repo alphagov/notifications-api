@@ -1410,8 +1410,6 @@ class InboundSms(db.Model):
             'notify_number': self.notify_number,
             'user_number': self.user_number,
             'content': self.content,
-            'provider_date': self.provider_date and self.provider_date.strftime(DATETIME_FORMAT),
-            'provider_reference': self.provider_reference
         }
 
 
