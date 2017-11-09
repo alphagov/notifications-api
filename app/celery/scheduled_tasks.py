@@ -410,13 +410,13 @@ def check_job_status():
 
 @notify_celery.task(name='daily-stats-template_usage_by_month')
 @statsd(namespace="tasks")
-def daily_stats_template_usage_my_month():
+def daily_stats_template_usage_by_month():
     results = dao_fetch_monthly_historical_stats_by_template()
 
     for result in results:
         insert_or_update_stats_for_template(
             result.template_id,
-            result.month.month,
-            result.year.year,
+            result.month,
+            result.year,
             result.count
         )

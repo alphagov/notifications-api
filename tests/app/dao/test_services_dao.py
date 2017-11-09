@@ -1015,28 +1015,24 @@ def test_dao_fetch_monthly_historical_stats_by_template(notify_db, notify_db_ses
         status='delivered'
     )
 
-    template_one = create_sample_template(notify_db, notify_db_session)
-    template_two = create_sample_template(notify_db, notify_db_session)
+    template_one = create_sample_template(notify_db, notify_db_session, template_name='1')
+    template_two = create_sample_template(notify_db, notify_db_session, template_name='2')
 
     notification_history(created_at=datetime(2017, 10, 1), sample_template=template_one)
     notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
     notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
     notification_history(created_at=datetime.now(), sample_template=template_two)
 
-    results = dao_fetch_monthly_historical_stats_by_template()
+    result = sorted(dao_fetch_monthly_historical_stats_by_template(), key=lambda x: (x.month, x.year))
 
-    assert len(results) == 2
+    assert len(result) == 2
 
-    for result in results:
-        if result.template_id == template_one.id:
-            assert result.template_id == template_one.id
-            assert result.month.month == 10
-            assert result.year.year == 2017
-            assert result.count == 1
-        elif result.template_id == template_two.id:
-            assert result.template_id == template_two.id
-            assert result.month.month == 4
-            assert result.year.year == 2016
-            assert result.count == 2
-        else:
-            raise AssertionError()
+    assert result[0].template_id == template_two.id
+    assert result[0].month == 4
+    assert result[0].year == 2016
+    assert result[0].count == 2
+
+    assert result[1].template_id == template_one.id
+    assert result[1].month == 10
+    assert result[1].year == 2017
+    assert result[1].count == 1

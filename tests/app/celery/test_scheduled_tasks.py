@@ -33,7 +33,8 @@ from app.celery.scheduled_tasks import (
     switch_current_sms_provider_on_slow_delivery,
     timeout_job_statistics,
     timeout_notifications,
-    daily_stats_template_usage_my_month)
+    daily_stats_template_usage_by_month
+)
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -840,7 +841,7 @@ def test_check_job_status_task_raises_job_incomplete_error_for_multiple_jobs(moc
     )
 
 
-def test_daily_stats_template_usage_my_month(notify_db, notify_db_session):
+def test_daily_stats_template_usage_by_month(notify_db, notify_db_session):
     notification_history = functools.partial(
         create_notification_history,
         notify_db,
@@ -856,36 +857,37 @@ def test_daily_stats_template_usage_my_month(notify_db, notify_db_session):
     notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
     notification_history(created_at=datetime.now(), sample_template=template_two)
 
-    daily_stats_template_usage_my_month()
+    daily_stats_template_usage_by_month()
 
-    results = db.session.query(StatsTemplateUsageByMonth).all()
+    result = db.session.query(
+        StatsTemplateUsageByMonth
+    ).order_by(
+        StatsTemplateUsageByMonth.year,
+        StatsTemplateUsageByMonth.month
+    ).all()
 
-    assert len(results) == 2
+    assert len(result) == 2
 
-    for result in results:
-        if result.template_id == template_one.id:
-            assert result.template_id == template_one.id
-            assert result.month == 10
-            assert result.year == 2017
-            assert result.count == 1
-        elif result.template_id == template_two.id:
-            assert result.template_id == template_two.id
-            assert result.month == 4
-            assert result.year == 2016
-            assert result.count == 2
-        else:
-            raise AssertionError()
+    assert result[0].template_id == template_two.id
+    assert result[0].month == 4
+    assert result[0].year == 2016
+    assert result[0].count == 2
+
+    assert result[1].template_id == template_one.id
+    assert result[1].month == 10
+    assert result[1].year == 2017
+    assert result[1].count == 1
 
 
-def test_daily_stats_template_usage_my_month_no_data():
-    daily_stats_template_usage_my_month()
+def test_daily_stats_template_usage_by_month_no_data():
+    daily_stats_template_usage_by_month()
 
     results = db.session.query(StatsTemplateUsageByMonth).all()
 
     assert len(results) == 0
 
 
-def test_daily_stats_template_usage_my_month_multiple_runs(notify_db, notify_db_session):
+def test_daily_stats_template_usage_by_month_multiple_runs(notify_db, notify_db_session):
     notification_history = functools.partial(
         create_notification_history,
         notify_db,
@@ -896,12 +898,12 @@ def test_daily_stats_template_usage_my_month_multiple_runs(notify_db, notify_db_
     template_one = create_sample_template(notify_db, notify_db_session)
     template_two = create_sample_template(notify_db, notify_db_session)
 
-    notification_history(created_at=datetime(2017, 10, 1), sample_template=template_one)
+    notification_history(created_at=datetime(2017, 11, 1), sample_template=template_one)
     notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
     notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
     notification_history(created_at=datetime.now(), sample_template=template_two)
 
-    daily_stats_template_usage_my_month()
+    daily_stats_template_usage_by_month()
 
     template_three = create_sample_template(notify_db, notify_db_session)
 
@@ -911,35 +913,33 @@ def test_daily_stats_template_usage_my_month_multiple_runs(notify_db, notify_db_
     notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
     notification_history(created_at=datetime.now(), sample_template=template_two)
 
-    daily_stats_template_usage_my_month()
+    daily_stats_template_usage_by_month()
 
-    results = db.session.query(StatsTemplateUsageByMonth).all()
+    result = db.session.query(
+        StatsTemplateUsageByMonth
+    ).order_by(
+        StatsTemplateUsageByMonth.year,
+        StatsTemplateUsageByMonth.month
+    ).all()
 
-    assert len(results) == 4
+    assert len(result) == 4
 
-    for result in results:
-        if result.template_id == template_one.id:
-            assert result.template_id == template_one.id
-            assert result.month == 10
-            assert result.year == 2017
-            assert result.count == 1
-        elif result.template_id == template_two.id:
-            assert result.template_id == template_two.id
-            assert result.month == 4
-            assert result.year == 2016
-            assert result.count == 4
-        elif result.template_id == template_three.id:
-            if result.month == 10:
-                assert result.template_id == template_three.id
-                assert result.month == 10
-                assert result.year == 2017
-                assert result.count == 1
-            elif result.month == 9:
-                assert result.template_id == template_three.id
-                assert result.month == 9
-                assert result.year == 2017
-                assert result.count == 1
-            else:
-                raise AssertionError()
-        else:
-            raise AssertionError()
+    assert result[0].template_id == template_two.id
+    assert result[0].month == 4
+    assert result[0].year == 2016
+    assert result[0].count == 4
+
+    assert result[1].template_id == template_three.id
+    assert result[1].month == 9
+    assert result[1].year == 2017
+    assert result[1].count == 1
+
+    assert result[2].template_id == template_three.id
+    assert result[2].month == 10
+    assert result[2].year == 2017
+    assert result[2].count == 1
+
+    assert result[3].template_id == template_one.id
+    assert result[3].month == 11
+    assert result[3].year == 2017
+    assert result[3].count == 1

@@ -71,23 +71,7 @@ def get_london_month_from_utc_column(column):
     """
     return func.date_trunc(
         "month",
-        func.timezone("Europe/London", func.timezone("UTC", column))
-    )
-
-
-def get_london_year_from_utc_column(column):
-    """
-     Where queries need to count notifications by month it needs to be
-     the month in BST (British Summer Time).
-     The database stores all timestamps as UTC without the timezone.
-      - First set the timezone on created_at to UTC
-      - then convert the timezone to BST (or Europe/London)
-      - lastly truncate the datetime to month with which we can group
-        queries
-    """
-    return func.date_trunc(
-        "month",
-        func.timezone("Europe/London", func.timezone("UTC", column))
+        func.timezone("Europe/London", column)
     )
 
 

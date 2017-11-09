@@ -15,10 +15,10 @@ def insert_or_update_stats_for_template(template_id, month, year, count):
         }
     )
     if result == 0:
-        new_sms_sender = StatsTemplateUsageByMonth(
+        monthly_stats = StatsTemplateUsageByMonth(
             template_id=template_id,
             month=month,
             year=year,
             count=count
         )
-        db.session.add(new_sms_sender)
+        db.session.add(monthly_stats)
