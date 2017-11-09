@@ -18,12 +18,6 @@ get_inbound_sms_single_response = {
     "type": "object",
     "title": "GET response v2/inbound_sms",
     "properties": {
-        "provider_date": {
-            "format": "date-time",
-            "type": "string",
-            "description": "Date+time sent by provider"
-        },
-        "provider_reference": {"type": ["string", "null"]},
         "user_number": {"type": "string"},
         "created_at": {
             "format": "date-time",
@@ -36,8 +30,7 @@ get_inbound_sms_single_response = {
         "content": {"type": "string"},
     },
     "required": [
-        "id", "provider_date", "provider_reference",
-        "user_number", "created_at", "service_id",
+        "id", "user_number", "created_at", "service_id",
         "notify_number", "content"
     ],
     "additionalProperties": False,
