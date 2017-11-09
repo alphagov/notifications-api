@@ -202,8 +202,8 @@ def test_notification_subject_fills_in_placeholders_for_email(sample_email_templ
 
 
 def test_notification_subject_fills_in_placeholders_for_letter(sample_letter_template):
-    sample_letter_template.subject = '((name))'
     noti = create_notification(sample_letter_template, personalisation={'name': 'hello'})
+    noti.template.subject = '((name))'
     assert noti.subject == 'hello'
 
 
