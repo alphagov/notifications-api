@@ -71,7 +71,7 @@ def get_london_month_from_utc_column(column):
     """
     return func.date_trunc(
         "month",
-        func.timezone("Europe/London", column)
+        func.timezone("Europe/London", func.timezone("UTC", column))
     )
 
 
