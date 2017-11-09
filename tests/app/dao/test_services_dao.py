@@ -31,7 +31,8 @@ from app.dao.services_dao import (
     dao_resume_service,
     dao_fetch_active_users_for_service,
     dao_fetch_service_by_inbound_number,
-    dao_fetch_monthly_historical_stats_by_template_for_service_without_status)
+    dao_fetch_monthly_historical_stats_by_template
+)
 from app.dao.service_permissions_dao import dao_add_service_permission, dao_remove_service_permission
 from app.dao.users_dao import save_model_user
 from app.models import (
@@ -1022,7 +1023,7 @@ def test_dao_fetch_monthly_historical_stats_by_template(notify_db, notify_db_ses
     notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
     notification_history(created_at=datetime.now(), sample_template=template_two)
 
-    results = dao_fetch_monthly_historical_stats_by_template_for_service_without_status()
+    results = dao_fetch_monthly_historical_stats_by_template()
 
     assert len(results) == 2
 

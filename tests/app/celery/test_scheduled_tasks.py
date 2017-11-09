@@ -56,19 +56,16 @@ from app.models import (
 from app.utils import get_london_midnight_in_utc
 from app.v2.errors import JobIncompleteError
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
+
 from tests.app.conftest import (
     sample_job as create_sample_job,
+    sample_notification_history as create_notification_history,
+    sample_template as create_sample_template,
     create_custom_template,
     datetime_in_past
 )
 from tests.app.aws.test_s3 import single_s3_object_stub
-from tests.conftest import set_config_values, notify_db, notify_db_session
-
-from tests.app.conftest import (
-    sample_notification as create_notification,
-    sample_notification_history as create_notification_history,
-    sample_template as create_sample_template
-)
+from tests.conftest import set_config_values
 
 
 def _create_slow_delivery_notification(provider='mmg'):
