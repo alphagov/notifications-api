@@ -13,8 +13,6 @@ from tests import create_authorization_header
 from tests.app.db import create_inbound_sms
 
 valid_inbound_sms = {
-    "provider_date": "2017-11-02T15:07:57.199541Z",
-    "provider_reference": "foo",
     "user_number": "447700900111",
     "created_at": "2017-11-02T15:07:57.197546Z",
     "service_id": "a5149c32-f03b-4711-af49-ad6993797d45",
@@ -32,8 +30,6 @@ valid_inbound_sms_list = {
 }
 
 invalid_inbound_sms = {
-    "provider_date": "2017-11-02T15:07:57.199541",
-    "provider_reference": "foo",
     "user_number": "447700900111",
     "created_at": "2017-11-02T15:07:57.197546",
     "service_id": "a5149c32-f03b-4711-af49-ad6993797d45",
