@@ -14,6 +14,7 @@ from app import db
 from app.models import (
     Service,
     Template,
+    TemplateHistory,
     ApiKey,
     Job,
     Notification,
@@ -38,6 +39,7 @@ from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
 from app.dao.provider_rates_dao import create_provider_rates
 from app.clients.sms.firetext import FiretextClient
+from app.history_meta import create_history
 from tests import create_authorization_header
 from tests.app.db import (
     create_user,
@@ -974,6 +976,7 @@ def create_custom_template(service, user, template_config_name, template_type, c
         }
         template = Template(**data)
         db.session.add(template)
+        db.session.add(create_history(template, TemplateHistory))
         db.session.commit()
     return template
 
