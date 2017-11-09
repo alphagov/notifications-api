@@ -30,8 +30,8 @@ from app.dao.services_dao import (
     dao_suspend_service,
     dao_resume_service,
     dao_fetch_active_users_for_service,
-    dao_fetch_service_by_inbound_number
-)
+    dao_fetch_service_by_inbound_number,
+    dao_fetch_monthly_historical_stats_by_template_for_service_without_status)
 from app.dao.service_permissions_dao import dao_add_service_permission, dao_remove_service_permission
 from app.dao.users_dao import save_model_user
 from app.models import (
@@ -1004,3 +1004,38 @@ def _assert_service_permissions(service_permissions, expected):
 
     assert len(service_permissions) == len(expected)
     assert set(expected) == set(p.permission for p in service_permissions)
+
+
+def test_dao_fetch_monthly_historical_stats_by_template(notify_db, notify_db_session):
+    notification_history = functools.partial(
+        create_notification_history,
+        notify_db,
+        notify_db_session,
+        status='delivered'
+    )
+
+    template_one = create_sample_template(notify_db, notify_db_session)
+    template_two = create_sample_template(notify_db, notify_db_session)
+
+    notification_history(created_at=datetime(2017, 10, 1), sample_template=template_one)
+    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
+    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
+    notification_history(created_at=datetime.now(), sample_template=template_two)
+
+    results = dao_fetch_monthly_historical_stats_by_template_for_service_without_status()
+
+    assert len(results) == 2
+
+    for result in results:
+        if result.template_id == template_one.id:
+            assert result.template_id == template_one.id
+            assert result.month.month == 10
+            assert result.year.year == 2017
+            assert result.count == 1
+        elif result.template_id == template_two.id:
+            assert result.template_id == template_two.id
+            assert result.month.month == 4
+            assert result.year.year == 2016
+            assert result.count == 2
+        else:
+            raise AssertionError()

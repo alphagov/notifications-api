@@ -2,11 +2,13 @@ from datetime import datetime, timedelta
 from functools import partial
 from unittest.mock import call, patch, PropertyMock
 
+import functools
 from flask import current_app
 
 import pytest
 from freezegun import freeze_time
 
+from app import db
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
     check_job_status,
@@ -30,8 +32,8 @@ from app.celery.scheduled_tasks import (
     send_total_sent_notifications_to_performance_platform,
     switch_current_sms_provider_on_slow_delivery,
     timeout_job_statistics,
-    timeout_notifications
-)
+    timeout_notifications,
+    daily_stats_template_usage_my_month)
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -49,19 +51,24 @@ from app.models import (
     NOTIFICATION_PENDING,
     NOTIFICATION_CREATED,
     KEY_TYPE_TEST,
-    MonthlyBilling
-)
+    MonthlyBilling,
+    StatsTemplateUsageByMonth)
 from app.utils import get_london_midnight_in_utc
 from app.v2.errors import JobIncompleteError
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
 from tests.app.conftest import (
     sample_job as create_sample_job,
-    sample_notification_history as create_notification_history,
     create_custom_template,
     datetime_in_past
 )
 from tests.app.aws.test_s3 import single_s3_object_stub
-from tests.conftest import set_config_values
+from tests.conftest import set_config_values, notify_db, notify_db_session
+
+from tests.app.conftest import (
+    sample_notification as create_notification,
+    sample_notification_history as create_notification_history,
+    sample_template as create_sample_template
+)
 
 
 def _create_slow_delivery_notification(provider='mmg'):
@@ -834,3 +841,108 @@ def test_check_job_status_task_raises_job_incomplete_error_for_multiple_jobs(moc
         args=([str(job.id), str(job_2.id)],),
         queue=QueueNames.JOBS
     )
+
+
+def test_daily_stats_template_usage_my_month(notify_db, notify_db_session):
+    notification_history = functools.partial(
+        create_notification_history,
+        notify_db,
+        notify_db_session,
+        status='delivered'
+    )
+
+    template_one = create_sample_template(notify_db, notify_db_session)
+    template_two = create_sample_template(notify_db, notify_db_session)
+
+    notification_history(created_at=datetime(2017, 10, 1), sample_template=template_one)
+    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
+    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
+    notification_history(created_at=datetime.now(), sample_template=template_two)
+
+    daily_stats_template_usage_my_month()
+
+    results = db.session.query(StatsTemplateUsageByMonth).all()
+
+    assert len(results) == 2
+
+    for result in results:
+        if result.template_id == template_one.id:
+            assert result.template_id == template_one.id
+            assert result.month == 10
+            assert result.year == 2017
+            assert result.count == 1
+        elif result.template_id == template_two.id:
+            assert result.template_id == template_two.id
+            assert result.month == 4
+            assert result.year == 2016
+            assert result.count == 2
+        else:
+            raise AssertionError()
+
+
+def test_daily_stats_template_usage_my_month_no_data():
+    daily_stats_template_usage_my_month()
+
+    results = db.session.query(StatsTemplateUsageByMonth).all()
+
+    assert len(results) == 0
+
+
+def test_daily_stats_template_usage_my_month_multiple_runs(notify_db, notify_db_session):
+    notification_history = functools.partial(
+        create_notification_history,
+        notify_db,
+        notify_db_session,
+        status='delivered'
+    )
+
+    template_one = create_sample_template(notify_db, notify_db_session)
+    template_two = create_sample_template(notify_db, notify_db_session)
+
+    notification_history(created_at=datetime(2017, 10, 1), sample_template=template_one)
+    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
+    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
+    notification_history(created_at=datetime.now(), sample_template=template_two)
+
+    daily_stats_template_usage_my_month()
+
+    template_three = create_sample_template(notify_db, notify_db_session)
+
+    notification_history(created_at=datetime(2017, 10, 1), sample_template=template_three)
+    notification_history(created_at=datetime(2017, 9, 1), sample_template=template_three)
+    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
+    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
+    notification_history(created_at=datetime.now(), sample_template=template_two)
+
+    daily_stats_template_usage_my_month()
+
+    results = db.session.query(StatsTemplateUsageByMonth).all()
+
+    assert len(results) == 4
+
+    for result in results:
+        if result.template_id == template_one.id:
+            assert result.template_id == template_one.id
+            assert result.month == 10
+            assert result.year == 2017
+            assert result.count == 1
+        elif result.template_id == template_two.id:
+            assert result.template_id == template_two.id
+            assert result.month == 4
+            assert result.year == 2016
+            assert result.count == 4
+        elif result.template_id == template_three.id:
+            if result.month == 10:
+                assert result.template_id == template_three.id
+                assert result.month == 10
+                assert result.year == 2017
+                assert result.count == 1
+            elif result.month == 9:
+                assert result.template_id == template_three.id
+                assert result.month == 9
+                assert result.year == 2017
+                assert result.count == 1
+            else:
+                raise AssertionError()
+        else:
+            raise AssertionError()
