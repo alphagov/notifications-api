@@ -645,6 +645,14 @@ class TemplateHistory(db.Model):
                              nullable=False,
                              default=NORMAL)
 
+    def get_link(self):
+        return url_for(
+            "v2_template.get_template_by_id",
+            template_id=self.id,
+            version=self.version,
+            _external=True
+        )
+
     def _as_utils_template(self):
         return Template._as_utils_template(self)
 

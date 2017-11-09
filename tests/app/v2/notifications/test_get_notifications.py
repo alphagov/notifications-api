@@ -335,7 +335,7 @@ def test_get_all_notifications_filter_by_template_type(client):
     assert json_response['notifications'][0]['status'] == "created"
     assert json_response['notifications'][0]['template'] == {
         'id': str(email_template.id),
-        'uri': email_template.get_link(),
+        'uri': notification.template.get_link(),
         'version': 1
     }
     assert json_response['notifications'][0]['email_address'] == "don.draper@scdp.biz"
