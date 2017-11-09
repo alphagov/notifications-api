@@ -558,3 +558,19 @@ def test_update_user_auth_type(admin_request, sample_user):
 
     assert resp['data']['id'] == str(sample_user.id)
     assert resp['data']['auth_type'] == 'email_auth'
+
+
+def test_activate_user(admin_request, sample_user):
+    sample_user.state = 'pending'
+
+    resp = admin_request.post('user.activate_user', user_id=sample_user.id)
+
+    assert resp['data']['id'] == str(sample_user.id)
+    assert resp['data']['state'] == 'active'
+    assert sample_user.state == 'active'
+
+
+def test_activate_user_fails_if_already_active(admin_request, sample_user):
+    resp = admin_request.post('user.activate_user', user_id=sample_user.id, _expected_status=400)
+    assert resp['message'] == 'User already active'
+    assert sample_user.state == 'active'
