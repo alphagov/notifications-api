@@ -159,6 +159,55 @@ def test_create_user_missing_attribute_password(client, notify_db, notify_db_ses
     assert {'password': ['Missing data for required field.']} == json_resp['message']
 
 
+def test_can_create_user_with_email_auth_and_no_mobile(admin_request, notify_db_session):
+    data = {
+        'name': 'Test User',
+        'email_address': 'user@digital.cabinet-office.gov.uk',
+        'password': 'password',
+        'mobile_number': None,
+        'auth_type': EMAIL_AUTH_TYPE
+    }
+
+    json_resp = admin_request.post('user.create_user', _data=data, _expected_status=201)
+
+    assert json_resp['data']['auth_type'] == EMAIL_AUTH_TYPE
+    assert json_resp['data']['mobile_number'] is None
+
+
+def test_cannot_create_user_with_sms_auth_and_no_mobile(admin_request, notify_db_session):
+    data = {
+        'name': 'Test User',
+        'email_address': 'user@digital.cabinet-office.gov.uk',
+        'password': 'password',
+        'mobile_number': None,
+        'auth_type': SMS_AUTH_TYPE
+    }
+
+    json_resp = admin_request.post('user.create_user', _data=data, _expected_status=400)
+
+    assert json_resp['message'] == 'Mobile number must be set if auth_type is set to sms_auth'
+
+
+def test_cannot_create_user_with_empty_strings(admin_request, notify_db_session):
+    data = {
+        'name': '',
+        'email_address': '',
+        'password': 'password',
+        'mobile_number': '',
+        'auth_type': EMAIL_AUTH_TYPE
+    }
+    resp = admin_request.post(
+        'user.create_user',
+        _data=data,
+        _expected_status=400
+    )
+    assert resp['message'] == {
+        'email_address': ['Not a valid email address'],
+        'mobile_number': ['Invalid phone number: Not enough digits'],
+        'name': ['Invalid name']
+    }
+
+
 def test_put_user(client, sample_service):
     """
     Tests PUT endpoint '/' to update a user.
@@ -548,18 +597,6 @@ def test_update_user_resets_failed_login_count_if_updating_password(client, samp
     assert user.failed_login_count == 0
 
 
-def test_update_user_auth_type(admin_request, sample_user):
-    assert sample_user.auth_type == 'sms_auth'
-    resp = admin_request.post(
-        'user.update_user_attribute',
-        user_id=sample_user.id,
-        _data={'auth_type': 'email_auth'},
-    )
-
-    assert resp['data']['id'] == str(sample_user.id)
-    assert resp['data']['auth_type'] == 'email_auth'
-
-
 def test_activate_user(admin_request, sample_user):
     sample_user.state = 'pending'
 
@@ -574,3 +611,68 @@ def test_activate_user_fails_if_already_active(admin_request, sample_user):
     resp = admin_request.post('user.activate_user', user_id=sample_user.id, _expected_status=400)
     assert resp['message'] == 'User already active'
     assert sample_user.state == 'active'
+
+
+def test_update_user_auth_type(admin_request, sample_user):
+    assert sample_user.auth_type == 'sms_auth'
+    resp = admin_request.post(
+        'user.update_user_attribute',
+        user_id=sample_user.id,
+        _data={'auth_type': 'email_auth'},
+    )
+
+    assert resp['data']['id'] == str(sample_user.id)
+    assert resp['data']['auth_type'] == 'email_auth'
+
+
+def test_can_set_email_auth_and_remove_mobile_at_same_time(admin_request, sample_user):
+    sample_user.auth_type = SMS_AUTH_TYPE
+
+    admin_request.post(
+        'user.update_user_attribute',
+        user_id=sample_user.id,
+        _data={
+            'mobile_number': None,
+            'auth_type': EMAIL_AUTH_TYPE,
+        }
+    )
+
+    assert sample_user.mobile_number is None
+    assert sample_user.auth_type == EMAIL_AUTH_TYPE
+
+
+def test_cannot_remove_mobile_if_sms_auth(admin_request, sample_user):
+    sample_user.auth_type = SMS_AUTH_TYPE
+
+    json_resp = admin_request.post(
+        'user.update_user_attribute',
+        user_id=sample_user.id,
+        _data={'mobile_number': None},
+        _expected_status=400
+    )
+
+    assert json_resp['message'] == 'Mobile number must be set if auth_type is set to sms_auth'
+
+
+def test_can_remove_mobile_if_email_auth(admin_request, sample_user):
+    sample_user.auth_type = EMAIL_AUTH_TYPE
+
+    admin_request.post(
+        'user.update_user_attribute',
+        user_id=sample_user.id,
+        _data={'mobile_number': None},
+    )
+
+    assert sample_user.mobile_number is None
+
+
+def test_cannot_update_user_with_mobile_number_as_empty_string(admin_request, sample_user):
+    sample_user.auth_type = EMAIL_AUTH_TYPE
+
+    resp = admin_request.post(
+        'user.update_user_attribute',
+        user_id=sample_user.id,
+        _data={'mobile_number': ''},
+        _expected_status=400
+    )
+    assert resp['message']['mobile_number'] == ['Invalid phone number: Not enough digits']

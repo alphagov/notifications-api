@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
 )
-from sqlalchemy import UniqueConstraint, and_
+from sqlalchemy import UniqueConstraint, CheckConstraint, and_
 from sqlalchemy.orm import foreign, remote
 from notifications_utils.recipients import (
     validate_email_address,
@@ -97,7 +97,7 @@ class User(db.Model):
         nullable=True,
         onupdate=datetime.datetime.utcnow)
     _password = db.Column(db.String, index=False, unique=False, nullable=False)
-    mobile_number = db.Column(db.String, index=False, unique=False, nullable=False)
+    mobile_number = db.Column(db.String, index=False, unique=False, nullable=True)
     password_changed_at = db.Column(db.DateTime, index=False, unique=False, nullable=False,
                                     default=datetime.datetime.utcnow)
     logged_in_at = db.Column(db.DateTime, nullable=True)
@@ -106,6 +106,9 @@ class User(db.Model):
     platform_admin = db.Column(db.Boolean, nullable=False, default=False)
     current_session_id = db.Column(UUID(as_uuid=True), nullable=True)
     auth_type = db.Column(db.String, db.ForeignKey('auth_type.name'), index=True, nullable=False, default=SMS_AUTH_TYPE)
+
+    # either email auth or a mobile number must be provided
+    CheckConstraint("auth_type = 'email_auth' or mobile_number is not null")
 
     services = db.relationship(
         'Service',
@@ -560,7 +563,7 @@ class Template(db.Model):
         nullable=False,
         default=NORMAL
     )
-
+    
     redact_personalisation = association_proxy('template_redacted', 'redact_personalisation')
 
     def get_link(self):
