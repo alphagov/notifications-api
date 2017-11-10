@@ -155,7 +155,7 @@ def check_service_sms_sender_id(service_id, sms_sender_id, notification_type):
             message = 'sms_sender_id is not a valid option for {} notification'.format(notification_type)
             raise BadRequestError(message=message)
         try:
-            dao_get_service_sms_senders_by_id(service_id, sms_sender_id)
+            return dao_get_service_sms_senders_by_id(service_id, sms_sender_id).sms_sender
         except NoResultFound:
             message = 'sms_sender_id {} does not exist in database for service id {}'\
                 .format(sms_sender_id, service_id)
