@@ -564,3 +564,13 @@ def test_cannot_update_user_with_mobile_number_as_empty_string(admin_request, sa
         _expected_status=400
     )
     assert resp['message']['mobile_number'] == ['Invalid phone number: Not enough digits']
+
+
+def test_cannot_update_user_password_using_attributes_method(admin_request, sample_user):
+    resp = admin_request.post(
+        'user.update_user_attribute',
+        user_id=sample_user.id,
+        _data={'password': 'foo'},
+        _expected_status=400
+    )
+    assert resp['message']['_schema'] == ['Unknown field name password']
