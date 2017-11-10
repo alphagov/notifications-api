@@ -414,9 +414,10 @@ def daily_stats_template_usage_by_month():
     results = dao_fetch_monthly_historical_stats_by_template()
 
     for result in results:
-        insert_or_update_stats_for_template(
-            result.template_id,
-            result.month,
-            result.year,
-            result.count
-        )
+        if result.template_id:
+            insert_or_update_stats_for_template(
+                result.template_id,
+                result.month,
+                result.year,
+                result.count
+            )

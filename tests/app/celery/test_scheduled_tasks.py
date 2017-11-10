@@ -44,16 +44,20 @@ from app.dao.provider_details_dao import (
     get_current_provider
 )
 from app.models import (
-    Service, Template,
-    SMS_TYPE, LETTER_TYPE,
+    MonthlyBilling,
+    NotificationHistory,
+    Service,
+    StatsTemplateUsageByMonth,
+    Template,
     JOB_STATUS_READY_TO_SEND,
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_SENT_TO_DVLA,
-    NOTIFICATION_PENDING,
-    NOTIFICATION_CREATED,
     KEY_TYPE_TEST,
-    MonthlyBilling,
-    StatsTemplateUsageByMonth)
+    LETTER_TYPE,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_PENDING,
+    SMS_TYPE
+)
 from app.utils import get_london_midnight_in_utc
 from app.v2.errors import JobIncompleteError
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
@@ -943,3 +947,44 @@ def test_daily_stats_template_usage_by_month_multiple_runs(notify_db, notify_db_
     assert result[3].month == 11
     assert result[3].year == 2017
     assert result[3].count == 1
+
+
+def test_dao_fetch_monthly_historical_stats_by_template_null_template_id_not_counted(notify_db, notify_db_session):
+    notification_history = functools.partial(
+        create_notification_history,
+        notify_db,
+        notify_db_session,
+        status='delivered'
+    )
+
+    template_one = create_sample_template(notify_db, notify_db_session, template_name='1')
+    history = notification_history(created_at=datetime(2017, 2, 1), sample_template=template_one)
+
+    NotificationHistory.query.filter(
+        NotificationHistory.id == history.id
+    ).update(
+        {
+            'template_id': None
+        }
+    )
+
+    daily_stats_template_usage_by_month()
+
+    result = db.session.query(
+        StatsTemplateUsageByMonth
+    ).all()
+
+    assert len(result) == 0
+
+    notification_history(created_at=datetime(2017, 2, 1), sample_template=template_one)
+
+    daily_stats_template_usage_by_month()
+
+    result = db.session.query(
+        StatsTemplateUsageByMonth
+    ).order_by(
+        StatsTemplateUsageByMonth.year,
+        StatsTemplateUsageByMonth.month
+    ).all()
+
+    assert len(result) == 1
