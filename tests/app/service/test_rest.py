@@ -1553,25 +1553,18 @@ def test_prefixing_messages_based_on_prefix_sms(
     (False, False, False),
 ])
 def test_set_sms_prefixing_for_service(
+    admin_request,
     client,
     sample_service,
     posted_value,
     stored_value,
     returned_value,
 ):
-    data = {
-        'prefix_sms': posted_value,
-    }
-
-    auth_header = create_authorization_header()
-
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header]
+    result = admin_request.post(
+        'service.update_service',
+        service_id=sample_service.id,
+        _data={'prefix_sms': posted_value},
     )
-    result = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 200
     assert result['data']['prefix_sms'] == stored_value
     # This derived value will go away eventually, once we’ve done a migration
     assert result['data']['prefix_sms_with_service_name'] == returned_value
