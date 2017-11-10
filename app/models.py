@@ -1405,13 +1405,11 @@ class InboundSms(db.Model):
     def serialize(self):
         return {
             'id': str(self.id),
-            'created_at': self.created_at.isoformat(),
+            'created_at': self.created_at.strftime(DATETIME_FORMAT),
             'service_id': str(self.service_id),
             'notify_number': self.notify_number,
             'user_number': self.user_number,
             'content': self.content,
-            'provider_date': self.provider_date and self.provider_date.isoformat(),
-            'provider_reference': self.provider_reference
         }
 
 

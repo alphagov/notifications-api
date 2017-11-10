@@ -174,6 +174,7 @@ def register_blueprint(application):
 
 
 def register_v2_blueprints(application):
+    from app.v2.inbound_sms.get_inbound_sms import v2_inbound_sms_blueprint as get_inbound_sms
     from app.v2.notifications.post_notifications import v2_notification_blueprint as post_notifications
     from app.v2.notifications.get_notifications import v2_notification_blueprint as get_notifications
     from app.v2.template.get_template import v2_template_blueprint as get_template
@@ -195,6 +196,9 @@ def register_v2_blueprints(application):
 
     post_template.before_request(requires_auth)
     application.register_blueprint(post_template)
+
+    get_inbound_sms.before_request(requires_auth)
+    application.register_blueprint(get_inbound_sms)
 
 
 def init_app(app):

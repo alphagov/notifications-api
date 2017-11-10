@@ -33,9 +33,7 @@ def test_get_inbound_sms_with_no_params(client, sample_service):
         'service_id',
         'notify_number',
         'user_number',
-        'content',
-        'provider_date',
-        'provider_reference'
+        'content'
     }
 
 
@@ -178,9 +176,7 @@ def test_get_inbound_sms(admin_request, sample_service):
         'service_id',
         'notify_number',
         'user_number',
-        'content',
-        'provider_date',
-        'provider_reference'
+        'content'
     }
 
 
