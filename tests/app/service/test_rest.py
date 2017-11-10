@@ -159,6 +159,7 @@ def test_get_service_by_id(client, sample_service):
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
     assert json_resp['data']['prefix_sms_with_service_name'] is True
+    assert json_resp['data']['prefix_sms'] is True
 
 
 def test_get_service_by_id_returns_free_sms_limit(client, sample_service):
