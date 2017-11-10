@@ -1,6 +1,7 @@
 import pytest
 
 from freezegun import freeze_time
+from sqlalchemy.exc import IntegrityError
 
 from app import encryption
 from app.models import (
@@ -237,6 +238,24 @@ def test_email_notification_serializes_with_subject(client, sample_email_templat
 def test_letter_notification_serializes_with_subject(client, sample_letter_template):
     res = sample_letter_template.serialize()
     assert res['subject'] == 'Template subject'
+
+
+def test_notification_references_template_history(client, sample_template):
+    noti = create_notification(sample_template)
+    sample_template.version = 3
+    sample_template.content = 'New template content'
+
+    res = noti.serialize()
+    assert res['template']['version'] == 1
+
+    assert res['body'] == noti.template.content
+    assert noti.template.content != sample_template.content
+
+
+def test_notification_requires_a_valid_template_version(client, sample_template):
+    sample_template.version = 2
+    with pytest.raises(IntegrityError):
+        create_notification(sample_template)
 
 
 def test_inbound_number_serializes_with_service(client, notify_db_session):
