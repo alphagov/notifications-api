@@ -16,7 +16,7 @@ marshmallow==2.14.0
 monotonic==1.4
 psycopg2==2.7.3.2
 PyJWT==1.5.3
-SQLAlchemy-Utils==0.32.19
+SQLAlchemy-Utils==0.32.21
 SQLAlchemy==1.1.15
 statsd==3.2.1
 
