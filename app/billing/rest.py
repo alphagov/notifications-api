@@ -135,14 +135,16 @@ def create_or_update_free_sms_fragment_limit(service_id):
 
     form = validate(req_args, create_or_update_free_sms_fragment_limit_schema)
 
-    financial_year_start = form.get('financial_year_start')
-    free_sms_fragment_limit = form.get('free_sms_fragment_limit')
+    update_free_sms_fragment_limit_data(service_id,
+                                        free_sms_fragment_limit=form.get('free_sms_fragment_limit'),
+                                        financial_year_start=form.get('financial_year_start'))
+    return jsonify(form), 201
 
+
+def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit, financial_year_start=None):
     current_year = get_current_financial_year_start_year()
     if financial_year_start is None or financial_year_start >= current_year:
         dao_update_annual_billing_for_current_and_future_years(service_id, free_sms_fragment_limit)
     else:
         dao_create_or_update_annual_billing_for_year(service_id,
                                                      free_sms_fragment_limit, financial_year_start)
-
-    return jsonify(form), 201

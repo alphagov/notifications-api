@@ -98,6 +98,7 @@ from app.schemas import (
     detailed_service_schema
 )
 from app.utils import pagination_links
+from app.billing.rest import update_free_sms_fragment_limit_data
 
 service_blueprint = Blueprint('service', __name__)
 
@@ -201,6 +202,10 @@ def update_service(service_id):
 
     if 'letter_contact_block' in req_json:
         create_or_update_letter_contact(fetched_service.id, req_json['letter_contact_block'])
+
+    # bridging code between frontend is deployed and data has not been migrated yet. Can only update current year
+    if 'free_sms_fragment_limit' in req_json:
+        update_free_sms_fragment_limit_data(fetched_service.id, req_json['free_sms_fragment_limit'])
 
     if service_going_live:
         send_notification_to_service_users(
