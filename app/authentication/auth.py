@@ -45,56 +45,7 @@ def requires_no_auth():
     pass
 
 
-def check_route_secret():
-    # Check route of inbound sms (Experimental)
-    # Custom header for route security
-    auth_error_msg = ''
-    if request.headers.get("X-Custom-Forwarder"):
-        route_secret_key = request.headers.get("X-Custom-Forwarder")
-
-        if route_secret_key is None:
-            # Not blocking at the moment
-            # raise AuthError('invalid secret key', 403)
-            auth_error_msg = auth_error_msg + 'invalid secret key, '
-        else:
-
-            key_1 = current_app.config.get('ROUTE_SECRET_KEY_1')
-            key_2 = current_app.config.get('ROUTE_SECRET_KEY_2')
-
-            if key_1 == '' and key_2 == '':
-                # Not blocking at the moment
-                # raise AuthError('X-Custom-Forwarder, no secret was set on server', 503)
-                auth_error_msg = auth_error_msg + 'no secret was set on server, '
-            else:
-
-                key_used = None
-                route_allowed = False
-                if route_secret_key == key_1:
-                    key_used = 1
-                    route_allowed = True
-                elif route_secret_key == key_2:
-                    key_used = 2
-                    route_allowed = True
-
-                if not key_used:
-                    # Not blocking at the moment
-                    # raise AuthError('X-Custom-Forwarder, wrong secret', 403)
-                    auth_error_msg = auth_error_msg + 'wrong secret'
-
-        current_app.logger.info({
-            'message': 'X-Custom-Forwarder',
-            'log_contents': {
-                'passed': route_allowed,
-                'key_used': key_used,
-                'error': auth_error_msg
-            }
-        })
-        return jsonify(key_used=key_used), 200
-
-
 def restrict_ip_sms():
-    check_route_secret()
-
     # Check IP of SMS providers
     if request.headers.get("X-Forwarded-For"):
         # X-Forwarded-For looks like "203.0.113.195, 70.41.3.18, 150.172.238.178"

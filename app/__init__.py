@@ -3,14 +3,13 @@ import random
 import string
 import uuid
 
-from flask import Flask, _request_ctx_stack
-from flask import request, g, jsonify
+from flask import Flask, _request_ctx_stack, request, g, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from monotonic import monotonic
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from notifications_utils.clients.redis.redis_client import RedisClient
-from notifications_utils import logging, request_id
+from notifications_utils import logging, request_helper
 from werkzeug.local import LocalProxy
 
 from app.celery.celery import NotifyCelery
@@ -56,7 +55,7 @@ def create_app(app_name=None):
         application.config['NOTIFY_APP_NAME'] = app_name
 
     init_app(application)
-    request_id.init_app(application)
+    request_helper.init_app(application)
     db.init_app(application)
     ma.init_app(application)
     statsd_client.init_app(application)
@@ -205,6 +204,8 @@ def init_app(app):
     @app.before_request
     def record_user_agent():
         statsd_client.incr("user-agent.{}".format(process_user_agent(request.headers.get('User-Agent', None))))
+
+    app.before_request(request_helper.check_proxy_header_before_request)
 
     @app.before_request
     def record_request_details():
