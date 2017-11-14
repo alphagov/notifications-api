@@ -31,23 +31,25 @@ from app.dao.service_sms_sender_dao import (
     dao_get_sms_senders_by_service_id,
     update_existing_sms_sender_with_inbound_number)
 from app.dao.services_dao import (
-    dao_fetch_service_by_id,
-    dao_fetch_all_services,
-    dao_create_service,
-    dao_update_service,
-    dao_fetch_all_services_by_user,
     dao_add_user_to_service,
-    dao_remove_user_from_service,
+    dao_archive_service,
+    dao_create_service,
+    dao_fetch_all_services,
+    dao_fetch_all_services_by_user,
+    dao_fetch_monthly_historical_stats_for_service,
+    dao_fetch_monthly_historical_stats_by_template_for_service,
+    dao_fetch_monthly_historical_usage_by_template_for_service,
+    dao_fetch_service_by_id,
     dao_fetch_stats_for_service,
     dao_fetch_todays_stats_for_service,
     dao_fetch_todays_stats_for_all_services,
-    dao_archive_service,
-    fetch_stats_by_date_range_for_all_services,
-    dao_suspend_service,
     dao_resume_service,
-    dao_fetch_monthly_historical_stats_for_service,
-    dao_fetch_monthly_historical_stats_by_template_for_service,
-    fetch_aggregate_stats_by_date_range_for_all_services)
+    dao_remove_user_from_service,
+    dao_suspend_service,
+    dao_update_service,
+    fetch_aggregate_stats_by_date_range_for_all_services,
+    fetch_stats_by_date_range_for_all_services
+)
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
     dao_add_and_commit_whitelisted_contacts,
@@ -520,6 +522,15 @@ def resume_service(service_id):
         dao_resume_service(service.id)
 
     return '', 204
+
+
+@service_blueprint.route('/<uuid:service_id>/notifications/templates_usage/monthly', methods=['GET'])
+def get_monthly_template_usage(service_id):
+    try:
+        data = dao_fetch_monthly_historical_usage_by_template_for_service(service_id)
+        return jsonify(stats=[i.serialize() for i in data]), 200
+    except ValueError:
+        raise InvalidRequest('Year must be a number', status_code=400)
 
 
 @service_blueprint.route('/<uuid:service_id>/notifications/templates/monthly', methods=['GET'])

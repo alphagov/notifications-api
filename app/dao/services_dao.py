@@ -12,31 +12,33 @@ from app.dao.dao_utils import (
 )
 from app.dao.date_util import get_financial_year
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
+from app.dao.stats_template_usage_by_month_dao import dao_get_template_usage_stats_by_service
 from app.models import (
-    ProviderStatistics,
-    VerifyCode,
+    AnnualBilling,
     ApiKey,
+    InboundNumber,
+    InvitedUser,
+    Job,
+    JobStatistics,
+    Notification,
+    NotificationHistory,
+    Permission,
+    ProviderStatistics,
+    Service,
+    ServicePermission,
+    ServiceSmsSender,
+    StatsTemplateUsageByMonth,
     Template,
     TemplateHistory,
     TemplateRedacted,
-    InboundNumber,
-    Job,
-    NotificationHistory,
-    Notification,
-    Permission,
     User,
-    InvitedUser,
-    Service,
-    ServicePermission,
-    KEY_TYPE_TEST,
-    NOTIFICATION_STATUS_TYPES,
-    TEMPLATE_TYPES,
-    JobStatistics,
-    SMS_TYPE,
+    VerifyCode,
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
-    ServiceSmsSender,
-    AnnualBilling
+    KEY_TYPE_TEST,
+    NOTIFICATION_STATUS_TYPES,
+    SMS_TYPE,
+    TEMPLATE_TYPES
 )
 from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
@@ -540,5 +542,61 @@ def dao_fetch_monthly_historical_stats_by_template():
         month,
         year
     ).order_by(
-        NotificationHistory.template_id
+        year,
+        month
     ).all()
+
+
+@transactional
+@statsd(namespace="dao")
+def dao_fetch_monthly_historical_usage_by_template_for_service(service_id):
+
+    results = dao_get_template_usage_stats_by_service(service_id)
+
+    stats = list()
+    for result in results:
+        stat = StatsTemplateUsageByMonth(
+            template_id=result.template_id,
+            month=result.month,
+            year=result.year,
+            count=result.count
+        )
+        stats.append(stat)
+
+    month = get_london_month_from_utc_column(Notification.created_at)
+    year = func.date_trunc("year", Notification.created_at)
+    start_date = datetime.combine(date.today(), time.min)
+
+    today_results = db.session.query(
+        Notification.template_id,
+        extract('month', month).label('month'),
+        extract('year', year).label('year'),
+        func.count().label('count')
+    ).filter(
+        Notification.created_at >= start_date
+    ).group_by(
+        Notification.template_id,
+        month,
+        year
+    ).order_by(
+        Notification.template_id
+    ).all()
+
+    for today_result in today_results:
+        add_to_stats = True
+        for stat in stats:
+            if today_result.template_id == stat.template_id:
+                stat.count = stat.count + today_result.count
+                add_to_stats = False
+
+        if add_to_stats:
+            new_stat = StatsTemplateUsageByMonth(
+                template_id=today_result.template_id,
+                month=today_result.month,
+                year=today_result.year,
+                count=today_result.count
+            )
+
+            stats.append(new_stat)
+
+    return stats

@@ -1613,3 +1613,11 @@ class StatsTemplateUsageByMonth(db.Model):
         nullable=False,
         default=0
     )
+
+    def serialize(self):
+        return {
+            'template_id': str(self.template_id),
+            'month': self.month,
+            'year': self.year,
+            'count': self.count
+        }

@@ -1,9 +1,11 @@
-import pytest
-
-from app.dao.stats_template_usage_by_month_dao import insert_or_update_stats_for_template
+from app import db
+from app.dao.stats_template_usage_by_month_dao import (
+    insert_or_update_stats_for_template,
+    dao_get_template_usage_stats_by_service
+)
 from app.models import StatsTemplateUsageByMonth
 
-from tests.app.conftest import sample_notification, sample_email_template, sample_template, sample_job, sample_service
+from tests.app.db import create_service, create_template
 
 
 def test_create_stats_for_template(notify_db_session, sample_template):
@@ -43,3 +45,29 @@ def test_update_stats_for_template(notify_db_session, sample_template):
     assert stats_by_month[1].month == 2
     assert stats_by_month[1].year == 2017
     assert stats_by_month[1].count == 30
+
+
+def test_dao_get_template_usage_stats_by_service(sample_service):
+
+    email_template = create_template(service=sample_service, template_type="email")
+
+    stats1 = StatsTemplateUsageByMonth(
+        template_id=email_template.id,
+        month=1,
+        year=2017,
+        count=10
+    )
+
+    stats2 = StatsTemplateUsageByMonth(
+        template_id=email_template.id,
+        month=2,
+        year=2017,
+        count=10
+    )
+
+    db.session.add(stats1)
+    db.session.add(stats2)
+
+    result = dao_get_template_usage_stats_by_service(sample_service.id)
+
+    assert len(result) == 2
