@@ -386,7 +386,7 @@ def test_route_correct_secret_key(notify_api, client):
         response = client.get(
             path='/_status',
             headers=[
-                ('X-Custom-forwarder', 'key_1'),
+                ('X-Custom-Forwarder', 'key_1'),
             ]
         )
         assert response.status_code == 200
@@ -402,7 +402,7 @@ def test_route_incorrect_secret_key(notify_api, client):
         response = client.get(
             path='/_status',
             headers=[
-                ('X-Custom-forwarder', 'wrong_key'),
+                ('X-Custom-Forwarder', 'wrong_key'),
             ]
         )
         assert response.status_code == 403
