@@ -12,6 +12,7 @@ from app.notifications.receive_notifications import (
     create_inbound_sms_object,
     strip_leading_forty_four,
     has_inbound_sms_permissions,
+    unescape_string,
 )
 
 from app.models import InboundSms, EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE
@@ -164,6 +165,36 @@ def test_check_permissions_for_inbound_sms(notify_db, notify_db_session, permiss
 ])
 def test_format_mmg_message(message, expected_output):
     assert format_mmg_message(message) == expected_output
+
+
+@pytest.mark.parametrize('raw, expected', [
+    (
+        '😬',
+        '😬',
+    ),
+    (
+        '1\\n2',
+        '1\n2',
+    ),
+    (
+        '\\\'"\\\'',
+        '\'"\'',
+    ),
+    (
+        """
+
+        """,
+        """
+
+        """,
+    ),
+    (
+        '\x79 \\x79 \\\\x79',  # we should never see the middle one
+        'y y \\x79',
+    ),
+])
+def test_unescape_string(raw, expected):
+    assert unescape_string(raw) == expected
 
 
 @pytest.mark.parametrize('provider_date, expected_output', [

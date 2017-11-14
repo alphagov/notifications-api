@@ -241,6 +241,11 @@ class Config(object):
             'task': 'check-job-status',
             'schedule': crontab(),
             'options': {'queue': QueueNames.PERIODIC}
+        },
+        'daily-stats-template_usage_by_month': {
+            'task': 'daily-stats-template_usage_by_month',
+            'schedule': crontab(hour=0, minute=50),
+            'options': {'queue': QueueNames.PERIODIC}
         }
     }
     CELERY_QUEUES = []

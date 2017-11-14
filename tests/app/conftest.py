@@ -47,6 +47,7 @@ from tests.app.db import (
     create_api_key,
     create_inbound_number,
     create_letter_contact,
+    create_inbound_sms,
 )
 
 
@@ -1030,6 +1031,11 @@ def sample_inbound_numbers(notify_db, notify_db_session, sample_service):
     inbound_numbers.append(create_inbound_number(number='2', provider='mmg', active=False, service_id=service.id))
     inbound_numbers.append(create_inbound_number(number='3', provider='firetext', service_id=sample_service.id))
     return inbound_numbers
+
+
+@pytest.fixture
+def sample_inbound_sms(notify_db, notify_db_session, sample_service):
+    return create_inbound_sms(sample_service)
 
 
 @pytest.fixture

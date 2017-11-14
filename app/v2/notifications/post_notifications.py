@@ -71,7 +71,7 @@ def post_notification(notification_type):
     check_rate_limiting(authenticated_service, api_user)
 
     check_service_email_reply_to_id(str(authenticated_service.id), service_email_reply_to_id, notification_type)
-    check_service_sms_sender_id(str(authenticated_service.id), service_sms_sender_id, notification_type)
+    sms_sender = check_service_sms_sender_id(str(authenticated_service.id), service_sms_sender_id, notification_type)
 
     template, template_with_content = validate_template(
         form['template_id'],
@@ -98,7 +98,7 @@ def post_notification(notification_type):
     if notification_type == SMS_TYPE:
         create_resp_partial = functools.partial(
             create_post_sms_response_from_notification,
-            from_number=authenticated_service.get_default_sms_sender()
+            from_number=sms_sender or authenticated_service.get_default_sms_sender()
         )
     elif notification_type == EMAIL_TYPE:
         create_resp_partial = functools.partial(

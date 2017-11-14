@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
 )
-from sqlalchemy import UniqueConstraint, and_
+from sqlalchemy import UniqueConstraint, CheckConstraint, and_
 from sqlalchemy.orm import foreign, remote
 from notifications_utils.recipients import (
     validate_email_address,
@@ -97,7 +97,7 @@ class User(db.Model):
         nullable=True,
         onupdate=datetime.datetime.utcnow)
     _password = db.Column(db.String, index=False, unique=False, nullable=False)
-    mobile_number = db.Column(db.String, index=False, unique=False, nullable=False)
+    mobile_number = db.Column(db.String, index=False, unique=False, nullable=True)
     password_changed_at = db.Column(db.DateTime, index=False, unique=False, nullable=False,
                                     default=datetime.datetime.utcnow)
     logged_in_at = db.Column(db.DateTime, nullable=True)
@@ -106,6 +106,9 @@ class User(db.Model):
     platform_admin = db.Column(db.Boolean, nullable=False, default=False)
     current_session_id = db.Column(UUID(as_uuid=True), nullable=True)
     auth_type = db.Column(db.String, db.ForeignKey('auth_type.name'), index=True, nullable=False, default=SMS_AUTH_TYPE)
+
+    # either email auth or a mobile number must be provided
+    CheckConstraint("auth_type = 'email_auth' or mobile_number is not null")
 
     services = db.relationship(
         'Service',
@@ -1404,13 +1407,11 @@ class InboundSms(db.Model):
     def serialize(self):
         return {
             'id': str(self.id),
-            'created_at': self.created_at.isoformat(),
+            'created_at': self.created_at.strftime(DATETIME_FORMAT),
             'service_id': str(self.service_id),
             'notify_number': self.notify_number,
             'user_number': self.user_number,
             'content': self.content,
-            'provider_date': self.provider_date and self.provider_date.isoformat(),
-            'provider_reference': self.provider_reference
         }
 
 
@@ -1554,3 +1555,37 @@ class AuthType(db.Model):
     __tablename__ = 'auth_type'
 
     name = db.Column(db.String, primary_key=True)
+
+
+class StatsTemplateUsageByMonth(db.Model):
+    __tablename__ = "stats_template_usage_by_month"
+
+    template_id = db.Column(
+        UUID(as_uuid=True),
+        db.ForeignKey('templates.id'),
+        unique=False,
+        index=True,
+        nullable=False,
+        primary_key=True
+    )
+    month = db.Column(
+        db.Integer,
+        nullable=False,
+        index=True,
+        unique=False,
+        primary_key=True,
+        default=datetime.datetime.month
+    )
+    year = db.Column(
+        db.Integer,
+        nullable=False,
+        index=True,
+        unique=False,
+        primary_key=True,
+        default=datetime.datetime.year
+    )
+    count = db.Column(
+        db.Integer,
+        nullable=False,
+        default=0
+    )

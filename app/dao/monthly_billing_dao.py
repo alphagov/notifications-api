@@ -26,6 +26,7 @@ def get_service_ids_that_need_billing_populated(start_date, end_date):
     ).distinct().all()
 
 
+@statsd(namespace="dao")
 def create_or_update_monthly_billing(service_id, billing_month):
     start_date, end_date = get_month_start_and_end_date_in_utc(billing_month)
     _update_monthly_billing(service_id, start_date, end_date, SMS_TYPE)
@@ -47,6 +48,7 @@ def _monthly_billing_data_to_json(billing_data):
     return results
 
 
+@statsd(namespace="dao")
 @transactional
 def _update_monthly_billing(service_id, start_date, end_date, notification_type):
     billing_data = get_billing_data_for_month(

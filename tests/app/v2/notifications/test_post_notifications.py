@@ -123,6 +123,7 @@ def test_post_sms_notification_returns_201_with_sms_sender_id(
     notification_to_sms_sender = NotificationSmsSender.query.all()
     assert len(notification_to_sms_sender) == 1
     assert str(notification_to_sms_sender[0].notification_id) == resp_json['id']
+    assert resp_json['content']['from_number'] == sms_sender.sms_sender
     assert notification_to_sms_sender[0].service_sms_sender_id == sms_sender.id
     mocked.assert_called_once_with([resp_json['id']], queue='send-sms-tasks')
 

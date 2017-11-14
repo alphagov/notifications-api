@@ -82,7 +82,11 @@ def receive_firetext_sms():
 
 
 def format_mmg_message(message):
-    return unquote(message.replace('+', ' '))
+    return unescape_string(unquote(message.replace('+', ' ')))
+
+
+def unescape_string(string):
+    return string.encode('raw_unicode_escape').decode('unicode_escape')
 
 
 def format_mmg_datetime(date):

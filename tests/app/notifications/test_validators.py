@@ -374,7 +374,7 @@ def test_check_service_sms_sender_id_where_sms_sender_id_is_none(notification_ty
 
 def test_check_service_sms_sender_id_where_sms_sender_id_is_found(sample_service):
     sms_sender = create_service_sms_sender(service=sample_service, sms_sender='123456')
-    assert check_service_sms_sender_id(sample_service.id, sms_sender.id, SMS_TYPE) is None
+    assert check_service_sms_sender_id(sample_service.id, sms_sender.id, SMS_TYPE) == '123456'
 
 
 def test_check_service_sms_sender_id_where_service_id_is_not_found(sample_service, fake_uuid):
