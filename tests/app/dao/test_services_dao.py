@@ -1039,7 +1039,10 @@ def test_dao_fetch_monthly_historical_stats_by_template(notify_db, notify_db_ses
     assert result[1].count == 1
 
 
-def test_dao_fetch_monthly_historical_usage_by_template_for_service_no_stats_today(notify_db, notify_db_session, sample_service):
+def test_dao_fetch_monthly_historical_usage_by_template_for_service_no_stats_today(
+        notify_db,
+        notify_db_session,
+):
     notification_history = functools.partial(
         create_notification_history,
         notify_db,
@@ -1076,7 +1079,11 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_no_stats_tod
 
 
 @freeze_time("2017-11-10 11:09:00.000000")
-def test_dao_fetch_monthly_historical_usage_by_template_for_service_add_to_historical(notify_db, notify_db_session, sample_service):
+def test_dao_fetch_monthly_historical_usage_by_template_for_service_add_to_historical(
+        notify_db,
+        notify_db_session,
+        sample_service
+):
     notification_history = functools.partial(
         create_notification_history,
         notify_db,
@@ -1155,7 +1162,11 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_add_to_histo
 
 
 @freeze_time("2017-11-10 11:09:00.000000")
-def test_dao_fetch_monthly_historical_usage_by_template_for_service_does_add_old_notification(notify_db, notify_db_session, sample_service):
+def test_dao_fetch_monthly_historical_usage_by_template_for_service_does_add_old_notification(
+        notify_db,
+        notify_db_session,
+        sample_service
+):
     notification_history = functools.partial(
         create_notification_history,
         notify_db,
