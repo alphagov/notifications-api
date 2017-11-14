@@ -3,7 +3,7 @@ import random
 import string
 import uuid
 
-from flask import Flask, _request_ctx_stack, request, g, jsonify, abort
+from flask import Flask, _request_ctx_stack, request, g, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from monotonic import monotonic
