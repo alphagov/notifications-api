@@ -35,8 +35,7 @@ from tests.app.db import (
     create_letter_contact,
     create_inbound_number,
     create_service_sms_sender,
-    create_service_with_defined_sms_sender,
-    create_service_with_inbound_number
+    create_service_with_defined_sms_sender
 )
 from tests.app.db import create_user
 from app.dao.date_util import get_current_financial_year_start_year
