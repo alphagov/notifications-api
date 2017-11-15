@@ -104,32 +104,12 @@ def create_service_with_inbound_number(
 
 def create_service_with_defined_sms_sender(
     sms_sender_value='1234567',
-    user=None,
-    service_name="Sample service",
-    service_id=None,
-    restricted=False,
-    service_permissions=[EMAIL_TYPE, SMS_TYPE],
-    research_mode=False,
-    active=True,
-    email_from=None,
-    prefix_sms=None
+    *args, **kwargs
 ):
-    service = Service(
-        name=service_name,
-        message_limit=1000,
-        restricted=restricted,
-        email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
-        created_by=user or create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
-        prefix_sms=prefix_sms,
-    )
-
-    dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
-
-    service.active = active
-    service.research_mode = research_mode
+    service = create_service(*args, **kwargs)
 
     sms_sender = ServiceSmsSender.query.filter_by(service_id=service.id).first()
-    dao_update_service_sms_sender(service_id=service_id,
+    dao_update_service_sms_sender(service_id=service.id,
                                   service_sms_sender_id=sms_sender.id,
                                   is_default=True,
                                   sms_sender=sms_sender_value)
