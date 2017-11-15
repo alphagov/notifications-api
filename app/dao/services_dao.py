@@ -27,7 +27,6 @@ from app.models import (
     Service,
     ServicePermission,
     ServiceSmsSender,
-    StatsTemplateUsageByMonth,
     Template,
     TemplateHistory,
     TemplateRedacted,
