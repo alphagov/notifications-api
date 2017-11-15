@@ -647,6 +647,19 @@ class TemplateHistory(db.Model):
                              nullable=False,
                              default=NORMAL)
 
+    template_redacted = db.relationship('TemplateRedacted', foreign_keys=[id],
+                                        primaryjoin='TemplateRedacted.template_id == TemplateHistory.id')
+
+    redact_personalisation = association_proxy('template_redacted', 'redact_personalisation')
+
+    def get_link(self):
+        return url_for(
+            "v2_template.get_template_by_id",
+            template_id=self.id,
+            version=self.version,
+            _external=True
+        )
+
     def _as_utils_template(self):
         return Template._as_utils_template(self)
 
@@ -911,9 +924,9 @@ class Notification(db.Model):
     job_row_number = db.Column(db.Integer, nullable=True)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False)
     service = db.relationship('Service')
-    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), index=True, unique=False)
-    template = db.relationship('Template')
+    template_id = db.Column(UUID(as_uuid=True), index=True, unique=False)
     template_version = db.Column(db.Integer, nullable=False)
+    template = db.relationship('TemplateHistory')
     api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), index=True, unique=False)
     api_key = db.relationship('ApiKey')
     key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False, nullable=False)
@@ -949,11 +962,6 @@ class Notification(db.Model):
     client_reference = db.Column(db.String, index=True, nullable=True)
     _personalisation = db.Column(db.String, nullable=True)
 
-    template_history = db.relationship('TemplateHistory', primaryjoin=and_(
-        foreign(template_id) == remote(TemplateHistory.id),
-        foreign(template_version) == remote(TemplateHistory.version)
-    ))
-
     scheduled_notification = db.relationship('ScheduledNotification', uselist=False)
 
     client_reference = db.Column(db.String, index=True, nullable=True)
@@ -964,6 +972,14 @@ class Notification(db.Model):
 
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
+
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ['template_id', 'template_version'],
+            ['templates_history.id', 'templates_history.version'],
+        ),
+        {}
+    )
 
     @property
     def personalisation(self):
@@ -1167,8 +1183,7 @@ class NotificationHistory(db.Model, HistoryModel):
     job_row_number = db.Column(db.Integer, nullable=True)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False)
     service = db.relationship('Service')
-    template_id = db.Column(UUID(as_uuid=True), db.ForeignKey('templates.id'), index=True, unique=False)
-    template = db.relationship('Template')
+    template_id = db.Column(UUID(as_uuid=True), index=True, unique=False)
     template_version = db.Column(db.Integer, nullable=False)
     api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), index=True, unique=False)
     api_key = db.relationship('ApiKey')
@@ -1197,6 +1212,14 @@ class NotificationHistory(db.Model, HistoryModel):
 
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
+
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ['template_id', 'template_version'],
+            ['templates_history.id', 'templates_history.version'],
+        ),
+        {}
+    )
 
     @classmethod
     def from_original(cls, notification):

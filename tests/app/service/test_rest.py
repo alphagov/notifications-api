@@ -1451,6 +1451,24 @@ def test_get_notification_for_service_includes_created_by(admin_request, sample_
     }
 
 
+def test_get_notification_for_service_returns_old_template_version(admin_request, sample_template):
+    sample_notification = create_notification(sample_template)
+    sample_notification.reference = 'modified-inplace'
+    sample_template.version = 2
+    sample_template.content = 'New template content'
+
+    resp = admin_request.get(
+        'service.get_notification_for_service',
+        service_id=sample_notification.service_id,
+        notification_id=sample_notification.id
+    )
+
+    assert resp['reference'] == 'modified-inplace'
+    assert resp['template']['version'] == 1
+    assert resp['template']['content'] == sample_notification.template.content
+    assert resp['template']['content'] != sample_template.content
+
+
 @pytest.mark.parametrize(
     'include_from_test_key, expected_count_of_notifications',
     [

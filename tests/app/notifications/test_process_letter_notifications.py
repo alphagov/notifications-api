@@ -18,7 +18,8 @@ def test_create_letter_notification_creates_notification(sample_letter_template,
     assert notification == Notification.query.one()
     assert notification.job is None
     assert notification.status == NOTIFICATION_CREATED
-    assert notification.template == sample_letter_template
+    assert notification.template_id == sample_letter_template.id
+    assert notification.template_version == sample_letter_template.version
     assert notification.api_key == sample_api_key
     assert notification.notification_type == LETTER_TYPE
     assert notification.key_type == sample_api_key.key_type

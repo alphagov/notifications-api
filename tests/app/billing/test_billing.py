@@ -18,6 +18,7 @@ from tests import create_authorization_header
 from app.dao.date_util import get_current_financial_year_start_year
 from app.dao.annual_billing_dao import dao_get_free_sms_fragment_limit_for_year
 from tests.app.db import create_annual_billing
+from app.billing.rest import update_free_sms_fragment_limit_data
 
 
 APR_2016_MONTH_START = datetime(2016, 3, 31, 23, 00, 00)
@@ -380,3 +381,14 @@ def test_get_free_sms_fragment_limit_future_year_not_exist(client, sample_servic
     assert res_get.status_code == 200
     assert json_resp['financial_year_start'] == current_year + 2
     assert json_resp['free_sms_fragment_limit'] == 10000
+
+
+def test_update_free_sms_fragment_limit_data(client, sample_service):
+    current_year = get_current_financial_year_start_year()
+    annual_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year)
+    assert annual_billing.free_sms_fragment_limit == 250000
+
+    update_free_sms_fragment_limit_data(sample_service.id, 9999)
+
+    annual_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year)
+    assert annual_billing.free_sms_fragment_limit == 9999
