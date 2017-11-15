@@ -1,7 +1,7 @@
 """
 
-Revision ID: 013_migrate_sms_allowance_data.py
-Revises: 0135_stats_template_usage.py
+Revision ID: 0138_migrate_sms_allowance_data.py
+Revises: 0137_stats_template_usage.py
 Create Date: 2017-11-10 21:42:59.715203
 
 """
@@ -11,8 +11,8 @@ import uuid
 from app.dao.date_util import get_current_financial_year_start_year
 
 
-revision = '0136_migrate_sms_allowance_data'
-down_revision = '0135_stats_template_usage'
+revision = '0138_migrate_sms_allowance_data'
+down_revision = '0137_notification_template_hist'
 
 
 def upgrade():
@@ -30,7 +30,7 @@ def upgrade():
     insert_row_if_not_exist = """
         INSERT INTO annual_billing 
         (id, service_id, financial_year_start, free_sms_fragment_limit, created_at, updated_at) 
-         SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, {}, {}, '{}', '{}' 
+         SELECT uuid_in(md5(random()::text)::cstring), id, {}, {}, '{}', '{}' 
          FROM services WHERE id NOT IN 
         (select service_id from annual_billing)
     """.format(current_year, default_limit, datetime.utcnow(), datetime.utcnow())
@@ -46,4 +46,5 @@ def upgrade():
 
 
 def downgrade():
+    # There is no schema change. Only data migration and filling in gaps.
     print('There is no action for downgrading to the previous version.')
