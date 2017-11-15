@@ -31,7 +31,6 @@ from tests.app.db import (
     create_reply_to_email,
     create_letter_contact
 )
-from tests.conftest import set_config
 
 
 @pytest.mark.parametrize('mobile_number', [
@@ -275,8 +274,7 @@ def test_inbound_number_returns_inbound_number(client, notify_db_session):
 
 
 def test_inbound_number_returns_none_when_no_inbound_number(client, notify_db_session):
-    with set_config(client.application, 'FROM_NUMBER', 'test'):
-        service = create_service(sms_sender=None)
+    service = create_service()
 
     assert not service.get_inbound_number()
 
@@ -294,5 +292,5 @@ def test_service_get_default_contact_letter(sample_service):
 
 
 def test_service_get_default_sms_sender(notify_db_session):
-    service = create_service(sms_sender='new_value')
-    assert service.get_default_sms_sender() == 'new_value'
+    service = create_service()
+    assert service.get_default_sms_sender() == 'testing'

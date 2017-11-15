@@ -3,13 +3,15 @@ import uuid
 import pytest
 from freezegun import freeze_time
 
+from app.dao.service_sms_sender_dao import update_existing_sms_sender_with_inbound_number
 from app.models import (
     NotificationEmailReplyTo,
     ScheduledNotification,
     SCHEDULE_NOTIFICATIONS,
     EMAIL_TYPE,
     SMS_TYPE,
-    NotificationSmsSender)
+    NotificationSmsSender, ServiceSmsSender
+)
 from flask import json, current_app
 
 from app.models import Notification
@@ -29,7 +31,9 @@ from tests.app.db import (
     create_service,
     create_template,
     create_reply_to_email,
-    create_service_sms_sender, create_notification)
+    create_service_sms_sender, create_notification, create_inbound_number,
+    create_service_with_inbound_number
+)
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -69,7 +73,8 @@ def test_post_sms_notification_returns_201(client, sample_template_with_placehol
 
 
 def test_post_sms_notification_uses_inbound_number_as_sender(client, notify_db_session, mocker):
-    service = create_service(sms_sender='1', do_create_inbound_number=True)
+    service = create_service_with_inbound_number(inbound_number='1')
+
     template = create_template(service=service, content="Hello (( Name))\nYour thing is due soon")
     mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
     data = {

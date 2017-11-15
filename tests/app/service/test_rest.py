@@ -34,7 +34,8 @@ from tests.app.db import (
     create_reply_to_email,
     create_letter_contact,
     create_inbound_number,
-    create_service_sms_sender
+    create_service_sms_sender,
+    create_service_with_defined_sms_sender
 )
 from tests.app.db import create_user
 from app.dao.date_util import get_current_financial_year_start_year
@@ -307,7 +308,6 @@ def test_create_service(client, sample_user):
 
     service_db = Service.query.get(json_resp['data']['id'])
     assert service_db.name == 'created service'
-    assert service_db.sms_sender == current_app.config['FROM_NUMBER']
 
     auth_header_fetch = create_authorization_header()
 
@@ -322,7 +322,7 @@ def test_create_service(client, sample_user):
 
     service_sms_senders = ServiceSmsSender.query.filter_by(service_id=service_db.id).all()
     assert len(service_sms_senders) == 1
-    assert service_sms_senders[0].sms_sender == service_db.sms_sender
+    assert service_sms_senders[0].sms_sender == current_app.config['FROM_NUMBER']
 
 
 def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_uuid):
@@ -1523,80 +1523,17 @@ def test_get_only_api_created_notifications_for_service(
     assert resp['notifications'][0]['id'] == str(without_job.id)
 
 
-def test_set_sms_sender_for_service(client, sample_service):
-    data = {
-        'sms_sender': 'elevenchars',
-    }
-
-    auth_header = create_authorization_header()
-
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    result = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 200
-    assert result['data']['sms_sender'] == 'elevenchars'
-    service_sms_senders = ServiceSmsSender.query.filter_by(service_id=sample_service.id).all()
-    assert len(service_sms_senders) == 1
-    assert service_sms_senders[0].sms_sender == 'elevenchars'
-    assert service_sms_senders[0].is_default
-
-
-def test_set_sms_sender_for_service_rejects_invalid_characters(client, sample_service):
-    data = {
-        'sms_sender': 'invalid####',
-    }
-
-    auth_header = create_authorization_header()
-
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    result = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 400
-    assert result['result'] == 'error'
-    assert result['message'] == {'sms_sender': ['Only alphanumeric characters allowed']}
-
-
-def test_set_sms_sender_for_service_rejects_null(client, sample_service):
-    data = {
-        'sms_sender': None,
-    }
-
-    auth_header = create_authorization_header()
-
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    result = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 400
-    assert result['result'] == 'error'
-    assert result['message'] == {'sms_sender': ['Field may not be null.']}
-
-
-@pytest.mark.parametrize('service_attribute, should_prefix', [
-    (True, True),
-    (False, False),
+@pytest.mark.parametrize('should_prefix', [
+    True,
+    False,
 ])
-def test_prefixing_messages_based_on_sms_sender(
+def test_prefixing_messages_based_on_prefix_sms(
     client,
     notify_db_session,
-    service_attribute,
     should_prefix,
 ):
     service = create_service(
-        prefix_sms=service_attribute
-    )
-    create_service_sms_sender(
-        service=service,
-        sms_sender='ignored',
-        is_default=False,
+        prefix_sms=should_prefix
     )
 
     result = client.get(
@@ -2706,7 +2643,7 @@ def test_add_service_sms_sender_can_add_multiple_senders(client, notify_db_sessi
 
 def test_add_service_sms_sender_when_it_is_an_inbound_number_updates_the_only_existing_sms_sender(
         client, notify_db_session):
-    service = create_service(sms_sender='GOVUK')
+    service = create_service_with_defined_sms_sender(sms_sender_value='GOVUK')
     inbound_number = create_inbound_number(number='12345')
     data = {
         "sms_sender": str(inbound_number.id),
@@ -2731,7 +2668,7 @@ def test_add_service_sms_sender_when_it_is_an_inbound_number_updates_the_only_ex
 
 def test_add_service_sms_sender_when_it_is_an_inbound_number_inserts_new_sms_sender_when_more_than_one(
         client, notify_db_session):
-    service = create_service(sms_sender='GOVUK')
+    service = create_service_with_defined_sms_sender(sms_sender_value='GOVUK')
     create_service_sms_sender(service=service, sms_sender="second", is_default=False)
     inbound_number = create_inbound_number(number='12345')
     data = {
@@ -2756,7 +2693,7 @@ def test_add_service_sms_sender_when_it_is_an_inbound_number_inserts_new_sms_sen
 
 
 def test_add_service_sms_sender_switches_default(client, notify_db_session):
-    service = create_service(sms_sender='first')
+    service = create_service_with_defined_sms_sender(sms_sender_value='first')
     data = {
         "sms_sender": 'second',
         "is_default": True,
@@ -2808,7 +2745,7 @@ def test_update_service_sms_sender(client, notify_db_session):
 
 
 def test_update_service_sms_sender_switches_default(client, notify_db_session):
-    service = create_service(sms_sender='first')
+    service = create_service_with_defined_sms_sender(sms_sender_value='first')
     service_sms_sender = create_service_sms_sender(service=service, sms_sender='1235', is_default=False)
     data = {
         "sms_sender": 'second',
@@ -2883,17 +2820,15 @@ def test_get_service_sms_sender_by_id_returns_404_when_service_does_not_exist(cl
 
 
 def test_get_service_sms_sender_by_id_returns_404_when_sms_sender_does_not_exist(client, notify_db_session):
-    service_sms_sender = create_service_sms_sender(service=create_service(),
-                                                   sms_sender='1235',
-                                                   is_default=False)
-    response = client.get('/service/{}/sms-sender/{}'.format(service_sms_sender.service_id, uuid.uuid4()),
+    service = create_service()
+    response = client.get('/service/{}/sms-sender/{}'.format(service.id, uuid.uuid4()),
                           headers=[('Content-Type', 'application/json'), create_authorization_header()]
                           )
     assert response.status_code == 404
 
 
 def test_get_service_sms_senders_for_service(client, notify_db_session):
-    service_sms_sender = create_service_sms_sender(service=create_service(sms_sender='first'),
+    service_sms_sender = create_service_sms_sender(service=create_service(),
                                                    sms_sender='second',
                                                    is_default=False)
     response = client.get('/service/{}/sms-sender'.format(service_sms_sender.service_id),
@@ -2903,7 +2838,7 @@ def test_get_service_sms_senders_for_service(client, notify_db_session):
     json_resp = json.loads(response.get_data(as_text=True))
     assert len(json_resp) == 2
     assert json_resp[0]['is_default']
-    assert json_resp[0]['sms_sender'] == 'first'
+    assert json_resp[0]['sms_sender'] == current_app.config['FROM_NUMBER']
     assert not json_resp[1]['is_default']
     assert json_resp[1]['sms_sender'] == 'second'
 

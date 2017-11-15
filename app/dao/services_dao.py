@@ -159,8 +159,6 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
     # the default property does not appear to work when there is a difference between the sqlalchemy schema and the
     # db schema (ie: during a migration), so we have to set sms_sender manually here. After the GOVUK sms_sender
     # migration is completed, this code should be able to be removed.
-    if not service.sms_sender:
-        service.sms_sender = current_app.config['FROM_NUMBER']
 
     if service_permissions is None:
         service_permissions = DEFAULT_SERVICE_PERMISSIONS
@@ -179,7 +177,8 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
         service_permission = ServicePermission(service_id=service.id, permission=permission)
         service.permissions.append(service_permission)
 
-    insert_service_sms_sender(service, service.sms_sender)
+    # do we just add the default - or will we get a value from FE?
+    insert_service_sms_sender(service, current_app.config['FROM_NUMBER'])
     dao_insert_annual_billing(service)
     db.session.add(service)
 

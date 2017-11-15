@@ -9,7 +9,8 @@ from freezegun import freeze_time
 from app import db
 from app.dao.inbound_numbers_dao import (
     dao_set_inbound_number_to_service,
-    dao_get_available_inbound_numbers
+    dao_get_available_inbound_numbers,
+    dao_set_inbound_number_active_flag
 )
 from app.dao.services_dao import (
     dao_create_service,
@@ -62,7 +63,10 @@ from app.models import (
     SERVICE_PERMISSION_TYPES
 )
 
-from tests.app.db import create_inbound_number, create_user, create_service
+from tests.app.db import (
+    create_inbound_number, create_user, create_service, create_service_with_inbound_number,
+    create_service_with_defined_sms_sender
+)
 from tests.app.conftest import (
     sample_notification as create_notification,
     sample_notification_history as create_notification_history,
@@ -943,10 +947,9 @@ def test_dao_fetch_active_users_for_service_returns_active_only(notify_db, notif
 
 
 def test_dao_fetch_service_by_inbound_number_with_inbound_number(notify_db_session):
-    foo1 = create_service(service_name='a', sms_sender='1')
-    foo2 = create_service(service_name='b', sms_sender='2')
-    bar = create_service(service_name='c', sms_sender='3')
-    create_inbound_number('1', service_id=foo1.id)
+    foo1 = create_service_with_inbound_number(service_name='a', inbound_number='1')
+    create_service_with_defined_sms_sender(service_name='b', sms_sender_value='2')
+    create_service_with_defined_sms_sender(service_name='c', sms_sender_value='3')
     create_inbound_number('2')
     create_inbound_number('3')
 
@@ -964,9 +967,8 @@ def test_dao_fetch_service_by_inbound_number_with_inbound_number_not_set(notify_
 
 
 def test_dao_fetch_service_by_inbound_number_when_inbound_number_set(notify_db_session):
-    service_1 = create_service(service_name='a', sms_sender=None)
-    service_2 = create_service(service_name='b')
-    inbound_number = create_inbound_number('1', service_id=service_1.id)
+    service_1 = create_service_with_inbound_number(inbound_number='1', service_name='a')
+    create_service(service_name='b')
 
     service = dao_fetch_service_by_inbound_number('1')
 
@@ -974,8 +976,7 @@ def test_dao_fetch_service_by_inbound_number_when_inbound_number_set(notify_db_s
 
 
 def test_dao_fetch_service_by_inbound_number_with_unknown_number(notify_db_session):
-    service = create_service(service_name='a', sms_sender=None)
-    inbound_number = create_inbound_number('1', service_id=service.id)
+    create_service_with_inbound_number(inbound_number='1', service_name='a')
 
     service = dao_fetch_service_by_inbound_number('9')
 
@@ -983,8 +984,8 @@ def test_dao_fetch_service_by_inbound_number_with_unknown_number(notify_db_sessi
 
 
 def test_dao_fetch_service_by_inbound_number_with_inactive_number_returns_empty(notify_db_session):
-    service = create_service(service_name='a', sms_sender=None)
-    inbound_number = create_inbound_number('1', service_id=service.id, active=False)
+    service = create_service_with_inbound_number(inbound_number='1', service_name='a')
+    dao_set_inbound_number_active_flag(service_id=service.id, active=False)
 
     service = dao_fetch_service_by_inbound_number('1')
 

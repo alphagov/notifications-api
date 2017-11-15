@@ -24,12 +24,12 @@ from app.dao.service_inbound_api_dao import (
     get_service_inbound_api
 )
 from app.dao.service_sms_sender_dao import (
-    insert_or_update_service_sms_sender,
     dao_add_sms_sender_for_service,
     dao_update_service_sms_sender,
     dao_get_service_sms_senders_by_id,
     dao_get_sms_senders_by_service_id,
-    update_existing_sms_sender_with_inbound_number)
+    update_existing_sms_sender_with_inbound_number
+)
 from app.dao.services_dao import (
     dao_fetch_service_by_id,
     dao_fetch_all_services,
@@ -74,7 +74,10 @@ from app.errors import (
     register_errors
 )
 
-from app.models import Service, ServiceInboundApi, AnnualBilling
+from app.models import (
+    Service,
+    ServiceInboundApi
+)
 from app.schema_validation import validate
 from app.service import statistics
 from app.service.service_inbound_api_schema import (
@@ -84,7 +87,8 @@ from app.service.service_inbound_api_schema import (
 from app.service.service_senders_schema import (
     add_service_email_reply_to_request,
     add_service_letter_contact_block_request,
-    add_service_sms_sender_request)
+    add_service_sms_sender_request
+)
 from app.service.utils import get_whitelist_objects
 from app.service.sender import send_notification_to_service_users
 from app.service.send_notification import send_one_off_notification
@@ -196,9 +200,6 @@ def update_service(service_id):
 
     if 'reply_to_email_address' in req_json:
         create_or_update_email_reply_to(fetched_service.id, req_json['reply_to_email_address'])
-
-    if 'sms_sender' in req_json:
-        insert_or_update_service_sms_sender(fetched_service, req_json['sms_sender'])
 
     if 'letter_contact_block' in req_json:
         create_or_update_letter_contact(fetched_service.id, req_json['letter_contact_block'])
