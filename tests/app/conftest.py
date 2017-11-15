@@ -14,6 +14,7 @@ from app import db
 from app.models import (
     Service,
     Template,
+    TemplateHistory,
     ApiKey,
     Job,
     Notification,
@@ -38,6 +39,7 @@ from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
 from app.dao.provider_rates_dao import create_provider_rates
 from app.clients.sms.firetext import FiretextClient
+from app.history_meta import create_history
 from tests import create_authorization_header
 from tests.app.db import (
     create_user,
@@ -544,8 +546,7 @@ def sample_notification(
         'job': job,
         'service_id': service.id,
         'service': service,
-        'template_id': template.id if template else None,
-        'template': template,
+        'template_id': template.id,
         'template_version': template.version,
         'status': status,
         'reference': reference,
@@ -624,7 +625,7 @@ def sample_email_notification(notify_db, notify_db_session):
         'job': job,
         'service_id': service.id,
         'service': service,
-        'template': template,
+        'template_id': template.id,
         'template_version': template.version,
         'status': 'created',
         'reference': None,
@@ -678,7 +679,7 @@ def sample_notification_history(
     notification_history = NotificationHistory(
         id=uuid.uuid4(),
         service=sample_template.service,
-        template=sample_template,
+        template_id=sample_template.id,
         template_version=sample_template.version,
         status=status,
         created_at=created_at,
@@ -975,6 +976,7 @@ def create_custom_template(service, user, template_config_name, template_type, c
         }
         template = Template(**data)
         db.session.add(template)
+        db.session.add(create_history(template, TemplateHistory))
         db.session.commit()
     return template
 
