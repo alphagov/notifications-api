@@ -8,6 +8,7 @@ import pytest
 from flask import url_for, current_app
 from freezegun import freeze_time
 
+from app.celery.scheduled_tasks import daily_stats_template_usage_by_month
 from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
@@ -1862,6 +1863,139 @@ def test_get_template_stats_by_month_returns_correct_data(notify_db, notify_db_s
     assert resp_json["2016-05"][str(sample_template.id)]["counts"]["sending"] == 2
     assert resp_json["2016-05"][str(sample_template.id)]["counts"]["temporary-failure"] == 1
     assert resp_json["2016-05"][str(sample_template.id)]["counts"]["permanent-failure"] == 1
+
+
+def test_get_template_usage_by_month_returns_correct_data(
+        notify_db,
+        notify_db_session,
+        client,
+        sample_template
+):
+
+    # add a historical notification for template
+    not1 = create_notification_history(
+        notify_db,
+        notify_db_session,
+        sample_template,
+        created_at=datetime(2016, 4, 1),
+    )
+
+    create_notification_history(
+        notify_db,
+        notify_db_session,
+        sample_template,
+        created_at=datetime(2016, 4, 1),
+        status='sending'
+    )
+
+    create_notification_history(
+        notify_db,
+        notify_db_session,
+        sample_template,
+        created_at=datetime(2016, 4, 1),
+        status='permanent-failure'
+    )
+
+    create_notification_history(
+        notify_db,
+        notify_db_session,
+        sample_template,
+        created_at=datetime(2016, 4, 1),
+        status='temporary-failure'
+    )
+
+    daily_stats_template_usage_by_month()
+
+    create_notification(
+        sample_template,
+        created_at=datetime.utcnow()
+    )
+
+    resp = client.get(
+        '/service/{}/notifications/templates_usage/monthly?year=2016'.format(not1.service_id),
+        headers=[create_authorization_header()]
+    )
+    resp_json = json.loads(resp.get_data(as_text=True)).get('stats')
+
+    assert resp.status_code == 200
+    assert len(resp_json) == 1
+
+    assert resp_json[0]["template_id"] == str(sample_template.id)
+    assert resp_json[0]["name"] == sample_template.name
+    assert resp_json[0]["month"] == 4
+    assert resp_json[0]["year"] == 2016
+    assert resp_json[0]["count"] == 5
+
+
+def test_get_template_usage_by_month_returns_two_templates(
+        notify_db,
+        notify_db_session,
+        client,
+        sample_template,
+        sample_service
+):
+
+    template_one = create_template(sample_service)
+
+    # add a historical notification for template
+    not1 = create_notification_history(
+        notify_db,
+        notify_db_session,
+        template_one,
+        created_at=datetime(2016, 4, 1),
+    )
+
+    create_notification_history(
+        notify_db,
+        notify_db_session,
+        sample_template,
+        created_at=datetime(2016, 4, 1),
+        status='sending'
+    )
+
+    create_notification_history(
+        notify_db,
+        notify_db_session,
+        sample_template,
+        created_at=datetime(2016, 4, 1),
+        status='permanent-failure'
+    )
+
+    create_notification_history(
+        notify_db,
+        notify_db_session,
+        sample_template,
+        created_at=datetime(2016, 4, 1),
+        status='temporary-failure'
+    )
+
+    daily_stats_template_usage_by_month()
+
+    create_notification(
+        sample_template,
+        created_at=datetime.utcnow()
+    )
+
+    resp = client.get(
+        '/service/{}/notifications/templates_usage/monthly?year=2016'.format(not1.service_id),
+        headers=[create_authorization_header()]
+    )
+    resp_json = json.loads(resp.get_data(as_text=True)).get('stats')
+
+    assert resp.status_code == 200
+    assert len(resp_json) == 2
+
+    resp_json = sorted(resp_json, key=lambda k: k.get('count', 0))
+
+    assert resp_json[0]["template_id"] == str(template_one.id)
+    assert resp_json[0]["month"] == 4
+    assert resp_json[0]["year"] == 2016
+    assert resp_json[0]["count"] == 1
+
+    assert resp_json[1]["template_id"] == str(sample_template.id)
+    assert resp_json[1]["month"] == 4
+    assert resp_json[1]["year"] == 2016
+    assert resp_json[1]["count"] == 4
 
 
 @pytest.mark.parametrize('query_string, expected_status, expected_json', [
