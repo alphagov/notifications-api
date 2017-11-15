@@ -30,11 +30,16 @@ def insert_or_update_stats_for_template(template_id, month, year, count):
 
 
 @statsd(namespace="dao")
-def dao_get_template_usage_stats_by_service(service_id):
+def dao_get_template_usage_stats_by_service(service_id, year):
     return db.session.query(
-        StatsTemplateUsageByMonth
+        StatsTemplateUsageByMonth.template_id,
+        Template.name,
+        StatsTemplateUsageByMonth.month,
+        StatsTemplateUsageByMonth.year,
+        StatsTemplateUsageByMonth.count
     ).join(
         Template, StatsTemplateUsageByMonth.template_id == Template.id
     ).filter(
-        Template.service_id == service_id
+        Template.service_id == service_id,
+        StatsTemplateUsageByMonth.year == year
     ).all()

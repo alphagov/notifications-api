@@ -307,7 +307,7 @@ class Config(object):
 
 class Development(Config):
     NOTIFY_LOG_PATH = 'application.log'
-    SQLALCHEMY_ECHO = False
+    SQLALCHEMY_ECHO = True
     NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.tools-ftp'

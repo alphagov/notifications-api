@@ -547,20 +547,19 @@ def dao_fetch_monthly_historical_stats_by_template():
     ).all()
 
 
-@transactional
 @statsd(namespace="dao")
-def dao_fetch_monthly_historical_usage_by_template_for_service(service_id):
+def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year):
 
-    results = dao_get_template_usage_stats_by_service(service_id)
+    results = dao_get_template_usage_stats_by_service(service_id, year)
 
     stats = list()
     for result in results:
-        stat = StatsTemplateUsageByMonth(
-            template_id=result.template_id,
-            month=result.month,
-            year=result.year,
-            count=result.count
-        )
+        stat = type("", (), {})()
+        stat.template_id = result.template_id
+        stat.name = str(result.name)
+        stat.month = result.month
+        stat.year = result.year
+        stat.count = result.count
         stats.append(stat)
 
     month = get_london_month_from_utc_column(Notification.created_at)
@@ -569,13 +568,17 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id):
 
     today_results = db.session.query(
         Notification.template_id,
+        Template.name,
         extract('month', month).label('month'),
         extract('year', year).label('year'),
         func.count().label('count')
+    ).join(
+        Template, Notification.template_id == Template.id
     ).filter(
         Notification.created_at >= start_date
     ).group_by(
         Notification.template_id,
+        Template.name,
         month,
         year
     ).order_by(
@@ -590,13 +593,12 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id):
                 add_to_stats = False
 
         if add_to_stats:
-            new_stat = StatsTemplateUsageByMonth(
-                template_id=today_result.template_id,
-                month=today_result.month,
-                year=today_result.year,
-                count=today_result.count
-            )
-
+            new_stat = type("", (), {})()
+            new_stat.template_id = today_result.template_id
+            new_stat.name = today_result.name
+            new_stat.month = today_result.month
+            new_stat.year = today_result.year
+            new_stat.count = today_result.count
             stats.append(new_stat)
 
     return stats

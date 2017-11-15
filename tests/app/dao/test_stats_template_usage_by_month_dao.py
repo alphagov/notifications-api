@@ -68,6 +68,37 @@ def test_dao_get_template_usage_stats_by_service(sample_service):
     db.session.add(stats1)
     db.session.add(stats2)
 
-    result = dao_get_template_usage_stats_by_service(sample_service.id)
+    result = dao_get_template_usage_stats_by_service(sample_service.id, 2017)
 
     assert len(result) == 2
+
+
+def test_dao_get_template_usage_stats_by_service_specific_year(sample_service):
+
+    email_template = create_template(service=sample_service, template_type="email")
+
+    stats1 = StatsTemplateUsageByMonth(
+        template_id=email_template.id,
+        month=1,
+        year=2016,
+        count=10
+    )
+
+    stats2 = StatsTemplateUsageByMonth(
+        template_id=email_template.id,
+        month=2,
+        year=2017,
+        count=10
+    )
+
+    db.session.add(stats1)
+    db.session.add(stats2)
+
+    result = dao_get_template_usage_stats_by_service(sample_service.id, 2017)
+
+    assert len(result) == 1
+    assert result[0].template_id == email_template.id
+    assert result[0].name == email_template.name
+    assert result[0].month == 2
+    assert result[0].year == 2017
+    assert result[0].count == 10

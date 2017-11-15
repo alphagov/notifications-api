@@ -527,8 +527,24 @@ def resume_service(service_id):
 @service_blueprint.route('/<uuid:service_id>/notifications/templates_usage/monthly', methods=['GET'])
 def get_monthly_template_usage(service_id):
     try:
-        data = dao_fetch_monthly_historical_usage_by_template_for_service(service_id)
-        return jsonify(stats=[i.serialize() for i in data]), 200
+        data = dao_fetch_monthly_historical_usage_by_template_for_service(
+            service_id,
+            int(request.args.get('year', 'NaN'))
+        )
+
+        stats = list()
+        for i in data:
+            stats.append(
+                {
+                    'template_id': str(i.template_id),
+                    'name': i.name,
+                    'month': i.month,
+                    'year': i.year,
+                    'count': i.count
+                }
+            )
+
+        return jsonify(stats=stats), 200
     except ValueError:
         raise InvalidRequest('Year must be a number', status_code=400)
 

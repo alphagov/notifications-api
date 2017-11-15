@@ -1984,6 +1984,7 @@ def test_get_template_usage_by_month_returns_correct_data(
     assert len(resp_json) == 1
 
     assert resp_json[0]["template_id"] == str(sample_template.id)
+    assert resp_json[0]["name"] == sample_template.name
     assert resp_json[0]["month"] == 4
     assert resp_json[0]["year"] == 2016
     assert resp_json[0]["count"] == 5
