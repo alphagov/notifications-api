@@ -14,7 +14,8 @@ from notifications_utils.template import (
 )
 from requests import (
     HTTPError,
-    request
+    request,
+    RequestException
 )
 from sqlalchemy.exc import SQLAlchemyError
 from app import (
@@ -492,25 +493,24 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
         "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT)
     }
 
-    response = request(
-        method="POST",
-        url=inbound_api.url,
-        data=json.dumps(data),
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer {}'.format(inbound_api.bearer_token)
-        },
-        timeout=60
-    )
-    current_app.logger.info('send_inbound_sms_to_service sending {} to {}, response {}'.format(
-        inbound_sms_id,
-        inbound_api.url,
-        response.status_code
-    ))
-
     try:
+        response = request(
+            method="POST",
+            url=inbound_api.url,
+            data=json.dumps(data),
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer {}'.format(inbound_api.bearer_token)
+            },
+            timeout=60
+        )
+        current_app.logger.info('send_inbound_sms_to_service sending {} to {}, response {}'.format(
+            inbound_sms_id,
+            inbound_api.url,
+            response.status_code
+        ))
         response.raise_for_status()
-    except HTTPError as e:
+    except RequestException as e:
         current_app.logger.warning(
             "send_inbound_sms_to_service request failed for service_id: {} and url: {}. exc: {}".format(
                 service_id,
@@ -518,7 +518,7 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
                 e
             )
         )
-        if e.response.status_code >= 500:
+        if not isinstance(e, HTTPError) or e.response.status_code >= 500:
             try:
                 self.retry(queue=QueueNames.RETRY,
                            exc='Unable to send_inbound_sms_to_service for service_id: {} and url: {}. \n{}'.format(
