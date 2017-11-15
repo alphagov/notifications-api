@@ -1,14 +1,14 @@
 """
 
-Revision ID: 0136_notification_template_hist
-Revises: 0135_stats_template_usage
+Revision ID: 0137_notification_template_hist
+Revises: 0136_user_mobile_nullable
 Create Date: 2017-11-08 10:15:07.039227
 
 """
 from alembic import op
 
-revision = '0136_notification_template_hist'
-down_revision = '0135_stats_template_usage'
+revision = '0137_notification_template_hist'
+down_revision = '0136_user_mobile_nullable'
 
 
 def upgrade():
