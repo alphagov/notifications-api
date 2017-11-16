@@ -554,6 +554,7 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
     for result in results:
         stat = type("", (), {})()
         stat.template_id = result.template_id
+        stat.template_type = result.template_type
         stat.name = str(result.name)
         stat.month = result.month
         stat.year = result.year
@@ -567,6 +568,7 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
     today_results = db.session.query(
         Notification.template_id,
         Template.name,
+        Template.template_type,
         extract('month', month).label('month'),
         extract('year', year).label('year'),
         func.count().label('count')
@@ -577,6 +579,7 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
     ).group_by(
         Notification.template_id,
         Template.name,
+        Template.template_type,
         month,
         year
     ).order_by(
@@ -595,6 +598,7 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
         if add_to_stats:
             new_stat = type("", (), {})()
             new_stat.template_id = today_result.template_id
+            new_stat.template_type = today_result.template_type
             new_stat.name = today_result.name
             new_stat.month = today_result.month
             new_stat.year = today_result.year

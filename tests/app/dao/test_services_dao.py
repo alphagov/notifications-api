@@ -1069,11 +1069,15 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_no_stats_tod
     assert len(result) == 2
 
     assert result[0].template_id == template_two.id
+    assert result[0].name == template_two.name
+    assert result[0].template_type == template_two.template_type
     assert result[0].month == 4
     assert result[0].year == 2017
     assert result[0].count == 2
 
     assert result[1].template_id == template_one.id
+    assert result[1].name == template_one.name
+    assert result[1].template_type == template_two.template_type
     assert result[1].month == 10
     assert result[1].year == 2017
     assert result[1].count == 1
@@ -1115,11 +1119,15 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_add_to_histo
     assert len(result) == 2
 
     assert result[0].template_id == template_one.id
+    assert result[0].name == template_one.name
+    assert result[0].template_type == template_one.template_type
     assert result[0].month == 9
     assert result[0].year == 2017
     assert result[0].count == 1
 
     assert result[1].template_id == template_two.id
+    assert result[1].name == template_two.name
+    assert result[1].template_type == template_two.template_type
     assert result[1].month == 11
     assert result[1].year == 2017
     assert result[1].count == 2
@@ -1147,16 +1155,22 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_add_to_histo
     assert len(result) == 3
 
     assert result[0].template_id == template_one.id
+    assert result[0].name == template_one.name
+    assert result[0].template_type == template_one.template_type
     assert result[0].month == 9
     assert result[0].year == 2017
     assert result[0].count == 1
 
     assert result[1].template_id == template_two.id
+    assert result[1].name == template_two.name
+    assert result[1].template_type == template_two.template_type
     assert result[1].month == month
     assert result[1].year == year
     assert result[1].count == 3
 
     assert result[2].template_id == template_three.id
+    assert result[2].name == template_three.name
+    assert result[2].template_type == template_three.template_type
     assert result[2].month == 11
     assert result[2].year == 2017
     assert result[2].count == 1
@@ -1198,11 +1212,15 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_does_add_old
     assert len(result) == 2
 
     assert result[0].template_id == template_one.id
+    assert result[0].name == template_one.name
+    assert result[0].template_type == template_one.template_type
     assert result[0].month == 9
     assert result[0].year == 2017
     assert result[0].count == 1
 
     assert result[1].template_id == template_two.id
+    assert result[1].name == template_two.name
+    assert result[1].template_type == template_two.template_type
     assert result[1].month == 11
     assert result[1].year == 2017
     assert result[1].count == 2
@@ -1259,6 +1277,8 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_get_this_yea
     assert len(result) == 1
 
     assert result[0].template_id == template_two.id
+    assert result[0].name == template_two.name
+    assert result[0].template_type == template_two.template_type
     assert result[0].month == 11
     assert result[0].year == 2017
     assert result[0].count == 2
@@ -1326,6 +1346,8 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_combined_his
     assert len(result) == 1
 
     assert result[0].template_id == template_one.id
+    assert result[0].name == template_one.name
+    assert result[0].template_type == template_one.template_type
     assert result[0].month == 10
     assert result[0].year == 2017
     assert result[0].count == 1
@@ -1346,11 +1368,15 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_combined_his
     assert len(result) == 2
 
     assert result[0].template_id == template_one.id
+    assert result[0].name == template_one.name
+    assert result[0].template_type == template_one.template_type
     assert result[0].month == 10
     assert result[0].year == 2017
     assert result[0].count == 1
 
     assert result[1].template_id == template_one.id
+    assert result[1].name == template_one.name
+    assert result[1].template_type == template_one.template_type
     assert result[1].month == 11
     assert result[1].year == 2017
     assert result[1].count == 1

@@ -99,6 +99,7 @@ def test_dao_get_template_usage_stats_by_service_specific_year(sample_service):
     assert len(result) == 1
     assert result[0].template_id == email_template.id
     assert result[0].name == email_template.name
+    assert result[0].template_type == email_template.template_type
     assert result[0].month == 2
     assert result[0].year == 2017
     assert result[0].count == 10
