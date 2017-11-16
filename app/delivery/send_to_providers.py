@@ -54,7 +54,7 @@ def send_sms_to_provider(notification):
             template_model.__dict__,
             values=notification.personalisation,
             prefix=service.name,
-            sender=sender_has_been_customised,
+            show_prefix=service.prefix_sms,
         )
 
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
