@@ -1865,6 +1865,7 @@ def test_get_template_stats_by_month_returns_correct_data(notify_db, notify_db_s
     assert resp_json["2016-05"][str(sample_template.id)]["counts"]["permanent-failure"] == 1
 
 
+@freeze_time('2017-11-11 02:00')
 def test_get_template_usage_by_month_returns_correct_data(
         notify_db,
         notify_db_session,
@@ -1918,15 +1919,24 @@ def test_get_template_usage_by_month_returns_correct_data(
     resp_json = json.loads(resp.get_data(as_text=True)).get('stats')
 
     assert resp.status_code == 200
-    assert len(resp_json) == 1
+    assert len(resp_json) == 2
 
     assert resp_json[0]["template_id"] == str(sample_template.id)
     assert resp_json[0]["name"] == sample_template.name
+    assert resp_json[0]["type"] == sample_template.template_type
     assert resp_json[0]["month"] == 4
     assert resp_json[0]["year"] == 2016
-    assert resp_json[0]["count"] == 5
+    assert resp_json[0]["count"] == 4
+
+    assert resp_json[1]["template_id"] == str(sample_template.id)
+    assert resp_json[1]["name"] == sample_template.name
+    assert resp_json[1]["type"] == sample_template.template_type
+    assert resp_json[1]["month"] == 11
+    assert resp_json[1]["year"] == 2017
+    assert resp_json[1]["count"] == 1
 
 
+@freeze_time('2017-11-11 02:00')
 def test_get_template_usage_by_month_returns_two_templates(
         notify_db,
         notify_db_session,
@@ -1983,19 +1993,30 @@ def test_get_template_usage_by_month_returns_two_templates(
     resp_json = json.loads(resp.get_data(as_text=True)).get('stats')
 
     assert resp.status_code == 200
-    assert len(resp_json) == 2
+    assert len(resp_json) == 3
 
-    resp_json = sorted(resp_json, key=lambda k: k.get('count', 0))
+    resp_json = sorted(resp_json, key=lambda k: (k.get('year', 0), k.get('month', 0), k.get('count', 0)))
 
     assert resp_json[0]["template_id"] == str(template_one.id)
+    assert resp_json[0]["name"] == template_one.name
+    assert resp_json[0]["type"] == template_one.template_type
     assert resp_json[0]["month"] == 4
     assert resp_json[0]["year"] == 2016
     assert resp_json[0]["count"] == 1
 
     assert resp_json[1]["template_id"] == str(sample_template.id)
+    assert resp_json[1]["name"] == sample_template.name
+    assert resp_json[1]["type"] == sample_template.template_type
     assert resp_json[1]["month"] == 4
     assert resp_json[1]["year"] == 2016
-    assert resp_json[1]["count"] == 4
+    assert resp_json[1]["count"] == 3
+
+    assert resp_json[2]["template_id"] == str(sample_template.id)
+    assert resp_json[2]["name"] == sample_template.name
+    assert resp_json[2]["type"] == sample_template.template_type
+    assert resp_json[2]["month"] == 11
+    assert resp_json[2]["year"] == 2017
+    assert resp_json[2]["count"] == 1
 
 
 @pytest.mark.parametrize('query_string, expected_status, expected_json', [
