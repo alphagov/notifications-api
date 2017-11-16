@@ -46,12 +46,12 @@ def register_errors(blueprint):
         return jsonify(result='error', message=error.message), error.code
 
     @blueprint.errorhandler(ValidationError)
-    def validation_error(error):
+    def marshmallow_validation_error(error):
         current_app.logger.error(error)
         return jsonify(result='error', message=error.messages), 400
 
     @blueprint.errorhandler(JsonSchemaValidationError)
-    def validation_error(error):
+    def jsonschema_validation_error(error):
         current_app.logger.exception(error)
         return jsonify(json.loads(error.message)), 400
 
