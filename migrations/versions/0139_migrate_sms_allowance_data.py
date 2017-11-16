@@ -1,7 +1,7 @@
 """
 
-Revision ID: 0138_migrate_sms_allowance_data.py
-Revises: 0137_stats_template_usage.py
+Revision ID: 0139_migrate_sms_allowance_data.py
+Revises: 0138_sms_sender_nullable.py
 Create Date: 2017-11-10 21:42:59.715203
 
 """
@@ -11,8 +11,8 @@ import uuid
 from app.dao.date_util import get_current_financial_year_start_year
 
 
-revision = '0138_migrate_sms_allowance_data'
-down_revision = '0137_notification_template_hist'
+revision = '0139_migrate_sms_allowance_data'
+down_revision = '0138_sms_sender_nullable'
 
 
 def upgrade():
