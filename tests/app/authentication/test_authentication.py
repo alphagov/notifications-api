@@ -380,7 +380,7 @@ def test_route_correct_secret_key(notify_api, client):
     with set_config_values(notify_api, {
         'ROUTE_SECRET_KEY_1': 'key_1',
         'ROUTE_SECRET_KEY_2': '',
-        'DEBUG': False,
+        'CHECK_PROXY_HEADER': True,
     }):
 
         response = client.get(
@@ -396,7 +396,7 @@ def test_route_incorrect_secret_key(notify_api, client):
     with set_config_values(notify_api, {
         'ROUTE_SECRET_KEY_1': 'key_1',
         'ROUTE_SECRET_KEY_2': '',
-        'DEBUG': False,
+        'CHECK_PROXY_HEADER': True,
     }):
 
         response = client.get(
@@ -406,3 +406,19 @@ def test_route_incorrect_secret_key(notify_api, client):
             ]
         )
         assert response.status_code == 403
+
+
+def test_route_check_proxy_header_flag(notify_api, client):
+    with set_config_values(notify_api, {
+        'ROUTE_SECRET_KEY_1': 'key_1',
+        'ROUTE_SECRET_KEY_2': '',
+        'CHECK_PROXY_HEADER': False,
+    }):
+
+        response = client.get(
+            path='/_status',
+            headers=[
+                ('X-Custom-Forwarder', 'wrong_key'),
+            ]
+        )
+        assert response.status_code == 200

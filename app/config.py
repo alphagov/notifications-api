@@ -121,6 +121,8 @@ class Config(object):
     ONE_OFF_MESSAGE_FILENAME = 'Report'
     MAX_VERIFY_CODE_COUNT = 10
 
+    CHECK_PROXY_HEADER = False
+
     NOTIFY_SERVICE_ID = 'd6aa2c68-a2d9-4437-ab19-3ae8eb202553'
     NOTIFY_USER_ID = '6af522d0-2915-4e52-83a3-3690455a5fe6'
     INVITATION_EMAIL_TEMPLATE_ID = '4f46df42-f795-4cc4-83bb-65ca312f49cc'
@@ -371,6 +373,7 @@ class Preview(Config):
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
     FROM_NUMBER = 'preview'
     API_RATE_LIMIT_ENABLED = True
+    CHECK_PROXY_HEADER = True
 
 
 class Staging(Config):
@@ -381,6 +384,7 @@ class Staging(Config):
     STATSD_ENABLED = True
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
+    CHECK_PROXY_HEADER = True
 
 
 class Live(Config):
@@ -394,6 +398,7 @@ class Live(Config):
     FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID = 'ba9e1789-a804-40b8-871f-cc60d4c1286f'
     PERFORMANCE_PLATFORM_ENABLED = True
     API_RATE_LIMIT_ENABLED = True
+    CHECK_PROXY_HEADER = False
 
 
 class CloudFoundryConfig(Config):
