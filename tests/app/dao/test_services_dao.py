@@ -1189,9 +1189,9 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_does_add_old
         status='delivered'
     )
 
-    template_one = create_sample_template(notify_db, notify_db_session, template_name='1')
-    template_two = create_sample_template(notify_db, notify_db_session, template_name='2')
-    template_three = create_sample_template(notify_db, notify_db_session, template_name='3')
+    template_one = create_sample_template(notify_db, notify_db_session, template_name='1', template_type='email')
+    template_two = create_sample_template(notify_db, notify_db_session, template_name='2', template_type='sms')
+    template_three = create_sample_template(notify_db, notify_db_session, template_name='3', template_type='letter')
 
     date = datetime.now()
     day = date.day
@@ -1254,9 +1254,9 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_get_this_yea
         status='delivered'
     )
 
-    template_one = create_sample_template(notify_db, notify_db_session, template_name='1')
-    template_two = create_sample_template(notify_db, notify_db_session, template_name='2')
-    template_three = create_sample_template(notify_db, notify_db_session, template_name='3')
+    template_one = create_sample_template(notify_db, notify_db_session, template_name='1', template_type='email')
+    template_two = create_sample_template(notify_db, notify_db_session, template_name='2', template_type='sms')
+    template_three = create_sample_template(notify_db, notify_db_session, template_name='3', template_type='letter')
 
     date = datetime.now()
     day = date.day
