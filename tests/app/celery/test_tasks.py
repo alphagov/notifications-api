@@ -7,6 +7,7 @@ import pytest
 import requests_mock
 from flask import current_app
 from freezegun import freeze_time
+from requests import RequestException
 from sqlalchemy.exc import SQLAlchemyError
 from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate, LetterDVLATemplate
 from celery.exceptions import Retry
@@ -1150,6 +1151,26 @@ def test_send_inbound_sms_to_service_retries_if_request_returns_500(notify_api, 
                           json={},
                           status_code=500)
         send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
+
+    exc_msg = 'Unable to send_inbound_sms_to_service for service_id: {} and url: {url}'.format(
+        sample_service.id,
+        url=inbound_api.url
+    )
+    assert mocked.call_count == 1
+    assert mocked.call_args[1]['queue'] == 'retry-tasks'
+    assert exc_msg in mocked.call_args[1]['exc']
+
+
+def test_send_inbound_sms_to_service_retries_if_request_throws_unknown(notify_api, sample_service, mocker):
+    inbound_api = create_service_inbound_api(service=sample_service, url="https://some.service.gov.uk/",
+                                             bearer_token="something_unique")
+    inbound_sms = create_inbound_sms(service=sample_service, notify_number="0751421", user_number="447700900111",
+                                     provider_date=datetime(2017, 6, 20), content="Here is some content")
+
+    mocked = mocker.patch('app.celery.tasks.send_inbound_sms_to_service.retry')
+    mocker.patch("app.celery.tasks.request", side_effect=RequestException())
+
+    send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
 
     exc_msg = 'Unable to send_inbound_sms_to_service for service_id: {} and url: {url}'.format(
         sample_service.id,
