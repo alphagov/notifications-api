@@ -2,8 +2,6 @@ from datetime import datetime
 
 from flask import (
     Blueprint,
-    jsonify,
-    request,
     current_app,
     json
 )
@@ -25,26 +23,9 @@ from app.errors import (
 register_errors(ses_callback_blueprint)
 
 
-@ses_callback_blueprint.route('/notifications/email/ses', methods=['POST'])
-def sns_callback_handler():
-    errors = process_ses_response(json.loads(request.data))
-    if errors:
-        current_app.logger.error(errors)
-        raise InvalidRequest(errors, 400)
-
-    return jsonify(
-        result="success", message="SES callback succeeded"
-    ), 200
-
-
 def process_ses_response(ses_request):
     client_name = 'SES'
     try:
-
-        # TODO: remove this check once the sns_callback_handler is removed
-        if not isinstance(ses_request, dict):
-            ses_request = json.loads(ses_request)
-
         errors = validate_callback_data(data=ses_request, fields=['Message'], client_name=client_name)
         if errors:
             return errors
