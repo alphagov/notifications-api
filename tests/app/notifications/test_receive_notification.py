@@ -16,7 +16,7 @@ from app.notifications.receive_notifications import (
 )
 
 from app.models import InboundSms, EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE
-from tests.app.db import create_inbound_number, create_service
+from tests.app.db import create_inbound_number, create_service, create_service_with_inbound_number
 from tests.app.conftest import sample_service
 
 
@@ -71,7 +71,7 @@ def test_receive_notification_from_mmg_without_permissions_does_not_persist(
     permissions
 ):
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
-    service = create_service(sms_sender='07111111111', service_permissions=permissions)
+    service = create_service_with_inbound_number(inbound_number='07111111111', service_permissions=permissions)
     data = {
         "ID": "1234",
         "MSISDN": "07111111111",
@@ -99,7 +99,7 @@ def test_receive_notification_from_firetext_without_permissions_does_not_persist
     notify_db_session,
     permissions
 ):
-    service = create_service(sms_sender='07111111111', service_permissions=permissions)
+    service = create_service_with_inbound_number(inbound_number='07111111111', service_permissions=permissions)
     mocker.patch("app.notifications.receive_notifications.dao_fetch_service_by_inbound_number",
                  return_value=service)
     mocked_send_inbound_sms = mocker.patch(
@@ -254,17 +254,15 @@ def test_create_inbound_mmg_sms_object_uses_inbound_number_if_set(sample_service
 
 @pytest.mark.parametrize('notify_number', ['foo', 'baz'], ids=['two_matching_services', 'no_matching_services'])
 def test_receive_notification_error_if_not_single_matching_service(client, notify_db_session, notify_number):
-    create_service(
+    create_service_with_inbound_number(
+        inbound_number='dog',
         service_name='a',
-        sms_sender='foo',
-        service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE],
-        do_create_inbound_number=False
+        service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE]
     )
-    create_service(
+    create_service_with_inbound_number(
+        inbound_number='bar',
         service_name='b',
-        sms_sender='foo',
-        service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE],
-        do_create_inbound_number=False
+        service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE]
     )
 
     data = {
@@ -286,8 +284,8 @@ def test_receive_notification_returns_received_to_firetext(notify_db_session, cl
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
-    service = create_service(
-        service_name='b', sms_sender='07111111111', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
+    service = create_service_with_inbound_number(
+        service_name='b', inbound_number='07111111111', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
 
     data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 
@@ -307,8 +305,10 @@ def test_receive_notification_from_firetext_persists_message(notify_db_session, 
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
-    service = create_service(
-        service_name='b', sms_sender='07111111111', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
+    service = create_service_with_inbound_number(
+        inbound_number='07111111111',
+        service_name='b',
+        service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
 
     data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 
@@ -318,7 +318,6 @@ def test_receive_notification_from_firetext_persists_message(notify_db_session, 
     result = json.loads(response.get_data(as_text=True))
 
     persisted = InboundSms.query.first()
-
     assert result['status'] == 'ok'
     assert persisted.notify_number == '07111111111'
     assert persisted.user_number == '447999999999'
@@ -333,8 +332,8 @@ def test_receive_notification_from_firetext_persists_message_with_normalized_pho
     mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
-    create_service(
-        service_name='b', sms_sender='07111111111', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
+    create_service_with_inbound_number(
+        inbound_number='07111111111', service_name='b', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
 
     data = "source=(+44)7999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 
@@ -353,8 +352,8 @@ def test_returns_ok_to_firetext_if_mismatched_sms_sender(notify_db_session, clie
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
     mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
-    create_service(
-        service_name='b', sms_sender='07111111199', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
+    create_service_with_inbound_number(
+        inbound_number='07111111199', service_name='b', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
 
     data = "source=(+44)7999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
 

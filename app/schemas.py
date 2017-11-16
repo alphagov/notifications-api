@@ -105,6 +105,26 @@ class UserSchema(BaseSchema):
             "_password", "verify_codes")
         strict = True
 
+    @validates('name')
+    def validate_name(self, value):
+        if not value:
+            raise ValidationError('Invalid name')
+
+    @validates('email_address')
+    def validate_email_address(self, value):
+        try:
+            validate_email_address(value)
+        except InvalidEmailError as e:
+            raise ValidationError(str(e))
+
+    @validates('mobile_number')
+    def validate_mobile_number(self, value):
+        try:
+            if value is not None:
+                validate_phone_number(value, international=True)
+        except InvalidPhoneError as error:
+            raise ValidationError('Invalid phone number: {}'.format(error))
+
 
 class UserUpdateAttributeSchema(BaseSchema):
     auth_type = field_for(models.User, 'auth_type')
@@ -132,7 +152,8 @@ class UserUpdateAttributeSchema(BaseSchema):
     @validates('mobile_number')
     def validate_mobile_number(self, value):
         try:
-            validate_phone_number(value, international=True)
+            if value is not None:
+                validate_phone_number(value, international=True)
         except InvalidPhoneError as error:
             raise ValidationError('Invalid phone number: {}'.format(error))
 
@@ -450,7 +471,7 @@ class NotificationWithTemplateSchema(BaseSchema):
 
 
 class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
-    template_history = fields.Nested(TemplateHistorySchema,
+    template_history = fields.Nested(TemplateHistorySchema, attribute="template",
                                      only=['id', 'name', 'template_type', 'content', 'subject', 'version'],
                                      dump_only=True)
 

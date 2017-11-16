@@ -12,31 +12,32 @@ from app.dao.dao_utils import (
 )
 from app.dao.date_util import get_financial_year
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
+from app.dao.stats_template_usage_by_month_dao import dao_get_template_usage_stats_by_service
 from app.models import (
-    ProviderStatistics,
-    VerifyCode,
+    AnnualBilling,
     ApiKey,
+    InboundNumber,
+    InvitedUser,
+    Job,
+    JobStatistics,
+    Notification,
+    NotificationHistory,
+    Permission,
+    ProviderStatistics,
+    Service,
+    ServicePermission,
+    ServiceSmsSender,
     Template,
     TemplateHistory,
     TemplateRedacted,
-    InboundNumber,
-    Job,
-    NotificationHistory,
-    Notification,
-    Permission,
     User,
-    InvitedUser,
-    Service,
-    ServicePermission,
-    KEY_TYPE_TEST,
-    NOTIFICATION_STATUS_TYPES,
-    TEMPLATE_TYPES,
-    JobStatistics,
-    SMS_TYPE,
+    VerifyCode,
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
-    ServiceSmsSender,
-    AnnualBilling
+    KEY_TYPE_TEST,
+    NOTIFICATION_STATUS_TYPES,
+    SMS_TYPE,
+    TEMPLATE_TYPES
 )
 from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
@@ -159,8 +160,6 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
     # the default property does not appear to work when there is a difference between the sqlalchemy schema and the
     # db schema (ie: during a migration), so we have to set sms_sender manually here. After the GOVUK sms_sender
     # migration is completed, this code should be able to be removed.
-    if not service.sms_sender:
-        service.sms_sender = current_app.config['FROM_NUMBER']
 
     if service_permissions is None:
         service_permissions = DEFAULT_SERVICE_PERMISSIONS
@@ -179,7 +178,8 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
         service_permission = ServicePermission(service_id=service.id, permission=permission)
         service.permissions.append(service_permission)
 
-    insert_service_sms_sender(service, service.sms_sender)
+    # do we just add the default - or will we get a value from FE?
+    insert_service_sms_sender(service, current_app.config['FROM_NUMBER'])
     dao_insert_annual_billing(service)
     db.session.add(service)
 
@@ -540,5 +540,63 @@ def dao_fetch_monthly_historical_stats_by_template():
         month,
         year
     ).order_by(
-        NotificationHistory.template_id
+        year,
+        month
     ).all()
+
+
+@statsd(namespace="dao")
+def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year):
+
+    results = dao_get_template_usage_stats_by_service(service_id, year)
+
+    stats = list()
+    for result in results:
+        stat = type("", (), {})()
+        stat.template_id = result.template_id
+        stat.name = str(result.name)
+        stat.month = result.month
+        stat.year = result.year
+        stat.count = result.count
+        stats.append(stat)
+
+    month = get_london_month_from_utc_column(Notification.created_at)
+    year = func.date_trunc("year", Notification.created_at)
+    start_date = datetime.combine(date.today(), time.min)
+
+    today_results = db.session.query(
+        Notification.template_id,
+        Template.name,
+        extract('month', month).label('month'),
+        extract('year', year).label('year'),
+        func.count().label('count')
+    ).join(
+        Template, Notification.template_id == Template.id
+    ).filter(
+        Notification.created_at >= start_date
+    ).group_by(
+        Notification.template_id,
+        Template.name,
+        month,
+        year
+    ).order_by(
+        Notification.template_id
+    ).all()
+
+    for today_result in today_results:
+        add_to_stats = True
+        for stat in stats:
+            if today_result.template_id == stat.template_id:
+                stat.count = stat.count + today_result.count
+                add_to_stats = False
+
+        if add_to_stats:
+            new_stat = type("", (), {})()
+            new_stat.template_id = today_result.template_id
+            new_stat.name = today_result.name
+            new_stat.month = today_result.month
+            new_stat.year = today_result.year
+            new_stat.count = today_result.count
+            stats.append(new_stat)
+
+    return stats

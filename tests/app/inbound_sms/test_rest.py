@@ -5,7 +5,7 @@ from flask import json
 from freezegun import freeze_time
 
 from tests import create_authorization_header
-from tests.app.db import create_inbound_sms, create_service
+from tests.app.db import create_inbound_sms, create_service, create_service_with_inbound_number
 
 
 def test_get_inbound_sms_with_no_params(client, sample_service):
@@ -269,17 +269,18 @@ def test_get_inbound_sms_summary_with_no_inbound(admin_request, sample_service):
     }
 
 
-def test_get_inbound_sms_by_id_returns_200(admin_request, sample_service):
-    inbound = create_inbound_sms(sample_service, user_number='447700900001')
+def test_get_inbound_sms_by_id_returns_200(admin_request, notify_db_session):
+    service = create_service_with_inbound_number(inbound_number='12345')
+    inbound = create_inbound_sms(service=service, user_number='447700900001')
 
     response = admin_request.get(
         'inbound_sms.get_inbound_by_id',
-        service_id=sample_service.id,
+        service_id=service.id,
         inbound_sms_id=inbound.id,
     )
 
     assert response['user_number'] == '447700900001'
-    assert response['service_id'] == str(sample_service.id)
+    assert response['service_id'] == str(service.id)
 
 
 def test_get_inbound_sms_by_id_invalid_id_returns_404(admin_request, sample_service):

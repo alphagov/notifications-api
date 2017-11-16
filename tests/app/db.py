@@ -4,6 +4,7 @@ import uuid
 from app import db
 from app.dao.jobs_dao import dao_create_job
 from app.dao.service_inbound_api_dao import save_service_inbound_api
+from app.dao.service_sms_sender_dao import update_existing_sms_sender_with_inbound_number, dao_update_service_sms_sender
 from app.models import (
     ApiKey,
     InboundSms,
@@ -64,10 +65,8 @@ def create_service(
     service_id=None,
     restricted=False,
     service_permissions=[EMAIL_TYPE, SMS_TYPE],
-    sms_sender='testing',
     research_mode=False,
     active=True,
-    do_create_inbound_number=True,
     email_from=None,
     prefix_sms=None,
 ):
@@ -77,17 +76,43 @@ def create_service(
         restricted=restricted,
         email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
         created_by=user or create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
-        sms_sender=sms_sender,
         prefix_sms=prefix_sms,
     )
 
     dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
 
-    if do_create_inbound_number and INBOUND_SMS_TYPE in service_permissions:
-        create_inbound_number(number=sms_sender, service_id=service.id)
-
     service.active = active
     service.research_mode = research_mode
+
+    return service
+
+
+def create_service_with_inbound_number(
+    inbound_number='1234567',
+    *args, **kwargs
+):
+    service = create_service(*args, **kwargs)
+
+    sms_sender = ServiceSmsSender.query.filter_by(service_id=service.id).first()
+    inbound = create_inbound_number(number=inbound_number, service_id=service.id)
+    update_existing_sms_sender_with_inbound_number(service_sms_sender=sms_sender,
+                                                   sms_sender=inbound_number,
+                                                   inbound_number_id=inbound.id)
+
+    return service
+
+
+def create_service_with_defined_sms_sender(
+    sms_sender_value='1234567',
+    *args, **kwargs
+):
+    service = create_service(*args, **kwargs)
+
+    sms_sender = ServiceSmsSender.query.filter_by(service_id=service.id).first()
+    dao_update_service_sms_sender(service_id=service.id,
+                                  service_sms_sender_id=sms_sender.id,
+                                  is_default=True,
+                                  sms_sender=sms_sender_value)
 
     return service
 
@@ -160,8 +185,7 @@ def create_notification(
         'job': job,
         'service_id': template.service.id,
         'service': template.service,
-        'template_id': template and template.id,
-        'template': template,
+        'template_id': template.id,
         'template_version': template.version,
         'status': status,
         'reference': reference,
@@ -248,7 +272,7 @@ def create_inbound_sms(
     inbound = InboundSms(
         service=service,
         created_at=created_at or datetime.utcnow(),
-        notify_number=notify_number or service.sms_sender,
+        notify_number=notify_number or service.get_default_sms_sender(),
         user_number=user_number,
         provider_date=provider_date or datetime.utcnow(),
         provider_reference=provider_reference or 'foo',

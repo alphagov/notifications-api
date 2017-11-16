@@ -615,7 +615,7 @@ def test_save_notification_creates_sms(sample_template, sample_job, mmg_provider
     assert data['to'] == notification_from_db.to
     assert data['job_id'] == notification_from_db.job_id
     assert data['service'] == notification_from_db.service
-    assert data['template'] == notification_from_db.template
+    assert data['template_id'] == notification_from_db.template_id
     assert data['template_version'] == notification_from_db.template_version
     assert data['created_at'] == notification_from_db.created_at
     assert notification_from_db.status == 'created'
@@ -635,7 +635,7 @@ def test_save_notification_and_create_email(sample_email_template, sample_job):
     assert data['to'] == notification_from_db.to
     assert data['job_id'] == notification_from_db.job_id
     assert data['service'] == notification_from_db.service
-    assert data['template'] == notification_from_db.template
+    assert data['template_id'] == notification_from_db.template_id
     assert data['template_version'] == notification_from_db.template_version
     assert data['created_at'] == notification_from_db.created_at
     assert notification_from_db.status == 'created'
@@ -761,7 +761,7 @@ def test_save_notification_and_increment_job(sample_template, sample_job, mmg_pr
     assert data['to'] == notification_from_db.to
     assert data['job_id'] == notification_from_db.job_id
     assert data['service'] == notification_from_db.service
-    assert data['template'] == notification_from_db.template
+    assert data['template_id'] == notification_from_db.template_id
     assert data['template_version'] == notification_from_db.template_version
     assert data['created_at'] == notification_from_db.created_at
     assert notification_from_db.status == 'created'
@@ -788,7 +788,7 @@ def test_save_notification_and_increment_correct_job(notify_db, notify_db_sessio
     assert data['to'] == notification_from_db.to
     assert data['job_id'] == notification_from_db.job_id
     assert data['service'] == notification_from_db.service
-    assert data['template'] == notification_from_db.template
+    assert data['template_id'] == notification_from_db.template_id
     assert data['template_version'] == notification_from_db.template_version
     assert data['created_at'] == notification_from_db.created_at
     assert notification_from_db.status == 'created'
@@ -807,7 +807,7 @@ def test_save_notification_with_no_job(sample_template, mmg_provider):
     assert notification_from_db.id
     assert data['to'] == notification_from_db.to
     assert data['service'] == notification_from_db.service
-    assert data['template'] == notification_from_db.template
+    assert data['template_id'] == notification_from_db.template_id
     assert data['template_version'] == notification_from_db.template_version
     assert data['created_at'] == notification_from_db.created_at
     assert notification_from_db.status == 'created'
@@ -852,7 +852,7 @@ def test_save_notification_no_job_id(sample_template, mmg_provider):
     assert notification_from_db.id
     assert data['to'] == notification_from_db.to
     assert data['service'] == notification_from_db.service
-    assert data['template'] == notification_from_db.template
+    assert data['template_id'] == notification_from_db.template_id
     assert data['template_version'] == notification_from_db.template_version
     assert notification_from_db.status == 'created'
     assert data.get('job_id') is None
@@ -1251,7 +1251,6 @@ def _notification_json(sample_template, job_id=None, id=None, status=None):
         'to': '+44709123456',
         'service': sample_template.service,
         'service_id': sample_template.service.id,
-        'template': sample_template,
         'template_id': sample_template.id,
         'template_version': sample_template.version,
         'created_at': datetime.utcnow(),

@@ -48,7 +48,6 @@ from app.models import (
     NotificationHistory,
     Service,
     StatsTemplateUsageByMonth,
-    Template,
     JOB_STATUS_READY_TO_SEND,
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_SENT_TO_DVLA,
@@ -81,14 +80,13 @@ def _create_slow_delivery_notification(provider='mmg'):
         service = create_service(
             service_id=current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SERVICE_ID')
         )
-    template = Template.query.get(current_app.config['FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID'])
-    if not template:
-        template = create_custom_template(
-            service=service,
-            user=service.users[0],
-            template_config_name='FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID',
-            template_type='sms'
-        )
+
+    template = create_custom_template(
+        service=service,
+        user=service.users[0],
+        template_config_name='FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID',
+        template_type='sms'
+    )
 
     create_notification(
         template=template,

@@ -94,7 +94,7 @@ def register_errors(blueprint):
         current_app.logger.exception(e)
         if hasattr(e, 'orig') and hasattr(e.orig, 'pgerror') and e.orig.pgerror and \
             ('duplicate key value violates unique constraint "services_name_key"' in e.orig.pgerror or
-                'duplicate key value violates unique constraint "services_email_from_key"' in e.orig.pgerror):
+             'duplicate key value violates unique constraint "services_email_from_key"' in e.orig.pgerror):
             return jsonify(
                 result='error',
                 message={'name': ["Duplicate service name '{}'".format(

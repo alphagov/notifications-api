@@ -408,7 +408,7 @@ def check_job_status():
         raise JobIncompleteError("Job(s) {} have not completed.".format(job_ids))
 
 
-@notify_celery.task(name='daily-stats-template_usage_by_month')
+@notify_celery.task(name='daily-stats-template-usage-by-month')
 @statsd(namespace="tasks")
 def daily_stats_template_usage_by_month():
     results = dao_fetch_monthly_historical_stats_by_template()

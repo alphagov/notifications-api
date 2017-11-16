@@ -4,6 +4,7 @@ from datetime import datetime
 from urllib.parse import urlencode
 
 from flask import (jsonify, request, Blueprint, current_app, abort)
+from sqlalchemy.exc import IntegrityError
 
 from app.config import QueueNames
 from app.dao.users_dao import (
@@ -52,6 +53,19 @@ user_blueprint = Blueprint('user', __name__)
 register_errors(user_blueprint)
 
 
+@user_blueprint.errorhandler(IntegrityError)
+def handle_integrity_error(exc):
+    """
+    Handle integrity errors caused by the auth type/mobile number check constraint
+    """
+    if 'ck_users_mobile_or_email_auth' in str(exc):
+        # we don't expect this to trip, so still log error
+        current_app.logger.exception('Check constraint ck_users_mobile_or_email_auth triggered')
+        return jsonify(result='error', message='Mobile number must be set if auth_type is set to sms_auth'), 400
+
+    raise
+
+
 @user_blueprint.route('', methods=['POST'])
 def create_user():
     user_to_create, errors = user_schema.load(request.get_json())
@@ -61,23 +75,6 @@ def create_user():
         raise InvalidRequest(errors, status_code=400)
     save_model_user(user_to_create, pwd=req_json.get('password'))
     return jsonify(data=user_schema.dump(user_to_create).data), 201
-
-
-@user_blueprint.route('/<uuid:user_id>', methods=['PUT'])
-def update_user(user_id):
-    user_to_update = get_user_by_id(user_id=user_id)
-    req_json = request.get_json()
-    update_dct, errors = user_schema_load_json.load(req_json)
-    # TODO don't let password be updated in this PUT method (currently used by the forgot password flow)
-    pwd = req_json.get('password', None)
-    if pwd is not None:
-        if not pwd:
-            errors.update({'password': ['Invalid data for field']})
-            raise InvalidRequest(errors, status_code=400)
-        else:
-            reset_failed_login_count(user_to_update)
-    save_model_user(user_to_update, update_dict=update_dct, pwd=pwd)
-    return jsonify(data=user_schema.dump(user_to_update).data), 200
 
 
 @user_blueprint.route('/<uuid:user_id>', methods=['POST'])

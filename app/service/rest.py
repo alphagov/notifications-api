@@ -24,30 +24,32 @@ from app.dao.service_inbound_api_dao import (
     get_service_inbound_api
 )
 from app.dao.service_sms_sender_dao import (
-    insert_or_update_service_sms_sender,
     dao_add_sms_sender_for_service,
     dao_update_service_sms_sender,
     dao_get_service_sms_senders_by_id,
     dao_get_sms_senders_by_service_id,
-    update_existing_sms_sender_with_inbound_number)
+    update_existing_sms_sender_with_inbound_number
+)
 from app.dao.services_dao import (
-    dao_fetch_service_by_id,
-    dao_fetch_all_services,
-    dao_create_service,
-    dao_update_service,
-    dao_fetch_all_services_by_user,
     dao_add_user_to_service,
-    dao_remove_user_from_service,
+    dao_archive_service,
+    dao_create_service,
+    dao_fetch_all_services,
+    dao_fetch_all_services_by_user,
+    dao_fetch_monthly_historical_stats_for_service,
+    dao_fetch_monthly_historical_stats_by_template_for_service,
+    dao_fetch_monthly_historical_usage_by_template_for_service,
+    dao_fetch_service_by_id,
     dao_fetch_stats_for_service,
     dao_fetch_todays_stats_for_service,
     dao_fetch_todays_stats_for_all_services,
-    dao_archive_service,
-    fetch_stats_by_date_range_for_all_services,
-    dao_suspend_service,
     dao_resume_service,
-    dao_fetch_monthly_historical_stats_for_service,
-    dao_fetch_monthly_historical_stats_by_template_for_service,
-    fetch_aggregate_stats_by_date_range_for_all_services)
+    dao_remove_user_from_service,
+    dao_suspend_service,
+    dao_update_service,
+    fetch_aggregate_stats_by_date_range_for_all_services,
+    fetch_stats_by_date_range_for_all_services
+)
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
     dao_add_and_commit_whitelisted_contacts,
@@ -74,7 +76,10 @@ from app.errors import (
     register_errors
 )
 
-from app.models import Service, ServiceInboundApi, AnnualBilling
+from app.models import (
+    Service,
+    ServiceInboundApi
+)
 from app.schema_validation import validate
 from app.service import statistics
 from app.service.service_inbound_api_schema import (
@@ -84,7 +89,8 @@ from app.service.service_inbound_api_schema import (
 from app.service.service_senders_schema import (
     add_service_email_reply_to_request,
     add_service_letter_contact_block_request,
-    add_service_sms_sender_request)
+    add_service_sms_sender_request
+)
 from app.service.utils import get_whitelist_objects
 from app.service.sender import send_notification_to_service_users
 from app.service.send_notification import send_one_off_notification
@@ -98,6 +104,7 @@ from app.schemas import (
     detailed_service_schema
 )
 from app.utils import pagination_links
+from app.billing.rest import update_free_sms_fragment_limit_data
 
 service_blueprint = Blueprint('service', __name__)
 
@@ -196,11 +203,12 @@ def update_service(service_id):
     if 'reply_to_email_address' in req_json:
         create_or_update_email_reply_to(fetched_service.id, req_json['reply_to_email_address'])
 
-    if 'sms_sender' in req_json:
-        insert_or_update_service_sms_sender(fetched_service, req_json['sms_sender'])
-
     if 'letter_contact_block' in req_json:
         create_or_update_letter_contact(fetched_service.id, req_json['letter_contact_block'])
+
+    # bridging code between frontend is deployed and data has not been migrated yet. Can only update current year
+    if 'free_sms_fragment_limit' in req_json:
+        update_free_sms_fragment_limit_data(fetched_service.id, req_json['free_sms_fragment_limit'])
 
     if service_going_live:
         send_notification_to_service_users(
@@ -515,6 +523,31 @@ def resume_service(service_id):
         dao_resume_service(service.id)
 
     return '', 204
+
+
+@service_blueprint.route('/<uuid:service_id>/notifications/templates_usage/monthly', methods=['GET'])
+def get_monthly_template_usage(service_id):
+    try:
+        data = dao_fetch_monthly_historical_usage_by_template_for_service(
+            service_id,
+            int(request.args.get('year', 'NaN'))
+        )
+
+        stats = list()
+        for i in data:
+            stats.append(
+                {
+                    'template_id': str(i.template_id),
+                    'name': i.name,
+                    'month': i.month,
+                    'year': i.year,
+                    'count': i.count
+                }
+            )
+
+        return jsonify(stats=stats), 200
+    except ValueError:
+        raise InvalidRequest('Year must be a number', status_code=400)
 
 
 @service_blueprint.route('/<uuid:service_id>/notifications/templates/monthly', methods=['GET'])

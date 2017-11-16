@@ -29,6 +29,7 @@ from app.models import (
     ScheduledNotification,
     ServiceEmailReplyTo,
     Template,
+    TemplateHistory,
     EMAIL_TYPE,
     SMS_TYPE,
     KEY_TYPE_NORMAL,
@@ -225,7 +226,7 @@ def get_notification_with_personalisation(service_id, notification_id, key_type)
     if key_type:
         filter_dict['key_type'] = key_type
 
-    return Notification.query.filter_by(**filter_dict).options(joinedload('template_history')).one()
+    return Notification.query.filter_by(**filter_dict).options(joinedload('template')).one()
 
 
 @statsd(namespace="dao")
@@ -281,7 +282,7 @@ def get_notifications_for_service(
     query = _filter_query(query, filter_dict)
     if personalisation:
         query = query.options(
-            joinedload('template_history')
+            joinedload('template')
         )
 
     return query.order_by(desc(Notification.created_at)).paginate(
@@ -305,7 +306,7 @@ def _filter_query(query, filter_dict=None):
     # filter by template
     template_types = multidict.getlist('template_type')
     if template_types:
-        query = query.join(Template).filter(Template.template_type.in_(template_types))
+        query = query.join(TemplateHistory).filter(TemplateHistory.template_type.in_(template_types))
 
     return query
 
