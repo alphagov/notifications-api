@@ -5,12 +5,29 @@ from flask import json
 from freezegun import freeze_time
 from jsonschema import ValidationError
 
+from app.models import NOTIFICATION_CREATED, EMAIL_TYPE
 from app.schema_validation import validate
 from app.v2.notifications.notification_schemas import (
     get_notifications_request,
     post_sms_request as post_sms_request_schema,
     post_email_request as post_email_request_schema
 )
+
+
+valid_get_json = {}
+
+valid_get_with_optionals_json = {
+    "reference": "test reference",
+    "status": [NOTIFICATION_CREATED],
+    "template_type": [EMAIL_TYPE],
+    "include_jobs": "true",
+    "older_than": "a5149c32-f03b-4711-af49-ad6993797d45"
+}
+
+
+@pytest.mark.parametrize("input", [valid_get_json, valid_get_with_optionals_json])
+def test_get_notifications_valid_json(input):
+    assert validate(input, get_notifications_request) == input
 
 
 @pytest.mark.parametrize('invalid_statuses, valid_statuses', [

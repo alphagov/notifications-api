@@ -74,6 +74,7 @@ get_notifications_request = {
                 "enum": TEMPLATE_TYPES
             }
         },
+        "include_jobs": {"enum": ["true", "True"]},
         "older_than": uuid
     },
     "additionalProperties": False,
@@ -88,7 +89,7 @@ get_notifications_response = {
             "type": "array",
             "items": {
                 "type": "object",
-                "ref": get_notification_response
+                "$ref": "#/definitions/notification"
             }
         },
         "links": {
@@ -106,7 +107,11 @@ get_notifications_response = {
         }
     },
     "additionalProperties": False,
-    "required": ["notifications", "links"]
+    "required": ["notifications", "links"],
+    "definitions": {
+        "notification": get_notification_response
+    },
+
 }
 
 post_sms_request = {

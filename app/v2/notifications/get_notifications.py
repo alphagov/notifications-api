@@ -35,6 +35,9 @@ def get_notifications():
     if 'reference' in _data:
         _data['reference'] = _data['reference'][0]
 
+    if 'include_jobs' in _data:
+        _data['include_jobs'] = _data['include_jobs'][0]
+
     data = validate(_data, get_notifications_request)
 
     paginated_notifications = notifications_dao.get_notifications_for_service(
@@ -44,7 +47,8 @@ def get_notifications():
         personalisation=True,
         older_than=data.get('older_than'),
         client_reference=data.get('reference'),
-        page_size=current_app.config.get('API_PAGE_SIZE')
+        page_size=current_app.config.get('API_PAGE_SIZE'),
+        include_jobs=data.get('include_jobs')
     )
 
     def _build_links(notifications):
