@@ -376,49 +376,24 @@ def test_allow_valid_ips_bits(restrict_ip_sms_app):
     assert response.status_code == 200
 
 
-def test_route_correct_secret_key(notify_api, client):
+@pytest.mark.parametrize('check_proxy_header,header_value,expected_status', [
+    (True, 'key_1', 200),
+    (True, 'wrong_key', 403),
+    (False, 'key_1', 200),
+    (False, 'wrong_key', 200),
+])
+def test_route_correct_secret_key(notify_api, check_proxy_header, header_value, expected_status):
     with set_config_values(notify_api, {
         'ROUTE_SECRET_KEY_1': 'key_1',
         'ROUTE_SECRET_KEY_2': '',
-        'CHECK_PROXY_HEADER': True,
+        'CHECK_PROXY_HEADER': check_proxy_header,
     }):
 
-        response = client.get(
-            path='/_status',
-            headers=[
-                ('X-Custom-Forwarder', 'key_1'),
-            ]
-        )
-        assert response.status_code == 200
-
-
-def test_route_incorrect_secret_key(notify_api, client):
-    with set_config_values(notify_api, {
-        'ROUTE_SECRET_KEY_1': 'key_1',
-        'ROUTE_SECRET_KEY_2': '',
-        'CHECK_PROXY_HEADER': True,
-    }):
-
-        response = client.get(
-            path='/_status',
-            headers=[
-                ('X-Custom-Forwarder', 'wrong_key'),
-            ]
-        )
-        assert response.status_code == 403
-
-
-def test_route_check_proxy_header_flag(notify_api, client):
-    with set_config_values(notify_api, {
-        'ROUTE_SECRET_KEY_1': 'key_1',
-        'ROUTE_SECRET_KEY_2': '',
-        'CHECK_PROXY_HEADER': False,
-    }):
-
-        response = client.get(
-            path='/_status',
-            headers=[
-                ('X-Custom-Forwarder', 'wrong_key'),
-            ]
-        )
-        assert response.status_code == 200
+        with notify_api.test_client() as client:
+            response = client.get(
+                path='/_status',
+                headers=[
+                    ('X-Custom-Forwarder', header_value),
+                ]
+            )
+        assert response.status_code == expected_status
