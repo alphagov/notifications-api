@@ -266,7 +266,8 @@ def test_get_notification_doesnt_have_delivery_estimate_for_non_letters(
     assert 'estimated_delivery' not in json.loads(response.get_data(as_text=True))
 
 
-def test_get_all_notifications_returns_200(client, sample_template):
+def test_get_all_notifications_except_job_notifications_returns_200(client, sample_template, sample_job):
+    create_notification(template=sample_template, job=sample_job)  # should not return this job notification
     notifications = [create_notification(template=sample_template) for _ in range(2)]
     notification = notifications[-1]
 
