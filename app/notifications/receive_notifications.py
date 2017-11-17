@@ -56,9 +56,12 @@ def receive_mmg_sms():
 def receive_firetext_sms():
     post_data = request.form
 
-    # This is a pre-implementation test code to validate the provider is sending through what they claim.
+    # This is pre-implementation test code to validate the provider is basic auth headers.
     auth = request.authorization
-    current_app.logger.info("Inbound sms username: {}".format(auth.username))
+    if auth:
+        current_app.logger.info("Inbound sms username: {}".format(auth.username))
+    else:
+        current_app.logger.info("Inbound sms no auth header")
 
     inbound_number = strip_leading_forty_four(post_data['destination'])
 
