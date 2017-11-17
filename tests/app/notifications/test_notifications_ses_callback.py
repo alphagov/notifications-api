@@ -10,24 +10,6 @@ from app.notifications.notifications_ses_callback import process_ses_response
 from tests.app.conftest import sample_notification as create_sample_notification
 
 
-def test_ses_callback_should_not_need_auth(client):
-    response = client.post(
-        path='/notifications/email/ses',
-        data=ses_notification_callback(),
-        headers=[('Content-Type', 'text/plain; charset=UTF-8')]
-    )
-    assert response.status_code == 200
-
-
-def test_ses_callback_should_fail_if_invalid_json(client, mocker):
-    stats_mock = mocker.patch(
-        'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
-    )
-    errors = process_ses_response('nonsense')
-    assert errors == 'SES callback failed: invalid json'
-    stats_mock.assert_not_called()
-
-
 def test_ses_callback_should_fail_if_invalid_notification_type(client, mocker):
     stats_mock = mocker.patch(
         'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
