@@ -373,7 +373,7 @@ def test_send_email_to_provider_should_call_research_mode_task_response_task_if_
 
     assert not app.aws_ses_client.send_email.called
     stats_mock.assert_called_once_with(notification)
-    app.delivery.send_to_providers.send_email_response.assert_called_once_with('ses', str(reference), 'john@smith.com')
+    app.delivery.send_to_providers.send_email_response.assert_called_once_with(str(reference), 'john@smith.com')
     persisted_notification = Notification.query.filter_by(id=notification.id).one()
     assert persisted_notification.to == 'john@smith.com'
     assert persisted_notification.template_id == sample_email_template.id

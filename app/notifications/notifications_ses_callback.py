@@ -28,7 +28,7 @@ def process_ses_response(ses_request):
 
         notification_type = ses_message['notificationType']
         if notification_type == 'Bounce':
-            current_app.logger.info('SES bounce dict: {}'.format(ses_message['bounce']))
+            current_app.logger.info('SES bounce dict: {}'.format(remove_emails_from_bounce(ses_message['bounce'])))
             if ses_message['bounce']['bounceType'] == 'Permanent':
                 notification_type = ses_message['bounce']['bounceType']  # permanent or not
             else:
@@ -85,3 +85,8 @@ def process_ses_response(ses_request):
     except ValueError:
         error = "{} callback failed: invalid json".format(client_name)
         return error
+
+
+def remove_emails_from_bounce(bounce_dict):
+    for recip in bounce_dict['bouncedRecipients']:
+        recip.pop('emailAddress')

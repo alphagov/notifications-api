@@ -12,8 +12,6 @@ def test_should_have_decorated_tasks_functions():
 
 
 def test_should_call_send_sms_to_provider_from_deliver_sms_task(
-        notify_db,
-        notify_db_session,
         sample_notification,
         mocker):
     mocker.patch('app.delivery.send_to_providers.send_sms_to_provider')
@@ -23,7 +21,6 @@ def test_should_call_send_sms_to_provider_from_deliver_sms_task(
 
 
 def test_should_add_to_retry_queue_if_notification_not_found_in_deliver_sms_task(
-        notify_db,
         notify_db_session,
         mocker):
     mocker.patch('app.delivery.send_to_providers.send_sms_to_provider')
@@ -37,8 +34,6 @@ def test_should_add_to_retry_queue_if_notification_not_found_in_deliver_sms_task
 
 
 def test_should_call_send_email_to_provider_from_deliver_email_task(
-        notify_db,
-        notify_db_session,
         sample_notification,
         mocker):
     mocker.patch('app.delivery.send_to_providers.send_email_to_provider')
