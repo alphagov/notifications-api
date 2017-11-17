@@ -56,6 +56,10 @@ def receive_mmg_sms():
 def receive_firetext_sms():
     post_data = request.form
 
+    # This is a pre-implementation test code to validate the provider is sending through what they claim.
+    auth = request.authorization
+    current_app.logger.info("Inbound sms username: {}".format(auth.username))
+
     inbound_number = strip_leading_forty_four(post_data['destination'])
 
     service = fetch_potential_service(inbound_number, 'firetext')
