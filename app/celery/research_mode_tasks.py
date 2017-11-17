@@ -116,44 +116,143 @@ def firetext_callback(notification_id, to):
 
 
 def ses_notification_callback(reference):
+    ses_message_body = {
+        'delivery': {
+            'processingTimeMillis': 2003,
+            'recipients': ['success@simulator.amazonses.com'],
+            'remoteMtaIp': '123.123.123.123',
+            'reportingMTA': 'a7-32.smtp-out.eu-west-1.amazonses.com',
+            'smtpResponse': '250 2.6.0 Message received',
+            'timestamp': '2017-11-17T12:14:03.646Z'
+        },
+        'mail': {
+            'commonHeaders': {
+                'from': ['TEST <TEST@notify.works>'],
+                'subject': 'lambda test',
+                'to': ['success@simulator.amazonses.com']
+            },
+            'destination': ['success@simulator.amazonses.com'],
+            'headers': [
+                {
+                    'name': 'From',
+                    'value': 'TEST <TEST@notify.works>'
+                },
+                {
+                    'name': 'To',
+                    'value': 'success@simulator.amazonses.com'
+                },
+                {
+                    'name': 'Subject',
+                    'value': 'lambda test'
+                },
+                {
+                    'name': 'MIME-Version',
+                    'value': '1.0'
+                },
+                {
+                    'name': 'Content-Type',
+                    'value': 'multipart/alternative; boundary="----=_Part_617203_1627511946.1510920841645"'
+                }
+            ],
+            'headersTruncated': False,
+            'messageId': reference,
+            'sendingAccountId': '12341234',
+            'source': '"TEST" <TEST@notify.works>',
+            'sourceArn': 'arn:aws:ses:eu-west-1:12341234:identity/notify.works',
+            'sourceIp': '0.0.0.1',
+            'timestamp': '2017-11-17T12:14:01.643Z'
+        },
+        'notificationType': 'Delivery'
+    }
+
     return {
-        'EventSource': 'aws:sns',
-        'EventVersion': '1.0',
-        'EventSubscriptionArn': 'arn:aws:sns:eu-west-1:302763885840:ses_notifications:27447d51-7008-4d9c-83f2-519983b60937',
-        'Sns': {
-            'Type': 'Notification',
-            'MessageId': '8e83c020-3a50-5957-a2ca-92a8ee9baa0a',
-            'TopicArn': 'arn:aws:sns:eu-west-1:302763885840:ses_notifications',
-            'Subject': None,
-            'Message': '''{"notificationType":"Delivery","mail":{"timestamp":"2017-11-17T12:14:01.643Z","source":"\\"sakis\\" <sakis@notify.works>","sourceArn":"arn:aws:ses:eu-west-1:302763885840:identity/notify.works","sourceIp":"52.208.24.161","sendingAccountId":"302763885840","messageId":"0102015fc9e669ab-d1395dba-84c7-4311-9f25-405396a3f7aa-000000","destination":["success@simulator.amazonses.com"],"headersTruncated":false,"headers":[{"name":"From","value":"sakis <sakis@notify.works>"},{"name":"To","value":"success@simulator.amazonses.com"},{"name":"Subject","value":"lambda test"},{"name":"MIME-Version","value":"1.0"},{"name":"Content-Type","value":"multipart/alternative; boundary=\\"----=_Part_617203_1627511946.1510920841645\\""}],"commonHeaders":{"from":["sakis <sakis@notify.works>"],"to":["success@simulator.amazonses.com"],"subject":"lambda test"}},"delivery":{"timestamp":"2017-11-17T12:14:03.646Z","processingTimeMillis":2003,"recipients":["success@simulator.amazonses.com"],"smtpResponse":"250 2.6.0 Message received","remoteMtaIp":"207.171.163.188","reportingMTA":"a7-32.smtp-out.eu-west-1.amazonses.com"}}', 'Timestamp': '2017-11-17T12:14:03.710Z', 'SignatureVersion': '1', 'Signature': 'IxQPpK5kHVSiYhFqWjH35ElZSUOkE29hDcdCjFrA6Cx51Fw5ZNyFGsYJQsCskVEIXteTrn/9VU9zeW5oSf81dbGzv5GnFF4iq8hq+WISQ3etVGx9cOzRABudt82okoIPLU71dsENwj3scibVvsBSP8vD4NJsnOXVfVo1CczumbDT601dFomF45u1bRpg684zUOxvZBpStUfkFaBkDrWp9yt6j5SuDx+AqC0nuQdGPN0+LFbLXN20SZmUwqDiX89xm2JlPBaWimnm0/jBRAqLkSJcix7ssD6ELsCIebljzggibnKzQo3vQV1Frji6+713WlYC7lnziNhVT1VL1tCrhA==', 'SigningCertUrl': 'https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-433026a4050d206028891664da859041.pem', 'UnsubscribeUrl': 'https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:ses_notifications:27447d51-7008-4d9c-83f2-519983b60937''',  # noqa
-            'MessageAttributes': {}
-        }
+        'Type': 'Notification',
+        'MessageId': '8e83c020-1234-1234-1234-92a8ee9baa0a',
+        'TopicArn': 'arn:aws:sns:eu-west-1:12341234:ses_notifications',
+        'Subject': None,
+        'Message': json.dumps(ses_message_body),
+        'Timestamp': '2017-11-17T12:14:03.710Z',
+        'SignatureVersion': '1',
+        'Signature': '[REDACTED]',
+        'SigningCertUrl': 'https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-[REDACTED].pem',
+        'UnsubscribeUrl': 'https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=[REACTED]',
+        'MessageAttributes': {}
     }
 
 
 def ses_hard_bounce_callback(reference):
-    return {
-        'Message': '{"notificationType":"Bounce","bounce":{"bounceType":"Permanent","bounceSubType":"General"}, "mail":{"messageId":"%s","timestamp":"2016-03-14T12:35:25.909Z","source":"test@test-domain.com","sourceArn":"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify","sendingAccountId":"123456789012","destination":["testing@digital.cabinet-office.gov.uk"]},"delivery":{"timestamp":"2016-03-14T12:35:26.567Z","processingTimeMillis":658,"recipients":["testing@digital.cabinet-office.gov.uk"],"smtpResponse":"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp","reportingMTA":"a6-238.smtp-out.eu-west-1.amazonses.com"}}' % reference,  # noqa
-        'MessageId': reference,
-        'Signature': 'X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==',  # noqa
-        'SignatureVersion': '1',
-        'SigningCertURL': 'https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem',  # noqa
-        'Timestamp': '2016-03-14T12:35:26.665Z',
-        'TopicArn': 'arn:aws:sns:eu-west-1:123456789012:testing',
-        'Type': 'Notification',
-        'UnsubscribeURL': 'https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da'  # noqa
-    }
+    return _ses_bounce_callback(reference, 'Permanent')
 
 
 def ses_soft_bounce_callback(reference):
+    return _ses_bounce_callback(reference, 'Temporary')
+
+
+def _ses_bounce_callback(reference, bounce_type):
+    ses_message_body = {
+        'bounce': {
+            'bounceSubType': 'General',
+            'bounceType': bounce_type,
+            'bouncedRecipients': [{
+                'action': 'failed',
+                'diagnosticCode': 'smtp; 550 5.1.1 user unknown',
+                'emailAddress': 'bounce@simulator.amazonses.com',
+                'status': '5.1.1'
+            }],
+            'feedbackId': '0102015fc9e676fb-12341234-1234-1234-1234-9301e86a4fa8-000000',
+            'remoteMtaIp': '123.123.123.123',
+            'reportingMTA': 'dsn; a7-31.smtp-out.eu-west-1.amazonses.com',
+            'timestamp': '2017-11-17T12:14:05.131Z'
+        },
+        'mail': {
+            'commonHeaders': {
+                'from': ['TEST <TEST@notify.works>'],
+                'subject': 'ses callback test',
+                'to': ['bounce@simulator.amazonses.com']
+            },
+            'destination': ['bounce@simulator.amazonses.com'],
+            'headers': [
+                {
+                    'name': 'From',
+                    'value': 'TEST <TEST@notify.works>'
+                },
+                {
+                    'name': 'To',
+                    'value': 'bounce@simulator.amazonses.com'
+                },
+                {
+                    'name': 'Subject',
+                    'value': 'lambda test'
+                },
+                {
+                    'name': 'MIME-Version',
+                    'value': '1.0'
+                },
+                {
+                    'name': 'Content-Type',
+                    'value': 'multipart/alternative; boundary="----=_Part_596529_2039165601.1510920843367"'
+                }
+            ],
+            'headersTruncated': False,
+            'messageId': reference,
+            'sendingAccountId': '12341234',
+            'source': '"TEST" <TEST@notify.works>',
+            'sourceArn': 'arn:aws:ses:eu-west-1:12341234:identity/notify.works',
+            'sourceIp': '0.0.0.1',
+            'timestamp': '2017-11-17T12:14:03.000Z'
+        },
+        'notificationType': 'Bounce'
+    }
     return {
-        'Message': '{"notificationType":"Bounce","bounce":{"bounceType":"Temporary","bounceSubType":"General"}, "mail":{"messageId":"%s","timestamp":"2016-03-14T12:35:25.909Z","source":"test@test-domain.com","sourceArn":"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify","sendingAccountId":"123456789012","destination":["testing@digital.cabinet-office.gov.uk"]},"delivery":{"timestamp":"2016-03-14T12:35:26.567Z","processingTimeMillis":658,"recipients":["testing@digital.cabinet-office.gov.uk"],"smtpResponse":"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp","reportingMTA":"a6-238.smtp-out.eu-west-1.amazonses.com"}}' % reference,  # noqa
-        'MessageId': reference,
-        'Signature': 'X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==',  # noqa
-        'SignatureVersion': '1',
-        'SigningCertURL': 'https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem',  # noqa
-        'Timestamp': '2016-03-14T12:35:26.665Z',
-        'TopicArn': 'arn:aws:sns:eu-west-1:123456789012:testing',
         'Type': 'Notification',
-        'UnsubscribeURL': 'https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da'  # noqa
+        'MessageId': '36e67c28-1234-1234-1234-2ea0172aa4a7',
+        'TopicArn': 'arn:aws:sns:eu-west-1:12341234:ses_notifications',
+        'Subject': None,
+        'Message': json.dumps(ses_message_body),
+        'Timestamp': '2017-11-17T12:14:05.149Z',
+        'SignatureVersion': '1',
+        'Signature': '[REDACTED]',  # noqa
+        'SigningCertUrl': 'https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-[REDACTED]].pem',
+        'UnsubscribeUrl': 'https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=[REDACTED]]',
+        'MessageAttributes': {}
     }
