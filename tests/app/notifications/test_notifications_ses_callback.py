@@ -6,7 +6,7 @@ from freezegun import freeze_time
 
 from app import statsd_client
 from app.dao.notifications_dao import get_notification_by_id
-from app.notifications.notifications_ses_callback import process_ses_response
+from app.notifications.notifications_ses_callback import process_ses_response, remove_emails_from_bounce
 from tests.app.conftest import sample_notification as create_sample_notification
 
 
@@ -178,6 +178,27 @@ def test_ses_callback_should_set_status_to_permanent_failure(client,
     assert process_ses_response(json.loads(ses_hard_bounce_callback())) is None
     assert get_notification_by_id(notification.id).status == 'permanent-failure'
     stats_mock.assert_called_once_with(notification)
+
+
+def test_remove_emails_from_bounce():
+    # an actual bouncedict example
+    message_dict = {
+        'feedbackId': '0102015fc9acfc14-12341234-1234-1234-1234-123412341234-000000',
+        'bounceType': 'Permanent',
+        'reportingMTA': 'dsn; a1-23.smtp-out.eu-west-4.amazonses.com',
+        'remoteMtaIp': '123.123.123.123',
+        'bounceSubType': 'General',
+        'bouncedRecipients': [{
+            'diagnosticCode': "smtp; 550-5.1.1 The email account that you tried to reach does not exist. Please try\n550-5.1.1 double-checking the recipient's email address for typos or\n550-5.1.1 unnecessary spaces. Learn more at\n550 5.1.1  https://support.google.com/mail/?p=NoSuchUser x33si3064453edx.66 - gsmtp",  # noqa
+            'action': 'failed',
+            'status': '5.1.1',
+            'emailAddress': 'not-real@gmail.com'}],
+        'timestamp': '2017-11-17T11:11:18.098Z'
+    }
+
+    remove_emails_from_bounce(message_dict['bounce'])
+
+    assert 'not-real@gmail.com' not in json.dumps(message_dict)
 
 
 def ses_notification_callback(ref='ref'):

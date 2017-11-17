@@ -1,10 +1,11 @@
 import json
 
 from flask import current_app
-from app import notify_celery
 from requests import request, RequestException, HTTPError
 
 from app.models import SMS_TYPE
+from app.config import QueueNames
+from app.celery.callback_tasks import process_ses_results
 
 temp_fail = "7700900003"
 perm_fail = "7700900002"
@@ -36,7 +37,7 @@ def send_sms_response(provider, reference, to):
     make_request(SMS_TYPE, provider, body, headers)
 
 
-def send_email_response(provider, reference, to):
+def send_email_response(reference, to):
     if to == perm_fail_email:
         body = ses_hard_bounce_callback(reference)
     elif to == temp_fail_email:
@@ -44,7 +45,7 @@ def send_email_response(provider, reference, to):
     else:
         body = ses_notification_callback(reference)
 
-    make_request('email', provider, body, headers={"Content-type": "application/json"})
+    process_ses_results.apply_async([body], queue=QueueNames.RESEARCH_MODE)
 
 
 def make_request(notification_type, provider, data, headers):
@@ -115,12 +116,44 @@ def firetext_callback(notification_id, to):
 
 
 def ses_notification_callback(reference):
-    return '{  "Type" : "Notification",  "MessageId" : "%s",  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",  "Message" : "{\\"notificationType\\":\\"Delivery\\",\\"mail\\":{\\"timestamp\\":\\"2016-03-14T12:35:25.909Z\\",\\"source\\":\\"test@test-domain.com\\",\\"sourceArn\\":\\"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify\\",\\"sendingAccountId\\":\\"123456789012\\",\\"messageId\\":\\"%s\\",\\"destination\\":[\\"testing@digital.cabinet-office.gov.uk\\"]},\\"delivery\\":{\\"timestamp\\":\\"2016-03-14T12:35:26.567Z\\",\\"processingTimeMillis\\":658,\\"recipients\\":[\\"testing@digital.cabinet-office.gov.uk\\"],\\"smtpResponse\\":\\"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp\\",\\"reportingMTA\\":\\"a6-238.smtp-out.eu-west-1.amazonses.com\\"}}",  "Timestamp" : "2016-03-14T12:35:26.665Z",  "SignatureVersion" : "1",  "Signature" : "X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==",  "SigningCertURL" : "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem",  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"}' % (reference, reference)  # noqa
+    return {
+        'EventSource': 'aws:sns',
+        'EventVersion': '1.0',
+        'EventSubscriptionArn': 'arn:aws:sns:eu-west-1:302763885840:ses_notifications:27447d51-7008-4d9c-83f2-519983b60937',
+        'Sns': {
+            'Type': 'Notification',
+            'MessageId': '8e83c020-3a50-5957-a2ca-92a8ee9baa0a',
+            'TopicArn': 'arn:aws:sns:eu-west-1:302763885840:ses_notifications',
+            'Subject': None,
+            'Message': '''{"notificationType":"Delivery","mail":{"timestamp":"2017-11-17T12:14:01.643Z","source":"\\"sakis\\" <sakis@notify.works>","sourceArn":"arn:aws:ses:eu-west-1:302763885840:identity/notify.works","sourceIp":"52.208.24.161","sendingAccountId":"302763885840","messageId":"0102015fc9e669ab-d1395dba-84c7-4311-9f25-405396a3f7aa-000000","destination":["success@simulator.amazonses.com"],"headersTruncated":false,"headers":[{"name":"From","value":"sakis <sakis@notify.works>"},{"name":"To","value":"success@simulator.amazonses.com"},{"name":"Subject","value":"lambda test"},{"name":"MIME-Version","value":"1.0"},{"name":"Content-Type","value":"multipart/alternative; boundary=\\"----=_Part_617203_1627511946.1510920841645\\""}],"commonHeaders":{"from":["sakis <sakis@notify.works>"],"to":["success@simulator.amazonses.com"],"subject":"lambda test"}},"delivery":{"timestamp":"2017-11-17T12:14:03.646Z","processingTimeMillis":2003,"recipients":["success@simulator.amazonses.com"],"smtpResponse":"250 2.6.0 Message received","remoteMtaIp":"207.171.163.188","reportingMTA":"a7-32.smtp-out.eu-west-1.amazonses.com"}}', 'Timestamp': '2017-11-17T12:14:03.710Z', 'SignatureVersion': '1', 'Signature': 'IxQPpK5kHVSiYhFqWjH35ElZSUOkE29hDcdCjFrA6Cx51Fw5ZNyFGsYJQsCskVEIXteTrn/9VU9zeW5oSf81dbGzv5GnFF4iq8hq+WISQ3etVGx9cOzRABudt82okoIPLU71dsENwj3scibVvsBSP8vD4NJsnOXVfVo1CczumbDT601dFomF45u1bRpg684zUOxvZBpStUfkFaBkDrWp9yt6j5SuDx+AqC0nuQdGPN0+LFbLXN20SZmUwqDiX89xm2JlPBaWimnm0/jBRAqLkSJcix7ssD6ELsCIebljzggibnKzQo3vQV1Frji6+713WlYC7lnziNhVT1VL1tCrhA==', 'SigningCertUrl': 'https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-433026a4050d206028891664da859041.pem', 'UnsubscribeUrl': 'https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:ses_notifications:27447d51-7008-4d9c-83f2-519983b60937''',  # noqa
+            'MessageAttributes': {}
+        }
+    }
 
 
 def ses_hard_bounce_callback(reference):
-    return '{  "Type" : "Notification",  "MessageId" : "%s",  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",  "Message" : "{\\"notificationType\\":\\"Bounce\\",\\"bounce\\":{\\"bounceType\\":\\"Permanent\\",\\"bounceSubType\\":\\"General\\"}, \\"mail\\":{\\"messageId\\":\\"%s\\",\\"timestamp\\":\\"2016-03-14T12:35:25.909Z\\",\\"source\\":\\"test@test-domain.com\\",\\"sourceArn\\":\\"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify\\",\\"sendingAccountId\\":\\"123456789012\\",\\"destination\\":[\\"testing@digital.cabinet-office.gov.uk\\"]},\\"delivery\\":{\\"timestamp\\":\\"2016-03-14T12:35:26.567Z\\",\\"processingTimeMillis\\":658,\\"recipients\\":[\\"testing@digital.cabinet-office.gov.uk\\"],\\"smtpResponse\\":\\"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp\\",\\"reportingMTA\\":\\"a6-238.smtp-out.eu-west-1.amazonses.com\\"}}",  "Timestamp" : "2016-03-14T12:35:26.665Z",  "SignatureVersion" : "1",  "Signature" : "X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==",  "SigningCertURL" : "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem",  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"}' % (reference, reference)  # noqa
+    return {
+        'Message': '{"notificationType":"Bounce","bounce":{"bounceType":"Permanent","bounceSubType":"General"}, "mail":{"messageId":"%s","timestamp":"2016-03-14T12:35:25.909Z","source":"test@test-domain.com","sourceArn":"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify","sendingAccountId":"123456789012","destination":["testing@digital.cabinet-office.gov.uk"]},"delivery":{"timestamp":"2016-03-14T12:35:26.567Z","processingTimeMillis":658,"recipients":["testing@digital.cabinet-office.gov.uk"],"smtpResponse":"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp","reportingMTA":"a6-238.smtp-out.eu-west-1.amazonses.com"}}' % reference,  # noqa
+        'MessageId': reference,
+        'Signature': 'X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==',  # noqa
+        'SignatureVersion': '1',
+        'SigningCertURL': 'https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem',  # noqa
+        'Timestamp': '2016-03-14T12:35:26.665Z',
+        'TopicArn': 'arn:aws:sns:eu-west-1:123456789012:testing',
+        'Type': 'Notification',
+        'UnsubscribeURL': 'https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da'  # noqa
+    }
 
 
 def ses_soft_bounce_callback(reference):
-    return '{  "Type" : "Notification",  "MessageId" : "%s",  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",  "Message" : "{\\"notificationType\\":\\"Bounce\\",\\"bounce\\":{\\"bounceType\\":\\"Undetermined\\",\\"bounceSubType\\":\\"General\\"}, \\"mail\\":{\\"messageId\\":\\"%s\\",\\"timestamp\\":\\"2016-03-14T12:35:25.909Z\\",\\"source\\":\\"test@test-domain.com\\",\\"sourceArn\\":\\"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify\\",\\"sendingAccountId\\":\\"123456789012\\",\\"destination\\":[\\"testing@digital.cabinet-office.gov.uk\\"]},\\"delivery\\":{\\"timestamp\\":\\"2016-03-14T12:35:26.567Z\\",\\"processingTimeMillis\\":658,\\"recipients\\":[\\"testing@digital.cabinet-office.gov.uk\\"],\\"smtpResponse\\":\\"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp\\",\\"reportingMTA\\":\\"a6-238.smtp-out.eu-west-1.amazonses.com\\"}}",  "Timestamp" : "2016-03-14T12:35:26.665Z",  "SignatureVersion" : "1",  "Signature" : "X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==",  "SigningCertURL" : "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem",  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"}' % (reference, reference)  # noqa
+    return {
+        'Message': '{"notificationType":"Bounce","bounce":{"bounceType":"Temporary","bounceSubType":"General"}, "mail":{"messageId":"%s","timestamp":"2016-03-14T12:35:25.909Z","source":"test@test-domain.com","sourceArn":"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify","sendingAccountId":"123456789012","destination":["testing@digital.cabinet-office.gov.uk"]},"delivery":{"timestamp":"2016-03-14T12:35:26.567Z","processingTimeMillis":658,"recipients":["testing@digital.cabinet-office.gov.uk"],"smtpResponse":"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp","reportingMTA":"a6-238.smtp-out.eu-west-1.amazonses.com"}}' % reference,  # noqa
+        'MessageId': reference,
+        'Signature': 'X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUtOowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYLVSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMAPmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==',  # noqa
+        'SignatureVersion': '1',
+        'SigningCertURL': 'https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750dd426d95ee9390147a5624348ee.pem',  # noqa
+        'Timestamp': '2016-03-14T12:35:26.665Z',
+        'TopicArn': 'arn:aws:sns:eu-west-1:123456789012:testing',
+        'Type': 'Notification',
+        'UnsubscribeURL': 'https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da'  # noqa
+    }

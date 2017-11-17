@@ -63,7 +63,6 @@ from app.models import (
     SMS_TYPE,
 )
 from app.notifications.process_notifications import persist_notification
-from app.notifications.notifications_ses_callback import process_ses_response
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
 from notifications_utils.s3 import s3upload
@@ -562,15 +561,3 @@ def process_incomplete_job(job_id):
             process_row(row_number, recipient, personalisation, template, job, job.service)
 
     job_complete(job, job.service, template, resumed=True)
-
-
-@notify_celery.task(bind=True, name="process-ses-result", max_retries=5, default_retry_delay=300)
-@statsd(namespace="tasks")
-def process_ses_results(self, response):
-    try:
-        errors = process_ses_response(response)
-        if errors:
-            current_app.logger.error(errors)
-    except Exception:
-        current_app.logger.exception('Error processing SES results')
-        self.retry(queue=QueueNames.RETRY, exc="SES responses processed with error")
