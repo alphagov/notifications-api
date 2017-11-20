@@ -1,4 +1,5 @@
 import uuid
+import base64
 from datetime import datetime
 from unittest.mock import call
 
@@ -16,18 +17,26 @@ from app.notifications.receive_notifications import (
 )
 
 from app.models import InboundSms, EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE
+from tests.conftest import set_config
 from tests.app.db import create_inbound_number, create_service, create_service_with_inbound_number
 from tests.app.conftest import sample_service
 
 
-def firetext_post(client, data):
+def firetext_post(client, data, auth=True, password='testkey'):
+    headers = [
+        ('Content-Type', 'application/x-www-form-urlencoded'),
+        ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')
+    ]
+
+    if auth:
+        auth_value = base64.b64encode("notify:{}".format(password).encode('utf-8')).decode('utf-8')
+        headers.append(('Authorization', 'Basic ' + auth_value))
+
     return client.post(
         path='/notifications/sms/receive/firetext',
         data=data,
-        headers=[
-            ('Content-Type', 'application/x-www-form-urlencoded'),
-            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')
-        ])
+        headers=headers
+    )
 
 
 def mmg_post(client, data):
@@ -379,3 +388,28 @@ def test_returns_ok_to_firetext_if_mismatched_sms_sender(notify_db_session, clie
 )
 def test_strip_leading_country_code(number, expected):
     assert strip_leading_forty_four(number) == expected
+
+
+@pytest.mark.parametrize("auth, keys, status_code", [
+    ["testkey", ["testkey"], 200],
+    ["", ["testkey"], 401],
+    ["wrong", ["testkey"], 403],
+    ["testkey1", ["testkey1", "testkey2"], 200],
+    ["testkey2", ["testkey1", "testkey2"], 200],
+    ["wrong", ["testkey1", "testkey2"], 403],
+    ["", [], 401],
+    ["testkey", [], 403],
+])
+@pytest.mark.skip(reason="aborts are disabled at the moment")
+def test_firetext_inbound_sms_auth(notify_db_session, notify_api, client, mocker, auth, keys, status_code):
+    mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
+
+    create_service_with_inbound_number(
+        service_name='b', inbound_number='07111111111', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE]
+    )
+
+    data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
+
+    with set_config(notify_api, 'FIRETEXT_INBOUND_SMS_AUTH', keys):
+        response = firetext_post(client, data, auth=bool(auth), password=auth)
+        assert response.status_code == status_code
