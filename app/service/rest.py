@@ -57,14 +57,12 @@ from app.dao.service_whitelist_dao import (
 )
 from app.dao.service_email_reply_to_dao import (
     add_reply_to_email_address_for_service,
-    create_or_update_email_reply_to,
     dao_get_reply_to_by_id,
     dao_get_reply_to_by_service_id,
     update_reply_to_email_address
 )
 from app.dao.service_letter_contact_dao import (
     dao_get_letter_contacts_by_service_id,
-    create_or_update_letter_contact,
     dao_get_letter_contact_by_id,
     add_letter_contact_for_service,
     update_letter_contact
@@ -175,8 +173,6 @@ def create_service():
         errors = {'user_id': ['Missing data for required field.']}
         raise InvalidRequest(errors, status_code=400)
 
-    # TODO: to be removed when front-end is updated
-
     # validate json with marshmallow
     service_schema.load(request.get_json())
 
@@ -199,12 +195,6 @@ def update_service(service_id):
     current_data.update(request.get_json())
     update_dict = service_schema.load(current_data).data
     dao_update_service(update_dict)
-
-    if 'reply_to_email_address' in req_json:
-        create_or_update_email_reply_to(fetched_service.id, req_json['reply_to_email_address'])
-
-    if 'letter_contact_block' in req_json:
-        create_or_update_letter_contact(fetched_service.id, req_json['letter_contact_block'])
 
     # bridging code between frontend is deployed and data has not been migrated yet. Can only update current year
     if 'free_sms_fragment_limit' in req_json:

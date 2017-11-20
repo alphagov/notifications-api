@@ -1341,34 +1341,6 @@ def test_get_service_and_api_key_history(notify_api, notify_db, notify_db_sessio
             assert json_resp['data']['api_key_history'][0]['id'] == str(api_key.id)
 
 
-def test_set_reply_to_email_for_service(notify_api, sample_service):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            auth_header = create_authorization_header()
-            resp = client.get(
-                '/service/{}'.format(sample_service.id),
-                headers=[auth_header]
-            )
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 200
-            assert json_resp['data']['name'] == sample_service.name
-
-            data = {
-                'reply_to_email_address': 'reply_test@service.gov.uk',
-            }
-
-            auth_header = create_authorization_header()
-
-            resp = client.post(
-                '/service/{}'.format(sample_service.id),
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header]
-            )
-            result = json.loads(resp.get_data(as_text=True))
-            assert resp.status_code == 200
-            assert result['data']['reply_to_email_address'] == 'reply_test@service.gov.uk'
-
-
 def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notify_db_session):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         service_1 = create_service(service_name="1", email_from='1')
@@ -2433,23 +2405,6 @@ def test_is_service_name_unique_returns_400_when_name_does_not_exist(client):
     assert json_resp["message"][1]["email_from"] == ["Can't be empty"]
 
 
-def test_update_service_reply_to_email_address_upserts_email_reply_to(admin_request, sample_service):
-    response = admin_request.post(
-        'service.update_service',
-        service_id=sample_service.id,
-        _data={
-            'reply_to_email_address': 'new@mail.com'
-        },
-        _expected_status=200
-    )
-
-    service_reply_to_emails = ServiceEmailReplyTo.query.all()
-    assert len(service_reply_to_emails) == 1
-    assert service_reply_to_emails[0].email_address == 'new@mail.com'
-    assert service_reply_to_emails[0].is_default
-    assert response['data']['reply_to_email_address'] == 'new@mail.com'
-
-
 def test_get_email_reply_to_addresses_when_there_are_no_reply_to_email_addresses(client, sample_service):
     response = client.get('/service/{}/email-reply-to'.format(sample_service.id),
                           headers=[create_authorization_header()])
@@ -2601,24 +2556,6 @@ def test_get_email_reply_to_address(client, notify_db, notify_db_session):
 
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == reply_to.serialize()
-
-
-def test_update_service_letter_contact_upserts_letter_contact(admin_request, sample_service):
-    response = admin_request.post(
-        'service.update_service',
-        service_id=sample_service.id,
-        _data={
-            'letter_contact_block': 'Aberdeen, AB23 1XH'
-        },
-        _expected_status=200
-    )
-
-    letter_contacts = ServiceLetterContact.query.all()
-
-    assert len(letter_contacts) == 1
-    assert letter_contacts[0].contact_block == 'Aberdeen, AB23 1XH'
-    assert letter_contacts[0].is_default
-    assert response['data']['letter_contact_block'] == 'Aberdeen, AB23 1XH'
 
 
 def test_get_letter_contacts_when_there_are_no_letter_contacts(client, sample_service):
