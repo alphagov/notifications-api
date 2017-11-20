@@ -51,55 +51,75 @@ def test_dao_get_template_usage_stats_by_service(sample_service):
 
     email_template = create_template(service=sample_service, template_type="email")
 
-    stats1 = StatsTemplateUsageByMonth(
+    new_service = create_service(service_name="service_one")
+
+    template_new_service = create_template(service=new_service)
+
+    db.session.add(StatsTemplateUsageByMonth(
         template_id=email_template.id,
-        month=1,
+        month=4,
         year=2017,
         count=10
-    )
+    ))
 
-    stats2 = StatsTemplateUsageByMonth(
-        template_id=email_template.id,
-        month=2,
+    db.session.add(StatsTemplateUsageByMonth(
+        template_id=template_new_service.id,
+        month=4,
         year=2017,
         count=10
-    )
-
-    db.session.add(stats1)
-    db.session.add(stats2)
+    ))
 
     result = dao_get_template_usage_stats_by_service(sample_service.id, 2017)
 
-    assert len(result) == 2
+    assert len(result) == 1
 
 
 def test_dao_get_template_usage_stats_by_service_specific_year(sample_service):
 
     email_template = create_template(service=sample_service, template_type="email")
 
-    stats1 = StatsTemplateUsageByMonth(
+    db.session.add(StatsTemplateUsageByMonth(
         template_id=email_template.id,
-        month=1,
-        year=2016,
-        count=10
-    )
-
-    stats2 = StatsTemplateUsageByMonth(
-        template_id=email_template.id,
-        month=2,
+        month=3,
         year=2017,
         count=10
-    )
+    ))
 
-    db.session.add(stats1)
-    db.session.add(stats2)
+    db.session.add(StatsTemplateUsageByMonth(
+        template_id=email_template.id,
+        month=4,
+        year=2017,
+        count=10
+    ))
+
+    db.session.add(StatsTemplateUsageByMonth(
+        template_id=email_template.id,
+        month=3,
+        year=2018,
+        count=10
+    ))
+
+    db.session.add(StatsTemplateUsageByMonth(
+        template_id=email_template.id,
+        month=4,
+        year=2018,
+        count=10
+    ))
 
     result = dao_get_template_usage_stats_by_service(sample_service.id, 2017)
 
-    assert len(result) == 1
+    assert len(result) == 2
+
     assert result[0].template_id == email_template.id
     assert result[0].name == email_template.name
     assert result[0].template_type == email_template.template_type
-    assert result[0].month == 2
+    assert result[0].month == 4
     assert result[0].year == 2017
     assert result[0].count == 10
+
+    assert result[1].template_id == email_template.id
+    assert result[1].name == email_template.name
+    assert result[1].template_type == email_template.template_type
+    assert result[1].month == 3
+    assert result[1].year == 2018
+    assert result[1].count == 10
