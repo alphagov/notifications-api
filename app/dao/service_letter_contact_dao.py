@@ -30,16 +30,6 @@ def dao_get_letter_contact_by_id(service_id, letter_contact_id):
 
 
 @transactional
-def dao_create_letter_contact(letter_contact):
-    db.session.add(letter_contact)
-
-
-@transactional
-def dao_update_letter_contact(letter_contact):
-    db.session.add(letter_contact)
-
-
-@transactional
 def add_letter_contact_for_service(service_id, contact_block, is_default):
     old_default = _get_existing_default(service_id)
     if is_default:

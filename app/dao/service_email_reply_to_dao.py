@@ -26,16 +26,6 @@ def dao_get_reply_to_by_id(service_id, reply_to_id):
 
 
 @transactional
-def dao_create_reply_to_email_address(reply_to_email):
-    db.session.add(reply_to_email)
-
-
-@transactional
-def dao_update_reply_to_email(reply_to):
-    db.session.add(reply_to)
-
-
-@transactional
 def add_reply_to_email_address_for_service(service_id, email_address, is_default):
     old_default = _get_existing_default(service_id)
     if is_default:
