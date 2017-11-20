@@ -1,7 +1,7 @@
 from urllib.parse import unquote
 
 import iso8601
-from flask import jsonify, Blueprint, current_app, request
+from flask import jsonify, Blueprint, current_app, request, abort
 from notifications_utils.recipients import validate_and_format_phone_number
 
 from app import statsd_client, firetext_client, mmg_client
@@ -58,10 +58,12 @@ def receive_firetext_sms():
 
     # This is pre-implementation test code to validate the provider is basic auth headers.
     auth = request.authorization
-    if auth:
-        current_app.logger.info("Inbound sms username: {}".format(auth.username))
-    else:
-        current_app.logger.info("Inbound sms no auth header")
+    if not auth:
+        current_app.logger.warning("Inbound sms no auth header")
+        # abort(401)
+    elif auth.username != 'notify' or auth.password not in current_app.config['FIRETEXT_INBOUND_SMS_AUTH']:
+        current_app.logger.warning("Inbound sms incorrect username ({}) or password".format(auth.username))
+        # abort(403)
 
     inbound_number = strip_leading_forty_four(post_data['destination'])
 

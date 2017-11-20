@@ -17,6 +17,7 @@ def notify_config():
             'secret_key': 'secret key',
             'dangerous_salt': 'dangerous salt',
             'allow_ip_inbound_sms': ['111.111.111.111', '100.100.100.100'],
+            'firetext_inbound_sms_auth': ['testkey'],
             'route_secret_key_1': "key_1",
             'route_secret_key_2': ""
         }
@@ -209,6 +210,13 @@ def test_sms_inbound_config():
     extract_cloudfoundry_config()
 
     assert os.environ['SMS_INBOUND_WHITELIST'] == json.dumps(['111.111.111.111', '100.100.100.100'])
+
+
+@pytest.mark.usefixtures('os_environ', 'cloudfoundry_environ')
+def test_firetext_inbound_sms_auth_config():
+    extract_cloudfoundry_config()
+
+    assert os.environ['FIRETEXT_INBOUND_SMS_AUTH'] == json.dumps(['testkey'])
 
 
 @pytest.mark.usefixtures('os_environ', 'cloudfoundry_environ')
