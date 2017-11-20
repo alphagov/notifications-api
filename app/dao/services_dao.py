@@ -550,7 +550,7 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
 
     results = dao_get_template_usage_stats_by_service(service_id, year)
 
-    stats = list()
+    stats = []
     for result in results:
         stat = type("", (), {})()
         stat.template_id = result.template_id
@@ -575,7 +575,7 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
     ).join(
         Template, Notification.template_id == Template.id,
     ).filter(
-        Notification.created_at >= start_date
+        Notification.created_at >= start_date,
     ).group_by(
         Notification.template_id,
         Template.name,
@@ -599,8 +599,8 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
             new_stat.template_id = today_result.template_id
             new_stat.template_type = today_result.template_type
             new_stat.name = today_result.name
-            new_stat.month = today_result.month
-            new_stat.year = today_result.year
+            new_stat.month = int(today_result.month)
+            new_stat.year = int(today_result.year)
             new_stat.count = today_result.count
             stats.append(new_stat)
 
