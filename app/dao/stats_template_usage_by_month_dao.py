@@ -1,3 +1,5 @@
+from sqlalchemy import or_, and_
+
 from app import db
 from app.statsd_decorators import statsd
 from app.dao.dao_utils import transactional
@@ -41,6 +43,15 @@ def dao_get_template_usage_stats_by_service(service_id, year):
     ).join(
         Template, StatsTemplateUsageByMonth.template_id == Template.id
     ).filter(
-        Template.service_id == service_id,
-        StatsTemplateUsageByMonth.year == year
+        Template.service_id == service_id
+    ).filter(
+        or_(
+            and_(
+                StatsTemplateUsageByMonth.month.in_([4, 5, 6, 7, 8, 9, 10, 11, 12]),
+                StatsTemplateUsageByMonth.year == year
+            ), and_(
+                StatsTemplateUsageByMonth.month.in_([1, 2, 3]),
+                StatsTemplateUsageByMonth.year == year + 1
+            )
+        )
     ).all()

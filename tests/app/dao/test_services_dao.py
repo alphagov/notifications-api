@@ -1380,3 +1380,151 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_combined_his
     assert result[1].month == 11
     assert result[1].year == 2017
     assert result[1].count == 1
+
+
+@freeze_time("2017-11-10 11:09:00.000000")
+def test_dao_fetch_monthly_historical_usage_by_template_for_service_does_not_return_double_precision_values(
+        notify_db,
+        notify_db_session,
+        sample_service
+):
+
+    template_one = create_sample_template(notify_db, notify_db_session, template_name='1')
+
+    n = create_notification(
+        notify_db,
+        notify_db_session,
+        service=sample_service,
+        template=template_one,
+        created_at=datetime.utcnow()
+    )
+
+    result = sorted(
+        dao_fetch_monthly_historical_usage_by_template_for_service(n.service_id, 2017),
+        key=lambda x: (x.month, x.year)
+    )
+
+    assert len(result) == 1
+
+    assert result[0].template_id == template_one.id
+    assert result[0].name == template_one.name
+    assert result[0].template_type == template_one.template_type
+    assert result[0].month == 11
+    assert len(str(result[0].month)) == 2
+    assert result[0].year == 2017
+    assert len(str(result[0].year)) == 4
+    assert result[0].count == 1
+
+
+@freeze_time("2018-03-10 11:09:00.000000")
+def test_dao_fetch_monthly_historical_usage_by_template_for_service_returns_financial_year(
+        notify_db,
+        notify_db_session,
+        sample_service
+):
+    template_one = create_sample_template(notify_db, notify_db_session, template_name='1', template_type='email')
+
+    notification_history = functools.partial(
+        create_notification_history,
+        notify_db,
+        notify_db_session,
+        status='delivered',
+        sample_template=template_one
+    )
+
+    date = datetime.now()
+    day = date.day
+    year = date.year
+
+    notification_history(created_at=datetime(year - 1, 1, day))
+    notification_history(created_at=datetime(year - 1, 3, day))
+    notification_history(created_at=datetime(year - 1, 4, day))
+    notification_history(created_at=datetime(year - 1, 5, day))
+    notification_history(created_at=datetime(year, 1, day))
+    notification_history(created_at=datetime(year, 2, day))
+
+    daily_stats_template_usage_by_month()
+
+    n = create_notification(
+        notify_db,
+        notify_db_session,
+        service=sample_service,
+        template=template_one,
+        created_at=datetime.utcnow()
+    )
+
+    result = sorted(
+        dao_fetch_monthly_historical_usage_by_template_for_service(n.service_id, 2017),
+        key=lambda x: (x.year, x.month)
+    )
+
+    assert len(result) == 5
+
+    assert result[0].month == 4
+    assert result[0].year == 2017
+    assert result[1].month == 5
+    assert result[1].year == 2017
+    assert result[2].month == 1
+    assert result[2].year == 2018
+    assert result[3].month == 2
+    assert result[3].year == 2018
+    assert result[4].month == 3
+    assert result[4].year == 2018
+
+
+@freeze_time("2018-03-10 11:09:00.000000")
+def test_dao_fetch_monthly_historical_usage_by_template_for_service_only_returns_for_service(
+        notify_db,
+        notify_db_session,
+        sample_service
+):
+    template_one = create_sample_template(notify_db, notify_db_session, template_name='1', template_type='email')
+
+    notification_history = functools.partial(
+        create_notification_history,
+        notify_db,
+        notify_db_session,
+        status='delivered',
+        sample_template=template_one
+    )
+
+    date = datetime.now()
+    day = date.day
+    year = date.year
+
+    notification_history(created_at=datetime(year, 1, day))
+    notification_history(created_at=datetime(year, 2, day))
+
+    service_two = create_service(service_name='other_service')
+
+    daily_stats_template_usage_by_month()
+
+    n = create_notification(
+        notify_db,
+        notify_db_session,
+        service=sample_service,
+        template=template_one,
+        created_at=datetime.utcnow()
+    )
+
+    create_notification(
+        notify_db,
+        notify_db_session,
+        service=service_two,
+        template=template_one,
+        created_at=datetime.utcnow()
+    )
+
+    result = sorted(
+        dao_fetch_monthly_historical_usage_by_template_for_service(n.service_id, 2017),
+        key=lambda x: (x.year, x.month)
+    )
+
+    assert len(result) == 3
+
+    result = sorted(
+        dao_fetch_monthly_historical_usage_by_template_for_service(service_two.id, 2017),
+        key=lambda x: (x.year, x.month)
+    )
+
+    assert len(result) == 1
