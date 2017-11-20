@@ -159,6 +159,7 @@ def test_get_service_by_id(client, sample_service):
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
     assert json_resp['data']['prefix_sms_with_service_name'] is True
+    assert json_resp['data']['prefix_sms'] is True
 
 
 def test_get_service_by_id_returns_free_sms_limit(client, sample_service):
@@ -1551,34 +1552,38 @@ def test_prefixing_messages_based_on_prefix_sms(
 @pytest.mark.parametrize('posted_value, stored_value, returned_value', [
     (True, True, True),
     (False, False, False),
-    (None, None, True),
 ])
 def test_set_sms_prefixing_for_service(
+    admin_request,
     client,
     sample_service,
     posted_value,
     stored_value,
     returned_value,
 ):
-    data = {
-        'prefix_sms': posted_value,
-    }
-
-    auth_header = create_authorization_header()
-
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header]
+    result = admin_request.post(
+        'service.update_service',
+        service_id=sample_service.id,
+        _data={'prefix_sms': posted_value},
     )
-    result = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 200
     assert result['data']['prefix_sms'] == stored_value
     # This derived value will go away eventually, once we’ve done a migration
     assert result['data']['prefix_sms_with_service_name'] == returned_value
     # The derived value is dependent on the service sending from the platform’s
     # default from number
     assert result['data']['sms_sender'] == current_app.config['FROM_NUMBER']
+
+
+def test_set_sms_prefixing_for_service_cant_be_none(
+    admin_request,
+    sample_service,
+):
+    admin_request.post(
+        'service.update_service',
+        service_id=sample_service.id,
+        _data={'prefix_sms': None},
+        _expected_status=500,
+    )
 
 
 @pytest.mark.parametrize('today_only,stats', [
