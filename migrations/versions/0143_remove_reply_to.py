@@ -1,7 +1,7 @@
 """
 
-Revision ID: 0142_remove_reply_to
-Revises: 0141_remove_unused
+Revision ID: 0143_remove_reply_to
+Revises: 0142_validate_constraint
 Create Date: 2017-11-20 14:35:16.826398
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = '0142_remove_reply_to'
-down_revision = '0141_remove_unused'
+revision = '0143_remove_reply_to'
+down_revision = '0142_validate_constraint'
 
 
 def upgrade():
