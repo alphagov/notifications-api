@@ -992,7 +992,7 @@ def notify_service(notify_db, notify_db_session):
             'active': True,
             'restricted': False,
             'email_from': 'notify.service',
-            'created_by': user
+            'created_by': user,
         }
         service = Service(**data)
         db.session.add(service)
