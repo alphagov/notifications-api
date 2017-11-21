@@ -29,35 +29,6 @@ def dao_get_letter_contact_by_id(service_id, letter_contact_id):
     return letter_contact
 
 
-def create_or_update_letter_contact(service_id, contact_block):
-    letter_contacts = dao_get_letter_contacts_by_service_id(service_id)
-    if len(letter_contacts) == 0:
-        letter_contact = ServiceLetterContact(
-            service_id=service_id,
-            contact_block=contact_block
-        )
-        dao_create_letter_contact(letter_contact)
-    elif len(letter_contacts) == 1:
-        letter_contacts[0].contact_block = contact_block
-        dao_update_letter_contact(letter_contacts[0])
-    else:
-        # TODO: Once we move allowing letter contact blocks, this method will be removed
-        raise InvalidRequest(
-            "Multiple letter contacts were found, this method should not be used.",
-            status_code=500
-        )
-
-
-@transactional
-def dao_create_letter_contact(letter_contact):
-    db.session.add(letter_contact)
-
-
-@transactional
-def dao_update_letter_contact(letter_contact):
-    db.session.add(letter_contact)
-
-
 @transactional
 def add_letter_contact_for_service(service_id, contact_block, is_default):
     old_default = _get_existing_default(service_id)
