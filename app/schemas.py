@@ -209,7 +209,6 @@ class ServiceSchema(BaseSchema):
     reply_to_email_address = fields.Method(method_name="get_reply_to_email_address")
     sms_sender = fields.Method(method_name="get_sms_sender")
     letter_contact_block = fields.Method(method_name="get_letter_contact")
-    prefix_sms_with_service_name = fields.Method(method_name="get_prefix_sms_with_service_name")
 
     def service_permissions(self, service):
         return [p.permission for p in service.permissions]
@@ -222,9 +221,6 @@ class ServiceSchema(BaseSchema):
 
     def get_letter_contact(self, service):
         return service.get_default_letter_contact()
-
-    def get_prefix_sms_with_service_name(self, service):
-        return service.get_prefix_sms_with_service_name()
 
     class Meta:
         model = models.Service
