@@ -576,6 +576,7 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
         Template, Notification.template_id == Template.id,
     ).filter(
         Notification.created_at >= start_date,
+        Notification.service_id == service_id
     ).group_by(
         Notification.template_id,
         Template.name,
