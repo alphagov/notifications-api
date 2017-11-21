@@ -1471,6 +1471,13 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_returns_fina
     assert result[4].month == 3
     assert result[4].year == 2018
 
+    result = sorted(
+        dao_fetch_monthly_historical_usage_by_template_for_service(n.service_id, 2014),
+        key=lambda x: (x.year, x.month)
+    )
+
+    assert len(result) == 0
+
 
 @freeze_time("2018-03-10 11:09:00.000000")
 def test_dao_fetch_monthly_historical_usage_by_template_for_service_only_returns_for_service(
