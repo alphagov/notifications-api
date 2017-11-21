@@ -48,13 +48,11 @@ def send_sms_to_provider(notification):
         )
         template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
 
-        sender_has_been_customised = (not service.get_prefix_sms_with_service_name())
-
         template = SMSMessageTemplate(
             template_model.__dict__,
             values=notification.personalisation,
             prefix=service.name,
-            sender=sender_has_been_customised,
+            show_prefix=service.prefix_sms,
         )
 
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
