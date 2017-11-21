@@ -559,6 +559,26 @@ class TemplateBase(db.Model):
 
     redact_personalisation = association_proxy('template_redacted', 'redact_personalisation')
 
+    @declared_attr
+    def service_letter_contact_id(cls):
+        return db.Column(UUID(as_uuid=True), db.ForeignKey('service_letter_contacts.id'), nullable=True)
+
+    @property
+    def reply_to(self):
+        if self.template_type == LETTER_TYPE:
+            return self.service_letter_contact_id
+        else:
+            return None
+
+    @reply_to.setter
+    def reply_to(self, value):
+        if self.template_type == LETTER_TYPE:
+            self.service_letter_contact_id = value
+        elif value is None:
+            pass
+        else:
+            raise ValueError('Unable to set sender for {} template'.format(self.template_type))
+
     def _as_utils_template(self):
         if self.template_type == EMAIL_TYPE:
             return PlainTextEmailTemplate(
