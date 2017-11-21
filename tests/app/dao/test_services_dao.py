@@ -1496,6 +1496,13 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_only_returns
     notification_history(created_at=datetime(year, 2, day))
 
     service_two = create_service(service_name='other_service')
+    template_two = create_sample_template(
+        notify_db,
+        notify_db_session,
+        template_name='1',
+        template_type='email',
+        service=service_two
+    )
 
     daily_stats_template_usage_by_month()
 
@@ -1503,7 +1510,7 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_only_returns
         notify_db,
         notify_db_session,
         service=sample_service,
-        template=template_one,
+        template=template_two,
         created_at=datetime.utcnow()
     )
 
