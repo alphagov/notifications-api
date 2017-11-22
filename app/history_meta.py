@@ -219,6 +219,8 @@ def create_history(obj, history_cls=None):
     data['created_at'] = obj.created_at
 
     for key, value in data.items():
+        if not hasattr(history_cls, key):
+            raise AttributeError("{} has no attribute '{}'".format(history_cls.__name__, key))
         setattr(history, key, value)
 
     return history
