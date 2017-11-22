@@ -17,9 +17,7 @@ from tests.app.conftest import (
     sample_template_without_letter_permission,
     sample_template_without_sms_permission,
 )
-from tests.app.db import create_service
-
-from app.dao.templates_dao import dao_get_template_by_id
+from tests.app.db import create_service, create_letter_contact
 
 
 @pytest.mark.parametrize('template_type, subject', [
@@ -616,6 +614,39 @@ def test_update_set_process_type_on_template(client, sample_template):
 
     template = dao_get_template_by_id(sample_template.id)
     assert template.process_type == 'priority'
+
+
+def test_get_template_reply_to(client, sample_letter_template):
+    auth_header = create_authorization_header()
+    letter_contact = create_letter_contact(sample_letter_template.service, "Edinburgh, ED1 1AA")
+    sample_letter_template.reply_to = str(letter_contact.id)
+
+    resp = client.get('/service/{}/template/{}'.format(sample_letter_template.service_id, sample_letter_template.id),
+                      headers=[auth_header])
+
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+    json_resp = json.loads(resp.get_data(as_text=True))
+
+    assert 'service_letter_contact_id' not in json_resp['data']
+    assert json_resp['data']['reply_to'] == str(letter_contact.id)
+
+
+def test_update_template_reply_to(client, sample_letter_template):
+    auth_header = create_authorization_header()
+    letter_contact = create_letter_contact(sample_letter_template.service, "Edinburgh, ED1 1AA")
+
+    data = {
+        'reply_to': str(letter_contact.id),
+    }
+
+    resp = client.post('/service/{}/template/{}'.format(sample_letter_template.service_id, sample_letter_template.id),
+                       data=json.dumps(data),
+                       headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+
+    template = dao_get_template_by_id(sample_letter_template.id)
+    assert template.reply_to == letter_contact.id
 
 
 def test_update_redact_template(admin_request, sample_template):

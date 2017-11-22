@@ -3,6 +3,7 @@ from datetime import (datetime, date)
 from flask import url_for
 from app.dao.templates_dao import dao_update_template
 from tests import create_authorization_header
+from tests.app.db import create_letter_contact
 
 
 def test_template_history_version(notify_api, sample_user, sample_template):
@@ -93,3 +94,21 @@ def test_all_versions_of_template(notify_api, sample_template):
             assert json_resp['data'][1]['content'] == newer_content
             assert json_resp['data'][1]['updated_at']
             assert json_resp['data'][2]['content'] == old_content
+
+
+def test_update_template_reply_to_updates_history(client, sample_letter_template):
+    auth_header = create_authorization_header()
+    letter_contact = create_letter_contact(sample_letter_template.service, "Edinburgh, ED1 1AA")
+
+    sample_letter_template.reply_to = letter_contact.id
+    dao_update_template(sample_letter_template)
+
+    resp = client.get(
+        '/service/{}/template/{}/version/2'.format(sample_letter_template.service_id, sample_letter_template.id),
+        headers=[auth_header]
+    )
+    assert resp.status_code == 200
+
+    hist_json_resp = json.loads(resp.get_data(as_text=True))
+    assert 'service_letter_contact_id' not in hist_json_resp['data']
+    assert hist_json_resp['data']['reply_to'] == str(letter_contact.id)
