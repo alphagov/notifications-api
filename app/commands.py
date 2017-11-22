@@ -30,6 +30,9 @@ commands = click.Group(name='commands', help='Additional commands')
 @click.option('-c', '--cost', required=True, help='Cost (pence) per message including decimals')
 @click.option('-d', '--valid_from', required=True, help="Date (%Y-%m-%dT%H:%M:%S) valid from")
 def create_provider_rates(provider_name, cost, valid_from):
+    """
+    Backfill rates for a given provider
+    """
     if provider_name not in PROVIDERS:
         raise Exception("Invalid provider name, must be one of ({})".format(', '.join(PROVIDERS)))
 
@@ -47,8 +50,15 @@ def create_provider_rates(provider_name, cost, valid_from):
 
 
 @commands.command()
-@click.option('-u', '--user_email_prefix', required=True, help="Functional test user email prefix.")
+@click.option('-u', '--user_email_prefix', required=True, help="""
+    Functional test user email prefix. eg "notify-test-preview"
+""")  # noqa
 def purge_functional_test_data(user_email_prefix):
+    """
+    Remove non-seeded functional test data
+
+    users, services, etc. Give an email prefix. Probably "notify-test-preview".
+    """
     users = User.query.filter(User.email_address.like("{}%".format(user_email_prefix))).all()
     for usr in users:
         # Make sure the full email includes a uuid in it
@@ -70,6 +80,8 @@ def purge_functional_test_data(user_email_prefix):
 @commands.command()
 def backfill_notification_statuses():
     """
+    DEPRECATED. Populates notification_status.
+
     This will be used to populate the new `Notification._status_fkey` with the old
     `Notification._status_enum`
     """
@@ -87,6 +99,9 @@ def backfill_notification_statuses():
 
 @commands.command()
 def update_notification_international_flag():
+    """
+    DEPRECATED. Set notifications.international=false.
+    """
     # 250,000 rows takes 30 seconds to update.
     subq = "select id from notifications where international is null limit 250000"
     update = "update notifications set international = False where id in ({})".format(subq)
@@ -112,6 +127,7 @@ def update_notification_international_flag():
 @commands.command()
 def fix_notification_statuses_not_in_sync():
     """
+    DEPRECATED.
     This will be used to correct an issue where Notification._status_enum and NotificationHistory._status_fkey
     became out of sync. See 979e90a.
 
@@ -144,6 +160,11 @@ def fix_notification_statuses_not_in_sync():
 
 @commands.command()
 def link_inbound_numbers_to_service():
+    """
+    DEPRECATED.
+
+    Matches inbound numbers and service ids based on services.sms_sender
+    """
     update = """
     UPDATE inbound_numbers SET
     service_id = services.id,
@@ -161,6 +182,9 @@ def link_inbound_numbers_to_service():
 @commands.command()
 @click.option('-y', '--year', required=True, help="Use for integer value for year, e.g. 2017")
 def populate_monthly_billing(year):
+    """
+    Populate monthly billing table for all services for a given year.
+    """
     def populate(service_id, year, month):
         create_or_update_monthly_billing(service_id, datetime(int(year), int(month), 1))
         sms_res = get_monthly_billing_by_notification_type(
@@ -193,6 +217,9 @@ def populate_monthly_billing(year):
 @click.option('-s', '--start_date', required=True, help="Date (%Y-%m-%d) start date inclusive")
 @click.option('-e', '--end_date', required=True, help="Date (%Y-%m-%d) end date inclusive")
 def backfill_processing_time(start_date, end_date):
+    """
+    Send historical performance platform stats.
+    """
     start_date = datetime.strptime(start_date, '%Y-%m-%d')
     end_date = datetime.strptime(end_date, '%Y-%m-%d')
 
@@ -217,6 +244,9 @@ def backfill_processing_time(start_date, end_date):
 
 @commands.command()
 def populate_service_email_reply_to():
+    """
+    Migrate reply to emails.
+    """
     services_to_update = """
         INSERT INTO service_email_reply_to(id, service_id, email_address, is_default, created_at)
         SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, reply_to_email_address, true, '{}'
@@ -236,6 +266,9 @@ def populate_service_email_reply_to():
 
 @commands.command()
 def populate_service_sms_sender():
+    """
+    Migrate sms senders. Must be called when working on a fresh db!
+    """
     services_to_update = """
         INSERT INTO service_sms_senders(id, service_id, sms_sender, inbound_number_id, is_default, created_at)
         SELECT uuid_in(md5(random()::text || now()::text)::cstring), service_id, number, id, true, '{}'
@@ -272,6 +305,9 @@ def populate_service_sms_sender():
 
 @commands.command()
 def populate_service_letter_contact():
+    """
+    Migrates letter contact blocks.
+    """
     services_to_update = """
         INSERT INTO service_letter_contacts(id, service_id, contact_block, is_default, created_at)
         SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, letter_contact_block, true, '{}'
@@ -291,6 +327,9 @@ def populate_service_letter_contact():
 
 @commands.command()
 def populate_service_and_service_history_free_sms_fragment_limit():
+    """
+    DEPRECATED. Set services to have 250k sms limit.
+    """
     services_to_update = """
         UPDATE services
         SET free_sms_fragment_limit = 250000
@@ -314,6 +353,9 @@ def populate_service_and_service_history_free_sms_fragment_limit():
 
 @commands.command()
 def populate_annual_billing():
+    """
+    add annual_billing for 2016, 2017 and 2018.
+    """
     financial_year = [2016, 2017, 2018]
 
     for fy in financial_year:
@@ -337,6 +379,9 @@ def populate_annual_billing():
 @commands.command()
 @click.option('-j', '--job_id', required=True, help="Enter the job id to rebuild the dvla file for")
 def re_run_build_dvla_file_for_job(job_id):
+    """
+    Rebuild dvla file for a job.
+    """
     from app.celery.tasks import build_dvla_file
     from app.config import QueueNames
     build_dvla_file.apply_async([job_id], queue=QueueNames.JOBS)
