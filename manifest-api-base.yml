@@ -14,6 +14,8 @@ services:
 env:
   NOTIFY_APP_NAME: public-api
   CW_APP_NAME: api
+  # required by cf run-task
+  FLASK_APP: application.py
 instances: 1
 memory: 1G
 
