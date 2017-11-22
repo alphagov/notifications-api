@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
 
+import flask
 from flask import current_app
 import click
 
@@ -22,7 +23,9 @@ from app.utils import get_midnight_for_day_before, get_london_midnight_in_utc
 from app.performance_platform.processing_time import send_processing_time_for_start_and_end
 
 
-commands = click.Group(name='commands', help='Additional commands')
+@click.group(name='command', help='Additional commands')
+def commands():
+    pass
 
 
 @commands.command()
@@ -387,7 +390,8 @@ def re_run_build_dvla_file_for_job(job_id):
     build_dvla_file.apply_async([job_id], queue=QueueNames.JOBS)
 
 
-@commands.command()
+@commands.command(name='list-routes')
+@flask.cli.with_appcontext
 def list_routes():
     """List URLs of all application routes."""
     for rule in sorted(current_app.url_map.iter_rules(), key=lambda r: r.rule):
