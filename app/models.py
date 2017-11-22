@@ -526,6 +526,12 @@ class TemplateProcessTypes(db.Model):
 class TemplateBase(db.Model):
     __abstract__ = True
 
+    def __init__(self, **kwargs):
+        if 'template_type' in kwargs:
+            self.template_type = kwargs.pop('template_type')
+
+        super().__init__(**kwargs)
+
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), nullable=False)
     template_type = db.Column(template_types, nullable=False)
