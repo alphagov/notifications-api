@@ -562,47 +562,50 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
         stats.append(stat)
 
     month = get_london_month_from_utc_column(Notification.created_at)
-    year = func.date_trunc("year", Notification.created_at)
+    year_func = func.date_trunc("year", Notification.created_at)
     start_date = datetime.combine(date.today(), time.min)
 
-    today_results = db.session.query(
-        Notification.template_id,
-        Template.name,
-        Template.template_type,
-        extract('month', month).label('month'),
-        extract('year', year).label('year'),
-        func.count().label('count')
-    ).join(
-        Template, Notification.template_id == Template.id,
-    ).filter(
-        Notification.created_at >= start_date,
-        Notification.service_id == service_id
-    ).group_by(
-        Notification.template_id,
-        Template.name,
-        Template.template_type,
-        month,
-        year
-    ).order_by(
-        Notification.template_id
-    ).all()
+    fy_start, fy_end = get_financial_year(year)
 
-    for today_result in today_results:
-        add_to_stats = True
-        for stat in stats:
-            if today_result.template_id == stat.template_id and today_result.month == stat.month \
-                    and today_result.year == stat.year:
-                stat.count = stat.count + today_result.count
-                add_to_stats = False
+    if fy_start < datetime.now() < fy_end:
+        today_results = db.session.query(
+            Notification.template_id,
+            Template.name,
+            Template.template_type,
+            extract('month', month).label('month'),
+            extract('year', year_func).label('year'),
+            func.count().label('count')
+        ).join(
+            Template, Notification.template_id == Template.id,
+        ).filter(
+            Notification.created_at >= start_date,
+            Notification.service_id == service_id
+        ).group_by(
+            Notification.template_id,
+            Template.name,
+            Template.template_type,
+            month,
+            year_func
+        ).order_by(
+            Notification.template_id
+        ).all()
 
-        if add_to_stats:
-            new_stat = type("", (), {})()
-            new_stat.template_id = today_result.template_id
-            new_stat.template_type = today_result.template_type
-            new_stat.name = today_result.name
-            new_stat.month = int(today_result.month)
-            new_stat.year = int(today_result.year)
-            new_stat.count = today_result.count
-            stats.append(new_stat)
+        for today_result in today_results:
+            add_to_stats = True
+            for stat in stats:
+                if today_result.template_id == stat.template_id and today_result.month == stat.month \
+                        and today_result.year == stat.year:
+                    stat.count = stat.count + today_result.count
+                    add_to_stats = False
+
+            if add_to_stats:
+                new_stat = type("", (), {})()
+                new_stat.template_id = today_result.template_id
+                new_stat.template_type = today_result.template_type
+                new_stat.name = today_result.name
+                new_stat.month = int(today_result.month)
+                new_stat.year = int(today_result.year)
+                new_stat.count = today_result.count
+                stats.append(new_stat)
 
     return stats

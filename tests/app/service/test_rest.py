@@ -1857,7 +1857,7 @@ def test_get_template_usage_by_month_returns_correct_data(
         notify_db,
         notify_db_session,
         sample_template,
-        created_at=datetime(2016, 4, 1),
+        created_at=datetime(2017, 4, 1),
         status='sending'
     )
 
@@ -1865,7 +1865,7 @@ def test_get_template_usage_by_month_returns_correct_data(
         notify_db,
         notify_db_session,
         sample_template,
-        created_at=datetime(2016, 4, 1),
+        created_at=datetime(2017, 4, 1),
         status='permanent-failure'
     )
 
@@ -1873,7 +1873,7 @@ def test_get_template_usage_by_month_returns_correct_data(
         notify_db,
         notify_db_session,
         sample_template,
-        created_at=datetime(2016, 4, 1),
+        created_at=datetime(2017, 4, 1),
         status='temporary-failure'
     )
 
@@ -1885,7 +1885,7 @@ def test_get_template_usage_by_month_returns_correct_data(
     )
 
     resp = client.get(
-        '/service/{}/notifications/templates_usage/monthly?year=2016'.format(not1.service_id),
+        '/service/{}/notifications/templates_usage/monthly?year=2017'.format(not1.service_id),
         headers=[create_authorization_header()]
     )
     resp_json = json.loads(resp.get_data(as_text=True)).get('stats')
@@ -1897,8 +1897,8 @@ def test_get_template_usage_by_month_returns_correct_data(
     assert resp_json[0]["name"] == sample_template.name
     assert resp_json[0]["type"] == sample_template.template_type
     assert resp_json[0]["month"] == 4
-    assert resp_json[0]["year"] == 2016
-    assert resp_json[0]["count"] == 4
+    assert resp_json[0]["year"] == 2017
+    assert resp_json[0]["count"] == 3
 
     assert resp_json[1]["template_id"] == str(sample_template.id)
     assert resp_json[1]["name"] == sample_template.name
@@ -1906,6 +1906,63 @@ def test_get_template_usage_by_month_returns_correct_data(
     assert resp_json[1]["month"] == 11
     assert resp_json[1]["year"] == 2017
     assert resp_json[1]["count"] == 1
+
+
+@freeze_time('2017-11-11 02:00')
+def test_get_template_usage_by_month_returns_no_data(
+        notify_db,
+        notify_db_session,
+        client,
+        sample_template
+):
+
+    # add a historical notification for template
+    not1 = create_notification_history(
+        notify_db,
+        notify_db_session,
+        sample_template,
+        created_at=datetime(2016, 4, 1),
+    )
+
+    create_notification_history(
+        notify_db,
+        notify_db_session,
+        sample_template,
+        created_at=datetime(2017, 4, 1),
+        status='sending'
+    )
+
+    create_notification_history(
+        notify_db,
+        notify_db_session,
+        sample_template,
+        created_at=datetime(2017, 4, 1),
+        status='permanent-failure'
+    )
+
+    create_notification_history(
+        notify_db,
+        notify_db_session,
+        sample_template,
+        created_at=datetime(2017, 4, 1),
+        status='temporary-failure'
+    )
+
+    daily_stats_template_usage_by_month()
+
+    create_notification(
+        sample_template,
+        created_at=datetime.utcnow()
+    )
+
+    resp = client.get(
+        '/service/{}/notifications/templates_usage/monthly?year=2015'.format(not1.service_id),
+        headers=[create_authorization_header()]
+    )
+    resp_json = json.loads(resp.get_data(as_text=True)).get('stats')
+
+    assert resp.status_code == 200
+    assert len(resp_json) == 0
 
 
 @freeze_time('2017-11-11 02:00')
@@ -1924,14 +1981,14 @@ def test_get_template_usage_by_month_returns_two_templates(
         notify_db,
         notify_db_session,
         template_one,
-        created_at=datetime(2016, 4, 1),
+        created_at=datetime(2017, 4, 1),
     )
 
     create_notification_history(
         notify_db,
         notify_db_session,
         sample_template,
-        created_at=datetime(2016, 4, 1),
+        created_at=datetime(2017, 4, 1),
         status='sending'
     )
 
@@ -1939,7 +1996,7 @@ def test_get_template_usage_by_month_returns_two_templates(
         notify_db,
         notify_db_session,
         sample_template,
-        created_at=datetime(2016, 4, 1),
+        created_at=datetime(2017, 4, 1),
         status='permanent-failure'
     )
 
@@ -1947,7 +2004,7 @@ def test_get_template_usage_by_month_returns_two_templates(
         notify_db,
         notify_db_session,
         sample_template,
-        created_at=datetime(2016, 4, 1),
+        created_at=datetime(2017, 4, 1),
         status='temporary-failure'
     )
 
@@ -1959,7 +2016,7 @@ def test_get_template_usage_by_month_returns_two_templates(
     )
 
     resp = client.get(
-        '/service/{}/notifications/templates_usage/monthly?year=2016'.format(not1.service_id),
+        '/service/{}/notifications/templates_usage/monthly?year=2017'.format(not1.service_id),
         headers=[create_authorization_header()]
     )
     resp_json = json.loads(resp.get_data(as_text=True)).get('stats')
@@ -1973,14 +2030,14 @@ def test_get_template_usage_by_month_returns_two_templates(
     assert resp_json[0]["name"] == template_one.name
     assert resp_json[0]["type"] == template_one.template_type
     assert resp_json[0]["month"] == 4
-    assert resp_json[0]["year"] == 2016
+    assert resp_json[0]["year"] == 2017
     assert resp_json[0]["count"] == 1
 
     assert resp_json[1]["template_id"] == str(sample_template.id)
     assert resp_json[1]["name"] == sample_template.name
     assert resp_json[1]["type"] == sample_template.template_type
     assert resp_json[1]["month"] == 4
-    assert resp_json[1]["year"] == 2016
+    assert resp_json[1]["year"] == 2017
     assert resp_json[1]["count"] == 3
 
     assert resp_json[2]["template_id"] == str(sample_template.id)
