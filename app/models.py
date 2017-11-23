@@ -4,6 +4,7 @@ import uuid
 import datetime
 from flask import url_for, current_app
 
+from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.dialects.postgresql import (
     UUID,
@@ -522,50 +523,67 @@ class TemplateProcessTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
-class Template(db.Model):
-    __tablename__ = 'templates'
+class TemplateBase(db.Model):
+    __abstract__ = True
+
+    def __init__(self, **kwargs):
+        if 'template_type' in kwargs:
+            self.template_type = kwargs.pop('template_type')
+
+        super().__init__(**kwargs)
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), nullable=False)
     template_type = db.Column(template_types, nullable=False)
-    created_at = db.Column(
-        db.DateTime,
-        index=False,
-        unique=False,
-        nullable=False,
-        default=datetime.datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime,
-        index=False,
-        unique=False,
-        nullable=True,
-        onupdate=datetime.datetime.utcnow)
-    content = db.Column(db.Text, index=False, unique=False, nullable=False)
-    archived = db.Column(db.Boolean, index=False, nullable=False, default=False)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False, nullable=False)
-    service = db.relationship('Service', backref='templates')
-    subject = db.Column(db.Text, index=False, unique=False, nullable=True)
-    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
-    created_by = db.relationship('User')
-    version = db.Column(db.Integer, default=0, nullable=False)
-    process_type = db.Column(
-        db.String(255),
-        db.ForeignKey('template_process_type.name'),
-        index=True,
-        nullable=False,
-        default=NORMAL
-    )
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.datetime.utcnow)
+    content = db.Column(db.Text, nullable=False)
+    archived = db.Column(db.Boolean, nullable=False, default=False)
+    subject = db.Column(db.Text)
+
+    @declared_attr
+    def service_id(cls):
+        return db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
+
+    @declared_attr
+    def created_by_id(cls):
+        return db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+
+    @declared_attr
+    def created_by(cls):
+        return db.relationship('User')
+
+    @declared_attr
+    def process_type(cls):
+        return db.Column(
+            db.String(255),
+            db.ForeignKey('template_process_type.name'),
+            index=True,
+            nullable=False,
+            default=NORMAL
+        )
 
     redact_personalisation = association_proxy('template_redacted', 'redact_personalisation')
 
-    def get_link(self):
-        # TODO: use "/v2/" route once available
-        return url_for(
-            "template.get_template_by_id_and_service_id",
-            service_id=self.service_id,
-            template_id=self.id,
-            _external=True
-        )
+    @declared_attr
+    def service_letter_contact_id(cls):
+        return db.Column(UUID(as_uuid=True), db.ForeignKey('service_letter_contacts.id'), nullable=True)
+
+    @property
+    def reply_to(self):
+        if self.template_type == LETTER_TYPE:
+            return self.service_letter_contact_id
+        else:
+            return None
+
+    @reply_to.setter
+    def reply_to(self, value):
+        if self.template_type == LETTER_TYPE:
+            self.service_letter_contact_id = value
+        elif value is None:
+            pass
+        else:
+            raise ValueError('Unable to set sender for {} template'.format(self.template_type))
 
     def _as_utils_template(self):
         if self.template_type == EMAIL_TYPE:
@@ -605,6 +623,22 @@ class Template(db.Model):
         return serialized
 
 
+class Template(TemplateBase):
+    __tablename__ = 'templates'
+
+    service = db.relationship('Service', backref='templates')
+    version = db.Column(db.Integer, default=0, nullable=False)
+
+    def get_link(self):
+        # TODO: use "/v2/" route once available
+        return url_for(
+            "template.get_template_by_id_and_service_id",
+            service_id=self.service_id,
+            template_id=self.id,
+            _external=True
+        )
+
+
 class TemplateRedacted(db.Model):
     __tablename__ = 'template_redacted'
 
@@ -618,32 +652,16 @@ class TemplateRedacted(db.Model):
     template = db.relationship('Template', uselist=False, backref=db.backref('template_redacted', uselist=False))
 
 
-class TemplateHistory(db.Model):
+class TemplateHistory(TemplateBase):
     __tablename__ = 'templates_history'
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    template_type = db.Column(template_types, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False)
-    updated_at = db.Column(db.DateTime)
-    content = db.Column(db.Text, nullable=False)
-    archived = db.Column(db.Boolean, nullable=False, default=False)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service')
-    subject = db.Column(db.Text)
-    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
-    created_by = db.relationship('User')
     version = db.Column(db.Integer, primary_key=True, nullable=False)
-    process_type = db.Column(db.String(255),
-                             db.ForeignKey('template_process_type.name'),
-                             index=True,
-                             nullable=False,
-                             default=NORMAL)
 
-    template_redacted = db.relationship('TemplateRedacted', foreign_keys=[id],
-                                        primaryjoin='TemplateRedacted.template_id == TemplateHistory.id')
-
-    redact_personalisation = association_proxy('template_redacted', 'redact_personalisation')
+    @declared_attr
+    def template_redacted(cls):
+        return db.relationship('TemplateRedacted', foreign_keys=[cls.id],
+                               primaryjoin='TemplateRedacted.template_id == TemplateHistory.id')
 
     def get_link(self):
         return url_for(
@@ -652,12 +670,6 @@ class TemplateHistory(db.Model):
             version=self.version,
             _external=True
         )
-
-    def _as_utils_template(self):
-        return Template._as_utils_template(self)
-
-    def serialize(self):
-        return Template.serialize(self)
 
 
 MMG_PROVIDER = "mmg"
