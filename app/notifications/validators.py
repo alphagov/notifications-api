@@ -138,11 +138,8 @@ def validate_template(template_id, personalisation, service, notification_type):
 
 def check_service_email_reply_to_id(service_id, reply_to_id, notification_type):
     if reply_to_id:
-        if notification_type != EMAIL_TYPE:
-            message = 'email_reply_to_id is not a valid option for {} notification'.format(notification_type)
-            raise BadRequestError(message=message)
         try:
-            dao_get_reply_to_by_id(service_id, reply_to_id)
+            return dao_get_reply_to_by_id(service_id, reply_to_id).email_address
         except NoResultFound:
             message = 'email_reply_to_id {} does not exist in database for service id {}'\
                 .format(reply_to_id, service_id)
@@ -151,9 +148,6 @@ def check_service_email_reply_to_id(service_id, reply_to_id, notification_type):
 
 def check_service_sms_sender_id(service_id, sms_sender_id, notification_type):
     if sms_sender_id:
-        if notification_type != SMS_TYPE:
-            message = 'sms_sender_id is not a valid option for {} notification'.format(notification_type)
-            raise BadRequestError(message=message)
         try:
             return dao_get_service_sms_senders_by_id(service_id, sms_sender_id).sms_sender
         except NoResultFound:

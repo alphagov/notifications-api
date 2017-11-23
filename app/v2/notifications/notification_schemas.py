@@ -127,7 +127,8 @@ post_sms_request = {
         "scheduled_for": {"type": ["string", "null"], "format": "datetime"},
         "sms_sender_id": uuid
     },
-    "required": ["phone_number", "template_id"]
+    "required": ["phone_number", "template_id"],
+    "additionalProperties": False
 }
 
 sms_content = {
@@ -172,7 +173,8 @@ post_email_request = {
         "scheduled_for": {"type": ["string", "null"], "format": "datetime"},
         "email_reply_to_id": uuid
     },
-    "required": ["email_address", "template_id"]
+    "required": ["email_address", "template_id"],
+    "additionalProperties": False
 }
 
 email_content = {
@@ -215,7 +217,8 @@ post_letter_request = {
         "template_id": uuid,
         "personalisation": letter_personalisation
     },
-    "required": ["template_id", "personalisation"]
+    "required": ["template_id", "personalisation"],
+    "additionalProperties": False
 }
 
 letter_content = {

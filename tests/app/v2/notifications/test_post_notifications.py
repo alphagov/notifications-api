@@ -229,9 +229,13 @@ def test_notification_returns_400_and_for_schema_problems(client, sample_templat
     assert response.headers['Content-type'] == 'application/json'
     error_resp = json.loads(response.get_data(as_text=True))
     assert error_resp['status_code'] == 400
-    assert error_resp['errors'] == [{'error': 'ValidationError',
-                                     'message': "template_id is a required property"
-                                     }]
+    assert {'error': 'ValidationError',
+            'message': "template_id is a required property"
+            } in error_resp['errors']
+    assert {'error': 'ValidationError',
+            'message':
+            'Additional properties are not allowed (template was unexpected)'
+            } in error_resp['errors']
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -256,6 +260,7 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
     assert resp_json['id'] == str(notification.id)
     assert resp_json['reference'] == reference
     assert notification.reference is None
+    assert notification.reply_to_text is None
     assert resp_json['content']['body'] == sample_email_template_with_placeholders.content \
         .replace('((name))', 'Bob').replace('GOV.UK', u'GOV.\u200bUK')
     assert resp_json['content']['subject'] == sample_email_template_with_placeholders.subject \
@@ -322,7 +327,6 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
                                                                                    notification_type,
                                                                                    key_send_to,
                                                                                    send_to):
-
     mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
 
     sample = create_sample_template(
@@ -356,13 +360,13 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
     [("sms", "phone_number", "07700 900 855"), ("email", "email_address", "sample@email.com")]
 )
 def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
-    client,
-    notify_db,
-    notify_db_session,
-    mocker,
-    notification_type,
-    key_send_to,
-    send_to
+        client,
+        notify_db,
+        notify_db_session,
+        mocker,
+        notification_type,
+        key_send_to,
+        send_to
 ):
     sample = create_sample_template(
         notify_db,
@@ -400,11 +404,10 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
 
 
 def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(
-    client,
-    notify_db,
-    notify_db_session,
+        client,
+        notify_db,
+        notify_db_session,
 ):
-
     service = sample_service(notify_db, notify_db_session, permissions=[SMS_TYPE])
     template = create_sample_template(notify_db, notify_db_session, service=service)
 
@@ -430,15 +433,14 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(
     ]
 
 
-@pytest.mark.parametrize('template_factory,expected_error', [
-    (sample_template_without_sms_permission, 'Cannot send text messages'),
-    (sample_template_without_email_permission, 'Cannot send emails')])
+@pytest.mark.parametrize('recipient,label,template_factory,expected_error', [
+    ('07700 900000', 'phone_number', sample_template_without_sms_permission, 'Cannot send text messages'),
+    ('someone@test.com', 'email_address', sample_template_without_email_permission, 'Cannot send emails')])
 def test_post_sms_notification_returns_400_if_not_allowed_to_send_notification(
-        client, template_factory, expected_error, notify_db, notify_db_session):
+        client, template_factory, recipient, label, expected_error, notify_db, notify_db_session):
     sample_template_without_permission = template_factory(notify_db, notify_db_session)
     data = {
-        'phone_number': '07700 900000',
-        'email_address': 'someone@test.com',
+        label: recipient,
         'template_id': sample_template_without_permission.id
     }
     auth_header = create_authorization_header(service_id=sample_template_without_permission.service.id)
@@ -459,12 +461,11 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_notification(
 
 
 def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(
-    sample_service,
-    sample_template,
-    client,
-    mocker,
+        sample_service,
+        sample_template,
+        client,
+        mocker,
 ):
-
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     data = {
@@ -599,9 +600,9 @@ def test_post_notification_with_wrong_type_of_sender(
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 400
     resp_json = json.loads(response.get_data(as_text=True))
-    assert '{} is not a valid option for {} notification'.\
-        format(form_label, notification_type) in resp_json['errors'][0]['message']
-    assert 'BadRequestError' in resp_json['errors'][0]['error']
+    assert 'Additional properties are not allowed ({} was unexpected)'.format(form_label) \
+           in resp_json['errors'][0]['message']
+    assert 'ValidationError' in resp_json['errors'][0]['error']
 
 
 def test_post_email_notification_with_valid_reply_to_id_returns_201(client, sample_email_template, mocker):
@@ -621,6 +622,7 @@ def test_post_email_notification_with_valid_reply_to_id_returns_201(client, samp
     resp_json = json.loads(response.get_data(as_text=True))
     assert validate(resp_json, post_email_response) == resp_json
     notification = Notification.query.first()
+    assert notification.reply_to_text == 'test@test.com'
     assert resp_json['id'] == str(notification.id)
     assert mocked.called
 
@@ -639,7 +641,7 @@ def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sa
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 400
     resp_json = json.loads(response.get_data(as_text=True))
-    assert 'email_reply_to_id {} does not exist in database for service id {}'.\
+    assert 'email_reply_to_id {} does not exist in database for service id {}'. \
         format(fake_uuid, sample_email_template.service_id) in resp_json['errors'][0]['message']
     assert 'BadRequestError' in resp_json['errors'][0]['error']
 
