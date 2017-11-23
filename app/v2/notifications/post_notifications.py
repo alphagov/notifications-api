@@ -92,7 +92,8 @@ def post_notification(notification_type):
             notification_type=notification_type,
             api_key=api_user,
             template=template,
-            service=authenticated_service
+            service=authenticated_service,
+            reply_to_text=sms_sender,
         )
 
     if notification_type == SMS_TYPE:
@@ -121,7 +122,7 @@ def post_notification(notification_type):
     return jsonify(resp), 201
 
 
-def process_sms_or_email_notification(*, form, notification_type, api_key, template, service):
+def process_sms_or_email_notification(*, form, notification_type, api_key, template, service, reply_to_text=None):
     form_send_to = form['email_address'] if notification_type == EMAIL_TYPE else form['phone_number']
 
     send_to = validate_and_format_recipient(send_to=form_send_to,
@@ -142,7 +143,8 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         api_key_id=api_key.id,
         key_type=api_key.key_type,
         client_reference=form.get('reference', None),
-        simulated=simulated
+        simulated=simulated,
+        reply_to_text=reply_to_text
     )
 
     persist_sender_to_notification_mapping(form, notification)
