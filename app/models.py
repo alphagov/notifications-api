@@ -978,6 +978,8 @@ class Notification(db.Model):
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
 
+    reply_to_text = db.Column(db.String, nullable=True)
+
     __table_args__ = (
         db.ForeignKeyConstraint(
             ['template_id', 'template_version'],

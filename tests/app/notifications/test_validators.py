@@ -338,7 +338,7 @@ def test_check_service_email_reply_to_id_where_reply_to_id_is_none(notification_
 
 def test_check_service_email_reply_to_where_email_reply_to_is_found(sample_service):
     reply_to_address = create_reply_to_email(sample_service, "test@test.com")
-    assert check_service_email_reply_to_id(sample_service.id, reply_to_address.id, EMAIL_TYPE) is None
+    assert check_service_email_reply_to_id(sample_service.id, reply_to_address.id, EMAIL_TYPE) == "test@test.com"
 
 
 def test_check_service_email_reply_to_id_where_service_id_is_not_found(sample_service, fake_uuid):

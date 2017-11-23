@@ -142,7 +142,7 @@ def check_service_email_reply_to_id(service_id, reply_to_id, notification_type):
             message = 'email_reply_to_id is not a valid option for {} notification'.format(notification_type)
             raise BadRequestError(message=message)
         try:
-            dao_get_reply_to_by_id(service_id, reply_to_id)
+            return dao_get_reply_to_by_id(service_id, reply_to_id).email_address
         except NoResultFound:
             message = 'email_reply_to_id {} does not exist in database for service id {}'\
                 .format(reply_to_id, service_id)

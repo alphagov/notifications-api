@@ -63,15 +63,12 @@ def post_notification(notification_type):
     check_service_has_permission(notification_type, authenticated_service.permissions)
 
     scheduled_for = form.get("scheduled_for", None)
-    service_email_reply_to_id = form.get("email_reply_to_id", None)
-    service_sms_sender_id = form.get("sms_sender_id", None)
 
     check_service_can_schedule_notification(authenticated_service.permissions, scheduled_for)
 
     check_rate_limiting(authenticated_service, api_user)
 
-    check_service_email_reply_to_id(str(authenticated_service.id), service_email_reply_to_id, notification_type)
-    sms_sender = check_service_sms_sender_id(str(authenticated_service.id), service_sms_sender_id, notification_type)
+    reply_to = get_reply_to_text(notification_type, form)
 
     template, template_with_content = validate_template(
         form['template_id'],
@@ -92,13 +89,14 @@ def post_notification(notification_type):
             notification_type=notification_type,
             api_key=api_user,
             template=template,
-            service=authenticated_service
+            service=authenticated_service,
+            reply_to_text=reply_to
         )
 
     if notification_type == SMS_TYPE:
         create_resp_partial = functools.partial(
             create_post_sms_response_from_notification,
-            from_number=sms_sender or authenticated_service.get_default_sms_sender()
+            from_number=reply_to
         )
     elif notification_type == EMAIL_TYPE:
         create_resp_partial = functools.partial(
@@ -121,7 +119,7 @@ def post_notification(notification_type):
     return jsonify(resp), 201
 
 
-def process_sms_or_email_notification(*, form, notification_type, api_key, template, service):
+def process_sms_or_email_notification(*, form, notification_type, api_key, template, service, reply_to_text=None):
     form_send_to = form['email_address'] if notification_type == EMAIL_TYPE else form['phone_number']
 
     send_to = validate_and_format_recipient(send_to=form_send_to,
@@ -142,7 +140,8 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         api_key_id=api_key.id,
         key_type=api_key.key_type,
         client_reference=form.get('reference', None),
-        simulated=simulated
+        simulated=simulated,
+        reply_to_text=reply_to_text
     )
 
     persist_sender_to_notification_mapping(form, notification)
@@ -194,3 +193,20 @@ def process_letter_notification(*, letter_data, api_key, template):
         )
 
     return notification
+
+
+def get_reply_to_text(notification_type, form):
+    service_email_reply_to_id = form.get("email_reply_to_id", None)
+    service_sms_sender_id = form.get("sms_sender_id", None)
+
+    reply_to = check_service_email_reply_to_id(
+            str(authenticated_service.id), service_email_reply_to_id, notification_type
+        ) 
+    reply_to = check_service_sms_sender_id(str(authenticated_service.id), service_sms_sender_id, notification_type)
+    
+    if not reply_to:
+        if notification_type == EMAIL_TYPE:
+            reply_to = authenticated_service.get_default_reply_to_email_address()
+        elif notification_type == SMS_TYPE:
+            reply_to = authenticated_service.get_default_sms_sender()
+    return reply_to
