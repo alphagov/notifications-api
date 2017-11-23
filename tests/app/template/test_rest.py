@@ -301,10 +301,10 @@ def test_should_be_able_to_get_all_templates_for_a_service(client, sample_user, 
 
     assert response.status_code == 200
     update_json_resp = json.loads(response.get_data(as_text=True))
-    assert update_json_resp['data'][0]['name'] == 'my template 2'
+    assert update_json_resp['data'][0]['name'] == 'my template 1'
     assert update_json_resp['data'][0]['version'] == 1
     assert update_json_resp['data'][0]['created_at']
-    assert update_json_resp['data'][1]['name'] == 'my template 1'
+    assert update_json_resp['data'][1]['name'] == 'my template 2'
     assert update_json_resp['data'][1]['version'] == 1
     assert update_json_resp['data'][1]['created_at']
 

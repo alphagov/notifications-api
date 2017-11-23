@@ -1,7 +1,7 @@
 from datetime import datetime
 import uuid
 
-from sqlalchemy import desc
+from sqlalchemy import asc, desc
 from sqlalchemy.sql.expression import bindparam
 
 from app import db
@@ -65,14 +65,16 @@ def dao_get_all_templates_for_service(service_id, template_type=None):
             template_type=template_type,
             archived=False
         ).order_by(
-            desc(Template.created_at)
+            asc(Template.name),
+            asc(Template.template_type),
         ).all()
 
     return Template.query.filter_by(
         service_id=service_id,
         archived=False
     ).order_by(
-        desc(Template.created_at)
+        asc(Template.name),
+        asc(Template.template_type),
     ).all()
 
 

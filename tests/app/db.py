@@ -120,12 +120,13 @@ def create_service_with_defined_sms_sender(
 def create_template(
     service,
     template_type=SMS_TYPE,
+    template_name=None,
     subject='Template subject',
     content='Dear Sir/Madam, Hello. Yours Truly, The Government.',
     template_id=None
 ):
     data = {
-        'name': '{} Template Name'.format(template_type),
+        'name': template_name or '{} Template Name'.format(template_type),
         'template_type': template_type,
         'content': content,
         'service': service,
