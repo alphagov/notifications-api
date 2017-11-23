@@ -323,8 +323,9 @@ def build_dvla_file(self, job_id):
             )
             dao_update_job_status(job_id, JOB_STATUS_READY_TO_SEND)
         else:
-            current_app.logger.info("All notifications for job {} are not persisted".format(job_id))
-            self.retry(queue=QueueNames.RETRY, exc="All notifications for job {} are not persisted".format(job_id))
+            msg = "All notifications for job {} are not persisted".format(job_id)
+            current_app.logger.info(msg)
+            self.retry(queue=QueueNames.RETRY, exc=Exception(msg))
     except Exception as e:
         # ? should this retry?
         current_app.logger.exception("build_dvla_file threw exception")
@@ -520,9 +521,7 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
         )
         if not isinstance(e, HTTPError) or e.response.status_code >= 500:
             try:
-                self.retry(queue=QueueNames.RETRY,
-                           exc='Unable to send_inbound_sms_to_service for service_id: {} and url: {}. \n{}'.format(
-                               service_id, inbound_api.url, e))
+                self.retry(queue=QueueNames.RETRY)
             except self.MaxRetriesExceededError:
                 current_app.logger.exception('Retry: send_inbound_sms_to_service has retried the max number of times')
 

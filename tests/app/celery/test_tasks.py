@@ -1,8 +1,7 @@
-import codecs
 import json
 import uuid
 from datetime import datetime, timedelta
-from unittest.mock import Mock
+from unittest.mock import Mock, ANY
 import pytest
 import requests_mock
 from flask import current_app
@@ -1049,8 +1048,10 @@ def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_let
         build_dvla_file(job.id)
     mocked.assert_not_called()
 
-    tasks.build_dvla_file.retry.assert_called_with(queue="retry-tasks",
-                                                   exc="All notifications for job {} are not persisted".format(job.id))
+    tasks.build_dvla_file.retry.assert_called_with(
+        queue="retry-tasks",
+        exc=ANY
+    )
     assert Job.query.get(job.id).job_status == 'in progress'
     mocked_send_task.assert_not_called()
 
@@ -1157,7 +1158,6 @@ def test_send_inbound_sms_to_service_retries_if_request_returns_500(notify_api, 
     )
     assert mocked.call_count == 1
     assert mocked.call_args[1]['queue'] == 'retry-tasks'
-    assert exc_msg in mocked.call_args[1]['exc']
 
 
 def test_send_inbound_sms_to_service_retries_if_request_throws_unknown(notify_api, sample_service, mocker):
@@ -1177,7 +1177,6 @@ def test_send_inbound_sms_to_service_retries_if_request_throws_unknown(notify_ap
     )
     assert mocked.call_count == 1
     assert mocked.call_args[1]['queue'] == 'retry-tasks'
-    assert exc_msg in mocked.call_args[1]['exc']
 
 
 def test_send_inbound_sms_to_service_does_not_retries_if_request_returns_404(notify_api, sample_service, mocker):
