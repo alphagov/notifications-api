@@ -183,8 +183,12 @@ def process_letter_notification(*, letter_data, api_key, template):
 
     # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
     status = NOTIFICATION_CREATED if should_send else NOTIFICATION_SENDING
-
-    notification = create_letter_notification(letter_data, template, api_key, status=status)
+    letter_contact_block = api_key.service.get_default_letter_contact()
+    notification = create_letter_notification(letter_data=letter_data,
+                                              template=template,
+                                              api_key=api_key,
+                                              status=status,
+                                              reply_to_text=letter_contact_block)
 
     if not should_send:
         update_letter_notifications_to_sent_to_dvla.apply_async(
