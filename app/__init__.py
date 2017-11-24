@@ -6,6 +6,7 @@ import uuid
 from flask import Flask, _request_ctx_stack, request, g, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
+from flask_migrate import Migrate
 from monotonic import monotonic
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from notifications_utils.clients.redis.redis_client import RedisClient
@@ -25,6 +26,7 @@ DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 DATE_FORMAT = "%Y-%m-%d"
 
 db = SQLAlchemy()
+migrate = Migrate()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
 firetext_client = FiretextClient()
@@ -42,21 +44,19 @@ api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 authenticated_service = LocalProxy(lambda: _request_ctx_stack.top.authenticated_service)
 
 
-def create_app(app_name=None):
-    application = Flask(__name__)
-
+def create_app(application):
     from app.config import configs
 
     notify_environment = os.environ['NOTIFY_ENVIRONMENT']
 
     application.config.from_object(configs[notify_environment])
 
-    if app_name:
-        application.config['NOTIFY_APP_NAME'] = app_name
+    application.config['NOTIFY_APP_NAME'] = application.name
 
     init_app(application)
     request_helper.init_app(application)
     db.init_app(application)
+    migrate.init_app(application, db=db)
     ma.init_app(application)
     statsd_client.init_app(application)
     logging.init_app(application, statsd_client)
@@ -72,6 +72,10 @@ def create_app(app_name=None):
 
     register_blueprint(application)
     register_v2_blueprints(application)
+
+    # avoid circular imports by importing this file later 😬
+    from app.commands import setup_commands
+    setup_commands(application)
 
     return application
 

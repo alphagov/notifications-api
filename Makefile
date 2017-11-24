@@ -287,7 +287,7 @@ cf-deploy-api-db-migration:
 	cf unbind-service notify-api-db-migration notify-config
 	cf unbind-service notify-api-db-migration notify-aws
 	cf push notify-api-db-migration -f manifest-api-${CF_SPACE}.yml
-	cf run-task notify-api-db-migration "python db.py db upgrade" --name api_db_migration
+	cf run-task notify-api-db-migration "flask db upgrade" --name api_db_migration
 
 .PHONY: cf-check-api-db-migration-task
 cf-check-api-db-migration-task: ## Get the status for the last notify-api-db-migration task
@@ -310,4 +310,3 @@ cf-push:
 .PHONY: check-if-migrations-to-run
 check-if-migrations-to-run:
 	@echo $(shell python3 scripts/check_if_new_migration.py)
-
