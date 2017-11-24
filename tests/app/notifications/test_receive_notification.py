@@ -413,3 +413,24 @@ def test_firetext_inbound_sms_auth(notify_db_session, notify_api, client, mocker
     with set_config(notify_api, 'FIRETEXT_INBOUND_SMS_AUTH', keys):
         response = firetext_post(client, data, auth=bool(auth), password=auth)
         assert response.status_code == status_code
+
+
+def test_create_inbound_sms_object_works_with_alphanumeric_sender(sample_service_full_permissions):
+    data = {
+        'Message': 'hello',
+        'Number': sample_service_full_permissions.get_inbound_number(),
+        'MSISDN': 'ALPHANUM3R1C',
+        'DateRecieved': '2017-01-02+03%3A04%3A05',
+        'ID': 'bar',
+    }
+
+    inbound_sms = create_inbound_sms_object(
+        service=sample_service_full_permissions,
+        content=format_mmg_message(data["Message"]),
+        from_number='ALPHANUM3R1C',
+        provider_ref='foo',
+        date_received=None,
+        provider_name="mmg"
+    )
+
+    assert inbound_sms.user_number == 'ALPHANUM3R1C'

@@ -2,7 +2,7 @@ from urllib.parse import unquote
 
 import iso8601
 from flask import jsonify, Blueprint, current_app, request, abort
-from notifications_utils.recipients import validate_and_format_phone_number
+from notifications_utils.recipients import try_validate_and_format_phone_number
 
 from app import statsd_client, firetext_client, mmg_client
 from app.celery import tasks
@@ -109,7 +109,11 @@ def format_mmg_datetime(date):
 
 
 def create_inbound_sms_object(service, content, from_number, provider_ref, date_received, provider_name):
-    user_number = validate_and_format_phone_number(from_number, international=True)
+    user_number = try_validate_and_format_phone_number(
+        from_number,
+        international=True,
+        log_msg='Invalid from_number received'
+    )
 
     provider_date = date_received
     if provider_date:
