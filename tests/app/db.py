@@ -69,10 +69,11 @@ def create_service(
     active=True,
     email_from=None,
     prefix_sms=True,
+    message_limit=1000
 ):
     service = Service(
         name=service_name,
-        message_limit=1000,
+        message_limit=message_limit,
         restricted=restricted,
         email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
         created_by=user or create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),

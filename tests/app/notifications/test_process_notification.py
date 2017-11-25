@@ -244,6 +244,23 @@ def test_persist_notification_increments_cache_if_key_exists(sample_template, sa
                                                  sample_template.id)
 
 
+def test_persist_notification_saves_reply_to_text(sample_template):
+    service_default_sms_sender = sample_template.service.get_default_sms_sender()
+    persist_notification(template_id=sample_template.id,
+                         template_version=1,
+                         recipient="+447111111122",
+                         personalisation=None,
+                         service=sample_template.service,
+                         notification_type='sms',
+                         api_key_id=None,
+                         key_type='normal',
+                         reply_to_text=service_default_sms_sender
+                         )
+
+    notification = Notification.query.one()
+    assert notification.reply_to_text == service_default_sms_sender
+
+
 @pytest.mark.parametrize('research_mode, requested_queue, expected_queue, notification_type, key_type',
                          [(True, None, 'research-mode-tasks', 'sms', 'normal'),
                           (True, None, 'research-mode-tasks', 'email', 'normal'),

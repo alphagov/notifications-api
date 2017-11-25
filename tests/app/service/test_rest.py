@@ -2348,16 +2348,18 @@ def test_fetch_service_inbound_api(client, sample_service):
     assert json.loads(response.get_data(as_text=True))["data"] == service_inbound_api.serialize()
 
 
-def test_send_one_off_notification(admin_request, sample_template, mocker):
+def test_send_one_off_notification(admin_request, mocker):
+    service = create_service()
+    template = create_template(service=service)
     mocker.patch('app.service.send_notification.send_notification_to_queue')
 
     response = admin_request.post(
         'service.create_one_off_notification',
-        service_id=sample_template.service_id,
+        service_id=service.id,
         _data={
-            'template_id': str(sample_template.id),
+            'template_id': str(template.id),
             'to': '07700900001',
-            'created_by': str(sample_template.service.created_by_id)
+            'created_by': str(service.created_by_id)
         },
         _expected_status=201
     )

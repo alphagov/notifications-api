@@ -61,8 +61,8 @@ from tests.app.db import (
     create_service_inbound_api,
     create_service,
     create_template,
-    create_user
-)
+    create_user,
+    create_reply_to_email, create_service_sms_sender, create_service_with_defined_sms_sender)
 
 
 class AnyStringWith(str):
@@ -539,6 +539,45 @@ def test_should_save_email_if_restricted_service_and_non_team_email_address_with
         [str(persisted_notification.id)],
         queue="send-email-tasks"
     )
+
+
+def test_save_email_should_save_default_email_reply_to_text_on_notification(notify_db_session, mocker):
+    service = create_service()
+    create_reply_to_email(service=service, email_address='reply_to@digital.gov.uk', is_default=True)
+    template = create_template(service=service, template_type='email', subject='Hello')
+
+    notification = _notification_json(template, to="test@example.com")
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    notification_id = uuid.uuid4()
+    save_email(
+        service.id,
+        notification_id,
+        encryption.encrypt(notification),
+        key_type=KEY_TYPE_TEST
+    )
+
+    persisted_notification = Notification.query.one()
+    assert persisted_notification.reply_to_text == 'reply_to@digital.gov.uk'
+
+
+def test_save_sms_should_save_default_smm_sender_notification_reply_to_text_on(notify_db_session, mocker):
+    service = create_service_with_defined_sms_sender(sms_sender_value='12345')
+    template = create_template(service=service)
+
+    notification = _notification_json(template, to="07700 900205")
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    notification_id = uuid.uuid4()
+    save_sms(
+        service.id,
+        notification_id,
+        encryption.encrypt(notification),
+        key_type=KEY_TYPE_TEST
+    )
+
+    persisted_notification = Notification.query.one()
+    assert persisted_notification.reply_to_text == '12345'
 
 
 def test_should_not_save_sms_if_restricted_service_and_invalid_number(notify_db, notify_db_session, mocker):

@@ -213,7 +213,8 @@ def save_sms(self,
             created_at=datetime.utcnow(),
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
-            notification_id=notification_id
+            notification_id=notification_id,
+            reply_to_text=service.get_default_sms_sender()
         )
 
         provider_tasks.deliver_sms.apply_async(
@@ -260,7 +261,8 @@ def save_email(self,
             created_at=datetime.utcnow(),
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
-            notification_id=notification_id
+            notification_id=notification_id,
+            reply_to_text=service.get_default_reply_to_email_address()
         )
 
         provider_tasks.deliver_email.apply_async(
