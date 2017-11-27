@@ -303,7 +303,8 @@ def save_letter(
             job_id=notification['job'],
             job_row_number=notification['row_number'],
             notification_id=notification_id,
-            reference=create_random_identifier()
+            reference=create_random_identifier(),
+            reply_to_text=service.get_default_letter_contact()
         )
 
         current_app.logger.info("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))

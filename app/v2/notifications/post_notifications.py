@@ -200,15 +200,15 @@ def process_letter_notification(*, letter_data, api_key, template):
 
 
 def get_reply_to_text(notification_type, form):
-    service_email_reply_to_id = form.get("email_reply_to_id", None)
-    service_sms_sender_id = form.get("sms_sender_id", None)
     reply_to = None
     if notification_type == EMAIL_TYPE:
+        service_email_reply_to_id = form.get("email_reply_to_id", None)
         reply_to = check_service_email_reply_to_id(
             str(authenticated_service.id), service_email_reply_to_id, notification_type
         ) or authenticated_service.get_default_reply_to_email_address()
 
     elif notification_type == SMS_TYPE:
+        service_sms_sender_id = form.get("sms_sender_id", None)
         reply_to = check_service_sms_sender_id(
             str(authenticated_service.id), service_sms_sender_id, notification_type
         ) or authenticated_service.get_default_sms_sender()
