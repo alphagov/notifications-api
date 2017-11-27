@@ -159,7 +159,6 @@ def get_reply_to_text(notification_type):
         return authenticated_service.get_default_letter_contact()
 
 
-
 def get_notification_return_data(notification_id, notification, template):
     output = {
         'body': str(template),

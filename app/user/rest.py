@@ -223,7 +223,8 @@ def create_2fa_code(template_id, user_to_send_to, secret_code, recipient, person
         personalisation=personalisation,
         notification_type=template.template_type,
         api_key_id=None,
-        key_type=KEY_TYPE_NORMAL
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=template.service.get_default_sms_sender()
     )
     # Assume that we never want to observe the Notify service's research mode
     # setting for this notification - we still need to be able to log into the
@@ -253,7 +254,8 @@ def send_user_confirm_new_email(user_id):
         },
         notification_type=template.template_type,
         api_key_id=None,
-        key_type=KEY_TYPE_NORMAL
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=service.get_default_reply_to_email_address()
     )
 
     send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
@@ -279,7 +281,8 @@ def send_new_user_email_verification(user_id):
         },
         notification_type=template.template_type,
         api_key_id=None,
-        key_type=KEY_TYPE_NORMAL
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=service.get_default_reply_to_email_address()
     )
 
     send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
@@ -305,7 +308,8 @@ def send_already_registered_email(user_id):
         },
         notification_type=template.template_type,
         api_key_id=None,
-        key_type=KEY_TYPE_NORMAL
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=service.get_default_reply_to_email_address()
     )
 
     send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
@@ -367,7 +371,8 @@ def send_user_reset_password():
         },
         notification_type=template.template_type,
         api_key_id=None,
-        key_type=KEY_TYPE_NORMAL
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=service.get_default_reply_to_email_address()
     )
 
     send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
