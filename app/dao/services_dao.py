@@ -298,40 +298,6 @@ def _stats_for_service_query(service_id):
 
 
 @statsd(namespace="dao")
-def dao_fetch_monthly_historical_stats_by_template_for_service(service_id, year):
-    month = get_london_month_from_utc_column(NotificationHistory.created_at)
-
-    start_date, end_date = get_financial_year(year)
-    sq = db.session.query(
-        NotificationHistory.template_id,
-        NotificationHistory.status,
-        month.label('month'),
-        func.count().label('count')
-    ).filter(
-        NotificationHistory.service_id == service_id,
-        NotificationHistory.created_at.between(start_date, end_date)
-    ).group_by(
-        month,
-        NotificationHistory.template_id,
-        NotificationHistory.status
-    ).subquery()
-
-    rows = db.session.query(
-        Template.id.label('template_id'),
-        Template.name,
-        Template.template_type,
-        sq.c.status,
-        sq.c.count.label('count'),
-        sq.c.month
-    ).join(
-        sq,
-        sq.c.template_id == Template.id
-    ).all()
-
-    return format_monthly_template_notification_stats(year, rows)
-
-
-@statsd(namespace="dao")
 def dao_fetch_monthly_historical_stats_for_service(service_id, year):
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
 
