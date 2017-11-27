@@ -31,6 +31,7 @@ from tests.app.conftest import (
 
 from app.models import Template
 from app.errors import InvalidRequest
+from tests.app.db import create_service, create_reply_to_email
 
 
 @pytest.mark.parametrize('template_type',
@@ -1219,3 +1220,34 @@ def test_should_throw_exception_if_notification_type_is_invalid(client, sample_s
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 400
     assert json.loads(response.get_data(as_text=True))["message"] == err_msg
+
+
+@pytest.mark.parametrize("notification_type, recipient",
+                         [("sms", '07700 900 855'),
+                          ("email", "test@gov.uk")
+                          ]
+                         )
+def test_post_notification_should_set_reply_to_text(client, notify_db, notify_db_session, mocker, notification_type,
+                                                    recipient):
+    mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
+    service = create_service()
+    template = create_sample_template(notify_db=notify_db, notify_db_session=notify_db_session,
+                                      service=service, template_type=notification_type)
+    expected_reply_to = current_app.config['FROM_NUMBER']
+    if notification_type == EMAIL_TYPE:
+        expected_reply_to = 'reply_to@gov.uk'
+        create_reply_to_email(service=service, email_address=expected_reply_to, is_default=True)
+
+    data = {
+        'to': recipient,
+        'template': str(template.id)
+    }
+    response = client.post("/notifications/{}".format(notification_type),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'),
+                                    create_authorization_header(service_id=service.id)]
+                           )
+    assert response.status_code == 201
+    notifications = Notification.query.all()
+    assert len(notifications) == 1
+    assert notifications[0].reply_to_text == expected_reply_to

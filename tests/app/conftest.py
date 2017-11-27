@@ -29,7 +29,8 @@ from app.models import (
     ServiceWhitelist,
     KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM,
     MOBILE_TYPE, EMAIL_TYPE, INBOUND_SMS_TYPE, SMS_TYPE, LETTER_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED,
-    SERVICE_PERMISSION_TYPES)
+    SERVICE_PERMISSION_TYPES, ServiceEmailReplyTo
+)
 from app.dao.users_dao import (create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
@@ -985,17 +986,26 @@ def notify_service(notify_db, notify_db_session):
     user = create_user()
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
     if not service:
+        service = Service(
+            name='Notify Service',
+            message_limit=1000,
+            restricted=False,
+            email_from='notify.service',
+            created_by=user,
+            prefix_sms=False,
+        )
+        dao_create_service(service=service, service_id=current_app.config['NOTIFY_SERVICE_ID'], user=user)
+
         data = {
-            'id': current_app.config['NOTIFY_SERVICE_ID'],
-            'name': 'Notify Service',
-            'message_limit': 1000,
-            'active': True,
-            'restricted': False,
-            'email_from': 'notify.service',
-            'created_by': user,
+            'service': service,
+            'email_address': "notify@gov.uk",
+            'is_default': True,
         }
-        service = Service(**data)
-        db.session.add(service)
+        reply_to = ServiceEmailReplyTo(**data)
+
+        db.session.add(reply_to)
+        db.session.commit()
+
     return service, user
 
 
