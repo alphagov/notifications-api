@@ -25,7 +25,6 @@ from app.dao.services_dao import (
     dao_fetch_stats_for_service,
     dao_fetch_todays_stats_for_service,
     dao_fetch_monthly_historical_stats_for_service,
-    dao_fetch_monthly_historical_stats_by_template_for_service,
     fetch_todays_total_message_count,
     dao_fetch_todays_stats_for_all_services,
     fetch_stats_by_date_range_for_all_services,
@@ -77,7 +76,6 @@ from tests.app.conftest import (
 
 
 def test_should_have_decorated_services_dao_functions():
-    assert dao_fetch_monthly_historical_stats_by_template_for_service.__wrapped__.__name__ == 'dao_fetch_monthly_historical_stats_by_template_for_service'  # noqa
     assert dao_fetch_monthly_historical_stats_for_service.__wrapped__.__name__ == 'dao_fetch_monthly_historical_stats_for_service'  # noqa
     assert dao_fetch_todays_stats_for_service.__wrapped__.__name__ == 'dao_fetch_todays_stats_for_service'  # noqa
     assert dao_fetch_stats_for_service.__wrapped__.__name__ == 'dao_fetch_stats_for_service'  # noqa
@@ -848,93 +846,6 @@ def test_dao_resume_service_marks_service_as_active_and_api_keys_are_still_revok
 
     api_key = ApiKey.query.get(sample_api_key.id)
     assert api_key.expiry_date == datetime(2001, 1, 1, 23, 59, 00)
-
-
-def test_fetch_monthly_historical_template_stats_for_service_includes_financial_year_only(
-    notify_db,
-    notify_db_session,
-    sample_template
-):
-    notification_history = functools.partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        sample_template
-    )
-
-    notification_history(created_at=datetime(2016, 4, 1), status='sending')  # Start of financial year
-    notification_history(created_at=datetime(2016, 5, 30), status='created')
-    notification_history(created_at=datetime(2016, 6, 1), status='created')
-    notification_history(created_at=datetime(2017, 3, 31), status='created')  # End of financial year
-    notification_history(created_at=datetime(2017, 4, 1), status='created')
-    notification_history(created_at=datetime(2017, 5, 1), status='created')
-
-    result = dao_fetch_monthly_historical_stats_by_template_for_service(sample_template.service_id, 2016)
-
-    notifications_count = 0
-    for dict in result.values():
-        notifications_count += sum(dict.get(str(sample_template.id), {}).get("counts", {}).values())
-
-    assert '2017-04' not in result
-    assert '2017-05' not in result
-    assert notifications_count == 4
-
-
-def test_fetch_monthly_historical_template_stats_for_service_separates_months(
-    notify_db,
-    notify_db_session,
-    sample_template
-):
-    notification_history = functools.partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        sample_template
-    )
-
-    notification_history(created_at=datetime(2016, 4, 1), status='sending')  # Start of financial year
-    notification_history(created_at=datetime(2016, 5, 30), status='created')
-    notification_history(created_at=datetime(2016, 6, 1), status='delivered')
-    notification_history(created_at=datetime(2016, 6, 1), status='created')
-    notification_history(created_at=datetime(2016, 12, 1), status='created')
-    notification_history(created_at=datetime(2017, 3, 30), status='sending')
-    notification_history(created_at=datetime(2017, 3, 31), status='sending')
-
-    result = dao_fetch_monthly_historical_stats_by_template_for_service(sample_template.service_id, 2016)
-
-    financial_year_month_keys = \
-        ['2016-{:02}'.format(month) for month in range(4, 13)] + ['2017-{:02}'.format(month) for month in range(1, 4)]
-
-    assert set(financial_year_month_keys) == set(result.keys())
-    assert sum(result["2016-04"][str(sample_template.id)]["counts"].values()) == 1
-    assert sum(result["2016-05"][str(sample_template.id)]["counts"].values()) == 1
-    assert sum(result["2016-06"][str(sample_template.id)]["counts"].values()) == 2
-    assert sum(result["2016-12"][str(sample_template.id)]["counts"].values()) == 1
-    assert sum(result["2017-03"][str(sample_template.id)]["counts"].values()) == 2
-
-
-def test_fetch_monthly_historical_template_stats_for_service_separates_templates(
-    notify_db,
-    notify_db_session
-):
-    notification_history = functools.partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        status='delivered'
-    )
-
-    template_one = create_sample_template(notify_db, notify_db_session)
-    template_two = create_sample_template(notify_db, notify_db_session)
-
-    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_one)
-    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
-
-    result = dao_fetch_monthly_historical_stats_by_template_for_service(template_one.service_id, 2016)
-
-    assert len(result.get('2016-04').keys()) == 2
-    assert str(template_one.id) in result.get('2016-04').keys()
-    assert str(template_two.id) in result.get('2016-04').keys()
 
 
 def test_dao_fetch_active_users_for_service_returns_active_only(notify_db, notify_db_session):

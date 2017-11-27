@@ -60,10 +60,10 @@ def receive_firetext_sms():
     auth = request.authorization
     if not auth:
         current_app.logger.warning("Inbound sms no auth header")
-        # abort(401)
+        abort(401)
     elif auth.username != 'notify' or auth.password not in current_app.config['FIRETEXT_INBOUND_SMS_AUTH']:
         current_app.logger.warning("Inbound sms incorrect username ({}) or password".format(auth.username))
-        # abort(403)
+        abort(403)
 
     inbound_number = strip_leading_forty_four(post_data['destination'])
 
