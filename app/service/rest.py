@@ -37,7 +37,6 @@ from app.dao.services_dao import (
     dao_fetch_all_services,
     dao_fetch_all_services_by_user,
     dao_fetch_monthly_historical_stats_for_service,
-    dao_fetch_monthly_historical_stats_by_template_for_service,
     dao_fetch_monthly_historical_usage_by_template_for_service,
     dao_fetch_service_by_id,
     dao_fetch_stats_for_service,
@@ -537,18 +536,6 @@ def get_monthly_template_usage(service_id):
             )
 
         return jsonify(stats=stats), 200
-    except ValueError:
-        raise InvalidRequest('Year must be a number', status_code=400)
-
-
-@service_blueprint.route('/<uuid:service_id>/notifications/templates/monthly', methods=['GET'])
-def get_monthly_template_stats(service_id):
-    service = dao_fetch_service_by_id(service_id)
-    try:
-        return jsonify(data=dao_fetch_monthly_historical_stats_by_template_for_service(
-            service.id,
-            int(request.args.get('year', 'NaN'))
-        ))
     except ValueError:
         raise InvalidRequest('Year must be a number', status_code=400)
 
