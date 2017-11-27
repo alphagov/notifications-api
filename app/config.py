@@ -389,6 +389,21 @@ class Staging(Config):
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
 
+    API_KEY_LIMITS = {
+        KEY_TYPE_TEAM: {
+            "limit": 21000,
+            "interval": 60
+        },
+        KEY_TYPE_NORMAL: {
+            "limit": 21000,
+            "interval": 60
+        },
+        KEY_TYPE_TEST: {
+            "limit": 21000,
+            "interval": 60
+        }
+    }
+
 
 class Live(Config):
     NOTIFY_EMAIL_DOMAIN = 'notifications.service.gov.uk'

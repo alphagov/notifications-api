@@ -1,6 +1,7 @@
 import pytest
 
 from flask import json
+from itertools import product
 
 from app.models import TEMPLATE_TYPES, EMAIL_TYPE
 from tests import create_authorization_header
@@ -8,12 +9,15 @@ from tests.app.db import create_template
 
 
 def test_get_all_templates_returns_200(client, sample_service):
-    num_templates = 3
-    templates = []
-    for i in range(num_templates):
-        for tmp_type in TEMPLATE_TYPES:
-            subject = 'subject_{}'.format(i) if tmp_type == EMAIL_TYPE else ''
-            templates.append(create_template(sample_service, template_type=tmp_type, subject=subject))
+    templates = [
+        create_template(
+            sample_service,
+            template_type=tmp_type,
+            subject='subject_{}'.format(name) if tmp_type == EMAIL_TYPE else '',
+            template_name=name,
+        )
+        for name, tmp_type in product(('A', 'B', 'C'), TEMPLATE_TYPES)
+    ]
 
     auth_header = create_authorization_header(service_id=sample_service.id)
 
@@ -25,25 +29,27 @@ def test_get_all_templates_returns_200(client, sample_service):
 
     json_response = json.loads(response.get_data(as_text=True))
 
-    assert len(json_response['templates']) == num_templates * len(TEMPLATE_TYPES)
+    assert len(json_response['templates']) == len(templates)
 
-    # need to reverse index as get all templates returns list sorted by descending date
-    for i in range(len(json_response['templates'])):
-        reverse_index = len(json_response['templates']) - 1 - i
-        assert json_response['templates'][reverse_index]['id'] == str(templates[i].id)
-        assert json_response['templates'][reverse_index]['body'] == templates[i].content
-        assert json_response['templates'][reverse_index]['type'] == templates[i].template_type
-        if templates[i].template_type == EMAIL_TYPE:
-            assert json_response['templates'][reverse_index]['subject'] == templates[i].subject
+    for index, template in enumerate(json_response['templates']):
+        assert template['id'] == str(templates[index].id)
+        assert template['body'] == templates[index].content
+        assert template['type'] == templates[index].template_type
+        if templates[index].template_type == EMAIL_TYPE:
+            assert template['subject'] == templates[index].subject
 
 
 @pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)
 def test_get_all_templates_for_valid_type_returns_200(client, sample_service, tmp_type):
-    num_templates = 3
-    templates = []
-    for i in range(num_templates):
-        subject = 'subject_{}'.format(i) if tmp_type == EMAIL_TYPE else ''
-        templates.append(create_template(sample_service, template_type=tmp_type, subject=subject))
+    templates = [
+        create_template(
+            sample_service,
+            template_type=tmp_type,
+            template_name='Template {}'.format(i),
+            subject='subject_{}'.format(i) if tmp_type == EMAIL_TYPE else ''
+        )
+        for i in range(3)
+    ]
 
     auth_header = create_authorization_header(service_id=sample_service.id)
 
@@ -55,16 +61,14 @@ def test_get_all_templates_for_valid_type_returns_200(client, sample_service, tm
 
     json_response = json.loads(response.get_data(as_text=True))
 
-    assert len(json_response['templates']) == num_templates
+    assert len(json_response['templates']) == len(templates)
 
-    # need to reverse index as get all templates returns list sorted by descending date
-    for i in range(len(json_response['templates'])):
-        reverse_index = len(json_response['templates']) - 1 - i
-        assert json_response['templates'][reverse_index]['id'] == str(templates[i].id)
-        assert json_response['templates'][reverse_index]['body'] == templates[i].content
-        assert json_response['templates'][reverse_index]['type'] == tmp_type
-        if templates[i].template_type == EMAIL_TYPE:
-            assert json_response['templates'][reverse_index]['subject'] == templates[i].subject
+    for index, template in enumerate(json_response['templates']):
+        assert template['id'] == str(templates[index].id)
+        assert template['body'] == templates[index].content
+        assert template['type'] == tmp_type
+        if templates[index].template_type == EMAIL_TYPE:
+            assert template['subject'] == templates[index].subject
 
 
 @pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)

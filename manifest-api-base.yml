@@ -1,7 +1,7 @@
 ---
 
 buildpack: python_buildpack
-command: scripts/run_app_paas.sh gunicorn -c /home/vcap/app/gunicorn_config.py --error-logfile /home/vcap/logs/gunicorn_error.log -w 5 -b 0.0.0.0:$PORT wsgi
+command: scripts/run_app_paas.sh gunicorn -c /home/vcap/app/gunicorn_config.py --error-logfile /home/vcap/logs/gunicorn_error.log -w 5 -b 0.0.0.0:$PORT application
 services:
   - notify-aws
   - notify-config
@@ -14,6 +14,8 @@ services:
 env:
   NOTIFY_APP_NAME: public-api
   CW_APP_NAME: api
+  # required by cf run-task
+  FLASK_APP: application.py
 instances: 1
 memory: 1G
 

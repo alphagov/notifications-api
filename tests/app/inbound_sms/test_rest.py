@@ -1,28 +1,20 @@
 from datetime import datetime
 
 import pytest
-from flask import json
 from freezegun import freeze_time
 
-from tests import create_authorization_header
 from tests.app.db import create_inbound_sms, create_service, create_service_with_inbound_number
 
 
-def test_get_inbound_sms_with_no_params(client, sample_service):
+def test_post_to_get_inbound_sms_with_no_params(admin_request, sample_service):
     one = create_inbound_sms(sample_service)
     two = create_inbound_sms(sample_service)
 
-    auth_header = create_authorization_header()
-
-    data = {}
-
-    response = client.post(
-        path='/service/{}/inbound-sms'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    json_resp = json.loads(response.get_data(as_text=True))
-    sms = json_resp['data']
+    sms = admin_request.post(
+        'inbound_sms.post_query_inbound_sms_for_service',
+        service_id=sample_service.id,
+        _data={}
+    )['data']
 
     assert len(sms) == 2
     assert {inbound['id'] for inbound in sms} == {str(one.id), str(two.id)}
@@ -37,63 +29,38 @@ def test_get_inbound_sms_with_no_params(client, sample_service):
     }
 
 
-def test_get_inbound_sms_with_limit(client, sample_service):
+def test_post_to_get_inbound_sms_with_limit(admin_request, sample_service):
     with freeze_time('2017-01-01'):
         one = create_inbound_sms(sample_service)
     with freeze_time('2017-01-02'):
         two = create_inbound_sms(sample_service)
 
-    auth_header = create_authorization_header()
-
     data = {'limit': 1}
 
-    response = client.post(
-        path='/service/{}/inbound-sms'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    json_resp = json.loads(response.get_data(as_text=True))
-    sms = json_resp['data']
+    sms = admin_request.post(
+        'inbound_sms.post_query_inbound_sms_for_service',
+        service_id=sample_service.id,
+        _data=data
+    )['data']
 
     assert len(sms) == 1
     assert sms[0]['id'] == str(two.id)
 
 
-def test_get_inbound_sms_should_error_with_invalid_limit(client, sample_service):
-
-    auth_header = create_authorization_header()
-
+def test_post_to_get_inbound_sms_should_error_with_invalid_limit(admin_request, sample_service):
     data = {'limit': 'limit'}
 
-    response = client.post(
-        path='/service/{}/inbound-sms'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
+    error_resp = admin_request.post(
+        'inbound_sms.post_query_inbound_sms_for_service',
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=400
+    )
 
-    error_resp = json.loads(response.get_data(as_text=True))
     assert error_resp['status_code'] == 400
     assert error_resp['errors'] == [{
         'error': 'ValidationError',
         'message': "limit limit is not of type integer, null"
-    }]
-
-
-def test_get_inbound_sms_should_error_with_invalid_phone_number(client, sample_service):
-
-    auth_header = create_authorization_header()
-
-    data = {'phone_number': 'invalid phone number'}
-
-    response = client.post(
-        path='/service/{}/inbound-sms'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    error_resp = json.loads(response.get_data(as_text=True))
-    assert error_resp['status_code'] == 400
-    assert error_resp['errors'] == [{
-        'error': 'ValidationError',
-        'message': "phone_number Must not contain letters or symbols"
     }]
 
 
@@ -102,49 +69,56 @@ def test_get_inbound_sms_should_error_with_invalid_phone_number(client, sample_s
     '+4407700900001',
     '447700900001',
 ])
-def test_get_inbound_sms_filters_user_number(client, sample_service, user_number):
+def test_post_to_get_inbound_sms_filters_user_number(admin_request, sample_service, user_number):
     # user_number in the db is international and normalised
     one = create_inbound_sms(sample_service, user_number='447700900001')
     two = create_inbound_sms(sample_service, user_number='447700900002')
-
-    auth_header = create_authorization_header()
 
     data = {
         'limit': 1,
         'phone_number': user_number
     }
 
-    response = client.post(
-        path='/service/{}/inbound-sms'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
+    sms = admin_request.post(
+        'inbound_sms.post_query_inbound_sms_for_service',
+        service_id=sample_service.id,
+        _data=data
+    )['data']
 
-    json_resp = json.loads(response.get_data(as_text=True))
-    sms = json_resp['data']
     assert len(sms) == 1
     assert sms[0]['id'] == str(one.id)
     assert sms[0]['user_number'] == str(one.user_number)
 
 
-def test_get_inbound_sms_filters_international_user_number(admin_request, sample_service):
+def test_post_to_get_inbound_sms_filters_international_user_number(admin_request, sample_service):
     # user_number in the db is international and normalised
     one = create_inbound_sms(sample_service, user_number='12025550104')
     two = create_inbound_sms(sample_service)
-
-    auth_header = create_authorization_header()
 
     data = {
         'limit': 1,
         'phone_number': '+1 (202) 555-0104'
     }
 
-    response = client.post(
-        path='/service/{}/inbound-sms'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
+    sms = admin_request.post(
+        'inbound_sms.post_query_inbound_sms_for_service',
+        service_id=sample_service.id,
+        _data=data
+    )['data']
 
-    json_resp = json.loads(response.get_data(as_text=True))
-    sms = json_resp['data']
+    assert len(sms) == 1
+    assert sms[0]['id'] == str(one.id)
+    assert sms[0]['user_number'] == str(one.user_number)
+
+
+def test_post_to_get_inbound_sms_allows_badly_formatted_number(admin_request, sample_service):
+    one = create_inbound_sms(sample_service, user_number='ALPHANUM3R1C')
+
+    sms = admin_request.post(
+        'inbound_sms.get_inbound_sms_for_service',
+        service_id=sample_service.id,
+        _data={'phone_number': 'ALPHANUM3R1C'}
+    )['data']
 
     assert len(sms) == 1
     assert sms[0]['id'] == str(one.id)
@@ -156,7 +130,7 @@ def test_get_inbound_sms_filters_international_user_number(admin_request, sample
 ##############################################################
 
 
-def test_get_inbound_sms(admin_request, sample_service):
+def test_old_get_inbound_sms(admin_request, sample_service):
     one = create_inbound_sms(sample_service)
     two = create_inbound_sms(sample_service)
 
@@ -180,7 +154,7 @@ def test_get_inbound_sms(admin_request, sample_service):
     }
 
 
-def test_get_inbound_sms_limits(admin_request, sample_service):
+def test_old_get_inbound_sms_limits(admin_request, sample_service):
     with freeze_time('2017-01-01'):
         one = create_inbound_sms(sample_service)
     with freeze_time('2017-01-02'):
@@ -201,7 +175,7 @@ def test_get_inbound_sms_limits(admin_request, sample_service):
     '+4407700900001',
     '447700900001',
 ])
-def test_get_inbound_sms_filters_user_number(admin_request, sample_service, user_number):
+def test_old_get_inbound_sms_filters_user_number(admin_request, sample_service, user_number):
     # user_number in the db is international and normalised
     one = create_inbound_sms(sample_service, user_number='447700900001')
     two = create_inbound_sms(sample_service, user_number='447700900002')
@@ -217,7 +191,7 @@ def test_get_inbound_sms_filters_user_number(admin_request, sample_service, user
     assert sms['data'][0]['user_number'] == str(one.user_number)
 
 
-def test_get_inbound_sms_filters_international_user_number(admin_request, sample_service):
+def test_old_get_inbound_sms_filters_international_user_number(admin_request, sample_service):
     # user_number in the db is international and normalised
     one = create_inbound_sms(sample_service, user_number='12025550104')
     two = create_inbound_sms(sample_service)
@@ -226,6 +200,20 @@ def test_get_inbound_sms_filters_international_user_number(admin_request, sample
         'inbound_sms.get_inbound_sms_for_service',
         service_id=sample_service.id,
         user_number='+1 (202) 555-0104',
+    )
+
+    assert len(sms['data']) == 1
+    assert sms['data'][0]['id'] == str(one.id)
+    assert sms['data'][0]['user_number'] == str(one.user_number)
+
+
+def test_old_get_inbound_sms_allows_badly_formatted_number(admin_request, sample_service):
+    one = create_inbound_sms(sample_service, user_number='ALPHANUM3R1C')
+
+    sms = admin_request.get(
+        'inbound_sms.get_inbound_sms_for_service',
+        service_id=sample_service.id,
+        user_number='ALPHANUM3R1C',
     )
 
     assert len(sms['data']) == 1

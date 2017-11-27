@@ -3,7 +3,7 @@ get_inbound_sms_for_service_schema = {
     "description": "schema for parameters allowed when searching for to field=",
     "type": "object",
     "properties": {
-        "phone_number": {"type": "string", "format": "phone_number"},
+        "phone_number": {"type": "string"},
         "limit": {"type": ["integer", "null"], "minimum": 1}
     }
 }

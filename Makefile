@@ -277,7 +277,6 @@ cf-deploy: ## Deploys the app to Cloud Foundry
 	cf rename ${CF_APP} ${CF_APP}-rollback
 	cf push ${CF_APP} -f ${CF_MANIFEST_FILE}
 	cf scale -i $$(cf curl /v2/apps/$$(cf app --guid ${CF_APP}-rollback) | jq -r ".entity.instances" 2>/dev/null || echo "1") ${CF_APP}
-	cf stop ${CF_APP}-rollback
 	cf delete -f ${CF_APP}-rollback
 
 .PHONY: cf-deploy-api-db-migration
@@ -287,7 +286,7 @@ cf-deploy-api-db-migration:
 	cf unbind-service notify-api-db-migration notify-config
 	cf unbind-service notify-api-db-migration notify-aws
 	cf push notify-api-db-migration -f manifest-api-${CF_SPACE}.yml
-	cf run-task notify-api-db-migration "python db.py db upgrade" --name api_db_migration
+	cf run-task notify-api-db-migration "flask db upgrade" --name api_db_migration
 
 .PHONY: cf-check-api-db-migration-task
 cf-check-api-db-migration-task: ## Get the status for the last notify-api-db-migration task
@@ -310,4 +309,3 @@ cf-push:
 .PHONY: check-if-migrations-to-run
 check-if-migrations-to-run:
 	@echo $(shell python3 scripts/check_if_new_migration.py)
-

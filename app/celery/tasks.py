@@ -488,6 +488,7 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
                                             inbound_id=inbound_sms_id)
     data = {
         "id": str(inbound_sms.id),
+        # TODO: should we be validating and formatting the phone number here?
         "source_number": inbound_sms.user_number,
         "destination_number": inbound_sms.notify_number,
         "message": inbound_sms.content,

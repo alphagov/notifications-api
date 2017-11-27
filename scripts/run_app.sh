@@ -3,4 +3,4 @@
 set -e
 
 source environment.sh
-python3 application.py runserver
+flask run -p 6011
