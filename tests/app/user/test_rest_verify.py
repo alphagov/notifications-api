@@ -357,6 +357,7 @@ def test_send_user_email_code(admin_request, mocker, sample_user, email_2fa_code
         _expected_status=204
     )
     noti = Notification.query.one()
+    assert noti.reply_to_text == email_2fa_code_template.service.get_default_reply_to_email_address()
     assert noti.to == sample_user.email_address
     assert str(noti.template_id) == current_app.config['EMAIL_2FA_TEMPLATE_ID']
     assert noti.personalisation['name'] == 'Test User'
