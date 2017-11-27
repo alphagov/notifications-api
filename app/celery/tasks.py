@@ -18,6 +18,8 @@ from requests import (
     RequestException
 )
 from sqlalchemy.exc import SQLAlchemyError
+from botocore.exceptions import ClientError as BotoClientError
+
 from app import (
     create_uuid,
     create_random_identifier,
@@ -325,11 +327,11 @@ def build_dvla_file(self, job_id):
         else:
             msg = "All notifications for job {} are not persisted".format(job_id)
             current_app.logger.info(msg)
-            self.retry(queue=QueueNames.RETRY, exc=Exception(msg))
-    except Exception as e:
-        # ? should this retry?
+            self.retry(queue=QueueNames.RETRY)
+    # specifically don't catch celery.retry errors
+    except (SQLAlchemyError, BotoClientError):
         current_app.logger.exception("build_dvla_file threw exception")
-        raise e
+        self.retry(queue=QueueNames.RETRY)
 
 
 @notify_celery.task(bind=True, name='update-letter-job-to-sent')
