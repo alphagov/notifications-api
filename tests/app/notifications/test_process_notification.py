@@ -73,7 +73,8 @@ def test_persist_notification_creates_and_save_to_db(sample_template, sample_api
         key_type=sample_api_key.key_type,
         job_id=sample_job.id,
         job_row_number=100,
-        reference="ref")
+        reference="ref",
+        reply_to_text=sample_template.service.get_default_sms_sender())
 
     assert Notification.query.get(notification.id) is not None
     assert NotificationHistory.query.get(notification.id) is not None
@@ -97,6 +98,7 @@ def test_persist_notification_creates_and_save_to_db(sample_template, sample_api
     assert notification_from_db.reference == notification_history_from_db.reference
     assert notification_from_db.client_reference == notification_history_from_db.client_reference
     assert notification_from_db.created_by_id == notification_history_from_db.created_by_id
+    assert notification_from_db.reply_to_text == sample_template.service.get_default_sms_sender()
 
     mocked_redis.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count")
 
@@ -205,6 +207,7 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
     assert persisted_notification.phone_prefix == '44'
     assert persisted_notification.rate_multiplier == 1
     assert persisted_notification.created_by_id == sample_job.created_by_id
+    assert not persisted_notification.reply_to_text
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -242,23 +245,6 @@ def test_persist_notification_increments_cache_if_key_exists(sample_template, sa
     mock_incr.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count", )
     mock_incr_hash_value.assert_called_once_with(cache_key_for_service_template_counter(sample_template.service_id),
                                                  sample_template.id)
-
-
-def test_persist_notification_saves_reply_to_text(sample_template):
-    service_default_sms_sender = sample_template.service.get_default_sms_sender()
-    persist_notification(template_id=sample_template.id,
-                         template_version=1,
-                         recipient="+447111111122",
-                         personalisation=None,
-                         service=sample_template.service,
-                         notification_type='sms',
-                         api_key_id=None,
-                         key_type='normal',
-                         reply_to_text=service_default_sms_sender
-                         )
-
-    notification = Notification.query.one()
-    assert notification.reply_to_text == service_default_sms_sender
 
 
 @pytest.mark.parametrize('research_mode, requested_queue, expected_queue, notification_type, key_type',
