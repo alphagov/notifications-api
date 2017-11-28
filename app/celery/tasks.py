@@ -18,6 +18,8 @@ from requests import (
     RequestException
 )
 from sqlalchemy.exc import SQLAlchemyError
+from botocore.exceptions import ClientError as BotoClientError
+
 from app import (
     create_uuid,
     create_random_identifier,
@@ -213,7 +215,8 @@ def save_sms(self,
             created_at=datetime.utcnow(),
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
-            notification_id=notification_id
+            notification_id=notification_id,
+            reply_to_text=service.get_default_sms_sender()
         )
 
         provider_tasks.deliver_sms.apply_async(
@@ -260,7 +263,8 @@ def save_email(self,
             created_at=datetime.utcnow(),
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
-            notification_id=notification_id
+            notification_id=notification_id,
+            reply_to_text=service.get_default_reply_to_email_address()
         )
 
         provider_tasks.deliver_email.apply_async(
@@ -301,7 +305,8 @@ def save_letter(
             job_id=notification['job'],
             job_row_number=notification['row_number'],
             notification_id=notification_id,
-            reference=create_random_identifier()
+            reference=create_random_identifier(),
+            reply_to_text=service.get_default_letter_contact()
         )
 
         current_app.logger.info("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
@@ -323,12 +328,13 @@ def build_dvla_file(self, job_id):
             )
             dao_update_job_status(job_id, JOB_STATUS_READY_TO_SEND)
         else:
-            current_app.logger.info("All notifications for job {} are not persisted".format(job_id))
-            self.retry(queue=QueueNames.RETRY, exc="All notifications for job {} are not persisted".format(job_id))
-    except Exception as e:
-        # ? should this retry?
+            msg = "All notifications for job {} are not persisted".format(job_id)
+            current_app.logger.info(msg)
+            self.retry(queue=QueueNames.RETRY)
+    # specifically don't catch celery.retry errors
+    except (SQLAlchemyError, BotoClientError):
         current_app.logger.exception("build_dvla_file threw exception")
-        raise e
+        self.retry(queue=QueueNames.RETRY)
 
 
 @notify_celery.task(bind=True, name='update-letter-job-to-sent')
@@ -520,9 +526,7 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
         )
         if not isinstance(e, HTTPError) or e.response.status_code >= 500:
             try:
-                self.retry(queue=QueueNames.RETRY,
-                           exc='Unable to send_inbound_sms_to_service for service_id: {} and url: {}. \n{}'.format(
-                               service_id, inbound_api.url, e))
+                self.retry(queue=QueueNames.RETRY)
             except self.MaxRetriesExceededError:
                 current_app.logger.exception('Retry: send_inbound_sms_to_service has retried the max number of times')
 

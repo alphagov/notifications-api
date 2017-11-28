@@ -1,5 +1,5 @@
 from app import db
-from app.models import Service, ServiceWhitelist
+from app.models import ServiceWhitelist
 
 
 def dao_fetch_service_whitelist(service_id):

@@ -1,6 +1,3 @@
-from app.schema_validation.definitions import uuid, https_url
-
-
 create_or_update_free_sms_fragment_limit_schema = {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "description": "POST annual billing schema",

@@ -338,7 +338,7 @@ def test_check_service_email_reply_to_id_where_reply_to_id_is_none(notification_
 
 def test_check_service_email_reply_to_where_email_reply_to_is_found(sample_service):
     reply_to_address = create_reply_to_email(sample_service, "test@test.com")
-    assert check_service_email_reply_to_id(sample_service.id, reply_to_address.id, EMAIL_TYPE) is None
+    assert check_service_email_reply_to_id(sample_service.id, reply_to_address.id, EMAIL_TYPE) == "test@test.com"
 
 
 def test_check_service_email_reply_to_id_where_service_id_is_not_found(sample_service, fake_uuid):
@@ -356,15 +356,6 @@ def test_check_service_email_reply_to_id_where_reply_to_id_is_not_found(sample_s
     assert e.value.status_code == 400
     assert e.value.message == 'email_reply_to_id {} does not exist in database for service id {}' \
         .format(fake_uuid, sample_service.id)
-
-
-@pytest.mark.parametrize('notification_type', ['sms', 'letter'])
-def test_check_service_email_reply_to_id_when_channel_type_is_wrong(sample_service, notification_type):
-    reply_to_address = create_reply_to_email(sample_service, "test@test.com")
-    with pytest.raises(BadRequestError) as e:
-        check_service_email_reply_to_id(sample_service.id, reply_to_address.id, notification_type)
-    assert e.value.status_code == 400
-    assert e.value.message == 'email_reply_to_id is not a valid option for {} notification'.format(notification_type)
 
 
 @pytest.mark.parametrize('notification_type', ['sms', 'email', 'letter'])
@@ -392,12 +383,3 @@ def test_check_service_sms_sender_id_where_sms_sender_is_not_found(sample_servic
     assert e.value.status_code == 400
     assert e.value.message == 'sms_sender_id {} does not exist in database for service id {}' \
         .format(fake_uuid, sample_service.id)
-
-
-@pytest.mark.parametrize('notification_type', ['email', 'letter'])
-def test_check_service_sms_sender_id_when_channel_type_is_wrong(sample_service, notification_type):
-    sms_sender = create_service_sms_sender(service=sample_service, sms_sender='123456')
-    with pytest.raises(BadRequestError) as e:
-        check_service_sms_sender_id(sample_service.id, sms_sender.id, notification_type)
-    assert e.value.status_code == 400
-    assert e.value.message == 'sms_sender_id is not a valid option for {} notification'.format(notification_type)

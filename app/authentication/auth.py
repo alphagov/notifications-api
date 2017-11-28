@@ -7,7 +7,6 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.services_dao import dao_fetch_service_by_id_with_api_keys
-from flask import jsonify
 
 
 class AuthError(Exception):

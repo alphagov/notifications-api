@@ -237,7 +237,6 @@ def valid_email_response():
 @freeze_time("2017-05-12 13:00:00")
 def test_post_schema_valid_scheduled_for(schema):
     j = {"template_id": str(uuid.uuid4()),
-         "email_address": "joe@gmail.com",
          "scheduled_for": "2017-05-12 13:15"}
     if schema == post_email_request_schema:
         j.update({"email_address": "joe@gmail.com"})

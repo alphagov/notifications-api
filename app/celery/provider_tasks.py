@@ -1,4 +1,4 @@
-from celery.signals import worker_process_init, worker_process_shutdown, worker_shutdown
+from celery.signals import worker_process_shutdown
 from flask import current_app
 from notifications_utils.recipients import InvalidEmailError
 from sqlalchemy.orm.exc import NoResultFound

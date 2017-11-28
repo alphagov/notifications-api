@@ -175,8 +175,8 @@ def test_send_user_sms_code(client,
     """
     Tests POST endpoint /user/<user_id>/sms-code
     """
+    notify_service = dao_fetch_service_by_id(current_app.config['NOTIFY_SERVICE_ID'])
     if research_mode:
-        notify_service = dao_fetch_service_by_id(current_app.config['NOTIFY_SERVICE_ID'])
         notify_service.research_mode = True
         dao_update_service(notify_service)
 
@@ -197,6 +197,7 @@ def test_send_user_sms_code(client,
     assert notification.personalisation == {'verify_code': '11111'}
     assert notification.to == sample_user.mobile_number
     assert str(notification.service_id) == current_app.config['NOTIFY_SERVICE_ID']
+    assert notification.reply_to_text == notify_service.get_default_sms_sender()
 
     app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
         ([str(notification.id)]),
@@ -274,10 +275,12 @@ def test_send_new_user_email_verification(client,
         url_for('user.send_new_user_email_verification', user_id=str(sample_user.id)),
         data=json.dumps({}),
         headers=[('Content-Type', 'application/json'), auth_header])
+    notify_service = email_verification_template.service
     assert resp.status_code == 204
     notification = Notification.query.first()
     assert VerifyCode.query.count() == 0
     mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+    assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
 def test_send_email_verification_returns_404_for_bad_input_data(client, notify_db_session, mocker):
@@ -354,6 +357,7 @@ def test_send_user_email_code(admin_request, mocker, sample_user, email_2fa_code
         _expected_status=204
     )
     noti = Notification.query.one()
+    assert noti.reply_to_text == email_2fa_code_template.service.get_default_reply_to_email_address()
     assert noti.to == sample_user.email_address
     assert str(noti.template_id) == current_app.config['EMAIL_2FA_TEMPLATE_ID']
     assert noti.personalisation['name'] == 'Test User'
