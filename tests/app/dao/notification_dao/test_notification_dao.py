@@ -1331,7 +1331,7 @@ def test_dao_timeout_notifications_doesnt_affect_letters(sample_letter_template)
 
 
 def test_should_return_notifications_excluding_jobs_by_default(sample_template, sample_job, sample_api_key):
-    with_job = create_notification(sample_template, job=sample_job)
+    create_notification(sample_template, job=sample_job)
     without_job = create_notification(sample_template, api_key=sample_api_key)
 
     include_jobs = get_notifications_for_service(sample_template.service_id, include_jobs=True).items

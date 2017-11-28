@@ -1325,9 +1325,7 @@ def test_get_notification_for_service(client, notify_db, notify_db_session):
         create_sample_notification(notify_db, notify_db_session, service=service_1),
     ]
 
-    service_2_notifications = [
-        create_sample_notification(notify_db, notify_db_session, service=service_2)
-    ]
+    create_sample_notification(notify_db, notify_db_session, service=service_2)
 
     for notification in service_1_notifications:
         response = client.get(
@@ -1399,7 +1397,8 @@ def test_get_all_notifications_for_service_including_ones_made_by_jobs(
 ):
     with_job = sample_notification_with_job(notify_db, notify_db_session, service=sample_service)
     without_job = create_sample_notification(notify_db, notify_db_session, service=sample_service)
-    from_test_api_key = create_sample_notification(
+    # from_test_api_key
+    create_sample_notification(
         notify_db, notify_db_session, service=sample_service, key_type=KEY_TYPE_TEST
     )
 
@@ -1424,7 +1423,7 @@ def test_get_only_api_created_notifications_for_service(
     sample_job,
     sample_template
 ):
-    with_job = create_notification(sample_template, job=sample_job)
+    create_notification(sample_template, job=sample_job)
     without_job = create_notification(sample_template)
 
     resp = admin_request.get(
@@ -2364,7 +2363,7 @@ def test_get_email_reply_to_addresses_when_there_are_no_reply_to_email_addresses
 
 def test_get_email_reply_to_addresses_with_one_email_address(client, notify_db, notify_db_session):
     service = create_service()
-    reply_to = create_reply_to_email(service, 'test@mail.com')
+    create_reply_to_email(service, 'test@mail.com')
 
     response = client.get('/service/{}/email-reply-to'.format(service.id),
                           headers=[create_authorization_header()])

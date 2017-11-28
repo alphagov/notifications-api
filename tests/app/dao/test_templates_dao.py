@@ -133,7 +133,7 @@ def test_get_all_templates_for_service(notify_db, notify_db_session, service_fac
     assert len(dao_get_all_templates_for_service(service_1.id)) == 1
     assert len(dao_get_all_templates_for_service(service_2.id)) == 1
 
-    template_1 = create_sample_template(
+    create_sample_template(
         notify_db,
         notify_db_session,
         template_name='Sample Template 1',
@@ -141,7 +141,7 @@ def test_get_all_templates_for_service(notify_db, notify_db_session, service_fac
         content="Template content",
         service=service_1
     )
-    template_2 = create_sample_template(
+    create_sample_template(
         notify_db,
         notify_db_session,
         template_name='Sample Template 2',
@@ -149,7 +149,7 @@ def test_get_all_templates_for_service(notify_db, notify_db_session, service_fac
         content="Template content",
         service=service_1
     )
-    template_3 = create_sample_template(
+    create_sample_template(
         notify_db,
         notify_db_session,
         template_name='Sample Template 3',
@@ -164,7 +164,7 @@ def test_get_all_templates_for_service(notify_db, notify_db_session, service_fac
 
 
 def test_get_all_templates_for_service_is_alphabetised(notify_db, notify_db_session, sample_service):
-    template_1 = create_sample_template(
+    create_sample_template(
         notify_db,
         notify_db_session,
         template_name='Sample Template 1',
@@ -180,7 +180,7 @@ def test_get_all_templates_for_service_is_alphabetised(notify_db, notify_db_sess
         content="Template content",
         service=sample_service
     )
-    template_3 = create_sample_template(
+    create_sample_template(
         notify_db,
         notify_db_session,
         template_name='Sample Template 3',

@@ -359,7 +359,7 @@ def test_get_jobs_for_service_doesnt_return_test_messages(
     sample_job,
     file_name,
 ):
-    test_job = create_job(
+    create_job(
         notify_db,
         notify_db_session,
         sample_template.service,

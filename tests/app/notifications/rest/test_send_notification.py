@@ -174,7 +174,7 @@ def test_send_notification_with_placeholders_replaced_with_unusual_types(
     expected_body,
     expected_subject,
 ):
-    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
     response = client.post(
         path='/notifications/email',

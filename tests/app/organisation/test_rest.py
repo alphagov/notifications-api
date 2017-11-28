@@ -1,9 +1,6 @@
-from flask import json
 import pytest
 
 from app.models import Organisation
-
-from tests import create_authorization_header
 
 
 def test_get_organisations(admin_request, notify_db, notify_db_session):
@@ -59,7 +56,7 @@ def test_post_create_organisation_without_logo_is_ok(admin_request, notify_db_se
         'name': 'test organisation',
         'colour': '#0000ff',
     }
-    response = admin_request.post(
+    admin_request.post(
         'organisation.create_organisation',
         _data=data,
         _expected_status=201,

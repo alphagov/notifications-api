@@ -4,7 +4,6 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import encryption
 from app.dao.api_key_dao import (save_model_api_key,
                                  get_model_api_keys,
                                  get_unsigned_secrets,

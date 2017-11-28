@@ -38,7 +38,7 @@ def test_create_invited_user(admin_request, sample_service, mocker, invitation_e
 
 
 def test_create_invited_user_without_auth_type(admin_request, sample_service, mocker, invitation_email_template):
-    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     email_address = 'invited_user@service.gov.uk'
     invite_from = sample_service.users[0]
 

@@ -12,7 +12,6 @@ import app
 from app import mmg_client, firetext_client
 from app.dao import (provider_details_dao, notifications_dao)
 from app.dao.provider_details_dao import dao_switch_sms_provider_to_provider_with_identifier
-from app.dao.service_sms_sender_dao import dao_add_sms_sender_for_service
 from app.delivery import send_to_providers
 from app.models import (
     Notification,
@@ -30,7 +29,6 @@ from tests.app.db import (
     create_service,
     create_template,
     create_notification,
-    create_inbound_number,
     create_reply_to_email,
     create_reply_to_email_for_notification,
     create_service_sms_sender,
@@ -818,7 +816,7 @@ def test_send_email_to_provider_should_format_reply_to_email_address(
 
     db_notification = create_notification(template=sample_email_template)
 
-    reply_to = create_reply_to_email_for_notification(
+    create_reply_to_email_for_notification(
         db_notification.id,
         sample_service,
         "test@test.com\t"
