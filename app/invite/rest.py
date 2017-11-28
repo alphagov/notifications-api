@@ -42,7 +42,8 @@ def create_invited_user(service_id):
         },
         notification_type=EMAIL_TYPE,
         api_key_id=None,
-        key_type=KEY_TYPE_NORMAL
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=service.get_default_reply_to_email_address()
     )
 
     send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)

@@ -3,14 +3,14 @@ import uuid
 import pytest
 from freezegun import freeze_time
 
-from app.dao.service_sms_sender_dao import update_existing_sms_sender_with_inbound_number
+from app.dao.service_sms_sender_dao import dao_update_service_sms_sender
 from app.models import (
     NotificationEmailReplyTo,
     ScheduledNotification,
     SCHEDULE_NOTIFICATIONS,
     EMAIL_TYPE,
     SMS_TYPE,
-    NotificationSmsSender, ServiceSmsSender
+    NotificationSmsSender
 )
 from flask import json, current_app
 
@@ -31,7 +31,7 @@ from tests.app.db import (
     create_service,
     create_template,
     create_reply_to_email,
-    create_service_sms_sender, create_notification, create_inbound_number,
+    create_service_sms_sender, create_notification,
     create_service_with_inbound_number
 )
 
@@ -96,13 +96,13 @@ def test_post_sms_notification_uses_inbound_number_as_sender(client, notify_db_s
     notification_id = notifications[0].id
     assert resp_json['id'] == str(notification_id)
     assert resp_json['content']['from_number'] == '1'
+    assert notifications[0].reply_to_text == '1'
     mocked.assert_called_once_with([str(notification_id)], queue='send-sms-tasks')
 
 
 def test_post_sms_notification_returns_201_with_sms_sender_id(
         client, sample_template_with_placeholders, mocker
 ):
-
     sms_sender = create_service_sms_sender(service=sample_template_with_placeholders.service, sms_sender='123456')
     mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
     data = {
@@ -125,7 +125,38 @@ def test_post_sms_notification_returns_201_with_sms_sender_id(
     assert str(notification_to_sms_sender[0].notification_id) == resp_json['id']
     assert resp_json['content']['from_number'] == sms_sender.sms_sender
     assert notification_to_sms_sender[0].service_sms_sender_id == sms_sender.id
+    notifications = Notification.query.all()
+    assert len(notifications) == 1
+    assert notifications[0].reply_to_text == sms_sender.sms_sender
     mocked.assert_called_once_with([resp_json['id']], queue='send-sms-tasks')
+
+
+def test_notification_reply_to_text_is_original_value_if_sender_is_changed_after_post_notification(
+        client, sample_template, mocker
+):
+    sms_sender = create_service_sms_sender(service=sample_template.service, sms_sender='123456', is_default=False)
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    data = {
+        'phone_number': '+447700900855',
+        'template_id': str(sample_template.id),
+        'sms_sender_id': str(sms_sender.id)
+    }
+    auth_header = create_authorization_header(service_id=sample_template.service_id)
+
+    response = client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    dao_update_service_sms_sender(service_id=sample_template.service_id,
+                                  service_sms_sender_id=sms_sender.id,
+                                  is_default=sms_sender.is_default,
+                                  sms_sender='updated')
+
+    assert response.status_code == 201
+    notifications = Notification.query.all()
+    assert len(notifications) == 1
+    assert notifications[0].reply_to_text == '123456'
 
 
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
@@ -198,9 +229,13 @@ def test_notification_returns_400_and_for_schema_problems(client, sample_templat
     assert response.headers['Content-type'] == 'application/json'
     error_resp = json.loads(response.get_data(as_text=True))
     assert error_resp['status_code'] == 400
-    assert error_resp['errors'] == [{'error': 'ValidationError',
-                                     'message': "template_id is a required property"
-                                     }]
+    assert {'error': 'ValidationError',
+            'message': "template_id is a required property"
+            } in error_resp['errors']
+    assert {'error': 'ValidationError',
+            'message':
+            'Additional properties are not allowed (template was unexpected)'
+            } in error_resp['errors']
 
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
@@ -225,6 +260,7 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
     assert resp_json['id'] == str(notification.id)
     assert resp_json['reference'] == reference
     assert notification.reference is None
+    assert notification.reply_to_text is None
     assert resp_json['content']['body'] == sample_email_template_with_placeholders.content \
         .replace('((name))', 'Bob').replace('GOV.UK', u'GOV.\u200bUK')
     assert resp_json['content']['subject'] == sample_email_template_with_placeholders.subject \
@@ -291,7 +327,6 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
                                                                                    notification_type,
                                                                                    key_send_to,
                                                                                    send_to):
-
     mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
 
     sample = create_sample_template(
@@ -325,13 +360,13 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
     [("sms", "phone_number", "07700 900 855"), ("email", "email_address", "sample@email.com")]
 )
 def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
-    client,
-    notify_db,
-    notify_db_session,
-    mocker,
-    notification_type,
-    key_send_to,
-    send_to
+        client,
+        notify_db,
+        notify_db_session,
+        mocker,
+        notification_type,
+        key_send_to,
+        send_to
 ):
     sample = create_sample_template(
         notify_db,
@@ -369,11 +404,10 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
 
 
 def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(
-    client,
-    notify_db,
-    notify_db_session,
+        client,
+        notify_db,
+        notify_db_session,
 ):
-
     service = sample_service(notify_db, notify_db_session, permissions=[SMS_TYPE])
     template = create_sample_template(notify_db, notify_db_session, service=service)
 
@@ -399,15 +433,14 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(
     ]
 
 
-@pytest.mark.parametrize('template_factory,expected_error', [
-    (sample_template_without_sms_permission, 'Cannot send text messages'),
-    (sample_template_without_email_permission, 'Cannot send emails')])
+@pytest.mark.parametrize('recipient,label,template_factory,expected_error', [
+    ('07700 900000', 'phone_number', sample_template_without_sms_permission, 'Cannot send text messages'),
+    ('someone@test.com', 'email_address', sample_template_without_email_permission, 'Cannot send emails')])
 def test_post_sms_notification_returns_400_if_not_allowed_to_send_notification(
-        client, template_factory, expected_error, notify_db, notify_db_session):
+        client, template_factory, recipient, label, expected_error, notify_db, notify_db_session):
     sample_template_without_permission = template_factory(notify_db, notify_db_session)
     data = {
-        'phone_number': '07700 900000',
-        'email_address': 'someone@test.com',
+        label: recipient,
         'template_id': sample_template_without_permission.id
     }
     auth_header = create_authorization_header(service_id=sample_template_without_permission.service.id)
@@ -428,12 +461,11 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_notification(
 
 
 def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(
-    sample_service,
-    sample_template,
-    client,
-    mocker,
+        sample_service,
+        sample_template,
+        client,
+        mocker,
 ):
-
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     data = {
@@ -568,9 +600,9 @@ def test_post_notification_with_wrong_type_of_sender(
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 400
     resp_json = json.loads(response.get_data(as_text=True))
-    assert '{} is not a valid option for {} notification'.\
-        format(form_label, notification_type) in resp_json['errors'][0]['message']
-    assert 'BadRequestError' in resp_json['errors'][0]['error']
+    assert 'Additional properties are not allowed ({} was unexpected)'.format(form_label) \
+           in resp_json['errors'][0]['message']
+    assert 'ValidationError' in resp_json['errors'][0]['error']
 
 
 def test_post_email_notification_with_valid_reply_to_id_returns_201(client, sample_email_template, mocker):
@@ -590,6 +622,7 @@ def test_post_email_notification_with_valid_reply_to_id_returns_201(client, samp
     resp_json = json.loads(response.get_data(as_text=True))
     assert validate(resp_json, post_email_response) == resp_json
     notification = Notification.query.first()
+    assert notification.reply_to_text == 'test@test.com'
     assert resp_json['id'] == str(notification.id)
     assert mocked.called
 
@@ -608,7 +641,7 @@ def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sa
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 400
     resp_json = json.loads(response.get_data(as_text=True))
-    assert 'email_reply_to_id {} does not exist in database for service id {}'.\
+    assert 'email_reply_to_id {} does not exist in database for service id {}'. \
         format(fake_uuid, sample_email_template.service_id) in resp_json['errors'][0]['message']
     assert 'BadRequestError' in resp_json['errors'][0]['error']
 
@@ -637,6 +670,7 @@ def test_post_email_notification_with_valid_reply_to_id_returns_201(client, samp
 
     assert email_reply_to.notification_id == notification.id
     assert email_reply_to.service_email_reply_to_id == reply_to_email.id
+    assert notification.reply_to_text == reply_to_email.email_address
 
 
 def test_persist_sender_to_notification_mapping_for_email(notify_db_session):

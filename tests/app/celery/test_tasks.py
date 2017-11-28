@@ -52,7 +52,8 @@ from tests.app.conftest import (
     sample_template as create_sample_template,
     sample_job as create_sample_job,
     sample_email_template as create_sample_email_template,
-    sample_notification as create_sample_notification
+    sample_notification as create_sample_notification,
+    sample_letter_job
 )
 from tests.app.db import (
     create_inbound_sms,
@@ -62,7 +63,9 @@ from tests.app.db import (
     create_service_inbound_api,
     create_service,
     create_template,
-    create_user
+    create_user,
+    create_reply_to_email,
+    create_service_with_defined_sms_sender
 )
 
 
@@ -542,6 +545,45 @@ def test_should_save_email_if_restricted_service_and_non_team_email_address_with
     )
 
 
+def test_save_email_should_save_default_email_reply_to_text_on_notification(notify_db_session, mocker):
+    service = create_service()
+    create_reply_to_email(service=service, email_address='reply_to@digital.gov.uk', is_default=True)
+    template = create_template(service=service, template_type='email', subject='Hello')
+
+    notification = _notification_json(template, to="test@example.com")
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    notification_id = uuid.uuid4()
+    save_email(
+        service.id,
+        notification_id,
+        encryption.encrypt(notification),
+        key_type=KEY_TYPE_TEST
+    )
+
+    persisted_notification = Notification.query.one()
+    assert persisted_notification.reply_to_text == 'reply_to@digital.gov.uk'
+
+
+def test_save_sms_should_save_default_smm_sender_notification_reply_to_text_on(notify_db_session, mocker):
+    service = create_service_with_defined_sms_sender(sms_sender_value='12345')
+    template = create_template(service=service)
+
+    notification = _notification_json(template, to="07700 900205")
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    notification_id = uuid.uuid4()
+    save_sms(
+        service.id,
+        notification_id,
+        encryption.encrypt(notification),
+        key_type=KEY_TYPE_TEST
+    )
+
+    persisted_notification = Notification.query.one()
+    assert persisted_notification.reply_to_text == '12345'
+
+
 def test_should_not_save_sms_if_restricted_service_and_invalid_number(notify_db, notify_db_session, mocker):
     user = create_user(mobile_number="07700 900205")
     service = create_sample_service(notify_db, notify_db_session, user=user, restricted=True)
@@ -948,7 +990,11 @@ def test_save_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample
     assert not retry.called
 
 
-def test_save_letter_saves_letter_to_database(sample_letter_job, mocker):
+def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
+    service = create_service()
+    create_letter_contact(service=service, contact_block="Address contact", is_default=True)
+    template = create_template(service=service, template_type=LETTER_TYPE)
+    job = create_job(template=template)
 
     mocker.patch('app.celery.tasks.create_random_identifier', return_value="this-is-random-in-real-life")
 
@@ -962,17 +1008,17 @@ def test_save_letter_saves_letter_to_database(sample_letter_job, mocker):
         'postcode': 'Flob',
     }
     notification_json = _notification_json(
-        template=sample_letter_job.template,
+        template=job.template,
         to='Foo',
         personalisation=personalisation,
-        job_id=sample_letter_job.id,
+        job_id=job.id,
         row_number=1
     )
     notification_id = uuid.uuid4()
     created_at = datetime.utcnow()
 
     save_letter(
-        sample_letter_job.service_id,
+        job.service_id,
         notification_id,
         encryption.encrypt(notification_json),
     )
@@ -980,9 +1026,9 @@ def test_save_letter_saves_letter_to_database(sample_letter_job, mocker):
     notification_db = Notification.query.one()
     assert notification_db.id == notification_id
     assert notification_db.to == 'Foo'
-    assert notification_db.job_id == sample_letter_job.id
-    assert notification_db.template_id == sample_letter_job.template.id
-    assert notification_db.template_version == sample_letter_job.template.version
+    assert notification_db.job_id == job.id
+    assert notification_db.template_id == job.template.id
+    assert notification_db.template_version == job.template.version
     assert notification_db.status == 'created'
     assert notification_db.created_at >= created_at
     assert notification_db.notification_type == 'letter'
@@ -990,6 +1036,7 @@ def test_save_letter_saves_letter_to_database(sample_letter_job, mocker):
     assert notification_db.sent_by is None
     assert notification_db.personalisation == personalisation
     assert notification_db.reference == "this-is-random-in-real-life"
+    assert notification_db.reply_to_text == "Address contact"
 
 
 def test_should_cancel_job_if_service_is_inactive(sample_service,

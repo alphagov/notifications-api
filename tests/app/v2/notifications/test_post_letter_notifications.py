@@ -18,8 +18,7 @@ from app.v2.errors import RateLimitError
 from app.v2.notifications.notification_schemas import post_letter_response
 
 from tests import create_authorization_header
-from tests.app.db import create_service, create_template
-
+from tests.app.db import create_service, create_template, create_letter_contact
 
 test_address = {
     'address_line_1': 'test 1',
@@ -78,6 +77,7 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
         ) in resp_json['template']['uri']
     )
     assert not resp_json['scheduled_for']
+    assert not notification.reply_to_text
 
 
 def test_post_letter_notification_returns_400_and_missing_template(
@@ -298,3 +298,21 @@ def test_post_letter_notification_fakes_dvla_when_service_is_in_trial_mode_but_u
         kwargs={'notification_references': [notification.reference]},
         queue='research-mode-tasks'
     )
+
+
+def test_post_letter_notification_persists_notification_reply_to_text(
+    client, notify_db_session
+):
+    service = create_service(service_permissions=[LETTER_TYPE])
+    service_address = "12 Main Street, London"
+    create_letter_contact(service=service, contact_block=service_address, is_default=True)
+    template = create_template(service=service, template_type='letter')
+    data = {
+        "template_id": template.id,
+        "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
+    }
+    letter_request(client, data=data, service_id=service.id, key_type=KEY_TYPE_NORMAL)
+
+    notifications = Notification.query.all()
+    assert len(notifications) == 1
+    assert notifications[0].reply_to_text == service_address

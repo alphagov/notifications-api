@@ -215,7 +215,8 @@ def save_sms(self,
             created_at=datetime.utcnow(),
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
-            notification_id=notification_id
+            notification_id=notification_id,
+            reply_to_text=service.get_default_sms_sender()
         )
 
         provider_tasks.deliver_sms.apply_async(
@@ -262,7 +263,8 @@ def save_email(self,
             created_at=datetime.utcnow(),
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
-            notification_id=notification_id
+            notification_id=notification_id,
+            reply_to_text=service.get_default_reply_to_email_address()
         )
 
         provider_tasks.deliver_email.apply_async(
@@ -303,7 +305,8 @@ def save_letter(
             job_id=notification['job'],
             job_row_number=notification['row_number'],
             notification_id=notification_id,
-            reference=create_random_identifier()
+            reference=create_random_identifier(),
+            reply_to_text=service.get_default_letter_contact()
         )
 
         current_app.logger.info("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))

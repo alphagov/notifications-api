@@ -347,6 +347,7 @@ def test_send_user_reset_password_should_send_reset_password_link(client,
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     data = json.dumps({'email': sample_user.email_address})
     auth_header = create_authorization_header()
+    notify_service = password_reset_email_template.service
     resp = client.post(
         url_for('user.send_user_reset_password'),
         data=data,
@@ -355,6 +356,7 @@ def test_send_user_reset_password_should_send_reset_password_link(client,
     assert resp.status_code == 204
     notification = Notification.query.first()
     mocked.assert_called_once_with([str(notification.id)], queue="notify-internal-tasks")
+    assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
 def test_send_user_reset_password_should_return_400_when_email_is_missing(client, mocker):
@@ -408,6 +410,7 @@ def test_send_already_registered_email(client, sample_user, already_registered_t
     data = json.dumps({'email': sample_user.email_address})
     auth_header = create_authorization_header()
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    notify_service = already_registered_template.service
 
     resp = client.post(
         url_for('user.send_already_registered_email', user_id=str(sample_user.id)),
@@ -417,6 +420,7 @@ def test_send_already_registered_email(client, sample_user, already_registered_t
 
     notification = Notification.query.first()
     mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+    assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
 def test_send_already_registered_email_returns_400_when_data_is_missing(client, sample_user):
@@ -436,6 +440,7 @@ def test_send_user_confirm_new_email_returns_204(client, sample_user, change_ema
     new_email = 'new_address@dig.gov.uk'
     data = json.dumps({'email': new_email})
     auth_header = create_authorization_header()
+    notify_service = change_email_confirmation_template.service
 
     resp = client.post(url_for('user.send_user_confirm_new_email', user_id=str(sample_user.id)),
                        data=data,
@@ -445,6 +450,7 @@ def test_send_user_confirm_new_email_returns_204(client, sample_user, change_ema
     mocked.assert_called_once_with(
         ([str(notification.id)]),
         queue="notify-internal-tasks")
+    assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
 def test_send_user_confirm_new_email_returns_400_when_email_missing(client, sample_user, mocker):
