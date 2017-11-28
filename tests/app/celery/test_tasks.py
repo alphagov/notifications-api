@@ -991,7 +991,7 @@ def test_save_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample
 
 def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
     service = create_service()
-    create_letter_contact(service=service, contact_block="Address contract", is_default=True)
+    create_letter_contact(service=service, contact_block="Address contact", is_default=True)
     template = create_template(service=service, template_type=LETTER_TYPE)
     job = create_job(template=template)
 
@@ -1035,7 +1035,7 @@ def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
     assert notification_db.sent_by is None
     assert notification_db.personalisation == personalisation
     assert notification_db.reference == "this-is-random-in-real-life"
-    assert notification_db.reply_to_text == "Address contract"
+    assert notification_db.reply_to_text == "Address contact"
 
 
 def test_should_cancel_job_if_service_is_inactive(sample_service,
