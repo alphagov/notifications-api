@@ -318,22 +318,22 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
     )
 
     months = {
-        datetime.strftime(date, '%Y-%m'): {
+        datetime.strftime(created_date, '%Y-%m'): {
             template_type: dict.fromkeys(
                 NOTIFICATION_STATUS_TYPES,
                 0
             )
             for template_type in TEMPLATE_TYPES
         }
-        for date in [
+        for created_date in [
             datetime(year, month, 1) for month in range(4, 13)
         ] + [
             datetime(year + 1, month, 1) for month in range(1, 4)
         ]
     }
 
-    for notification_type, status, date, count in rows:
-        months[datetime.strftime(date, "%Y-%m")][notification_type][status] = count
+    for notification_type, status, created_date, count in rows:
+        months[datetime.strftime(created_date, "%Y-%m")][notification_type][status] = count
 
     return months
 
