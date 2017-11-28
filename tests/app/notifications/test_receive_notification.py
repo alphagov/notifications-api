@@ -1,4 +1,3 @@
-import uuid
 import base64
 from datetime import datetime
 from unittest.mock import call
@@ -6,7 +5,6 @@ from unittest.mock import call
 import pytest
 from flask import json
 
-from app.dao.services_dao import dao_fetch_service_by_inbound_number
 from app.notifications.receive_notifications import (
     format_mmg_message,
     format_mmg_datetime,
@@ -80,7 +78,7 @@ def test_receive_notification_from_mmg_without_permissions_does_not_persist(
     permissions
 ):
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
-    service = create_service_with_inbound_number(inbound_number='07111111111', service_permissions=permissions)
+    create_service_with_inbound_number(inbound_number='07111111111', service_permissions=permissions)
     data = {
         "ID": "1234",
         "MSISDN": "07111111111",
@@ -113,8 +111,7 @@ def test_receive_notification_from_firetext_without_permissions_does_not_persist
                  return_value=service)
     mocked_send_inbound_sms = mocker.patch(
         "app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
-    mocked_has_permissions = mocker.patch(
-        "app.notifications.receive_notifications.has_inbound_sms_permissions", return_value=False)
+    mocker.patch("app.notifications.receive_notifications.has_inbound_sms_permissions", return_value=False)
 
     data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
     response = firetext_post(client, data)
@@ -339,7 +336,7 @@ def test_receive_notification_from_firetext_persists_message(notify_db_session, 
 
 def test_receive_notification_from_firetext_persists_message_with_normalized_phone(notify_db_session, client, mocker):
     mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
-    mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
+    mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
 
     create_service_with_inbound_number(
         inbound_number='07111111111', service_name='b', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
