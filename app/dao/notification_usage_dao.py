@@ -9,7 +9,6 @@ from app.dao.date_util import get_financial_year
 from app.models import (
     NotificationHistory,
     Rate,
-    Service,
     NOTIFICATION_STATUS_TYPES_BILLABLE,
     KEY_TYPE_TEST,
     SMS_TYPE,

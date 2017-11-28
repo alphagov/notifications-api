@@ -33,7 +33,6 @@ from app.schemas import (
     email_data_request_schema,
     user_schema,
     permission_schema,
-    user_schema_load_json,
     user_update_schema_load_json,
     user_update_password_schema_load_json
 )

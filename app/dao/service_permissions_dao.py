@@ -1,6 +1,6 @@
 from app import db
 from app.dao.dao_utils import transactional
-from app.models import ServicePermission, SERVICE_PERMISSION_TYPES
+from app.models import ServicePermission
 
 
 def dao_fetch_service_permissions(service_id):

@@ -33,9 +33,9 @@ from app.utils import get_template_instance
 def _validate_positive_number(value, msg="Not a positive integer"):
     try:
         page_int = int(value)
-        if page_int < 1:
-            raise ValidationError(msg)
-    except:
+    except ValueError:
+        raise ValidationError(msg)
+    if page_int < 1:
         raise ValidationError(msg)
 
 

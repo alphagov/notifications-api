@@ -64,6 +64,7 @@ def delete_queue(queue_url):
         print('Deleted queue successfully {}'.format(response['ResponseMetadata']))
     else:
         print('Error occured when attempting to delete queue')
+        from pprint import pprint
         pprint(response)
     return response
 

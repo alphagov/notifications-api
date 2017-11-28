@@ -4,7 +4,7 @@ import iso8601
 from flask import jsonify, Blueprint, current_app, request, abort
 from notifications_utils.recipients import try_validate_and_format_phone_number
 
-from app import statsd_client, firetext_client, mmg_client
+from app import statsd_client
 from app.celery import tasks
 from app.config import QueueNames
 from app.dao.services_dao import dao_fetch_service_by_inbound_number

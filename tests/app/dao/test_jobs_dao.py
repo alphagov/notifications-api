@@ -426,7 +426,7 @@ def test_should_get_jobs_seven_days_old_filters_type(notify_db, notify_db_sessio
     assert job_to_remain.id not in [job.id for job in jobs]
 
 
-def test_dao_get_job_statistics_for_job(notify_db, notify_db_session, sample_job):
+def test_dao_get_job_statistics_for_job_calculates_stats(notify_db, notify_db_session, sample_job):
     notification = create_notification(notify_db=notify_db, notify_db_session=notify_db_session, job=sample_job)
     notification_delivered = create_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                                                  job=sample_job, status='delivered')
@@ -438,16 +438,19 @@ def test_dao_get_job_statistics_for_job(notify_db, notify_db_session, sample_job
     create_or_update_job_sending_statistics(notification_failed)
     update_job_stats_outcome_count(notification_delivered)
     update_job_stats_outcome_count(notification_failed)
+
     result = dao_get_job_statistics_for_job(sample_job.service_id, sample_job.id)
+
     assert_job_stat(job=sample_job, result=result, sent=3, delivered=1, failed=1)
 
 
-def test_dao_get_job_statistics_for_job(notify_db, notify_db_session, sample_service):
+def test_dao_get_job_statistics_for_job_separates_jobs(notify_db, notify_db_session, sample_service):
     job_1, job_2 = stats_set_up(notify_db, notify_db_session, sample_service)
-    result = dao_get_job_statistics_for_job(sample_service.id, job_1.id)
-    assert_job_stat(job=job_1, result=result, sent=2, delivered=1, failed=0)
 
+    result = dao_get_job_statistics_for_job(sample_service.id, job_1.id)
     result_2 = dao_get_job_statistics_for_job(sample_service.id, job_2.id)
+
+    assert_job_stat(job=job_1, result=result, sent=2, delivered=1, failed=0)
     assert_job_stat(job=job_2, result=result_2, sent=1, delivered=0, failed=1)
 
 

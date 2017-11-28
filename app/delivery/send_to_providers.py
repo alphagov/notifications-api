@@ -7,6 +7,7 @@ from notifications_utils.recipients import (
     validate_and_format_email_address
 )
 from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTemplate, SMSMessageTemplate
+from requests.exceptions import HTTPError
 
 from app import clients, statsd_client, create_uuid
 from app.dao.notifications_dao import (
@@ -60,7 +61,7 @@ def send_sms_to_provider(notification):
             update_notification(notification, provider)
             try:
                 send_sms_response(provider.get_name(), str(notification.id), notification.to)
-            except:
+            except HTTPError:
                 # when we retry, we only do anything if the notification is in created - it's currently in sending,
                 # so set it back so that we actually attempt the callback again
                 notification.sent_at = None
