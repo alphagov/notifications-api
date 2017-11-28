@@ -13,6 +13,6 @@ def process_ses_results(self, response):
         errors = process_ses_response(response)
         if errors:
             current_app.logger.error(errors)
-    except Exception:
+    except Exception as exc:
         current_app.logger.exception('Error processing SES results')
-        self.retry(queue=QueueNames.RETRY, exc="SES responses processed with error")
+        self.retry(queue=QueueNames.RETRY)

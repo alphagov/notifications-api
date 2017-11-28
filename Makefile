@@ -277,6 +277,10 @@ cf-deploy: ## Deploys the app to Cloud Foundry
 	cf rename ${CF_APP} ${CF_APP}-rollback
 	cf push ${CF_APP} -f ${CF_MANIFEST_FILE}
 	cf scale -i $$(cf curl /v2/apps/$$(cf app --guid ${CF_APP}-rollback) | jq -r ".entity.instances" 2>/dev/null || echo "1") ${CF_APP}
+	cf stop ${CF_APP}-rollback
+	# sleep for 10 seconds to try and make sure that all worker threads (either web api or celery) have finished before we delete
+	# when we delete the DB is unbound from the app, which can cause "permission denied for relation" psycopg2 errors.
+	sleep 10
 	cf delete -f ${CF_APP}-rollback
 
 .PHONY: cf-deploy-api-db-migration

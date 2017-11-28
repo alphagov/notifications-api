@@ -1,16 +1,17 @@
-import codecs
 import json
 import uuid
 from datetime import datetime, timedelta
 from unittest.mock import Mock
+
 import pytest
 import requests_mock
 from flask import current_app
 from freezegun import freeze_time
 from requests import RequestException
 from sqlalchemy.exc import SQLAlchemyError
-from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate, LetterDVLATemplate
 from celery.exceptions import Retry
+from botocore.exceptions import ClientError
+from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate, LetterDVLATemplate
 
 from app import (encryption, DATETIME_FORMAT)
 from app.celery import provider_tasks
@@ -991,7 +992,7 @@ def test_save_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample
 
 def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
     service = create_service()
-    create_letter_contact(service=service, contact_block="Address contract", is_default=True)
+    create_letter_contact(service=service, contact_block="Address contact", is_default=True)
     template = create_template(service=service, template_type=LETTER_TYPE)
     job = create_job(template=template)
 
@@ -1035,7 +1036,7 @@ def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
     assert notification_db.sent_by is None
     assert notification_db.personalisation == personalisation
     assert notification_db.reference == "this-is-random-in-real-life"
-    assert notification_db.reply_to_text == "Address contract"
+    assert notification_db.reply_to_text == "Address contact"
 
 
 def test_should_cancel_job_if_service_is_inactive(sample_service,
@@ -1071,9 +1072,7 @@ def test_build_dvla_file(sample_letter_template, mocker):
     create_notification(template=job.template, job=job)
     mocked_upload = mocker.patch("app.celery.tasks.s3upload")
     mocked_send_task = mocker.patch("app.celery.tasks.notify_celery.send_task")
-    mocked_letter_template = mocker.patch("app.celery.tasks.LetterDVLATemplate")
-    mocked_letter_template_instance = mocked_letter_template.return_value
-    mocked_letter_template_instance.__str__.return_value = "dvla|string"
+    mocker.patch("app.celery.tasks.LetterDVLATemplate", return_value='dvla|string')
     build_dvla_file(job.id)
 
     mocked_upload.assert_called_once_with(
@@ -1096,10 +1095,23 @@ def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_let
         build_dvla_file(job.id)
     mocked.assert_not_called()
 
-    tasks.build_dvla_file.retry.assert_called_with(queue="retry-tasks",
-                                                   exc="All notifications for job {} are not persisted".format(job.id))
+    tasks.build_dvla_file.retry.assert_called_with(queue="retry-tasks")
     assert Job.query.get(job.id).job_status == 'in progress'
     mocked_send_task.assert_not_called()
+
+
+def test_build_dvla_file_retries_if_s3_err(sample_letter_template, mocker):
+    job = create_job(sample_letter_template, notification_count=1)
+    create_notification(job.template, job=job)
+
+    mocker.patch('app.celery.tasks.LetterDVLATemplate', return_value='dvla|string')
+    mocker.patch('app.celery.tasks.s3upload', side_effect=ClientError({}, 'operation_name'))
+    retry_mock = mocker.patch('app.celery.tasks.build_dvla_file.retry', side_effect=Retry)
+
+    with pytest.raises(Retry):
+        build_dvla_file(job.id)
+
+    retry_mock.assert_called_once_with(queue='retry-tasks')
 
 
 def test_create_dvla_file_contents(notify_db_session, mocker):
@@ -1205,7 +1217,6 @@ def test_send_inbound_sms_to_service_retries_if_request_returns_500(notify_api, 
     )
     assert mocked.call_count == 1
     assert mocked.call_args[1]['queue'] == 'retry-tasks'
-    assert exc_msg in mocked.call_args[1]['exc']
 
 
 def test_send_inbound_sms_to_service_retries_if_request_throws_unknown(notify_api, sample_service, mocker):
@@ -1225,7 +1236,6 @@ def test_send_inbound_sms_to_service_retries_if_request_throws_unknown(notify_ap
     )
     assert mocked.call_count == 1
     assert mocked.call_args[1]['queue'] == 'retry-tasks'
-    assert exc_msg in mocked.call_args[1]['exc']
 
 
 def test_send_inbound_sms_to_service_does_not_retries_if_request_returns_404(notify_api, sample_service, mocker):
