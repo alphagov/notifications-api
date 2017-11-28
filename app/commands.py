@@ -49,25 +49,16 @@ class notify_command:
 
 
 @notify_command()
-@click.option('-p', '--provider_name', required=True, help='Provider name')
-@click.option('-c', '--cost', required=True, help='Cost (pence) per message including decimals')
+@click.option('-p', '--provider_name', required=True, help='Provider name', type=click.Choice(PROVIDERS))
+@click.option('-c', '--cost', required=True, help='Cost (pence) per message including decimals', type=float)
 @click.option('-d', '--valid_from', required=True, help="Date (%Y-%m-%dT%H:%M:%S) valid from")
 def create_provider_rates(provider_name, cost, valid_from):
     """
     Backfill rates for a given provider
     """
-    if provider_name not in PROVIDERS:
-        raise Exception("Invalid provider name, must be one of ({})".format(', '.join(PROVIDERS)))
+    cost = Decimal(cost)
 
-    try:
-        cost = Decimal(cost)
-    except:
-        raise Exception("Invalid cost value.")
-
-    try:
-        valid_from = datetime.strptime('%Y-%m-%dT%H:%M:%S', valid_from)
-    except:
-        raise Exception("Invalid valid_from date. Use the format %Y-%m-%dT%H:%M:%S")
+    valid_from = datetime.strptime('%Y-%m-%dT%H:%M:%S', valid_from)
 
     dao_create_provider_rates(provider_name, valid_from, cost)
 
@@ -203,18 +194,18 @@ def link_inbound_numbers_to_service():
 
 
 @notify_command()
-@click.option('-y', '--year', required=True, help="Use for integer value for year, e.g. 2017")
+@click.option('-y', '--year', required=True, help="Use for integer value for year, e.g. 2017", type=int)
 def populate_monthly_billing(year):
     """
     Populate monthly billing table for all services for a given year.
     """
     def populate(service_id, year, month):
-        create_or_update_monthly_billing(service_id, datetime(int(year), int(month), 1))
+        create_or_update_monthly_billing(service_id, datetime(year, month, 1))
         sms_res = get_monthly_billing_by_notification_type(
-            service_id, datetime(int(year), int(month), 1), SMS_TYPE
+            service_id, datetime(year, month, 1), SMS_TYPE
         )
         email_res = get_monthly_billing_by_notification_type(
-            service_id, datetime(int(year), int(month), 1), EMAIL_TYPE
+            service_id, datetime(year, month, 1), EMAIL_TYPE
         )
         print("Finished populating data for {} for service id {}".format(month, str(service_id)))
         print('SMS: {}'.format(sms_res.monthly_totals))
@@ -225,7 +216,7 @@ def populate_monthly_billing(year):
     )
     start, end = 1, 13
 
-    if year == '2016':
+    if year == 2016:
         start = 4
 
     for service_id in service_ids:
@@ -400,7 +391,7 @@ def populate_annual_billing():
 
 
 @notify_command()
-@click.option('-j', '--job_id', required=True, help="Enter the job id to rebuild the dvla file for")
+@click.option('-j', '--job_id', required=True, help="Enter the job id to rebuild the dvla file for", type=click.UUID)
 def re_run_build_dvla_file_for_job(job_id):
     """
     Rebuild dvla file for a job.
