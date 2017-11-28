@@ -14,10 +14,9 @@ from app.dao.templates_dao import dao_get_template_by_id
 from app.models import EMAIL_TYPE, KEY_TYPE_NORMAL, Service
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.schemas import invited_user_schema
+from app.errors import register_errors
 
 invite = Blueprint('invite', __name__, url_prefix='/service/<service_id>/invite')
-
-from app.errors import register_errors
 
 register_errors(invite)
 

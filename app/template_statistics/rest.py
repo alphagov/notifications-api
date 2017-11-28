@@ -16,12 +16,11 @@ from app.dao.templates_dao import (
 
 from app.schemas import notification_with_template_schema
 from app.utils import cache_key_for_service_template_counter
+from app.errors import register_errors, InvalidRequest
 
 template_statistics = Blueprint('template-statistics',
                                 __name__,
                                 url_prefix='/service/<service_id>/template-statistics')
-
-from app.errors import register_errors, InvalidRequest
 
 register_errors(template_statistics)
 

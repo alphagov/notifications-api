@@ -10,8 +10,7 @@ from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
 )
-from sqlalchemy import UniqueConstraint, CheckConstraint, and_
-from sqlalchemy.orm import foreign, remote
+from sqlalchemy import UniqueConstraint, CheckConstraint
 from notifications_utils.recipients import (
     validate_email_address,
     validate_phone_number,

@@ -1,15 +1,14 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, current_app
 
 from app.config import QueueNames
 from app.delivery import send_to_providers
 from app.models import EMAIL_TYPE
 from app.celery import provider_tasks
 from app.dao import notifications_dao
-from flask import current_app
+from app.errors import register_errors
 
 delivery_blueprint = Blueprint('delivery', __name__)
 
-from app.errors import register_errors
 
 register_errors(delivery_blueprint)
 

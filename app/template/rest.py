@@ -15,18 +15,17 @@ from app.dao.templates_dao import (
 )
 from notifications_utils.template import SMSMessageTemplate
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.dao.service_permissions_dao import dao_fetch_service_permissions
-from app.models import SMS_TYPE, EMAIL_TYPE
+from app.models import SMS_TYPE
 from app.notifications.validators import service_has_permission
 from app.schemas import (template_schema, template_history_schema)
-
-template_blueprint = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
-
 from app.errors import (
     register_errors,
     InvalidRequest
 )
 from app.utils import get_template_instance, get_public_notify_type_text
+
+template_blueprint = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
+
 
 register_errors(template_blueprint)
 

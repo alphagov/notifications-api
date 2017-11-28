@@ -1,10 +1,7 @@
 from app import db
-from werkzeug.datastructures import MultiDict
 from app.dao import DAOClass
 from app.models import (
     Permission,
-    Service,
-    User,
     MANAGE_USERS,
     MANAGE_TEMPLATES,
     MANAGE_SETTINGS,

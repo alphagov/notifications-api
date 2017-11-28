@@ -15,35 +15,27 @@ from app.dao.jobs_dao import (
     dao_get_notification_outcomes_for_job,
     dao_get_job_stats_for_service,
     dao_get_job_statistics_for_job)
-
-from app.dao.services_dao import (
-    dao_fetch_service_by_id
-)
-
-from app.dao.templates_dao import (dao_get_template_by_id)
+from app.dao.services_dao import dao_fetch_service_by_id
+from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.notifications_dao import get_notifications_for_job
-
 from app.schemas import (
     job_schema,
     unarchived_template_schema,
     notifications_filter_schema,
     notification_with_template_schema
 )
-
 from app.celery.tasks import process_job
-
 from app.models import JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING, JOB_STATUS_CANCELLED, LETTER_TYPE
-
 from app.utils import pagination_links
-
 from app.config import QueueNames
-
-job_blueprint = Blueprint('job', __name__, url_prefix='/service/<uuid:service_id>/job')
-
 from app.errors import (
     register_errors,
     InvalidRequest
 )
+
+
+job_blueprint = Blueprint('job', __name__, url_prefix='/service/<uuid:service_id>/job')
+
 
 register_errors(job_blueprint)
 

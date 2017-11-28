@@ -39,7 +39,6 @@ from app.models import (
     SMS_TYPE,
     TEMPLATE_TYPES
 )
-from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
 from app.dao.annual_billing_dao import dao_insert_annual_billing
