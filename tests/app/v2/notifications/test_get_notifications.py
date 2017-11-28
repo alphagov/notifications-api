@@ -339,10 +339,9 @@ def test_get_all_notifications_no_notifications_if_no_notifications(client, samp
     assert len(json_response['notifications']) == 0
 
 
-def test_get_all_notifications_filter_by_template_type(client):
-    service = create_service()
-    email_template = create_template(service=service, template_type="email")
-    sms_template = create_template(service=service, template_type="sms")
+def test_get_all_notifications_filter_by_template_type(client, sample_service):
+    email_template = create_template(service=sample_service, template_type="email")
+    sms_template = create_template(service=sample_service, template_type="sms")
 
     notification = create_notification(template=email_template, to_field="don.draper@scdp.biz")
     create_notification(template=sms_template)
