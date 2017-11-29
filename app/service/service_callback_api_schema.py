@@ -1,10 +1,10 @@
 from app.schema_validation.definitions import uuid, https_url
 
-service_inbound_api = {
+create_service_callback_api_schema = {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "POST service inbound api schema",
+    "description": "POST service callback/inbound api schema",
     "type": "object",
-    "title": "Create service inbound api",
+    "title": "Create service callback/inbound api",
     "properties": {
         "url": https_url,
         "bearer_token": {"type": "string", "minLength": 10},
@@ -13,11 +13,11 @@ service_inbound_api = {
     "required": ["url", "bearer_token", "updated_by_id"]
 }
 
-update_service_inbound_api_schema = {
+update_service_callback_api_schema = {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "POST service inbound api schema",
+    "description": "POST service callback/inbound api schema",
     "type": "object",
-    "title": "Create service inbound api",
+    "title": "Create service callback/inbound api",
     "properties": {
         "url": https_url,
         "bearer_token": {"type": "string", "minLength": 10},
