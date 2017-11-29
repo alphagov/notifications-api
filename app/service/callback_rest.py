@@ -42,7 +42,7 @@ def create_service_inbound_api(service_id):
     try:
         save_service_inbound_api(inbound_api)
     except SQLAlchemyError as e:
-        return handle_sql_error(e)
+        return handle_sql_error(e, 'service_inbound_api')
 
     return jsonify(data=inbound_api.serialize()), 201
 
@@ -77,7 +77,7 @@ def create_service_callback_api(service_id):
     try:
         save_service_callback_api(callback_api)
     except SQLAlchemyError as e:
-        return handle_sql_error(e)
+        return handle_sql_error(e, 'service_callback_api')
 
     return jsonify(data=callback_api.serialize()), 201
 
@@ -103,17 +103,17 @@ def fetch_service_callback_api(service_id, callback_api_id):
     return jsonify(data=callback_api.serialize()), 200
 
 
-def handle_sql_error(e):
+def handle_sql_error(e, table_name):
     if hasattr(e, 'orig') and hasattr(e.orig, 'pgerror') and e.orig.pgerror \
-            and ('duplicate key value violates unique constraint "ix_service_callback_api_service_id"'
+            and ('duplicate key value violates unique constraint "ix_{}_service_id"'.format(table_name)
                  in e.orig.pgerror):
         return jsonify(
             result='error',
             message={'name': ["You can only have one URL and bearer token for your service."]}
         ), 400
     elif hasattr(e, 'orig') and hasattr(e.orig, 'pgerror') and e.orig.pgerror \
-            and ('insert or update on table "service_callback_api" violates '
-                 'foreign key constraint "service_callback_api_service_id_fkey"'
+            and ('insert or update on table "{0}" violates '
+                 'foreign key constraint "{0}_service_id_fkey"'.format(table_name)
                  in e.orig.pgerror):
         return jsonify(result='error', message="No result found"), 404
     else:
