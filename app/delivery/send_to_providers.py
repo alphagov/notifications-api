@@ -11,9 +11,8 @@ from requests.exceptions import HTTPError
 
 from app import clients, statsd_client, create_uuid
 from app.dao.notifications_dao import (
-    dao_update_notification,
-    dao_get_notification_email_reply_for_notification,
-    dao_get_notification_sms_sender_mapping)
+    dao_update_notification
+)
 from app.dao.provider_details_dao import (
     get_provider_details_by_notification_type,
     dao_toggle_sms_provider
@@ -71,15 +70,11 @@ def send_sms_to_provider(notification):
                 raise
         else:
             try:
-                sms_sender = dao_get_notification_sms_sender_mapping(notification.id)
-                if not sms_sender:
-                    sms_sender = service.get_default_sms_sender()
-
                 provider.send_sms(
                     to=validate_and_format_phone_number(notification.to, international=notification.international),
                     content=str(template),
                     reference=str(notification.id),
-                    sender=sms_sender
+                    sender=notification.reply_to_text
                 )
             except Exception as e:
                 dao_toggle_sms_provider(provider.name)
@@ -130,10 +125,7 @@ def send_email_to_provider(notification):
             from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
                                                  current_app.config['NOTIFY_EMAIL_DOMAIN'])
 
-            email_reply_to = dao_get_notification_email_reply_for_notification(notification.id)
-
-            if not email_reply_to:
-                email_reply_to = service.get_default_reply_to_email_address()
+            email_reply_to = notification.reply_to_text
 
             reference = provider.send_email(
                 from_address,

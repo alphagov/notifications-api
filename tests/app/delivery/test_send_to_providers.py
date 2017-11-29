@@ -1,18 +1,17 @@
 import uuid
-from datetime import datetime
 from collections import namedtuple
+from datetime import datetime
 from unittest.mock import ANY, call
 
 import pytest
-from notifications_utils.recipients import validate_and_format_phone_number
 from flask import current_app
+from notifications_utils.recipients import validate_and_format_phone_number
 from requests import HTTPError
 
 import app
 from app import mmg_client, firetext_client
 from app.dao import (provider_details_dao, notifications_dao)
 from app.dao.provider_details_dao import dao_switch_sms_provider_to_provider_with_identifier
-from app.dao.service_sms_sender_dao import dao_add_sms_sender_for_service
 from app.delivery import send_to_providers
 from app.models import (
     Notification,
@@ -25,12 +24,10 @@ from app.models import (
     BRANDING_BOTH,
     BRANDING_ORG_BANNER
 )
-
 from tests.app.db import (
     create_service,
     create_template,
     create_notification,
-    create_inbound_number,
     create_reply_to_email,
     create_reply_to_email_for_notification,
     create_service_sms_sender,
@@ -76,7 +73,8 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
 ):
     db_notification = create_notification(template=sample_sms_template_with_html,
                                           to_field="+447234123123", personalisation={"name": "Jo"},
-                                          status='created')
+                                          status='created',
+                                          reply_to_text=sample_sms_template_with_html.service.get_default_sms_sender())
 
     mocker.patch('app.mmg_client.send_sms')
     stats_mock = mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
@@ -169,7 +167,8 @@ def test_should_not_send_sms_message_when_service_is_inactive_notifcation_is_in_
 def test_send_sms_should_use_template_version_from_notification_not_latest(
         sample_template,
         mocker):
-    db_notification = create_notification(template=sample_template, to_field='+447234123123', status='created')
+    db_notification = create_notification(template=sample_template, to_field='+447234123123', status='created',
+                                          reply_to_text=sample_template.service.get_default_sms_sender())
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
@@ -330,7 +329,8 @@ def test_send_sms_should_use_service_sms_sender(
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
     sms_sender = create_service_sms_sender(service=sample_service, sms_sender='123456', is_default=False)
-    db_notification = create_notification(template=sample_template, sms_sender_id=sms_sender.id)
+    db_notification = create_notification(template=sample_template, sms_sender_id=sms_sender.id,
+                                          reply_to_text=sms_sender.sms_sender)
 
     send_to_providers.send_sms_to_provider(
         db_notification,
@@ -409,7 +409,7 @@ def test_send_email_should_use_service_reply_to_email(
     mocker.patch('app.aws_ses_client.send_email', return_value='reference')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
-    db_notification = create_notification(template=sample_email_template)
+    db_notification = create_notification(template=sample_email_template, reply_to_text='foo@bar.com')
     create_reply_to_email(service=sample_service, email_address='foo@bar.com')
 
     send_to_providers.send_email_to_provider(
@@ -422,7 +422,7 @@ def test_send_email_should_use_service_reply_to_email(
         ANY,
         body=ANY,
         html_body=ANY,
-        reply_to_address=sample_service.get_default_reply_to_email_address()
+        reply_to_address='foo@bar.com'
     )
 
 
@@ -578,14 +578,18 @@ def test_should_send_sms_to_international_providers(
         to_field="+447234123999",
         personalisation={"name": "Jo"},
         status='created',
-        international=False)
+        international=False,
+        reply_to_text=sample_sms_template_with_html.service.get_default_sms_sender()
+    )
 
     db_notification_international = create_notification(
         template=sample_sms_template_with_html,
         to_field="+447234123111",
         personalisation={"name": "Jo"},
         status='created',
-        international=True)
+        international=True,
+        reply_to_text=sample_sms_template_with_html.service.get_default_sms_sender()
+    )
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.firetext_client.send_sms')
@@ -692,7 +696,7 @@ def test_should_handle_sms_sender_and_prefix_message(
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
     service = create_service_with_defined_sms_sender(sms_sender_value=sms_sender, prefix_sms=prefix_sms)
     template = create_template(service, content='bar')
-    notification = create_notification(template)
+    notification = create_notification(template, reply_to_text=sms_sender)
 
     send_to_providers.send_sms_to_provider(notification)
 
@@ -711,7 +715,7 @@ def test_should_use_inbound_number_as_sender_if_default_sms_sender(
     service = create_service_with_inbound_number(inbound_number='inbound')
     create_service_sms_sender(service=service, sms_sender="sms_sender", is_default=False)
     template = create_template(service, content='bar')
-    notification = create_notification(template)
+    notification = create_notification(template, reply_to_text='inbound')
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
@@ -732,7 +736,7 @@ def test_should_use_default_sms_sender(
 ):
     service = create_service_with_defined_sms_sender(sms_sender_value="test sender")
     template = create_template(service, content='bar')
-    notification = create_notification(template)
+    notification = create_notification(template, reply_to_text=service.get_default_sms_sender())
 
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
@@ -754,8 +758,8 @@ def test_send_email_to_provider_get_linked_email_reply_to_default_is_false(
     mocker.patch('app.aws_ses_client.send_email', return_value='reference')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
-    db_notification = create_notification(template=sample_email_template)
-    create_reply_to_email(service=sample_service, email_address='foo@bar.com')
+    db_notification = create_notification(template=sample_email_template, reply_to_text="test@test.com")
+    create_reply_to_email(service=sample_service, email_address="test@test.com")
 
     reply_to = create_reply_to_email_for_notification(
         db_notification.id,
@@ -785,8 +789,10 @@ def test_send_email_to_provider_get_linked_email_reply_to_create_service_email_a
     mocker.patch('app.aws_ses_client.send_email', return_value='reference')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
-    db_notification = create_notification(template=sample_email_template)
+    db_notification = create_notification(template=sample_email_template,
+                                          reply_to_text="test@test.com")
 
+    # notification_to_email_reply_to is being deprecated.
     reply_to = create_reply_to_email_for_notification(
         db_notification.id,
         sample_service,
@@ -816,12 +822,12 @@ def test_send_email_to_provider_should_format_reply_to_email_address(
     mocker.patch('app.aws_ses_client.send_email', return_value='reference')
     mocker.patch('app.delivery.send_to_providers.create_initial_notification_statistic_tasks')
 
-    db_notification = create_notification(template=sample_email_template)
+    db_notification = create_notification(template=sample_email_template, reply_to_text="test@test.com\t")
 
     reply_to = create_reply_to_email_for_notification(
         db_notification.id,
         sample_service,
-        "test@test.com\t"
+        "test@test.com"
     )
 
     send_to_providers.send_email_to_provider(

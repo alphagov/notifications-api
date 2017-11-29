@@ -329,6 +329,7 @@ class Development(Config):
 
 
 class Test(Config):
+    SQLALCHEMY_ECHO = True
     NOTIFY_EMAIL_DOMAIN = 'test.notify.com'
     FROM_NUMBER = 'testing'
     NOTIFY_ENVIRONMENT = 'test'
