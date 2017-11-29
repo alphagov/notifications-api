@@ -1,8 +1,5 @@
 from flask import jsonify, request, url_for, current_app
 
-from notifications_utils.recipients import validate_and_format_phone_number
-from notifications_utils.recipients import InvalidPhoneError
-
 from app import authenticated_service
 from app.dao import inbound_sms_dao
 from app.schema_validation import validate

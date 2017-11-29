@@ -57,20 +57,6 @@ def test_get_job_with_unknown_id_returns404(notify_api, sample_template, fake_uu
             }
 
 
-def test_get_job_by_id(notify_api, sample_job):
-    job_id = str(sample_job.id)
-    service_id = sample_job.service.id
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            path = '/service/{}/job/{}'.format(service_id, job_id)
-            auth_header = create_authorization_header()
-            response = client.get(path, headers=[auth_header])
-            assert response.status_code == 200
-            resp_json = json.loads(response.get_data(as_text=True))
-            assert resp_json['data']['id'] == job_id
-            assert resp_json['data']['created_by']['name'] == 'Test User'
-
-
 def test_cancel_job(notify_api, sample_scheduled_job):
     job_id = str(sample_scheduled_job.id)
     service_id = sample_scheduled_job.service.id

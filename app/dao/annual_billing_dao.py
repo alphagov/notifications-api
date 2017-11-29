@@ -35,7 +35,7 @@ def dao_update_annual_billing_for_current_and_future_years(service_id, free_sms_
     if not financial_year_start:
         financial_year_start = get_current_financial_year_start_year()
 
-    updated = AnnualBilling.query.filter(
+    AnnualBilling.query.filter(
         AnnualBilling.service_id == service_id,
         AnnualBilling.financial_year_start >= financial_year_start
     ).update(

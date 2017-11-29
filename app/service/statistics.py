@@ -1,5 +1,4 @@
-import itertools
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from app.models import NOTIFICATION_STATUS_TYPES, TEMPLATE_TYPES
 

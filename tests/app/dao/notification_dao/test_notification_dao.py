@@ -477,7 +477,7 @@ def test_should_not_update_status_by_reference_if_from_country_with_no_delivery_
     assert notification.status == NOTIFICATION_SENT
 
 
-def test_should_not_update_status_by_id_if_sent_to_country_with_no_delivery_receipts(sample_template):
+def test_should_not_update_status_by_id_if_sent_to_country_with_carrier_delivery_receipts(sample_template):
     notification = create_notification(
         sample_template,
         status=NOTIFICATION_SENT,
@@ -491,7 +491,7 @@ def test_should_not_update_status_by_id_if_sent_to_country_with_no_delivery_rece
     assert notification.status == NOTIFICATION_SENT
 
 
-def test_should_not_update_status_by_id_if_sent_to_country_with_no_delivery_receipts(sample_template):
+def test_should_not_update_status_by_id_if_sent_to_country_with_delivery_receipts(sample_template):
     notification = create_notification(
         sample_template,
         status=NOTIFICATION_SENT,
@@ -2071,7 +2071,7 @@ def test_dao_get_last_notification_added_for_job_id_no_notifications(sample_temp
     assert dao_get_last_notification_added_for_job_id(job.id) is None
 
 
-def test_dao_get_last_notification_added_for_job_id_no_notifications(sample_template, fake_uuid):
+def test_dao_get_last_notification_added_for_job_id_no_job(sample_template, fake_uuid):
 
     assert dao_get_last_notification_added_for_job_id(fake_uuid) is None
 
