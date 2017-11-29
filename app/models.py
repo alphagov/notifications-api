@@ -465,6 +465,40 @@ class ServiceInboundApi(db.Model, Versioned):
         }
 
 
+class ServiceCallbackApi(db.Model, Versioned):
+    __tablename__ = 'service_callback_api'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False, unique=True)
+    service = db.relationship('Service', backref='service_callback_api')
+    url = db.Column(db.String(), nullable=False)
+    _bearer_token = db.Column("bearer_token", db.String(), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True)
+    updated_by = db.relationship('User')
+    updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+
+    @property
+    def bearer_token(self):
+        if self._bearer_token:
+            return encryption.decrypt(self._bearer_token)
+        return None
+
+    @bearer_token.setter
+    def bearer_token(self, bearer_token):
+        if bearer_token:
+            self._bearer_token = encryption.encrypt(str(bearer_token))
+
+    def serialize(self):
+        return {
+            "id": str(self.id),
+            "service_id": str(self.service_id),
+            "url": self.url,
+            "updated_by_id": str(self.updated_by_id),
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
+        }
+
+
 class ApiKey(db.Model, Versioned):
     __tablename__ = 'api_keys'
 
