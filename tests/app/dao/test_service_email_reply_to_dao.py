@@ -39,7 +39,7 @@ def test_add_reply_to_email_address_for_service_creates_first_email_for_service(
 
 def test_add_reply_to_email_address_for_service_creates_another_email_for_service(notify_db_session):
     service = create_service()
-    first_reply_to = create_reply_to_email(service=service, email_address="first@address.com")
+    create_reply_to_email(service=service, email_address="first@address.com")
 
     add_reply_to_email_address_for_service(service_id=service.id, email_address='second@address.com', is_default=False)
 
@@ -56,7 +56,7 @@ def test_add_reply_to_email_address_for_service_creates_another_email_for_servic
 
 def test_add_reply_to_email_address_new_reply_to_is_default_existing_reply_to_is_not(notify_db_session):
     service = create_service()
-    first_reply_to = create_reply_to_email(service=service, email_address="first@address.com", is_default=True)
+    create_reply_to_email(service=service, email_address="first@address.com", is_default=True)
     add_reply_to_email_address_for_service(service_id=service.id, email_address='second@address.com', is_default=True)
 
     results = dao_get_reply_to_by_service_id(service_id=service.id)
@@ -121,7 +121,7 @@ def test_update_reply_to_email_address(sample_service):
 
 
 def test_update_reply_to_email_address_set_updated_to_default(sample_service):
-    first_reply_to = create_reply_to_email(service=sample_service, email_address="first@address.com")
+    create_reply_to_email(service=sample_service, email_address="first@address.com")
     second_reply_to = create_reply_to_email(service=sample_service,
                                             email_address="second@address.com",
                                             is_default=False)

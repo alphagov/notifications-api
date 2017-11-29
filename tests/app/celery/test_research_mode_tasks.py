@@ -11,8 +11,6 @@ from app.celery.research_mode_tasks import (
     mmg_callback,
     firetext_callback,
     ses_notification_callback,
-    ses_hard_bounce_callback,
-    ses_soft_bounce_callback
 )
 
 

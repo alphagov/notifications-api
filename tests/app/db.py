@@ -28,7 +28,6 @@ from app.models import (
     User,
     EMAIL_TYPE,
     SMS_TYPE,
-    INBOUND_SMS_TYPE,
     KEY_TYPE_NORMAL,
     AnnualBilling,
 )

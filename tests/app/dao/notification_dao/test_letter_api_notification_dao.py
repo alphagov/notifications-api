@@ -35,7 +35,7 @@ def test_should_only_get_created_letters(sample_letter_template):
 
 def test_should_only_get_api_letters(sample_letter_template, sample_letter_job):
     api_noti = create_notification(sample_letter_template)
-    job_noti = create_notification(sample_letter_template, job=sample_letter_job)
+    create_notification(sample_letter_template, job=sample_letter_job)
 
     ret = dao_set_created_live_letter_api_notifications_to_pending()
 
@@ -44,7 +44,7 @@ def test_should_only_get_api_letters(sample_letter_template, sample_letter_job):
 
 def test_should_only_get_normal_api_letters(sample_letter_template):
     live_noti = create_notification(sample_letter_template, key_type=KEY_TYPE_NORMAL)
-    test_noti = create_notification(sample_letter_template, key_type=KEY_TYPE_TEST)
+    create_notification(sample_letter_template, key_type=KEY_TYPE_TEST)
 
     ret = dao_set_created_live_letter_api_notifications_to_pending()
 

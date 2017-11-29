@@ -1,8 +1,4 @@
-import pytest
-from sqlalchemy.exc import IntegrityError
-
 from app.dao.organisations_dao import (
-    dao_create_organisation,
     dao_get_organisations,
     dao_get_organisation_by_id,
     dao_update_organisation,
@@ -49,7 +45,7 @@ def test_get_organisation_by_id_gets_correct_organisation(notify_db, notify_db_s
 
 def test_update_organisation(notify_db, notify_db_session):
     updated_name = 'new name'
-    organisation = create_organisation()
+    create_organisation()
 
     organisations_1 = Organisation.query.all()
 

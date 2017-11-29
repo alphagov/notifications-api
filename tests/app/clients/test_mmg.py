@@ -1,5 +1,3 @@
-import json
-
 import pytest
 import requests_mock
 from requests import HTTPError

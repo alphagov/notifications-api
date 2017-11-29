@@ -634,7 +634,7 @@ def test_post_email_notification_with_valid_reply_to_id_returns_201(client, samp
 
 
 def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sample_email_template, mocker, fake_uuid):
-    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     data = {
         "email_address": sample_email_template.service.users[0].email_address,
         "template_id": sample_email_template.id,
@@ -652,10 +652,9 @@ def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sa
     assert 'BadRequestError' in resp_json['errors'][0]['error']
 
 
-def test_persist_sender_to_notification_mapping_for_email(notify_db_session):
-    service = create_service()
-    template = create_template(service=service, template_type=EMAIL_TYPE)
-    sender = create_reply_to_email(service=service, email_address='reply@test.com', is_default=False)
+def test_persist_sender_to_notification_mapping_for_email(sample_service):
+    template = create_template(service=sample_service, template_type=EMAIL_TYPE)
+    sender = create_reply_to_email(service=sample_service, email_address='reply@test.com', is_default=False)
     form = {
         "email_address": "recipient@test.com",
         "template_id": str(template.id),
@@ -669,10 +668,9 @@ def test_persist_sender_to_notification_mapping_for_email(notify_db_session):
     assert notification_to_email_reply_to[0].service_email_reply_to_id == sender.id
 
 
-def test_persist_sender_to_notification_mapping_for_sms(notify_db_session):
-    service = create_service()
-    template = create_template(service=service, template_type=SMS_TYPE)
-    sender = create_service_sms_sender(service=service, sms_sender='12345', is_default=False)
+def test_persist_sender_to_notification_mapping_for_sms(sample_service):
+    template = create_template(service=sample_service, template_type=SMS_TYPE)
+    sender = create_service_sms_sender(service=sample_service, sms_sender='12345', is_default=False)
     form = {
         'phone_number': '+447700900855',
         'template_id': str(template.id),

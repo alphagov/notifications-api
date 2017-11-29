@@ -1,5 +1,3 @@
-import uuid
-
 from flask import json
 
 from app.variables import LETTER_TEST_API_FILENAME

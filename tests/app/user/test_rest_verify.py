@@ -382,7 +382,6 @@ def test_send_user_email_code_with_urlencoded_next_param(admin_request, mocker, 
         _expected_status=204
     )
     noti = Notification.query.one()
-    code = VerifyCode.query.one()
     assert noti.personalisation['url'].endswith('?next=%2Fservices')
 
 

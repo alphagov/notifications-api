@@ -77,7 +77,7 @@ def test_get_service_list_with_only_active_flag(client, service_factory):
 
 
 def test_get_service_list_with_user_id_and_only_active_flag(
-        client,
+        admin_request,
         sample_user,
         service_factory
 ):
@@ -85,72 +85,47 @@ def test_get_service_list_with_user_id_and_only_active_flag(
 
     inactive = service_factory.get('one', user=sample_user)
     active = service_factory.get('two', user=sample_user)
-    from_other_user = service_factory.get('three', user=other_user)
+    # from other user
+    service_factory.get('three', user=other_user)
 
     inactive.active = False
 
-    auth_header = create_authorization_header()
-    response = client.get(
-        '/service?user_id={}&only_active=True'.format(sample_user.id),
-        headers=[auth_header]
+    json_resp = admin_request.get(
+        'service.get_services',
+        user_id=sample_user.id,
+        only_active=True
     )
-    assert response.status_code == 200
-    json_resp = json.loads(response.get_data(as_text=True))
     assert len(json_resp['data']) == 1
     assert json_resp['data'][0]['id'] == str(active.id)
 
 
-def test_get_service_list_by_user(client, sample_user, service_factory):
+def test_get_service_list_by_user(admin_request, sample_user, service_factory):
     other_user = create_user(email='foo@bar.gov.uk')
     service_factory.get('one', sample_user)
     service_factory.get('two', sample_user)
     service_factory.get('three', other_user)
 
-    auth_header = create_authorization_header()
-    response = client.get(
-        '/service?user_id={}'.format(sample_user.id),
-        headers=[auth_header]
-    )
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 200
+    json_resp = admin_request.get('service.get_services', user_id=sample_user.id)
     assert len(json_resp['data']) == 2
     assert json_resp['data'][0]['name'] == 'one'
     assert json_resp['data'][1]['name'] == 'two'
 
 
-def test_get_service_list_by_user_should_return_empty_list_if_no_services(client, sample_service):
+def test_get_service_list_by_user_should_return_empty_list_if_no_services(admin_request, sample_service):
     # service is already created by sample user
     new_user = create_user(email='foo@bar.gov.uk')
 
-    auth_header = create_authorization_header()
-    response = client.get(
-        '/service?user_id={}'.format(new_user.id),
-        headers=[auth_header]
-    )
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 200
+    json_resp = admin_request.get('service.get_services', user_id=new_user.id)
+    assert json_resp['data'] == []
+
+
+def test_get_service_list_should_return_empty_list_if_no_services(admin_request):
+    json_resp = admin_request.get('service.get_services')
     assert len(json_resp['data']) == 0
 
 
-def test_get_service_list_should_return_empty_list_if_no_services(client):
-    auth_header = create_authorization_header()
-    response = client.get(
-        '/service',
-        headers=[auth_header]
-    )
-    assert response.status_code == 200
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert len(json_resp['data']) == 0
-
-
-def test_get_service_by_id(client, sample_service):
-    auth_header = create_authorization_header()
-    resp = client.get(
-        '/service/{}'.format(sample_service.id),
-        headers=[auth_header]
-    )
-    assert resp.status_code == 200
-    json_resp = json.loads(resp.get_data(as_text=True))
+def test_get_service_by_id(admin_request, sample_service):
+    json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id)
     assert json_resp['data']['name'] == sample_service.name
     assert json_resp['data']['id'] == str(sample_service.id)
     assert not json_resp['data']['research_mode']
@@ -161,55 +136,29 @@ def test_get_service_by_id(client, sample_service):
     assert json_resp['data']['prefix_sms'] is True
 
 
-def test_get_service_by_id_returns_free_sms_limit(client, sample_service):
-
-    auth_header = create_authorization_header()
-    resp = client.get(
-        '/service/{}'.format(sample_service.id),
-        headers=[auth_header]
-    )
-    assert resp.status_code == 200
-    json_resp = json.loads(resp.get_data(as_text=True))
+def test_get_service_by_id_returns_free_sms_limit(admin_request, sample_service):
+    json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id)
     assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
 
-def test_get_detailed_service_by_id_returns_free_sms_limit(client, sample_service):
-
-    auth_header = create_authorization_header()
-    resp = client.get(
-        '/service/{}?detailed=True'.format(sample_service.id),
-        headers=[auth_header]
-    )
-    assert resp.status_code == 200
-    json_resp = json.loads(resp.get_data(as_text=True))
+def test_get_detailed_service_by_id_returns_free_sms_limit(admin_request, sample_service):
+    json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id, detailed=True)
     assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
 
-@pytest.mark.parametrize('endpoint', ['/service/{}', '/service/{}?detailed=True'])
-def test_get_service_by_id_returns_organisation_type(client, sample_service, endpoint):
-
-    auth_header = create_authorization_header()
-    resp = client.get(
-        endpoint.format(sample_service.id),
-        headers=[auth_header]
-    )
-    assert resp.status_code == 200
-    json_resp = json.loads(resp.get_data(as_text=True))
+@pytest.mark.parametrize('detailed', [True, False])
+def test_get_service_by_id_returns_organisation_type(admin_request, sample_service, detailed):
+    json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id, detailed=detailed)
     assert json_resp['data']['organisation_type'] is None
 
 
-def test_get_service_list_has_default_permissions(client, service_factory):
+def test_get_service_list_has_default_permissions(admin_request, service_factory):
     service_factory.get('one')
     service_factory.get('one')
     service_factory.get('two')
     service_factory.get('three')
-    auth_header = create_authorization_header()
-    response = client.get(
-        '/service',
-        headers=[auth_header]
-    )
-    assert response.status_code == 200
-    json_resp = json.loads(response.get_data(as_text=True))
+
+    json_resp = admin_request.get('service.get_services')
     assert len(json_resp['data']) == 3
     assert all(
         set(
@@ -221,13 +170,8 @@ def test_get_service_list_has_default_permissions(client, service_factory):
     )
 
 
-def test_get_service_by_id_has_default_service_permissions(client, sample_service):
-    auth_header = create_authorization_header()
-    resp = client.get(
-        '/service/{}'.format(sample_service.id),
-        headers=[auth_header]
-    )
-    json_resp = json.loads(resp.get_data(as_text=True))
+def test_get_service_by_id_has_default_service_permissions(admin_request, sample_service):
+    json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id)
 
     assert set(
         json_resp['data']['permissions']
@@ -236,19 +180,15 @@ def test_get_service_by_id_has_default_service_permissions(client, sample_servic
     ])
 
 
-def test_get_service_by_id_should_404_if_no_service(notify_api, notify_db):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            service_id = str(uuid.uuid4())
-            auth_header = create_authorization_header()
-            resp = client.get(
-                '/service/{}'.format(service_id),
-                headers=[auth_header]
-            )
-            assert resp.status_code == 404
-            json_resp = json.loads(resp.get_data(as_text=True))
-            assert json_resp['result'] == 'error'
-            assert json_resp['message'] == 'No result found'
+def test_get_service_by_id_should_404_if_no_service(admin_request, notify_db_session):
+    json_resp = admin_request.get(
+        'service.get_service_by_id',
+        service_id=uuid.uuid4(),
+        _expected_status=404
+    )
+
+    assert json_resp['result'] == 'error'
+    assert json_resp['message'] == 'No result found'
 
 
 def test_get_service_by_id_and_user(client, sample_service, sample_user):
@@ -1385,9 +1325,7 @@ def test_get_notification_for_service(client, notify_db, notify_db_session):
         create_sample_notification(notify_db, notify_db_session, service=service_1),
     ]
 
-    service_2_notifications = [
-        create_sample_notification(notify_db, notify_db_session, service=service_2)
-    ]
+    create_sample_notification(notify_db, notify_db_session, service=service_2)
 
     for notification in service_1_notifications:
         response = client.get(
@@ -1459,7 +1397,8 @@ def test_get_all_notifications_for_service_including_ones_made_by_jobs(
 ):
     with_job = sample_notification_with_job(notify_db, notify_db_session, service=sample_service)
     without_job = create_sample_notification(notify_db, notify_db_session, service=sample_service)
-    from_test_api_key = create_sample_notification(
+    # from_test_api_key
+    create_sample_notification(
         notify_db, notify_db_session, service=sample_service, key_type=KEY_TYPE_TEST
     )
 
@@ -1484,7 +1423,7 @@ def test_get_only_api_created_notifications_for_service(
     sample_job,
     sample_template
 ):
-    with_job = create_notification(sample_template, job=sample_job)
+    create_notification(sample_template, job=sample_job)
     without_job = create_notification(sample_template)
 
     resp = admin_request.get(
@@ -1596,7 +1535,7 @@ def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_s
     ]
 )
 def test_get_monthly_notification_stats(mocker, client, sample_service, url, expected_status, expected_json):
-    mock_dao = mocker.patch(
+    mocker.patch(
         'app.service.rest.dao_fetch_monthly_historical_stats_for_service',
         return_value={'foo': 'bar'},
     )
@@ -2346,7 +2285,7 @@ def test_get_email_reply_to_addresses_when_there_are_no_reply_to_email_addresses
 
 def test_get_email_reply_to_addresses_with_one_email_address(client, notify_db, notify_db_session):
     service = create_service()
-    reply_to = create_reply_to_email(service, 'test@mail.com')
+    create_reply_to_email(service, 'test@mail.com')
 
     response = client.get('/service/{}/email-reply-to'.format(service.id),
                           headers=[create_authorization_header()])
@@ -2499,7 +2438,7 @@ def test_get_letter_contacts_when_there_are_no_letter_contacts(client, sample_se
 
 def test_get_letter_contacts_with_one_letter_contact(client, notify_db, notify_db_session):
     service = create_service()
-    letter_contact = create_letter_contact(service, 'Aberdeen, AB23 1XH')
+    create_letter_contact(service, 'Aberdeen, AB23 1XH')
 
     response = client.get('/service/{}/letter-contact'.format(service.id),
                           headers=[create_authorization_header()])

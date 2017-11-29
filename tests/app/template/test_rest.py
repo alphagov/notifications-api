@@ -1,4 +1,3 @@
-import uuid
 import json
 import random
 import string
@@ -17,7 +16,7 @@ from tests.app.conftest import (
     sample_template_without_letter_permission,
     sample_template_without_sms_permission,
 )
-from tests.app.db import create_service, create_letter_contact
+from tests.app.db import create_service, create_letter_contact, create_template
 
 
 @pytest.mark.parametrize('template_type, subject', [
@@ -309,68 +308,18 @@ def test_should_be_able_to_get_all_templates_for_a_service(client, sample_user, 
     assert update_json_resp['data'][1]['created_at']
 
 
-def test_should_get_only_templates_for_that_service(client, sample_user, service_factory):
+def test_should_get_only_templates_for_that_service(admin_request, notify_db_session):
+    service_1 = create_service(service_name='service_1')
+    service_2 = create_service(service_name='service_2')
+    id_1 = create_template(service_1).id
+    id_2 = create_template(service_1).id
+    id_3 = create_template(service_2).id
 
-    service_1 = service_factory.get('service 1', email_from='service.1')
-    service_2 = service_factory.get('service 2', email_from='service.2')
+    json_resp_1 = admin_request.get('template.get_all_templates_for_service', service_id=service_1.id)
+    json_resp_2 = admin_request.get('template.get_all_templates_for_service', service_id=service_2.id)
 
-    auth_header_1 = create_authorization_header()
-
-    response_1 = client.get(
-        '/service/{}/template'.format(service_1.id),
-        headers=[auth_header_1]
-    )
-
-    auth_header_2 = create_authorization_header()
-
-    response_2 = client.get(
-        '/service/{}/template'.format(service_2.id),
-        headers=[auth_header_2]
-    )
-
-    assert response_1.status_code == 200
-    assert response_2.status_code == 200
-
-    json_resp_1 = json.loads(response_1.get_data(as_text=True))
-    json_resp_2 = json.loads(response_2.get_data(as_text=True))
-
-    assert len(json_resp_1['data']) == 1
-    assert len(json_resp_2['data']) == 1
-
-    data = {
-        'name': 'my template 2',
-        'template_type': EMAIL_TYPE,
-        'subject': 'subject 2',
-        'content': 'template content',
-        'service': str(service_1.id),
-        'created_by': str(sample_user.id)
-    }
-    data = json.dumps(data)
-    create_auth_header = create_authorization_header()
-    resp = client.post(
-        '/service/{}/template'.format(service_1.id),
-        headers=[('Content-Type', 'application/json'), create_auth_header],
-        data=data
-    )
-
-    response_3 = client.get(
-        '/service/{}/template'.format(service_1.id),
-        headers=[auth_header_1]
-    )
-
-    response_4 = client.get(
-        '/service/{}/template'.format(service_2.id),
-        headers=[auth_header_2]
-    )
-
-    assert response_3.status_code == 200
-    assert response_4.status_code == 200
-
-    json_resp_3 = json.loads(response_3.get_data(as_text=True))
-    json_resp_4 = json.loads(response_4.get_data(as_text=True))
-
-    assert len(json_resp_3['data']) == 2
-    assert len(json_resp_4['data']) == 1
+    assert {template['id'] for template in json_resp_1['data']} == {str(id_1), str(id_2)}
+    assert {template['id'] for template in json_resp_2['data']} == {str(id_3)}
 
 
 @pytest.mark.parametrize(
