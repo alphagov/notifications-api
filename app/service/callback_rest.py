@@ -5,11 +5,6 @@ from flask import (
 )
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.dao.service_inbound_api_dao import (
-    save_service_inbound_api,
-    reset_service_inbound_api,
-    get_service_inbound_api
-)
 from app.errors import (
     register_errors
 )
@@ -20,6 +15,11 @@ from app.schema_validation import validate
 from app.service.service_callback_api_schema import (
     create_service_callback_api_schema,
     update_service_callback_api_schema
+)
+from app.dao.service_inbound_api_dao import (
+    save_service_inbound_api,
+    get_service_inbound_api,
+    reset_service_inbound_api
 )
 
 service_callback_blueprint = Blueprint('service_callback', __name__, url_prefix='/service/<uuid:service_id>')
