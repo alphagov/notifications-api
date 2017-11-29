@@ -58,8 +58,7 @@ from tests.app.conftest import (
 from tests.app.db import (
     create_api_key,
     create_job,
-    create_notification,
-    create_service_sms_sender
+    create_notification
 )
 
 
@@ -1990,4 +1989,3 @@ def test_dao_update_notifications_by_reference_returns_zero_when_no_notification
                                                                        "billable_units": 2}
                                                           )
     assert updated_count == 0
-

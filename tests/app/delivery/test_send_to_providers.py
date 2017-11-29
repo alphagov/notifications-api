@@ -30,7 +30,6 @@ from tests.app.db import (
     create_notification,
     create_reply_to_email,
     create_service_sms_sender,
-    create_service_with_inbound_number,
     create_service_with_defined_sms_sender
 )
 
