@@ -27,8 +27,7 @@ function display_result {
 if [[ -z "$VIRTUAL_ENV" ]] && [[ -d venv ]]; then
   source ./venv/bin/activate
 fi
-echo -e "\033[31mWARNING. NOT RUNNING flake8 AGAINST TEST DIRECTORY DUE TO LARGE AMOUNT OF EXISTING ISSUES.\033[0m"
-flake8 app/
+flake8 .
 display_result $? 1 "Code style check"
 
 # run with four concurrent threads

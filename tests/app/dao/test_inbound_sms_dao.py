@@ -29,7 +29,7 @@ def test_get_all_inbound_sms_when_none_exist(sample_service):
 
 def test_get_all_inbound_sms_limits_and_orders(sample_service):
     with freeze_time('2017-01-01'):
-        one = create_inbound_sms(sample_service)
+        create_inbound_sms(sample_service)
     with freeze_time('2017-01-03'):
         three = create_inbound_sms(sample_service)
     with freeze_time('2017-01-02'):
@@ -48,7 +48,7 @@ def test_get_all_inbound_sms_filters_on_service(notify_db_session):
     service_two = create_service(service_name='two')
 
     sms_one = create_inbound_sms(service_one)
-    sms_two = create_inbound_sms(service_two)
+    create_inbound_sms(service_two)
 
     res = dao_get_inbound_sms_for_service(service_one.id)
     assert len(res) == 1

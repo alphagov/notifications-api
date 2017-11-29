@@ -590,13 +590,16 @@ def test_fetch_stats_counts_should_ignore_team_key(
 def test_fetch_stats_for_today_only_includes_today(notify_db, notify_db_session, sample_template):
     # two created email, one failed email, and one created sms
     with freeze_time('2001-01-01T23:59:00'):
-        just_before_midnight_yesterday = create_notification(notify_db, None, to_field='1', status='delivered')
+        # just_before_midnight_yesterday
+        create_notification(notify_db, None, to_field='1', status='delivered')
 
     with freeze_time('2001-01-02T00:01:00'):
-        just_after_midnight_today = create_notification(notify_db, None, to_field='2', status='failed')
+        # just_after_midnight_today
+        create_notification(notify_db, None, to_field='2', status='failed')
 
     with freeze_time('2001-01-02T12:00:00'):
-        right_now = create_notification(notify_db, None, to_field='3', status='created')
+        # right_now
+        create_notification(notify_db, None, to_field='3', status='created')
 
         stats = dao_fetch_todays_stats_for_service(sample_template.service_id)
 
@@ -613,14 +616,22 @@ def test_fetch_monthly_historical_stats_separates_months(notify_db, notify_db_se
         notify_db_session,
         sample_template
     )
-    _before_start_of_financial_year = notification_history(created_at=datetime(2016, 3, 31))
-    start_of_financial_year = notification_history(created_at=datetime(2016, 4, 1))
-    start_of_summer = notification_history(created_at=datetime(2016, 6, 20))
-    start_of_autumn = notification_history(created_at=datetime(2016, 9, 30, 23, 30, 0))  # October because BST
-    start_of_winter = notification_history(created_at=datetime(2016, 12, 1), status='delivered')
-    start_of_spring = notification_history(created_at=datetime(2017, 3, 11))
-    end_of_financial_year = notification_history(created_at=datetime(2017, 3, 31))
-    _after_end_of_financial_year = notification_history(created_at=datetime(2017, 3, 31, 23, 30))  # after because BST
+    # _before_start_of_financial_year
+    notification_history(created_at=datetime(2016, 3, 31))
+    # start_of_financial_year
+    notification_history(created_at=datetime(2016, 4, 1))
+    # start_of_summer
+    notification_history(created_at=datetime(2016, 6, 20))
+    # start_of_autumn
+    notification_history(created_at=datetime(2016, 9, 30, 23, 30, 0))  # October because BST
+    # start_of_winter
+    notification_history(created_at=datetime(2016, 12, 1), status='delivered')
+    # start_of_spring
+    notification_history(created_at=datetime(2017, 3, 11))
+    # end_of_financial_year
+    notification_history(created_at=datetime(2017, 3, 31))
+    # _after_end_of_financial_year
+    notification_history(created_at=datetime(2017, 3, 31, 23, 30))  # after because BST
 
     result = dao_fetch_monthly_historical_stats_for_service(sample_template.service_id, 2016)
 
@@ -687,10 +698,12 @@ def test_dao_fetch_todays_stats_for_all_services_includes_all_services(notify_db
 
 def test_dao_fetch_todays_stats_for_all_services_only_includes_today(notify_db, notify_db_session):
     with freeze_time('2001-01-01T23:59:00'):
-        just_before_midnight_yesterday = create_notification(notify_db, None, to_field='1', status='delivered')
+        # just_before_midnight_yesterday
+        create_notification(notify_db, None, to_field='1', status='delivered')
 
     with freeze_time('2001-01-02T00:01:00'):
-        just_after_midnight_today = create_notification(notify_db, None, to_field='2', status='failed')
+        # just_after_midnight_today
+        create_notification(notify_db, None, to_field='2', status='failed')
 
     with freeze_time('2001-01-02T12:00:00'):
         stats = dao_fetch_todays_stats_for_all_services()

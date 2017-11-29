@@ -121,6 +121,7 @@ def test_dao_update_service_sms_sender_raises_exception_when_no_default_after_up
                                       service_sms_sender_id=sms_sender.id,
                                       is_default=False,
                                       sms_sender="updated")
+    assert 'You must have at least one SMS sender as the default' in str(e.value)
 
 
 def test_update_existing_sms_sender_with_inbound_number(notify_db_session):

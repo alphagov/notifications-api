@@ -9,7 +9,6 @@ import flask
 from flask import json, current_app
 from freezegun import freeze_time
 from notifications_python_client.authentication import create_jwt_token
-from notifications_utils.request_helper import check_proxy_header_before_request
 
 from app import api_user
 from app.dao.api_key_dao import get_unsigned_secrets, save_model_api_key, get_unsigned_secret, expire_api_key
@@ -281,7 +280,7 @@ def test_authentication_returns_error_when_service_has_no_secrets(client,
 
 
 def test_should_attach_the_current_api_key_to_current_app(notify_api, sample_service, sample_api_key):
-    with notify_api.test_request_context() as context, notify_api.test_client() as client:
+    with notify_api.test_request_context(), notify_api.test_client() as client:
         token = __create_token(sample_api_key.service_id)
         response = client.get(
             '/notifications',

@@ -714,11 +714,8 @@ def test_run_letter_jobs(client, mocker, sample_letter_template):
 
 
 def test_run_letter_jobs_does_nothing_if_no_ready_jobs(client, mocker, sample_letter_template):
-    job_ids = [
-        str(create_job(sample_letter_template, job_status=JOB_STATUS_IN_PROGRESS).id),
-        str(create_job(sample_letter_template, job_status=JOB_STATUS_SENT_TO_DVLA).id)
-    ]
-
+    create_job(sample_letter_template, job_status=JOB_STATUS_IN_PROGRESS)
+    create_job(sample_letter_template, job_status=JOB_STATUS_SENT_TO_DVLA)
     mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
 
     run_letter_jobs()

@@ -2,7 +2,8 @@ import uuid
 
 from app.models import (
     ServiceWhitelist,
-    MOBILE_TYPE, EMAIL_TYPE)
+    EMAIL_TYPE,
+)
 
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,

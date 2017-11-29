@@ -7,7 +7,7 @@ from tests import create_authorization_header
 from tests.app.db import (
     create_notification,
     create_template,
-    create_service)
+)
 
 from tests.app.conftest import (
     sample_notification,
@@ -30,7 +30,8 @@ def test_get_notification_by_id_returns_200(
         scheduled_for="2017-05-12 15:15"
     )
 
-    another = create_notification(
+    # another
+    create_notification(
         template=sample_template,
         billable_units=billable_units,
         sent_by=provider,

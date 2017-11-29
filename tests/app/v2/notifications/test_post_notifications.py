@@ -16,6 +16,7 @@ from app.models import Notification
 from app.schema_validation import validate
 from app.v2.errors import RateLimitError
 from app.v2.notifications.notification_schemas import post_sms_response, post_email_response
+from app.v2.notifications.post_notifications import persist_sender_to_notification_mapping
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_template as create_sample_template,
@@ -623,7 +624,7 @@ def test_post_email_notification_with_valid_reply_to_id_returns_201(client, samp
 
 
 def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sample_email_template, mocker, fake_uuid):
-    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     data = {
         "email_address": sample_email_template.service.users[0].email_address,
         "template_id": sample_email_template.id,
