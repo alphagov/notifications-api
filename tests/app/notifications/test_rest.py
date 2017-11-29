@@ -244,7 +244,7 @@ def test_get_all_notifications_only_returns_notifications_of_matching_type(
 
 
 @pytest.mark.parametrize('key_type', [KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST])
-def test_no_api_keys_return_job_notifications_by_default(
+def test_do_not_return_job_notifications_by_default(
     client,
     sample_template,
     sample_job,
@@ -254,7 +254,7 @@ def test_no_api_keys_return_job_notifications_by_default(
     normal_api_key = create_api_key(sample_template.service, KEY_TYPE_NORMAL)
     test_api_key = create_api_key(sample_template.service, KEY_TYPE_TEST)
 
-    job_notification = create_notification(sample_template, job=sample_job)
+    create_notification(sample_template, job=sample_job)
     normal_notification = create_notification(sample_template, api_key=normal_api_key)
     team_notification = create_notification(sample_template, api_key=team_api_key)
     test_notification = create_notification(sample_template, api_key=test_api_key)
@@ -307,7 +307,7 @@ def test_only_normal_api_keys_can_return_job_notifications(
                           key_type=KEY_TYPE_TEST)
     save_model_api_key(test_api_key)
 
-    job_notification = create_sample_notification(
+    create_sample_notification(
         notify_db,
         notify_db_session,
         job=sample_job
@@ -381,8 +381,8 @@ def test_should_reject_invalid_page_param(client, sample_email_template):
 
 def test_valid_page_size_param(notify_api, notify_db, notify_db_session, sample_email_template):
     with notify_api.test_request_context():
-        n1 = create_sample_notification(notify_db, notify_db_session)
-        n2 = create_sample_notification(notify_db, notify_db_session)
+        create_sample_notification(notify_db, notify_db_session)
+        create_sample_notification(notify_db, notify_db_session)
         with notify_api.test_client() as client:
             auth_header = create_authorization_header(service_id=sample_email_template.service_id)
 
@@ -399,8 +399,8 @@ def test_valid_page_size_param(notify_api, notify_db, notify_db_session, sample_
 
 def test_invalid_page_size_param(client, notify_db, notify_db_session, sample_email_template):
 
-    n1 = create_sample_notification(notify_db, notify_db_session)
-    n2 = create_sample_notification(notify_db, notify_db_session)
+    create_sample_notification(notify_db, notify_db_session)
+    create_sample_notification(notify_db, notify_db_session)
     auth_header = create_authorization_header(service_id=sample_email_template.service_id)
 
     response = client.get(
@@ -454,12 +454,12 @@ def test_get_all_notifications_returns_empty_list(client, sample_api_key):
 
 
 def test_filter_by_template_type(client, notify_db, notify_db_session, sample_template, sample_email_template):
-    notification_1 = create_sample_notification(
+    create_sample_notification(
         notify_db,
         notify_db_session,
         service=sample_email_template.service,
         template=sample_template)
-    notification_2 = create_sample_notification(
+    create_sample_notification(
         notify_db,
         notify_db_session,
         service=sample_email_template.service,
@@ -480,8 +480,8 @@ def test_filter_by_template_type(client, notify_db, notify_db_session, sample_te
 def test_filter_by_multiple_template_types(client,
                                            sample_template,
                                            sample_email_template):
-    notification_1 = create_notification(sample_template)
-    notification_2 = create_notification(sample_email_template)
+    create_notification(sample_template)
+    create_notification(sample_email_template)
 
     auth_header = create_authorization_header(service_id=sample_email_template.service_id)
 
@@ -496,8 +496,8 @@ def test_filter_by_multiple_template_types(client,
 
 
 def test_filter_by_status(client, sample_email_template):
-    notification_1 = create_notification(sample_email_template, status="delivered")
-    notification_2 = create_notification(sample_email_template)
+    create_notification(sample_email_template, status="delivered")
+    create_notification(sample_email_template)
 
     auth_header = create_authorization_header(service_id=sample_email_template.service_id)
 
@@ -512,8 +512,8 @@ def test_filter_by_status(client, sample_email_template):
 
 
 def test_filter_by_multiple_statuses(client, sample_email_template):
-    notification_1 = create_notification(sample_email_template, status="delivered")
-    notification_2 = create_notification(sample_email_template, status='sending')
+    create_notification(sample_email_template, status="delivered")
+    create_notification(sample_email_template, status='sending')
 
     auth_header = create_authorization_header(service_id=sample_email_template.service_id)
 
@@ -529,9 +529,9 @@ def test_filter_by_multiple_statuses(client, sample_email_template):
 
 
 def test_filter_by_status_and_template_type(client, sample_template, sample_email_template):
-    notification_1 = create_notification(sample_template)
-    notification_2 = create_notification(sample_email_template)
-    notification_3 = create_notification(sample_email_template, status="delivered")
+    create_notification(sample_template)
+    create_notification(sample_email_template)
+    create_notification(sample_email_template, status="delivered")
 
     auth_header = create_authorization_header(service_id=sample_email_template.service_id)
 

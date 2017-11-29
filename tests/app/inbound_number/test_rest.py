@@ -38,8 +38,7 @@ def test_rest_get_inbound_number_when_service_is_not_assigned_returns_empty_dict
 def test_rest_set_inbound_number_active_flag_off(
         admin_request, notify_db_session):
     service = create_service(service_name='test service 1')
-    inbound_number = create_inbound_number(
-        number='1', provider='mmg', active=True, service_id=service.id)
+    create_inbound_number(number='1', provider='mmg', active=True, service_id=service.id)
 
     admin_request.post(
         'inbound_number.post_set_inbound_number_off',
