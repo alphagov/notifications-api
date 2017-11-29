@@ -11,9 +11,8 @@ from requests.exceptions import HTTPError
 
 from app import clients, statsd_client, create_uuid
 from app.dao.notifications_dao import (
-    dao_update_notification,
-    dao_get_notification_email_reply_for_notification,
-    dao_get_notification_sms_sender_mapping)
+    dao_update_notification
+)
 from app.dao.provider_details_dao import (
     get_provider_details_by_notification_type,
     dao_toggle_sms_provider
