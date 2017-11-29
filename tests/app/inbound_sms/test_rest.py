@@ -3,7 +3,11 @@ from datetime import datetime
 import pytest
 from freezegun import freeze_time
 
-from tests.app.db import create_inbound_sms, create_service, create_service_with_inbound_number
+from app.models import ServiceInboundApi, Service
+from tests.app.db import (
+    create_inbound_sms, create_service, create_service_with_inbound_number,
+    create_service_inbound_api
+)
 
 
 def test_post_to_get_inbound_sms_with_no_params(admin_request, sample_service):
@@ -287,3 +291,15 @@ def test_get_inbound_sms_by_id_with_invalid_service_id_returns_404(admin_request
         inbound_sms_id='2cfbd6a1-1575-4664-8969-f27be0ea40d9',
         _expected_status=404
     )
+
+
+def test_inbound_api_blah(notify_db_session):
+    service = create_service()
+    api = create_service_inbound_api(service=service)
+
+    print("***************")
+    from_db = Service.query.all()[0]
+    print("--------------------")
+    from_db_service = from_db.inbound_api
+    print("***************")
+    assert 1 == 1

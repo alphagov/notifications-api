@@ -827,7 +827,7 @@ def test_send_email_to_provider_should_format_reply_to_email_address(
     reply_to = create_reply_to_email_for_notification(
         db_notification.id,
         sample_service,
-        "test@test.com\t"
+        "test@test.com"
     )
 
     send_to_providers.send_email_to_provider(
