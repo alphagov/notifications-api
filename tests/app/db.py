@@ -12,7 +12,6 @@ from app.models import (
     Job,
     MonthlyBilling,
     Notification,
-    NotificationEmailReplyTo,
     Organisation,
     Rate,
     Service,
@@ -26,15 +25,13 @@ from app.models import (
     User,
     EMAIL_TYPE,
     SMS_TYPE,
-    INBOUND_SMS_TYPE,
     KEY_TYPE_NORMAL,
     AnnualBilling,
 )
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import (
     dao_create_notification,
-    dao_created_scheduled_notification,
-    dao_create_notification_sms_sender_mapping
+    dao_created_scheduled_notification
 )
 from app.dao.templates_dao import dao_create_template
 from app.dao.services_dao import dao_create_service
@@ -220,9 +217,7 @@ def create_notification(
         if status != 'created':
             scheduled_notification.pending = False
         dao_created_scheduled_notification(scheduled_notification)
-    if sms_sender_id:
-        dao_create_notification_sms_sender_mapping(notification_id=notification.id,
-                                                   sms_sender_id=sms_sender_id)
+
     return notification
 
 
@@ -428,24 +423,6 @@ def create_letter_contact(
     db.session.commit()
 
     return letter_content
-
-
-def create_reply_to_email_for_notification(
-    notification_id,
-    service,
-    email_address,
-    is_default=True
-):
-    reply_to = create_reply_to_email(service, email_address, is_default)
-
-    notification_email_reply_to = NotificationEmailReplyTo(
-        notification_id=str(notification_id),
-        service_email_reply_to_id=str(reply_to.id)
-    )
-    db.session.add(notification_email_reply_to)
-    db.session.commit()
-
-    return reply_to
 
 
 def create_annual_billing(

@@ -27,7 +27,6 @@ from app.models import (
     NotificationEmailReplyTo,
     NotificationHistory,
     ScheduledNotification,
-    ServiceEmailReplyTo,
     Template,
     TemplateHistory,
     EMAIL_TYPE,
@@ -43,8 +42,7 @@ from app.models import (
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_SENT,
-    NotificationSmsSender,
-    ServiceSmsSender
+    NotificationSmsSender
 )
 
 from app.dao.dao_utils import transactional
@@ -570,26 +568,6 @@ def dao_set_created_live_letter_api_notifications_to_pending():
     return notifications
 
 
-@transactional
-def dao_create_notification_email_reply_to_mapping(notification_id, email_reply_to_id):
-    notification_email_reply_to = NotificationEmailReplyTo(
-        notification_id=notification_id,
-        service_email_reply_to_id=email_reply_to_id
-    )
-    db.session.add(notification_email_reply_to)
-
-
-def dao_get_notification_email_reply_for_notification(notification_id):
-    email_reply_to = ServiceEmailReplyTo.query.join(
-        NotificationEmailReplyTo
-    ).filter(
-        NotificationEmailReplyTo.notification_id == notification_id
-    ).first()
-
-    if email_reply_to:
-        return email_reply_to.email_address
-
-
 @statsd(namespace="dao")
 def dao_get_last_notification_added_for_job_id(job_id):
     last_notification_added = Notification.query.filter(
@@ -599,23 +577,3 @@ def dao_get_last_notification_added_for_job_id(job_id):
     ).first()
 
     return last_notification_added
-
-
-@transactional
-def dao_create_notification_sms_sender_mapping(notification_id, sms_sender_id):
-    notification_to_sms_sender = NotificationSmsSender(
-        notification_id=notification_id,
-        service_sms_sender_id=sms_sender_id
-    )
-    db.session.add(notification_to_sms_sender)
-
-
-def dao_get_notification_sms_sender_mapping(notification_id):
-    sms_sender = ServiceSmsSender.query.join(
-        NotificationSmsSender
-    ).filter(
-        NotificationSmsSender.notification_id == notification_id
-    ).first()
-
-    if sms_sender:
-        return sms_sender.sms_sender
