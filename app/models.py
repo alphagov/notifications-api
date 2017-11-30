@@ -1572,48 +1572,6 @@ class ServiceLetterContact(db.Model):
         }
 
 
-class NotificationEmailReplyTo(db.Model):
-    __tablename__ = "notification_to_email_reply_to"
-
-    notification_id = db.Column(
-        UUID(as_uuid=True),
-        db.ForeignKey('notifications.id'),
-        unique=True,
-        index=True,
-        nullable=False,
-        primary_key=True
-    )
-    service_email_reply_to_id = db.Column(
-        UUID(as_uuid=True),
-        db.ForeignKey('service_email_reply_to.id'),
-        unique=False,
-        index=True,
-        nullable=False,
-        primary_key=True
-    )
-
-
-class NotificationSmsSender(db.Model):
-    __tablename__ = "notification_to_sms_sender"
-
-    notification_id = db.Column(
-        UUID(as_uuid=True),
-        db.ForeignKey('notifications.id'),
-        unique=True,
-        index=True,
-        nullable=False,
-        primary_key=True
-    )
-    service_sms_sender_id = db.Column(
-        UUID(as_uuid=True),
-        db.ForeignKey('service_sms_senders.id'),
-        unique=False,
-        index=True,
-        nullable=False,
-        primary_key=True
-    )
-
-
 class AuthType(db.Model):
     __tablename__ = 'auth_type'
 
