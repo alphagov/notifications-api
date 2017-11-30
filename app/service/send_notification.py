@@ -8,9 +8,7 @@ from app.notifications.validators import (
 )
 from app.notifications.process_notifications import (
     persist_notification,
-    send_notification_to_queue,
-    persist_email_reply_to_id_for_notification,
-    persist_sms_sender_id_for_notification
+    send_notification_to_queue
 )
 from app.models import (
     KEY_TYPE_NORMAL,
@@ -71,11 +69,6 @@ def send_one_off_notification(service_id, post_data):
         created_by_id=post_data['created_by'],
         reply_to_text=reply_to
     )
-    if sender_id:
-        if template.template_type == EMAIL_TYPE:
-            persist_email_reply_to_id_for_notification(notification.id, sender_id)
-        if template.template_type == SMS_TYPE:
-            persist_sms_sender_id_for_notification(notification.id, sender_id)
 
     queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
     send_notification_to_queue(

@@ -5,12 +5,10 @@ from freezegun import freeze_time
 
 from app.dao.service_sms_sender_dao import dao_update_service_sms_sender
 from app.models import (
-    NotificationEmailReplyTo,
     ScheduledNotification,
     SCHEDULE_NOTIFICATIONS,
     EMAIL_TYPE,
-    SMS_TYPE,
-    NotificationSmsSender
+    SMS_TYPE
 )
 from flask import json, current_app
 
@@ -18,7 +16,6 @@ from app.models import Notification
 from app.schema_validation import validate
 from app.v2.errors import RateLimitError
 from app.v2.notifications.notification_schemas import post_sms_response, post_email_response
-from app.v2.notifications.post_notifications import persist_sender_to_notification_mapping
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_template as create_sample_template,
@@ -31,7 +28,7 @@ from tests.app.db import (
     create_service,
     create_template,
     create_reply_to_email,
-    create_service_sms_sender, create_notification,
+    create_service_sms_sender,
     create_service_with_inbound_number
 )
 
@@ -120,11 +117,7 @@ def test_post_sms_notification_returns_201_with_sms_sender_id(
     assert response.status_code == 201
     resp_json = json.loads(response.get_data(as_text=True))
     assert validate(resp_json, post_sms_response) == resp_json
-    notification_to_sms_sender = NotificationSmsSender.query.all()
-    assert len(notification_to_sms_sender) == 1
-    assert str(notification_to_sms_sender[0].notification_id) == resp_json['id']
     assert resp_json['content']['from_number'] == sms_sender.sms_sender
-    assert notification_to_sms_sender[0].service_sms_sender_id == sms_sender.id
     notifications = Notification.query.all()
     assert len(notifications) == 1
     assert notifications[0].reply_to_text == sms_sender.sms_sender
@@ -626,10 +619,6 @@ def test_post_email_notification_with_valid_reply_to_id_returns_201(client, samp
     assert resp_json['id'] == str(notification.id)
     assert mocked.called
 
-    email_reply_to = NotificationEmailReplyTo.query.one()
-
-    assert email_reply_to.notification_id == notification.id
-    assert email_reply_to.service_email_reply_to_id == reply_to_email.id
     assert notification.reply_to_text == reply_to_email.email_address
 
 
@@ -650,35 +639,3 @@ def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sa
     assert 'email_reply_to_id {} does not exist in database for service id {}'. \
         format(fake_uuid, sample_email_template.service_id) in resp_json['errors'][0]['message']
     assert 'BadRequestError' in resp_json['errors'][0]['error']
-
-
-def test_persist_sender_to_notification_mapping_for_email(sample_service):
-    template = create_template(service=sample_service, template_type=EMAIL_TYPE)
-    sender = create_reply_to_email(service=sample_service, email_address='reply@test.com', is_default=False)
-    form = {
-        "email_address": "recipient@test.com",
-        "template_id": str(template.id),
-        'email_reply_to_id': str(sender.id)
-    }
-    notification = create_notification(template=template)
-    persist_sender_to_notification_mapping(form=form, notification=notification)
-    notification_to_email_reply_to = NotificationEmailReplyTo.query.all()
-    assert len(notification_to_email_reply_to) == 1
-    assert notification_to_email_reply_to[0].notification_id == notification.id
-    assert notification_to_email_reply_to[0].service_email_reply_to_id == sender.id
-
-
-def test_persist_sender_to_notification_mapping_for_sms(sample_service):
-    template = create_template(service=sample_service, template_type=SMS_TYPE)
-    sender = create_service_sms_sender(service=sample_service, sms_sender='12345', is_default=False)
-    form = {
-        'phone_number': '+447700900855',
-        'template_id': str(template.id),
-        'sms_sender_id': str(sender.id)
-    }
-    notification = create_notification(template=template)
-    persist_sender_to_notification_mapping(form=form, notification=notification)
-    notification_to_sms_sender = NotificationSmsSender.query.all()
-    assert len(notification_to_sms_sender) == 1
-    assert notification_to_sms_sender[0].notification_id == notification.id
-    assert notification_to_sms_sender[0].service_sms_sender_id == sender.id
