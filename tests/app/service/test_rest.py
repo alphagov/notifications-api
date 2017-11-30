@@ -30,7 +30,6 @@ from tests.app.conftest import (
 from tests.app.db import (
     create_service,
     create_template,
-    create_service_inbound_api,
     create_notification,
     create_reply_to_email,
     create_letter_contact,

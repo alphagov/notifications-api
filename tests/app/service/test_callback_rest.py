@@ -126,7 +126,7 @@ def test_set_service_callback_api_raises_404_when_service_does_not_exist(client,
 
 def test_update_service_callback_api_updates_url(client, sample_service):
     service_callback_api = create_service_callback_api(service=sample_service,
-                                                     url="https://original_url.com")
+                                                       url="https://original_url.com")
 
     data = {
         "url": "https://another_url.com",
@@ -143,7 +143,7 @@ def test_update_service_callback_api_updates_url(client, sample_service):
 
 def test_update_service_callback_api_updates_bearer_token(client, sample_service):
     service_callback_api = create_service_callback_api(service=sample_service,
-                                                     bearer_token="some_super_secret")
+                                                       bearer_token="some_super_secret")
     data = {
         "bearer_token": "different_token",
         "updated_by_id": str(sample_service.users[0].id)

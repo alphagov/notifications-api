@@ -308,10 +308,10 @@ def create_service_callback_api(
     bearer_token="some_super_secret",
 ):
     service_callback_api = ServiceCallbackApi(service_id=service.id,
-                                            url=url,
-                                            bearer_token=bearer_token,
-                                            updated_by_id=service.users[0].id
-                                            )
+                                              url=url,
+                                              bearer_token=bearer_token,
+                                              updated_by_id=service.users[0].id
+                                              )
     save_service_callback_api(service_callback_api)
     return service_callback_api
 

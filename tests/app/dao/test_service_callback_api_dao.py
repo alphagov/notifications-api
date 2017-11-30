@@ -70,7 +70,7 @@ def test_update_service_callback_api(sample_service):
     saved_callback_api = results[0]
 
     reset_service_callback_api(saved_callback_api, updated_by_id=sample_service.users[0].id,
-                              url="https://some_service/changed_url")
+                               url="https://some_service/changed_url")
     updated_results = ServiceCallbackApi.query.all()
     assert len(updated_results) == 1
     updated = updated_results[0]
