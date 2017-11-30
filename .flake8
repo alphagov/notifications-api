@@ -1,7 +1,7 @@
 [flake8]
 # Rule definitions: http://flake8.pycqa.org/en/latest/user/error-codes.html
 # W503: line break before binary operator
-exclude = venv*,__pycache__,node_modules,cache,migrations
+exclude = venv*,__pycache__,node_modules,cache,migrations,build
 ignore = W503
 max-complexity = 14
 max-line-length = 120
