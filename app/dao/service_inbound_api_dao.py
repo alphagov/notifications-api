@@ -9,8 +9,7 @@ from app.models import ServiceInboundApi
 @version_class(ServiceInboundApi)
 def save_service_inbound_api(service_inbound_api):
     service_inbound_api.id = create_uuid()
-    service_inbound_api.created_at == datetime.utcnow()
-    service_inbound_api.bearer_token = service_inbound_api.bearer_token
+    service_inbound_api.created_at = datetime.utcnow()
     db.session.add(service_inbound_api)
 
 
