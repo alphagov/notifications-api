@@ -24,13 +24,10 @@ from app import db, create_uuid
 from app.dao import days_ago
 from app.models import (
     Notification,
-    NotificationEmailReplyTo,
     NotificationHistory,
     ScheduledNotification,
     Template,
     TemplateHistory,
-    EMAIL_TYPE,
-    SMS_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     LETTER_TYPE,
@@ -41,8 +38,7 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
-    NOTIFICATION_SENT,
-    NotificationSmsSender
+    NOTIFICATION_SENT
 )
 
 from app.dao.dao_utils import transactional
@@ -313,23 +309,6 @@ def _filter_query(query, filter_dict=None):
 @transactional
 def delete_notifications_created_more_than_a_week_ago_by_type(notification_type):
     seven_days_ago = date.today() - timedelta(days=7)
-
-    # Following could be refactored when NotificationSmsReplyTo and NotificationLetterContact in models.py
-    if notification_type in [EMAIL_TYPE, SMS_TYPE]:
-        subq = db.session.query(Notification.id).filter(
-            func.date(Notification.created_at) < seven_days_ago,
-            Notification.notification_type == notification_type
-        ).subquery()
-        if notification_type == EMAIL_TYPE:
-            notification_sender_mapping_table = NotificationEmailReplyTo
-        if notification_type == SMS_TYPE:
-            notification_sender_mapping_table = NotificationSmsSender
-        db.session.query(
-            notification_sender_mapping_table
-        ).filter(
-            notification_sender_mapping_table.notification_id.in_(subq)
-        ).delete(synchronize_session='fetch')
-
     deleted = db.session.query(Notification).filter(
         func.date(Notification.created_at) < seven_days_ago,
         Notification.notification_type == notification_type,
