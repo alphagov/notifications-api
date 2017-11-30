@@ -68,7 +68,7 @@ def fetch_service_inbound_api(service_id, inbound_api_id):
     return jsonify(data=inbound_api.serialize()), 200
 
 
-@service_callback_blueprint.route('/service-callback-api', methods=['POST'])
+@service_callback_blueprint.route('/delivery-receipt-api', methods=['POST'])
 def create_service_callback_api(service_id):
     data = request.get_json()
     validate(data, create_service_callback_api_schema)
@@ -82,7 +82,7 @@ def create_service_callback_api(service_id):
     return jsonify(data=callback_api.serialize()), 201
 
 
-@service_callback_blueprint.route('/service-callback-api/<uuid:callback_api_id>', methods=['POST'])
+@service_callback_blueprint.route('/delivery-receipt-api/<uuid:callback_api_id>', methods=['POST'])
 def update_service_callback_api(service_id, callback_api_id):
     data = request.get_json()
     validate(data, update_service_callback_api_schema)
@@ -96,7 +96,7 @@ def update_service_callback_api(service_id, callback_api_id):
     return jsonify(data=to_update.serialize()), 200
 
 
-@service_callback_blueprint.route('/service-callback-api/<uuid:callback_api_id>', methods=["GET"])
+@service_callback_blueprint.route('/delivery-receipt-api/<uuid:callback_api_id>', methods=["GET"])
 def fetch_service_callback_api(service_id, callback_api_id):
     callback_api = get_service_callback_api(callback_api_id, service_id)
 
