@@ -565,6 +565,29 @@ def test_update_set_process_type_on_template(client, sample_template):
     assert template.process_type == 'priority'
 
 
+def test_create_a_template_with_reply_to(admin_request, sample_user):
+    service = create_service(service_permissions=['letter'])
+    letter_contact = create_letter_contact(service, "Edinburgh, ED1 1AA")
+    data = {
+        'name': 'my template',
+        'subject': 'subject',
+        'template_type': 'letter',
+        'content': 'template <b>content</b>',
+        'service': str(service.id),
+        'created_by': str(sample_user.id),
+        'reply_to': str(letter_contact.id),
+    }
+
+    json_resp = admin_request.post('template.create_template', service_id=service.id, _data=data, _expected_status=201)
+
+    assert json_resp['data']['template_type'] == 'letter'
+    assert json_resp['data']['reply_to'] == str(letter_contact.id)
+
+    template = Template.query.get(json_resp['data']['id'])
+    from app.schemas import template_schema
+    assert sorted(json_resp['data']) == sorted(template_schema.dump(template).data)
+
+
 def test_get_template_reply_to(client, sample_letter_template):
     auth_header = create_authorization_header()
     letter_contact = create_letter_contact(sample_letter_template.service, "Edinburgh, ED1 1AA")

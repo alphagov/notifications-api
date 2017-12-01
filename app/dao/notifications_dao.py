@@ -24,14 +24,10 @@ from app import db, create_uuid
 from app.dao import days_ago
 from app.models import (
     Notification,
-    NotificationEmailReplyTo,
     NotificationHistory,
     ScheduledNotification,
-    ServiceEmailReplyTo,
     Template,
     TemplateHistory,
-    EMAIL_TYPE,
-    SMS_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     LETTER_TYPE,
@@ -42,9 +38,7 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
-    NOTIFICATION_SENT,
-    NotificationSmsSender,
-    ServiceSmsSender
+    NOTIFICATION_SENT
 )
 
 from app.dao.dao_utils import transactional
@@ -315,23 +309,6 @@ def _filter_query(query, filter_dict=None):
 @transactional
 def delete_notifications_created_more_than_a_week_ago_by_type(notification_type):
     seven_days_ago = date.today() - timedelta(days=7)
-
-    # Following could be refactored when NotificationSmsReplyTo and NotificationLetterContact in models.py
-    if notification_type in [EMAIL_TYPE, SMS_TYPE]:
-        subq = db.session.query(Notification.id).filter(
-            func.date(Notification.created_at) < seven_days_ago,
-            Notification.notification_type == notification_type
-        ).subquery()
-        if notification_type == EMAIL_TYPE:
-            notification_sender_mapping_table = NotificationEmailReplyTo
-        if notification_type == SMS_TYPE:
-            notification_sender_mapping_table = NotificationSmsSender
-        db.session.query(
-            notification_sender_mapping_table
-        ).filter(
-            notification_sender_mapping_table.notification_id.in_(subq)
-        ).delete(synchronize_session='fetch')
-
     deleted = db.session.query(Notification).filter(
         func.date(Notification.created_at) < seven_days_ago,
         Notification.notification_type == notification_type,
@@ -577,26 +554,6 @@ def dao_set_created_live_letter_api_notifications_to_pending():
     return notifications
 
 
-@transactional
-def dao_create_notification_email_reply_to_mapping(notification_id, email_reply_to_id):
-    notification_email_reply_to = NotificationEmailReplyTo(
-        notification_id=notification_id,
-        service_email_reply_to_id=email_reply_to_id
-    )
-    db.session.add(notification_email_reply_to)
-
-
-def dao_get_notification_email_reply_for_notification(notification_id):
-    email_reply_to = ServiceEmailReplyTo.query.join(
-        NotificationEmailReplyTo
-    ).filter(
-        NotificationEmailReplyTo.notification_id == notification_id
-    ).first()
-
-    if email_reply_to:
-        return email_reply_to.email_address
-
-
 @statsd(namespace="dao")
 def dao_get_last_notification_added_for_job_id(job_id):
     last_notification_added = Notification.query.filter(
@@ -606,23 +563,3 @@ def dao_get_last_notification_added_for_job_id(job_id):
     ).first()
 
     return last_notification_added
-
-
-@transactional
-def dao_create_notification_sms_sender_mapping(notification_id, sms_sender_id):
-    notification_to_sms_sender = NotificationSmsSender(
-        notification_id=notification_id,
-        service_sms_sender_id=sms_sender_id
-    )
-    db.session.add(notification_to_sms_sender)
-
-
-def dao_get_notification_sms_sender_mapping(notification_id):
-    sms_sender = ServiceSmsSender.query.join(
-        NotificationSmsSender
-    ).filter(
-        NotificationSmsSender.notification_id == notification_id
-    ).first()
-
-    if sms_sender:
-        return sms_sender.sms_sender

@@ -18,7 +18,7 @@ def firetext_post(client, data):
         data=data,
         headers=[
             ('Content-Type', 'application/x-www-form-urlencoded'),
-            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178') # fake IPs
+            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')  # fake IPs
         ])
 
 
@@ -28,7 +28,7 @@ def mmg_post(client, data):
         data=data,
         headers=[
             ('Content-Type', 'application/json'),
-            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178') # fake IPs
+            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')  # fake IPs
         ])
 
 
@@ -384,6 +384,7 @@ def test_process_mmg_response_unknown_status_updates_notification_with_failed(
     assert json_data['result'] == 'success'
     assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(notification.id)
     assert get_notification_by_id(notification.id).status == 'failed'
+    assert send_mock.called
 
 
 def test_process_mmg_response_returns_400_for_malformed_data(client):
