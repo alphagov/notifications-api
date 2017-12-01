@@ -1432,12 +1432,13 @@ def test_set_sms_prefixing_for_service_cant_be_none(
     admin_request,
     sample_service,
 ):
-    admin_request.post(
+    resp = admin_request.post(
         'service.update_service',
         service_id=sample_service.id,
         _data={'prefix_sms': None},
-        _expected_status=500,
+        _expected_status=400,
     )
+    assert resp['message'] == {'prefix_sms': ['Field may not be null.']}
 
 
 @pytest.mark.parametrize('today_only,stats', [

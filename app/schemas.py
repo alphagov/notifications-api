@@ -290,7 +290,6 @@ class DetailedServiceSchema(BaseSchema):
             'letter_contact_block',         # new exclude from here
             'message_limit',
             'email_from',
-            # 'free_sms_fragment_limit',
             'inbound_api',
             'dvla_organisation',
             'whitelist',

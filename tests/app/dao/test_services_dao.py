@@ -51,6 +51,7 @@ from app.models import (
     Service,
     ServicePermission,
     ServicePermissionTypes,
+    AnnualBilling,
     BRANDING_GOVUK,
     DVLA_ORG_HM_GOVERNMENT,
     KEY_TYPE_NORMAL,
@@ -89,10 +90,10 @@ def test_create_service(sample_user):
                       restricted=False,
                       organisation_type='central',
                       created_by=sample_user)
-    dao_create_service(service, sample_user)
+    dao_create_service(service, sample_user, 12345)
     assert Service.query.count() == 1
 
-    service_db = Service.query.first()
+    service_db = Service.query.one()
     assert service_db.name == "service_name"
     assert service_db.id == service.id
     assert service_db.branding == BRANDING_GOVUK
@@ -105,6 +106,9 @@ def test_create_service(sample_user):
     assert service_db.free_sms_fragment_limit == 250000
     assert service_db.organisation_type == 'central'
     assert service_db.crown is True
+    annual_billing = AnnualBilling.query.one()
+    assert annual_billing.service == service_db
+    assert annual_billing.free_sms_fragment_limit == 12345
 
 
 def test_cannot_create_two_services_with_same_name(sample_user):
@@ -121,8 +125,8 @@ def test_cannot_create_two_services_with_same_name(sample_user):
                        restricted=False,
                        created_by=sample_user)
     with pytest.raises(IntegrityError) as excinfo:
-        dao_create_service(service1, sample_user)
-        dao_create_service(service2, sample_user)
+        dao_create_service(service1, sample_user, 12345)
+        dao_create_service(service2, sample_user, 12345)
     assert 'duplicate key value violates unique constraint "services_name_key"' in str(excinfo.value)
 
 
@@ -139,8 +143,8 @@ def test_cannot_create_two_services_with_same_email_from(sample_user):
                        restricted=False,
                        created_by=sample_user)
     with pytest.raises(IntegrityError) as excinfo:
-        dao_create_service(service1, sample_user)
-        dao_create_service(service2, sample_user)
+        dao_create_service(service1, sample_user, 12345)
+        dao_create_service(service2, sample_user, 12345)
     assert 'duplicate key value violates unique constraint "services_email_from_key"' in str(excinfo.value)
 
 
@@ -152,7 +156,7 @@ def test_cannot_create_service_with_no_user(notify_db_session, sample_user):
                       restricted=False,
                       created_by=sample_user)
     with pytest.raises(FlushError) as excinfo:
-        dao_create_service(service, None)
+        dao_create_service(service, None, 12345)
     assert "Can't flush None value found in collection Service.users" in str(excinfo.value)
 
 
@@ -162,7 +166,7 @@ def test_should_add_user_to_service(sample_user):
                       message_limit=1000,
                       restricted=False,
                       created_by=sample_user)
-    dao_create_service(service, sample_user)
+    dao_create_service(service, sample_user, 12345)
     assert sample_user in Service.query.first().users
     new_user = User(
         name='Test User',
@@ -181,7 +185,7 @@ def test_should_remove_user_from_service(sample_user):
                       message_limit=1000,
                       restricted=False,
                       created_by=sample_user)
-    dao_create_service(service, sample_user)
+    dao_create_service(service, sample_user, 12345)
     new_user = User(
         name='Test User',
         email_address='new_user@digital.cabinet-office.gov.uk',
@@ -333,7 +337,7 @@ def test_create_service_creates_a_history_record_with_current_data(sample_user):
                       message_limit=1000,
                       restricted=False,
                       created_by=sample_user)
-    dao_create_service(service, sample_user)
+    dao_create_service(service, sample_user, 12345)
     assert Service.query.count() == 1
     assert Service.get_history_model().query.count() == 1
 
@@ -360,7 +364,7 @@ def test_update_service_creates_a_history_record_with_current_data(sample_user):
                       message_limit=1000,
                       restricted=False,
                       created_by=sample_user)
-    dao_create_service(service, sample_user)
+    dao_create_service(service, sample_user, 12345)
 
     assert Service.query.count() == 1
     assert Service.query.first().version == 1
@@ -388,7 +392,7 @@ def test_update_service_permission_creates_a_history_record_with_current_data(sa
                       message_limit=1000,
                       restricted=False,
                       created_by=sample_user)
-    dao_create_service(service, sample_user)
+    dao_create_service(service, sample_user, 12345)
 
     service.permissions.append(ServicePermission(service_id=service.id, permission='letter'))
     dao_update_service(service)
@@ -431,7 +435,7 @@ def test_create_service_and_history_is_transactional(sample_user):
                       created_by=sample_user)
 
     with pytest.raises(IntegrityError) as excinfo:
-        dao_create_service(service, sample_user)
+        dao_create_service(service, sample_user, 12345)
 
     assert 'column "name" violates not-null constraint' in str(excinfo.value)
     assert Service.query.count() == 0
@@ -480,7 +484,7 @@ def test_add_existing_user_to_another_service_doesnot_change_old_permissions(sam
                           restricted=False,
                           created_by=sample_user)
 
-    dao_create_service(service_one, sample_user)
+    dao_create_service(service_one, sample_user, 12345)
     assert sample_user.id == service_one.users[0].id
     test_user_permissions = Permission.query.filter_by(service=service_one, user=sample_user).all()
     assert len(test_user_permissions) == 8
@@ -497,7 +501,7 @@ def test_add_existing_user_to_another_service_doesnot_change_old_permissions(sam
                           message_limit=1000,
                           restricted=False,
                           created_by=other_user)
-    dao_create_service(service_two, other_user)
+    dao_create_service(service_two, other_user, 12345)
 
     assert other_user.id == service_two.users[0].id
     other_user_permissions = Permission.query.filter_by(service=service_two, user=other_user).all()
@@ -526,7 +530,7 @@ def test_fetch_stats_filters_on_service(sample_notification):
                           email_from="hello",
                           restricted=False,
                           message_limit=1000)
-    dao_create_service(service_two, sample_notification.service.created_by)
+    dao_create_service(service_two, sample_notification.service.created_by, 12345)
 
     stats = dao_fetch_stats_for_service(service_two.id)
     assert len(stats) == 0
