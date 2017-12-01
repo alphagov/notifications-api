@@ -101,6 +101,9 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
     valid_file = '{}|Sent|1|Unsorted\n{}|Failed|2|Sorted'.format(
         sent_letter.reference, failed_letter.reference)
     mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
+    send_mock = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
 
     update_letter_notifications_statuses(filename='foo.txt')
 
@@ -110,6 +113,7 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
     assert failed_letter.status == NOTIFICATION_TECHNICAL_FAILURE
     assert failed_letter.billable_units == 2
     assert failed_letter.updated_at
+    assert send_mock.called
 
 
 def test_update_letter_notifications_to_sent_to_dvla_updates_based_on_notification_references(
@@ -132,8 +136,12 @@ def test_update_letter_notifications_to_sent_to_dvla_updates_based_on_notificati
 
 def test_update_letter_notifications_to_error_updates_based_on_notification_references(
     client,
-    sample_letter_template
+    sample_letter_template,
+    mocker
 ):
+    send_mock = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
     first = create_notification(sample_letter_template, reference='first ref')
     second = create_notification(sample_letter_template, reference='second ref')
 
@@ -146,3 +154,4 @@ def test_update_letter_notifications_to_error_updates_based_on_notification_refe
     assert first.sent_at is None
     assert first.updated_at == dt
     assert second.status == NOTIFICATION_CREATED
+    assert send_mock.called

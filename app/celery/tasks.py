@@ -29,6 +29,7 @@ from app import (
 )
 from app.aws import s3
 from app.celery import provider_tasks
+from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.config import QueueNames
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
 from app.dao.jobs_dao import (
@@ -42,7 +43,8 @@ from app.dao.notifications_dao import (
     get_notification_by_id,
     dao_update_notifications_for_job_to_sent_to_dvla,
     dao_update_notifications_by_reference,
-    dao_get_last_notification_added_for_job_id
+    dao_get_last_notification_added_for_job_id,
+    dao_get_notifications_by_reference
 )
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
@@ -391,6 +393,9 @@ def update_letter_notifications_to_error(self, notification_references):
     )
 
     current_app.logger.info("Updated {} letter notifications to technical-failure".format(updated_count))
+    notifications = dao_get_notifications_by_reference(references=notification_references)
+    for notification in notifications:
+        send_delivery_status_to_service.apply_async([notification.id], queue=QueueNames.NOTIFY)
 
 
 def create_dvla_file_contents_for_job(job_id):
@@ -455,7 +460,7 @@ def update_letter_notifications_statuses(self, filename):
         for update in notification_updates:
             status = NOTIFICATION_DELIVERED if update.status == DVLA_RESPONSE_STATUS_SENT \
                 else NOTIFICATION_TECHNICAL_FAILURE
-            notification = dao_update_notifications_by_reference(
+            updated_count = dao_update_notifications_by_reference(
                 references=[update.reference],
                 update_dict={"status": status,
                              "billable_units": update.page_count,
@@ -463,7 +468,7 @@ def update_letter_notifications_statuses(self, filename):
                              }
             )
 
-            if not notification:
+            if not updated_count:
                 msg = "Update letter notification file {filename} failed: notification either not found " \
                     "or already updated from delivered. Status {status} for notification reference {reference}".format(
                         filename=filename, status=status, reference=update.reference)
@@ -472,6 +477,9 @@ def update_letter_notifications_statuses(self, filename):
                 current_app.logger.info(
                     'DVLA file: {filename}, notification updated to {status}: {reference}'.format(
                         filename=filename, status=status, reference=str(update.reference)))
+                notifications = dao_get_notifications_by_reference(references=[update.reference])
+                for notification in notifications:
+                    send_delivery_status_to_service.apply_async([notification.id], queue=QueueNames.NOTIFY)
 
 
 def process_updates_from_file(response_file):
