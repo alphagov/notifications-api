@@ -2113,14 +2113,14 @@ def test_dao_update_notifications_by_reference_returns_zero_when_no_notification
 
 
 def test_dao_get_notifications_by_reference(sample_template):
-    notification_0 = create_notification(template=sample_template, reference='noref')
+    create_notification(template=sample_template, reference='noref')
     notification_1 = create_notification(template=sample_template, reference='ref')
     notification_2 = create_notification(template=sample_template, reference='ref')
 
-    noti = dao_get_notifications_by_reference(['ref'])
-    assert len(noti) == 2
-    assert noti[0].id in [notification_1.id, notification_2.id]
-    assert noti[1].id in [notification_1.id, notification_2.id]
+    notifications = dao_get_notifications_by_reference(['ref'])
+    assert len(notifications) == 2
+    assert notifications[0].id in [notification_1.id, notification_2.id]
+    assert notifications[1].id in [notification_1.id, notification_2.id]
 
 
 def test_dao_create_notification_sms_sender_mapping(sample_notification):

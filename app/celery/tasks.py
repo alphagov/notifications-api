@@ -68,6 +68,7 @@ from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
 from notifications_utils.s3 import s3upload
+from app.dao.service_callback_api_dao import get_service_callback_api_for_service
 
 
 @worker_process_shutdown.connect
@@ -502,6 +503,30 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
     _post_status_update(self, inbound_api, data, 'send_inbound_sms_to_service')
 
 
+@notify_celery.task(bind=True, name="send-delivery-status", max_retries=5, default_retry_delay=300)
+@statsd(namespace="tasks")
+def send_delivery_status_to_service(self, notification_id):
+    # TODO: do we need to do rate limit this?
+    notification = get_notification_by_id(notification_id)
+    service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
+    if not service_callback_api:
+        # No delivery receipt API info set
+        return
+
+    data = {
+        "id": str(notification_id),
+        "reference": str(notification.client_reference),
+        "to": notification.to,
+        "status": notification.status,
+        "created_at": notification.created_at.strftime(DATETIME_FORMAT),     # the time GOV.UK email sent the request
+        "updated_at": notification.updated_at.strftime(DATETIME_FORMAT),     # the last time the status was updated
+        "sent_at": notification.sent_at.strftime(DATETIME_FORMAT),           # the time the email was sent
+        "notification_type": notification.notification_type
+    }
+
+    _post_status_update(self, service_callback_api, data, 'send_delivery_receipt_to_service')
+
+
 @notify_celery.task(name='process-incomplete-jobs')
 @statsd(namespace="tasks")
 def process_incomplete_jobs(job_ids):
@@ -552,6 +577,7 @@ def _post_status_update(self, callback_api, data, callback_name):
             },
             timeout=60
         )
+
         current_app.logger.info('{} sending {} to {}, response {}'.format(
             callback_name,
             callback_api.service_id,
