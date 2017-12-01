@@ -483,6 +483,13 @@ def dao_get_notifications_by_to_field(service_id, search_term, statuses=None):
 
 
 @statsd(namespace="dao")
+def dao_get_notifications_by_reference(references):
+    return Notification.query.filter(
+        Notification.reference.in_(references)
+    ).all()
+
+
+@statsd(namespace="dao")
 def dao_created_scheduled_notification(scheduled_notification):
     db.session.add(scheduled_notification)
     db.session.commit()
