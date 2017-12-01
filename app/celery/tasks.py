@@ -499,36 +499,7 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
         "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT)
     }
 
-    try:
-        response = request(
-            method="POST",
-            url=inbound_api.url,
-            data=json.dumps(data),
-            headers={
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer {}'.format(inbound_api.bearer_token)
-            },
-            timeout=60
-        )
-        current_app.logger.info('send_inbound_sms_to_service sending {} to {}, response {}'.format(
-            inbound_sms_id,
-            inbound_api.url,
-            response.status_code
-        ))
-        response.raise_for_status()
-    except RequestException as e:
-        current_app.logger.warning(
-            "send_inbound_sms_to_service request failed for service_id: {} and url: {}. exc: {}".format(
-                service_id,
-                inbound_api.url,
-                e
-            )
-        )
-        if not isinstance(e, HTTPError) or e.response.status_code >= 500:
-            try:
-                self.retry(queue=QueueNames.RETRY)
-            except self.MaxRetriesExceededError:
-                current_app.logger.exception('Retry: send_inbound_sms_to_service has retried the max number of times')
+    _post_status_update(self, inbound_api, data, 'send_inbound_sms_to_service')
 
 
 @notify_celery.task(name='process-incomplete-jobs')
@@ -566,3 +537,40 @@ def process_incomplete_job(job_id):
             process_row(row_number, recipient, personalisation, template, job, job.service)
 
     job_complete(job, job.service, template, resumed=True)
+
+
+def _post_status_update(self, callback_api, data, callback_name):
+
+    try:
+        response = request(
+            method="POST",
+            url=callback_api.url,
+            data=json.dumps(data),
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer {}'.format(callback_api.bearer_token)
+            },
+            timeout=60
+        )
+        current_app.logger.info('{} sending {} to {}, response {}'.format(
+            callback_name,
+            callback_api.service_id,
+            callback_api.url,
+            response.status_code
+        ))
+        response.raise_for_status()
+    except RequestException as e:
+        current_app.logger.warning(
+            "service_name request failed for service_id: {} and url: {}. exc: {}".format(
+                callback_api.service_id,
+                callback_api.url,
+                e
+            )
+        )
+        if not isinstance(e, HTTPError) or e.response.status_code >= 500:
+            try:
+                self.retry(queue=QueueNames.RETRY,
+                           exc='Unable to {} for service_id: {} and url: {}. \n{}'.format(
+                               callback_name, callback_api.service_id, callback_api.url, e))
+            except self.MaxRetriesExceededError:
+                current_app.logger.exception('Retry: {} has retried the max number of times', callback_name)
