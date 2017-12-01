@@ -4,6 +4,7 @@ import uuid
 from app import db
 from app.dao.jobs_dao import dao_create_job
 from app.dao.service_inbound_api_dao import save_service_inbound_api
+from app.dao.service_callback_api_dao import save_service_callback_api
 from app.dao.service_sms_sender_dao import update_existing_sms_sender_with_inbound_number, dao_update_service_sms_sender
 from app.models import (
     ApiKey,
@@ -17,6 +18,7 @@ from app.models import (
     Service,
     ServiceEmailReplyTo,
     ServiceInboundApi,
+    ServiceCallbackApi,
     ServiceLetterContact,
     ScheduledNotification,
     ServicePermission,
@@ -294,6 +296,20 @@ def create_service_inbound_api(
                                             )
     save_service_inbound_api(service_inbound_api)
     return service_inbound_api
+
+
+def create_service_callback_api(
+    service,
+    url="https://something.com",
+    bearer_token="some_super_secret",
+):
+    service_callback_api = ServiceCallbackApi(service_id=service.id,
+                                              url=url,
+                                              bearer_token=bearer_token,
+                                              updated_by_id=service.users[0].id
+                                              )
+    save_service_callback_api(service_callback_api)
+    return service_callback_api
 
 
 def create_organisation(colour='blue', logo='test_x2.png', name='test_org_1'):

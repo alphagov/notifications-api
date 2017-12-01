@@ -82,6 +82,7 @@ def create_app(application):
 
 def register_blueprint(application):
     from app.service.rest import service_blueprint
+    from app.service.callback_rest import service_callback_blueprint
     from app.user.rest import user_blueprint
     from app.template.rest import template_blueprint
     from app.status.healthcheck import status as status_blueprint
@@ -170,6 +171,9 @@ def register_blueprint(application):
 
     billing_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(billing_blueprint)
+
+    service_callback_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(service_callback_blueprint)
 
 
 def register_v2_blueprints(application):
