@@ -41,7 +41,7 @@ from app.models import (
 )
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
-from app.dao.annual_billing_dao import dao_insert_annual_billing
+from app.dao.annual_billing_dao import dao_insert_annual_billing_for_this_year
 
 DEFAULT_SERVICE_PERMISSIONS = [
     SMS_TYPE,
@@ -155,16 +155,13 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
 
 @transactional
 @version_class(Service)
-def dao_create_service(service, user, service_id=None, service_permissions=None):
+def dao_create_service(service, user, free_sms_fragment_limit, service_id=None, service_permissions=None):
     # the default property does not appear to work when there is a difference between the sqlalchemy schema and the
     # db schema (ie: during a migration), so we have to set sms_sender manually here. After the GOVUK sms_sender
     # migration is completed, this code should be able to be removed.
 
     if service_permissions is None:
         service_permissions = DEFAULT_SERVICE_PERMISSIONS
-
-    if service.free_sms_fragment_limit is None:
-        service.free_sms_fragment_limit = current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
     from app.dao.permissions_dao import permission_dao
     service.users.append(user)
@@ -180,7 +177,7 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
 
     # do we just add the default - or will we get a value from FE?
     insert_service_sms_sender(service, current_app.config['FROM_NUMBER'])
-    dao_insert_annual_billing(service)
+    dao_insert_annual_billing_for_this_year(service, free_sms_fragment_limit)
     db.session.add(service)
 
 

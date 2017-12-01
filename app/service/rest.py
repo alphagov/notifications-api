@@ -87,7 +87,6 @@ from app.schemas import (
     detailed_service_schema
 )
 from app.utils import pagination_links
-from app.billing.rest import update_free_sms_fragment_limit_data
 
 service_blueprint = Blueprint('service', __name__)
 
@@ -154,19 +153,24 @@ def get_service_by_id(service_id):
 @service_blueprint.route('', methods=['POST'])
 def create_service():
     data = request.get_json()
-    if not data.get('user_id', None):
-        errors = {'user_id': ['Missing data for required field.']}
+    errors = {
+        required_field: ['Missing data for required field.']
+        for required_field in ['user_id', 'free_sms_fragment_limit']
+        if not data.get(required_field, None)
+    }
+    if errors:
         raise InvalidRequest(errors, status_code=400)
 
     # validate json with marshmallow
-    service_schema.load(request.get_json())
+    service_schema.load(data)
 
     user = get_user_by_id(data.pop('user_id', None))
+    free_sms_fragment_limit = data.pop('free_sms_fragment_limit')
 
     # unpack valid json into service object
     valid_service = Service.from_json(data)
 
-    dao_create_service(valid_service, user)
+    dao_create_service(valid_service, user, free_sms_fragment_limit)
     return jsonify(data=service_schema.dump(valid_service).data), 201
 
 
@@ -184,10 +188,6 @@ def update_service(service_id):
     if org_type:
         update_dict.crown = org_type == 'central'
     dao_update_service(update_dict)
-
-    # bridging code between frontend is deployed and data has not been migrated yet. Can only update current year
-    if 'free_sms_fragment_limit' in req_json:
-        update_free_sms_fragment_limit_data(fetched_service.id, req_json['free_sms_fragment_limit'])
 
     if service_going_live:
         send_notification_to_service_users(

@@ -162,13 +162,12 @@ def sample_service(
         'message_limit': limit,
         'restricted': restricted,
         'email_from': email_from,
-        'created_by': user,
-        'free_sms_fragment_limit': free_sms_fragment_limit
+        'created_by': user
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
         service = Service(**data)
-        dao_create_service(service, user, service_permissions=permissions)
+        dao_create_service(service, user, free_sms_fragment_limit, service_permissions=permissions)
 
         if research_mode:
             service.research_mode = research_mode
@@ -1002,7 +1001,12 @@ def notify_service(notify_db, notify_db_session):
             created_by=user,
             prefix_sms=False,
         )
-        dao_create_service(service=service, service_id=current_app.config['NOTIFY_SERVICE_ID'], user=user)
+        dao_create_service(
+            service=service,
+            service_id=current_app.config['NOTIFY_SERVICE_ID'],
+            user=user,
+            free_sms_fragment_limit=250000  # live central gov service
+        )
 
         data = {
             'service': service,
