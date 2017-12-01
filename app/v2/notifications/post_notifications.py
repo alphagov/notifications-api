@@ -50,6 +50,7 @@ from app.v2.notifications.create_response import (
 
 
 @v2_notification_blueprint.route('/<notification_type>', methods=['POST'])
+@statsd(namespace="performance-testing")
 def post_notification(notification_type):
     if notification_type == EMAIL_TYPE:
         form = validate(request.get_json(), post_email_request)
@@ -162,7 +163,6 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
     return notification
 
 
-@statsd(namespace="performance-testing")
 def process_letter_notification(*, letter_data, api_key, template):
     if api_key.key_type == KEY_TYPE_TEAM:
         raise BadRequestError(message='Cannot send letters with a team api key', status_code=403)
