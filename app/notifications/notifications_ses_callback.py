@@ -12,6 +12,8 @@ from app.dao import (
 )
 from app.celery.statistics_tasks import create_outcome_notification_statistic_tasks
 from app.notifications.process_client_response import validate_callback_data
+from app.celery.service_callback_tasks import send_delivery_status_to_service
+from app.config import QueueNames
 
 
 def process_ses_response(ses_request):
@@ -75,7 +77,7 @@ def process_ses_response(ses_request):
                 )
 
             create_outcome_notification_statistic_tasks(notification)
-
+            send_delivery_status_to_service.apply_async([notification.id], queue=QueueNames.NOTIFY)
             return
 
         except KeyError:

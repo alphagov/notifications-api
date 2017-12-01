@@ -46,6 +46,7 @@ def test_ses_callback_should_update_notification_status(
         )
         statsd_client.incr.assert_any_call("callback.ses.delivered")
         stats_mock.assert_called_once_with(notification)
+        send_mock.assert_called_once_with([notification.id], queue="notify-internal-tasks")
 
 
 def test_ses_callback_should_update_multiple_notification_status_sent(
@@ -58,7 +59,9 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
     stats_mock = mocker.patch(
         'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
     )
-
+    send_mock = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
     notification1 = create_sample_notification(
         notify_db,
         notify_db_session,
@@ -92,6 +95,7 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
         call(notification2),
         call(notification3)
     ])
+    assert send_mock.called
 
 
 def test_ses_callback_should_set_status_to_temporary_failure(client,
@@ -103,7 +107,9 @@ def test_ses_callback_should_set_status_to_temporary_failure(client,
     stats_mock = mocker.patch(
         'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
     )
-
+    send_mock = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
     notification = create_sample_notification(
         notify_db,
         notify_db_session,
@@ -115,6 +121,7 @@ def test_ses_callback_should_set_status_to_temporary_failure(client,
     assert get_notification_by_id(notification.id).status == 'sending'
     assert process_ses_response(ses_soft_bounce_callback(reference='ref')) is None
     assert get_notification_by_id(notification.id).status == 'temporary-failure'
+    assert send_mock.called
     stats_mock.assert_called_once_with(notification)
 
 
@@ -148,7 +155,9 @@ def test_ses_callback_should_set_status_to_permanent_failure(client,
     stats_mock = mocker.patch(
         'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
     )
-
+    send_mock = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
     notification = create_sample_notification(
         notify_db,
         notify_db_session,
@@ -161,6 +170,7 @@ def test_ses_callback_should_set_status_to_permanent_failure(client,
     assert get_notification_by_id(notification.id).status == 'sending'
     assert process_ses_response(ses_hard_bounce_callback(reference='ref')) is None
     assert get_notification_by_id(notification.id).status == 'permanent-failure'
+    assert send_mock.called
     stats_mock.assert_called_once_with(notification)
 
 
