@@ -68,7 +68,6 @@ from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
 from notifications_utils.s3 import s3upload
-from app.dao.service_callback_api_dao import get_service_callback_api_for_service
 
 
 @worker_process_shutdown.connect
@@ -500,31 +499,36 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
         "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT)
     }
 
-    _post_status_update(self, inbound_api, data, 'send_inbound_sms_to_service')
-
-
-@notify_celery.task(bind=True, name="send-delivery-status", max_retries=5, default_retry_delay=300)
-@statsd(namespace="tasks")
-def send_delivery_status_to_service(self, notification_id):
-    # TODO: do we need to do rate limit this?
-    notification = get_notification_by_id(notification_id)
-    service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
-    if not service_callback_api:
-        # No delivery receipt API info set
-        return
-
-    data = {
-        "id": str(notification_id),
-        "reference": str(notification.client_reference),
-        "to": notification.to,
-        "status": notification.status,
-        "created_at": notification.created_at.strftime(DATETIME_FORMAT),     # the time GOV.UK email sent the request
-        "updated_at": notification.updated_at.strftime(DATETIME_FORMAT),     # the last time the status was updated
-        "sent_at": notification.sent_at.strftime(DATETIME_FORMAT),           # the time the email was sent
-        "notification_type": notification.notification_type
-    }
-
-    _post_status_update(self, service_callback_api, data, 'send_delivery_receipt_to_service')
+    try:
+        response = request(
+            method="POST",
+            url=inbound_api.url,
+            data=json.dumps(data),
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer {}'.format(inbound_api.bearer_token)
+            },
+            timeout=60
+        )
+        current_app.logger.info('send_inbound_sms_to_service sending {} to {}, response {}'.format(
+            inbound_sms_id,
+            inbound_api.url,
+            response.status_code
+        ))
+        response.raise_for_status()
+    except RequestException as e:
+        current_app.logger.warning(
+            "send_inbound_sms_to_service request failed for service_id: {} and url: {}. exc: {}".format(
+                service_id,
+                inbound_api.url,
+                e
+            )
+        )
+        if not isinstance(e, HTTPError) or e.response.status_code >= 500:
+            try:
+                self.retry(queue=QueueNames.RETRY)
+            except self.MaxRetriesExceededError:
+                current_app.logger.exception('Retry: send_inbound_sms_to_service has retried the max number of times')
 
 
 @notify_celery.task(name='process-incomplete-jobs')
@@ -562,41 +566,3 @@ def process_incomplete_job(job_id):
             process_row(row_number, recipient, personalisation, template, job, job.service)
 
     job_complete(job, job.service, template, resumed=True)
-
-
-def _post_status_update(self, callback_api, data, callback_name):
-
-    try:
-        response = request(
-            method="POST",
-            url=callback_api.url,
-            data=json.dumps(data),
-            headers={
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer {}'.format(callback_api.bearer_token)
-            },
-            timeout=60
-        )
-
-        current_app.logger.info('{} sending {} to {}, response {}'.format(
-            callback_name,
-            callback_api.service_id,
-            callback_api.url,
-            response.status_code
-        ))
-        response.raise_for_status()
-    except RequestException as e:
-        current_app.logger.warning(
-            "service_name request failed for service_id: {} and url: {}. exc: {}".format(
-                callback_api.service_id,
-                callback_api.url,
-                e
-            )
-        )
-        if not isinstance(e, HTTPError) or e.response.status_code >= 500:
-            try:
-                self.retry(queue=QueueNames.RETRY,
-                           exc='Unable to {} for service_id: {} and url: {}. \n{}'.format(
-                               callback_name, callback_api.service_id, callback_api.url, e))
-            except self.MaxRetriesExceededError:
-                current_app.logger.exception('Retry: {} has retried the max number of times', callback_name)
