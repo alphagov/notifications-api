@@ -8,7 +8,8 @@ from app.dao import notifications_dao
 from app.clients.sms.firetext import get_firetext_responses
 from app.clients.sms.mmg import get_mmg_responses
 from app.celery.statistics_tasks import create_outcome_notification_statistic_tasks
-
+from app.celery.service_callback_tasks import send_delivery_status_to_service
+from app.config import QueueNames
 
 sms_response_mapper = {
     'MMG': get_mmg_responses,
@@ -82,6 +83,8 @@ def process_sms_client_response(status, reference, client_name):
         )
 
     create_outcome_notification_statistic_tasks(notification)
+
+    send_delivery_status_to_service.apply_async([notification.id], queue=QueueNames.NOTIFY)
 
     success = "{} callback succeeded. reference {} updated".format(client_name, reference)
     return success, errors

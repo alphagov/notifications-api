@@ -51,12 +51,15 @@ def test_outcome_statistics_called_for_successful_callback(sample_notification, 
         'app.notifications.process_client_response.notifications_dao.update_notification_status_by_id',
         return_value=sample_notification
     )
-
+    send_mock = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
     reference = str(uuid.uuid4())
 
     success, error = process_sms_client_response(status='3', reference=reference, client_name='MMG')
     assert success == "MMG callback succeeded. reference {} updated".format(str(reference))
     assert error is None
+    assert send_mock.called
     stats_mock.assert_called_once_with(sample_notification)
 
 

@@ -24,7 +24,9 @@ def test_ses_callback_should_update_notification_status(
         stats_mock = mocker.patch(
             'app.notifications.notifications_ses_callback.create_outcome_notification_statistic_tasks'
         )
-
+        send_mock = mocker.patch(
+            'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+        )
         notification = create_sample_notification(
             notify_db,
             notify_db_session,

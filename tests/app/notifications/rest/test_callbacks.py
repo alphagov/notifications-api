@@ -18,7 +18,7 @@ def firetext_post(client, data):
         data=data,
         headers=[
             ('Content-Type', 'application/x-www-form-urlencoded'),
-            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')
+            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178') # fake IPs
         ])
 
 
@@ -28,7 +28,7 @@ def mmg_post(client, data):
         data=data,
         headers=[
             ('Content-Type', 'application/json'),
-            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')
+            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178') # fake IPs
         ])
 
 
@@ -178,7 +178,9 @@ def test_firetext_callback_should_update_notification_status(
         notify_db, notify_db_session, client, sample_email_template, mocker
 ):
     mocker.patch('app.statsd_client.incr')
-
+    send_mock = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
     notification = create_sample_notification(
         notify_db,
         notify_db_session,
@@ -202,13 +204,16 @@ def test_firetext_callback_should_update_notification_status(
     updated = get_notification_by_id(notification.id)
     assert updated.status == 'delivered'
     assert get_notification_by_id(notification.id).status == 'delivered'
+    assert send_mock.called_once_with([notification.id], queue="notify-internal-tasks")
 
 
 def test_firetext_callback_should_update_notification_status_failed(
         notify_db, notify_db_session, client, sample_template, mocker
 ):
     mocker.patch('app.statsd_client.incr')
-
+    mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
     notification = create_sample_notification(
         notify_db,
         notify_db_session,
@@ -235,6 +240,9 @@ def test_firetext_callback_should_update_notification_status_failed(
 
 def test_firetext_callback_should_update_notification_status_pending(client, notify_db, notify_db_session, mocker):
     mocker.patch('app.statsd_client.incr')
+    mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
     notification = create_sample_notification(
         notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
     )
@@ -265,8 +273,11 @@ def test_process_mmg_response_return_200_when_cid_is_send_sms_code(client):
 
 
 def test_process_mmg_response_returns_200_when_cid_is_valid_notification_id(
-        notify_db, notify_db_session, client
+        notify_db, notify_db_session, client, mocker
 ):
+    mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
     notification = create_sample_notification(
         notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
     )
@@ -286,8 +297,11 @@ def test_process_mmg_response_returns_200_when_cid_is_valid_notification_id(
 
 
 def test_process_mmg_response_status_5_updates_notification_with_permanently_failed(
-    notify_db, notify_db_session, client
+    notify_db, notify_db_session, client, mocker
 ):
+    mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
     notification = create_sample_notification(
         notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
     )
@@ -306,8 +320,11 @@ def test_process_mmg_response_status_5_updates_notification_with_permanently_fai
 
 
 def test_process_mmg_response_status_2_updates_notification_with_permanently_failed(
-    notify_db, notify_db_session, client
+    notify_db, notify_db_session, client, mocker
 ):
+    mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
     notification = create_sample_notification(
         notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
     )
@@ -325,8 +342,11 @@ def test_process_mmg_response_status_2_updates_notification_with_permanently_fai
 
 
 def test_process_mmg_response_status_4_updates_notification_with_temporary_failed(
-        notify_db, notify_db_session, client
+        notify_db, notify_db_session, client, mocker
 ):
+    mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
     notification = create_sample_notification(
         notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
     )
@@ -345,8 +365,11 @@ def test_process_mmg_response_status_4_updates_notification_with_temporary_faile
 
 
 def test_process_mmg_response_unknown_status_updates_notification_with_failed(
-        notify_db, notify_db_session, client
+        notify_db, notify_db_session, client, mocker
 ):
+    send_mock = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
     notification = create_sample_notification(
         notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
     )
@@ -392,6 +415,9 @@ def test_process_mmg_response_records_statsd(notify_db, notify_db_session, clien
 
         mocker.patch('app.statsd_client.incr')
         mocker.patch('app.statsd_client.timing_with_dates')
+        mocker.patch(
+            'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+        )
         notification = create_sample_notification(
             notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
         )
@@ -415,6 +441,9 @@ def test_firetext_callback_should_record_statsd(client, notify_db, notify_db_ses
 
         mocker.patch('app.statsd_client.incr')
         mocker.patch('app.statsd_client.timing_with_dates')
+        mocker.patch(
+            'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+        )
         notification = create_sample_notification(
             notify_db, notify_db_session, status='sending', sent_at=datetime.utcnow()
         )
