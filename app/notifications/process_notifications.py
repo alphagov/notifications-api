@@ -13,6 +13,7 @@ from notifications_utils.recipients import (
 from app import redis_store
 from app.celery import provider_tasks
 from app.config import QueueNames
+
 from app.models import (
     EMAIL_TYPE,
     KEY_TYPE_TEST,
@@ -26,6 +27,8 @@ from app.dao.notifications_dao import (
     dao_delete_notifications_and_history_by_id,
     dao_created_scheduled_notification
 )
+
+from app.statsd_decorators import statsd
 from app.v2.errors import BadRequestError
 from app.utils import get_template_instance, cache_key_for_service_template_counter, convert_bst_to_utc
 
@@ -43,6 +46,7 @@ def check_placeholders(template_object):
         raise BadRequestError(fields=[{'template': message}], message=message)
 
 
+@statsd(namespace="performance-testing")
 def persist_notification(
     *,
     template_id,
@@ -112,6 +116,7 @@ def persist_notification(
     return notification
 
 
+@statsd(namespace="performance-testing")
 def send_notification_to_queue(notification, research_mode, queue=None):
     if research_mode or notification.key_type == KEY_TYPE_TEST:
         queue = QueueNames.RESEARCH_MODE

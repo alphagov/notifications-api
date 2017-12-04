@@ -388,6 +388,7 @@ class Staging(Config):
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
+    REDIS_ENABLED = False
 
     API_KEY_LIMITS = {
         KEY_TYPE_TEAM: {
