@@ -156,7 +156,7 @@ def create_service():
     errors = {
         required_field: ['Missing data for required field.']
         for required_field in ['user_id', 'free_sms_fragment_limit']
-        if not data.get(required_field, None)
+        if not data.get(required_field)
     }
     if errors:
         raise InvalidRequest(errors, status_code=400)
