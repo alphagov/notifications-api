@@ -4,6 +4,7 @@ from app.notifications.process_client_response import (
     validate_callback_data,
     process_sms_client_response
 )
+from tests.app.db import create_service_callback_api
 
 
 def test_validate_callback_data_returns_none_when_valid():
@@ -54,6 +55,7 @@ def test_outcome_statistics_called_for_successful_callback(sample_notification, 
     send_mock = mocker.patch(
         'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
     )
+    create_service_callback_api(service=sample_notification.service, url="https://original_url.com")
     reference = str(uuid.uuid4())
 
     success, error = process_sms_client_response(status='3', reference=reference, client_name='MMG')

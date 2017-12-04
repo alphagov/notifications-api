@@ -21,7 +21,7 @@ from app.celery.tasks import (
     update_letter_notifications_to_sent_to_dvla
 )
 
-from tests.app.db import create_notification
+from tests.app.db import create_notification, create_service_callback_api
 from tests.conftest import set_config
 
 
@@ -97,10 +97,11 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
                                       billable_units=0)
     failed_letter = create_notification(sample_letter_template, reference='ref-bar', status=NOTIFICATION_SENDING,
                                         billable_units=0)
-
+    create_service_callback_api(service=sample_letter_template.service, url="https://original_url.com")
     valid_file = '{}|Sent|1|Unsorted\n{}|Failed|2|Sorted'.format(
         sent_letter.reference, failed_letter.reference)
     mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
+
     send_mock = mocker.patch(
         'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
     )
@@ -144,7 +145,7 @@ def test_update_letter_notifications_to_error_updates_based_on_notification_refe
     )
     first = create_notification(sample_letter_template, reference='first ref')
     second = create_notification(sample_letter_template, reference='second ref')
-
+    create_service_callback_api(service=sample_letter_template.service, url="https://original_url.com")
     dt = datetime.utcnow()
     with freeze_time(dt):
         update_letter_notifications_to_error([first.reference])

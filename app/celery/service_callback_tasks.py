@@ -58,7 +58,7 @@ def send_delivery_status_to_service(self, notification_id):
         response.raise_for_status()
     except RequestException as e:
         current_app.logger.warning(
-            "send_inbound_sms_to_service request failed for service_id: {} and url: {}. exc: {}".format(
+            "send_delivery_status_to_service request failed for service_id: {} and url: {}. exc: {}".format(
                 notification_id,
                 service_callback_api.url,
                 e
@@ -68,4 +68,4 @@ def send_delivery_status_to_service(self, notification_id):
             try:
                 self.retry(queue=QueueNames.RETRY)
             except self.MaxRetriesExceededError:
-                current_app.logger.exception('Retry: send_inbound_sms_to_service has retried the max number of times')
+                current_app.logger.exception('Retry: send_delivery_status_to_service has retried the max number of times')

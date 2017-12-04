@@ -10,6 +10,8 @@ from app.clients.sms.mmg import get_mmg_responses
 from app.celery.statistics_tasks import create_outcome_notification_statistic_tasks
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.config import QueueNames
+from app.dao.service_callback_api_dao import get_service_callback_api_for_service
+
 
 sms_response_mapper = {
     'MMG': get_mmg_responses,
@@ -83,8 +85,11 @@ def process_sms_client_response(status, reference, client_name):
         )
 
     create_outcome_notification_statistic_tasks(notification)
+    # queue callback task only if the service_callback_api exists
+    service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
 
-    send_delivery_status_to_service.apply_async([notification.id], queue=QueueNames.NOTIFY)
+    if service_callback_api:
+        send_delivery_status_to_service.apply_async([str(notification.id)], queue=QueueNames.NOTIFY)
 
     success = "{} callback succeeded. reference {} updated".format(client_name, reference)
     return success, errors

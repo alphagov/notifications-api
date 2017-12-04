@@ -44,12 +44,13 @@ from app.dao.notifications_dao import (
     dao_update_notifications_for_job_to_sent_to_dvla,
     dao_update_notifications_by_reference,
     dao_get_last_notification_added_for_job_id,
-    dao_get_notifications_by_reference
+    dao_get_notifications_by_references
 )
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
+from app.dao.service_callback_api_dao import get_service_callback_api_for_service
 from app.models import (
     DVLA_RESPONSE_STATUS_SENT,
     EMAIL_TYPE,
@@ -393,9 +394,12 @@ def update_letter_notifications_to_error(self, notification_references):
     )
 
     current_app.logger.info("Updated {} letter notifications to technical-failure".format(updated_count))
-    notifications = dao_get_notifications_by_reference(references=notification_references)
-    for notification in notifications:
-        send_delivery_status_to_service.apply_async([notification.id], queue=QueueNames.NOTIFY)
+    notifications = dao_get_notifications_by_references(references=notification_references)
+    # queue callback task only if the service_callback_api exists
+    service_callback_api = get_service_callback_api_for_service(service_id=notifications[0].service_id)
+    if service_callback_api:
+        for notification in notifications:
+            send_delivery_status_to_service.apply_async([str(notification.id)], queue=QueueNames.NOTIFY)
 
 
 def create_dvla_file_contents_for_job(job_id):
@@ -477,9 +481,12 @@ def update_letter_notifications_statuses(self, filename):
                 current_app.logger.info(
                     'DVLA file: {filename}, notification updated to {status}: {reference}'.format(
                         filename=filename, status=status, reference=str(update.reference)))
-                notifications = dao_get_notifications_by_reference(references=[update.reference])
-                for notification in notifications:
-                    send_delivery_status_to_service.apply_async([notification.id], queue=QueueNames.NOTIFY)
+                notifications = dao_get_notifications_by_references(references=[update.reference])
+                # queue callback task only if the service_callback_api exists
+                service_callback_api = get_service_callback_api_for_service(service_id=notifications[0].service_id)
+                if service_callback_api:
+                    for notification in notifications:
+                        send_delivery_status_to_service.apply_async([str(notification.id)], queue=QueueNames.NOTIFY)
 
 
 def process_updates_from_file(response_file):

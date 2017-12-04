@@ -10,6 +10,7 @@ from app.clients.email.aws_ses import get_aws_responses
 from app.dao import (
     notifications_dao
 )
+from app.dao.service_callback_api_dao import get_service_callback_api_for_service
 from app.celery.statistics_tasks import create_outcome_notification_statistic_tasks
 from app.notifications.process_client_response import validate_callback_data
 from app.celery.service_callback_tasks import send_delivery_status_to_service
@@ -77,7 +78,7 @@ def process_ses_response(ses_request):
                 )
 
             create_outcome_notification_statistic_tasks(notification)
-            send_delivery_status_to_service.apply_async([notification.id], queue=QueueNames.NOTIFY)
+            _check_and_queue_callback_task(notification.id, notification.service_id)
             return
 
         except KeyError:
@@ -92,3 +93,10 @@ def process_ses_response(ses_request):
 def remove_emails_from_bounce(bounce_dict):
     for recip in bounce_dict['bouncedRecipients']:
         recip.pop('emailAddress')
+
+
+def _check_and_queue_callback_task(notification_id, service_id):
+    # queue callback task only if the service_callback_api exists
+    service_callback_api = get_service_callback_api_for_service(service_id=service_id)
+    if service_callback_api:
+        send_delivery_status_to_service.apply_async([str(notification_id)], queue=QueueNames.NOTIFY)

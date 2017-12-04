@@ -10,6 +10,7 @@ from app.notifications.notifications_ses_callback import process_ses_response, r
 from app.celery.research_mode_tasks import ses_hard_bounce_callback, ses_soft_bounce_callback, ses_notification_callback
 
 from tests.app.conftest import sample_notification as create_sample_notification
+from tests.app.db import create_service_callback_api
 
 
 def test_ses_callback_should_update_notification_status(
@@ -35,7 +36,7 @@ def test_ses_callback_should_update_notification_status(
             status='sending',
             sent_at=datetime.utcnow()
         )
-
+        create_service_callback_api(service=sample_email_template.service, url="https://original_url.com")
         assert get_notification_by_id(notification.id).status == 'sending'
 
         errors = process_ses_response(ses_notification_callback(reference='ref'))
@@ -46,7 +47,7 @@ def test_ses_callback_should_update_notification_status(
         )
         statsd_client.incr.assert_any_call("callback.ses.delivered")
         stats_mock.assert_called_once_with(notification)
-        send_mock.assert_called_once_with([notification.id], queue="notify-internal-tasks")
+        send_mock.assert_called_once_with([str(notification.id)], queue="notify-internal-tasks")
 
 
 def test_ses_callback_should_update_multiple_notification_status_sent(
@@ -85,7 +86,7 @@ def test_ses_callback_should_update_multiple_notification_status_sent(
         reference='ref3',
         sent_at=datetime.utcnow(),
         status='sending')
-
+    create_service_callback_api(service=sample_email_template.service, url="https://original_url.com")
     assert process_ses_response(ses_notification_callback(reference='ref1')) is None
     assert process_ses_response(ses_notification_callback(reference='ref2')) is None
     assert process_ses_response(ses_notification_callback(reference='ref3')) is None
@@ -118,6 +119,7 @@ def test_ses_callback_should_set_status_to_temporary_failure(client,
         status='sending',
         sent_at=datetime.utcnow()
     )
+    create_service_callback_api(service=notification.service, url="https://original_url.com")
     assert get_notification_by_id(notification.id).status == 'sending'
     assert process_ses_response(ses_soft_bounce_callback(reference='ref')) is None
     assert get_notification_by_id(notification.id).status == 'temporary-failure'
@@ -166,6 +168,7 @@ def test_ses_callback_should_set_status_to_permanent_failure(client,
         status='sending',
         sent_at=datetime.utcnow()
     )
+    create_service_callback_api(service=sample_email_template.service, url="https://original_url.com")
 
     assert get_notification_by_id(notification.id).status == 'sending'
     assert process_ses_response(ses_hard_bounce_callback(reference='ref')) is None

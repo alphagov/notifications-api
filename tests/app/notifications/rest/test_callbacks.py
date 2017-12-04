@@ -10,6 +10,7 @@ from app.dao.notifications_dao import (
     get_notification_by_id
 )
 from tests.app.conftest import sample_notification as create_sample_notification
+from tests.app.db import create_service_callback_api
 
 
 def firetext_post(client, data):
@@ -377,7 +378,7 @@ def test_process_mmg_response_unknown_status_updates_notification_with_failed(
                        "CID": str(notification.id),
                        "MSISDN": "447777349060",
                        "status": 10})
-
+    create_service_callback_api(service=notification.service, url="https://original_url.com")
     response = mmg_post(client, data)
     assert response.status_code == 200
     json_data = json.loads(response.data)
