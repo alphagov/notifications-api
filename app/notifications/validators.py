@@ -23,7 +23,7 @@ from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 
 
 def check_service_over_api_rate_limit(service, api_key):
-    if current_app.config['API_RATE_LIMIT_ENABLED']:
+    if current_app.config['API_RATE_LIMIT_ENABLED'] and current_app.config['REDIS_ENABLED']:
         cache_key = rate_limit_cache_key(service.id, api_key.key_type)
         rate_limit = current_app.config['API_KEY_LIMITS'][api_key.key_type]['limit']
         interval = current_app.config['API_KEY_LIMITS'][api_key.key_type]['interval']
@@ -33,7 +33,7 @@ def check_service_over_api_rate_limit(service, api_key):
 
 
 def check_service_over_daily_message_limit(key_type, service):
-    if key_type != KEY_TYPE_TEST:
+    if key_type != KEY_TYPE_TEST and current_app.config['REDIS_ENABLED']:
         cache_key = daily_limit_cache_key(service.id)
         service_stats = redis_store.get(cache_key)
         if not service_stats:
