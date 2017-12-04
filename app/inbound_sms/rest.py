@@ -1,11 +1,10 @@
 from flask import (
     Blueprint,
     jsonify,
-    request,
-    current_app, json)
-from jsonschema import ValidationError
+    request
+)
 
-from notifications_utils.recipients import validate_and_format_phone_number
+from notifications_utils.recipients import try_validate_and_format_phone_number
 
 from app.dao.inbound_sms_dao import (
     dao_get_inbound_sms_for_service,
@@ -26,25 +25,31 @@ inbound_sms = Blueprint(
 register_errors(inbound_sms)
 
 
-@inbound_sms.route('', methods=['POST', 'GET'])
-def get_inbound_sms_for_service(service_id):
-
-    if request.method == 'GET':
-        limit = request.args.get('limit')
-        user_number = request.args.get('user_number')
-
-        if user_number:
-            # we use this to normalise to an international phone number
-            user_number = validate_and_format_phone_number(user_number, international=True)
-
-        results = dao_get_inbound_sms_for_service(service_id, limit, user_number)
-
-        return jsonify(data=[row.serialize() for row in results])
+@inbound_sms.route('', methods=['POST'])
+def post_query_inbound_sms_for_service(service_id):
+    form = validate(request.get_json(), get_inbound_sms_for_service_schema)
+    if 'phone_number' in form:
+        # we use this to normalise to an international phone number - but this may fail if it's an alphanumeric
+        user_number = try_validate_and_format_phone_number(form['phone_number'], international=True)
     else:
-        form = validate(request.get_json(), get_inbound_sms_for_service_schema)
-        results = dao_get_inbound_sms_for_service(service_id, form.get('limit'), form.get('phone_number'))
+        user_number = None
+    results = dao_get_inbound_sms_for_service(service_id, form.get('limit'), user_number)
 
-        return jsonify(data=[row.serialize() for row in results])
+    return jsonify(data=[row.serialize() for row in results])
+
+
+@inbound_sms.route('', methods=['GET'])
+def get_inbound_sms_for_service(service_id):
+    limit = request.args.get('limit')
+    user_number = request.args.get('user_number')
+
+    if user_number:
+        # we use this to normalise to an international phone number - but this may fail if it's an alphanumeric
+        user_number = try_validate_and_format_phone_number(user_number, international=True)
+
+    results = dao_get_inbound_sms_for_service(service_id, limit, user_number)
+
+    return jsonify(data=[row.serialize() for row in results])
 
 
 @inbound_sms.route('/summary')

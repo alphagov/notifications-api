@@ -7,7 +7,7 @@ from tests import create_authorization_header
 from tests.app.db import (
     create_notification,
     create_template,
-    create_service)
+)
 
 from tests.app.conftest import (
     sample_notification,
@@ -30,7 +30,8 @@ def test_get_notification_by_id_returns_200(
         scheduled_for="2017-05-12 15:15"
     )
 
-    another = create_notification(
+    # another
+    create_notification(
         template=sample_template,
         billable_units=billable_units,
         sent_by=provider,
@@ -266,7 +267,8 @@ def test_get_notification_doesnt_have_delivery_estimate_for_non_letters(
     assert 'estimated_delivery' not in json.loads(response.get_data(as_text=True))
 
 
-def test_get_all_notifications_returns_200(client, sample_template):
+def test_get_all_notifications_except_job_notifications_returns_200(client, sample_template, sample_job):
+    create_notification(template=sample_template, job=sample_job)  # should not return this job notification
     notifications = [create_notification(template=sample_template) for _ in range(2)]
     notification = notifications[-1]
 
@@ -295,6 +297,34 @@ def test_get_all_notifications_returns_200(client, sample_template):
     assert not json_response['notifications'][0]['scheduled_for']
 
 
+def test_get_all_notifications_with_include_jobs_arg_returns_200(
+    client, sample_template, sample_job
+):
+    notifications = [
+        create_notification(template=sample_template, job=sample_job),
+        create_notification(template=sample_template)
+    ]
+    notification = notifications[-1]
+
+    auth_header = create_authorization_header(service_id=notification.service_id)
+    response = client.get(
+        path='/v2/notifications?include_jobs=true',
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    json_response = json.loads(response.get_data(as_text=True))
+
+    assert response.status_code == 200
+    assert json_response['links']['current'].endswith("/v2/notifications?include_jobs=true")
+    assert 'next' in json_response['links'].keys()
+    assert len(json_response['notifications']) == 2
+
+    assert json_response['notifications'][0]['id'] == str(notification.id)
+    assert json_response['notifications'][0]['status'] == notification.status
+    assert json_response['notifications'][0]['phone_number'] == notification.to
+    assert json_response['notifications'][0]['type'] == notification.template.template_type
+    assert not json_response['notifications'][0]['scheduled_for']
+
+
 def test_get_all_notifications_no_notifications_if_no_notifications(client, sample_service):
     auth_header = create_authorization_header(service_id=sample_service.id)
     response = client.get(
@@ -310,10 +340,9 @@ def test_get_all_notifications_no_notifications_if_no_notifications(client, samp
     assert len(json_response['notifications']) == 0
 
 
-def test_get_all_notifications_filter_by_template_type(client):
-    service = create_service()
-    email_template = create_template(service=service, template_type="email")
-    sms_template = create_template(service=service, template_type="sms")
+def test_get_all_notifications_filter_by_template_type(client, sample_service):
+    email_template = create_template(service=sample_service, template_type="email")
+    sms_template = create_template(service=sample_service, template_type="sms")
 
     notification = create_notification(template=email_template, to_field="don.draper@scdp.biz")
     create_notification(template=sms_template)
@@ -335,7 +364,7 @@ def test_get_all_notifications_filter_by_template_type(client):
     assert json_response['notifications'][0]['status'] == "created"
     assert json_response['notifications'][0]['template'] == {
         'id': str(email_template.id),
-        'uri': email_template.get_link(),
+        'uri': notification.template.get_link(),
         'version': 1
     }
     assert json_response['notifications'][0]['email_address'] == "don.draper@scdp.biz"

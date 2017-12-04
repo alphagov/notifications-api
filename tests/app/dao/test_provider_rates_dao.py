@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 from decimal import Decimal
 from app.dao.provider_rates_dao import create_provider_rates

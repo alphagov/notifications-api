@@ -1,45 +1,24 @@
-from datetime import datetime, timedelta, date
 import uuid
+from datetime import datetime, timedelta, date
 from functools import partial
 
 import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
-from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_service_id
-from app.models import (
-    Job,
-    Notification,
-    NotificationEmailReplyTo,
-    NotificationHistory,
-    NotificationStatistics,
-    ScheduledNotification,
-    ServiceEmailReplyTo,
-    EMAIL_TYPE,
-    NOTIFICATION_STATUS_TYPES,
-    NOTIFICATION_STATUS_TYPES_FAILED,
-    NOTIFICATION_SENT,
-    NOTIFICATION_DELIVERED,
-    KEY_TYPE_NORMAL,
-    KEY_TYPE_TEAM,
-    KEY_TYPE_TEST,
-    JOB_STATUS_IN_PROGRESS)
-
 from app.dao.notifications_dao import (
     dao_create_notification,
-    dao_create_notification_email_reply_to_mapping,
     dao_created_scheduled_notification,
     dao_delete_notifications_and_history_by_id,
+    dao_get_last_notification_added_for_job_id,
     dao_get_last_template_usage,
-    dao_get_notification_email_reply_for_notification,
     dao_get_notifications_by_to_field,
-    dao_get_notification_statistics_for_service_and_day,
-    dao_get_potential_notification_statistics_for_day,
     dao_get_scheduled_notifications,
     dao_get_template_usage,
     dao_timeout_notifications,
     dao_update_notification,
     dao_update_notifications_for_job_to_sent_to_dvla,
+    dao_update_notifications_by_reference,
     delete_notifications_created_more_than_a_week_ago_by_type,
     get_notification_by_id,
     get_notification_for_job,
@@ -50,15 +29,22 @@ from app.dao.notifications_dao import (
     is_delivery_slow_for_provider,
     set_scheduled_notification_to_processed,
     update_notification_status_by_id,
-    update_notification_status_by_reference,
-    dao_get_last_notification_added_for_job_id)
-
+    update_notification_status_by_reference
+)
 from app.dao.services_dao import dao_update_service
-from tests.app.db import (
-    create_api_key,
-    create_job,
-    create_notification,
-    create_reply_to_email
+from app.models import (
+    Job,
+    Notification,
+    NotificationHistory,
+    ScheduledNotification,
+    NOTIFICATION_STATUS_TYPES,
+    NOTIFICATION_STATUS_TYPES_FAILED,
+    NOTIFICATION_SENT,
+    NOTIFICATION_DELIVERED,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST,
+    JOB_STATUS_IN_PROGRESS
 )
 from tests.app.conftest import (
     sample_notification,
@@ -67,13 +53,18 @@ from tests.app.conftest import (
     sample_service,
     sample_job,
     sample_notification_history as create_notification_history,
-    sample_letter_template)
+    sample_letter_template
+)
+from tests.app.db import (
+    create_api_key,
+    create_job,
+    create_notification
+)
 
 
 def test_should_have_decorated_notifications_dao_functions():
     assert dao_get_last_template_usage.__wrapped__.__name__ == 'dao_get_last_template_usage'  # noqa
     assert dao_get_template_usage.__wrapped__.__name__ == 'dao_get_template_usage'  # noqa
-    assert dao_get_potential_notification_statistics_for_day.__wrapped__.__name__ == 'dao_get_potential_notification_statistics_for_day'  # noqa
     assert dao_create_notification.__wrapped__.__name__ == 'dao_create_notification'  # noqa
     assert update_notification_status_by_id.__wrapped__.__name__ == 'update_notification_status_by_id'  # noqa
     assert dao_update_notification.__wrapped__.__name__ == 'dao_update_notification'  # noqa
@@ -475,7 +466,7 @@ def test_should_not_update_status_by_reference_if_from_country_with_no_delivery_
     assert notification.status == NOTIFICATION_SENT
 
 
-def test_should_not_update_status_by_id_if_sent_to_country_with_no_delivery_receipts(sample_template):
+def test_should_not_update_status_by_id_if_sent_to_country_with_carrier_delivery_receipts(sample_template):
     notification = create_notification(
         sample_template,
         status=NOTIFICATION_SENT,
@@ -489,7 +480,7 @@ def test_should_not_update_status_by_id_if_sent_to_country_with_no_delivery_rece
     assert notification.status == NOTIFICATION_SENT
 
 
-def test_should_not_update_status_by_id_if_sent_to_country_with_no_delivery_receipts(sample_template):
+def test_should_not_update_status_by_id_if_sent_to_country_with_delivery_receipts(sample_template):
     notification = create_notification(
         sample_template,
         status=NOTIFICATION_SENT,
@@ -575,31 +566,10 @@ def test_should_return_zero_count_if_no_notification_with_reference():
     assert not update_notification_status_by_reference('something', 'delivered')
 
 
-def test_should_return_none_if_no_statistics_for_a_service_for_a_day(sample_template, mmg_provider):
-    data = _notification_json(sample_template)
-
-    notification = Notification(**data)
-    dao_create_notification(notification)
-    assert not dao_get_notification_statistics_for_service_and_day(
-        sample_template.service.id, (datetime.utcnow() - timedelta(days=1)).date())
-
-
-def test_should_be_able_to_get_all_statistics_for_a_service(sample_template, mmg_provider):
-    data = _notification_json(sample_template)
-
-    notification_1 = Notification(**data)
-    notification_2 = Notification(**data)
-    notification_3 = Notification(**data)
-    dao_create_notification(notification_1)
-    dao_create_notification(notification_2)
-    dao_create_notification(notification_3)
-
-
 def test_create_notification_creates_notification_with_personalisation(notify_db, notify_db_session,
                                                                        sample_template_with_placeholders,
                                                                        sample_job, mmg_provider):
     assert Notification.query.count() == 0
-    assert NotificationStatistics.query.count() == 0
 
     data = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                                template=sample_template_with_placeholders,
@@ -622,7 +592,6 @@ def test_create_notification_creates_notification_with_personalisation(notify_db
 
 def test_save_notification_creates_sms(sample_template, sample_job, mmg_provider):
     assert Notification.query.count() == 0
-    assert NotificationStatistics.query.count() == 0
 
     data = _notification_json(sample_template, job_id=sample_job.id)
 
@@ -635,7 +604,7 @@ def test_save_notification_creates_sms(sample_template, sample_job, mmg_provider
     assert data['to'] == notification_from_db.to
     assert data['job_id'] == notification_from_db.job_id
     assert data['service'] == notification_from_db.service
-    assert data['template'] == notification_from_db.template
+    assert data['template_id'] == notification_from_db.template_id
     assert data['template_version'] == notification_from_db.template_version
     assert data['created_at'] == notification_from_db.created_at
     assert notification_from_db.status == 'created'
@@ -643,7 +612,6 @@ def test_save_notification_creates_sms(sample_template, sample_job, mmg_provider
 
 def test_save_notification_and_create_email(sample_email_template, sample_job):
     assert Notification.query.count() == 0
-    assert NotificationStatistics.query.count() == 0
 
     data = _notification_json(sample_email_template, job_id=sample_job.id)
 
@@ -656,7 +624,7 @@ def test_save_notification_and_create_email(sample_email_template, sample_job):
     assert data['to'] == notification_from_db.to
     assert data['job_id'] == notification_from_db.job_id
     assert data['service'] == notification_from_db.service
-    assert data['template'] == notification_from_db.template
+    assert data['template_id'] == notification_from_db.template_id
     assert data['template_version'] == notification_from_db.template_version
     assert data['created_at'] == notification_from_db.created_at
     assert notification_from_db.status == 'created'
@@ -767,7 +735,6 @@ def test_not_save_notification_and_not_create_stats_on_commit_error(sample_templ
 
     assert Notification.query.count() == 0
     assert Job.query.get(sample_job.id).notifications_sent == 0
-    assert NotificationStatistics.query.count() == 0
 
 
 def test_save_notification_and_increment_job(sample_template, sample_job, mmg_provider):
@@ -783,7 +750,7 @@ def test_save_notification_and_increment_job(sample_template, sample_job, mmg_pr
     assert data['to'] == notification_from_db.to
     assert data['job_id'] == notification_from_db.job_id
     assert data['service'] == notification_from_db.service
-    assert data['template'] == notification_from_db.template
+    assert data['template_id'] == notification_from_db.template_id
     assert data['template_version'] == notification_from_db.template_version
     assert data['created_at'] == notification_from_db.created_at
     assert notification_from_db.status == 'created'
@@ -810,7 +777,7 @@ def test_save_notification_and_increment_correct_job(notify_db, notify_db_sessio
     assert data['to'] == notification_from_db.to
     assert data['job_id'] == notification_from_db.job_id
     assert data['service'] == notification_from_db.service
-    assert data['template'] == notification_from_db.template
+    assert data['template_id'] == notification_from_db.template_id
     assert data['template_version'] == notification_from_db.template_version
     assert data['created_at'] == notification_from_db.created_at
     assert notification_from_db.status == 'created'
@@ -829,7 +796,7 @@ def test_save_notification_with_no_job(sample_template, mmg_provider):
     assert notification_from_db.id
     assert data['to'] == notification_from_db.to
     assert data['service'] == notification_from_db.service
-    assert data['template'] == notification_from_db.template
+    assert data['template_id'] == notification_from_db.template_id
     assert data['template_version'] == notification_from_db.template_version
     assert data['created_at'] == notification_from_db.created_at
     assert notification_from_db.status == 'created'
@@ -874,7 +841,7 @@ def test_save_notification_no_job_id(sample_template, mmg_provider):
     assert notification_from_db.id
     assert data['to'] == notification_from_db.to
     assert data['service'] == notification_from_db.service
-    assert data['template'] == notification_from_db.template
+    assert data['template_id'] == notification_from_db.template_id
     assert data['template_version'] == notification_from_db.template_version
     assert notification_from_db.status == 'created'
     assert data.get('job_id') is None
@@ -1004,41 +971,6 @@ def test_should_delete_notifications_by_type_after_seven_days(
         notifications_to_check = remaining_letter_notifications
 
     for notification in notifications_to_check:
-        assert notification.created_at.date() >= date(2016, 1, 3)
-
-
-@freeze_time("2016-01-10 12:00:00.000000")
-def test_should_delete_notification_to_email_reply_to_after_seven_days(
-    notify_db, notify_db_session, sample_service,
-):
-    assert len(Notification.query.all()) == 0
-
-    reply_to = create_reply_to_email(sample_service, 'test@example.com')
-
-    email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
-
-    # create one notification a day between 1st and 10th from 11:00 to 19:00 of each type
-    for i in range(1, 11):
-        past_date = '2016-01-{0:02d}  {0:02d}:00:00.000000'.format(i)
-        with freeze_time(past_date):
-            notification = create_notification(email_template)
-            dao_create_notification_email_reply_to_mapping(notification.id, reply_to.id)
-
-    all_notifications = Notification.query.all()
-    assert len(all_notifications) == 10
-
-    all_notification_email_reply_to = NotificationEmailReplyTo.query.all()
-    assert len(all_notification_email_reply_to) == 10
-
-    # Records before 3rd should be deleted
-    delete_notifications_created_more_than_a_week_ago_by_type(EMAIL_TYPE)
-    remaining_email_notifications = Notification.query.filter_by(notification_type=EMAIL_TYPE).all()
-    remaining_notification_to_email_reply_to = NotificationEmailReplyTo.query.filter_by().all()
-
-    assert len(remaining_email_notifications) == 8
-    assert len(remaining_notification_to_email_reply_to) == 8
-
-    for notification in remaining_email_notifications:
         assert notification.created_at.date() >= date(2016, 1, 3)
 
 
@@ -1241,7 +1173,6 @@ def _notification_json(sample_template, job_id=None, id=None, status=None):
         'to': '+44709123456',
         'service': sample_template.service,
         'service_id': sample_template.service.id,
-        'template': sample_template,
         'template_id': sample_template.id,
         'template_version': sample_template.version,
         'created_at': datetime.utcnow(),
@@ -1322,7 +1253,7 @@ def test_dao_timeout_notifications_doesnt_affect_letters(sample_letter_template)
 
 
 def test_should_return_notifications_excluding_jobs_by_default(sample_template, sample_job, sample_api_key):
-    with_job = create_notification(sample_template, job=sample_job)
+    create_notification(sample_template, job=sample_job)
     without_job = create_notification(sample_template, api_key=sample_api_key)
 
     include_jobs = get_notifications_for_service(sample_template.service_id, include_jobs=True).items
@@ -1997,48 +1928,6 @@ def test_dao_get_notifications_by_to_field_orders_by_created_at_desc(sample_temp
     assert notifications[1].id == notification_a_minute_ago.id
 
 
-def test_dao_create_notification_email_reply_to_mapping(sample_service, sample_notification):
-
-    create_reply_to_email(sample_service, "test@test.com")
-
-    reply_to_address = dao_get_reply_to_by_service_id(sample_service.id)
-
-    dao_create_notification_email_reply_to_mapping(sample_notification.id, reply_to_address[0].id)
-
-    email_reply_to = NotificationEmailReplyTo.query.all()
-
-    assert len(email_reply_to) == 1
-    assert email_reply_to[0].notification_id == sample_notification.id
-    assert email_reply_to[0].service_email_reply_to_id == reply_to_address[0].id
-
-
-def test_dao_create_multiple_notification_email_reply_to_mapping(sample_service, sample_notification):
-    reply_to_address = create_reply_to_email(sample_service, "test@test.com")
-
-    dao_create_notification_email_reply_to_mapping(sample_notification.id, reply_to_address.id)
-
-    with pytest.raises(IntegrityError) as e:
-        dao_create_notification_email_reply_to_mapping(sample_notification.id, reply_to_address.id)
-
-    assert 'duplicate key value' in str(e.value)
-
-    email_reply_to = NotificationEmailReplyTo.query.all()
-
-    assert len(email_reply_to) == 1
-    assert email_reply_to[0].notification_id == sample_notification.id
-    assert email_reply_to[0].service_email_reply_to_id == reply_to_address.id
-
-
-def test_dao_get_notification_email_reply_for_notification(sample_service, sample_notification):
-    reply_to_address = create_reply_to_email(sample_service, "test@test.com")
-    dao_create_notification_email_reply_to_mapping(sample_notification.id, reply_to_address.id)
-    assert dao_get_notification_email_reply_for_notification(sample_notification.id) == "test@test.com"
-
-
-def test_dao_get_notification_email_reply_for_notification_where_no_mapping(notify_db_session, fake_uuid):
-    assert dao_get_notification_email_reply_for_notification(fake_uuid) is None
-
-
 def test_dao_get_last_notification_added_for_job_id_valid_job_id(sample_template):
     job = create_job(template=sample_template, notification_count=10,
                      created_at=datetime.utcnow() - timedelta(hours=2),
@@ -2062,6 +1951,41 @@ def test_dao_get_last_notification_added_for_job_id_no_notifications(sample_temp
     assert dao_get_last_notification_added_for_job_id(job.id) is None
 
 
-def test_dao_get_last_notification_added_for_job_id_no_notifications(sample_template, fake_uuid):
+def test_dao_get_last_notification_added_for_job_id_no_job(sample_template, fake_uuid):
 
     assert dao_get_last_notification_added_for_job_id(fake_uuid) is None
+
+
+def test_dao_update_notifications_by_reference_updated_notificaitons_and_history(sample_template):
+    notification_0 = create_notification(template=sample_template, reference='noref')
+    notification_1 = create_notification(template=sample_template, reference='ref')
+    notification_2 = create_notification(template=sample_template, reference='ref')
+
+    updated_count = dao_update_notifications_by_reference(references=['ref'],
+                                                          update_dict={"status": "delivered",
+                                                                       "billable_units": 2}
+                                                          )
+    assert updated_count == 2
+    updated_1 = Notification.query.get(notification_1.id)
+    assert updated_1.billable_units == 2
+    assert updated_1.status == 'delivered'
+    updated_2 = Notification.query.get(notification_2.id)
+    assert updated_2.billable_units == 2
+    assert updated_2.status == 'delivered'
+
+    updated_history_1 = NotificationHistory.query.get(notification_1.id)
+    assert updated_history_1.billable_units == 2
+    assert updated_history_1.status == 'delivered'
+    updated_history_2 = Notification.query.get(notification_2.id)
+    assert updated_history_2.billable_units == 2
+    assert updated_history_2.status == 'delivered'
+
+    assert notification_0 == Notification.query.get(notification_0.id)
+
+
+def test_dao_update_notifications_by_reference_returns_zero_when_no_notifications_to_update(notify_db):
+    updated_count = dao_update_notifications_by_reference(references=['ref'],
+                                                          update_dict={"status": "delivered",
+                                                                       "billable_units": 2}
+                                                          )
+    assert updated_count == 0

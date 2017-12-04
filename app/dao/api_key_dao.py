@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from app import db, encryption
+from app import db
 from app.models import ApiKey
 
 from app.dao.dao_utils import (

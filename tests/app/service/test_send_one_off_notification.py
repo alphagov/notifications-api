@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 from notifications_utils.recipients import InvalidPhoneError
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.v2.errors import BadRequestError, TooManyRequestsError
 from app.config import QueueNames
@@ -11,10 +12,15 @@ from app.models import (
     KEY_TYPE_NORMAL,
     PRIORITY,
     SMS_TYPE,
-    NotificationEmailReplyTo,
-    Notification)
+    Notification
+)
 
-from tests.app.db import create_user, create_reply_to_email
+from tests.app.db import (
+    create_user,
+    create_reply_to_email,
+    create_service,
+    create_template
+)
 
 
 @pytest.fixture
@@ -28,11 +34,14 @@ def celery_mock(mocker):
     return mocker.patch('app.service.send_notification.send_notification_to_queue')
 
 
-def test_send_one_off_notification_calls_celery_correctly(persist_mock, celery_mock, sample_template):
-    service = sample_template.service
+def test_send_one_off_notification_calls_celery_correctly(persist_mock, celery_mock, notify_db_session):
+    service = create_service()
+    template = create_template(service=service)
+
+    service = template.service
 
     post_data = {
-        'template_id': str(sample_template.id),
+        'template_id': str(template.id),
         'to': '07700 900 001',
         'created_by': str(service.created_by_id)
     }
@@ -53,10 +62,10 @@ def test_send_one_off_notification_calls_celery_correctly(persist_mock, celery_m
 def test_send_one_off_notification_calls_persist_correctly(
     persist_mock,
     celery_mock,
-    sample_template_with_placeholders
+    notify_db_session
 ):
-    template = sample_template_with_placeholders
-    service = template.service
+    service = create_service()
+    template = create_template(service=service, content="Hello (( Name))\nYour thing is due soon")
 
     post_data = {
         'template_id': str(template.id),
@@ -76,16 +85,17 @@ def test_send_one_off_notification_calls_persist_correctly(
         notification_type=SMS_TYPE,
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL,
-        created_by_id=str(service.created_by_id)
+        created_by_id=str(service.created_by_id),
+        reply_to_text='testing'
     )
 
 
-def test_send_one_off_notification_honors_research_mode(persist_mock, celery_mock, sample_template):
-    service = sample_template.service
-    service.research_mode = True
+def test_send_one_off_notification_honors_research_mode(notify_db_session, persist_mock, celery_mock):
+    service = create_service(research_mode=True)
+    template = create_template(service=service)
 
     post_data = {
-        'template_id': str(sample_template.id),
+        'template_id': str(template.id),
         'to': '07700 900 001',
         'created_by': str(service.created_by_id)
     }
@@ -95,12 +105,13 @@ def test_send_one_off_notification_honors_research_mode(persist_mock, celery_moc
     assert celery_mock.call_args[1]['research_mode'] is True
 
 
-def test_send_one_off_notification_honors_priority(persist_mock, celery_mock, sample_template):
-    service = sample_template.service
-    sample_template.process_type = PRIORITY
+def test_send_one_off_notification_honors_priority(notify_db_session, persist_mock, celery_mock):
+    service = create_service()
+    template = create_template(service=service)
+    template.process_type = PRIORITY
 
     post_data = {
-        'template_id': str(sample_template.id),
+        'template_id': str(template.id),
         'to': '07700 900 001',
         'created_by': str(service.created_by_id)
     }
@@ -110,11 +121,12 @@ def test_send_one_off_notification_honors_priority(persist_mock, celery_mock, sa
     assert celery_mock.call_args[1]['queue'] == QueueNames.PRIORITY
 
 
-def test_send_one_off_notification_raises_if_invalid_recipient(sample_template):
-    service = sample_template.service
+def test_send_one_off_notification_raises_if_invalid_recipient(notify_db_session):
+    service = create_service()
+    template = create_template(service=service)
 
     post_data = {
-        'template_id': str(sample_template.id),
+        'template_id': str(template.id),
         'to': 'not a phone number',
         'created_by': str(service.created_by_id)
     }
@@ -123,12 +135,12 @@ def test_send_one_off_notification_raises_if_invalid_recipient(sample_template):
         send_one_off_notification(service.id, post_data)
 
 
-def test_send_one_off_notification_raises_if_cant_send_to_recipient(sample_template):
-    service = sample_template.service
-    service.restricted = True
+def test_send_one_off_notification_raises_if_cant_send_to_recipient(notify_db_session):
+    service = create_service(restricted=True)
+    template = create_template(service=service)
 
     post_data = {
-        'template_id': str(sample_template.id),
+        'template_id': str(template.id),
         'to': '07700 900 001',
         'created_by': str(service.created_by_id)
     }
@@ -139,12 +151,12 @@ def test_send_one_off_notification_raises_if_cant_send_to_recipient(sample_templ
     assert 'service is in trial mode' in e.value.message
 
 
-def test_send_one_off_notification_raises_if_over_limit(sample_template):
-    service = sample_template.service
-    service.message_limit = 0
+def test_send_one_off_notification_raises_if_over_limit(notify_db_session):
+    service = create_service(message_limit=0)
+    template = create_template(service=service)
 
     post_data = {
-        'template_id': str(sample_template.id),
+        'template_id': str(template.id),
         'to': '07700 900 001',
         'created_by': str(service.created_by_id)
     }
@@ -153,9 +165,9 @@ def test_send_one_off_notification_raises_if_over_limit(sample_template):
         send_one_off_notification(service.id, post_data)
 
 
-def test_send_one_off_notification_raises_if_message_too_long(persist_mock, sample_template_with_placeholders):
-    template = sample_template_with_placeholders
-    service = template.service
+def test_send_one_off_notification_raises_if_message_too_long(persist_mock, notify_db_session):
+    service = create_service()
+    template = create_template(service=service, content="Hello (( Name))\nYour thing is due soon")
 
     post_data = {
         'template_id': str(template.id),
@@ -185,7 +197,7 @@ def test_send_one_off_notification_fails_if_created_by_other_service(sample_temp
     assert e.value.message == 'Can’t create notification - Test User is not part of the "Sample service" service'
 
 
-def test_send_one_off_notification_should_add_email_reply_to_id_for_email(sample_email_template, celery_mock):
+def test_send_one_off_notification_should_add_email_reply_to_text_for_notification(sample_email_template, celery_mock):
     reply_to_email = create_reply_to_email(sample_email_template.service, 'test@test.com')
     data = {
         'to': 'ok@ok.com',
@@ -201,12 +213,11 @@ def test_send_one_off_notification_should_add_email_reply_to_id_for_email(sample
         research_mode=False,
         queue=None
     )
-    mapping_row = NotificationEmailReplyTo.query.filter_by(notification_id=notification_id['id']).first()
-    assert mapping_row.service_email_reply_to_id == reply_to_email.id
+    notification.reply_to_text == reply_to_email.email_address
 
 
 def test_send_one_off_notification_should_throw_exception_if_reply_to_id_doesnot_exist(
-        sample_email_template, celery_mock
+        sample_email_template
 ):
     data = {
         'to': 'ok@ok.com',
@@ -215,5 +226,19 @@ def test_send_one_off_notification_should_throw_exception_if_reply_to_id_doesnot
         'created_by': str(sample_email_template.service.created_by_id)
     }
 
-    with pytest.raises(expected_exception=BadRequestError):
+    with pytest.raises(expected_exception=SQLAlchemyError):
         send_one_off_notification(service_id=sample_email_template.service.id, post_data=data)
+
+
+def test_send_one_off_notification_should_throw_exception_if_sms_sender_id_doesnot_exist(
+        sample_template
+):
+    data = {
+        'to': '07700 900 001',
+        'template_id': str(sample_template.id),
+        'sender_id': str(uuid.uuid4()),
+        'created_by': str(sample_template.service.created_by_id)
+    }
+
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        send_one_off_notification(service_id=sample_template.service.id, post_data=data)

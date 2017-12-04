@@ -1,5 +1,3 @@
-import uuid
-
 import pytest
 from sqlalchemy.exc import IntegrityError
 
@@ -93,15 +91,17 @@ def test_dao_allocate_number_for_service(notify_db_session):
     assert updated_inbound_number.service_id == service.id
 
 
-def test_dao_allocate_number_for_service(notify_db_session, sample_service):
+def test_dao_allocate_number_for_service_raises_if_inbound_number_already_taken(notify_db_session, sample_service):
     number = '078945612'
     inbound_number = create_inbound_number(number=number, service_id=sample_service.id)
     service = create_service(service_name="Service needs an inbound number")
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exc:
         dao_allocate_number_for_service(service_id=service.id, inbound_number_id=inbound_number.id)
+    assert 'is not available' in str(exc.value)
 
 
-def test_dao_allocate_number_for_service(notify_db_session, sample_service):
+def test_dao_allocate_number_for_service_raises_if_invalid_inbound_number(notify_db_session, fake_uuid):
     service = create_service(service_name="Service needs an inbound number")
-    with pytest.raises(Exception):
-        dao_allocate_number_for_service(service_id=service.id, inbound_number_id=uuid.uuid4())
+    with pytest.raises(Exception) as exc:
+        dao_allocate_number_for_service(service_id=service.id, inbound_number_id=fake_uuid)
+    assert 'is not available' in str(exc.value)

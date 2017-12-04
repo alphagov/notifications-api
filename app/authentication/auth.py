@@ -45,11 +45,6 @@ def requires_no_auth():
 
 
 def restrict_ip_sms():
-    # Check route of inbound sms (Experimental)
-    # Temporary custom header for route security
-    if request.headers.get("X-Custom-forwarder"):
-        current_app.logger.info("X-Custom-forwarder {}".format(request.headers.get("X-Custom-forwarder")))
-
     # Check IP of SMS providers
     if request.headers.get("X-Forwarded-For"):
         # X-Forwarded-For looks like "203.0.113.195, 70.41.3.18, 150.172.238.178"

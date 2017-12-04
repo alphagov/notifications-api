@@ -74,6 +74,7 @@ get_notifications_request = {
                 "enum": TEMPLATE_TYPES
             }
         },
+        "include_jobs": {"enum": ["true", "True"]},
         "older_than": uuid
     },
     "additionalProperties": False,
@@ -88,7 +89,7 @@ get_notifications_response = {
             "type": "array",
             "items": {
                 "type": "object",
-                "ref": get_notification_response
+                "$ref": "#/definitions/notification"
             }
         },
         "links": {
@@ -106,7 +107,11 @@ get_notifications_response = {
         }
     },
     "additionalProperties": False,
-    "required": ["notifications", "links"]
+    "required": ["notifications", "links"],
+    "definitions": {
+        "notification": get_notification_response
+    },
+
 }
 
 post_sms_request = {
@@ -119,9 +124,11 @@ post_sms_request = {
         "phone_number": {"type": "string", "format": "phone_number"},
         "template_id": uuid,
         "personalisation": personalisation,
-        "scheduled_for": {"type": ["string", "null"], "format": "datetime"}
+        "scheduled_for": {"type": ["string", "null"], "format": "datetime"},
+        "sms_sender_id": uuid
     },
-    "required": ["phone_number", "template_id"]
+    "required": ["phone_number", "template_id"],
+    "additionalProperties": False
 }
 
 sms_content = {
@@ -166,7 +173,8 @@ post_email_request = {
         "scheduled_for": {"type": ["string", "null"], "format": "datetime"},
         "email_reply_to_id": uuid
     },
-    "required": ["email_address", "template_id"]
+    "required": ["email_address", "template_id"],
+    "additionalProperties": False
 }
 
 email_content = {
@@ -209,7 +217,8 @@ post_letter_request = {
         "template_id": uuid,
         "personalisation": letter_personalisation
     },
-    "required": ["template_id", "personalisation"]
+    "required": ["template_id", "personalisation"],
+    "additionalProperties": False
 }
 
 letter_content = {

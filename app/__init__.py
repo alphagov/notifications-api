@@ -3,14 +3,14 @@ import random
 import string
 import uuid
 
-from flask import Flask, _request_ctx_stack
-from flask import request, g, jsonify
+from flask import _request_ctx_stack, request, g, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
+from flask_migrate import Migrate
 from monotonic import monotonic
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from notifications_utils.clients.redis.redis_client import RedisClient
-from notifications_utils import logging, request_id
+from notifications_utils import logging, request_helper
 from werkzeug.local import LocalProxy
 
 from app.celery.celery import NotifyCelery
@@ -26,6 +26,7 @@ DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 DATE_FORMAT = "%Y-%m-%d"
 
 db = SQLAlchemy()
+migrate = Migrate()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
 firetext_client = FiretextClient()
@@ -43,21 +44,19 @@ api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 authenticated_service = LocalProxy(lambda: _request_ctx_stack.top.authenticated_service)
 
 
-def create_app(app_name=None):
-    application = Flask(__name__)
-
+def create_app(application):
     from app.config import configs
 
     notify_environment = os.environ['NOTIFY_ENVIRONMENT']
 
     application.config.from_object(configs[notify_environment])
 
-    if app_name:
-        application.config['NOTIFY_APP_NAME'] = app_name
+    application.config['NOTIFY_APP_NAME'] = application.name
 
     init_app(application)
-    request_id.init_app(application)
+    request_helper.init_app(application)
     db.init_app(application)
+    migrate.init_app(application, db=db)
     ma.init_app(application)
     statsd_client.init_app(application)
     logging.init_app(application, statsd_client)
@@ -74,11 +73,16 @@ def create_app(app_name=None):
     register_blueprint(application)
     register_v2_blueprints(application)
 
+    # avoid circular imports by importing this file later 😬
+    from app.commands import setup_commands
+    setup_commands(application)
+
     return application
 
 
 def register_blueprint(application):
     from app.service.rest import service_blueprint
+    from app.service.callback_rest import service_callback_blueprint
     from app.user.rest import user_blueprint
     from app.template.rest import template_blueprint
     from app.status.healthcheck import status as status_blueprint
@@ -95,10 +99,9 @@ def register_blueprint(application):
     from app.inbound_number.rest import inbound_number_blueprint
     from app.inbound_sms.rest import inbound_sms as inbound_sms_blueprint
     from app.notifications.receive_notifications import receive_notifications_blueprint
-    from app.notifications.notifications_ses_callback import ses_callback_blueprint
     from app.notifications.notifications_sms_callback import sms_callback_blueprint
     from app.notifications.notifications_letter_callback import letter_callback_blueprint
-    from app.authentication.auth import requires_admin_auth, requires_auth, requires_no_auth, restrict_ip_sms
+    from app.authentication.auth import requires_admin_auth, requires_auth, requires_no_auth
     from app.letters.rest import letter_job
     from app.billing.rest import billing_blueprint
 
@@ -114,9 +117,6 @@ def register_blueprint(application):
     status_blueprint.before_request(requires_no_auth)
     application.register_blueprint(status_blueprint)
 
-    ses_callback_blueprint.before_request(requires_no_auth)
-    application.register_blueprint(ses_callback_blueprint)
-
     # delivery receipts
     # TODO: make sure research mode can still trigger sms callbacks, then re-enable this
     # sms_callback_blueprint.before_request(restrict_ip_sms)
@@ -124,7 +124,7 @@ def register_blueprint(application):
     application.register_blueprint(sms_callback_blueprint)
 
     # inbound sms
-    receive_notifications_blueprint.before_request(restrict_ip_sms)
+    receive_notifications_blueprint.before_request(requires_no_auth)
     application.register_blueprint(receive_notifications_blueprint)
 
     notifications_blueprint.before_request(requires_auth)
@@ -172,8 +172,12 @@ def register_blueprint(application):
     billing_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(billing_blueprint)
 
+    service_callback_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(service_callback_blueprint)
+
 
 def register_v2_blueprints(application):
+    from app.v2.inbound_sms.get_inbound_sms import v2_inbound_sms_blueprint as get_inbound_sms
     from app.v2.notifications.post_notifications import v2_notification_blueprint as post_notifications
     from app.v2.notifications.get_notifications import v2_notification_blueprint as get_notifications
     from app.v2.template.get_template import v2_template_blueprint as get_template
@@ -196,11 +200,16 @@ def register_v2_blueprints(application):
     post_template.before_request(requires_auth)
     application.register_blueprint(post_template)
 
+    get_inbound_sms.before_request(requires_auth)
+    application.register_blueprint(get_inbound_sms)
+
 
 def init_app(app):
     @app.before_request
     def record_user_agent():
         statsd_client.incr("user-agent.{}".format(process_user_agent(request.headers.get('User-Agent', None))))
+
+    app.before_request(request_helper.check_proxy_header_before_request)
 
     @app.before_request
     def record_request_details():

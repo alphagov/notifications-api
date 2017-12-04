@@ -7,11 +7,11 @@ from notifications_utils.recipients import (
     validate_and_format_email_address
 )
 from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTemplate, SMSMessageTemplate
+from requests.exceptions import HTTPError
 
 from app import clients, statsd_client, create_uuid
 from app.dao.notifications_dao import (
-    dao_update_notification,
-    dao_get_notification_email_reply_for_notification
+    dao_update_notification
 )
 from app.dao.provider_details_dao import (
     get_provider_details_by_notification_type,
@@ -47,11 +47,12 @@ def send_sms_to_provider(notification):
             "Starting sending SMS {} to provider at {}".format(notification.id, datetime.utcnow())
         )
         template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
+
         template = SMSMessageTemplate(
             template_model.__dict__,
             values=notification.personalisation,
             prefix=service.name,
-            sender=service.sms_sender not in {None, current_app.config['FROM_NUMBER']}
+            show_prefix=service.prefix_sms,
         )
 
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
@@ -59,7 +60,7 @@ def send_sms_to_provider(notification):
             update_notification(notification, provider)
             try:
                 send_sms_response(provider.get_name(), str(notification.id), notification.to)
-            except:
+            except HTTPError:
                 # when we retry, we only do anything if the notification is in created - it's currently in sending,
                 # so set it back so that we actually attempt the callback again
                 notification.sent_at = None
@@ -73,7 +74,7 @@ def send_sms_to_provider(notification):
                     to=validate_and_format_phone_number(notification.to, international=notification.international),
                     content=str(template),
                     reference=str(notification.id),
-                    sender=service.get_default_sms_sender()
+                    sender=notification.reply_to_text
                 )
             except Exception as e:
                 dao_toggle_sms_provider(provider.name)
@@ -119,15 +120,12 @@ def send_email_to_provider(notification):
             notification.billable_units = 0
             notification.reference = reference
             update_notification(notification, provider)
-            send_email_response(provider.get_name(), reference, notification.to)
+            send_email_response(reference, notification.to)
         else:
             from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
                                                  current_app.config['NOTIFY_EMAIL_DOMAIN'])
 
-            email_reply_to = dao_get_notification_email_reply_for_notification(notification.id)
-
-            if not email_reply_to:
-                email_reply_to = service.get_default_reply_to_email_address()
+            email_reply_to = notification.reply_to_text
 
             reference = provider.send_email(
                 from_address,

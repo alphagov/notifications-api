@@ -1,6 +1,7 @@
 import pytest
 
 from freezegun import freeze_time
+from sqlalchemy.exc import IntegrityError
 
 from app import encryption
 from app.models import (
@@ -28,10 +29,8 @@ from tests.app.db import (
     create_service,
     create_inbound_number,
     create_reply_to_email,
-    create_service_sms_sender,
     create_letter_contact
 )
-from tests.conftest import set_config
 
 
 @pytest.mark.parametrize('mobile_number', [
@@ -203,8 +202,8 @@ def test_notification_subject_fills_in_placeholders_for_email(sample_email_templ
 
 
 def test_notification_subject_fills_in_placeholders_for_letter(sample_letter_template):
-    sample_letter_template.subject = '((name))'
     noti = create_notification(sample_letter_template, personalisation={'name': 'hello'})
+    noti.template.subject = '((name))'
     assert noti.subject == 'hello'
 
 
@@ -240,6 +239,24 @@ def test_letter_notification_serializes_with_subject(client, sample_letter_templ
     assert res['subject'] == 'Template subject'
 
 
+def test_notification_references_template_history(client, sample_template):
+    noti = create_notification(sample_template)
+    sample_template.version = 3
+    sample_template.content = 'New template content'
+
+    res = noti.serialize()
+    assert res['template']['version'] == 1
+
+    assert res['body'] == noti.template.content
+    assert noti.template.content != sample_template.content
+
+
+def test_notification_requires_a_valid_template_version(client, sample_template):
+    sample_template.version = 2
+    with pytest.raises(IntegrityError):
+        create_notification(sample_template)
+
+
 def test_inbound_number_serializes_with_service(client, notify_db_session):
     service = create_service()
     inbound_number = create_inbound_number(number='1', service_id=service.id)
@@ -257,8 +274,7 @@ def test_inbound_number_returns_inbound_number(client, notify_db_session):
 
 
 def test_inbound_number_returns_none_when_no_inbound_number(client, notify_db_session):
-    with set_config(client.application, 'FROM_NUMBER', 'test'):
-        service = create_service(sms_sender=None)
+    service = create_service()
 
     assert not service.get_inbound_number()
 
@@ -276,5 +292,5 @@ def test_service_get_default_contact_letter(sample_service):
 
 
 def test_service_get_default_sms_sender(notify_db_session):
-    service = create_service(sms_sender='new_value')
-    assert service.get_default_sms_sender() == 'new_value'
+    service = create_service()
+    assert service.get_default_sms_sender() == 'testing'

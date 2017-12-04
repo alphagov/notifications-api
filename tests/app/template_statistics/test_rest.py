@@ -4,6 +4,8 @@ import json
 import pytest
 from freezegun import freeze_time
 
+from app.dao.templates_dao import dao_update_template
+
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_template as create_sample_template,
@@ -108,9 +110,9 @@ def test_get_template_statistics_for_service_limit_7_days(notify_db, notify_db_s
     json_resp = json.loads(response_for_a_week.get_data(as_text=True))
     assert len(json_resp['data']) == 2
     assert json_resp['data'][0]['count'] == 3
-    assert json_resp['data'][0]['template_name'] == 'Email Template Name'
+    assert json_resp['data'][0]['template_name'] == 'New Email Template Name'
     assert json_resp['data'][1]['count'] == 3
-    assert json_resp['data'][1]['template_name'] == 'Template Name'
+    assert json_resp['data'][1]['template_name'] == 'New SMS Template Name'
 
     mocked_redis_get.assert_called_once_with("{}-template-counter-limit-7-days".format(email.service_id))
     if cache_values:
@@ -138,9 +140,9 @@ def test_get_template_statistics_for_service_limit_30_days(notify_db, notify_db_
     json_resp = json.loads(response_for_a_month.get_data(as_text=True))
     assert len(json_resp['data']) == 2
     assert json_resp['data'][0]['count'] == 3
-    assert json_resp['data'][0]['template_name'] == 'Email Template Name'
+    assert json_resp['data'][0]['template_name'] == 'New Email Template Name'
     assert json_resp['data'][1]['count'] == 3
-    assert json_resp['data'][1]['template_name'] == 'Template Name'
+    assert json_resp['data'][1]['template_name'] == 'New SMS Template Name'
 
     mock_redis.assert_not_called()
 
@@ -159,9 +161,9 @@ def test_get_template_statistics_for_service_no_limit(notify_db, notify_db_sessi
     json_resp = json.loads(response_for_all.get_data(as_text=True))
     assert len(json_resp['data']) == 2
     assert json_resp['data'][0]['count'] == 3
-    assert json_resp['data'][0]['template_name'] == 'Email Template Name'
+    assert json_resp['data'][0]['template_name'] == 'New Email Template Name'
     assert json_resp['data'][1]['count'] == 3
-    assert json_resp['data'][1]['template_name'] == 'Template Name'
+    assert json_resp['data'][1]['template_name'] == 'New SMS Template Name'
 
     mock_redis.assert_not_called()
 
@@ -172,12 +174,20 @@ def set_up_notifications(notify_db, notify_db_session):
     today = datetime.now()
     a_week_ago = datetime.now() - timedelta(days=7)
     a_month_ago = datetime.now() - timedelta(days=30)
-    sample_notification(notify_db, notify_db_session, created_at=today, template=sms)
-    sample_notification(notify_db, notify_db_session, created_at=today, template=email)
-    sample_notification(notify_db, notify_db_session, created_at=a_week_ago, template=sms)
-    sample_notification(notify_db, notify_db_session, created_at=a_week_ago, template=email)
     sample_notification(notify_db, notify_db_session, created_at=a_month_ago, template=sms)
     sample_notification(notify_db, notify_db_session, created_at=a_month_ago, template=email)
+    email.name = 'Updated Email Template Name'
+    dao_update_template(email)
+    sms.name = 'Updated SMS Template Name'
+    dao_update_template(sms)
+    sample_notification(notify_db, notify_db_session, created_at=a_week_ago, template=sms)
+    sample_notification(notify_db, notify_db_session, created_at=a_week_ago, template=email)
+    email.name = 'New Email Template Name'
+    dao_update_template(email)
+    sms.name = 'New SMS Template Name'
+    dao_update_template(sms)
+    sample_notification(notify_db, notify_db_session, created_at=today, template=sms)
+    sample_notification(notify_db, notify_db_session, created_at=today, template=email)
     return email, sms
 
 

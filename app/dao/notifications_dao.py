@@ -14,7 +14,7 @@ from notifications_utils.recipients import (
     InvalidEmailError,
 )
 from werkzeug.datastructures import MultiDict
-from sqlalchemy import (desc, func, or_, and_, asc)
+from sqlalchemy import (desc, func, or_, asc)
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import case
 from sqlalchemy.sql import functions
@@ -22,17 +22,12 @@ from notifications_utils.international_billing_rates import INTERNATIONAL_BILLIN
 
 from app import db, create_uuid
 from app.dao import days_ago
-from app.dao.date_util import get_financial_year
 from app.models import (
-    Service,
     Notification,
-    NotificationEmailReplyTo,
     NotificationHistory,
-    NotificationStatistics,
     ScheduledNotification,
-    ServiceEmailReplyTo,
     Template,
-    EMAIL_TYPE,
+    TemplateHistory,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     LETTER_TYPE,
@@ -48,62 +43,6 @@ from app.models import (
 
 from app.dao.dao_utils import transactional
 from app.statsd_decorators import statsd
-
-
-def dao_get_notification_statistics_for_service_and_day(service_id, day):
-    # only used by stat-updating code in tasks.py
-    return NotificationStatistics.query.filter_by(
-        service_id=service_id,
-        day=day
-    ).order_by(desc(NotificationStatistics.day)).first()
-
-
-@statsd(namespace="dao")
-def dao_get_potential_notification_statistics_for_day(day):
-    all_services = db.session.query(
-        Service.id,
-        NotificationStatistics
-    ).outerjoin(
-        NotificationStatistics,
-        and_(
-            Service.id == NotificationStatistics.service_id,
-            or_(
-                NotificationStatistics.day == day,
-                NotificationStatistics.day == None  # noqa
-            )
-        )
-    ).order_by(
-        asc(Service.created_at)
-    )
-
-    notification_statistics = []
-    for service_notification_stats_pair in all_services:
-        if service_notification_stats_pair.NotificationStatistics:
-            notification_statistics.append(
-                service_notification_stats_pair.NotificationStatistics
-            )
-        else:
-            notification_statistics.append(
-                create_notification_statistics_dict(
-                    service_notification_stats_pair,
-                    day
-                )
-            )
-    return notification_statistics
-
-
-def create_notification_statistics_dict(service_id, day):
-    return {
-        'id': None,
-        'emails_requested': 0,
-        'emails_delivered': 0,
-        'emails_failed': 0,
-        'sms_requested': 0,
-        'sms_delivered': 0,
-        'sms_failed': 0,
-        'day': day.isoformat(),
-        'service': service_id
-    }
 
 
 @statsd(namespace="dao")
@@ -281,7 +220,7 @@ def get_notification_with_personalisation(service_id, notification_id, key_type)
     if key_type:
         filter_dict['key_type'] = key_type
 
-    return Notification.query.filter_by(**filter_dict).options(joinedload('template_history')).one()
+    return Notification.query.filter_by(**filter_dict).options(joinedload('template')).one()
 
 
 @statsd(namespace="dao")
@@ -337,7 +276,7 @@ def get_notifications_for_service(
     query = _filter_query(query, filter_dict)
     if personalisation:
         query = query.options(
-            joinedload('template_history')
+            joinedload('template')
         )
 
     return query.order_by(desc(Notification.created_at)).paginate(
@@ -361,7 +300,7 @@ def _filter_query(query, filter_dict=None):
     # filter by template
     template_types = multidict.getlist('template_type')
     if template_types:
-        query = query.join(Template).filter(Template.template_type.in_(template_types))
+        query = query.join(TemplateHistory).filter(TemplateHistory.template_type.in_(template_types))
 
     return query
 
@@ -370,19 +309,6 @@ def _filter_query(query, filter_dict=None):
 @transactional
 def delete_notifications_created_more_than_a_week_ago_by_type(notification_type):
     seven_days_ago = date.today() - timedelta(days=7)
-
-    # Following could be refactored when NotificationSmsReplyTo and NotificationLetterContact in models.py
-    if notification_type == EMAIL_TYPE:
-        subq = db.session.query(Notification.id).filter(
-            func.date(Notification.created_at) < seven_days_ago,
-            Notification.notification_type == notification_type
-        ).subquery()
-        deleted = db.session.query(
-            NotificationEmailReplyTo
-        ).filter(
-            NotificationEmailReplyTo.notification_id.in_(subq)
-        ).delete(synchronize_session='fetch')
-
     deleted = db.session.query(Notification).filter(
         func.date(Notification.created_at) < seven_days_ago,
         Notification.notification_type == notification_type,
@@ -493,7 +419,6 @@ def dao_update_notifications_for_job_to_sent_to_dvla(job_id, provider):
 @statsd(namespace="dao")
 @transactional
 def dao_update_notifications_by_reference(references, update_dict):
-    now = datetime.utcnow()
     updated_count = Notification.query.filter(
         Notification.reference.in_(references)
     ).update(
@@ -620,26 +545,6 @@ def dao_set_created_live_letter_api_notifications_to_pending():
     db.session.commit()
 
     return notifications
-
-
-@transactional
-def dao_create_notification_email_reply_to_mapping(notification_id, email_reply_to_id):
-    notification_email_reply_to = NotificationEmailReplyTo(
-        notification_id=notification_id,
-        service_email_reply_to_id=email_reply_to_id
-    )
-    db.session.add(notification_email_reply_to)
-
-
-def dao_get_notification_email_reply_for_notification(notification_id):
-    email_reply_to = ServiceEmailReplyTo.query.join(
-        NotificationEmailReplyTo
-    ).filter(
-        NotificationEmailReplyTo.notification_id == notification_id
-    ).first()
-
-    if email_reply_to:
-        return email_reply_to.email_address
 
 
 @statsd(namespace="dao")

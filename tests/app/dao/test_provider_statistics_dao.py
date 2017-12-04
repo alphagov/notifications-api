@@ -73,7 +73,7 @@ def noti_hist(notify_db, template, status='delivered', billable_units=None, key_
     notification_history = NotificationHistory(
         id=uuid.uuid4(),
         service=template.service,
-        template=template,
+        template_id=template.id,
         template_version=template.version,
         status=status,
         created_at=datetime.utcnow(),

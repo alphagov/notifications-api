@@ -53,3 +53,8 @@ applications:
     command: scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q job-tasks,retry-tasks,notify-internal-tasks
     env:
       NOTIFY_APP_NAME: delivery-worker
+
+  - name: notify-delivery-worker-receipts
+    command: scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q ses-callbacks
+    env:
+      NOTIFY_APP_NAME: delivery-worker-receipts

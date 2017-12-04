@@ -1,7 +1,7 @@
 ---
 
 inherit: manifest-api-base.yml
-
+command: scripts/run_app_paas.sh gunicorn -c /home/vcap/app/gunicorn_config.py --error-logfile /home/vcap/logs/gunicorn_error.log -w 6 -b 0.0.0.0:$PORT application
 services:
   - notify-aws
   - notify-config

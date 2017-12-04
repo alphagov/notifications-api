@@ -1,11 +1,11 @@
 import json
 import uuid
 
-from app.models import Notification
+from app.models import Notification, SMS_AUTH_TYPE, EMAIL_AUTH_TYPE
 from tests import create_authorization_header
 
 
-def test_create_invited_user(client, sample_service, mocker, invitation_email_template):
+def test_create_invited_user(admin_request, sample_service, mocker, invitation_email_template):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     email_address = 'invited_user@service.gov.uk'
     invite_from = sample_service.users[0]
@@ -14,26 +14,49 @@ def test_create_invited_user(client, sample_service, mocker, invitation_email_te
         'service': str(sample_service.id),
         'email_address': email_address,
         'from_user': str(invite_from.id),
-        'permissions': 'send_messages,manage_service,manage_api_keys'
+        'permissions': 'send_messages,manage_service,manage_api_keys',
+        'auth_type': EMAIL_AUTH_TYPE
     }
-    auth_header = create_authorization_header()
 
-    response = client.post(
-        '/service/{}/invite'.format(sample_service.id),
-        headers=[('Content-Type', 'application/json'), auth_header],
-        data=json.dumps(data)
+    json_resp = admin_request.post(
+        'invite.create_invited_user',
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=201
     )
-    assert response.status_code == 201
-    json_resp = json.loads(response.get_data(as_text=True))
 
     assert json_resp['data']['service'] == str(sample_service.id)
     assert json_resp['data']['email_address'] == email_address
     assert json_resp['data']['from_user'] == str(invite_from.id)
     assert json_resp['data']['permissions'] == 'send_messages,manage_service,manage_api_keys'
+    assert json_resp['data']['auth_type'] == EMAIL_AUTH_TYPE
     assert json_resp['data']['id']
 
     notification = Notification.query.first()
+    assert notification.reply_to_text == "notify@gov.uk"
     mocked.assert_called_once_with([(str(notification.id))], queue="notify-internal-tasks")
+
+
+def test_create_invited_user_without_auth_type(admin_request, sample_service, mocker, invitation_email_template):
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    email_address = 'invited_user@service.gov.uk'
+    invite_from = sample_service.users[0]
+
+    data = {
+        'service': str(sample_service.id),
+        'email_address': email_address,
+        'from_user': str(invite_from.id),
+        'permissions': 'send_messages,manage_service,manage_api_keys',
+    }
+
+    json_resp = admin_request.post(
+        'invite.create_invited_user',
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=201
+    )
+
+    assert json_resp['data']['auth_type'] == SMS_AUTH_TYPE
 
 
 def test_create_invited_user_invalid_email(client, sample_service, mocker):
@@ -93,6 +116,7 @@ def test_get_all_invited_users_by_service(client, notify_db, notify_db_session, 
     for invite in json_resp['data']:
         assert invite['service'] == str(sample_service.id)
         assert invite['from_user'] == str(invite_from.id)
+        assert invite['auth_type'] == SMS_AUTH_TYPE
         assert invite['id']
 
 

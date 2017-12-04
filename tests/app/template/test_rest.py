@@ -1,4 +1,3 @@
-import uuid
 import json
 import random
 import string
@@ -17,9 +16,7 @@ from tests.app.conftest import (
     sample_template_without_letter_permission,
     sample_template_without_sms_permission,
 )
-from tests.app.db import create_service
-
-from app.dao.templates_dao import dao_get_template_by_id
+from tests.app.db import create_service, create_letter_contact, create_template
 
 
 @pytest.mark.parametrize('template_type, subject', [
@@ -303,76 +300,26 @@ def test_should_be_able_to_get_all_templates_for_a_service(client, sample_user, 
 
     assert response.status_code == 200
     update_json_resp = json.loads(response.get_data(as_text=True))
-    assert update_json_resp['data'][0]['name'] == 'my template 2'
+    assert update_json_resp['data'][0]['name'] == 'my template 1'
     assert update_json_resp['data'][0]['version'] == 1
     assert update_json_resp['data'][0]['created_at']
-    assert update_json_resp['data'][1]['name'] == 'my template 1'
+    assert update_json_resp['data'][1]['name'] == 'my template 2'
     assert update_json_resp['data'][1]['version'] == 1
     assert update_json_resp['data'][1]['created_at']
 
 
-def test_should_get_only_templates_for_that_service(client, sample_user, service_factory):
+def test_should_get_only_templates_for_that_service(admin_request, notify_db_session):
+    service_1 = create_service(service_name='service_1')
+    service_2 = create_service(service_name='service_2')
+    id_1 = create_template(service_1).id
+    id_2 = create_template(service_1).id
+    id_3 = create_template(service_2).id
 
-    service_1 = service_factory.get('service 1', email_from='service.1')
-    service_2 = service_factory.get('service 2', email_from='service.2')
+    json_resp_1 = admin_request.get('template.get_all_templates_for_service', service_id=service_1.id)
+    json_resp_2 = admin_request.get('template.get_all_templates_for_service', service_id=service_2.id)
 
-    auth_header_1 = create_authorization_header()
-
-    response_1 = client.get(
-        '/service/{}/template'.format(service_1.id),
-        headers=[auth_header_1]
-    )
-
-    auth_header_2 = create_authorization_header()
-
-    response_2 = client.get(
-        '/service/{}/template'.format(service_2.id),
-        headers=[auth_header_2]
-    )
-
-    assert response_1.status_code == 200
-    assert response_2.status_code == 200
-
-    json_resp_1 = json.loads(response_1.get_data(as_text=True))
-    json_resp_2 = json.loads(response_2.get_data(as_text=True))
-
-    assert len(json_resp_1['data']) == 1
-    assert len(json_resp_2['data']) == 1
-
-    data = {
-        'name': 'my template 2',
-        'template_type': EMAIL_TYPE,
-        'subject': 'subject 2',
-        'content': 'template content',
-        'service': str(service_1.id),
-        'created_by': str(sample_user.id)
-    }
-    data = json.dumps(data)
-    create_auth_header = create_authorization_header()
-    resp = client.post(
-        '/service/{}/template'.format(service_1.id),
-        headers=[('Content-Type', 'application/json'), create_auth_header],
-        data=data
-    )
-
-    response_3 = client.get(
-        '/service/{}/template'.format(service_1.id),
-        headers=[auth_header_1]
-    )
-
-    response_4 = client.get(
-        '/service/{}/template'.format(service_2.id),
-        headers=[auth_header_2]
-    )
-
-    assert response_3.status_code == 200
-    assert response_4.status_code == 200
-
-    json_resp_3 = json.loads(response_3.get_data(as_text=True))
-    json_resp_4 = json.loads(response_4.get_data(as_text=True))
-
-    assert len(json_resp_3['data']) == 2
-    assert len(json_resp_4['data']) == 1
+    assert {template['id'] for template in json_resp_1['data']} == {str(id_1), str(id_2)}
+    assert {template['id'] for template in json_resp_2['data']} == {str(id_3)}
 
 
 @pytest.mark.parametrize(
@@ -616,6 +563,62 @@ def test_update_set_process_type_on_template(client, sample_template):
 
     template = dao_get_template_by_id(sample_template.id)
     assert template.process_type == 'priority'
+
+
+def test_create_a_template_with_reply_to(admin_request, sample_user):
+    service = create_service(service_permissions=['letter'])
+    letter_contact = create_letter_contact(service, "Edinburgh, ED1 1AA")
+    data = {
+        'name': 'my template',
+        'subject': 'subject',
+        'template_type': 'letter',
+        'content': 'template <b>content</b>',
+        'service': str(service.id),
+        'created_by': str(sample_user.id),
+        'reply_to': str(letter_contact.id),
+    }
+
+    json_resp = admin_request.post('template.create_template', service_id=service.id, _data=data, _expected_status=201)
+
+    assert json_resp['data']['template_type'] == 'letter'
+    assert json_resp['data']['reply_to'] == str(letter_contact.id)
+
+    template = Template.query.get(json_resp['data']['id'])
+    from app.schemas import template_schema
+    assert sorted(json_resp['data']) == sorted(template_schema.dump(template).data)
+
+
+def test_get_template_reply_to(client, sample_letter_template):
+    auth_header = create_authorization_header()
+    letter_contact = create_letter_contact(sample_letter_template.service, "Edinburgh, ED1 1AA")
+    sample_letter_template.reply_to = str(letter_contact.id)
+
+    resp = client.get('/service/{}/template/{}'.format(sample_letter_template.service_id, sample_letter_template.id),
+                      headers=[auth_header])
+
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+    json_resp = json.loads(resp.get_data(as_text=True))
+
+    assert 'service_letter_contact_id' not in json_resp['data']
+    assert json_resp['data']['reply_to'] == str(letter_contact.id)
+
+
+def test_update_template_reply_to(client, sample_letter_template):
+    auth_header = create_authorization_header()
+    letter_contact = create_letter_contact(sample_letter_template.service, "Edinburgh, ED1 1AA")
+
+    data = {
+        'reply_to': str(letter_contact.id),
+    }
+
+    resp = client.post('/service/{}/template/{}'.format(sample_letter_template.service_id, sample_letter_template.id),
+                       data=json.dumps(data),
+                       headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+
+    template = dao_get_template_by_id(sample_letter_template.id)
+    assert template.reply_to == letter_contact.id
 
 
 def test_update_redact_template(admin_request, sample_template):

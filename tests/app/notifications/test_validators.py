@@ -11,8 +11,8 @@ from app.notifications.validators import (
     check_sms_content_char_count,
     check_service_over_api_rate_limit,
     validate_and_format_recipient,
-    check_service_email_reply_to_id
-)
+    check_service_email_reply_to_id,
+    check_service_sms_sender_id)
 
 from app.v2.errors import (
     BadRequestError,
@@ -23,7 +23,7 @@ from tests.app.conftest import (
     sample_service as create_service,
     sample_service_whitelist,
     sample_api_key)
-from tests.app.db import create_reply_to_email
+from tests.app.db import create_reply_to_email, create_service_sms_sender
 
 
 @pytest.mark.parametrize('key_type', ['test', 'team', 'normal'])
@@ -311,9 +311,9 @@ def test_should_not_rate_limit_if_limiting_is_disabled(
 
 @pytest.mark.parametrize('key_type', ['test', 'normal'])
 def test_rejects_api_calls_with_international_numbers_if_service_does_not_allow_int_sms(
-    key_type,
-    notify_db,
-    notify_db_session,
+        key_type,
+        notify_db,
+        notify_db_session,
 ):
     service = create_service(notify_db, notify_db_session, permissions=[SMS_TYPE])
     with pytest.raises(BadRequestError) as e:
@@ -331,27 +331,55 @@ def test_allows_api_calls_with_international_numbers_if_service_does_allow_int_s
     assert result == '201212341234'
 
 
-def test_check_service_email_reply_to_id_where_reply_to_id_is_none():
-    assert check_service_email_reply_to_id(None, None) is None
+@pytest.mark.parametrize('notification_type', ['sms', 'email', 'letter'])
+def test_check_service_email_reply_to_id_where_reply_to_id_is_none(notification_type):
+    assert check_service_email_reply_to_id(None, None, notification_type) is None
+
+
+def test_check_service_email_reply_to_where_email_reply_to_is_found(sample_service):
+    reply_to_address = create_reply_to_email(sample_service, "test@test.com")
+    assert check_service_email_reply_to_id(sample_service.id, reply_to_address.id, EMAIL_TYPE) == "test@test.com"
 
 
 def test_check_service_email_reply_to_id_where_service_id_is_not_found(sample_service, fake_uuid):
     reply_to_address = create_reply_to_email(sample_service, "test@test.com")
     with pytest.raises(BadRequestError) as e:
-        check_service_email_reply_to_id(fake_uuid, reply_to_address.id)
+        check_service_email_reply_to_id(fake_uuid, reply_to_address.id, EMAIL_TYPE)
     assert e.value.status_code == 400
-    assert e.value.message == 'email_reply_to_id {} does not exist in database for service id {}'\
+    assert e.value.message == 'email_reply_to_id {} does not exist in database for service id {}' \
         .format(reply_to_address.id, fake_uuid)
 
 
 def test_check_service_email_reply_to_id_where_reply_to_id_is_not_found(sample_service, fake_uuid):
     with pytest.raises(BadRequestError) as e:
-        check_service_email_reply_to_id(sample_service.id, fake_uuid)
+        check_service_email_reply_to_id(sample_service.id, fake_uuid, EMAIL_TYPE)
     assert e.value.status_code == 400
-    assert e.value.message == 'email_reply_to_id {} does not exist in database for service id {}'\
+    assert e.value.message == 'email_reply_to_id {} does not exist in database for service id {}' \
         .format(fake_uuid, sample_service.id)
 
 
-def test_check_service_email_reply_to_id_where_reply_to_id_is_found(sample_service):
-    reply_to_email = create_reply_to_email(sample_service, 'test@test.com')
-    assert check_service_email_reply_to_id(sample_service.id, reply_to_email.id) is None
+@pytest.mark.parametrize('notification_type', ['sms', 'email', 'letter'])
+def test_check_service_sms_sender_id_where_sms_sender_id_is_none(notification_type):
+    assert check_service_sms_sender_id(None, None, notification_type) is None
+
+
+def test_check_service_sms_sender_id_where_sms_sender_id_is_found(sample_service):
+    sms_sender = create_service_sms_sender(service=sample_service, sms_sender='123456')
+    assert check_service_sms_sender_id(sample_service.id, sms_sender.id, SMS_TYPE) == '123456'
+
+
+def test_check_service_sms_sender_id_where_service_id_is_not_found(sample_service, fake_uuid):
+    sms_sender = create_service_sms_sender(service=sample_service, sms_sender='123456')
+    with pytest.raises(BadRequestError) as e:
+        check_service_sms_sender_id(fake_uuid, sms_sender.id, SMS_TYPE)
+    assert e.value.status_code == 400
+    assert e.value.message == 'sms_sender_id {} does not exist in database for service id {}' \
+        .format(sms_sender.id, fake_uuid)
+
+
+def test_check_service_sms_sender_id_where_sms_sender_is_not_found(sample_service, fake_uuid):
+    with pytest.raises(BadRequestError) as e:
+        check_service_sms_sender_id(sample_service.id, fake_uuid, SMS_TYPE)
+    assert e.value.status_code == 400
+    assert e.value.message == 'sms_sender_id {} does not exist in database for service id {}' \
+        .format(fake_uuid, sample_service.id)

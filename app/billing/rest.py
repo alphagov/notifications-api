@@ -11,6 +11,14 @@ from app.dao.date_util import get_financial_year, get_months_for_financial_year
 from app.errors import register_errors
 from app.models import SMS_TYPE, EMAIL_TYPE
 from app.utils import convert_utc_to_bst
+from app.dao.annual_billing_dao import (dao_get_free_sms_fragment_limit_for_year,
+                                        dao_get_all_free_sms_fragment_limit,
+                                        dao_create_or_update_annual_billing_for_year,
+                                        dao_update_annual_billing_for_current_and_future_years)
+from app.billing.billing_schemas import create_or_update_free_sms_fragment_limit_schema
+from app.errors import InvalidRequest
+from app.schema_validation import validate
+from app.dao.date_util import get_current_financial_year_start_year
 
 billing_blueprint = Blueprint(
     'billing',
@@ -86,3 +94,57 @@ def _transform_billing_for_month(billing_for_month):
         "notification_type": billing_for_month.notification_type,
         "rate": rate
     }
+
+
+@billing_blueprint.route('/free-sms-fragment-limit', methods=["GET"])
+def get_free_sms_fragment_limit(service_id):
+
+    financial_year_start = request.args.get('financial_year_start')
+
+    annual_billing = dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start)
+
+    if annual_billing is None:
+        # An entry does not exist in annual_billing table for that service and year. If it is a past year,
+        # we return the oldest entry.
+        # If it is the current or future years, we create an entry in the db table using the newest record,
+        # and return that number.  If all fails, we return InvalidRequest.
+        sms_list = dao_get_all_free_sms_fragment_limit(service_id)
+
+        if not sms_list:
+            raise InvalidRequest('no free-sms-fragment-limit entry for service {} in DB'.format(service_id), 404)
+        else:
+            if financial_year_start is None:
+                financial_year_start = get_current_financial_year_start_year()
+
+            if int(financial_year_start) < get_current_financial_year_start_year():
+                annual_billing = sms_list[0]   # The oldest entry
+            else:
+                annual_billing = sms_list[-1]  # The newest entry
+
+                annual_billing = dao_create_or_update_annual_billing_for_year(service_id,
+                                                                              annual_billing.free_sms_fragment_limit,
+                                                                              financial_year_start)
+
+    return jsonify(annual_billing.serialize_free_sms_items()), 200
+
+
+@billing_blueprint.route('/free-sms-fragment-limit', methods=["POST"])
+def create_or_update_free_sms_fragment_limit(service_id):
+
+    req_args = request.get_json()
+
+    form = validate(req_args, create_or_update_free_sms_fragment_limit_schema)
+
+    update_free_sms_fragment_limit_data(service_id,
+                                        free_sms_fragment_limit=form.get('free_sms_fragment_limit'),
+                                        financial_year_start=form.get('financial_year_start'))
+    return jsonify(form), 201
+
+
+def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit, financial_year_start=None):
+    current_year = get_current_financial_year_start_year()
+    if financial_year_start is None or financial_year_start >= current_year:
+        dao_update_annual_billing_for_current_and_future_years(service_id, free_sms_fragment_limit)
+    else:
+        dao_create_or_update_annual_billing_for_year(service_id,
+                                                     free_sms_fragment_limit, financial_year_start)

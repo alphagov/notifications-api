@@ -1,10 +1,9 @@
 from contextlib import contextmanager
 import os
 
+from flask import Flask
 from alembic.command import upgrade
 from alembic.config import Config
-from flask_migrate import Migrate, MigrateCommand
-from flask_script import Manager
 import boto3
 import pytest
 import sqlalchemy
@@ -14,7 +13,8 @@ from app import create_app, db
 
 @pytest.fixture(scope='session')
 def notify_api():
-    app = create_app()
+    app = Flask('test')
+    create_app(app)
 
     # deattach server-error error handlers - error_handler_spec looks like:
     #   {'blueprint_name': {
@@ -76,8 +76,6 @@ def notify_db(notify_api, worker_id):
     current_app.config['SQLALCHEMY_DATABASE_URI'] += '_{}'.format(worker_id)
     create_test_db(current_app.config['SQLALCHEMY_DATABASE_URI'])
 
-    Migrate(notify_api, db)
-    Manager(db, MigrateCommand)
     BASE_DIR = os.path.dirname(os.path.dirname(__file__))
     ALEMBIC_CONFIG = os.path.join(BASE_DIR, 'migrations')
     config = Config(ALEMBIC_CONFIG + '/alembic.ini')
@@ -106,7 +104,8 @@ def notify_db_session(notify_db):
                             "template_process_type",
                             "dvla_organisation",
                             "notification_status_types",
-                            "service_permission_types"]:
+                            "service_permission_types",
+                            "auth_type"]:
             notify_db.engine.execute(tbl.delete())
     notify_db.session.commit()
 

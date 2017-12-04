@@ -33,7 +33,7 @@ def _is_versioning_col(col):
     return "version_meta" in col.info
 
 
-def _history_mapper(local_mapper):
+def _history_mapper(local_mapper):  # noqa (C901 too complex)
     cls = local_mapper.class_
 
     # set the "active_history" flag
@@ -176,7 +176,6 @@ def create_history(obj, history_cls=None):
         history_mapper = obj.__history_mapper__
         history_cls = history_mapper.class_
 
-    history = history_cls()
     obj_mapper = object_mapper(obj)
 
     obj_state = attributes.instance_state(obj)
@@ -201,7 +200,7 @@ def create_history(obj, history_cls=None):
         # not yet have a value before insert
 
         elif isinstance(prop, RelationshipProperty):
-            if hasattr(history, prop.key + '_id'):
+            if hasattr(history_cls, prop.key + '_id'):
                 foreign_obj = getattr(obj, prop.key)
                 # if it's a nullable relationship, foreign_obj will be None, and we actually want to record that
                 data[prop.key + '_id'] = getattr(foreign_obj, 'id', None)
@@ -218,7 +217,4 @@ def create_history(obj, history_cls=None):
     data['version'] = obj.version
     data['created_at'] = obj.created_at
 
-    for key, value in data.items():
-        setattr(history, key, value)
-
-    return history
+    return history_cls(**data)

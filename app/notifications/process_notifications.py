@@ -13,11 +13,22 @@ from notifications_utils.recipients import (
 from app import redis_store
 from app.celery import provider_tasks
 from app.config import QueueNames
-from app.models import SMS_TYPE, Notification, KEY_TYPE_TEST, EMAIL_TYPE, NOTIFICATION_CREATED, ScheduledNotification
-from app.dao.notifications_dao import (dao_create_notification,
-                                       dao_delete_notifications_and_history_by_id,
-                                       dao_created_scheduled_notification,
-                                       dao_create_notification_email_reply_to_mapping)
+
+from app.models import (
+    EMAIL_TYPE,
+    KEY_TYPE_TEST,
+    SMS_TYPE,
+    NOTIFICATION_CREATED,
+    Notification,
+    ScheduledNotification
+)
+from app.dao.notifications_dao import (
+    dao_create_notification,
+    dao_delete_notifications_and_history_by_id,
+    dao_created_scheduled_notification
+)
+
+from app.statsd_decorators import statsd
 from app.v2.errors import BadRequestError
 from app.utils import get_template_instance, cache_key_for_service_template_counter, convert_bst_to_utc
 
@@ -35,6 +46,7 @@ def check_placeholders(template_object):
         raise BadRequestError(fields=[{'template': message}], message=message)
 
 
+@statsd(namespace="performance-testing")
 def persist_notification(
     *,
     template_id,
@@ -53,7 +65,8 @@ def persist_notification(
     notification_id=None,
     simulated=False,
     created_by_id=None,
-    status=NOTIFICATION_CREATED
+    status=NOTIFICATION_CREATED,
+    reply_to_text=None
 ):
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:
@@ -75,7 +88,8 @@ def persist_notification(
         client_reference=client_reference,
         reference=reference,
         created_by_id=created_by_id,
-        status=status
+        status=status,
+        reply_to_text=reply_to_text,
     )
 
     if notification_type == SMS_TYPE:
@@ -102,6 +116,7 @@ def persist_notification(
     return notification
 
 
+@statsd(namespace="performance-testing")
 def send_notification_to_queue(notification, research_mode, queue=None):
     if research_mode or notification.key_type == KEY_TYPE_TEST:
         queue = QueueNames.RESEARCH_MODE
@@ -142,7 +157,3 @@ def persist_scheduled_notification(notification_id, scheduled_for):
     scheduled_notification = ScheduledNotification(notification_id=notification_id,
                                                    scheduled_for=scheduled_datetime)
     dao_created_scheduled_notification(scheduled_notification)
-
-
-def persist_email_reply_to_id_for_notification(notification_id, email_reply_to_id):
-    dao_create_notification_email_reply_to_mapping(notification_id, email_reply_to_id)

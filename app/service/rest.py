@@ -7,7 +7,6 @@ from flask import (
     current_app,
     Blueprint
 )
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao import notifications_dao
@@ -18,36 +17,32 @@ from app.dao.api_key_dao import (
     get_unsigned_secret,
     expire_api_key)
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
-from app.dao.service_inbound_api_dao import (
-    save_service_inbound_api,
-    reset_service_inbound_api,
-    get_service_inbound_api
-)
 from app.dao.service_sms_sender_dao import (
-    insert_or_update_service_sms_sender,
     dao_add_sms_sender_for_service,
     dao_update_service_sms_sender,
     dao_get_service_sms_senders_by_id,
     dao_get_sms_senders_by_service_id,
-    update_existing_sms_sender_with_inbound_number)
+    update_existing_sms_sender_with_inbound_number
+)
 from app.dao.services_dao import (
-    dao_fetch_service_by_id,
-    dao_fetch_all_services,
-    dao_create_service,
-    dao_update_service,
-    dao_fetch_all_services_by_user,
     dao_add_user_to_service,
-    dao_remove_user_from_service,
+    dao_archive_service,
+    dao_create_service,
+    dao_fetch_all_services,
+    dao_fetch_all_services_by_user,
+    dao_fetch_monthly_historical_stats_for_service,
+    dao_fetch_monthly_historical_usage_by_template_for_service,
+    dao_fetch_service_by_id,
     dao_fetch_stats_for_service,
     dao_fetch_todays_stats_for_service,
     dao_fetch_todays_stats_for_all_services,
-    dao_archive_service,
-    fetch_stats_by_date_range_for_all_services,
-    dao_suspend_service,
     dao_resume_service,
-    dao_fetch_monthly_historical_stats_for_service,
-    dao_fetch_monthly_historical_stats_by_template_for_service,
-    fetch_aggregate_stats_by_date_range_for_all_services)
+    dao_remove_user_from_service,
+    dao_suspend_service,
+    dao_update_service,
+    fetch_aggregate_stats_by_date_range_for_all_services,
+    fetch_stats_by_date_range_for_all_services
+)
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
     dao_add_and_commit_whitelisted_contacts,
@@ -55,14 +50,12 @@ from app.dao.service_whitelist_dao import (
 )
 from app.dao.service_email_reply_to_dao import (
     add_reply_to_email_address_for_service,
-    create_or_update_email_reply_to,
     dao_get_reply_to_by_id,
     dao_get_reply_to_by_service_id,
     update_reply_to_email_address
 )
 from app.dao.service_letter_contact_dao import (
     dao_get_letter_contacts_by_service_id,
-    create_or_update_letter_contact,
     dao_get_letter_contact_by_id,
     add_letter_contact_for_service,
     update_letter_contact
@@ -73,17 +66,14 @@ from app.errors import (
     InvalidRequest,
     register_errors
 )
-from app.models import Service, ServiceInboundApi
+from app.models import Service
 from app.schema_validation import validate
 from app.service import statistics
-from app.service.service_inbound_api_schema import (
-    service_inbound_api,
-    update_service_inbound_api_schema
-)
 from app.service.service_senders_schema import (
     add_service_email_reply_to_request,
     add_service_letter_contact_block_request,
-    add_service_sms_sender_request)
+    add_service_sms_sender_request
+)
 from app.service.utils import get_whitelist_objects
 from app.service.sender import send_notification_to_service_users
 from app.service.send_notification import send_one_off_notification
@@ -97,6 +87,7 @@ from app.schemas import (
     detailed_service_schema
 )
 from app.utils import pagination_links
+from app.billing.rest import update_free_sms_fragment_limit_data
 
 service_blueprint = Blueprint('service', __name__)
 
@@ -167,10 +158,6 @@ def create_service():
         errors = {'user_id': ['Missing data for required field.']}
         raise InvalidRequest(errors, status_code=400)
 
-    # TODO: to be removed when front-end is updated
-    if 'free_sms_fragment_limit' not in data:
-        data['free_sms_fragment_limit'] = current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
-
     # validate json with marshmallow
     service_schema.load(request.get_json())
 
@@ -194,14 +181,9 @@ def update_service(service_id):
     update_dict = service_schema.load(current_data).data
     dao_update_service(update_dict)
 
-    if 'reply_to_email_address' in req_json:
-        create_or_update_email_reply_to(fetched_service.id, req_json['reply_to_email_address'])
-
-    if 'sms_sender' in req_json:
-        insert_or_update_service_sms_sender(fetched_service, req_json['sms_sender'])
-
-    if 'letter_contact_block' in req_json:
-        create_or_update_letter_contact(fetched_service.id, req_json['letter_contact_block'])
+    # bridging code between frontend is deployed and data has not been migrated yet. Can only update current year
+    if 'free_sms_fragment_limit' in req_json:
+        update_free_sms_fragment_limit_data(fetched_service.id, req_json['free_sms_fragment_limit'])
 
     if service_going_live:
         send_notification_to_service_users(
@@ -518,68 +500,30 @@ def resume_service(service_id):
     return '', 204
 
 
-@service_blueprint.route('/<uuid:service_id>/notifications/templates/monthly', methods=['GET'])
-def get_monthly_template_stats(service_id):
-    service = dao_fetch_service_by_id(service_id)
+@service_blueprint.route('/<uuid:service_id>/notifications/templates_usage/monthly', methods=['GET'])
+def get_monthly_template_usage(service_id):
     try:
-        return jsonify(data=dao_fetch_monthly_historical_stats_by_template_for_service(
-            service.id,
+        data = dao_fetch_monthly_historical_usage_by_template_for_service(
+            service_id,
             int(request.args.get('year', 'NaN'))
-        ))
+        )
+
+        stats = list()
+        for i in data:
+            stats.append(
+                {
+                    'template_id': str(i.template_id),
+                    'name': i.name,
+                    'type': i.template_type,
+                    'month': i.month,
+                    'year': i.year,
+                    'count': i.count
+                }
+            )
+
+        return jsonify(stats=stats), 200
     except ValueError:
         raise InvalidRequest('Year must be a number', status_code=400)
-
-
-@service_blueprint.route('/<uuid:service_id>/inbound-api', methods=['POST'])
-def create_service_inbound_api(service_id):
-    data = request.get_json()
-    validate(data, service_inbound_api)
-    data["service_id"] = service_id
-    inbound_api = ServiceInboundApi(**data)
-    try:
-        save_service_inbound_api(inbound_api)
-    except SQLAlchemyError as e:
-        return handle_sql_errror(e)
-
-    return jsonify(data=inbound_api.serialize()), 201
-
-
-@service_blueprint.route('/<uuid:service_id>/inbound-api/<uuid:inbound_api_id>', methods=['POST'])
-def update_service_inbound_api(service_id, inbound_api_id):
-    data = request.get_json()
-    validate(data, update_service_inbound_api_schema)
-
-    to_update = get_service_inbound_api(inbound_api_id, service_id)
-
-    reset_service_inbound_api(service_inbound_api=to_update,
-                              updated_by_id=data["updated_by_id"],
-                              url=data.get("url", None),
-                              bearer_token=data.get("bearer_token", None))
-    return jsonify(data=to_update.serialize()), 200
-
-
-@service_blueprint.route('/<uuid:service_id>/inbound-api/<uuid:inbound_api_id>', methods=["GET"])
-def fetch_service_inbound_api(service_id, inbound_api_id):
-    inbound_api = get_service_inbound_api(inbound_api_id, service_id)
-
-    return jsonify(data=inbound_api.serialize()), 200
-
-
-def handle_sql_errror(e):
-    if hasattr(e, 'orig') and hasattr(e.orig, 'pgerror') and e.orig.pgerror \
-            and ('duplicate key value violates unique constraint "ix_service_inbound_api_service_id"'
-                 in e.orig.pgerror):
-        return jsonify(
-            result='error',
-            message={'name': ["You can only have one URL and bearer token for your service."]}
-        ), 400
-    elif hasattr(e, 'orig') and hasattr(e.orig, 'pgerror') and e.orig.pgerror \
-            and ('insert or update on table "service_inbound_api" violates '
-                 'foreign key constraint "service_inbound_api_service_id_fkey"'
-                 in e.orig.pgerror):
-        return jsonify(result='error', message="No result found"), 404
-    else:
-        raise e
 
 
 @service_blueprint.route('/<uuid:service_id>/send-notification', methods=['POST'])

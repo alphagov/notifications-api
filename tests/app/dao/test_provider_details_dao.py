@@ -67,8 +67,6 @@ def test_can_get_email_providers(restore_provider_details):
 
 
 def test_should_not_error_if_any_provider_in_code_not_in_database(restore_provider_details):
-    providers = ProviderDetails.query.all()
-
     ProviderDetails.query.filter_by(identifier='mmg').delete()
 
     assert clients.get_sms_client('mmg')

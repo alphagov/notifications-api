@@ -1,10 +1,10 @@
 from urllib.parse import unquote
 
 import iso8601
-from flask import jsonify, Blueprint, current_app, request
-from notifications_utils.recipients import validate_and_format_phone_number
+from flask import jsonify, Blueprint, current_app, request, abort
+from notifications_utils.recipients import try_validate_and_format_phone_number
 
-from app import statsd_client, firetext_client, mmg_client
+from app import statsd_client
 from app.celery import tasks
 from app.config import QueueNames
 from app.dao.services_dao import dao_fetch_service_by_inbound_number
@@ -56,6 +56,15 @@ def receive_mmg_sms():
 def receive_firetext_sms():
     post_data = request.form
 
+    # This is pre-implementation test code to validate the provider is basic auth headers.
+    auth = request.authorization
+    if not auth:
+        current_app.logger.warning("Inbound sms no auth header")
+        abort(401)
+    elif auth.username != 'notify' or auth.password not in current_app.config['FIRETEXT_INBOUND_SMS_AUTH']:
+        current_app.logger.warning("Inbound sms incorrect username ({}) or password".format(auth.username))
+        abort(403)
+
     inbound_number = strip_leading_forty_four(post_data['destination'])
 
     service = fetch_potential_service(inbound_number, 'firetext')
@@ -82,7 +91,11 @@ def receive_firetext_sms():
 
 
 def format_mmg_message(message):
-    return unquote(message.replace('+', ' '))
+    return unescape_string(unquote(message.replace('+', ' ')))
+
+
+def unescape_string(string):
+    return string.encode('raw_unicode_escape').decode('unicode_escape')
 
 
 def format_mmg_datetime(date):
@@ -96,7 +109,11 @@ def format_mmg_datetime(date):
 
 
 def create_inbound_sms_object(service, content, from_number, provider_ref, date_received, provider_name):
-    user_number = validate_and_format_phone_number(from_number, international=True)
+    user_number = try_validate_and_format_phone_number(
+        from_number,
+        international=True,
+        log_msg='Invalid from_number received'
+    )
 
     provider_date = date_received
     if provider_date:

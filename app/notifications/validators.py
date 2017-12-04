@@ -8,11 +8,13 @@ from notifications_utils.recipients import (
 from notifications_utils.clients.redis import rate_limit_cache_key, daily_limit_cache_key
 
 from app.dao import services_dao, templates_dao
+from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.models import (
     INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE,
     KEY_TYPE_TEST, KEY_TYPE_TEAM, SCHEDULE_NOTIFICATIONS
 )
 from app.service.utils import service_allowed_to_send_to
+from app.statsd_decorators import statsd
 from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
 from app import redis_store
 from app.notifications.process_notifications import create_content_for_notification
@@ -45,6 +47,7 @@ def check_service_over_daily_message_limit(key_type, service):
             raise TooManyRequestsError(service.message_limit)
 
 
+@statsd(namespace="performance-testing")
 def check_rate_limiting(service, api_key):
     check_service_over_api_rate_limit(service, api_key)
     check_service_over_daily_message_limit(api_key.key_type, service)
@@ -79,12 +82,14 @@ def service_has_permission(notify_type, permissions):
     return notify_type in [p.permission for p in permissions]
 
 
+@statsd(namespace="performance-testing")
 def check_service_has_permission(notify_type, permissions):
     if not service_has_permission(notify_type, permissions):
         raise BadRequestError(message="Cannot send {}".format(
             get_public_notify_type_text(notify_type, plural=True)))
 
 
+@statsd(namespace="performance-testing")
 def check_service_can_schedule_notification(permissions, scheduled_for):
     if scheduled_for:
         if not service_has_permission(SCHEDULE_NOTIFICATIONS, permissions):
@@ -116,6 +121,7 @@ def check_sms_content_char_count(content_count):
         raise BadRequestError(message=message)
 
 
+@statsd(namespace="performance-testing")
 def validate_template(template_id, personalisation, service, notification_type):
     try:
         template = templates_dao.dao_get_template_by_id_and_service_id(
@@ -135,11 +141,21 @@ def validate_template(template_id, personalisation, service, notification_type):
     return template, template_with_content
 
 
-def check_service_email_reply_to_id(service_id, reply_to_id):
-    if not (reply_to_id is None):
+def check_service_email_reply_to_id(service_id, reply_to_id, notification_type):
+    if reply_to_id:
         try:
-            dao_get_reply_to_by_id(service_id, reply_to_id)
+            return dao_get_reply_to_by_id(service_id, reply_to_id).email_address
         except NoResultFound:
             message = 'email_reply_to_id {} does not exist in database for service id {}'\
                 .format(reply_to_id, service_id)
+            raise BadRequestError(message=message)
+
+
+def check_service_sms_sender_id(service_id, sms_sender_id, notification_type):
+    if sms_sender_id:
+        try:
+            return dao_get_service_sms_senders_by_id(service_id, sms_sender_id).sms_sender
+        except NoResultFound:
+            message = 'sms_sender_id {} does not exist in database for service id {}'\
+                .format(sms_sender_id, service_id)
             raise BadRequestError(message=message)

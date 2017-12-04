@@ -33,9 +33,9 @@ from app.utils import get_template_instance
 def _validate_positive_number(value, msg="Not a positive integer"):
     try:
         page_int = int(value)
-        if page_int < 1:
-            raise ValidationError(msg)
-    except:
+    except ValueError:
+        raise ValidationError(msg)
+    if page_int < 1:
         raise ValidationError(msg)
 
 
@@ -87,6 +87,7 @@ class UserSchema(BaseSchema):
     permissions = fields.Method("user_permissions", dump_only=True)
     password_changed_at = field_for(models.User, 'password_changed_at', format='%Y-%m-%d %H:%M:%S.%f')
     created_at = field_for(models.User, 'created_at', format='%Y-%m-%d %H:%M:%S.%f')
+    auth_type = field_for(models.User, 'auth_type')
 
     def user_permissions(self, usr):
         retval = {}
@@ -104,8 +105,29 @@ class UserSchema(BaseSchema):
             "_password", "verify_codes")
         strict = True
 
+    @validates('name')
+    def validate_name(self, value):
+        if not value:
+            raise ValidationError('Invalid name')
+
+    @validates('email_address')
+    def validate_email_address(self, value):
+        try:
+            validate_email_address(value)
+        except InvalidEmailError as e:
+            raise ValidationError(str(e))
+
+    @validates('mobile_number')
+    def validate_mobile_number(self, value):
+        try:
+            if value is not None:
+                validate_phone_number(value, international=True)
+        except InvalidPhoneError as error:
+            raise ValidationError('Invalid phone number: {}'.format(error))
+
 
 class UserUpdateAttributeSchema(BaseSchema):
+    auth_type = field_for(models.User, 'auth_type')
 
     class Meta:
         model = models.User
@@ -130,7 +152,8 @@ class UserUpdateAttributeSchema(BaseSchema):
     @validates('mobile_number')
     def validate_mobile_number(self, value):
         try:
-            validate_phone_number(value, international=True)
+            if value is not None:
+                validate_phone_number(value, international=True)
         except InvalidPhoneError as error:
             raise ValidationError('Invalid phone number: {}'.format(error))
 
@@ -291,9 +314,14 @@ class NotificationModelSchema(BaseSchema):
 
 class BaseTemplateSchema(BaseSchema):
 
+    reply_to = fields.Method("get_reply_to", allow_none=True)
+
+    def get_reply_to(self, template):
+        return template.reply_to
+
     class Meta:
         model = models.Template
-        exclude = ("service_id", "jobs")
+        exclude = ("service_id", "jobs", "service_letter_contact_id")
         strict = True
 
 
@@ -316,23 +344,16 @@ class TemplateSchema(BaseTemplateSchema):
 
 class TemplateHistorySchema(BaseSchema):
 
+    reply_to = fields.Method("get_reply_to", allow_none=True)
+
     created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
     created_at = field_for(models.Template, 'created_at', format='%Y-%m-%d %H:%M:%S.%f')
 
+    def get_reply_to(self, template):
+        return template.reply_to
+
     class Meta:
         model = models.TemplateHistory
-
-
-class NotificationsStatisticsSchema(BaseSchema):
-    class Meta:
-        model = models.NotificationStatistics
-        strict = True
-
-    @pre_dump
-    def handle_date_str(self, in_data):
-        if isinstance(in_data, dict) and 'day' in in_data:
-            in_data['day'] = datetime.strptime(in_data['day'], '%Y-%m-%d').date()
-        return in_data
 
 
 class ApiKeySchema(BaseSchema):
@@ -370,14 +391,6 @@ class JobSchema(BaseSchema):
             'notifications_delivered',
             'notifications_failed')
         strict = True
-
-
-class RequestVerifyCodeSchema(ma.Schema):
-
-    class Meta:
-        strict = True
-
-    to = fields.Str(required=False)
 
 
 class NotificationSchema(ma.Schema):
@@ -464,7 +477,7 @@ class NotificationWithTemplateSchema(BaseSchema):
 
 
 class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
-    template_history = fields.Nested(TemplateHistorySchema,
+    template_history = fields.Nested(TemplateHistorySchema, attribute="template",
                                      only=['id', 'name', 'template_type', 'content', 'subject', 'version'],
                                      dump_only=True)
 
@@ -505,6 +518,7 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
 
 
 class InvitedUserSchema(BaseSchema):
+    auth_type = field_for(models.InvitedUser, 'auth_type')
 
     class Meta:
         model = models.InvitedUser
@@ -658,7 +672,6 @@ api_key_schema = ApiKeySchema()
 api_key_schema_load_json = ApiKeySchema(load_json=True)
 job_schema = JobSchema()
 job_schema_load_json = JobSchema(load_json=True)
-request_verify_code_schema = RequestVerifyCodeSchema()
 sms_admin_notification_schema = SmsAdminNotificationSchema()
 sms_template_notification_schema = SmsTemplateNotificationSchema()
 job_sms_template_notification_schema = JobSmsTemplateNotificationSchema()
@@ -670,7 +683,6 @@ notification_with_personalisation_schema = NotificationWithPersonalisationSchema
 invited_user_schema = InvitedUserSchema()
 permission_schema = PermissionSchema()
 email_data_request_schema = EmailDataSchema()
-notifications_statistics_schema = NotificationsStatisticsSchema()
 notifications_filter_schema = NotificationsFilterSchema()
 service_history_schema = ServiceHistorySchema()
 api_key_history_schema = ApiKeyHistorySchema()

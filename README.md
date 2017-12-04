@@ -44,6 +44,9 @@ export FIRETEXT_API_KEY='FIRETEXT_ACTUAL_KEY'
 export STATSD_PREFIX='YOU_OWN_PREFIX'
 export NOTIFICATION_QUEUE_PREFIX='YOUR_OWN_PREFIX'
 export REDIS_URL="redis://localhost:6379/0"
+export FLASK_APP=application.py
+export FLASK_DEBUG=1
+export WERKZEUG_DEBUG_PIN=off
 "> environment.sh
 ```
 
@@ -97,22 +100,25 @@ Then simply run
 make test
 ```
 
-That will run pycodestyle for code analysis and our unit test suite. If you wish to run our functional tests, instructions can be found in the
+That will run flake8 for code analysis and our unit test suite. If you wish to run our functional tests, instructions can be found in the
 [notifications-functional-tests](https://github.com/alphagov/notifications-functional-tests) repository.
 
 
 
-## To remove functional test data
+## To run one off tasks
 
-NOTE: There is assumption that both the server name prefix and user name prefix are followed by a uuid.
-The script will search for all services/users with that prefix and only remove it if the prefix is followed by a uuid otherwise it will be skipped.
+Tasks are run through the `flask` command - run `flask --help` for more information. There are two sections we need to
+care about: `flask db` contains alembic migration commands, and `flask command` contains all of our custom commands. For
+example, to purge all dynamically generated functional test data, do the following:
 
 Locally
 ```
-python application.py purge_functional_test_data -u <functional tests user name prefix> # Remove the user and associated services.
+flask command purge_functional_test_data -u <functional tests user name prefix>
 ```
 
 On the server
 ```
-python server_commands.py purge_functional_test_data -u <functional tests user name prefix> # Remove the user and associated services.
+cf run-task notify-api "flask command purge_functional_test_data -u <functional tests user name prefix>"
 ```
+
+All commands and command options have a --help command if you need more information.

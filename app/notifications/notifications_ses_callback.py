@@ -1,9 +1,6 @@
 from datetime import datetime
 
 from flask import (
-    Blueprint,
-    jsonify,
-    request,
     current_app,
     json
 )
@@ -16,35 +13,10 @@ from app.dao import (
 from app.celery.statistics_tasks import create_outcome_notification_statistic_tasks
 from app.notifications.process_client_response import validate_callback_data
 
-ses_callback_blueprint = Blueprint('notifications_ses_callback', __name__)
-
-from app.errors import (
-    register_errors,
-    InvalidRequest
-)
-register_errors(ses_callback_blueprint)
-
-
-@ses_callback_blueprint.route('/notifications/email/ses', methods=['POST'])
-def sns_callback_handler():
-    errors = process_ses_response(json.loads(request.data))
-    if errors:
-        current_app.logger.error(errors)
-        raise InvalidRequest(errors, 400)
-
-    return jsonify(
-        result="success", message="SES callback succeeded"
-    ), 200
-
 
 def process_ses_response(ses_request):
     client_name = 'SES'
     try:
-
-        # TODO: remove this check once the sns_callback_handler is removed
-        if not isinstance(ses_request, dict):
-            ses_request = json.loads(ses_request)
-
         errors = validate_callback_data(data=ses_request, fields=['Message'], client_name=client_name)
         if errors:
             return errors
@@ -56,6 +28,7 @@ def process_ses_response(ses_request):
 
         notification_type = ses_message['notificationType']
         if notification_type == 'Bounce':
+            current_app.logger.info('SES bounce dict: {}'.format(remove_emails_from_bounce(ses_message['bounce'])))
             if ses_message['bounce']['bounceType'] == 'Permanent':
                 notification_type = ses_message['bounce']['bounceType']  # permanent or not
             else:
@@ -75,9 +48,10 @@ def process_ses_response(ses_request):
                 notification_status
             )
             if not notification:
-                error = "SES callback failed: notification either not found or already updated " \
-                        "from sending. Status {} for notification reference {}".format(notification_status, reference)
-                return error
+                warning = "SES callback failed: notification either not found or already updated " \
+                          "from sending. Status {} for notification reference {}".format(notification_status, reference)
+                current_app.logger.warning(warning)
+                return
 
             if not aws_response_dict['success']:
                 current_app.logger.info(
@@ -111,3 +85,8 @@ def process_ses_response(ses_request):
     except ValueError:
         error = "{} callback failed: invalid json".format(client_name)
         return error
+
+
+def remove_emails_from_bounce(bounce_dict):
+    for recip in bounce_dict['bouncedRecipients']:
+        recip.pop('emailAddress')

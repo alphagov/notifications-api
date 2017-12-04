@@ -1,15 +1,17 @@
-import codecs
 import json
 import uuid
 from datetime import datetime, timedelta
 from unittest.mock import Mock
+
 import pytest
 import requests_mock
 from flask import current_app
 from freezegun import freeze_time
+from requests import RequestException
 from sqlalchemy.exc import SQLAlchemyError
-from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate, LetterDVLATemplate
 from celery.exceptions import Retry
+from botocore.exceptions import ClientError
+from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate, LetterDVLATemplate
 
 from app import (encryption, DATETIME_FORMAT)
 from app.celery import provider_tasks
@@ -27,8 +29,7 @@ from app.celery.tasks import (
     process_incomplete_jobs,
     get_template_class,
     s3,
-    send_inbound_sms_to_service,
-    process_ses_results)
+    send_inbound_sms_to_service)
 from app.config import QueueNames
 from app.dao import jobs_dao, services_dao
 from app.models import (
@@ -51,7 +52,7 @@ from tests.app.conftest import (
     sample_template as create_sample_template,
     sample_job as create_sample_job,
     sample_email_template as create_sample_email_template,
-    sample_notification as create_sample_notification
+    sample_notification as create_sample_notification,
 )
 from tests.app.db import (
     create_inbound_sms,
@@ -61,7 +62,9 @@ from tests.app.db import (
     create_service_inbound_api,
     create_service,
     create_template,
-    create_user
+    create_user,
+    create_reply_to_email,
+    create_service_with_defined_sms_sender
 )
 
 
@@ -541,6 +544,45 @@ def test_should_save_email_if_restricted_service_and_non_team_email_address_with
     )
 
 
+def test_save_email_should_save_default_email_reply_to_text_on_notification(notify_db_session, mocker):
+    service = create_service()
+    create_reply_to_email(service=service, email_address='reply_to@digital.gov.uk', is_default=True)
+    template = create_template(service=service, template_type='email', subject='Hello')
+
+    notification = _notification_json(template, to="test@example.com")
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    notification_id = uuid.uuid4()
+    save_email(
+        service.id,
+        notification_id,
+        encryption.encrypt(notification),
+        key_type=KEY_TYPE_TEST
+    )
+
+    persisted_notification = Notification.query.one()
+    assert persisted_notification.reply_to_text == 'reply_to@digital.gov.uk'
+
+
+def test_save_sms_should_save_default_smm_sender_notification_reply_to_text_on(notify_db_session, mocker):
+    service = create_service_with_defined_sms_sender(sms_sender_value='12345')
+    template = create_template(service=service)
+
+    notification = _notification_json(template, to="07700 900205")
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    notification_id = uuid.uuid4()
+    save_sms(
+        service.id,
+        notification_id,
+        encryption.encrypt(notification),
+        key_type=KEY_TYPE_TEST
+    )
+
+    persisted_notification = Notification.query.one()
+    assert persisted_notification.reply_to_text == '12345'
+
+
 def test_should_not_save_sms_if_restricted_service_and_invalid_number(notify_db, notify_db_session, mocker):
     user = create_user(mobile_number="07700 900205")
     service = create_sample_service(notify_db, notify_db_session, user=user, restricted=True)
@@ -640,7 +682,7 @@ def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
     mocker.patch('app.celery.tasks.save_letter.apply_async')
     mocker.patch('app.celery.tasks.create_uuid', return_value=fake_uuid)
     mocker.patch('app.celery.tasks.encryption.encrypt', return_value=test_encrypted_data)
-    mock_dvla_file_task = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
+    mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
 
     process_job(sample_letter_job.id)
 
@@ -947,7 +989,11 @@ def test_save_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample
     assert not retry.called
 
 
-def test_save_letter_saves_letter_to_database(sample_letter_job, mocker):
+def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
+    service = create_service()
+    create_letter_contact(service=service, contact_block="Address contact", is_default=True)
+    template = create_template(service=service, template_type=LETTER_TYPE)
+    job = create_job(template=template)
 
     mocker.patch('app.celery.tasks.create_random_identifier', return_value="this-is-random-in-real-life")
 
@@ -961,17 +1007,17 @@ def test_save_letter_saves_letter_to_database(sample_letter_job, mocker):
         'postcode': 'Flob',
     }
     notification_json = _notification_json(
-        template=sample_letter_job.template,
+        template=job.template,
         to='Foo',
         personalisation=personalisation,
-        job_id=sample_letter_job.id,
+        job_id=job.id,
         row_number=1
     )
     notification_id = uuid.uuid4()
     created_at = datetime.utcnow()
 
     save_letter(
-        sample_letter_job.service_id,
+        job.service_id,
         notification_id,
         encryption.encrypt(notification_json),
     )
@@ -979,9 +1025,9 @@ def test_save_letter_saves_letter_to_database(sample_letter_job, mocker):
     notification_db = Notification.query.one()
     assert notification_db.id == notification_id
     assert notification_db.to == 'Foo'
-    assert notification_db.job_id == sample_letter_job.id
-    assert notification_db.template_id == sample_letter_job.template.id
-    assert notification_db.template_version == sample_letter_job.template.version
+    assert notification_db.job_id == job.id
+    assert notification_db.template_id == job.template.id
+    assert notification_db.template_version == job.template.version
     assert notification_db.status == 'created'
     assert notification_db.created_at >= created_at
     assert notification_db.notification_type == 'letter'
@@ -989,6 +1035,7 @@ def test_save_letter_saves_letter_to_database(sample_letter_job, mocker):
     assert notification_db.sent_by is None
     assert notification_db.personalisation == personalisation
     assert notification_db.reference == "this-is-random-in-real-life"
+    assert notification_db.reply_to_text == "Address contact"
 
 
 def test_should_cancel_job_if_service_is_inactive(sample_service,
@@ -1023,10 +1070,8 @@ def test_build_dvla_file(sample_letter_template, mocker):
     create_notification(template=job.template, job=job)
     create_notification(template=job.template, job=job)
     mocked_upload = mocker.patch("app.celery.tasks.s3upload")
-    mocked_send_task = mocker.patch("app.celery.tasks.notify_celery.send_task")
-    mocked_letter_template = mocker.patch("app.celery.tasks.LetterDVLATemplate")
-    mocked_letter_template_instance = mocked_letter_template.return_value
-    mocked_letter_template_instance.__str__.return_value = "dvla|string"
+    mocker.patch("app.celery.tasks.notify_celery.send_task")
+    mocker.patch("app.celery.tasks.LetterDVLATemplate", return_value='dvla|string')
     build_dvla_file(job.id)
 
     mocked_upload.assert_called_once_with(
@@ -1049,10 +1094,23 @@ def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_let
         build_dvla_file(job.id)
     mocked.assert_not_called()
 
-    tasks.build_dvla_file.retry.assert_called_with(queue="retry-tasks",
-                                                   exc="All notifications for job {} are not persisted".format(job.id))
+    tasks.build_dvla_file.retry.assert_called_with(queue="retry-tasks")
     assert Job.query.get(job.id).job_status == 'in progress'
     mocked_send_task.assert_not_called()
+
+
+def test_build_dvla_file_retries_if_s3_err(sample_letter_template, mocker):
+    job = create_job(sample_letter_template, notification_count=1)
+    create_notification(job.template, job=job)
+
+    mocker.patch('app.celery.tasks.LetterDVLATemplate', return_value='dvla|string')
+    mocker.patch('app.celery.tasks.s3upload', side_effect=ClientError({}, 'operation_name'))
+    retry_mock = mocker.patch('app.celery.tasks.build_dvla_file.retry', side_effect=Retry)
+
+    with pytest.raises(Retry):
+        build_dvla_file(job.id)
+
+    retry_mock.assert_called_once_with(queue='retry-tasks')
 
 
 def test_create_dvla_file_contents(notify_db_session, mocker):
@@ -1060,8 +1118,8 @@ def test_create_dvla_file_contents(notify_db_session, mocker):
     create_letter_contact(service=service, contact_block='London,\nNW1A 1AA')
     letter_template = create_template(service=service, template_type=LETTER_TYPE)
     job = create_job(template=letter_template, notification_count=2)
-    create_notification(template=job.template, job=job, reference=1)
-    create_notification(template=job.template, job=job, reference=2)
+    create_notification(template=job.template, job=job, reference=1, reply_to_text=service.get_default_letter_contact())
+    create_notification(template=job.template, job=job, reference=2, reply_to_text='Not the default address')
     mocked_letter_template = mocker.patch("app.celery.tasks.LetterDVLATemplate")
     mocked_letter_template_instance = mocked_letter_template.return_value
     mocked_letter_template_instance.__str__.return_value = "dvla|string"
@@ -1076,7 +1134,8 @@ def test_create_dvla_file_contents(notify_db_session, mocker):
     assert not calls[0][0][1]
     assert not calls[1][0][1]
     # Named arguments
-    assert calls[1][1]['contact_block'] == 'London,\nNW1A 1AA'
+    assert calls[0][1]['contact_block'] == 'London,\nNW1A 1AA'
+    assert calls[1][1]['contact_block'] == 'Not the default address'
     assert calls[0][1]['notification_reference'] == '1'
     assert calls[1][1]['notification_reference'] == '2'
     assert calls[1][1]['org_id'] == '001'
@@ -1151,13 +1210,25 @@ def test_send_inbound_sms_to_service_retries_if_request_returns_500(notify_api, 
                           status_code=500)
         send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
 
-    exc_msg = 'Unable to send_inbound_sms_to_service for service_id: {} and url: {url}'.format(
-        sample_service.id,
-        url=inbound_api.url
-    )
     assert mocked.call_count == 1
     assert mocked.call_args[1]['queue'] == 'retry-tasks'
-    assert exc_msg in mocked.call_args[1]['exc']
+
+
+def test_send_inbound_sms_to_service_retries_if_request_throws_unknown(notify_api, sample_service, mocker):
+    create_service_inbound_api(
+        service=sample_service,
+        url="https://some.service.gov.uk/",
+        bearer_token="something_unique")
+    inbound_sms = create_inbound_sms(service=sample_service, notify_number="0751421", user_number="447700900111",
+                                     provider_date=datetime(2017, 6, 20), content="Here is some content")
+
+    mocked = mocker.patch('app.celery.tasks.send_inbound_sms_to_service.retry')
+    mocker.patch("app.celery.tasks.request", side_effect=RequestException())
+
+    send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
+
+    assert mocked.call_count == 1
+    assert mocked.call_args[1]['queue'] == 'retry-tasks'
 
 
 def test_send_inbound_sms_to_service_does_not_retries_if_request_returns_404(notify_api, sample_service, mocker):
@@ -1177,15 +1248,19 @@ def test_send_inbound_sms_to_service_does_not_retries_if_request_returns_404(not
 
 
 def test_check_job_status_task_does_not_raise_error(sample_template):
-    job = create_job(template=sample_template, notification_count=3,
-                     created_at=datetime.utcnow() - timedelta(hours=2),
-                     scheduled_for=datetime.utcnow() - timedelta(minutes=31),
-                     processing_started=datetime.utcnow() - timedelta(minutes=31),
-                     job_status=JOB_STATUS_FINISHED)
-    job_2 = create_job(template=sample_template, notification_count=3,
-                       created_at=datetime.utcnow() - timedelta(minutes=31),
-                       processing_started=datetime.utcnow() - timedelta(minutes=31),
-                       job_status=JOB_STATUS_FINISHED)
+    create_job(
+        template=sample_template,
+        notification_count=3,
+        created_at=datetime.utcnow() - timedelta(hours=2),
+        scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+        processing_started=datetime.utcnow() - timedelta(minutes=31),
+        job_status=JOB_STATUS_FINISHED)
+    create_job(
+        template=sample_template,
+        notification_count=3,
+        created_at=datetime.utcnow() - timedelta(minutes=31),
+        processing_started=datetime.utcnow() - timedelta(minutes=31),
+        job_status=JOB_STATUS_FINISHED)
 
     check_job_status()
 
@@ -1328,7 +1403,7 @@ def test_process_incomplete_job_no_job_in_database(mocker, fake_uuid):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
     mock_save_sms = mocker.patch('app.celery.tasks.save_sms.apply_async')
 
-    with pytest.raises(expected_exception=Exception) as e:
+    with pytest.raises(expected_exception=Exception):
         process_incomplete_job(fake_uuid)
 
     assert mock_save_sms.call_count == 0  # There is no job in the db it will not have been called
@@ -1382,50 +1457,3 @@ def test_process_incomplete_job_letter(mocker, sample_letter_template):
     assert completed_job.job_status == JOB_STATUS_FINISHED
 
     assert mock_letter_saver.call_count == 8
-
-
-def test_process_ses_results(notify_db, notify_db_session, sample_email_template):
-
-    create_sample_notification(
-        notify_db,
-        notify_db_session,
-        template=sample_email_template,
-        reference='ref1',
-        sent_at=datetime.utcnow(),
-        status='sending')
-
-    response = json.loads(ses_notification_callback())
-    assert process_ses_results(response=response) is None
-
-
-def test_process_ses_results_retry_called(notify_db, mocker):
-    mocked = mocker.patch('app.celery.tasks.process_ses_results.retry')
-    response = json.loads(ses_notification_callback())
-    process_ses_results(response=response)
-    assert mocked.call_count != 0
-
-
-def ses_notification_callback():
-    return '{\n  "Type" : "Notification",\n  "MessageId" : "ref1",' \
-           '\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",' \
-           '\n  "Message" : "{\\"notificationType\\":\\"Delivery\\",' \
-           '\\"mail\\":{\\"timestamp\\":\\"2016-03-14T12:35:25.909Z\\",' \
-           '\\"source\\":\\"test@test-domain.com\\",' \
-           '\\"sourceArn\\":\\"arn:aws:ses:eu-west-1:123456789012:identity/testing-notify\\",' \
-           '\\"sendingAccountId\\":\\"123456789012\\",' \
-           '\\"messageId\\":\\"ref1\\",' \
-           '\\"destination\\":[\\"testing@digital.cabinet-office.gov.uk\\"]},' \
-           '\\"delivery\\":{\\"timestamp\\":\\"2016-03-14T12:35:26.567Z\\",' \
-           '\\"processingTimeMillis\\":658,' \
-           '\\"recipients\\":[\\"testing@digital.cabinet-office.gov.uk\\"],' \
-           '\\"smtpResponse\\":\\"250 2.0.0 OK 1457958926 uo5si26480932wjc.221 - gsmtp\\",' \
-           '\\"reportingMTA\\":\\"a6-238.smtp-out.eu-west-1.amazonses.com\\"}}",' \
-           '\n  "Timestamp" : "2016-03-14T12:35:26.665Z",\n  "SignatureVersion" : "1",' \
-           '\n  "Signature" : "X8d7eTAOZ6wlnrdVVPYanrAlsX0SMPfOzhoTEBnQqYkrNWTqQY91C0f3bxtPdUhUt' \
-           'OowyPAOkTQ4KnZuzphfhVb2p1MyVYMxNKcBFB05/qaCX99+92fjw4x9LeUOwyGwMv5F0Vkfi5qZCcEw69uVrhYL' \
-           'VSTFTrzi/yCtru+yFULMQ6UhbY09GwiP6hjxZMVr8aROQy5lLHglqQzOuSZ4KeD85JjifHdKzlx8jjQ+uj+FLzHXPMA' \
-           'PmPU1JK9kpoHZ1oPshAFgPDpphJe+HwcJ8ezmk+3AEUr3wWli3xF+49y8Z2anASSVp6YI2YP95UT8Rlh3qT3T+V9V8rbSVislxA==",' \
-           '\n  "SigningCertURL" : "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-bb750' \
-           'dd426d95ee9390147a5624348ee.pem",' \
-           '\n  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&S' \
-           'ubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"\n}'

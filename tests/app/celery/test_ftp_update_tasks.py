@@ -9,12 +9,9 @@ from app.models import (
     Notification,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
-    NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_SENDING,
-    NOTIFICATION_STATUS_LETTER_RECEIVED,
     NOTIFICATION_TECHNICAL_FAILURE
 )
-from app.dao.notifications_dao import dao_update_notifications_by_reference
 from app.celery.tasks import (
     process_updates_from_file,
     update_dvla_job_to_error,
@@ -96,8 +93,10 @@ def test_update_letter_notifications_statuses_builds_updates_list(notify_api, mo
 
 
 def test_update_letter_notifications_statuses_persisted(notify_api, mocker, sample_letter_template):
-    sent_letter = create_notification(sample_letter_template, reference='ref-foo', status=NOTIFICATION_SENDING)
-    failed_letter = create_notification(sample_letter_template, reference='ref-bar', status=NOTIFICATION_SENDING)
+    sent_letter = create_notification(sample_letter_template, reference='ref-foo', status=NOTIFICATION_SENDING,
+                                      billable_units=0)
+    failed_letter = create_notification(sample_letter_template, reference='ref-bar', status=NOTIFICATION_SENDING,
+                                        billable_units=0)
 
     valid_file = '{}|Sent|1|Unsorted\n{}|Failed|2|Sorted'.format(
         sent_letter.reference, failed_letter.reference)
@@ -106,7 +105,11 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
     update_letter_notifications_statuses(filename='foo.txt')
 
     assert sent_letter.status == NOTIFICATION_DELIVERED
+    assert sent_letter.billable_units == 1
+    assert sent_letter.updated_at
     assert failed_letter.status == NOTIFICATION_TECHNICAL_FAILURE
+    assert failed_letter.billable_units == 2
+    assert failed_letter.updated_at
 
 
 def test_update_letter_notifications_to_sent_to_dvla_updates_based_on_notification_references(

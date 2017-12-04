@@ -9,11 +9,14 @@ import pytest
 from flask import url_for, current_app
 from freezegun import freeze_time
 
+from app.dao.users_dao import create_user_code
 from app.dao.services_dao import dao_update_service, dao_fetch_service_by_id
 from app.models import (
-    VerifyCode,
+    Notification,
     User,
-    Notification
+    VerifyCode,
+    EMAIL_TYPE,
+    SMS_TYPE
 )
 from app import db
 import app.celery.tasks
@@ -38,25 +41,6 @@ def test_user_verify_sms_code(client, sample_sms_code):
     assert VerifyCode.query.first().code_used
     assert sample_sms_code.user.logged_in_at == datetime.utcnow()
     assert sample_sms_code.user.current_session_id is not None
-
-
-@freeze_time('2016-01-01T12:00:00')
-def test_user_verify_email_code(client, sample_email_code):
-    sample_email_code.user.logged_in_at = datetime.utcnow() - timedelta(days=1)
-    assert not VerifyCode.query.first().code_used
-    assert sample_email_code.user.current_session_id is None
-    data = json.dumps({
-        'code_type': sample_email_code.code_type,
-        'code': sample_email_code.txt_code})
-    auth_header = create_authorization_header()
-    resp = client.post(
-        url_for('user.verify_user_code', user_id=sample_email_code.user.id),
-        data=data,
-        headers=[('Content-Type', 'application/json'), auth_header])
-    assert resp.status_code == 204
-    assert VerifyCode.query.first().code_used
-    assert sample_email_code.user.logged_in_at == datetime.utcnow() - timedelta(days=1)
-    assert sample_email_code.user.current_session_id is None
 
 
 def test_user_verify_code_missing_code(client,
@@ -191,8 +175,8 @@ def test_send_user_sms_code(client,
     """
     Tests POST endpoint /user/<user_id>/sms-code
     """
+    notify_service = dao_fetch_service_by_id(current_app.config['NOTIFY_SERVICE_ID'])
     if research_mode:
-        notify_service = dao_fetch_service_by_id(current_app.config['NOTIFY_SERVICE_ID'])
         notify_service.research_mode = True
         dao_update_service(notify_service)
 
@@ -201,20 +185,19 @@ def test_send_user_sms_code(client,
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     resp = client.post(
-        url_for('user.send_user_sms_code', user_id=sample_user.id),
+        url_for('user.send_user_2fa_code', code_type='sms', user_id=sample_user.id),
         data=json.dumps({}),
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 204
 
     assert mocked.call_count == 1
-    assert VerifyCode.query.count() == 1
-    assert VerifyCode.query.first().check_code('11111')
+    assert VerifyCode.query.one().check_code('11111')
 
-    assert Notification.query.count() == 1
-    notification = Notification.query.first()
+    notification = Notification.query.one()
     assert notification.personalisation == {'verify_code': '11111'}
     assert notification.to == sample_user.mobile_number
     assert str(notification.service_id) == current_app.config['NOTIFY_SERVICE_ID']
+    assert notification.reply_to_text == notify_service.get_default_sms_sender()
 
     app.celery.provider_tasks.deliver_sms.apply_async.assert_called_once_with(
         ([str(notification.id)]),
@@ -236,7 +219,7 @@ def test_send_user_code_for_sms_with_optional_to_field(client,
     auth_header = create_authorization_header()
 
     resp = client.post(
-        url_for('user.send_user_sms_code', user_id=sample_user.id),
+        url_for('user.send_user_2fa_code', code_type='sms', user_id=sample_user.id),
         data=json.dumps({'to': to_number}),
         headers=[('Content-Type', 'application/json'), auth_header])
 
@@ -254,7 +237,7 @@ def test_send_sms_code_returns_404_for_bad_input_data(client):
     uuid_ = uuid.uuid4()
     auth_header = create_authorization_header()
     resp = client.post(
-        url_for('user.send_user_sms_code', user_id=uuid_),
+        url_for('user.send_user_2fa_code', code_type='sms', user_id=uuid_),
         data=json.dumps({}),
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 404
@@ -275,26 +258,29 @@ def test_send_sms_code_returns_204_when_too_many_codes_already_created(client, s
     assert VerifyCode.query.count() == 10
     auth_header = create_authorization_header()
     resp = client.post(
-        url_for('user.send_user_sms_code', user_id=sample_user.id),
+        url_for('user.send_user_2fa_code', code_type='sms', user_id=sample_user.id),
         data=json.dumps({}),
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 204
     assert VerifyCode.query.count() == 10
 
 
-def test_send_user_email_verification(client,
-                                      sample_user,
-                                      mocker,
-                                      email_verification_template):
+def test_send_new_user_email_verification(client,
+                                          sample_user,
+                                          mocker,
+                                          email_verification_template):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     auth_header = create_authorization_header()
     resp = client.post(
-        url_for('user.send_user_email_verification', user_id=str(sample_user.id)),
+        url_for('user.send_new_user_email_verification', user_id=str(sample_user.id)),
         data=json.dumps({}),
         headers=[('Content-Type', 'application/json'), auth_header])
+    notify_service = email_verification_template.service
     assert resp.status_code == 204
     notification = Notification.query.first()
+    assert VerifyCode.query.count() == 0
     mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+    assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
 def test_send_email_verification_returns_404_for_bad_input_data(client, notify_db_session, mocker):
@@ -305,7 +291,7 @@ def test_send_email_verification_returns_404_for_bad_input_data(client, notify_d
     uuid_ = uuid.uuid4()
     auth_header = create_authorization_header()
     resp = client.post(
-        url_for('user.send_user_email_verification', user_id=uuid_),
+        url_for('user.send_new_user_email_verification', user_id=uuid_),
         data=json.dumps({}),
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 404
@@ -355,3 +341,102 @@ def test_reset_failed_login_count_returns_404_when_user_does_not_exist(client):
                        data={},
                        headers=[('Content-Type', 'application/json'), create_authorization_header()])
     assert resp.status_code == 404
+
+
+def test_send_user_email_code(admin_request, mocker, sample_user, email_2fa_code_template):
+    deliver_email = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    data = {
+        'to': None
+    }
+    admin_request.post(
+        'user.send_user_2fa_code',
+        code_type='email',
+        user_id=sample_user.id,
+        _data=data,
+        _expected_status=204
+    )
+    noti = Notification.query.one()
+    assert noti.reply_to_text == email_2fa_code_template.service.get_default_reply_to_email_address()
+    assert noti.to == sample_user.email_address
+    assert str(noti.template_id) == current_app.config['EMAIL_2FA_TEMPLATE_ID']
+    assert noti.personalisation['name'] == 'Test User'
+    deliver_email.assert_called_once_with(
+        [str(noti.id)],
+        queue='notify-internal-tasks'
+    )
+
+
+def test_send_user_email_code_with_urlencoded_next_param(admin_request, mocker, sample_user, email_2fa_code_template):
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    data = {
+        'to': None,
+        'next': '/services'
+    }
+    admin_request.post(
+        'user.send_user_2fa_code',
+        code_type='email',
+        user_id=sample_user.id,
+        _data=data,
+        _expected_status=204
+    )
+    noti = Notification.query.one()
+    assert noti.personalisation['url'].endswith('?next=%2Fservices')
+
+
+def test_send_email_code_returns_404_for_bad_input_data(admin_request):
+    resp = admin_request.post(
+        'user.send_user_2fa_code',
+        code_type='email',
+        user_id=uuid.uuid4(),
+        _data={},
+        _expected_status=404
+    )
+    assert resp['message'] == 'No result found'
+
+
+@freeze_time('2016-01-01T12:00:00')
+def test_user_verify_email_code(admin_request, sample_user):
+    magic_code = str(uuid.uuid4())
+    verify_code = create_user_code(sample_user, magic_code, EMAIL_TYPE)
+
+    data = {
+        'code_type': 'email',
+        'code': magic_code
+    }
+
+    admin_request.post(
+        'user.verify_user_code',
+        user_id=sample_user.id,
+        _data=data,
+        _expected_status=204
+    )
+
+    assert verify_code.code_used
+    assert sample_user.logged_in_at == datetime.utcnow()
+    assert sample_user.current_session_id is not None
+
+
+@pytest.mark.parametrize('code_type', [EMAIL_TYPE, SMS_TYPE])
+@freeze_time('2016-01-01T12:00:00')
+def test_user_verify_email_code_fails_if_code_already_used(admin_request, sample_user, code_type):
+    magic_code = str(uuid.uuid4())
+    verify_code = create_user_code(sample_user, magic_code, code_type)
+    verify_code.code_used = True
+
+    data = {
+        'code_type': code_type,
+        'code': magic_code
+    }
+
+    admin_request.post(
+        'user.verify_user_code',
+        user_id=sample_user.id,
+        _data=data,
+        _expected_status=400
+    )
+
+    assert verify_code.code_used
+    assert sample_user.logged_in_at is None
+    assert sample_user.current_session_id is None

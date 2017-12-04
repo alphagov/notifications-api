@@ -15,7 +15,7 @@ from app.dao.templates_dao import (
 from app.models import Template, TemplateHistory, TemplateRedacted
 
 from tests.app.conftest import sample_template as create_sample_template
-from tests.app.db import create_template
+from tests.app.db import create_template, create_letter_contact
 
 
 @pytest.mark.parametrize('template_type, subject', [
@@ -53,6 +53,23 @@ def test_create_template_creates_redact_entry(sample_service):
     assert redacted.updated_by_id == sample_service.created_by_id
 
 
+def test_create_template_with_reply_to(sample_service, sample_user):
+    letter_contact = create_letter_contact(sample_service, 'Edinburgh, ED1 1AA')
+
+    data = {
+        'name': 'Sample Template',
+        'template_type': "letter",
+        'content': "Template content",
+        'service': sample_service,
+        'created_by': sample_user,
+        'reply_to': letter_contact.id,
+    }
+    template = Template(**data)
+    dao_create_template(template)
+
+    assert dao_get_all_templates_for_service(sample_service.id)[0].reply_to == letter_contact.id
+
+
 def test_update_template(sample_service, sample_user):
     data = {
         'name': 'Sample Template',
@@ -69,6 +86,29 @@ def test_update_template(sample_service, sample_user):
     created.name = 'new name'
     dao_update_template(created)
     assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'new name'
+
+
+def test_update_template_reply_to(sample_service, sample_user):
+    letter_contact = create_letter_contact(sample_service, 'Edinburgh, ED1 1AA')
+
+    data = {
+        'name': 'Sample Template',
+        'template_type': "letter",
+        'content': "Template content",
+        'service': sample_service,
+        'created_by': sample_user,
+    }
+    template = Template(**data)
+    dao_create_template(template)
+    created = dao_get_all_templates_for_service(sample_service.id)[0]
+    assert created.reply_to is None
+
+    created.reply_to = letter_contact.id
+    dao_update_template(created)
+    assert dao_get_all_templates_for_service(sample_service.id)[0].reply_to == letter_contact.id
+
+    template_history = TemplateHistory.query.filter_by(id=created.id, version=2).one()
+    assert template_history.service_letter_contact_id
 
 
 def test_redact_template(sample_template):
@@ -93,7 +133,7 @@ def test_get_all_templates_for_service(notify_db, notify_db_session, service_fac
     assert len(dao_get_all_templates_for_service(service_1.id)) == 1
     assert len(dao_get_all_templates_for_service(service_2.id)) == 1
 
-    template_1 = create_sample_template(
+    create_sample_template(
         notify_db,
         notify_db_session,
         template_name='Sample Template 1',
@@ -101,7 +141,7 @@ def test_get_all_templates_for_service(notify_db, notify_db_session, service_fac
         content="Template content",
         service=service_1
     )
-    template_2 = create_sample_template(
+    create_sample_template(
         notify_db,
         notify_db_session,
         template_name='Sample Template 2',
@@ -109,7 +149,7 @@ def test_get_all_templates_for_service(notify_db, notify_db_session, service_fac
         content="Template content",
         service=service_1
     )
-    template_3 = create_sample_template(
+    create_sample_template(
         notify_db,
         notify_db_session,
         template_name='Sample Template 3',
@@ -123,8 +163,8 @@ def test_get_all_templates_for_service(notify_db, notify_db_session, service_fac
     assert len(dao_get_all_templates_for_service(service_2.id)) == 2
 
 
-def test_get_all_templates_for_service_shows_newest_created_first(notify_db, notify_db_session, sample_service):
-    template_1 = create_sample_template(
+def test_get_all_templates_for_service_is_alphabetised(notify_db, notify_db_session, sample_service):
+    create_sample_template(
         notify_db,
         notify_db_session,
         template_name='Sample Template 1',
@@ -140,7 +180,7 @@ def test_get_all_templates_for_service_shows_newest_created_first(notify_db, not
         content="Template content",
         service=sample_service
     )
-    template_3 = create_sample_template(
+    create_sample_template(
         notify_db,
         notify_db_session,
         template_name='Sample Template 3',
@@ -150,14 +190,14 @@ def test_get_all_templates_for_service_shows_newest_created_first(notify_db, not
     )
 
     assert Template.query.count() == 3
-    assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'Sample Template 3'
+    assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'Sample Template 1'
     assert dao_get_all_templates_for_service(sample_service.id)[1].name == 'Sample Template 2'
-    assert dao_get_all_templates_for_service(sample_service.id)[2].name == 'Sample Template 1'
+    assert dao_get_all_templates_for_service(sample_service.id)[2].name == 'Sample Template 3'
 
-    template_2.name = 'Sample Template 2 (updated)'
+    template_2.name = 'AAAAA Sample Template 2'
     dao_update_template(template_2)
-    assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'Sample Template 3'
-    assert dao_get_all_templates_for_service(sample_service.id)[1].name == 'Sample Template 2 (updated)'
+    assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'AAAAA Sample Template 2'
+    assert dao_get_all_templates_for_service(sample_service.id)[1].name == 'Sample Template 1'
 
 
 def test_get_all_returns_empty_list_if_no_templates(sample_service):

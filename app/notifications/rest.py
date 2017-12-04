@@ -34,9 +34,7 @@ from app.schemas import (
     email_notification_schema,
     sms_template_notification_schema,
     notification_with_personalisation_schema,
-    notifications_filter_schema,
-    notifications_statistics_schema,
-    day_schema
+    notifications_filter_schema
 )
 from app.service.utils import service_allowed_to_send_to
 from app.utils import pagination_links, get_template_instance, get_public_notify_type_text
@@ -86,16 +84,6 @@ def get_all_notifications():
     ), 200
 
 
-@notifications.route('/notifications/statistics')
-def get_notification_statistics_for_day():
-    data = day_schema.load(request.args).data
-    statistics = notifications_dao.dao_get_potential_notification_statistics_for_day(
-        day=data['day']
-    )
-    data, errors = notifications_statistics_schema.dump(statistics, many=True)
-    return jsonify(data=data), 200
-
-
 @notifications.route('/notifications/<string:notification_type>', methods=['POST'])
 def send_notification(notification_type):
 
@@ -131,7 +119,7 @@ def send_notification(notification_type):
 
     if notification_type == SMS_TYPE:
         _service_can_send_internationally(authenticated_service, notification_form['to'])
-
+    reply_to = get_reply_to_text(notification_type)
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(notification_form['to'], notification_type)
     notification_model = persist_notification(template_id=template.id,
@@ -142,7 +130,9 @@ def send_notification(notification_type):
                                               notification_type=notification_type,
                                               api_key_id=api_user.id,
                                               key_type=api_user.key_type,
-                                              simulated=simulated)
+                                              simulated=simulated,
+                                              reply_to_text=reply_to
+                                              )
     if not simulated:
         queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
         send_notification_to_queue(notification=notification_model,
@@ -158,6 +148,15 @@ def send_notification(notification_type):
             notification_form,
             template_object)
     ), 201
+
+
+def get_reply_to_text(notification_type):
+    if notification_type == EMAIL_TYPE:
+        return authenticated_service.get_default_reply_to_email_address()
+    if notification_type == SMS_TYPE:
+        return authenticated_service.get_default_sms_sender()
+    if notification_type == LETTER_TYPE:
+        return authenticated_service.get_default_letter_contact()
 
 
 def get_notification_return_data(notification_id, notification, template):

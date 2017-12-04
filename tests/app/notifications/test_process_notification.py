@@ -7,20 +7,23 @@ from sqlalchemy.exc import SQLAlchemyError
 from freezegun import freeze_time
 from collections import namedtuple
 
-from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_service_id
-from app.models import Template, Notification, NotificationHistory, ScheduledNotification, NotificationEmailReplyTo
+from app.models import (
+    Notification,
+    NotificationHistory,
+    ScheduledNotification,
+    Template
+)
 from app.notifications.process_notifications import (
     create_content_for_notification,
     persist_notification,
-    send_notification_to_queue,
-    simulated_recipient,
     persist_scheduled_notification,
-    persist_email_reply_to_id_for_notification)
+    send_notification_to_queue,
+    simulated_recipient
+)
 from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
 from app.utils import cache_key_for_service_template_counter
 from app.v2.errors import BadRequestError
 from tests.app.conftest import sample_api_key as create_api_key
-from tests.app.db import create_reply_to_email
 
 
 def test_create_content_for_notification_passes(sample_email_template):
@@ -64,7 +67,8 @@ def test_persist_notification_creates_and_save_to_db(sample_template, sample_api
         key_type=sample_api_key.key_type,
         job_id=sample_job.id,
         job_row_number=100,
-        reference="ref")
+        reference="ref",
+        reply_to_text=sample_template.service.get_default_sms_sender())
 
     assert Notification.query.get(notification.id) is not None
     assert NotificationHistory.query.get(notification.id) is not None
@@ -88,6 +92,7 @@ def test_persist_notification_creates_and_save_to_db(sample_template, sample_api
     assert notification_from_db.reference == notification_history_from_db.reference
     assert notification_from_db.client_reference == notification_history_from_db.client_reference
     assert notification_from_db.created_by_id == notification_history_from_db.created_by_id
+    assert notification_from_db.reply_to_text == sample_template.service.get_default_sms_sender()
 
     mocked_redis.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count")
 
@@ -196,6 +201,7 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
     assert persisted_notification.phone_prefix == '44'
     assert persisted_notification.rate_multiplier == 1
     assert persisted_notification.created_by_id == sample_job.created_by_id
+    assert not persisted_notification.reply_to_text
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -440,15 +446,3 @@ def test_persist_email_notification_stores_normalised_email(
 
     assert persisted_notification.to == recipient
     assert persisted_notification.normalised_to == expected_recipient_normalised
-
-
-def test_persist_email_reply_to_id_for_notification(sample_service, sample_notification):
-    create_reply_to_email(sample_service, "test@test.com")
-    reply_to_address = dao_get_reply_to_by_service_id(sample_service.id)
-    persist_email_reply_to_id_for_notification(sample_notification.id, reply_to_address[0].id)
-
-    email_reply_to = NotificationEmailReplyTo.query.all()
-
-    assert len(email_reply_to) == 1
-    assert email_reply_to[0].notification_id == sample_notification.id
-    assert email_reply_to[0].service_email_reply_to_id == reply_to_address[0].id

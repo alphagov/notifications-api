@@ -121,11 +121,14 @@ class Config(object):
     ONE_OFF_MESSAGE_FILENAME = 'Report'
     MAX_VERIFY_CODE_COUNT = 10
 
+    CHECK_PROXY_HEADER = False
+
     NOTIFY_SERVICE_ID = 'd6aa2c68-a2d9-4437-ab19-3ae8eb202553'
     NOTIFY_USER_ID = '6af522d0-2915-4e52-83a3-3690455a5fe6'
     INVITATION_EMAIL_TEMPLATE_ID = '4f46df42-f795-4cc4-83bb-65ca312f49cc'
     SMS_CODE_TEMPLATE_ID = '36fb0730-6259-4da1-8a80-c8de22ad4246'
-    EMAIL_VERIFY_CODE_TEMPLATE_ID = 'ece42649-22a8-4d06-b87f-d52d5d3f0a27'
+    EMAIL_2FA_TEMPLATE_ID = '299726d2-dba6-42b8-8209-30e1d66ea164'
+    NEW_USER_EMAIL_VERIFICATION_TEMPLATE_ID = 'ece42649-22a8-4d06-b87f-d52d5d3f0a27'
     PASSWORD_RESET_TEMPLATE_ID = '474e9242-823b-4f99-813d-ed392e7f1201'
     ALREADY_REGISTERED_EMAIL_TEMPLATE_ID = '0880fbb1-a0c6-46f0-9a8e-36c986381ceb'
     CHANGE_EMAIL_CONFIRMATION_TEMPLATE_ID = 'eb4d9930-87ab-4aef-9bce-786762687884'
@@ -240,6 +243,11 @@ class Config(object):
             'task': 'check-job-status',
             'schedule': crontab(),
             'options': {'queue': QueueNames.PERIODIC}
+        },
+        'daily-stats-template-usage-by-month': {
+            'task': 'daily-stats-template-usage-by-month',
+            'schedule': crontab(hour=0, minute=50),
+            'options': {'queue': QueueNames.PERIODIC}
         }
     }
     CELERY_QUEUES = []
@@ -287,6 +295,10 @@ class Config(object):
     FREE_SMS_TIER_FRAGMENT_COUNT = 250000
 
     SMS_INBOUND_WHITELIST = json.loads(os.environ.get('SMS_INBOUND_WHITELIST', '[]'))
+    FIRETEXT_INBOUND_SMS_AUTH = json.loads(os.environ.get('FIRETEXT_INBOUND_SMS_AUTH', '[]'))
+
+    ROUTE_SECRET_KEY_1 = os.environ.get('ROUTE_SECRET_KEY_1', '')
+    ROUTE_SECRET_KEY_2 = os.environ.get('ROUTE_SECRET_KEY_2', '')
 
     # Format is as follows:
     # {"dataset_1": "token_1", ...}
@@ -354,6 +366,7 @@ class Test(Config):
     }
 
     SMS_INBOUND_WHITELIST = ['203.0.113.195']
+    FIRETEXT_INBOUND_SMS_AUTH = ['testkey']
 
 
 class Preview(Config):
@@ -363,6 +376,7 @@ class Preview(Config):
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
     FROM_NUMBER = 'preview'
     API_RATE_LIMIT_ENABLED = True
+    CHECK_PROXY_HEADER = True
 
 
 class Staging(Config):
@@ -373,6 +387,23 @@ class Staging(Config):
     STATSD_ENABLED = True
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
+    CHECK_PROXY_HEADER = True
+    REDIS_ENABLED = False
+
+    API_KEY_LIMITS = {
+        KEY_TYPE_TEAM: {
+            "limit": 21000,
+            "interval": 60
+        },
+        KEY_TYPE_NORMAL: {
+            "limit": 21000,
+            "interval": 60
+        },
+        KEY_TYPE_TEST: {
+            "limit": 21000,
+            "interval": 60
+        }
+    }
 
 
 class Live(Config):
@@ -386,6 +417,7 @@ class Live(Config):
     FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID = 'ba9e1789-a804-40b8-871f-cc60d4c1286f'
     PERFORMANCE_PLATFORM_ENABLED = True
     API_RATE_LIMIT_ENABLED = True
+    CHECK_PROXY_HEADER = False
 
 
 class CloudFoundryConfig(Config):

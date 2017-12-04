@@ -25,32 +25,6 @@ def dao_get_reply_to_by_id(service_id, reply_to_id):
     return reply_to
 
 
-def create_or_update_email_reply_to(service_id, email_address):
-    reply_to = dao_get_reply_to_by_service_id(service_id)
-    if len(reply_to) == 0:
-        reply_to = ServiceEmailReplyTo(service_id=service_id, email_address=email_address)
-        dao_create_reply_to_email_address(reply_to)
-    elif len(reply_to) == 1:
-        reply_to[0].email_address = email_address
-        dao_update_reply_to_email(reply_to[0])
-    else:
-        # Once we move allowing multiple email address this methods will be removed
-        raise InvalidRequest(
-            "Multiple reply to email addresses were found, this method should not be used.",
-            status_code=500
-        )
-
-
-@transactional
-def dao_create_reply_to_email_address(reply_to_email):
-    db.session.add(reply_to_email)
-
-
-@transactional
-def dao_update_reply_to_email(reply_to):
-    db.session.add(reply_to)
-
-
 @transactional
 def add_reply_to_email_address_for_service(service_id, email_address, is_default):
     old_default = _get_existing_default(service_id)

@@ -1,7 +1,7 @@
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, time
 
-from sqlalchemy import asc, func
+from sqlalchemy import asc, func, extract
 from sqlalchemy.orm import joinedload
 from flask import current_app
 
@@ -10,37 +10,38 @@ from app.dao.dao_utils import (
     transactional,
     version_class
 )
-from app.dao.notifications_dao import get_financial_year
+from app.dao.date_util import get_financial_year
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
+from app.dao.stats_template_usage_by_month_dao import dao_get_template_usage_stats_by_service
 from app.models import (
-    NotificationStatistics,
-    ProviderStatistics,
-    VerifyCode,
+    AnnualBilling,
     ApiKey,
+    InboundNumber,
+    InvitedUser,
+    Job,
+    JobStatistics,
+    Notification,
+    NotificationHistory,
+    Permission,
+    ProviderStatistics,
+    Service,
+    ServicePermission,
+    ServiceSmsSender,
     Template,
     TemplateHistory,
     TemplateRedacted,
-    InboundNumber,
-    Job,
-    NotificationHistory,
-    Notification,
-    Permission,
     User,
-    InvitedUser,
-    Service,
-    ServicePermission,
-    KEY_TYPE_TEST,
-    NOTIFICATION_STATUS_TYPES,
-    TEMPLATE_TYPES,
-    JobStatistics,
-    SMS_TYPE,
+    VerifyCode,
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
-    ServiceSmsSender,
+    KEY_TYPE_TEST,
+    NOTIFICATION_STATUS_TYPES,
+    SMS_TYPE,
+    TEMPLATE_TYPES
 )
-from app.service.statistics import format_monthly_template_notification_stats
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
+from app.dao.annual_billing_dao import dao_insert_annual_billing
 
 DEFAULT_SERVICE_PERMISSIONS = [
     SMS_TYPE,
@@ -158,11 +159,12 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
     # the default property does not appear to work when there is a difference between the sqlalchemy schema and the
     # db schema (ie: during a migration), so we have to set sms_sender manually here. After the GOVUK sms_sender
     # migration is completed, this code should be able to be removed.
-    if not service.sms_sender:
-        service.sms_sender = current_app.config['FROM_NUMBER']
 
     if service_permissions is None:
         service_permissions = DEFAULT_SERVICE_PERMISSIONS
+
+    if service.free_sms_fragment_limit is None:
+        service.free_sms_fragment_limit = current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
     from app.dao.permissions_dao import permission_dao
     service.users.append(user)
@@ -175,7 +177,9 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
         service_permission = ServicePermission(service_id=service.id, permission=permission)
         service.permissions.append(service_permission)
 
-    insert_service_sms_sender(service, service.sms_sender)
+    # do we just add the default - or will we get a value from FE?
+    insert_service_sms_sender(service, current_app.config['FROM_NUMBER'])
+    dao_insert_annual_billing(service)
     db.session.add(service)
 
 
@@ -226,7 +230,6 @@ def delete_service_and_all_associated_db_objects(service):
     _delete_commit(TemplateRedacted.query.filter(TemplateRedacted.template_id.in_(subq)))
 
     _delete_commit(ServiceSmsSender.query.filter_by(service=service))
-    _delete_commit(NotificationStatistics.query.filter_by(service=service))
     _delete_commit(ProviderStatistics.query.filter_by(service=service))
     _delete_commit(InvitedUser.query.filter_by(service=service))
     _delete_commit(Permission.query.filter_by(service=service))
@@ -238,6 +241,7 @@ def delete_service_and_all_associated_db_objects(service):
     _delete_commit(ServicePermission.query.filter_by(service_id=service.id))
     _delete_commit(ApiKey.query.filter_by(service=service))
     _delete_commit(ApiKey.get_history_model().query.filter_by(service_id=service.id))
+    _delete_commit(AnnualBilling.query.filter_by(service_id=service.id))
 
     verify_codes = VerifyCode.query.join(User).filter(User.id.in_([x.id for x in service.users]))
     list(map(db.session.delete, verify_codes))
@@ -293,40 +297,6 @@ def _stats_for_service_query(service_id):
 
 
 @statsd(namespace="dao")
-def dao_fetch_monthly_historical_stats_by_template_for_service(service_id, year):
-    month = get_london_month_from_utc_column(NotificationHistory.created_at)
-
-    start_date, end_date = get_financial_year(year)
-    sq = db.session.query(
-        NotificationHistory.template_id,
-        NotificationHistory.status,
-        month.label('month'),
-        func.count().label('count')
-    ).filter(
-        NotificationHistory.service_id == service_id,
-        NotificationHistory.created_at.between(start_date, end_date)
-    ).group_by(
-        month,
-        NotificationHistory.template_id,
-        NotificationHistory.status
-    ).subquery()
-
-    rows = db.session.query(
-        Template.id.label('template_id'),
-        Template.name,
-        Template.template_type,
-        sq.c.status,
-        sq.c.count.label('count'),
-        sq.c.month
-    ).join(
-        sq,
-        sq.c.template_id == Template.id
-    ).all()
-
-    return format_monthly_template_notification_stats(year, rows)
-
-
-@statsd(namespace="dao")
 def dao_fetch_monthly_historical_stats_for_service(service_id, year):
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
 
@@ -348,22 +318,22 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
     )
 
     months = {
-        datetime.strftime(date, '%Y-%m'): {
+        datetime.strftime(created_date, '%Y-%m'): {
             template_type: dict.fromkeys(
                 NOTIFICATION_STATUS_TYPES,
                 0
             )
             for template_type in TEMPLATE_TYPES
         }
-        for date in [
+        for created_date in [
             datetime(year, month, 1) for month in range(4, 13)
         ] + [
             datetime(year + 1, month, 1) for month in range(1, 4)
         ]
     }
 
-    for notification_type, status, date, count in rows:
-        months[datetime.strftime(date, "%Y-%m")][notification_type][status] = count
+    for notification_type, status, created_date, count in rows:
+        months[datetime.strftime(created_date, "%Y-%m")][notification_type][status] = count
 
     return months
 
@@ -515,3 +485,92 @@ def dao_fetch_active_users_for_service(service_id):
     )
 
     return query.all()
+
+
+@statsd(namespace="dao")
+def dao_fetch_monthly_historical_stats_by_template():
+    month = get_london_month_from_utc_column(NotificationHistory.created_at)
+    year = func.date_trunc("year", NotificationHistory.created_at)
+    end_date = datetime.combine(date.today(), time.min)
+
+    return db.session.query(
+        NotificationHistory.template_id,
+        extract('month', month).label('month'),
+        extract('year', year).label('year'),
+        func.count().label('count')
+    ).filter(
+        NotificationHistory.created_at < end_date
+    ).group_by(
+        NotificationHistory.template_id,
+        month,
+        year
+    ).order_by(
+        year,
+        month
+    ).all()
+
+
+@statsd(namespace="dao")
+def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year):
+
+    results = dao_get_template_usage_stats_by_service(service_id, year)
+
+    stats = []
+    for result in results:
+        stat = type("", (), {})()
+        stat.template_id = result.template_id
+        stat.template_type = result.template_type
+        stat.name = str(result.name)
+        stat.month = result.month
+        stat.year = result.year
+        stat.count = result.count
+        stats.append(stat)
+
+    month = get_london_month_from_utc_column(Notification.created_at)
+    year_func = func.date_trunc("year", Notification.created_at)
+    start_date = datetime.combine(date.today(), time.min)
+
+    fy_start, fy_end = get_financial_year(year)
+
+    if fy_start < datetime.now() < fy_end:
+        today_results = db.session.query(
+            Notification.template_id,
+            Template.name,
+            Template.template_type,
+            extract('month', month).label('month'),
+            extract('year', year_func).label('year'),
+            func.count().label('count')
+        ).join(
+            Template, Notification.template_id == Template.id,
+        ).filter(
+            Notification.created_at >= start_date,
+            Notification.service_id == service_id
+        ).group_by(
+            Notification.template_id,
+            Template.name,
+            Template.template_type,
+            month,
+            year_func
+        ).order_by(
+            Notification.template_id
+        ).all()
+
+        for today_result in today_results:
+            add_to_stats = True
+            for stat in stats:
+                if today_result.template_id == stat.template_id and today_result.month == stat.month \
+                        and today_result.year == stat.year:
+                    stat.count = stat.count + today_result.count
+                    add_to_stats = False
+
+            if add_to_stats:
+                new_stat = type("", (), {})()
+                new_stat.template_id = today_result.template_id
+                new_stat.template_type = today_result.template_type
+                new_stat.name = today_result.name
+                new_stat.month = int(today_result.month)
+                new_stat.year = int(today_result.year)
+                new_stat.count = today_result.count
+                stats.append(new_stat)
+
+    return stats

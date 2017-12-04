@@ -1,30 +1,34 @@
 import json
 import pytest
 
-from flask import url_for, current_app
+from flask import url_for
 from freezegun import freeze_time
 
-import app
-from app.models import (User, Permission, MANAGE_SETTINGS, MANAGE_TEMPLATES, Notification)
+from app.models import (
+    User,
+    Permission,
+    MANAGE_SETTINGS,
+    MANAGE_TEMPLATES,
+    Notification,
+    SMS_AUTH_TYPE,
+    EMAIL_AUTH_TYPE
+)
 from app.dao.permissions_dao import default_service_permissions
 from tests import create_authorization_header
 
 
-def test_get_user_list(client, sample_service):
+def test_get_user_list(admin_request, sample_service):
     """
     Tests GET endpoint '/' to retrieve entire user list.
     """
-    header = create_authorization_header()
-    response = client.get(url_for('user.get_user'),
-                          headers=[header])
-    assert response.status_code == 200
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert len(json_resp['data']) == 1
+    json_resp = admin_request.get('user.get_user')
+
+    # it may have the notify user in the DB still :weary:
+    assert len(json_resp['data']) >= 1
     sample_user = sample_service.users[0]
     expected_permissions = default_service_permissions
-    fetched = json_resp['data'][0]
+    fetched = next(x for x in json_resp['data'] if x['id'] == str(sample_user.id))
 
-    assert str(sample_user.id) == fetched['id']
     assert sample_user.name == fetched['name']
     assert sample_user.mobile_number == fetched['mobile_number']
     assert sample_user.email_address == fetched['email_address']
@@ -52,6 +56,7 @@ def test_get_user(client, sample_service):
     assert sample_user.mobile_number == fetched['mobile_number']
     assert sample_user.email_address == fetched['email_address']
     assert sample_user.state == fetched['state']
+    assert fetched['auth_type'] == SMS_AUTH_TYPE
     assert sorted(expected_permissions) == sorted(fetched['permissions'][str(sample_service.id)])
 
 
@@ -68,7 +73,8 @@ def test_post_user(client, notify_db, notify_db_session):
         "logged_in_at": None,
         "state": "active",
         "failed_login_count": 0,
-        "permissions": {}
+        "permissions": {},
+        "auth_type": EMAIL_AUTH_TYPE
     }
     auth_header = create_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
@@ -81,6 +87,24 @@ def test_post_user(client, notify_db, notify_db_session):
     json_resp = json.loads(resp.get_data(as_text=True))
     assert json_resp['data']['email_address'] == user.email_address
     assert json_resp['data']['id'] == str(user.id)
+    assert user.auth_type == EMAIL_AUTH_TYPE
+
+
+def test_post_user_without_auth_type(admin_request, notify_db_session):
+    assert User.query.count() == 0
+    data = {
+        "name": "Test User",
+        "email_address": "user@digital.cabinet-office.gov.uk",
+        "password": "password",
+        "mobile_number": "+447700900986",
+        "permissions": {},
+    }
+
+    json_resp = admin_request.post('user.create_user', _data=data, _expected_status=201)
+
+    user = User.query.filter_by(email_address='user@digital.cabinet-office.gov.uk').first()
+    assert json_resp['data']['id'] == str(user.id)
+    assert user.auth_type == SMS_AUTH_TYPE
 
 
 def test_post_user_missing_attribute_email(client, notify_db, notify_db_session):
@@ -135,40 +159,53 @@ def test_create_user_missing_attribute_password(client, notify_db, notify_db_ses
     assert {'password': ['Missing data for required field.']} == json_resp['message']
 
 
-def test_put_user(client, sample_service):
-    """
-    Tests PUT endpoint '/' to update a user.
-    """
-    assert User.query.count() == 1
-    sample_user = sample_service.users[0]
-    sample_user.failed_login_count = 1
-    new_email = 'new@digital.cabinet-office.gov.uk'
+def test_can_create_user_with_email_auth_and_no_mobile(admin_request, notify_db_session):
     data = {
-        'name': sample_user.name,
-        'email_address': new_email,
-        'mobile_number': sample_user.mobile_number
+        'name': 'Test User',
+        'email_address': 'user@digital.cabinet-office.gov.uk',
+        'password': 'password',
+        'mobile_number': None,
+        'auth_type': EMAIL_AUTH_TYPE
     }
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.put(
-        url_for('user.update_user', user_id=sample_user.id),
-        data=json.dumps(data),
-        headers=headers)
-    assert resp.status_code == 200
-    assert User.query.count() == 1
-    json_resp = json.loads(resp.get_data(as_text=True))
-    assert json_resp['data']['email_address'] == new_email
-    expected_permissions = default_service_permissions
-    fetched = json_resp['data']
 
-    assert str(sample_user.id) == fetched['id']
-    assert sample_user.name == fetched['name']
-    assert sample_user.mobile_number == fetched['mobile_number']
-    assert new_email == fetched['email_address']
-    assert sample_user.state == fetched['state']
-    assert sorted(expected_permissions) == sorted(fetched['permissions'][str(sample_service.id)])
-    # password wasn't updated, so failed_login_count stays the same
-    assert sample_user.failed_login_count == 1
+    json_resp = admin_request.post('user.create_user', _data=data, _expected_status=201)
+
+    assert json_resp['data']['auth_type'] == EMAIL_AUTH_TYPE
+    assert json_resp['data']['mobile_number'] is None
+
+
+def test_cannot_create_user_with_sms_auth_and_no_mobile(admin_request, notify_db_session):
+    data = {
+        'name': 'Test User',
+        'email_address': 'user@digital.cabinet-office.gov.uk',
+        'password': 'password',
+        'mobile_number': None,
+        'auth_type': SMS_AUTH_TYPE
+    }
+
+    json_resp = admin_request.post('user.create_user', _data=data, _expected_status=400)
+
+    assert json_resp['message'] == 'Mobile number must be set if auth_type is set to sms_auth'
+
+
+def test_cannot_create_user_with_empty_strings(admin_request, notify_db_session):
+    data = {
+        'name': '',
+        'email_address': '',
+        'password': 'password',
+        'mobile_number': '',
+        'auth_type': EMAIL_AUTH_TYPE
+    }
+    resp = admin_request.post(
+        'user.create_user',
+        _data=data,
+        _expected_status=400
+    )
+    assert resp['message'] == {
+        'email_address': ['Not a valid email address'],
+        'mobile_number': ['Invalid phone number: Not enough digits'],
+        'name': ['Invalid name']
+    }
 
 
 @pytest.mark.parametrize('user_attribute, user_value', [
@@ -192,63 +229,6 @@ def test_post_user_attribute(client, sample_user, user_attribute, user_value):
     assert resp.status_code == 200
     json_resp = json.loads(resp.get_data(as_text=True))
     assert json_resp['data'][user_attribute] == user_value
-
-
-def test_put_user_update_password(client, sample_service):
-    """
-    Tests PUT endpoint '/' to update a user including their password.
-    """
-    assert User.query.count() == 1
-    sample_user = sample_service.users[0]
-    new_password = '1234567890'
-    data = {
-        'name': sample_user.name,
-        'email_address': sample_user.email_address,
-        'mobile_number': sample_user.mobile_number,
-        'password': new_password
-    }
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.put(
-        url_for('user.update_user', user_id=sample_user.id),
-        data=json.dumps(data),
-        headers=headers)
-    assert resp.status_code == 200
-    assert User.query.count() == 1
-    json_resp = json.loads(resp.get_data(as_text=True))
-    assert json_resp['data']['password_changed_at'] is not None
-    data = {'password': new_password}
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.post(
-        url_for('user.verify_user_password', user_id=str(sample_user.id)),
-        data=json.dumps(data),
-        headers=headers)
-    assert resp.status_code == 204
-
-
-def test_put_user_not_exists(client, sample_user, fake_uuid):
-    """
-    Tests PUT endpoint '/' to update a user doesn't exist.
-    """
-    assert User.query.count() == 1
-    new_email = 'new@digital.cabinet-office.gov.uk'
-    data = {'email_address': new_email}
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.put(
-        url_for('user.update_user', user_id=fake_uuid),
-        data=json.dumps(data),
-        headers=headers)
-    assert resp.status_code == 404
-    assert User.query.count() == 1
-    user = User.query.filter_by(id=str(sample_user.id)).first()
-    json_resp = json.loads(resp.get_data(as_text=True))
-    assert json_resp['result'] == "error"
-    assert json_resp['message'] == 'No result found'
-
-    assert user == sample_user
-    assert user.email_address != new_email
 
 
 def test_get_user_by_email(client, sample_service):
@@ -367,6 +347,7 @@ def test_send_user_reset_password_should_send_reset_password_link(client,
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     data = json.dumps({'email': sample_user.email_address})
     auth_header = create_authorization_header()
+    notify_service = password_reset_email_template.service
     resp = client.post(
         url_for('user.send_user_reset_password'),
         data=data,
@@ -375,6 +356,7 @@ def test_send_user_reset_password_should_send_reset_password_link(client,
     assert resp.status_code == 204
     notification = Notification.query.first()
     mocked.assert_called_once_with([str(notification.id)], queue="notify-internal-tasks")
+    assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
 def test_send_user_reset_password_should_return_400_when_email_is_missing(client, mocker):
@@ -428,6 +410,7 @@ def test_send_already_registered_email(client, sample_user, already_registered_t
     data = json.dumps({'email': sample_user.email_address})
     auth_header = create_authorization_header()
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    notify_service = already_registered_template.service
 
     resp = client.post(
         url_for('user.send_already_registered_email', user_id=str(sample_user.id)),
@@ -437,6 +420,7 @@ def test_send_already_registered_email(client, sample_user, already_registered_t
 
     notification = Notification.query.first()
     mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
+    assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
 def test_send_already_registered_email_returns_400_when_data_is_missing(client, sample_user):
@@ -456,6 +440,7 @@ def test_send_user_confirm_new_email_returns_204(client, sample_user, change_ema
     new_email = 'new_address@dig.gov.uk'
     data = json.dumps({'email': new_email})
     auth_header = create_authorization_header()
+    notify_service = change_email_confirmation_template.service
 
     resp = client.post(url_for('user.send_user_confirm_new_email', user_id=str(sample_user.id)),
                        data=data,
@@ -465,6 +450,7 @@ def test_send_user_confirm_new_email_returns_204(client, sample_user, change_ema
     mocked.assert_called_once_with(
         ([str(notification.id)]),
         queue="notify-internal-tasks")
+    assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
 def test_send_user_confirm_new_email_returns_400_when_email_missing(client, sample_user, mocker):
@@ -505,20 +491,92 @@ def test_update_user_password_saves_correctly(client, sample_service):
     assert resp.status_code == 204
 
 
-def test_update_user_resets_failed_login_count_if_updating_password(client, sample_service):
-    user = sample_service.users[0]
-    user.failed_login_count = 1
+def test_activate_user(admin_request, sample_user):
+    sample_user.state = 'pending'
 
-    resp = client.put(
-        url_for('user.update_user', user_id=user.id),
-        data=json.dumps({
-            'name': user.name,
-            'email_address': user.email_address,
-            'mobile_number': user.mobile_number,
-            'password': 'foo'
-        }),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    resp = admin_request.post('user.activate_user', user_id=sample_user.id)
+
+    assert resp['data']['id'] == str(sample_user.id)
+    assert resp['data']['state'] == 'active'
+    assert sample_user.state == 'active'
+
+
+def test_activate_user_fails_if_already_active(admin_request, sample_user):
+    resp = admin_request.post('user.activate_user', user_id=sample_user.id, _expected_status=400)
+    assert resp['message'] == 'User already active'
+    assert sample_user.state == 'active'
+
+
+def test_update_user_auth_type(admin_request, sample_user):
+    assert sample_user.auth_type == 'sms_auth'
+    resp = admin_request.post(
+        'user.update_user_attribute',
+        user_id=sample_user.id,
+        _data={'auth_type': 'email_auth'},
     )
 
-    assert resp.status_code == 200
-    assert user.failed_login_count == 0
+    assert resp['data']['id'] == str(sample_user.id)
+    assert resp['data']['auth_type'] == 'email_auth'
+
+
+def test_can_set_email_auth_and_remove_mobile_at_same_time(admin_request, sample_user):
+    sample_user.auth_type = SMS_AUTH_TYPE
+
+    admin_request.post(
+        'user.update_user_attribute',
+        user_id=sample_user.id,
+        _data={
+            'mobile_number': None,
+            'auth_type': EMAIL_AUTH_TYPE,
+        }
+    )
+
+    assert sample_user.mobile_number is None
+    assert sample_user.auth_type == EMAIL_AUTH_TYPE
+
+
+def test_cannot_remove_mobile_if_sms_auth(admin_request, sample_user):
+    sample_user.auth_type = SMS_AUTH_TYPE
+
+    json_resp = admin_request.post(
+        'user.update_user_attribute',
+        user_id=sample_user.id,
+        _data={'mobile_number': None},
+        _expected_status=400
+    )
+
+    assert json_resp['message'] == 'Mobile number must be set if auth_type is set to sms_auth'
+
+
+def test_can_remove_mobile_if_email_auth(admin_request, sample_user):
+    sample_user.auth_type = EMAIL_AUTH_TYPE
+
+    admin_request.post(
+        'user.update_user_attribute',
+        user_id=sample_user.id,
+        _data={'mobile_number': None},
+    )
+
+    assert sample_user.mobile_number is None
+
+
+def test_cannot_update_user_with_mobile_number_as_empty_string(admin_request, sample_user):
+    sample_user.auth_type = EMAIL_AUTH_TYPE
+
+    resp = admin_request.post(
+        'user.update_user_attribute',
+        user_id=sample_user.id,
+        _data={'mobile_number': ''},
+        _expected_status=400
+    )
+    assert resp['message']['mobile_number'] == ['Invalid phone number: Not enough digits']
+
+
+def test_cannot_update_user_password_using_attributes_method(admin_request, sample_user):
+    resp = admin_request.post(
+        'user.update_user_attribute',
+        user_id=sample_user.id,
+        _data={'password': 'foo'},
+        _expected_status=400
+    )
+    assert resp['message']['_schema'] == ['Unknown field name password']

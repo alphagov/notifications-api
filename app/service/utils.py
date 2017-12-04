@@ -1,11 +1,11 @@
 import itertools
 
+from notifications_utils.recipients import allowed_to_send_to
+
 from app.models import (
     ServiceWhitelist,
     MOBILE_TYPE, EMAIL_TYPE,
     KEY_TYPE_TEST, KEY_TYPE_TEAM, KEY_TYPE_NORMAL)
-
-from notifications_utils.recipients import allowed_to_send_to
 
 
 def get_recipients_from_request(request_json, key, type):

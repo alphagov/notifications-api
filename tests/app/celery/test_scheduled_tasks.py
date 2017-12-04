@@ -2,11 +2,13 @@ from datetime import datetime, timedelta
 from functools import partial
 from unittest.mock import call, patch, PropertyMock
 
+import functools
 from flask import current_app
 
 import pytest
 from freezegun import freeze_time
 
+from app import db
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
     check_job_status,
@@ -30,7 +32,8 @@ from app.celery.scheduled_tasks import (
     send_total_sent_notifications_to_performance_platform,
     switch_current_sms_provider_on_slow_delivery,
     timeout_job_statistics,
-    timeout_notifications
+    timeout_notifications,
+    daily_stats_template_usage_by_month
 )
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.config import QueueNames, TaskNames
@@ -41,22 +44,27 @@ from app.dao.provider_details_dao import (
     get_current_provider
 )
 from app.models import (
-    Service, Template,
-    SMS_TYPE, LETTER_TYPE,
+    MonthlyBilling,
+    NotificationHistory,
+    Service,
+    StatsTemplateUsageByMonth,
     JOB_STATUS_READY_TO_SEND,
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_SENT_TO_DVLA,
-    NOTIFICATION_PENDING,
-    NOTIFICATION_CREATED,
     KEY_TYPE_TEST,
-    MonthlyBilling
+    LETTER_TYPE,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_PENDING,
+    SMS_TYPE
 )
 from app.utils import get_london_midnight_in_utc
 from app.v2.errors import JobIncompleteError
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
+
 from tests.app.conftest import (
     sample_job as create_sample_job,
     sample_notification_history as create_notification_history,
+    sample_template as create_sample_template,
     create_custom_template,
     datetime_in_past
 )
@@ -72,14 +80,13 @@ def _create_slow_delivery_notification(provider='mmg'):
         service = create_service(
             service_id=current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SERVICE_ID')
         )
-    template = Template.query.get(current_app.config['FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID'])
-    if not template:
-        template = create_custom_template(
-            service=service,
-            user=service.users[0],
-            template_config_name='FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID',
-            template_type='sms'
-        )
+
+    template = create_custom_template(
+        service=service,
+        user=service.users[0],
+        template_config_name='FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID',
+        template_type='sms'
+    )
 
     create_notification(
         template=template,
@@ -707,11 +714,8 @@ def test_run_letter_jobs(client, mocker, sample_letter_template):
 
 
 def test_run_letter_jobs_does_nothing_if_no_ready_jobs(client, mocker, sample_letter_template):
-    job_ids = [
-        str(create_job(sample_letter_template, job_status=JOB_STATUS_IN_PROGRESS).id),
-        str(create_job(sample_letter_template, job_status=JOB_STATUS_SENT_TO_DVLA).id)
-    ]
-
+    create_job(sample_letter_template, job_status=JOB_STATUS_IN_PROGRESS)
+    create_job(sample_letter_template, job_status=JOB_STATUS_SENT_TO_DVLA)
     mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
 
     run_letter_jobs()
@@ -834,3 +838,148 @@ def test_check_job_status_task_raises_job_incomplete_error_for_multiple_jobs(moc
         args=([str(job.id), str(job_2.id)],),
         queue=QueueNames.JOBS
     )
+
+
+def test_daily_stats_template_usage_by_month(notify_db, notify_db_session):
+    notification_history = functools.partial(
+        create_notification_history,
+        notify_db,
+        notify_db_session,
+        status='delivered'
+    )
+
+    template_one = create_sample_template(notify_db, notify_db_session)
+    template_two = create_sample_template(notify_db, notify_db_session)
+
+    notification_history(created_at=datetime(2017, 10, 1), sample_template=template_one)
+    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
+    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
+    notification_history(created_at=datetime.now(), sample_template=template_two)
+
+    daily_stats_template_usage_by_month()
+
+    result = db.session.query(
+        StatsTemplateUsageByMonth
+    ).order_by(
+        StatsTemplateUsageByMonth.year,
+        StatsTemplateUsageByMonth.month
+    ).all()
+
+    assert len(result) == 2
+
+    assert result[0].template_id == template_two.id
+    assert result[0].month == 4
+    assert result[0].year == 2016
+    assert result[0].count == 2
+
+    assert result[1].template_id == template_one.id
+    assert result[1].month == 10
+    assert result[1].year == 2017
+    assert result[1].count == 1
+
+
+def test_daily_stats_template_usage_by_month_no_data():
+    daily_stats_template_usage_by_month()
+
+    results = db.session.query(StatsTemplateUsageByMonth).all()
+
+    assert len(results) == 0
+
+
+def test_daily_stats_template_usage_by_month_multiple_runs(notify_db, notify_db_session):
+    notification_history = functools.partial(
+        create_notification_history,
+        notify_db,
+        notify_db_session,
+        status='delivered'
+    )
+
+    template_one = create_sample_template(notify_db, notify_db_session)
+    template_two = create_sample_template(notify_db, notify_db_session)
+
+    notification_history(created_at=datetime(2017, 11, 1), sample_template=template_one)
+    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
+    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
+    notification_history(created_at=datetime.now(), sample_template=template_two)
+
+    daily_stats_template_usage_by_month()
+
+    template_three = create_sample_template(notify_db, notify_db_session)
+
+    notification_history(created_at=datetime(2017, 10, 1), sample_template=template_three)
+    notification_history(created_at=datetime(2017, 9, 1), sample_template=template_three)
+    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
+    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
+    notification_history(created_at=datetime.now(), sample_template=template_two)
+
+    daily_stats_template_usage_by_month()
+
+    result = db.session.query(
+        StatsTemplateUsageByMonth
+    ).order_by(
+        StatsTemplateUsageByMonth.year,
+        StatsTemplateUsageByMonth.month
+    ).all()
+
+    assert len(result) == 4
+
+    assert result[0].template_id == template_two.id
+    assert result[0].month == 4
+    assert result[0].year == 2016
+    assert result[0].count == 4
+
+    assert result[1].template_id == template_three.id
+    assert result[1].month == 9
+    assert result[1].year == 2017
+    assert result[1].count == 1
+
+    assert result[2].template_id == template_three.id
+    assert result[2].month == 10
+    assert result[2].year == 2017
+    assert result[2].count == 1
+
+    assert result[3].template_id == template_one.id
+    assert result[3].month == 11
+    assert result[3].year == 2017
+    assert result[3].count == 1
+
+
+def test_dao_fetch_monthly_historical_stats_by_template_null_template_id_not_counted(notify_db, notify_db_session):
+    notification_history = functools.partial(
+        create_notification_history,
+        notify_db,
+        notify_db_session,
+        status='delivered'
+    )
+
+    template_one = create_sample_template(notify_db, notify_db_session, template_name='1')
+    history = notification_history(created_at=datetime(2017, 2, 1), sample_template=template_one)
+
+    NotificationHistory.query.filter(
+        NotificationHistory.id == history.id
+    ).update(
+        {
+            'template_id': None
+        }
+    )
+
+    daily_stats_template_usage_by_month()
+
+    result = db.session.query(
+        StatsTemplateUsageByMonth
+    ).all()
+
+    assert len(result) == 0
+
+    notification_history(created_at=datetime(2017, 2, 1), sample_template=template_one)
+
+    daily_stats_template_usage_by_month()
+
+    result = db.session.query(
+        StatsTemplateUsageByMonth
+    ).order_by(
+        StatsTemplateUsageByMonth.year,
+        StatsTemplateUsageByMonth.month
+    ).all()
+
+    assert len(result) == 1

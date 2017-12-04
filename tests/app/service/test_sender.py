@@ -26,7 +26,7 @@ def test_send_notification_to_service_users_persists_notifications_correctly(
 ):
     mocker.patch('app.service.sender.send_notification_to_queue')
 
-    create_notify_service(notify_db, notify_db_session)
+    notify_service, user = create_notify_service(notify_db, notify_db_session)
     service = create_sample_service(notify_db, notify_db_session, user=sample_user)
     template = create_template(service, template_type=notification_type)
     send_notification_to_service_users(service_id=service.id, template_id=template.id)
@@ -40,6 +40,7 @@ def test_send_notification_to_service_users_persists_notifications_correctly(
     assert notification.template.id == template.id
     assert notification.template.template_type == notification_type
     assert notification.notification_type == notification_type
+    assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
 def test_send_notification_to_service_users_sends_to_queue(

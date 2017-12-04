@@ -1,8 +1,10 @@
 import json
 import uuid
 from datetime import datetime
+from urllib.parse import urlencode
 
-from flask import (jsonify, request, Blueprint, current_app)
+from flask import (jsonify, request, Blueprint, current_app, abort)
+from sqlalchemy.exc import IntegrityError
 
 from app.config import QueueNames
 from app.dao.users_dao import (
@@ -22,7 +24,7 @@ from app.dao.users_dao import (
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import SMS_TYPE, KEY_TYPE_NORMAL, EMAIL_TYPE, Service
+from app.models import KEY_TYPE_NORMAL, Service, SMS_TYPE, EMAIL_TYPE
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue
@@ -30,9 +32,7 @@ from app.notifications.process_notifications import (
 from app.schemas import (
     email_data_request_schema,
     user_schema,
-    request_verify_code_schema,
     permission_schema,
-    user_schema_load_json,
     user_update_schema_load_json,
     user_update_password_schema_load_json
 )
@@ -41,9 +41,28 @@ from app.errors import (
     InvalidRequest
 )
 from app.utils import url_with_token
+from app.user.users_schema import (
+    post_verify_code_schema,
+    post_send_user_sms_code_schema,
+    post_send_user_email_code_schema,
+)
+from app.schema_validation import validate
 
 user_blueprint = Blueprint('user', __name__)
 register_errors(user_blueprint)
+
+
+@user_blueprint.errorhandler(IntegrityError)
+def handle_integrity_error(exc):
+    """
+    Handle integrity errors caused by the auth type/mobile number check constraint
+    """
+    if 'ck_users_mobile_or_email_auth' in str(exc):
+        # we don't expect this to trip, so still log error
+        current_app.logger.exception('Check constraint ck_users_mobile_or_email_auth triggered')
+        return jsonify(result='error', message='Mobile number must be set if auth_type is set to sms_auth'), 400
+
+    raise
 
 
 @user_blueprint.route('', methods=['POST'])
@@ -57,23 +76,6 @@ def create_user():
     return jsonify(data=user_schema.dump(user_to_create).data), 201
 
 
-@user_blueprint.route('/<uuid:user_id>', methods=['PUT'])
-def update_user(user_id):
-    user_to_update = get_user_by_id(user_id=user_id)
-    req_json = request.get_json()
-    update_dct, errors = user_schema_load_json.load(req_json)
-    # TODO don't let password be updated in this PUT method (currently used by the forgot password flow)
-    pwd = req_json.get('password', None)
-    if pwd is not None:
-        if not pwd:
-            errors.update({'password': ['Invalid data for field']})
-            raise InvalidRequest(errors, status_code=400)
-        else:
-            reset_failed_login_count(user_to_update)
-    save_model_user(user_to_update, update_dict=update_dct, pwd=pwd)
-    return jsonify(data=user_schema.dump(user_to_update).data), 200
-
-
 @user_blueprint.route('/<uuid:user_id>', methods=['POST'])
 def update_user_attribute(user_id):
     user_to_update = get_user_by_id(user_id=user_id)
@@ -83,6 +85,17 @@ def update_user_attribute(user_id):
         raise InvalidRequest(errors, status_code=400)
     save_user_attribute(user_to_update, update_dict=update_dct)
     return jsonify(data=user_schema.dump(user_to_update).data), 200
+
+
+@user_blueprint.route('/<uuid:user_id>/activate', methods=['POST'])
+def activate_user(user_id):
+    user = get_user_by_id(user_id=user_id)
+    if user.state == 'active':
+        raise InvalidRequest('User already active', status_code=400)
+
+    user.state = 'active'
+    save_model_user(user)
+    return jsonify(data=user_schema.dump(user).data), 200
 
 
 @user_blueprint.route('/<uuid:user_id>/reset-failed-login-count', methods=['POST'])
@@ -115,77 +128,111 @@ def verify_user_password(user_id):
 
 @user_blueprint.route('/<uuid:user_id>/verify/code', methods=['POST'])
 def verify_user_code(user_id):
+    data = request.get_json()
+    validate(data, post_verify_code_schema)
+
     user_to_verify = get_user_by_id(user_id=user_id)
 
-    req_json = request.get_json()
-    verify_code = None
-    code_type = None
-    errors = {}
-    try:
-        verify_code = req_json['code']
-    except KeyError:
-        errors.update({'code': ['Required field missing data']})
-    try:
-        code_type = req_json['code_type']
-    except KeyError:
-        errors.update({'code_type': ['Required field missing data']})
-    if errors:
-        raise InvalidRequest(errors, status_code=400)
-
-    code = get_user_code(user_to_verify, verify_code, code_type)
+    code = get_user_code(user_to_verify, data['code'], data['code_type'])
     if user_to_verify.failed_login_count >= current_app.config.get('MAX_VERIFY_CODE_COUNT'):
         raise InvalidRequest("Code not found", status_code=404)
     if not code:
+        # only relevant from sms
         increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code not found", status_code=404)
     if datetime.utcnow() > code.expiry_datetime or code.code_used:
+        # sms and email
         increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code has expired", status_code=400)
 
-    if code_type == 'sms':
-        user_to_verify.current_session_id = str(uuid.uuid4())
-        user_to_verify.logged_in_at = datetime.utcnow()
-        user_to_verify.failed_login_count = 0
-        save_model_user(user_to_verify)
+    user_to_verify.current_session_id = str(uuid.uuid4())
+    user_to_verify.logged_in_at = datetime.utcnow()
+    user_to_verify.failed_login_count = 0
+    save_model_user(user_to_verify)
 
     use_user_code(code.id)
     return jsonify({}), 204
 
 
-@user_blueprint.route('/<uuid:user_id>/sms-code', methods=['POST'])
-def send_user_sms_code(user_id):
+@user_blueprint.route('/<uuid:user_id>/<code_type>-code', methods=['POST'])
+def send_user_2fa_code(user_id, code_type):
     user_to_send_to = get_user_by_id(user_id=user_id)
-    verify_code, errors = request_verify_code_schema.load(request.get_json())
 
     if count_user_verify_codes(user_to_send_to) >= current_app.config.get('MAX_VERIFY_CODE_COUNT'):
         # Prevent more than `MAX_VERIFY_CODE_COUNT` active verify codes at a time
-        current_app.logger.warn('Max verify code has exceeded for user {}'.format(user_to_send_to.id))
-        return jsonify({}), 204
+        current_app.logger.warn('Too many verify codes created for user {}'.format(user_to_send_to.id))
+    else:
+        data = request.get_json()
+        if code_type == SMS_TYPE:
+            validate(data, post_send_user_sms_code_schema)
+            send_user_sms_code(user_to_send_to, data)
+        elif code_type == EMAIL_TYPE:
+            validate(data, post_send_user_email_code_schema)
+            send_user_email_code(user_to_send_to, data)
+        else:
+            abort(404)
+
+    return '{}', 204
+
+
+def send_user_sms_code(user_to_send_to, data):
+    recipient = data.get('to') or user_to_send_to.mobile_number
 
     secret_code = create_secret_code()
-    create_user_code(user_to_send_to, secret_code, SMS_TYPE)
+    personalisation = {'verify_code': secret_code}
 
-    mobile = user_to_send_to.mobile_number if verify_code.get('to', None) is None else verify_code.get('to')
-    sms_code_template_id = current_app.config['SMS_CODE_TEMPLATE_ID']
-    sms_code_template = dao_get_template_by_id(sms_code_template_id)
-    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
+    create_2fa_code(
+        current_app.config['SMS_CODE_TEMPLATE_ID'],
+        user_to_send_to,
+        secret_code,
+        recipient,
+        personalisation
+    )
 
+
+def send_user_email_code(user_to_send_to, data):
+    recipient = user_to_send_to.email_address
+
+    secret_code = str(uuid.uuid4())
+    personalisation = {
+        'name': user_to_send_to.name,
+        'url': _create_2fa_url(user_to_send_to, secret_code, data.get('next'))
+    }
+
+    create_2fa_code(
+        current_app.config['EMAIL_2FA_TEMPLATE_ID'],
+        user_to_send_to,
+        secret_code,
+        recipient,
+        personalisation
+    )
+
+
+def create_2fa_code(template_id, user_to_send_to, secret_code, recipient, personalisation):
+    template = dao_get_template_by_id(template_id)
+
+    # save the code in the VerifyCode table
+    create_user_code(user_to_send_to, secret_code, template.template_type)
+    reply_to = None
+    if template.template_type == SMS_TYPE:
+        reply_to = template.service.get_default_sms_sender()
+    elif template.template_type == EMAIL_TYPE:
+        reply_to = template.service.get_default_reply_to_email_address()
     saved_notification = persist_notification(
-        template_id=sms_code_template_id,
-        template_version=sms_code_template.version,
-        recipient=mobile,
-        service=service,
-        personalisation={'verify_code': secret_code},
-        notification_type=SMS_TYPE,
+        template_id=template.id,
+        template_version=template.version,
+        recipient=recipient,
+        service=template.service,
+        personalisation=personalisation,
+        notification_type=template.template_type,
         api_key_id=None,
-        key_type=KEY_TYPE_NORMAL
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=reply_to
     )
     # Assume that we never want to observe the Notify service's research mode
     # setting for this notification - we still need to be able to log into the
     # admin even if we're doing user research using this service:
     send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
-
-    return jsonify({}), 204
 
 
 @user_blueprint.route('/<uuid:user_id>/change-email-verification', methods=['POST'])
@@ -208,9 +255,10 @@ def send_user_confirm_new_email(user_id):
             'url': _create_confirmation_url(user=user_to_send_to, email_address=email['email']),
             'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/support'
         },
-        notification_type=EMAIL_TYPE,
+        notification_type=template.template_type,
         api_key_id=None,
-        key_type=KEY_TYPE_NORMAL
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=service.get_default_reply_to_email_address()
     )
 
     send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
@@ -218,12 +266,11 @@ def send_user_confirm_new_email(user_id):
 
 
 @user_blueprint.route('/<uuid:user_id>/email-verification', methods=['POST'])
-def send_user_email_verification(user_id):
+def send_new_user_email_verification(user_id):
+    # when registering, we verify all users' email addresses using this function
     user_to_send_to = get_user_by_id(user_id=user_id)
-    secret_code = create_secret_code()
-    create_user_code(user_to_send_to, secret_code, 'email')
 
-    template = dao_get_template_by_id(current_app.config['EMAIL_VERIFY_CODE_TEMPLATE_ID'])
+    template = dao_get_template_by_id(current_app.config['NEW_USER_EMAIL_VERIFICATION_TEMPLATE_ID'])
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
 
     saved_notification = persist_notification(
@@ -233,11 +280,12 @@ def send_user_email_verification(user_id):
         service=service,
         personalisation={
             'name': user_to_send_to.name,
-            'url': _create_verification_url(user_to_send_to, secret_code)
+            'url': _create_verification_url(user_to_send_to)
         },
-        notification_type=EMAIL_TYPE,
+        notification_type=template.template_type,
         api_key_id=None,
-        key_type=KEY_TYPE_NORMAL
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=service.get_default_reply_to_email_address()
     )
 
     send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
@@ -261,9 +309,10 @@ def send_already_registered_email(user_id):
             'forgot_password_url': current_app.config['ADMIN_BASE_URL'] + '/forgot-password',
             'feedback_url': current_app.config['ADMIN_BASE_URL'] + '/support'
         },
-        notification_type=EMAIL_TYPE,
+        notification_type=template.template_type,
         api_key_id=None,
-        key_type=KEY_TYPE_NORMAL
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=service.get_default_reply_to_email_address()
     )
 
     send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
@@ -323,9 +372,10 @@ def send_user_reset_password():
             'user_name': user_to_send_to.name,
             'url': _create_reset_password_url(user_to_send_to.email_address)
         },
-        notification_type=EMAIL_TYPE,
+        notification_type=template.template_type,
         api_key_id=None,
-        key_type=KEY_TYPE_NORMAL
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=service.get_default_reply_to_email_address()
     )
 
     send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
@@ -351,8 +401,8 @@ def _create_reset_password_url(email):
     return url_with_token(data, url, current_app.config)
 
 
-def _create_verification_url(user, secret_code):
-    data = json.dumps({'user_id': str(user.id), 'email': user.email_address, 'secret_code': secret_code})
+def _create_verification_url(user):
+    data = json.dumps({'user_id': str(user.id), 'email': user.email_address})
     url = '/verify-email/'
     return url_with_token(data, url, current_app.config)
 
@@ -361,3 +411,12 @@ def _create_confirmation_url(user, email_address):
     data = json.dumps({'user_id': str(user.id), 'email': email_address})
     url = '/user-profile/email/confirm/'
     return url_with_token(data, url, current_app.config)
+
+
+def _create_2fa_url(user, secret_code, next_redir):
+    data = json.dumps({'user_id': str(user.id), 'secret_code': secret_code})
+    url = '/email-auth/'
+    ret = url_with_token(data, url, current_app.config)
+    if next_redir:
+        ret += '?{}'.format(urlencode({'next': next_redir}))
+    return ret

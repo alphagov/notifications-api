@@ -14,6 +14,7 @@ from app import db
 from app.models import (
     Service,
     Template,
+    TemplateHistory,
     ApiKey,
     Job,
     Notification,
@@ -24,12 +25,20 @@ from app.models import (
     ProviderDetails,
     ProviderDetailsHistory,
     ProviderRates,
-    NotificationStatistics,
     ScheduledNotification,
     ServiceWhitelist,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEST, KEY_TYPE_TEAM,
-    MOBILE_TYPE, EMAIL_TYPE, INBOUND_SMS_TYPE, SMS_TYPE, LETTER_TYPE, NOTIFICATION_STATUS_TYPES_COMPLETED,
-    SERVICE_PERMISSION_TYPES)
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEST,
+    KEY_TYPE_TEAM,
+    MOBILE_TYPE,
+    EMAIL_TYPE,
+    INBOUND_SMS_TYPE,
+    SMS_TYPE,
+    LETTER_TYPE,
+    NOTIFICATION_STATUS_TYPES_COMPLETED,
+    SERVICE_PERMISSION_TYPES,
+    ServiceEmailReplyTo
+)
 from app.dao.users_dao import (create_user_code, create_secret_code)
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
@@ -39,6 +48,7 @@ from app.dao.notifications_dao import dao_create_notification
 from app.dao.invited_user_dao import save_invited_user
 from app.dao.provider_rates_dao import create_provider_rates
 from app.clients.sms.firetext import FiretextClient
+from app.history_meta import create_history
 from tests import create_authorization_header
 from tests.app.db import (
     create_user,
@@ -48,6 +58,7 @@ from tests.app.db import (
     create_api_key,
     create_inbound_number,
     create_letter_contact,
+    create_inbound_sms,
 )
 
 
@@ -544,8 +555,7 @@ def sample_notification(
         'job': job,
         'service_id': service.id,
         'service': service,
-        'template_id': template.id if template else None,
-        'template': template,
+        'template_id': template.id,
         'template_version': template.version,
         'status': status,
         'reference': reference,
@@ -624,7 +634,7 @@ def sample_email_notification(notify_db, notify_db_session):
         'job': job,
         'service_id': service.id,
         'service': service,
-        'template': template,
+        'template_id': template.id,
         'template_version': template.version,
         'status': 'created',
         'reference': None,
@@ -678,7 +688,7 @@ def sample_notification_history(
     notification_history = NotificationHistory(
         id=uuid.uuid4(),
         service=sample_template.service,
-        template=sample_template,
+        template_id=sample_template.id,
         template_version=sample_template.version,
         status=status,
         created_at=created_at,
@@ -841,35 +851,6 @@ def sample_provider_statistics(notify_db,
 
 
 @pytest.fixture(scope='function')
-def sample_notification_statistics(notify_db,
-                                   notify_db_session,
-                                   service=None,
-                                   day=None,
-                                   emails_requested=2,
-                                   emails_delivered=1,
-                                   emails_failed=1,
-                                   sms_requested=2,
-                                   sms_delivered=1,
-                                   sms_failed=1):
-    if service is None:
-        service = sample_service(notify_db, notify_db_session)
-    if day is None:
-        day = date.today()
-    stats = NotificationStatistics(
-        service=service,
-        day=day,
-        emails_requested=emails_requested,
-        emails_delivered=emails_delivered,
-        emails_failed=emails_failed,
-        sms_requested=sms_requested,
-        sms_delivered=sms_delivered,
-        sms_failed=sms_failed)
-    notify_db.session.add(stats)
-    notify_db.session.commit()
-    return stats
-
-
-@pytest.fixture(scope='function')
 def mock_firetext_client(mocker, statsd_client=None):
     client = FiretextClient()
     statsd_client = statsd_client or mocker.Mock()
@@ -895,13 +876,31 @@ def sms_code_template(notify_db,
 
 
 @pytest.fixture(scope='function')
+def email_2fa_code_template(notify_db, notify_db_session):
+    service, user = notify_service(notify_db, notify_db_session)
+    return create_custom_template(
+        service=service,
+        user=user,
+        template_config_name='EMAIL_2FA_TEMPLATE_ID',
+        content=(
+            'Hi ((name)),'
+            ''
+            'To sign in to GOV.​UK Notify please open this link:'
+            '((url))'
+        ),
+        subject='Sign in to GOV.UK Notify',
+        template_type='email'
+    )
+
+
+@pytest.fixture(scope='function')
 def email_verification_template(notify_db,
                                 notify_db_session):
     service, user = notify_service(notify_db, notify_db_session)
     return create_custom_template(
         service=service,
         user=user,
-        template_config_name='EMAIL_VERIFY_CODE_TEMPLATE_ID',
+        template_config_name='NEW_USER_EMAIL_VERIFICATION_TEMPLATE_ID',
         content='((user_name)) use ((url)) to complete registration',
         template_type='email'
     )
@@ -986,6 +985,7 @@ def create_custom_template(service, user, template_config_name, template_type, c
         }
         template = Template(**data)
         db.session.add(template)
+        db.session.add(create_history(template, TemplateHistory))
         db.session.commit()
     return template
 
@@ -994,17 +994,26 @@ def notify_service(notify_db, notify_db_session):
     user = create_user()
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
     if not service:
+        service = Service(
+            name='Notify Service',
+            message_limit=1000,
+            restricted=False,
+            email_from='notify.service',
+            created_by=user,
+            prefix_sms=False,
+        )
+        dao_create_service(service=service, service_id=current_app.config['NOTIFY_SERVICE_ID'], user=user)
+
         data = {
-            'id': current_app.config['NOTIFY_SERVICE_ID'],
-            'name': 'Notify Service',
-            'message_limit': 1000,
-            'active': True,
-            'restricted': False,
-            'email_from': 'notify.service',
-            'created_by': user
+            'service': service,
+            'email_address': "notify@gov.uk",
+            'is_default': True,
         }
-        service = Service(**data)
-        db.session.add(service)
+        reply_to = ServiceEmailReplyTo(**data)
+
+        db.session.add(reply_to)
+        db.session.commit()
+
     return service, user
 
 
@@ -1042,6 +1051,11 @@ def sample_inbound_numbers(notify_db, notify_db_session, sample_service):
     inbound_numbers.append(create_inbound_number(number='2', provider='mmg', active=False, service_id=service.id))
     inbound_numbers.append(create_inbound_number(number='3', provider='firetext', service_id=sample_service.id))
     return inbound_numbers
+
+
+@pytest.fixture
+def sample_inbound_sms(notify_db, notify_db_session, sample_service):
+    return create_inbound_sms(sample_service)
 
 
 @pytest.fixture

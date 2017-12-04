@@ -36,4 +36,4 @@ createdb notification_api
 
 # Upgrade databases
 source environment.sh
-python application.py db upgrade
+flask db upgrade

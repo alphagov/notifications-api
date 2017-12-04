@@ -11,6 +11,10 @@ from notifications_utils.s3 import s3upload
 
 from app.aws import s3
 from app import notify_celery
+from app.dao.services_dao import (
+    dao_fetch_monthly_historical_stats_by_template
+)
+from app.dao.stats_template_usage_by_month_dao import insert_or_update_stats_for_template
 from app.performance_platform import total_sent_notifications, processing_time
 from app import performance_platform_client
 from app.dao.date_util import get_month_start_and_end_date_in_utc
@@ -402,3 +406,18 @@ def check_job_status():
             queue=QueueNames.JOBS
         )
         raise JobIncompleteError("Job(s) {} have not completed.".format(job_ids))
+
+
+@notify_celery.task(name='daily-stats-template-usage-by-month')
+@statsd(namespace="tasks")
+def daily_stats_template_usage_by_month():
+    results = dao_fetch_monthly_historical_stats_by_template()
+
+    for result in results:
+        if result.template_id:
+            insert_or_update_stats_for_template(
+                result.template_id,
+                result.month,
+                result.year,
+                result.count
+            )

@@ -47,12 +47,7 @@ def get_user_code(user, code, code_type):
     codes = VerifyCode.query.filter_by(
         user=user, code_type=code_type).order_by(
         VerifyCode.created_at.desc())
-    retval = None
-    for x in codes:
-        if x.check_code(code):
-            retval = x
-            break
-    return retval
+    return next((x for x in codes if x.check_code(code)), None)
 
 
 def delete_codes_older_created_more_than_a_day_ago():

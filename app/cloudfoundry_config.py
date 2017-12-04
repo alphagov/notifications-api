@@ -45,6 +45,9 @@ def extract_notify_config(notify_config):
     os.environ['SECRET_KEY'] = notify_config['credentials']['secret_key']
     os.environ['DANGEROUS_SALT'] = notify_config['credentials']['dangerous_salt']
     os.environ['SMS_INBOUND_WHITELIST'] = json.dumps(notify_config['credentials']['allow_ip_inbound_sms'])
+    os.environ['FIRETEXT_INBOUND_SMS_AUTH'] = json.dumps(notify_config['credentials']['firetext_inbound_sms_auth'])
+    os.environ['ROUTE_SECRET_KEY_1'] = notify_config['credentials']['route_secret_key_1']
+    os.environ['ROUTE_SECRET_KEY_2'] = notify_config['credentials']['route_secret_key_2']
 
 
 def extract_performance_platform_config(performance_platform_config):

@@ -1,6 +1,10 @@
 #!/usr/bin/env python
-# notify_celery is referenced from manifest_delivery_base.yml, and cannot be removed
-from app import notify_celery, create_app
+from flask import Flask
 
-application = create_app('delivery')
+# notify_celery is referenced from manifest_delivery_base.yml, and cannot be removed
+from app import notify_celery, create_app  # noqa
+
+
+application = Flask('delivery')
+create_app(application)
 application.app_context().push()

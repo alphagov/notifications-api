@@ -2,6 +2,7 @@ import jwt
 import uuid
 import time
 from datetime import datetime
+from tests.conftest import set_config_values
 
 import pytest
 import flask
@@ -279,7 +280,7 @@ def test_authentication_returns_error_when_service_has_no_secrets(client,
 
 
 def test_should_attach_the_current_api_key_to_current_app(notify_api, sample_service, sample_api_key):
-    with notify_api.test_request_context() as context, notify_api.test_client() as client:
+    with notify_api.test_request_context(), notify_api.test_client() as client:
         token = __create_token(sample_api_key.service_id)
         response = client.get(
             '/notifications',
@@ -372,3 +373,26 @@ def test_allow_valid_ips_bits(restrict_ip_sms_app):
     )
 
     assert response.status_code == 200
+
+
+@pytest.mark.parametrize('check_proxy_header,header_value,expected_status', [
+    (True, 'key_1', 200),
+    (True, 'wrong_key', 403),
+    (False, 'key_1', 200),
+    (False, 'wrong_key', 200),
+])
+def test_route_correct_secret_key(notify_api, check_proxy_header, header_value, expected_status):
+    with set_config_values(notify_api, {
+        'ROUTE_SECRET_KEY_1': 'key_1',
+        'ROUTE_SECRET_KEY_2': '',
+        'CHECK_PROXY_HEADER': check_proxy_header,
+    }):
+
+        with notify_api.test_client() as client:
+            response = client.get(
+                path='/_status',
+                headers=[
+                    ('X-Custom-Forwarder', header_value),
+                ]
+            )
+        assert response.status_code == expected_status

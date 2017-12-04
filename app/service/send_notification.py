@@ -1,19 +1,22 @@
 from app.config import QueueNames
+from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
+from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.notifications.validators import (
     check_service_over_daily_message_limit,
     validate_and_format_recipient,
-    validate_template,
-    check_service_email_reply_to_id)
+    validate_template
+)
 from app.notifications.process_notifications import (
-    create_content_for_notification,
     persist_notification,
-    send_notification_to_queue,
-    persist_email_reply_to_id_for_notification)
+    send_notification_to_queue
+)
 from app.models import (
     KEY_TYPE_NORMAL,
     PRIORITY,
     SMS_TYPE,
-    EMAIL_TYPE)
+    EMAIL_TYPE,
+    LETTER_TYPE
+)
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id
 from app.dao.users_dao import get_user_by_id
@@ -52,6 +55,8 @@ def send_one_off_notification(service_id, post_data):
 
     validate_created_by(service, post_data['created_by'])
 
+    sender_id = post_data.get('sender_id', None)
+    reply_to = get_reply_to_text(notification_type=template.template_type, sender_id=sender_id, service=service)
     notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
@@ -61,12 +66,9 @@ def send_one_off_notification(service_id, post_data):
         notification_type=template.template_type,
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL,
-        created_by_id=post_data['created_by']
+        created_by_id=post_data['created_by'],
+        reply_to_text=reply_to
     )
-    sender_id = post_data.get('sender_id', None)
-    if sender_id and template.template_type == EMAIL_TYPE:
-        check_service_email_reply_to_id(service_id, sender_id)
-        persist_email_reply_to_id_for_notification(notification.id, sender_id)
 
     queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
     send_notification_to_queue(
@@ -76,3 +78,23 @@ def send_one_off_notification(service_id, post_data):
     )
 
     return {'id': str(notification.id)}
+
+
+def get_reply_to_text(notification_type, sender_id, service):
+    reply_to = None
+    if notification_type == EMAIL_TYPE:
+        if sender_id:
+            reply_to = dao_get_reply_to_by_id(service.id, sender_id).email_address
+        else:
+            service.get_default_reply_to_email_address()
+
+    elif notification_type == SMS_TYPE:
+        if sender_id:
+            reply_to = dao_get_service_sms_senders_by_id(service.id, sender_id).sms_sender
+        else:
+            reply_to = service.get_default_sms_sender()
+
+    elif notification_type == LETTER_TYPE:
+        reply_to = service.get_default_letter_contact()
+
+    return reply_to

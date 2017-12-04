@@ -1,8 +1,6 @@
-from datetime import datetime
 import collections
 
 import pytest
-from freezegun import freeze_time
 
 from app.service.statistics import (
     format_statistics,

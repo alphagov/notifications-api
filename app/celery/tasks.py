@@ -14,9 +14,12 @@ from notifications_utils.template import (
 )
 from requests import (
     HTTPError,
-    request
+    request,
+    RequestException
 )
 from sqlalchemy.exc import SQLAlchemyError
+from botocore.exceptions import ClientError as BotoClientError
+
 from app import (
     create_uuid,
     create_random_identifier,
@@ -33,20 +36,19 @@ from app.dao.jobs_dao import (
     dao_get_job_by_id,
     all_notifications_are_created_for_job,
     dao_get_all_notifications_for_job,
-    dao_update_job_status)
+    dao_update_job_status
+)
 from app.dao.notifications_dao import (
     get_notification_by_id,
-    update_notification_status_by_reference,
     dao_update_notifications_for_job_to_sent_to_dvla,
     dao_update_notifications_by_reference,
-    dao_get_last_notification_added_for_job_id)
+    dao_get_last_notification_added_for_job_id
+)
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
-    Job,
-    Notification,
     DVLA_RESPONSE_STATUS_SENT,
     EMAIL_TYPE,
     JOB_STATUS_CANCELLED,
@@ -63,7 +65,6 @@ from app.models import (
     SMS_TYPE,
 )
 from app.notifications.process_notifications import persist_notification
-from app.notifications.notifications_ses_callback import process_ses_response
 from app.service.utils import service_allowed_to_send_to
 from app.statsd_decorators import statsd
 from notifications_utils.s3 import s3upload
@@ -214,7 +215,8 @@ def save_sms(self,
             created_at=datetime.utcnow(),
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
-            notification_id=notification_id
+            notification_id=notification_id,
+            reply_to_text=service.get_default_sms_sender()
         )
 
         provider_tasks.deliver_sms.apply_async(
@@ -261,7 +263,8 @@ def save_email(self,
             created_at=datetime.utcnow(),
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
-            notification_id=notification_id
+            notification_id=notification_id,
+            reply_to_text=service.get_default_reply_to_email_address()
         )
 
         provider_tasks.deliver_email.apply_async(
@@ -302,7 +305,8 @@ def save_letter(
             job_id=notification['job'],
             job_row_number=notification['row_number'],
             notification_id=notification_id,
-            reference=create_random_identifier()
+            reference=create_random_identifier(),
+            reply_to_text=service.get_default_letter_contact()
         )
 
         current_app.logger.info("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
@@ -324,11 +328,13 @@ def build_dvla_file(self, job_id):
             )
             dao_update_job_status(job_id, JOB_STATUS_READY_TO_SEND)
         else:
-            current_app.logger.info("All notifications for job {} are not persisted".format(job_id))
-            self.retry(queue=QueueNames.RETRY, exc="All notifications for job {} are not persisted".format(job_id))
-    except Exception as e:
+            msg = "All notifications for job {} are not persisted".format(job_id)
+            current_app.logger.info(msg)
+            self.retry(queue=QueueNames.RETRY)
+    # specifically don't catch celery.retry errors
+    except (SQLAlchemyError, BotoClientError):
         current_app.logger.exception("build_dvla_file threw exception")
-        raise e
+        self.retry(queue=QueueNames.RETRY)
 
 
 @notify_celery.task(bind=True, name='update-letter-job-to-sent')
@@ -399,7 +405,7 @@ def create_dvla_file_contents_for_notifications(notifications):
             notification.template.__dict__,
             notification.personalisation,
             notification_reference=notification.reference,
-            contact_block=notification.service.get_default_letter_contact(),
+            contact_block=notification.reply_to_text,
             org_id=notification.service.dvla_organisation.id,
         ))
         for notification in notifications
@@ -449,9 +455,12 @@ def update_letter_notifications_statuses(self, filename):
         for update in notification_updates:
             status = NOTIFICATION_DELIVERED if update.status == DVLA_RESPONSE_STATUS_SENT \
                 else NOTIFICATION_TECHNICAL_FAILURE
-            notification = update_notification_status_by_reference(
-                update.reference,
-                status
+            notification = dao_update_notifications_by_reference(
+                references=[update.reference],
+                update_dict={"status": status,
+                             "billable_units": update.page_count,
+                             "updated_at": datetime.utcnow()
+                             }
             )
 
             if not notification:
@@ -483,32 +492,41 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
                                             inbound_id=inbound_sms_id)
     data = {
         "id": str(inbound_sms.id),
+        # TODO: should we be validating and formatting the phone number here?
         "source_number": inbound_sms.user_number,
         "destination_number": inbound_sms.notify_number,
         "message": inbound_sms.content,
         "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT)
     }
 
-    response = request(
-        method="POST",
-        url=inbound_api.url,
-        data=json.dumps(data),
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer {}'.format(inbound_api.bearer_token)
-        },
-        timeout=60
-    )
     try:
+        response = request(
+            method="POST",
+            url=inbound_api.url,
+            data=json.dumps(data),
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer {}'.format(inbound_api.bearer_token)
+            },
+            timeout=60
+        )
+        current_app.logger.info('send_inbound_sms_to_service sending {} to {}, response {}'.format(
+            inbound_sms_id,
+            inbound_api.url,
+            response.status_code
+        ))
         response.raise_for_status()
-    except HTTPError as e:
-        current_app.logger.exception("Exception raised in send_inbound_sms_to_service for service_id: {} and url: {}. "
-                                     "\n{}".format(service_id, inbound_api.url, e))
-        if e.response.status_code >= 500:
+    except RequestException as e:
+        current_app.logger.warning(
+            "send_inbound_sms_to_service request failed for service_id: {} and url: {}. exc: {}".format(
+                service_id,
+                inbound_api.url,
+                e
+            )
+        )
+        if not isinstance(e, HTTPError) or e.response.status_code >= 500:
             try:
-                self.retry(queue=QueueNames.RETRY,
-                           exc='Unable to send_inbound_sms_to_service for service_id: {} and url: {}. \n{}'.format(
-                               service_id, inbound_api.url, e))
+                self.retry(queue=QueueNames.RETRY)
             except self.MaxRetriesExceededError:
                 current_app.logger.exception('Retry: send_inbound_sms_to_service has retried the max number of times')
 
@@ -548,12 +566,3 @@ def process_incomplete_job(job_id):
             process_row(row_number, recipient, personalisation, template, job, job.service)
 
     job_complete(job, job.service, template, resumed=True)
-
-
-@notify_celery.task(bind=True, name="process-ses-result", max_retries=5, default_retry_delay=300)
-@statsd(namespace="tasks")
-def process_ses_results(self, response):
-    errors = process_ses_response(response)
-    if errors:
-        current_app.logger.error(errors)
-        self.retry(queue=QueueNames.RETRY, exc="SES responses processed with error")
