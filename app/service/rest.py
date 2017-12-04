@@ -178,7 +178,11 @@ def update_service(service_id):
     service_going_live = fetched_service.restricted and not req_json.get('restricted', True)
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())
+
     update_dict = service_schema.load(current_data).data
+    org_type = req_json.get('organisation_type', None)
+    if org_type:
+        update_dict.crown = org_type == 'central'
     dao_update_service(update_dict)
 
     # bridging code between frontend is deployed and data has not been migrated yet. Can only update current year

@@ -97,10 +97,13 @@ def test_create_service(sample_user):
     assert service_db.id == service.id
     assert service_db.branding == BRANDING_GOVUK
     assert service_db.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
+    assert service_db.email_from == 'email_from'
     assert service_db.research_mode is False
     assert service_db.prefix_sms is True
     assert service.active is True
     assert sample_user in service_db.users
+    assert service_db.free_sms_fragment_limit == 250000
+    assert service_db.organisation_type == 'central'
     assert service_db.crown is True
 
 

@@ -20,6 +20,10 @@ def upgrade():
         where organisation_type = 'central'
     """)
     op.execute("""
+        update services set crown = True
+        where organisation_type is null
+    """)
+    op.execute("""
         update services set crown = False
         where crown is null
     """)
@@ -29,6 +33,10 @@ def upgrade():
     op.execute("""
         update services_history set crown = True
         where organisation_type = 'central'
+    """)
+    op.execute("""
+        update services_history set crown = True
+        where organisation_type is null
     """)
     op.execute("""
         update services_history set crown = False
