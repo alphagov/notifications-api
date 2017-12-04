@@ -314,6 +314,7 @@ class Development(Config):
     SQLALCHEMY_ECHO = False
     NOTIFY_EMAIL_DOMAIN = 'notify.tools'
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
+    LETTERS_PDF_BUCKET_NAME = 'development-letters-pdf'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.tools-ftp'
     NOTIFY_ENVIRONMENT = 'development'
     NOTIFICATION_QUEUE_PREFIX = 'development'
@@ -335,6 +336,7 @@ class Test(Config):
     DEBUG = True
     TESTING = True
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
+    LETTERS_PDF_BUCKET_NAME = 'test-letters-pdf'
     DVLA_RESPONSE_BUCKET_NAME = 'test.notify.com-ftp'
     STATSD_ENABLED = True
     STATSD_HOST = "localhost"
@@ -373,6 +375,7 @@ class Preview(Config):
     NOTIFY_EMAIL_DOMAIN = 'notify.works'
     NOTIFY_ENVIRONMENT = 'preview'
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
+    LETTERS_PDF_BUCKET_NAME = 'preview-letters-pdf'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
     FROM_NUMBER = 'preview'
     API_RATE_LIMIT_ENABLED = True
@@ -383,6 +386,7 @@ class Staging(Config):
     NOTIFY_EMAIL_DOMAIN = 'staging-notify.works'
     NOTIFY_ENVIRONMENT = 'staging'
     CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
+    LETTERS_PDF_BUCKET_NAME = 'staging-letters-pdf'
     DVLA_RESPONSE_BUCKET_NAME = 'staging-notify.works-ftp'
     STATSD_ENABLED = True
     FROM_NUMBER = 'stage'
@@ -410,6 +414,7 @@ class Live(Config):
     NOTIFY_EMAIL_DOMAIN = 'notifications.service.gov.uk'
     NOTIFY_ENVIRONMENT = 'live'
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
+    LETTERS_PDF_BUCKET_NAME = 'live-letters-pdf'
     DVLA_RESPONSE_BUCKET_NAME = 'notifications.service.gov.uk-ftp'
     STATSD_ENABLED = True
     FROM_NUMBER = 'GOVUK'
@@ -429,6 +434,7 @@ class Sandbox(CloudFoundryConfig):
     NOTIFY_EMAIL_DOMAIN = 'notify.works'
     NOTIFY_ENVIRONMENT = 'sandbox'
     CSV_UPLOAD_BUCKET_NAME = 'cf-sandbox-notifications-csv-upload'
+    LETTERS_PDF_BUCKET_NAME = 'cf-sandbox-letters-pdf'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
     FROM_NUMBER = 'sandbox'
     REDIS_ENABLED = False
