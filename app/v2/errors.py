@@ -79,6 +79,7 @@ def register_errors(blueprint):
 
     @blueprint.errorhandler(AuthError)
     def auth_error(error):
+        current_app.logger.info('API AuthError: {}'.format(error))
         return jsonify(error.to_dict_v2()), error.code
 
     @blueprint.errorhandler(Exception)
