@@ -87,6 +87,7 @@ def test_create_service(sample_user):
                       email_from="email_from",
                       message_limit=1000,
                       restricted=False,
+                      organisation_type='central',
                       created_by=sample_user)
     dao_create_service(service, sample_user)
     assert Service.query.count() == 1
@@ -100,6 +101,7 @@ def test_create_service(sample_user):
     assert service_db.prefix_sms is True
     assert service.active is True
     assert sample_user in service_db.users
+    assert service_db.crown is True
 
 
 def test_cannot_create_two_services_with_same_name(sample_user):
