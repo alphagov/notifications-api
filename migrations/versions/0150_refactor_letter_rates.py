@@ -1,7 +1,7 @@
 """
 
 Revision ID: 0150_refactor_letter_rates
-Revises: 0148_add_letters_as_pdf_svc_perm
+Revises: 0149_add_crown_to_services
 Create Date: 2017-12-05 10:24:41.232128
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 revision = '0150_refactor_letter_rates'
-down_revision = '0148_add_letters_as_pdf_svc_perm'
+down_revision = '0149_add_crown_to_services'
 
 
 def upgrade():
