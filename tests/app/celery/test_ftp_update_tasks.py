@@ -23,6 +23,7 @@ from app.celery.tasks import (
 
 from tests.app.db import create_notification, create_service_callback_api
 from tests.conftest import set_config
+from unittest.mock import call
 
 
 def test_update_job_to_sent_to_dvla(sample_letter_template, sample_letter_job):
@@ -114,7 +115,25 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
     assert failed_letter.status == NOTIFICATION_TECHNICAL_FAILURE
     assert failed_letter.billable_units == 2
     assert failed_letter.updated_at
-    assert send_mock.called
+
+    calls = [call([str(failed_letter.id)], queue="notify-internal-tasks"),
+             call([str(sent_letter.id)], queue="notify-internal-tasks")]
+    send_mock.assert_has_calls(calls, any_order=True)
+
+
+def test_update_letter_notifications_does_not_call_send_callback_if_no_db_entry(notify_api, mocker,
+                                                                                sample_letter_template):
+    sent_letter = create_notification(sample_letter_template, reference='ref-foo', status=NOTIFICATION_SENDING,
+                                      billable_units=0)
+    valid_file = '{}|Sent|1|Unsorted\n'.format(sent_letter.reference)
+    mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
+
+    send_mock = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
+
+    update_letter_notifications_statuses(filename='foo.txt')
+    send_mock.assert_not_called()
 
 
 def test_update_letter_notifications_to_sent_to_dvla_updates_based_on_notification_references(

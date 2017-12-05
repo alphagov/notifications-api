@@ -50,6 +50,35 @@ def test_ses_callback_should_update_notification_status(
         send_mock.assert_called_once_with([str(notification.id)], queue="notify-internal-tasks")
 
 
+def test_ses_callback_does_not_call_send_delivery_status_if_no_db_entry(
+        client,
+        notify_db,
+        notify_db_session,
+        sample_email_template,
+        mocker):
+    with freeze_time('2001-01-01T12:00:00'):
+
+        send_mock = mocker.patch(
+            'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+        )
+        notification = create_sample_notification(
+            notify_db,
+            notify_db_session,
+            template=sample_email_template,
+            reference='ref',
+            status='sending',
+            sent_at=datetime.utcnow()
+        )
+
+        assert get_notification_by_id(notification.id).status == 'sending'
+
+        errors = process_ses_response(ses_notification_callback(reference='ref'))
+        assert errors is None
+        assert get_notification_by_id(notification.id).status == 'delivered'
+
+        send_mock.assert_not_called()
+
+
 def test_ses_callback_should_update_multiple_notification_status_sent(
         client,
         notify_db,
