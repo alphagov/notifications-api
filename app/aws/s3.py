@@ -91,7 +91,7 @@ def upload_letters_pdf(reference, crown, filedata):
         colour="C",
         crown="C" if crown else "N",
         date=now.strftime('%Y%m%d%H%M%S')
-    )
+    ).upper()
 
     utils_s3upload(
         filedata=filedata,

@@ -157,5 +157,5 @@ def test_upload_letters_pdf_calls_utils_s3upload_with_correct_args(
         filedata='some_data',
         region='eu-west-1',
         bucket_name='test-letters-pdf',
-        file_location='2017-12-04/NOTIFY.foo.D.2.C.{}.20171204150000.pdf'.format(expected_crown_text)
+        file_location='2017-12-04/NOTIFY.FOO.D.2.C.{}.20171204150000.PDF'.format(expected_crown_text)
     )
