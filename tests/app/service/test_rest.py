@@ -2183,18 +2183,17 @@ def test_search_for_notification_by_to_field_returns_content(
     assert notifications[0]['template']['content'] == 'Hello (( Name))\nYour thing is due soon'
 
 
-def test_send_one_off_notification(admin_request, mocker):
-    service = create_service()
-    template = create_template(service=service)
+def test_send_one_off_notification(sample_service, admin_request, mocker):
+    template = create_template(service=sample_service)
     mocker.patch('app.service.send_notification.send_notification_to_queue')
 
     response = admin_request.post(
         'service.create_one_off_notification',
-        service_id=service.id,
+        service_id=sample_service.id,
         _data={
             'template_id': str(template.id),
             'to': '07700900001',
-            'created_by': str(service.created_by_id)
+            'created_by': str(sample_service.created_by_id)
         },
         _expected_status=201
     )

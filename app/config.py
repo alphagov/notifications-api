@@ -417,7 +417,7 @@ class Live(Config):
     FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID = 'ba9e1789-a804-40b8-871f-cc60d4c1286f'
     PERFORMANCE_PLATFORM_ENABLED = True
     API_RATE_LIMIT_ENABLED = True
-    CHECK_PROXY_HEADER = False
+    CHECK_PROXY_HEADER = True
 
 
 class CloudFoundryConfig(Config):
