@@ -29,7 +29,8 @@ from app.celery.tasks import (
     process_incomplete_jobs,
     get_template_class,
     s3,
-    send_inbound_sms_to_service)
+    send_inbound_sms_to_service,
+)
 from app.config import QueueNames
 from app.dao import jobs_dao, services_dao
 from app.models import (
@@ -64,7 +65,7 @@ from tests.app.db import (
     create_template,
     create_user,
     create_reply_to_email,
-    create_service_with_defined_sms_sender
+    create_service_with_defined_sms_sender,
 )
 
 
