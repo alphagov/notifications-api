@@ -1,6 +1,7 @@
 import pytest
 from freezegun import freeze_time
 from flask import current_app
+
 import app
 from app.models import INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE
 from app.notifications.validators import (
@@ -18,12 +19,21 @@ from app.v2.errors import (
     BadRequestError,
     TooManyRequestsError,
     RateLimitError)
+
+from tests.conftest import set_config
 from tests.app.conftest import (
     sample_notification as create_notification,
     sample_service as create_service,
     sample_service_whitelist,
     sample_api_key)
 from tests.app.db import create_reply_to_email, create_service_sms_sender
+
+
+# all of these tests should have redis enabled (except where we specifically disable it)
+@pytest.fixture(scope='module', autouse=True)
+def enable_redis(notify_api):
+    with set_config(notify_api, 'REDIS_ENABLED', True):
+        yield
 
 
 @pytest.mark.parametrize('key_type', ['test', 'team', 'normal'])
@@ -76,6 +86,15 @@ def test_should_set_cache_value_as_value_from_database_if_cache_not_set(
         app.notifications.validators.redis_store.set.assert_called_with(
             str(sample_service.id) + "-2016-01-01-count", 5, ex=3600
         )
+
+
+def test_should_not_access_database_if_redis_disabled(notify_api, sample_service, mocker):
+    with set_config(notify_api, 'REDIS_ENABLED', False):
+        db_mock = mocker.patch('app.notifications.validators.services_dao')
+
+        check_service_over_daily_message_limit('normal', sample_service)
+
+        assert db_mock.method_calls == []
 
 
 @pytest.mark.parametrize('key_type', ['team', 'normal'])

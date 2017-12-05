@@ -178,6 +178,7 @@ INTERNATIONAL_SMS_TYPE = 'international_sms'
 INBOUND_SMS_TYPE = 'inbound_sms'
 SCHEDULE_NOTIFICATIONS = 'schedule_notifications'
 EMAIL_AUTH = 'email_auth'
+LETTERS_AS_PDF = 'letters_as_pdf'
 
 SERVICE_PERMISSION_TYPES = [
     EMAIL_TYPE,
@@ -187,6 +188,7 @@ SERVICE_PERMISSION_TYPES = [
     INBOUND_SMS_TYPE,
     SCHEDULE_NOTIFICATIONS,
     EMAIL_AUTH,
+    LETTERS_AS_PDF,
 ]
 
 
