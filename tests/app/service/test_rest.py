@@ -536,6 +536,26 @@ def test_update_service_flags(client, sample_service):
     assert set(result['data']['permissions']) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
 
 
+@pytest.mark.parametrize("org_type, expected",
+                         [("central", True),
+                          ('local', False),
+                          ("nhs", False)])
+def test_update_service_sets_crown(client, sample_service, org_type, expected):
+    data = {
+        'organisation_type': org_type,
+    }
+    auth_header = create_authorization_header()
+
+    resp = client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+    assert resp.status_code == 200
+    assert result['data']['crown'] is expected
+
+
 @pytest.fixture(scope='function')
 def service_with_no_permissions(notify_db, notify_db_session):
     return create_service(service_permissions=[])

@@ -249,6 +249,7 @@ class Service(db.Model, Versioned):
         db.String(255),
         nullable=True,
     )
+    crown = db.Column(db.Boolean, index=False, nullable=False, default=True)
 
     association_proxy('permissions', 'service_permission_types')
 
