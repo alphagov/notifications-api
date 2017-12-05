@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 
-from app.celery.callback_tasks import process_ses_results
+from app.celery.process_ses_receipts_tasks import process_ses_results
 
 from tests.app.db import create_notification
 
@@ -18,7 +18,7 @@ def test_process_ses_results(sample_email_template):
 
 
 def test_process_ses_results_does_not_retry_if_errors(notify_db, mocker):
-    mocked = mocker.patch('app.celery.callback_tasks.process_ses_results.retry')
+    mocked = mocker.patch('app.celery.process_ses_receipts_tasks.process_ses_results.retry')
     response = json.loads(ses_notification_callback())
     process_ses_results(response=response)
     assert mocked.call_count == 0
@@ -26,7 +26,7 @@ def test_process_ses_results_does_not_retry_if_errors(notify_db, mocker):
 
 def test_process_ses_results_retry_called(notify_db, mocker):
     mocker.patch("app.dao.notifications_dao.update_notification_status_by_reference", side_effect=Exception("EXPECTED"))
-    mocked = mocker.patch('app.celery.callback_tasks.process_ses_results.retry')
+    mocked = mocker.patch('app.celery.process_ses_receipts_tasks.process_ses_results.retry')
     response = json.loads(ses_notification_callback())
     process_ses_results(response=response)
     assert mocked.call_count != 0

@@ -172,6 +172,7 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
     service.id = service_id or uuid.uuid4()  # must be set now so version history model can use same id
     service.active = True
     service.research_mode = False
+    service.crown = service.organisation_type == 'central'
 
     for permission in service_permissions:
         service_permission = ServicePermission(service_id=service.id, permission=permission)
