@@ -23,7 +23,7 @@ statsd==3.2.1
 notifications-python-client==4.6.0
 
 # PaaS
-awscli==1.14.2
+awscli==1.14.4
 awscli-cwlogs>=1.4,<1.5
 
 git+https://github.com/alphagov/notifications-utils.git@23.2.1#egg=notifications-utils==23.2.1
