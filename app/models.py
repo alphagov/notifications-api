@@ -1485,12 +1485,17 @@ class LetterRate(db.Model):
     __tablename__ = 'letter_rates'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    start_date = db.Column(db.DateTime, nullable=False)
-    end_date = db.Column(db.DateTime, nullable=True)
-    sheet_total = db.Column(db.Integer, nullable=False)  # double sided sheet
+    valid_from = valid_from = db.Column(db.DateTime, nullable=False)
+
+
+class LetterRateDetail(db.Model):
+    __tablename__ = 'letter_rate_details'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    letter_rate_id = db.Column(UUID(as_uuid=True), db.ForeignKey('letter_rates.id'), index=True, nullable=False)
+    letter_rate = db.relationship('LetterRate', backref='letter_rates')
+    page_total = db.Column(db.Integer, nullable=False)
     rate = db.Column(db.Numeric(), nullable=False)
-    crown = db.Column(db.Boolean, nullable=False)
-    post_class = db.Column(db.String, nullable=False)
 
 
 class MonthlyBilling(db.Model):
