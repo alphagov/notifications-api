@@ -203,7 +203,6 @@ class ServiceSchema(BaseSchema):
     organisation_type = field_for(models.Service, 'organisation_type')
     branding = field_for(models.Service, 'branding')
     dvla_organisation = field_for(models.Service, 'dvla_organisation')
-    free_sms_fragment_limit = field_for(models.Service, 'free_sms_fragment_limit')
     permissions = fields.Method("service_permissions")
     override_flag = False
     reply_to_email_address = fields.Method(method_name="get_reply_to_email_address")
@@ -291,7 +290,6 @@ class DetailedServiceSchema(BaseSchema):
             'letter_contact_block',         # new exclude from here
             'message_limit',
             'email_from',
-            # 'free_sms_fragment_limit',
             'inbound_api',
             'dvla_organisation',
             'whitelist',

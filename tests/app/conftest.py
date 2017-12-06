@@ -150,7 +150,6 @@ def sample_service(
     email_from=None,
     permissions=None,
     research_mode=None,
-    free_sms_fragment_limit=250000
 ):
     if user is None:
         user = create_user()
@@ -162,8 +161,7 @@ def sample_service(
         'message_limit': limit,
         'restricted': restricted,
         'email_from': email_from,
-        'created_by': user,
-        'free_sms_fragment_limit': free_sms_fragment_limit
+        'created_by': user
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
@@ -1002,7 +1000,11 @@ def notify_service(notify_db, notify_db_session):
             created_by=user,
             prefix_sms=False,
         )
-        dao_create_service(service=service, service_id=current_app.config['NOTIFY_SERVICE_ID'], user=user)
+        dao_create_service(
+            service=service,
+            service_id=current_app.config['NOTIFY_SERVICE_ID'],
+            user=user
+        )
 
         data = {
             'service': service,
