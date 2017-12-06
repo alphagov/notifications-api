@@ -5,6 +5,9 @@ Revises: 0149_add_crown_to_services
 Create Date: 2017-12-05 10:24:41.232128
 
 """
+import uuid
+from datetime import datetime
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
@@ -20,12 +23,33 @@ def upgrade():
                     sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
                     sa.Column('start_date', sa.DateTime(), nullable=False),
                     sa.Column('end_date', sa.DateTime(), nullable=True),
-                    sa.Column('sheet_total', sa.Integer(), nullable=False),
+                    sa.Column('sheet_count', sa.Integer(), nullable=False),
                     sa.Column('rate', sa.Numeric(), nullable=False),
                     sa.Column('crown', sa.Boolean(), nullable=False),
                     sa.Column('post_class', sa.String(), nullable=False),
                     sa.PrimaryKeyConstraint('id')
                     )
+
+    start_date = datetime(2016, 3, 31, 23, 00, 00)
+    op.execute("insert into letter_rates values('{}', '{}', null, 1, 0.30, True, 'second')".format(
+        str(uuid.uuid4()), start_date)
+    )
+    op.execute("insert into letter_rates values('{}', '{}', null, 2, 0.33, True, 'second')".format(
+        str(uuid.uuid4()), start_date)
+    )
+    op.execute("insert into letter_rates values('{}', '{}', null, 3, 0.36, True, 'second')".format(
+        str(uuid.uuid4()), start_date)
+    )
+
+    op.execute("insert into letter_rates values('{}', '{}', null, 1, 0.33, False, 'second')".format(
+        str(uuid.uuid4()), start_date)
+    )
+    op.execute("insert into letter_rates values('{}', '{}', null, 2, 0.39, False, 'second')".format(
+        str(uuid.uuid4()), start_date)
+    )
+    op.execute("insert into letter_rates values('{}', '{}', null, 3, 0.45, False, 'second')".format(
+        str(uuid.uuid4()), start_date)
+    )
 
 
 def downgrade():

@@ -1487,7 +1487,7 @@ class LetterRate(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     start_date = db.Column(db.DateTime, nullable=False)
     end_date = db.Column(db.DateTime, nullable=True)
-    sheet_total = db.Column(db.Integer, nullable=False)  # double sided sheet
+    sheet_count = db.Column(db.Integer, nullable=False)  # double sided sheet
     rate = db.Column(db.Numeric(), nullable=False)
     crown = db.Column(db.Boolean, nullable=False)
     post_class = db.Column(db.String, nullable=False)
