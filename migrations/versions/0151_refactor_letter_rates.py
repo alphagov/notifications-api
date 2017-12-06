@@ -1,7 +1,7 @@
 """
 
-Revision ID: 0150_refactor_letter_rates
-Revises: 0149_add_crown_to_services
+Revision ID: 0151_refactor_letter_rates
+Revises: 0150_another_letter_org
 Create Date: 2017-12-05 10:24:41.232128
 
 """
@@ -12,8 +12,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '0150_refactor_letter_rates'
-down_revision = '0149_add_crown_to_services'
+revision = '0151_refactor_letter_rates'
+down_revision = '0150_another_letter_org'
 
 
 def upgrade():
