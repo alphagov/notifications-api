@@ -26,10 +26,10 @@ def dao_get_annual_billing(service_id):
 
 
 @transactional
-def dao_update_annual_billing_for_current_and_future_years(service_id, free_sms_fragment_limit, financial_year_start):
+def dao_update_annual_billing_for_future_years(service_id, free_sms_fragment_limit, financial_year_start):
     AnnualBilling.query.filter(
         AnnualBilling.service_id == service_id,
-        AnnualBilling.financial_year_start >= financial_year_start
+        AnnualBilling.financial_year_start > financial_year_start
     ).update(
         {'free_sms_fragment_limit': free_sms_fragment_limit}
     )
