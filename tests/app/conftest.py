@@ -299,6 +299,10 @@ def sample_template_without_email_permission(notify_db, notify_db_session):
 
 @pytest.fixture
 def sample_letter_template(sample_service_full_permissions):
+    # remove letters_as_pdf from fixture until we drop building of dvla files
+    from app.dao.service_permissions_dao import dao_remove_service_permission
+    dao_remove_service_permission(sample_service_full_permissions.id, 'letters_as_pdf')
+
     return create_template(sample_service_full_permissions, template_type=LETTER_TYPE)
 
 

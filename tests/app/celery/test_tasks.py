@@ -1436,7 +1436,6 @@ def test_process_incomplete_job_email(mocker, sample_email_template):
 
 
 def test_process_incomplete_job_letter(mocker, sample_letter_template):
-
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_letter'))
     mock_letter_saver = mocker.patch('app.celery.tasks.save_letter.apply_async')
     mock_build_dvla = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
@@ -1456,3 +1455,4 @@ def test_process_incomplete_job_letter(mocker, sample_letter_template):
 
     assert mock_build_dvla.called
     assert mock_letter_saver.call_count == 8
+    
