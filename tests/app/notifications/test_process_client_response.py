@@ -4,6 +4,7 @@ from app.notifications.process_client_response import (
     validate_callback_data,
     process_sms_client_response
 )
+from tests.app.db import create_service_callback_api
 
 
 def test_validate_callback_data_returns_none_when_valid():
@@ -51,13 +52,30 @@ def test_outcome_statistics_called_for_successful_callback(sample_notification, 
         'app.notifications.process_client_response.notifications_dao.update_notification_status_by_id',
         return_value=sample_notification
     )
-
+    send_mock = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
+    create_service_callback_api(service=sample_notification.service, url="https://original_url.com")
     reference = str(uuid.uuid4())
 
     success, error = process_sms_client_response(status='3', reference=reference, client_name='MMG')
     assert success == "MMG callback succeeded. reference {} updated".format(str(reference))
     assert error is None
+    send_mock.assert_called_once_with([str(sample_notification.id)], queue="notify-internal-tasks")
     stats_mock.assert_called_once_with(sample_notification)
+
+
+def test_sms_resonse_does_not_call_send_callback_if_no_db_entry(sample_notification, mocker):
+    mocker.patch(
+        'app.notifications.process_client_response.notifications_dao.update_notification_status_by_id',
+        return_value=sample_notification
+    )
+    send_mock = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
+    reference = str(uuid.uuid4())
+    process_sms_client_response(status='3', reference=reference, client_name='MMG')
+    send_mock.assert_not_called()
 
 
 def test_process_sms_response_return_success_for_send_sms_code_reference(mocker):

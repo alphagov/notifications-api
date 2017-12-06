@@ -29,7 +29,8 @@ from app.dao.notifications_dao import (
     is_delivery_slow_for_provider,
     set_scheduled_notification_to_processed,
     update_notification_status_by_id,
-    update_notification_status_by_reference
+    update_notification_status_by_reference,
+    dao_get_notifications_by_references
 )
 from app.dao.services_dao import dao_update_service
 from app.models import (
@@ -1989,3 +1990,14 @@ def test_dao_update_notifications_by_reference_returns_zero_when_no_notification
                                                                        "billable_units": 2}
                                                           )
     assert updated_count == 0
+
+
+def test_dao_get_notifications_by_reference(sample_template):
+    create_notification(template=sample_template, reference='noref')
+    notification_1 = create_notification(template=sample_template, reference='ref')
+    notification_2 = create_notification(template=sample_template, reference='ref')
+
+    notifications = dao_get_notifications_by_references(['ref'])
+    assert len(notifications) == 2
+    assert notifications[0].id in [notification_1.id, notification_2.id]
+    assert notifications[1].id in [notification_1.id, notification_2.id]
