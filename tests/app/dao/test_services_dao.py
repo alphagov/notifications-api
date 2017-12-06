@@ -92,7 +92,7 @@ def test_create_service(sample_user):
     dao_create_service(service, sample_user)
     assert Service.query.count() == 1
 
-    service_db = Service.query.first()
+    service_db = Service.query.one()
     assert service_db.name == "service_name"
     assert service_db.id == service.id
     assert service_db.branding == BRANDING_GOVUK
@@ -102,7 +102,6 @@ def test_create_service(sample_user):
     assert service_db.prefix_sms is True
     assert service.active is True
     assert sample_user in service_db.users
-    assert service_db.free_sms_fragment_limit == 250000
     assert service_db.organisation_type == 'central'
     assert service_db.crown is True
 
