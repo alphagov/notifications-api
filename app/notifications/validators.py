@@ -14,6 +14,7 @@ from app.models import (
     KEY_TYPE_TEST, KEY_TYPE_TEAM, SCHEDULE_NOTIFICATIONS
 )
 from app.service.utils import service_allowed_to_send_to
+from app.statsd_decorators import statsd
 from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
 from app import redis_store
 from app.notifications.process_notifications import create_content_for_notification
@@ -22,7 +23,7 @@ from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 
 
 def check_service_over_api_rate_limit(service, api_key):
-    if current_app.config['API_RATE_LIMIT_ENABLED']:
+    if current_app.config['API_RATE_LIMIT_ENABLED'] and current_app.config['REDIS_ENABLED']:
         cache_key = rate_limit_cache_key(service.id, api_key.key_type)
         rate_limit = current_app.config['API_KEY_LIMITS'][api_key.key_type]['limit']
         interval = current_app.config['API_KEY_LIMITS'][api_key.key_type]['interval']
@@ -32,7 +33,7 @@ def check_service_over_api_rate_limit(service, api_key):
 
 
 def check_service_over_daily_message_limit(key_type, service):
-    if key_type != KEY_TYPE_TEST:
+    if key_type != KEY_TYPE_TEST and current_app.config['REDIS_ENABLED']:
         cache_key = daily_limit_cache_key(service.id)
         service_stats = redis_store.get(cache_key)
         if not service_stats:
@@ -46,6 +47,7 @@ def check_service_over_daily_message_limit(key_type, service):
             raise TooManyRequestsError(service.message_limit)
 
 
+@statsd(namespace="performance-testing")
 def check_rate_limiting(service, api_key):
     check_service_over_api_rate_limit(service, api_key)
     check_service_over_daily_message_limit(api_key.key_type, service)
@@ -80,12 +82,14 @@ def service_has_permission(notify_type, permissions):
     return notify_type in [p.permission for p in permissions]
 
 
+@statsd(namespace="performance-testing")
 def check_service_has_permission(notify_type, permissions):
     if not service_has_permission(notify_type, permissions):
         raise BadRequestError(message="Cannot send {}".format(
             get_public_notify_type_text(notify_type, plural=True)))
 
 
+@statsd(namespace="performance-testing")
 def check_service_can_schedule_notification(permissions, scheduled_for):
     if scheduled_for:
         if not service_has_permission(SCHEDULE_NOTIFICATIONS, permissions):
@@ -117,6 +121,7 @@ def check_sms_content_char_count(content_count):
         raise BadRequestError(message=message)
 
 
+@statsd(namespace="performance-testing")
 def validate_template(template_id, personalisation, service, notification_type):
     try:
         template = templates_dao.dao_get_template_by_id_and_service_id(

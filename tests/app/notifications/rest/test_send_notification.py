@@ -16,7 +16,10 @@ from app.models import (
 from app.dao.templates_dao import dao_get_all_templates_for_service, dao_update_template
 from app.dao.services_dao import dao_update_service
 from app.dao.api_key_dao import save_model_api_key
-from app.v2.errors import RateLimitError
+from app.errors import InvalidRequest
+from app.models import Template
+from app.v2.errors import RateLimitError, TooManyRequestsError
+
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_notification as create_sample_notification,
@@ -28,9 +31,6 @@ from tests.app.conftest import (
     sample_service,
     sample_template_without_sms_permission,
     sample_template_without_email_permission)
-
-from app.models import Template
-from app.errors import InvalidRequest
 from tests.app.db import create_service, create_reply_to_email
 
 
@@ -414,6 +414,10 @@ def test_should_block_api_call_if_over_day_limit_for_live_service(
         mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
+            mocker.patch(
+                'app.notifications.validators.check_service_over_daily_message_limit',
+                side_effect=TooManyRequestsError(1)
+            )
             mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
             service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=False)
@@ -446,6 +450,10 @@ def test_should_block_api_call_if_over_day_limit_for_restricted_service(
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+            mocker.patch(
+                'app.notifications.validators.check_service_over_daily_message_limit',
+                side_effect=TooManyRequestsError(1)
+            )
 
             service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=True)
             email_template = create_sample_email_template(notify_db, notify_db_session, service=service)

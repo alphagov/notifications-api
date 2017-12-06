@@ -16,6 +16,10 @@ function check_params {
 }
 
 function configure_aws_logs {
+  # create files so that aws logs agent doesn't complain
+  touch /home/vcap/logs/gunicorn_error.log
+  touch /home/vcap/logs/app.log.json
+
   aws configure set plugins.cwlogs cwlogs
 
   export AWS_ACCESS_KEY_ID=$(echo ${VCAP_SERVICES} | jq -r '.["user-provided"][]|select(.name=="notify-aws")|.credentials.aws_access_key_id')

@@ -536,6 +536,26 @@ def test_update_service_flags(client, sample_service):
     assert set(result['data']['permissions']) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
 
 
+@pytest.mark.parametrize("org_type, expected",
+                         [("central", True),
+                          ('local', False),
+                          ("nhs", False)])
+def test_update_service_sets_crown(client, sample_service, org_type, expected):
+    data = {
+        'organisation_type': org_type,
+    }
+    auth_header = create_authorization_header()
+
+    resp = client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = json.loads(resp.get_data(as_text=True))
+    assert resp.status_code == 200
+    assert result['data']['crown'] is expected
+
+
 @pytest.fixture(scope='function')
 def service_with_no_permissions(notify_db, notify_db_session):
     return create_service(service_permissions=[])
@@ -2163,18 +2183,17 @@ def test_search_for_notification_by_to_field_returns_content(
     assert notifications[0]['template']['content'] == 'Hello (( Name))\nYour thing is due soon'
 
 
-def test_send_one_off_notification(admin_request, mocker):
-    service = create_service()
-    template = create_template(service=service)
+def test_send_one_off_notification(sample_service, admin_request, mocker):
+    template = create_template(service=sample_service)
     mocker.patch('app.service.send_notification.send_notification_to_queue')
 
     response = admin_request.post(
         'service.create_one_off_notification',
-        service_id=service.id,
+        service_id=sample_service.id,
         _data={
             'template_id': str(template.id),
             'to': '07700900001',
-            'created_by': str(service.created_by_id)
+            'created_by': str(sample_service.created_by_id)
         },
         _expected_status=201
     )

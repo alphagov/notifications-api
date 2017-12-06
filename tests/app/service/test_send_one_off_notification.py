@@ -151,9 +151,13 @@ def test_send_one_off_notification_raises_if_cant_send_to_recipient(notify_db_se
     assert 'service is in trial mode' in e.value.message
 
 
-def test_send_one_off_notification_raises_if_over_limit(notify_db_session):
+def test_send_one_off_notification_raises_if_over_limit(notify_db_session, mocker):
     service = create_service(message_limit=0)
     template = create_template(service=service)
+    mocker.patch(
+        'app.service.send_notification.check_service_over_daily_message_limit',
+        side_effect=TooManyRequestsError(1)
+    )
 
     post_data = {
         'template_id': str(template.id),
