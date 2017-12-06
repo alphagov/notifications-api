@@ -226,9 +226,8 @@ class Service(db.Model, Versioned):
     email_from = db.Column(db.Text, index=False, unique=True, nullable=False)
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
-    prefix_sms = db.Column(db.Boolean, nullable=True, default=True)
+    prefix_sms = db.Column(db.Boolean, nullable=False, default=True)
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
-    free_sms_fragment_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
     organisation = db.relationship('Organisation')
     dvla_organisation_id = db.Column(
         db.String,

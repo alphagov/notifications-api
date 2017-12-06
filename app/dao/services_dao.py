@@ -41,7 +41,6 @@ from app.models import (
 )
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
-from app.dao.annual_billing_dao import dao_insert_annual_billing
 
 DEFAULT_SERVICE_PERMISSIONS = [
     SMS_TYPE,
@@ -163,9 +162,6 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
     if service_permissions is None:
         service_permissions = DEFAULT_SERVICE_PERMISSIONS
 
-    if service.free_sms_fragment_limit is None:
-        service.free_sms_fragment_limit = current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
-
     from app.dao.permissions_dao import permission_dao
     service.users.append(user)
     permission_dao.add_default_service_permissions_for_user(user, service)
@@ -180,7 +176,6 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
 
     # do we just add the default - or will we get a value from FE?
     insert_service_sms_sender(service, current_app.config['FROM_NUMBER'])
-    dao_insert_annual_billing(service)
     db.session.add(service)
 
 

@@ -1,25 +1,25 @@
 from datetime import datetime, timedelta
 import json
 
+import pytest
+
 from app.billing.rest import _transform_billing_for_month
 from app.dao.monthly_billing_dao import (
     create_or_update_monthly_billing,
     get_monthly_billing_by_notification_type,
 )
 from app.models import SMS_TYPE, EMAIL_TYPE
+from app.dao.date_util import get_current_financial_year_start_year
+from app.dao.annual_billing_dao import dao_get_free_sms_fragment_limit_for_year
 from tests.app.db import (
     create_notification,
     create_rate,
-    create_monthly_billing_entry
+    create_monthly_billing_entry,
+    create_annual_billing,
 )
-
-from tests import create_authorization_header
-
-from app.dao.date_util import get_current_financial_year_start_year
-from app.dao.annual_billing_dao import dao_get_free_sms_fragment_limit_for_year
-from tests.app.db import create_annual_billing
 from app.billing.rest import update_free_sms_fragment_limit_data
 
+from tests import create_authorization_header
 
 APR_2016_MONTH_START = datetime(2016, 3, 31, 23, 00, 00)
 APR_2016_MONTH_END = datetime(2016, 4, 30, 22, 59, 59, 99999)
@@ -270,70 +270,62 @@ def test_create_update_free_sms_fragment_limit_invalid_schema(client, sample_ser
     assert 'JSON' in json_resp['message']
 
 
-def test_create_free_sms_fragment_limit_current_year(client, sample_service):
+def test_create_free_sms_fragment_limit_current_year_updates_future_years(admin_request, sample_service):
     current_year = get_current_financial_year_start_year()
-    data = {'free_sms_fragment_limit': 9999}
-    response = client.post('service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
-                           data=json.dumps(data),
-                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    future_billing = create_annual_billing(sample_service.id, 1, current_year + 1)
 
-    response_get = client.get(
-        'service/{}/billing/free-sms-fragment-limit?financial_year_start={}'.format(sample_service.id, current_year),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    admin_request.post(
+        'billing.create_or_update_free_sms_fragment_limit',
+        service_id=sample_service.id,
+        _data={'free_sms_fragment_limit': 9999},
+        _expected_status=201
+    )
 
-    json_resp = json.loads(response_get.get_data(as_text=True))
-    assert response.status_code == 201
-    assert response_get.status_code == 200
-    assert json_resp['financial_year_start'] == current_year
-    assert json_resp['free_sms_fragment_limit'] == 9999
-
-
-def test_create_free_sms_fragment_limit_past_year(client, sample_service):
-
-    data = {'financial_year_start': 2016, 'free_sms_fragment_limit': 9999}
-    response = client.post('service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
-                           data=json.dumps(data),
-                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
-
-    response_get = client.get(
-        'service/{}/billing/free-sms-fragment-limit?financial_year_start=2016'.format(sample_service.id),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()])
-
-    json_resp = json.loads(response_get.get_data(as_text=True))
-    assert response.status_code == 201
-    assert response_get.status_code == 200
-    assert json_resp['financial_year_start'] == 2016
-    assert json_resp['free_sms_fragment_limit'] == 9999
+    current_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year)
+    assert future_billing.free_sms_fragment_limit == 9999
+    assert current_billing.financial_year_start == current_year
+    assert current_billing.free_sms_fragment_limit == 9999
 
 
-def test_update_free_sms_fragment_limit(client, sample_service):
+@pytest.mark.parametrize('update_existing', [True, False])
+def test_create_or_update_free_sms_fragment_limit_past_year_doenst_update_other_years(
+    admin_request,
+    sample_service,
+    update_existing
+):
     current_year = get_current_financial_year_start_year()
+    create_annual_billing(sample_service.id, 1, current_year)
+    if update_existing:
+        create_annual_billing(sample_service.id, 1, current_year - 1)
 
-    annual_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year)
-    assert annual_billing.free_sms_fragment_limit == 250000
+    data = {'financial_year_start': current_year - 1, 'free_sms_fragment_limit': 9999}
+    admin_request.post(
+        'billing.create_or_update_free_sms_fragment_limit',
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=201)
 
-    data_new = {'financial_year_start': current_year, 'free_sms_fragment_limit': 9999}
-    response = client.post('service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
-                           data=json.dumps(data_new),
-                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
-
-    response_get = client.get(
-        'service/{}/billing/free-sms-fragment-limit?financial_year_start={}'
-        .format(sample_service.id, current_year),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()])
-
-    json_resp = json.loads(response_get.get_data(as_text=True))
-
-    assert response.status_code == 201
-    assert response_get.status_code == 200
-    assert json_resp['financial_year_start'] == current_year
-    assert json_resp['free_sms_fragment_limit'] == 9999
+    assert dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year - 1).free_sms_fragment_limit == 9999
+    assert dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year).free_sms_fragment_limit == 1
 
 
-def test_get_free_sms_fragment_limit_current_year(client, sample_service):
+def test_create_free_sms_fragment_limit_updates_existing_year(admin_request, sample_service):
+    current_year = get_current_financial_year_start_year()
+    annual_billing = create_annual_billing(sample_service.id, 1, current_year)
+
+    admin_request.post(
+        'billing.create_or_update_free_sms_fragment_limit',
+        service_id=sample_service.id,
+        _data={'financial_year_start': current_year, 'free_sms_fragment_limit': 2},
+        _expected_status=201)
+
+    assert annual_billing.free_sms_fragment_limit == 2
+
+
+def test_get_free_sms_fragment_limit_current_year_creates_new_row(client, sample_service):
 
     current_year = get_current_financial_year_start_year()
-    create_annual_billing(sample_service.id, free_sms_fragment_limit=9999, financial_year_start=current_year - 1)
+    create_annual_billing(sample_service.id, 9999, current_year - 1)
 
     response_get = client.get(
         'service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
@@ -342,7 +334,7 @@ def test_get_free_sms_fragment_limit_current_year(client, sample_service):
     json_resp = json.loads(response_get.get_data(as_text=True))
     assert response_get.status_code == 200
     assert json_resp['financial_year_start'] == get_current_financial_year_start_year()
-    assert json_resp['free_sms_fragment_limit'] == 250000
+    assert json_resp['free_sms_fragment_limit'] == 9999
 
 
 def test_get_free_sms_fragment_limit_past_year_not_exist(client, sample_service):
@@ -385,10 +377,9 @@ def test_get_free_sms_fragment_limit_future_year_not_exist(client, sample_servic
 
 def test_update_free_sms_fragment_limit_data(client, sample_service):
     current_year = get_current_financial_year_start_year()
-    annual_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year)
-    assert annual_billing.free_sms_fragment_limit == 250000
+    create_annual_billing(sample_service.id, free_sms_fragment_limit=250000, financial_year_start=current_year - 1)
 
-    update_free_sms_fragment_limit_data(sample_service.id, 9999)
+    update_free_sms_fragment_limit_data(sample_service.id, 9999, current_year)
 
     annual_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year)
     assert annual_billing.free_sms_fragment_limit == 9999
