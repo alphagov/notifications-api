@@ -132,8 +132,6 @@ def test_get_service_by_id(admin_request, sample_service):
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
     assert json_resp['data']['prefix_sms'] is True
-    # deprecated field, no longer exists
-    assert 'free_sms_fragment_limit' not in json_resp['data']
 
 
 @pytest.mark.parametrize('detailed', [True, False])
@@ -219,8 +217,7 @@ def test_create_service(client, sample_user):
         'restricted': False,
         'active': False,
         'email_from': 'created.service',
-        'created_by': str(sample_user.id),
-        'free_sms_fragment_limit': 250000
+        'created_by': str(sample_user.id)
     }
     auth_header = create_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
@@ -265,8 +262,7 @@ def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_u
                 'message_limit': 1000,
                 'restricted': False,
                 'active': False,
-                'created_by': str(fake_uuid),
-                'free_sms_fragment_limit': 250000
+                'created_by': str(fake_uuid)
             }
             auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
@@ -280,26 +276,6 @@ def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_u
             assert 'Missing data for required field.' in json_resp['message']['user_id']
 
 
-def test_create_service_free_sms_fragment_limit_is_not_optional(admin_request, sample_user):
-    data1 = {
-        'name': 'service 1',
-        'user_id': str(sample_user.id),
-        'message_limit': 1000,
-        'restricted': False,
-        'active': False,
-        'email_from': 'sample_user.email1',
-        'created_by': str(sample_user.id)
-    }
-
-    json_resp = admin_request.post(
-        'service.create_service',
-        _data=data1,
-        _expected_status=400
-    )
-    assert json_resp['result'] == 'error'
-    assert 'Missing data for required field.' in json_resp['message']['free_sms_fragment_limit']
-
-
 def test_should_error_if_created_by_missing(notify_api, sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
@@ -309,8 +285,7 @@ def test_should_error_if_created_by_missing(notify_api, sample_user):
                 'message_limit': 1000,
                 'restricted': False,
                 'active': False,
-                'user_id': str(sample_user.id),
-                'free_sms_fragment_limit': 250000
+                'user_id': str(sample_user.id)
             }
             auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
@@ -337,8 +312,7 @@ def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(no
                 'message_limit': 1000,
                 'restricted': False,
                 'active': False,
-                'created_by': str(fake_uuid),
-                'free_sms_fragment_limit': 250000
+                'created_by': str(fake_uuid)
             }
             auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
@@ -356,8 +330,7 @@ def test_should_not_create_service_if_missing_data(notify_api, sample_user):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             data = {
-                'user_id': str(sample_user.id),
-                'free_sms_fragment_limit': 250000
+                'user_id': str(sample_user.id)
             }
             auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
@@ -385,8 +358,7 @@ def test_should_not_create_service_with_duplicate_name(notify_api,
                 'restricted': False,
                 'active': False,
                 'email_from': 'sample.service2',
-                'created_by': str(sample_user.id),
-                'free_sms_fragment_limit': 250000
+                'created_by': str(sample_user.id)
             }
             auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
@@ -413,8 +385,7 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_email
                 'restricted': False,
                 'active': False,
                 'email_from': 'first.service',
-                'created_by': str(sample_user.id),
-                'free_sms_fragment_limit': 250000
+                'created_by': str(sample_user.id)
             }
             auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
@@ -844,8 +815,8 @@ def test_default_permissions_are_added_for_user_service(notify_api,
                 'restricted': False,
                 'active': False,
                 'email_from': 'created.service',
-                'created_by': str(sample_user.id),
-                'free_sms_fragment_limit': 250000}
+                'created_by': str(sample_user.id)
+            }
             auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(

@@ -150,7 +150,6 @@ def sample_service(
     email_from=None,
     permissions=None,
     research_mode=None,
-    free_sms_fragment_limit=250000
 ):
     if user is None:
         user = create_user()
@@ -167,7 +166,7 @@ def sample_service(
     service = Service.query.filter_by(name=service_name).first()
     if not service:
         service = Service(**data)
-        dao_create_service(service, user, free_sms_fragment_limit, service_permissions=permissions)
+        dao_create_service(service, user, service_permissions=permissions)
 
         if research_mode:
             service.research_mode = research_mode
@@ -1004,8 +1003,7 @@ def notify_service(notify_db, notify_db_session):
         dao_create_service(
             service=service,
             service_id=current_app.config['NOTIFY_SERVICE_ID'],
-            user=user,
-            free_sms_fragment_limit=250000  # live central gov service
+            user=user
         )
 
         data = {

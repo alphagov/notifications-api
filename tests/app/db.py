@@ -79,12 +79,7 @@ def create_service(
         prefix_sms=prefix_sms,
     )
 
-    dao_create_service(
-        service,
-        service.created_by,
-        free_sms_fragment_limit=250000,
-        service_id=service_id,
-        service_permissions=service_permissions)
+    dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
 
     service.active = active
     service.research_mode = research_mode

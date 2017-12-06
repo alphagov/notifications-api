@@ -153,24 +153,20 @@ def get_service_by_id(service_id):
 @service_blueprint.route('', methods=['POST'])
 def create_service():
     data = request.get_json()
-    errors = {
-        required_field: ['Missing data for required field.']
-        for required_field in ['user_id', 'free_sms_fragment_limit']
-        if not data.get(required_field)
-    }
-    if errors:
+
+    if not data.get('user_id'):
+        errors = {'user_id': ['Missing data for required field.']}
         raise InvalidRequest(errors, status_code=400)
 
     # validate json with marshmallow
     service_schema.load(data)
 
-    user = get_user_by_id(data.pop('user_id', None))
-    free_sms_fragment_limit = data.pop('free_sms_fragment_limit')
+    user = get_user_by_id(data.pop('user_id'))
 
     # unpack valid json into service object
     valid_service = Service.from_json(data)
 
-    dao_create_service(valid_service, user, free_sms_fragment_limit)
+    dao_create_service(valid_service, user)
     return jsonify(data=service_schema.dump(valid_service).data), 201
 
 
