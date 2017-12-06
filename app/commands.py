@@ -336,32 +336,6 @@ def populate_service_letter_contact():
 
 
 @notify_command()
-def populate_service_and_service_history_free_sms_fragment_limit():
-    """
-    DEPRECATED. Set services to have 250k sms limit.
-    """
-    services_to_update = """
-        UPDATE services
-        SET free_sms_fragment_limit = 250000
-        WHERE free_sms_fragment_limit IS NULL
-    """
-
-    services_history_to_update = """
-        UPDATE services_history
-        SET free_sms_fragment_limit = 250000
-        WHERE free_sms_fragment_limit IS NULL
-    """
-
-    services_result = db.session.execute(services_to_update)
-    services_history_result = db.session.execute(services_history_to_update)
-
-    db.session.commit()
-
-    print("Populated free sms fragment limits for {} services".format(services_result.rowcount))
-    print("Populated free sms fragment limits for {} services history".format(services_history_result.rowcount))
-
-
-@notify_command()
 def populate_annual_billing():
     """
     add annual_billing for 2016, 2017 and 2018.

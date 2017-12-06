@@ -38,7 +38,6 @@ from tests.app.db import (
     create_service_with_defined_sms_sender
 )
 from tests.app.db import create_user
-from app.dao.date_util import get_current_financial_year_start_year
 
 
 def test_get_service_list(client, service_factory):
@@ -135,16 +134,6 @@ def test_get_service_by_id(admin_request, sample_service):
     assert json_resp['data']['prefix_sms'] is True
 
 
-def test_get_service_by_id_returns_free_sms_limit(admin_request, sample_service):
-    json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id)
-    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
-
-
-def test_get_detailed_service_by_id_returns_free_sms_limit(admin_request, sample_service):
-    json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id, detailed=True)
-    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
-
-
 @pytest.mark.parametrize('detailed', [True, False])
 def test_get_service_by_id_returns_organisation_type(admin_request, sample_service, detailed):
     json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id, detailed=detailed)
@@ -228,7 +217,8 @@ def test_create_service(client, sample_user):
         'restricted': False,
         'active': False,
         'email_from': 'created.service',
-        'created_by': str(sample_user.id)}
+        'created_by': str(sample_user.id)
+    }
     auth_header = create_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     resp = client.post(
@@ -243,8 +233,6 @@ def test_create_service(client, sample_user):
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
-    # TODO: Remove this after the new data is used
-    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
     service_db = Service.query.get(json_resp['data']['id'])
     assert service_db.name == 'created service'
@@ -286,66 +274,6 @@ def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_u
             assert resp.status_code == 400
             assert json_resp['result'] == 'error'
             assert 'Missing data for required field.' in json_resp['message']['user_id']
-
-
-def test_create_service_free_sms_fragment_limit_is_optional(client, sample_user):
-    data1 = {
-        'name': 'service 1',
-        'user_id': str(sample_user.id),
-        'message_limit': 1000,
-        'restricted': False,
-        'active': False,
-        'email_from': 'sample_user.email1',
-        'created_by': str(sample_user.id),
-        'free_sms_fragment_limit': 9999
-    }
-
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.post(
-        '/service',
-        data=json.dumps(data1),
-        headers=headers)
-    json_resp = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 201
-
-    # Test data from the new annual billing table
-    service_id = json_resp['data']['id']
-    annual_billing = client.get('service/{}/billing/free-sms-fragment-limit?financial_year_start={}'
-                                .format(service_id, get_current_financial_year_start_year()),
-                                headers=[('Content-Type', 'application/json'), create_authorization_header()])
-    json_resp = json.loads(annual_billing.get_data(as_text=True))
-    assert json_resp['free_sms_fragment_limit'] == 9999
-    # TODO: Remove this after the new data is used
-    assert json_resp['free_sms_fragment_limit'] == 9999
-
-    data2 = {
-        'name': 'service 2',
-        'user_id': str(sample_user.id),
-        'message_limit': 1000,
-        'restricted': False,
-        'active': False,
-        'email_from': 'sample_user.email2',
-        'created_by': str(sample_user.id),
-    }
-
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.post(
-        '/service',
-        data=json.dumps(data2),
-        headers=headers)
-    json_resp = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 201
-    # Test data from the new annual billing table
-    service_id = json_resp['data']['id']
-    annual_billing = client.get('service/{}/billing/free-sms-fragment-limit?financial_year_start={}'
-                                .format(service_id, get_current_financial_year_start_year()),
-                                headers=[('Content-Type', 'application/json'), create_authorization_header()])
-    json_resp = json.loads(annual_billing.get_data(as_text=True))
-    assert json_resp['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
-    # TODO: Remove this after the new data is used
-    assert json_resp['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
 
 
 def test_should_error_if_created_by_missing(notify_api, sample_user):
@@ -430,7 +358,8 @@ def test_should_not_create_service_with_duplicate_name(notify_api,
                 'restricted': False,
                 'active': False,
                 'email_from': 'sample.service2',
-                'created_by': str(sample_user.id)}
+                'created_by': str(sample_user.id)
+            }
             auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
@@ -456,7 +385,8 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_email
                 'restricted': False,
                 'active': False,
                 'email_from': 'first.service',
-                'created_by': str(sample_user.id)}
+                'created_by': str(sample_user.id)
+            }
             auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
@@ -601,37 +531,6 @@ def test_update_service_flags_will_remove_service_permissions(client, notify_db,
 
     permissions = ServicePermission.query.filter_by(service_id=service.id).all()
     assert set([p.permission for p in permissions]) == set([SMS_TYPE, EMAIL_TYPE])
-
-
-# TODO: Remove after new table is created and verified
-def test_update_service_free_sms_fragment_limit(client, notify_db, sample_service):
-    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
-    notify_db.session.add(org)
-    notify_db.session.commit()
-
-    auth_header = create_authorization_header()
-    resp = client.get(
-        '/service/{}'.format(sample_service.id),
-        headers=[auth_header]
-    )
-    json_resp = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 200
-    assert json_resp['data']['free_sms_fragment_limit'] == current_app.config['FREE_SMS_TIER_FRAGMENT_COUNT']
-
-    data = {
-        'free_sms_fragment_limit': 9999
-    }
-
-    auth_header = create_authorization_header()
-
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    result = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 200
-    assert result['data']['free_sms_fragment_limit'] == 9999
 
 
 def test_update_permissions_will_override_permission_flags(client, service_with_no_permissions):
@@ -916,7 +815,8 @@ def test_default_permissions_are_added_for_user_service(notify_api,
                 'restricted': False,
                 'active': False,
                 'email_from': 'created.service',
-                'created_by': str(sample_user.id)}
+                'created_by': str(sample_user.id)
+            }
             auth_header = create_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             resp = client.post(
@@ -1503,12 +1403,13 @@ def test_set_sms_prefixing_for_service_cant_be_none(
     admin_request,
     sample_service,
 ):
-    admin_request.post(
+    resp = admin_request.post(
         'service.update_service',
         service_id=sample_service.id,
         _data={'prefix_sms': None},
-        _expected_status=500,
+        _expected_status=400,
     )
+    assert resp['message'] == {'prefix_sms': ['Field may not be null.']}
 
 
 @pytest.mark.parametrize('today_only,stats', [
