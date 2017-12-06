@@ -1,5 +1,6 @@
 from unittest.mock import call
 from datetime import datetime, timedelta
+import pytest
 
 from flask import current_app
 
@@ -9,7 +10,8 @@ from app.aws.s3 import (
     get_s3_bucket_objects,
     get_s3_file,
     filter_s3_bucket_objects_within_date_range,
-    remove_transformed_dvla_file
+    remove_transformed_dvla_file,
+    upload_letters_pdf
 )
 from tests.app.conftest import datetime_in_past
 
@@ -139,3 +141,21 @@ def test_get_s3_bucket_objects_does_not_return_outside_of_date_range(notify_api,
     filtered_items = filter_s3_bucket_objects_within_date_range(s3_objects_stub)
 
     assert len(filtered_items) == 0
+
+
+@pytest.mark.parametrize('crown_flag,expected_crown_text', [
+    (True, 'C'),
+    (False, 'N'),
+])
+@freeze_time("2017-12-04 15:00:00")
+def test_upload_letters_pdf_calls_utils_s3upload_with_correct_args(
+        notify_api, mocker, crown_flag, expected_crown_text):
+    s3_upload_mock = mocker.patch('app.aws.s3.utils_s3upload')
+    upload_letters_pdf(reference='foo', crown=crown_flag, filedata='some_data')
+
+    s3_upload_mock.assert_called_with(
+        filedata='some_data',
+        region='eu-west-1',
+        bucket_name='test-letters-pdf',
+        file_location='2017-12-04/NOTIFY.FOO.D.2.C.{}.20171204150000.PDF'.format(expected_crown_text)
+    )

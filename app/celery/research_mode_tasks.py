@@ -5,7 +5,7 @@ from requests import request, RequestException, HTTPError
 
 from app.models import SMS_TYPE
 from app.config import QueueNames
-from app.celery.callback_tasks import process_ses_results
+from app.celery.process_ses_receipts_tasks import process_ses_results
 
 temp_fail = "7700900003"
 perm_fail = "7700900002"

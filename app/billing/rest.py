@@ -14,7 +14,7 @@ from app.utils import convert_utc_to_bst
 from app.dao.annual_billing_dao import (dao_get_free_sms_fragment_limit_for_year,
                                         dao_get_all_free_sms_fragment_limit,
                                         dao_create_or_update_annual_billing_for_year,
-                                        dao_update_annual_billing_for_current_and_future_years)
+                                        dao_update_annual_billing_for_future_years)
 from app.billing.billing_schemas import create_or_update_free_sms_fragment_limit_schema
 from app.errors import InvalidRequest
 from app.schema_validation import validate
@@ -117,6 +117,7 @@ def get_free_sms_fragment_limit(service_id):
                 financial_year_start = get_current_financial_year_start_year()
 
             if int(financial_year_start) < get_current_financial_year_start_year():
+                # return the earliest historical entry
                 annual_billing = sms_list[0]   # The oldest entry
             else:
                 annual_billing = sms_list[-1]  # The newest entry
@@ -141,10 +142,21 @@ def create_or_update_free_sms_fragment_limit(service_id):
     return jsonify(form), 201
 
 
-def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit, financial_year_start=None):
+def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit, financial_year_start):
     current_year = get_current_financial_year_start_year()
-    if financial_year_start is None or financial_year_start >= current_year:
-        dao_update_annual_billing_for_current_and_future_years(service_id, free_sms_fragment_limit)
-    else:
-        dao_create_or_update_annual_billing_for_year(service_id,
-                                                     free_sms_fragment_limit, financial_year_start)
+    if not financial_year_start:
+        financial_year_start = current_year
+
+    dao_create_or_update_annual_billing_for_year(
+        service_id,
+        free_sms_fragment_limit,
+        financial_year_start
+    )
+    # if we're trying to update historical data, don't touch other rows.
+    # Otherwise, make sure that future years will get the new updated value.
+    if financial_year_start >= current_year:
+        dao_update_annual_billing_for_future_years(
+            service_id,
+            free_sms_fragment_limit,
+            financial_year_start
+        )

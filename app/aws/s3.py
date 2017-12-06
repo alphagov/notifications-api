@@ -5,7 +5,10 @@ from flask import current_app
 import pytz
 from boto3 import client, resource
 
+from notifications_utils.s3 import s3upload as utils_s3upload
+
 FILE_LOCATION_STRUCTURE = 'service-{}-notify/{}.csv'
+LETTERS_PDF_FILE_LOCATION_STRUCTURE = '{folder}/NOTIFY.{reference}.{duplex}.{letter_class}.{colour}.{crown}.{date}.pdf'
 
 
 def get_s3_file(bucket_name, file_location):
@@ -76,3 +79,23 @@ def remove_transformed_dvla_file(job_id):
     file_location = '{}-dvla-job.text'.format(job_id)
     obj = get_s3_object(bucket_name, file_location)
     return obj.delete()
+
+
+def upload_letters_pdf(reference, crown, filedata):
+    now = datetime.utcnow()
+    upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
+        folder=now.date().isoformat(),
+        reference=reference,
+        duplex="D",
+        letter_class="2",
+        colour="C",
+        crown="C" if crown else "N",
+        date=now.strftime('%Y%m%d%H%M%S')
+    ).upper()
+
+    utils_s3upload(
+        filedata=filedata,
+        region=current_app.config['AWS_REGION'],
+        bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
+        file_location=upload_file_name
+    )
