@@ -392,19 +392,19 @@ class Staging(Config):
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
-    REDIS_ENABLED = False
+    REDIS_ENABLED = True
 
     API_KEY_LIMITS = {
         KEY_TYPE_TEAM: {
-            "limit": 21000,
+            "limit": 24000,
             "interval": 60
         },
         KEY_TYPE_NORMAL: {
-            "limit": 21000,
+            "limit": 24000,
             "interval": 60
         },
         KEY_TYPE_TEST: {
-            "limit": 21000,
+            "limit": 24000,
             "interval": 60
         }
     }
