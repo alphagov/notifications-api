@@ -1455,4 +1455,3 @@ def test_process_incomplete_job_letter(mocker, sample_letter_template):
 
     assert mock_build_dvla.called
     assert mock_letter_saver.call_count == 8
-    

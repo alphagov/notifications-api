@@ -99,3 +99,6 @@ def upload_letters_pdf(reference, crown, filedata):
         bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
         file_location=upload_file_name
     )
+
+    current_app.logger.info("Uploading letters PDF {} to {}".format(
+        upload_file_name, current_app.config['LETTERS_PDF_BUCKET_NAME']))
