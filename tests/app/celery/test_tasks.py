@@ -1439,6 +1439,7 @@ def test_process_incomplete_job_letter(mocker, sample_letter_template):
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_letter'))
     mock_letter_saver = mocker.patch('app.celery.tasks.save_letter.apply_async')
+    mock_build_dvla = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
 
     job = create_job(template=sample_letter_template, notification_count=10,
                      created_at=datetime.utcnow() - timedelta(hours=2),
@@ -1453,8 +1454,5 @@ def test_process_incomplete_job_letter(mocker, sample_letter_template):
 
     process_incomplete_job(str(job.id))
 
-    completed_job = Job.query.filter(Job.id == job.id).one()
-
-    assert completed_job.job_status == JOB_STATUS_FINISHED
-
+    assert mock_build_dvla.called
     assert mock_letter_saver.call_count == 8
