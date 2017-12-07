@@ -580,4 +580,4 @@ def process_incomplete_job(job_id):
         if row_number > resume_from_row:
             process_row(row_number, recipient, personalisation, template, job, job.service)
 
-    job_complete(job, job.service, template, resumed=True)
+    job_complete(job, job.service, template.template_type, resumed=True)
