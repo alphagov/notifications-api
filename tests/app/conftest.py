@@ -603,7 +603,7 @@ def sample_letter_notification(sample_letter_template):
         'address_line_6': 'A6',
         'postcode': 'A_POST'
     }
-    return create_notification(sample_letter_template, personalisation=address)
+    return create_notification(sample_letter_template, reference='foo', personalisation=address)
 
 
 @pytest.fixture(scope='function')
