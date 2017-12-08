@@ -328,17 +328,24 @@ def dao_delete_notifications_and_history_by_id(notification_id):
 
 
 def _timeout_notifications(current_statuses, new_status, timeout_start, updated_at):
+
+    notifications = Notification.query.filter(
+        Notification.created_at < timeout_start,
+        Notification.status.in_(current_statuses),
+        Notification.notification_type != LETTER_TYPE
+    ).all()
     for table in [NotificationHistory, Notification]:
         q = table.query.filter(
             table.created_at < timeout_start,
             table.status.in_(current_statuses),
             table.notification_type != LETTER_TYPE
         )
-        last_update_count = q.update(
+        q.update(
             {'status': new_status, 'updated_at': updated_at},
             synchronize_session=False
         )
-    return last_update_count
+    # return a list of q = notification_ids in Notification table for sending delivery receipts
+    return notifications
 
 
 def dao_timeout_notifications(timeout_period_in_seconds):
@@ -359,14 +366,14 @@ def dao_timeout_notifications(timeout_period_in_seconds):
     timeout = functools.partial(_timeout_notifications, timeout_start=timeout_start, updated_at=updated_at)
 
     # Notifications still in created status are marked with a technical-failure:
-    updated = timeout([NOTIFICATION_CREATED], NOTIFICATION_TECHNICAL_FAILURE)
+    updated_ids = timeout([NOTIFICATION_CREATED], NOTIFICATION_TECHNICAL_FAILURE)
 
     # Notifications still in sending or pending status are marked with a temporary-failure:
-    updated += timeout([NOTIFICATION_SENDING, NOTIFICATION_PENDING], NOTIFICATION_TEMPORARY_FAILURE)
+    updated_ids += timeout([NOTIFICATION_SENDING, NOTIFICATION_PENDING], NOTIFICATION_TEMPORARY_FAILURE)
 
     db.session.commit()
 
-    return updated
+    return updated_ids
 
 
 def get_total_sent_notifications_in_date_range(start_date, end_date, notification_type):
