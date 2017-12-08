@@ -132,10 +132,7 @@ def job_complete(job, service, template_type, resumed=False, start=None):
         if service.research_mode:
             update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
         else:
-            build_dvla_file.apply_async(
-                [str(job.id)],
-                queue=QueueNames.JOBS
-            )
+            build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
             current_app.logger.info("send job {} to build-dvla-file in the {} queue".format(job.id, QueueNames.JOBS))
     else:
         job.job_status = JOB_STATUS_FINISHED
@@ -146,7 +143,7 @@ def job_complete(job, service, template_type, resumed=False, start=None):
 
     if resumed:
         current_app.logger.info(
-            "Resumed Job {} completed at {}".format(job.id, job.created_at, start, finished)
+            "Resumed Job {} completed at {}".format(job.id, job.created_at)
         )
     else:
         current_app.logger.info(
@@ -327,7 +324,7 @@ def save_letter(
         ):
             create_letters_pdf.apply_async(
                 [str(saved_notification.id)],
-                queue=QueueNames.JOBS
+                queue=QueueNames.CREATE_LETTERS_PDF
             )
 
         current_app.logger.info("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
@@ -631,7 +628,7 @@ def create_letters_pdf(self, notification_id):
             update_notification_status_by_id(notification_id, 'technical-failure')
 
 
-def get_letters_pdf(template, contact_block=None, org_id='001', values=None):
+def get_letters_pdf(template, contact_block, org_id, values=None):
     template_for_letter_print = {
         "subject": template.subject,
         "content": template.content
