@@ -30,6 +30,7 @@ class QueueNames(object):
     RETRY = 'retry-tasks'
     NOTIFY = 'notify-internal-tasks'
     PROCESS_FTP = 'process-ftp-tasks'
+    CREATE_LETTERS_PDF = 'create-letters-pdf'
 
     @staticmethod
     def all_queues():
@@ -44,6 +45,7 @@ class QueueNames(object):
             QueueNames.JOBS,
             QueueNames.RETRY,
             QueueNames.NOTIFY,
+            QueueNames.CREATE_LETTERS_PDF,
         ]
 
 
