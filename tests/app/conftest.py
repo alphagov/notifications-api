@@ -161,7 +161,7 @@ def sample_service(
         'message_limit': limit,
         'restricted': restricted,
         'email_from': email_from,
-        'created_by': user
+        'created_by': user,
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
@@ -188,7 +188,7 @@ def sample_service_full_permissions(notify_db, notify_db_session):
         notify_db_session,
         # ensure name doesn't clash with regular sample service
         service_name="sample service full permissions",
-        permissions=SERVICE_PERMISSION_TYPES
+        permissions=set(SERVICE_PERMISSION_TYPES) - {'letters_as_pdf'}
     )
 
 
@@ -299,10 +299,6 @@ def sample_template_without_email_permission(notify_db, notify_db_session):
 
 @pytest.fixture
 def sample_letter_template(sample_service_full_permissions):
-    # remove letters_as_pdf from fixture until we drop building of dvla files
-    from app.dao.service_permissions_dao import dao_remove_service_permission
-    dao_remove_service_permission(sample_service_full_permissions.id, 'letters_as_pdf')
-
     return create_template(sample_service_full_permissions, template_type=LETTER_TYPE)
 
 
