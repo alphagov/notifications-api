@@ -30,7 +30,7 @@ def create_letters_pdf(self, notification_id):
         )
         current_app.logger.info("PDF Letter {} reference {} created at {}, {} bytes".format(
             notification.id, notification.reference, notification.created_at, len(pdf_data)))
-        s3.upload_letters_pdf(reference=notification.reference, crown=True, filedata=pdf_data)
+        s3.upload_letters_pdf(reference=notification.reference, crown=notification.service.crown, filedata=pdf_data)
     except (RequestException, BotoClientError):
         try:
             current_app.logger.exception(

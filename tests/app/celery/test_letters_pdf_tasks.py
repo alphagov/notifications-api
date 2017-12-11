@@ -54,7 +54,7 @@ def test_create_letters_pdf_calls_upload_letters_pdf(mocker, sample_letter_notif
 
     mock_s3.assert_called_with(
         reference=sample_letter_notification.reference,
-        crown=True,
+        crown=sample_letter_notification.service.crown,
         filedata=b'\x00\x01'
     )
 
