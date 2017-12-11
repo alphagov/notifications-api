@@ -1,13 +1,15 @@
 from app.models import (
+    Notification,
     NOTIFICATION_CREATED,
     NOTIFICATION_PENDING,
     NOTIFICATION_SENDING,
     KEY_TYPE_TEST,
-    KEY_TYPE_NORMAL
+    KEY_TYPE_NORMAL,
+    LETTER_TYPE
 )
 from app.dao.notifications_dao import dao_set_created_live_letter_api_notifications_to_pending
 
-from tests.app.db import create_notification
+from tests.app.db import create_notification, create_service, create_template
 
 
 def test_should_only_get_letter_notifications(
@@ -20,6 +22,22 @@ def test_should_only_get_letter_notifications(
     assert sample_letter_notification.status == NOTIFICATION_PENDING
     assert sample_email_notification.status == NOTIFICATION_CREATED
     assert sample_notification.status == NOTIFICATION_CREATED
+    assert ret == [sample_letter_notification]
+
+
+def test_should_ignore_letters_as_pdf(
+    sample_letter_notification,
+):
+    service = create_service(service_permissions=[LETTER_TYPE, 'letters_as_pdf'])
+    template = create_template(service, template_type=LETTER_TYPE)
+    create_notification(template)
+
+    all_noti = Notification.query.all()
+    assert len(all_noti) == 2
+
+    ret = dao_set_created_live_letter_api_notifications_to_pending()
+
+    assert sample_letter_notification.status == NOTIFICATION_PENDING
     assert ret == [sample_letter_notification]
 
 
