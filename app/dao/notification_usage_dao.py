@@ -12,7 +12,10 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES_BILLABLE,
     KEY_TYPE_TEST,
     SMS_TYPE,
-    EMAIL_TYPE
+    EMAIL_TYPE,
+    LETTER_TYPE,
+    LetterRate,
+    Service
 )
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column
@@ -139,3 +142,33 @@ def rate_multiplier():
         (NotificationHistory.rate_multiplier == None, literal_column("'1'")),  # noqa
         (NotificationHistory.rate_multiplier != None, NotificationHistory.rate_multiplier),  # noqa
     ]), Integer())
+
+
+@statsd(namespace="dao")
+def billing_letter_data_per_month_query(service_id, start_date, end_date):
+    month = get_london_month_from_utc_column(NotificationHistory.created_at)
+    crown = Service.query.get(service_id).crown
+    results = db.session.query(
+        month.label('month'),
+        func.sum(NotificationHistory.billable_units).label('billing_units'),
+        rate_multiplier().label('rate_multiplier'),
+        NotificationHistory.international,
+        NotificationHistory.notification_type,
+        cast(LetterRate.rate, Float()).label('rate')
+    ).filter(
+        *billing_data_filter(LETTER_TYPE, start_date, end_date, service_id),
+        LetterRate.sheet_count == NotificationHistory.billable_units,
+        LetterRate.crown == crown,
+        NotificationHistory.created_at.between(LetterRate.start_date, end_date),
+        LetterRate.post_class == 'second'
+    ).group_by(
+        NotificationHistory.notification_type,
+        month,
+        NotificationHistory.rate_multiplier,
+        NotificationHistory.international
+    ).order_by(
+        month,
+        rate_multiplier()
+    ).all()
+
+    return results

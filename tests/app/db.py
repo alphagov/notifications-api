@@ -29,6 +29,7 @@ from app.models import (
     SMS_TYPE,
     KEY_TYPE_NORMAL,
     AnnualBilling,
+    LetterRate
 )
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import (
@@ -68,7 +69,8 @@ def create_service(
     active=True,
     email_from=None,
     prefix_sms=True,
-    message_limit=1000
+    message_limit=1000,
+    crown=True
 ):
     service = Service(
         name=service_name,
@@ -77,6 +79,7 @@ def create_service(
         email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
         created_by=user or create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
         prefix_sms=prefix_sms,
+        crown=crown
     )
 
     dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
@@ -453,3 +456,25 @@ def create_annual_billing(
     db.session.commit()
 
     return annual_billing
+
+
+def create_letter_rate(
+    start_date=datetime(2017, 1,1, 00,00,00),
+    end_date=None,
+    sheet_count=1,
+    rate=0.31,
+    crown=True,
+    post_class='second'
+):
+    rate = LetterRate(
+        start_date=start_date,
+        end_date=end_date,
+        sheet_count=sheet_count,
+        rate=rate,
+        crown=crown,
+        post_class=post_class
+    )
+    db.session.add(rate)
+    db.session.commit()
+
+    return rate
