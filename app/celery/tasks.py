@@ -4,7 +4,6 @@ from collections import namedtuple
 
 from celery.signals import worker_process_shutdown
 from flask import current_app
-import requests
 
 from notifications_utils.recipients import (
     RecipientCSV
@@ -20,7 +19,6 @@ from requests import (
     RequestException
 )
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm.exc import NoResultFound
 from botocore.exceptions import ClientError as BotoClientError
 
 from app import (
@@ -32,6 +30,7 @@ from app import (
 )
 from app.aws import s3
 from app.celery import provider_tasks
+from app.celery import letters_pdf_tasks
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.config import QueueNames
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
@@ -48,7 +47,6 @@ from app.dao.notifications_dao import (
     dao_update_notifications_by_reference,
     dao_get_last_notification_added_for_job_id,
     dao_get_notifications_by_references,
-    update_notification_status_by_id
 )
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
@@ -127,7 +125,7 @@ def process_job(job_id):
 def job_complete(job, service, template_type, resumed=False, start=None):
     if (
         template_type == LETTER_TYPE and
-        'letters_as_pdf' not in [p.permission for p in service.permissions]
+        not service.has_permission('letters_as_pdf')
     ):
         if service.research_mode:
             update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
@@ -320,9 +318,9 @@ def save_letter(
         )
 
         if (
-            'letters_as_pdf' in [p.permission for p in service.permissions] and not service.research_mode
+            service.has_permission('letters_as_pdf') and not service.research_mode
         ):
-            create_letters_pdf.apply_async(
+            letters_pdf_tasks.create_letters_pdf.apply_async(
                 [str(saved_notification.id)],
                 queue=QueueNames.CREATE_LETTERS_PDF
             )
@@ -596,57 +594,3 @@ def process_incomplete_job(job_id):
             process_row(row_number, recipient, personalisation, template, job, job.service)
 
     job_complete(job, job.service, template.template_type, resumed=True)
-
-
-@notify_celery.task(bind=True, name="create-letters-pdf", max_retries=15, default_retry_delay=300)
-@statsd(namespace="tasks")
-def create_letters_pdf(self, notification_id):
-    try:
-        notification = get_notification_by_id(notification_id)
-        if not notification:
-            raise NoResultFound()
-
-        pdf_data = get_letters_pdf(
-            notification.template,
-            contact_block=notification.reply_to_text,
-            org_id=notification.service.dvla_organisation.id,
-            values=notification.personalisation
-        )
-        current_app.logger.info("PDF Letter {} reference {} created at {}, {} bytes".format(
-            notification.id, notification.reference, notification.created_at, len(pdf_data)))
-        s3.upload_letters_pdf(reference=notification.reference, crown=True, filedata=pdf_data)
-    except (RequestException, BotoClientError):
-        try:
-            current_app.logger.exception(
-                "Letters PDF notification creation for id: {} failed".format(notification_id)
-            )
-            self.retry(queue=QueueNames.RETRY)
-        except self.MaxRetriesExceededError:
-            current_app.logger.exception(
-                "RETRY FAILED: task create_letters_pdf failed for notification {}".format(notification_id),
-            )
-            update_notification_status_by_id(notification_id, 'technical-failure')
-
-
-def get_letters_pdf(template, contact_block, org_id, values=None):
-    template_for_letter_print = {
-        "subject": template.subject,
-        "content": template.content
-    }
-
-    data = {
-        'letter_contact_block': contact_block,
-        'template': template_for_letter_print,
-        'values': values,
-        'dvla_org_id': org_id,
-    }
-    resp = requests.post(
-        '{}/print.pdf'.format(
-            current_app.config['TEMPLATE_PREVIEW_API_HOST']
-        ),
-        json=data,
-        headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY'])}
-    )
-    resp.raise_for_status()
-
-    return resp.content
