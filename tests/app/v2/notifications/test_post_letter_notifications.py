@@ -4,6 +4,8 @@ from flask import json
 from flask import url_for
 import pytest
 
+from app.config import QueueNames
+from app.dao import service_permissions_dao
 from app.models import EMAIL_TYPE
 from app.models import Job
 from app.models import KEY_TYPE_NORMAL
@@ -78,6 +80,29 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
     )
     assert not resp_json['scheduled_for']
     assert not notification.reply_to_text
+
+
+def test_post_letter_notification_for_letters_as_pdf_calls_celery_task(client, sample_letter_template, mocker):
+    service_permissions_dao.dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
+
+    data = {
+        'template_id': str(sample_letter_template.id),
+        'personalisation': {
+            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
+            'address_line_2': 'Buckingham Palace',
+            'address_line_3': 'London',
+            'postcode': 'SW1 1AA',
+            'name': 'Lizzie'
+        },
+        'reference': 'foo'
+    }
+    fake_task = mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
+
+    letter_request(client, data, service_id=sample_letter_template.service_id)
+
+    notification = Notification.query.one()
+
+    fake_task.assert_called_once_with([str(notification.id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
 
 def test_post_letter_notification_returns_400_and_missing_template(
