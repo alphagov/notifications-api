@@ -1040,7 +1040,42 @@ def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
     assert notification_db.reply_to_text == "Address contact"
 
 
-def test_save_letter_saves_letter_calls_create_letters_as_pdf_with_letters_as_pdf_permission(
+def test_save_letter_calls_update_noti_to_sent_task_with_letters_as_pdf_permission_in_research_mode(
+        mocker, notify_db_session, sample_letter_job):
+    sample_letter_job.service.research_mode = True
+    service_permissions_dao.dao_add_service_permission(sample_letter_job.service.id, 'letters_as_pdf')
+    mock_update_letter_noti_sent = mocker.patch(
+        'app.celery.tasks.update_letter_notifications_to_sent_to_dvla.apply_async')
+    mocker.patch('app.celery.tasks.create_random_identifier', return_value="this-is-random-in-real-life")
+
+    personalisation = {
+        'addressline1': 'Foo',
+        'addressline2': 'Bar',
+        'postcode': 'Flob',
+    }
+    notification_json = _notification_json(
+        template=sample_letter_job.template,
+        to='Foo',
+        personalisation=personalisation,
+        job_id=sample_letter_job.id,
+        row_number=1
+    )
+    notification_id = uuid.uuid4()
+
+    save_letter(
+        sample_letter_job.service_id,
+        notification_id,
+        encryption.encrypt(notification_json),
+    )
+
+    assert mock_update_letter_noti_sent.called
+    mock_update_letter_noti_sent.assert_called_once_with(
+        kwargs={'notification_references': ['this-is-random-in-real-life']},
+        queue=QueueNames.RESEARCH_MODE
+    )
+
+
+def test_save_letter_calls_create_letters_pdf_task_with_letters_as_pdf_permission_and_not_in_research(
         mocker, notify_db_session, sample_letter_job):
     service_permissions_dao.dao_add_service_permission(sample_letter_job.service.id, 'letters_as_pdf')
     mock_create_letters_pdf = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
