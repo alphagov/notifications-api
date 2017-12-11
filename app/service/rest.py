@@ -286,12 +286,11 @@ def get_service_provider_aggregate_statistics(service_id):
 # tables. This is so product owner can pass stories as done
 @service_blueprint.route('/<uuid:service_id>/history', methods=['GET'])
 def get_service_history(service_id):
-    from app.models import (Service, ApiKey, TemplateHistory, Event)
+    from app.models import (Service, ApiKey, TemplateHistory)
     from app.schemas import (
         service_history_schema,
         api_key_history_schema,
-        template_history_schema,
-        event_schema
+        template_history_schema
     )
 
     service_history = Service.get_history_model().query.filter_by(id=service_id).all()
@@ -302,14 +301,11 @@ def get_service_history(service_id):
     template_history = TemplateHistory.query.filter_by(service_id=service_id).all()
     template_data, errors = template_history_schema.dump(template_history, many=True)
 
-    events = Event.query.all()
-    events_data = event_schema.dump(events, many=True).data
-
     data = {
         'service_history': service_data,
         'api_key_history': api_keys_data,
         'template_history': template_data,
-        'events': events_data}
+        'events': []}
 
     return jsonify(data=data)
 
