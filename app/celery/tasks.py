@@ -4,6 +4,7 @@ from collections import namedtuple
 
 from celery.signals import worker_process_shutdown
 from flask import current_app
+
 from notifications_utils.recipients import (
     RecipientCSV
 )
@@ -29,6 +30,7 @@ from app import (
 )
 from app.aws import s3
 from app.celery import provider_tasks
+from app.celery import letters_pdf_tasks
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.config import QueueNames
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
@@ -44,7 +46,7 @@ from app.dao.notifications_dao import (
     dao_update_notifications_for_job_to_sent_to_dvla,
     dao_update_notifications_by_reference,
     dao_get_last_notification_added_for_job_id,
-    dao_get_notifications_by_references
+    dao_get_notifications_by_references,
 )
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
@@ -121,7 +123,10 @@ def process_job(job_id):
 
 
 def job_complete(job, service, template_type, resumed=False, start=None):
-    if template_type == LETTER_TYPE:
+    if (
+        template_type == LETTER_TYPE and
+        not service.has_permission('letters_as_pdf')
+    ):
         if service.research_mode:
             update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
         else:
@@ -136,7 +141,7 @@ def job_complete(job, service, template_type, resumed=False, start=None):
 
     if resumed:
         current_app.logger.info(
-            "Resumed Job {} completed at {}".format(job.id, job.created_at, start, finished)
+            "Resumed Job {} completed at {}".format(job.id, job.created_at)
         )
     else:
         current_app.logger.info(
@@ -311,6 +316,18 @@ def save_letter(
             reference=create_random_identifier(),
             reply_to_text=service.get_default_letter_contact()
         )
+
+        if service.has_permission('letters_as_pdf'):
+            if not service.research_mode:
+                letters_pdf_tasks.create_letters_pdf.apply_async(
+                    [str(saved_notification.id)],
+                    queue=QueueNames.CREATE_LETTERS_PDF
+                )
+            else:
+                update_letter_notifications_to_sent_to_dvla.apply_async(
+                    kwargs={'notification_references': [saved_notification.reference]},
+                    queue=QueueNames.RESEARCH_MODE
+                )
 
         current_app.logger.info("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
     except SQLAlchemyError as e:
