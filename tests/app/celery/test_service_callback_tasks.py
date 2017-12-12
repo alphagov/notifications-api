@@ -55,7 +55,7 @@ def test_send_delivery_status_to_service_post_https_request_to_service(notify_db
         "to": notification.to,
         "status": notification.status,
         "created_at": datestr.strftime(DATETIME_FORMAT),  # the time GOV.UK email sent the request
-        "updated_at": datestr.strftime(DATETIME_FORMAT),  # the last time the status was updated
+        "completed_at": datestr.strftime(DATETIME_FORMAT),  # the last time the status was updated
         "sent_at": datestr.strftime(DATETIME_FORMAT),  # the time the email was sent
         "notification_type": notification_type
     }

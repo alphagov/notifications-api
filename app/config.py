@@ -30,6 +30,7 @@ class QueueNames(object):
     RETRY = 'retry-tasks'
     NOTIFY = 'notify-internal-tasks'
     PROCESS_FTP = 'process-ftp-tasks'
+    CREATE_LETTERS_PDF = 'create-letters-pdf'
 
     @staticmethod
     def all_queues():
@@ -44,6 +45,7 @@ class QueueNames(object):
             QueueNames.JOBS,
             QueueNames.RETRY,
             QueueNames.NOTIFY,
+            QueueNames.CREATE_LETTERS_PDF,
         ]
 
 
@@ -303,6 +305,9 @@ class Config(object):
     # Format is as follows:
     # {"dataset_1": "token_1", ...}
     PERFORMANCE_PLATFORM_ENDPOINTS = json.loads(os.environ.get('PERFORMANCE_PLATFORM_ENDPOINTS', '{}'))
+
+    TEMPLATE_PREVIEW_API_HOST = os.environ.get('TEMPLATE_PREVIEW_API_HOST', 'http://localhost:6013')
+    TEMPLATE_PREVIEW_API_KEY = os.environ.get('TEMPLATE_PREVIEW_API_KEY', 'my-secret-key')
 
 
 ######################

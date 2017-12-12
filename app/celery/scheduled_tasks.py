@@ -58,6 +58,8 @@ from app.celery.tasks import (
 from app.config import QueueNames, TaskNames
 from app.utils import convert_utc_to_bst
 from app.v2.errors import JobIncompleteError
+from app.dao.service_callback_api_dao import get_service_callback_api_for_service
+from app.celery.service_callback_tasks import send_delivery_status_to_service
 
 
 @worker_process_shutdown.connect
@@ -189,10 +191,18 @@ def delete_invitations():
 @notify_celery.task(name='timeout-sending-notifications')
 @statsd(namespace="tasks")
 def timeout_notifications():
-    updated = dao_timeout_notifications(current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'))
-    if updated:
+    notifications = dao_timeout_notifications(current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'))
+
+    if notifications:
+        for notification in notifications:
+            # queue callback task only if the service_callback_api exists
+            service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
+
+            if service_callback_api:
+                send_delivery_status_to_service.apply_async([str(id)], queue=QueueNames.NOTIFY)
+
         current_app.logger.info(
-            "Timeout period reached for {} notifications, status has been updated.".format(updated))
+            "Timeout period reached for {} notifications, status has been updated.".format(len(notifications)))
 
 
 @notify_celery.task(name='send-daily-performance-platform-stats')
