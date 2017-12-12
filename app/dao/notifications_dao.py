@@ -26,6 +26,8 @@ from app.models import (
     Notification,
     NotificationHistory,
     ScheduledNotification,
+    Service,
+    ServicePermission,
     Template,
     TemplateHistory,
     KEY_TYPE_NORMAL,
@@ -224,8 +226,11 @@ def get_notification_with_personalisation(service_id, notification_id, key_type)
 
 
 @statsd(namespace="dao")
-def get_notification_by_id(notification_id):
-    return Notification.query.filter_by(id=notification_id).first()
+def get_notification_by_id(notification_id, _raise=False):
+    if _raise:
+        return Notification.query.filter_by(id=notification_id).one()
+    else:
+        return Notification.query.filter_by(id=notification_id).first()
 
 
 def get_notifications(filter_dict=None):
@@ -541,14 +546,23 @@ def dao_set_created_live_letter_api_notifications_to_pending():
     this is used in the run_scheduled_jobs task, so we put a FOR UPDATE lock on the job table for the duration of
     the transaction so that if the task is run more than once concurrently, one task will block the other select
     from completing until it commits.
+
+    Note - do not process services that have letters_as_pdf permission as they
+           will get processed when the letters PDF zip task is created
     """
     notifications = db.session.query(
         Notification
+    ).join(
+        Service
     ).filter(
         Notification.notification_type == LETTER_TYPE,
         Notification.status == NOTIFICATION_CREATED,
         Notification.key_type == KEY_TYPE_NORMAL,
-        Notification.api_key != None  # noqa
+        Notification.api_key != None,  # noqa
+        # Ignore services that have letters_as_pdf permission
+        ~Service.permissions.any(
+            ServicePermission.permission == 'letters_as_pdf'
+        )
     ).with_for_update(
     ).all()
 

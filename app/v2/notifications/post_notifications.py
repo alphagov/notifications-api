@@ -14,6 +14,7 @@ from app.models import (
     NOTIFICATION_CREATED,
     NOTIFICATION_SENDING
 )
+from app.celery.letters_pdf_tasks import create_letters_pdf
 from app.celery.tasks import update_letter_notifications_to_sent_to_dvla
 from app.notifications.process_notifications import (
     persist_notification,
@@ -185,6 +186,12 @@ def process_letter_notification(*, letter_data, api_key, template):
         update_letter_notifications_to_sent_to_dvla.apply_async(
             kwargs={'notification_references': [notification.reference]},
             queue=QueueNames.RESEARCH_MODE
+        )
+
+    if api_key.service.has_permission('letters_as_pdf'):
+        create_letters_pdf.apply_async(
+            [str(notification.id)],
+            queue=QueueNames.CREATE_LETTERS_PDF
         )
 
     return notification

@@ -34,7 +34,7 @@ def send_delivery_status_to_service(self, notification_id):
         "to": notification.to,
         "status": notification.status,
         "created_at": notification.created_at.strftime(DATETIME_FORMAT),     # the time GOV.UK email sent the request
-        "updated_at": notification.updated_at.strftime(DATETIME_FORMAT),     # the last time the status was updated
+        "completed_at": notification.updated_at.strftime(DATETIME_FORMAT),   # the last time the status was updated
         "sent_at": notification.sent_at.strftime(DATETIME_FORMAT),           # the time the email was sent
         "notification_type": notification.notification_type
     }
