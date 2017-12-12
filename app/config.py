@@ -374,6 +374,7 @@ class Test(Config):
 
     SMS_INBOUND_WHITELIST = ['203.0.113.195']
     FIRETEXT_INBOUND_SMS_AUTH = ['testkey']
+    TEMPLATE_PREVIEW_API_HOST = 'http://localhost:9999'
 
 
 class Preview(Config):
