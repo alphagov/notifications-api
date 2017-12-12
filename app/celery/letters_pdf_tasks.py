@@ -5,7 +5,6 @@ from requests import (
 )
 
 from botocore.exceptions import ClientError as BotoClientError
-from sqlalchemy.orm.exc import NoResultFound
 
 from app import notify_celery
 from app.aws import s3
@@ -18,9 +17,7 @@ from app.statsd_decorators import statsd
 @statsd(namespace="tasks")
 def create_letters_pdf(self, notification_id):
     try:
-        notification = get_notification_by_id(notification_id)
-        if not notification:
-            raise NoResultFound()
+        notification = get_notification_by_id(notification_id, _raise=True)
 
         pdf_data = get_letters_pdf(
             notification.template,

@@ -25,9 +25,7 @@ def test_should_only_get_letter_notifications(
     assert ret == [sample_letter_notification]
 
 
-def test_should_ignore_letters_as_pdf(
-    sample_letter_notification,
-):
+def test_should_ignore_letters_as_pdf(sample_letter_notification):
     service = create_service(service_permissions=[LETTER_TYPE, 'letters_as_pdf'])
     template = create_template(service, template_type=LETTER_TYPE)
     create_notification(template)

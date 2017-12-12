@@ -226,8 +226,11 @@ def get_notification_with_personalisation(service_id, notification_id, key_type)
 
 
 @statsd(namespace="dao")
-def get_notification_by_id(notification_id):
-    return Notification.query.filter_by(id=notification_id).first()
+def get_notification_by_id(notification_id, _raise=False):
+    if _raise:
+        return Notification.query.filter_by(id=notification_id).one()
+    else:
+        return Notification.query.filter_by(id=notification_id).first()
 
 
 def get_notifications(filter_dict=None):
@@ -547,24 +550,19 @@ def dao_set_created_live_letter_api_notifications_to_pending():
     Note - do not process services that have letters_as_pdf permission as they
            will get processed when the letters PDF zip task is created
     """
-
-    # Ignore services that have letters_as_pdf permission
-    services_without_letters_as_pdf = [
-        s.id for s in Service.query.filter(
-            ~Service.permissions.any(
-                ServicePermission.permission == 'letters_as_pdf'
-            )
-        ).all()
-    ]
-
     notifications = db.session.query(
         Notification
+    ).join(
+        Service
     ).filter(
         Notification.notification_type == LETTER_TYPE,
         Notification.status == NOTIFICATION_CREATED,
         Notification.key_type == KEY_TYPE_NORMAL,
         Notification.api_key != None,  # noqa
-        Notification.service_id.in_(services_without_letters_as_pdf)
+        # Ignore services that have letters_as_pdf permission
+        ~Service.permissions.any(
+            ServicePermission.permission == 'letters_as_pdf'
+        )
     ).with_for_update(
     ).all()
 
