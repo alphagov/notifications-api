@@ -70,7 +70,7 @@ def create_service(
     email_from=None,
     prefix_sms=True,
     message_limit=1000,
-    crown=True
+    organisation_type='central'
 ):
     service = Service(
         name=service_name,
@@ -79,7 +79,7 @@ def create_service(
         email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
         created_by=user or create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
         prefix_sms=prefix_sms,
-        crown=crown
+        organisation_type=organisation_type
     )
 
     dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
@@ -459,7 +459,7 @@ def create_annual_billing(
 
 
 def create_letter_rate(
-    start_date=datetime(2017, 1,1, 00,00,00),
+    start_date=datetime(2017, 1, 1, 00, 00, 00),
     end_date=None,
     sheet_count=1,
     rate=0.31,

@@ -645,12 +645,11 @@ def test_populate_monthly_billing_populates_correctly(sample_template):
 
     monthly_billing = MonthlyBilling.query.order_by(MonthlyBilling.notification_type).all()
 
-    assert len(monthly_billing) == 2
+    assert len(monthly_billing) == 3
 
     assert monthly_billing[0].service_id == sample_template.service_id
     assert monthly_billing[0].start_date == jul_month_start
     assert monthly_billing[0].end_date == jul_month_end
-    assert monthly_billing[0].notification_type == 'email'
     assert monthly_billing[0].notification_type == 'email'
     assert monthly_billing[0].monthly_totals == []
 
@@ -668,6 +667,12 @@ def test_populate_monthly_billing_populates_correctly(sample_template):
         }
     )
 
+    assert monthly_billing[2].service_id == sample_template.service_id
+    assert monthly_billing[2].start_date == jul_month_start
+    assert monthly_billing[2].end_date == jul_month_end
+    assert monthly_billing[2].notification_type == 'letter'
+    assert monthly_billing[2].monthly_totals == []
+
 
 @freeze_time("2016-04-01 23:00:00")
 def test_populate_monthly_billing_updates_correct_month_in_bst(sample_template):
@@ -680,7 +685,7 @@ def test_populate_monthly_billing_updates_correct_month_in_bst(sample_template):
 
     monthly_billing = MonthlyBilling.query.order_by(MonthlyBilling.notification_type).all()
 
-    assert len(monthly_billing) == 2
+    assert len(monthly_billing) == 3
 
     assert monthly_billing[0].service_id == sample_template.service_id
     assert monthly_billing[0].start_date == apr_month_start
@@ -694,6 +699,12 @@ def test_populate_monthly_billing_updates_correct_month_in_bst(sample_template):
     assert monthly_billing[1].notification_type == 'sms'
     assert monthly_billing[1].monthly_totals[0]['billing_units'] == 1
     assert monthly_billing[1].monthly_totals[0]['total_cost'] == 0.0123
+
+    assert monthly_billing[2].service_id == sample_template.service_id
+    assert monthly_billing[2].start_date == apr_month_start
+    assert monthly_billing[2].end_date == apr_month_end
+    assert monthly_billing[2].notification_type == 'letter'
+    assert monthly_billing[2].monthly_totals == []
 
 
 def test_run_letter_jobs(client, mocker, sample_letter_template):
