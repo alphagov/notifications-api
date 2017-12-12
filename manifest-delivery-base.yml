@@ -7,6 +7,7 @@ services:
   - notify-aws
   - notify-config
   - notify-db
+  - notify-template-preview
   - mmg
   - firetext
   - hosted-graphite
