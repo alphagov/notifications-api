@@ -31,6 +31,7 @@ class QueueNames(object):
     NOTIFY = 'notify-internal-tasks'
     PROCESS_FTP = 'process-ftp-tasks'
     CREATE_LETTERS_PDF = 'create-letters-pdf'
+    CALLBACKS = 'service-callbacks'
 
     @staticmethod
     def all_queues():
@@ -46,6 +47,7 @@ class QueueNames(object):
             QueueNames.RETRY,
             QueueNames.NOTIFY,
             QueueNames.CREATE_LETTERS_PDF,
+            QueueNames.CALLBACKS,
         ]
 
 
