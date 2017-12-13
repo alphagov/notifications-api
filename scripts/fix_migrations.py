@@ -46,8 +46,11 @@ def reorder_revisions(revisions, old_base, new_base):
         file_data = rev_file.read()
 
     file_data = file_data.replace(head.revision, new_revision_id).replace(old_base, new_base)
+    new_filename = head.path.replace(head.revision, new_revision_id)
 
-    with open(head.path.replace(head.revision, new_revision_id), 'w') as rev_file:
+    assert head.path != new_filename, 'Old filename not same as revision id, please rename file before continuing'
+
+    with open(new_filename, 'w') as rev_file:
         rev_file.write(file_data)
 
     print("Removing {}".format(head.path))
