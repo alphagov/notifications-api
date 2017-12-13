@@ -1,15 +1,15 @@
 """
 
-Revision ID: 0151_kill_service_free_fragments
-Revises: 0150_another_letter_org
+Revision ID: 0152_kill_service_free_fragments
+Revises: 0151_refactor_letter_rates
 Create Date: 2017-12-01 16:49:51.178455
 
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = '0151_kill_service_free_fragments'
-down_revision = '0150_another_letter_org'
+revision = '0152_kill_service_free_fragments'
+down_revision = '0151_refactor_letter_rates'
 
 
 def upgrade():
