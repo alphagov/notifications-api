@@ -36,6 +36,8 @@ def set_config_env_vars(vcap_services):
             extract_redis_config(s)
         elif s['name'] == 'performance-platform':
             extract_performance_platform_config(s)
+        elif s['name'] == 'notify-template-preview':
+            extract_template_preview_config(s)
 
 
 def extract_notify_config(notify_config):
@@ -77,3 +79,8 @@ def extract_firetext_config(firetext_config):
 def extract_redis_config(redis_config):
     os.environ['REDIS_ENABLED'] = redis_config['credentials']['redis_enabled']
     os.environ['REDIS_URL'] = redis_config['credentials']['redis_url']
+
+
+def extract_template_preview_config(template_preview_config):
+    os.environ['TEMPLATE_PREVIEW_API_HOST'] = template_preview_config['credentials']['api_host']
+    os.environ['TEMPLATE_PREVIEW_API_KEY'] = template_preview_config['credentials']['api_key']
