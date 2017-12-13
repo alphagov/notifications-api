@@ -1,4 +1,6 @@
+from datetime import datetime
 from flask import current_app
+import math
 from requests import (
     post as requests_post,
     RequestException
@@ -9,7 +11,11 @@ from botocore.exceptions import ClientError as BotoClientError
 from app import notify_celery
 from app.aws import s3
 from app.config import QueueNames
-from app.dao.notifications_dao import get_notification_by_id, update_notification_status_by_id
+from app.dao.notifications_dao import (
+    get_notification_by_id,
+    update_notification_status_by_id,
+    dao_update_notifications_by_reference
+)
 from app.statsd_decorators import statsd
 
 
@@ -19,7 +25,7 @@ def create_letters_pdf(self, notification_id):
     try:
         notification = get_notification_by_id(notification_id, _raise=True)
 
-        pdf_data = get_letters_pdf(
+        pdf_data, billable_units = get_letters_pdf(
             notification.template,
             contact_block=notification.reply_to_text,
             org_id=notification.service.dvla_organisation.id,
@@ -28,6 +34,24 @@ def create_letters_pdf(self, notification_id):
         current_app.logger.info("PDF Letter {} reference {} created at {}, {} bytes".format(
             notification.id, notification.reference, notification.created_at, len(pdf_data)))
         s3.upload_letters_pdf(reference=notification.reference, crown=notification.service.crown, filedata=pdf_data)
+
+        updated_count = dao_update_notifications_by_reference(
+            references=[notification.reference],
+            update_dict={
+                "billable_units": billable_units,
+                "updated_at": datetime.utcnow()
+            }
+        )
+
+        if not updated_count:
+            msg = "Update letter notification billing units failed: notification not found with reference {}".format(
+                notification.reference)
+            current_app.logger.error(msg)
+        else:
+            current_app.logger.info(
+                'Letter notification reference {reference}: billable units set to {billable_units}'.format(
+                    reference=str(notification.reference), billable_units=billable_units))
+
     except (RequestException, BotoClientError):
         try:
             current_app.logger.exception(
@@ -62,4 +86,7 @@ def get_letters_pdf(template, contact_block, org_id, values):
     )
     resp.raise_for_status()
 
-    return resp.content
+    pages_per_sheet = 2
+    billable_units = math.ceil(int(resp.headers.get("X-pdf-page-count", 0)) / pages_per_sheet)
+
+    return resp.content, billable_units

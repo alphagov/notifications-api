@@ -10,6 +10,7 @@ from app.celery.letters_pdf_tasks import (
     create_letters_pdf,
     get_letters_pdf,
 )
+from app.models import Notification
 
 from tests.conftest import set_config_values
 
@@ -46,8 +47,36 @@ def test_get_letters_pdf_calls_notifications_template_preview_service_correctly(
     }
 
 
+@pytest.mark.parametrize('page_count,expected_billable_units', [
+    ('1', 1),
+    ('2', 1),
+    ('3', 2)
+])
+def test_get_letters_pdf_calculates_billing_units(
+        notify_api, mocker, client, sample_letter_template, page_count, expected_billable_units):
+    contact_block = 'Mr Foo,\n1 Test Street,\nLondon\nN1'
+    dvla_org_id = '002'
+
+    with set_config_values(notify_api, {
+        'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
+        'TEMPLATE_PREVIEW_API_KEY': 'test-key'
+    }):
+        with requests_mock.Mocker() as request_mock:
+            request_mock.post(
+                'http://localhost/notifications-template-preview/print.pdf',
+                content=b'\x00\x01',
+                headers={'X-pdf-page-count': page_count},
+                status_code=200
+            )
+
+            _, billable_units = get_letters_pdf(
+                sample_letter_template, contact_block=contact_block, org_id=dvla_org_id, values=None)
+
+    assert billable_units == expected_billable_units
+
+
 def test_create_letters_pdf_calls_upload_letters_pdf(mocker, sample_letter_notification):
-    mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=b'\x00\x01')
+    mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', '1'))
     mock_s3 = mocker.patch('app.celery.tasks.s3.upload_letters_pdf')
 
     create_letters_pdf(sample_letter_notification.id)
@@ -57,6 +86,28 @@ def test_create_letters_pdf_calls_upload_letters_pdf(mocker, sample_letter_notif
         crown=sample_letter_notification.service.crown,
         filedata=b'\x00\x01'
     )
+
+
+def test_create_letters_pdf_sets_billable_units(mocker, sample_letter_notification):
+    mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', 1))
+    mocker.patch('app.celery.tasks.s3.upload_letters_pdf')
+
+    create_letters_pdf(sample_letter_notification.id)
+    noti = Notification.query.filter(Notification.reference == sample_letter_notification.reference).one()
+    assert noti.billable_units == 1
+
+
+def test_create_letters_pdf_handles_update_failure(mocker, sample_letter_notification):
+    mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', 1))
+    mocker.patch('app.celery.tasks.s3.upload_letters_pdf')
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.dao_update_notifications_by_reference', return_value=0)
+    mock_error_logger = mocker.patch('app.celery.letters_pdf_tasks.current_app.logger.error')
+
+    create_letters_pdf(sample_letter_notification.id)
+
+    mock_error_logger.assert_called_once_with(
+        "Update letter notification billing units failed: notification not found with reference {}".format(
+            sample_letter_notification.reference))
 
 
 def test_create_letters_pdf_non_existent_notification(notify_api, mocker, fake_uuid):
@@ -75,7 +126,7 @@ def test_create_letters_pdf_handles_request_errors(mocker, sample_letter_notific
 
 
 def test_create_letters_pdf_handles_s3_errors(mocker, sample_letter_notification):
-    mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf')
+    mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', 1))
     mock_s3 = mocker.patch('app.celery.tasks.s3.upload_letters_pdf', side_effect=ClientError({}, 'operation_name'))
     mock_retry = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.retry')
 
