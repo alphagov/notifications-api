@@ -89,7 +89,7 @@ def process_sms_client_response(status, reference, client_name):
     service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
 
     if service_callback_api:
-        send_delivery_status_to_service.apply_async([str(notification.id)], queue=QueueNames.NOTIFY)
+        send_delivery_status_to_service.apply_async([str(notification.id)], queue=QueueNames.CALLBACKS)
 
     success = "{} callback succeeded. reference {} updated".format(client_name, reference)
     return success, errors
