@@ -14,6 +14,8 @@ from app.dao.api_key_dao import get_unsigned_secrets, save_model_api_key, get_un
 from app.models import ApiKey, KEY_TYPE_NORMAL
 from app.authentication.auth import AuthError, requires_admin_auth, requires_auth
 
+from tests.conftest import set_config
+
 
 @pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
 def test_should_not_allow_request_with_no_token(client, auth_fn):
@@ -60,12 +62,8 @@ def test_should_not_allow_request_with_no_iss(client, auth_fn):
     assert exc.value.short_message == 'Invalid token: iss field not provided'
 
 
-@pytest.mark.parametrize('auth_method', [requires_auth, requires_admin_auth])
-def test_should_not_allow_request_with_no_iat(client, sample_api_key, auth_method):
-    if auth_method == requires_admin_auth:
-        iss = current_app.config['ADMIN_CLIENT_USER_NAME']
-    if auth_method == requires_auth:
-        iss = str(sample_api_key.service_id)
+def test_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
+    iss = str(sample_api_key.service_id)
     # code copied from notifications_python_client.authentication.py::create_jwt_token
     headers = {
         "typ": 'JWT',
@@ -81,7 +79,29 @@ def test_should_not_allow_request_with_no_iat(client, sample_api_key, auth_metho
 
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
-        auth_method()
+        requires_auth()
+    assert exc.value.short_message == 'Invalid token: signature, api token not found'
+
+
+def test_admin_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
+    iss = current_app.config['ADMIN_CLIENT_USER_NAME']
+
+    # code copied from notifications_python_client.authentication.py::create_jwt_token
+    headers = {
+        "typ": 'JWT',
+        "alg": 'HS256'
+    }
+
+    claims = {
+        'iss': iss
+        # 'iat': not provided
+    }
+
+    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers).decode()
+
+    request.headers = {'Authorization': 'Bearer {}'.format(token)}
+    with pytest.raises(AuthError) as exc:
+        requires_admin_auth()
     assert exc.value.short_message == 'Invalid token: signature, api token is not valid'
 
 
@@ -95,7 +115,7 @@ def test_should_not_allow_invalid_secret(client, sample_api_key):
     )
     assert response.status_code == 403
     data = json.loads(response.get_data())
-    assert data['message'] == {"token": ['Invalid token: signature, api token is not valid']}
+    assert data['message'] == {"token": ['Invalid token: signature, api token not found']}
 
 
 @pytest.mark.parametrize('scheme', ['bearer', 'Bearer'])
@@ -201,18 +221,18 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
 
 def test_authentication_returns_error_when_admin_client_has_no_secrets(client):
     api_secret = current_app.config.get('ADMIN_CLIENT_SECRET')
+    api_service_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
     token = create_jwt_token(
         secret=api_secret,
-        client_id=current_app.config.get('ADMIN_CLIENT_USER_NAME')
+        client_id=api_service_id
     )
-    current_app.config['ADMIN_CLIENT_SECRET'] = ''
-    response = client.get(
-        '/service',
-        headers={'Authorization': 'Bearer {}'.format(token)})
+    with set_config(client.application, 'ADMIN_CLIENT_SECRET', ''):
+        response = client.get(
+            '/service',
+            headers={'Authorization': 'Bearer {}'.format(token)})
     assert response.status_code == 403
     error_message = json.loads(response.get_data())
-    assert error_message['message'] == {"token": ["Invalid token: signature, api token not found"]}
-    current_app.config['ADMIN_CLIENT_SECRET'] = api_secret
+    assert error_message['message'] == {"token": ["Invalid token: signature, api token is not valid"]}
 
 
 def test_authentication_returns_error_when_admin_client_secret_is_invalid(client):
