@@ -281,6 +281,9 @@ cf-deploy: ## Deploys the app to Cloud Foundry
 	# sleep for 10 seconds to try and make sure that all worker threads (either web api or celery) have finished before we delete
 	# when we delete the DB is unbound from the app, which can cause "permission denied for relation" psycopg2 errors.
 	sleep 10
+
+	# get the new GUID, and find all crash events for that. If there were any crashes we will abort the deploy.
+	[ $(cf curl "/v2/events?q=type:app.crash&q=actee:$$(cf app --guid notify-delivery-worker-receipts)" | jq ".total_results") -eq 0 ]
 	cf delete -f ${CF_APP}-rollback
 
 .PHONY: cf-deploy-api-db-migration

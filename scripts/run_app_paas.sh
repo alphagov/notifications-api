@@ -55,8 +55,6 @@ function on_exit {
       break
     fi
   done
-  echo "Application process terminated, waiting 10 seconds"
-  sleep 10
   echo "Terminating remaining subprocesses.."
   kill 0
 }
