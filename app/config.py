@@ -30,7 +30,7 @@ class QueueNames(object):
     RETRY = 'retry-tasks'
     NOTIFY = 'notify-internal-tasks'
     PROCESS_FTP = 'process-ftp-tasks'
-    CREATE_LETTERS_PDF = 'create-letters-pdf'
+    CREATE_LETTERS_PDF = 'create-letters-pdf-tasks'
 
     @staticmethod
     def all_queues():
