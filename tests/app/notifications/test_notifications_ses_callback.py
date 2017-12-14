@@ -47,7 +47,7 @@ def test_ses_callback_should_update_notification_status(
         )
         statsd_client.incr.assert_any_call("callback.ses.delivered")
         stats_mock.assert_called_once_with(notification)
-        send_mock.assert_called_once_with([str(notification.id)], queue="notify-internal-tasks")
+        send_mock.assert_called_once_with([str(notification.id)], queue="service-callbacks")
 
 
 def test_ses_callback_does_not_call_send_delivery_status_if_no_db_entry(

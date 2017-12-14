@@ -416,7 +416,7 @@ def update_letter_notifications_to_error(self, notification_references):
     service_callback_api = get_service_callback_api_for_service(service_id=notifications[0].service_id)
     if service_callback_api:
         for notification in notifications:
-            send_delivery_status_to_service.apply_async([str(notification.id)], queue=QueueNames.NOTIFY)
+            send_delivery_status_to_service.apply_async([str(notification.id)], queue=QueueNames.CALLBACKS)
 
 
 def create_dvla_file_contents_for_job(job_id):
@@ -503,7 +503,7 @@ def update_letter_notifications_statuses(self, filename):
                 service_callback_api = get_service_callback_api_for_service(service_id=notifications[0].service_id)
                 if service_callback_api:
                     for notification in notifications:
-                        send_delivery_status_to_service.apply_async([str(notification.id)], queue=QueueNames.NOTIFY)
+                        send_delivery_status_to_service.apply_async([str(notification.id)], queue=QueueNames.CALLBACKS)
 
 
 def process_updates_from_file(response_file):

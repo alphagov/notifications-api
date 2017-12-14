@@ -199,7 +199,7 @@ def timeout_notifications():
             service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
 
             if service_callback_api:
-                send_delivery_status_to_service.apply_async([str(id)], queue=QueueNames.NOTIFY)
+                send_delivery_status_to_service.apply_async([str(id)], queue=QueueNames.CALLBACKS)
 
         current_app.logger.info(
             "Timeout period reached for {} notifications, status has been updated.".format(len(notifications)))
