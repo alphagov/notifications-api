@@ -283,7 +283,7 @@ cf-deploy: ## Deploys the app to Cloud Foundry
 	sleep 10
 
 	# get the new GUID, and find all crash events for that. If there were any crashes we will abort the deploy.
-	[ $(cf curl "/v2/events?q=type:app.crash&q=actee:$$(cf app --guid notify-delivery-worker-receipts)" | jq ".total_results") -eq 0 ]
+	[ $$(cf curl "/v2/events?q=type:app.crash&q=actee:$$(cf app --guid ${CF_APP})" | jq ".total_results") -eq 0 ]
 	cf delete -f ${CF_APP}-rollback
 
 .PHONY: cf-deploy-api-db-migration
