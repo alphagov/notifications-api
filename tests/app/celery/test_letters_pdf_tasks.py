@@ -97,19 +97,6 @@ def test_create_letters_pdf_sets_billable_units(mocker, sample_letter_notificati
     assert noti.billable_units == 1
 
 
-def test_create_letters_pdf_handles_update_failure(mocker, sample_letter_notification):
-    mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', 1))
-    mocker.patch('app.celery.tasks.s3.upload_letters_pdf')
-    mocker.patch('app.celery.tasks.letters_pdf_tasks.dao_update_notifications_by_reference', return_value=0)
-    mock_error_logger = mocker.patch('app.celery.letters_pdf_tasks.current_app.logger.error')
-
-    create_letters_pdf(sample_letter_notification.id)
-
-    mock_error_logger.assert_called_once_with(
-        "Update letter notification billing units failed: notification not found with reference {}".format(
-            sample_letter_notification.reference))
-
-
 def test_create_letters_pdf_non_existent_notification(notify_api, mocker, fake_uuid):
     with pytest.raises(expected_exception=NoResultFound):
         create_letters_pdf(fake_uuid)

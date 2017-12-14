@@ -1,4 +1,3 @@
-from datetime import datetime
 from flask import current_app
 import math
 from requests import (
@@ -14,7 +13,7 @@ from app.config import QueueNames
 from app.dao.notifications_dao import (
     get_notification_by_id,
     update_notification_status_by_id,
-    dao_update_notifications_by_reference
+    dao_update_notification
 )
 from app.statsd_decorators import statsd
 
@@ -35,22 +34,12 @@ def create_letters_pdf(self, notification_id):
             notification.id, notification.reference, notification.created_at, len(pdf_data)))
         s3.upload_letters_pdf(reference=notification.reference, crown=notification.service.crown, filedata=pdf_data)
 
-        updated_count = dao_update_notifications_by_reference(
-            references=[notification.reference],
-            update_dict={
-                "billable_units": billable_units,
-                "updated_at": datetime.utcnow()
-            }
-        )
+        notification.billable_units = billable_units
+        dao_update_notification(notification)
 
-        if not updated_count:
-            msg = "Update letter notification billing units failed: notification not found with reference {}".format(
-                notification.reference)
-            current_app.logger.error(msg)
-        else:
-            current_app.logger.info(
-                'Letter notification reference {reference}: billable units set to {billable_units}'.format(
-                    reference=str(notification.reference), billable_units=billable_units))
+        current_app.logger.info(
+            'Letter notification reference {reference}: billable units set to {billable_units}'.format(
+                reference=str(notification.reference), billable_units=billable_units))
 
     except (RequestException, BotoClientError):
         try:
