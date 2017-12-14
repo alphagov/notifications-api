@@ -205,6 +205,7 @@ def populate_monthly_billing(year):
         email_res = get_monthly_billing_by_notification_type(
             service_id, datetime(year, month, 1), EMAIL_TYPE
         )
+
         print("Finished populating data for {} for service id {}".format(month, str(service_id)))
         print('SMS: {}'.format(sms_res.monthly_totals))
         print('Email: {}'.format(email_res.monthly_totals))

@@ -164,7 +164,7 @@ def test_add_monthly_billing_for_single_month_populates_correctly(
 
     monthly_billing = MonthlyBilling.query.order_by(MonthlyBilling.notification_type).all()
 
-    assert len(monthly_billing) == 2
+    assert len(monthly_billing) == 3
     _assert_monthly_billing(
         monthly_billing[0], sample_template.service.id, 'email', JAN_2017_MONTH_START, JAN_2017_MONTH_END
     )
@@ -180,6 +180,11 @@ def test_add_monthly_billing_for_single_month_populates_correctly(
         "rate": 0.0158,
         "total_cost": 1 * 2 * 0.0158
     })
+
+    _assert_monthly_billing(
+        monthly_billing[2], sample_template.service.id, 'letter', JAN_2017_MONTH_START, JAN_2017_MONTH_END
+    )
+    assert monthly_billing[2].monthly_totals == []
 
 
 def test_add_monthly_billing_for_multiple_months_populate_correctly(
@@ -203,7 +208,7 @@ def test_add_monthly_billing_for_multiple_months_populate_correctly(
         MonthlyBilling.start_date
     ).all()
 
-    assert len(monthly_billing) == 4
+    assert len(monthly_billing) == 6
     _assert_monthly_billing(
         monthly_billing[0], sample_template.service.id, 'email', FEB_2016_MONTH_START, FEB_2016_MONTH_END
     )
@@ -236,6 +241,16 @@ def test_add_monthly_billing_for_multiple_months_populate_correctly(
         "total_cost": 0.72
     })
 
+    _assert_monthly_billing(
+        monthly_billing[4], sample_template.service.id, 'letter', FEB_2016_MONTH_START, FEB_2016_MONTH_END
+    )
+    assert monthly_billing[4].monthly_totals == []
+
+    _assert_monthly_billing(
+        monthly_billing[5], sample_template.service.id, 'letter', MAR_2016_MONTH_START, MAR_2016_MONTH_END
+    )
+    assert monthly_billing[5].monthly_totals == []
+
 
 def test_add_monthly_billing_with_multiple_rates_populate_correctly(
     sample_template
@@ -252,7 +267,7 @@ def test_add_monthly_billing_with_multiple_rates_populate_correctly(
 
     monthly_billing = MonthlyBilling.query.order_by(MonthlyBilling.notification_type).all()
 
-    assert len(monthly_billing) == 2
+    assert len(monthly_billing) == 3
     _assert_monthly_billing(
         monthly_billing[0], sample_template.service.id, 'email', JAN_2017_MONTH_START, JAN_2017_MONTH_END
     )
@@ -275,6 +290,11 @@ def test_add_monthly_billing_with_multiple_rates_populate_correctly(
         "rate": 0.123,
         "total_cost": 0.246
     })
+
+    _assert_monthly_billing(
+        monthly_billing[2], sample_template.service.id, 'letter', JAN_2017_MONTH_START, JAN_2017_MONTH_END
+    )
+    assert monthly_billing[0].monthly_totals == []
 
 
 def test_update_monthly_billing_overwrites_old_totals(sample_template):

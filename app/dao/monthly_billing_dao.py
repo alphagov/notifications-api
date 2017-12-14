@@ -9,7 +9,8 @@ from app.models import (
     SMS_TYPE,
     EMAIL_TYPE,
     MonthlyBilling,
-    NotificationHistory
+    NotificationHistory,
+    LETTER_TYPE
 )
 from app.statsd_decorators import statsd
 from app.utils import convert_utc_to_bst
@@ -31,6 +32,7 @@ def create_or_update_monthly_billing(service_id, billing_month):
     start_date, end_date = get_month_start_and_end_date_in_utc(billing_month)
     _update_monthly_billing(service_id, start_date, end_date, SMS_TYPE)
     _update_monthly_billing(service_id, start_date, end_date, EMAIL_TYPE)
+    _update_monthly_billing(service_id, start_date, end_date, LETTER_TYPE)
 
 
 def _monthly_billing_data_to_json(billing_data):

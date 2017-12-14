@@ -49,6 +49,8 @@ def get_billing_data_for_month(service_id, start_date, end_date, notification_ty
                 end_date, SMS_TYPE
             )
         )
+    elif notification_type == LETTER_TYPE:
+        results.extend(billing_letter_data_per_month_query(service_id, start_date, end_date))
 
     return results
 
@@ -165,7 +167,8 @@ def billing_letter_data_per_month_query(service_id, start_date, end_date):
         NotificationHistory.notification_type,
         month,
         NotificationHistory.rate_multiplier,
-        NotificationHistory.international
+        NotificationHistory.international,
+        LetterRate.rate
     ).order_by(
         month,
         rate_multiplier()
