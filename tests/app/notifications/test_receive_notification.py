@@ -37,14 +37,21 @@ def firetext_post(client, data, auth=True, password='testkey'):
     )
 
 
-def mmg_post(client, data):
+def mmg_post(client, data, auth=True, password='testkey'):
+    headers = [
+        ('Content-Type', 'application/json'),
+        ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')
+    ]
+
+    if auth:
+        auth_value = base64.b64encode("notify:{}".format(password).encode('utf-8')).decode('utf-8')
+        headers.append(('Authorization', 'Basic ' + auth_value))
+
     return client.post(
         path='/notifications/sms/receive/mmg',
         data=json.dumps(data),
-        headers=[
-            ('Content-Type', 'application/json'),
-            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')
-        ])
+        headers=headers
+    )
 
 
 def test_receive_notification_returns_received_to_mmg(client, mocker, sample_service_full_permissions):
@@ -61,7 +68,9 @@ def test_receive_notification_returns_received_to_mmg(client, mocker, sample_ser
     response = mmg_post(client, data)
 
     assert response.status_code == 200
-    assert response.get_data(as_text=True) == 'RECEIVED'
+    result = json.loads(response.get_data(as_text=True))
+    assert result['status'] == 'ok'
+
     inbound_sms_id = InboundSms.query.all()[0].id
     mocked.assert_called_once_with(
         [str(inbound_sms_id), str(sample_service_full_permissions.id)], queue="notify-internal-tasks")
@@ -408,6 +417,31 @@ def test_firetext_inbound_sms_auth(notify_db_session, notify_api, client, mocker
 
     with set_config(notify_api, 'FIRETEXT_INBOUND_SMS_AUTH', keys):
         response = firetext_post(client, data, auth=bool(auth), password=auth)
+        assert response.status_code == status_code
+
+
+@pytest.mark.parametrize("auth, keys, status_code", [
+    ["testkey", ["testkey"], 200],
+    ["", ["testkey"], 401],
+    ["wrong", ["testkey"], 403],
+    ["testkey1", ["testkey1", "testkey2"], 200],
+    ["testkey2", ["testkey1", "testkey2"], 200],
+    ["wrong", ["testkey1", "testkey2"], 403],
+    ["", [], 401],
+    ["testkey", [], 403],
+])
+@pytest.mark.skip(reason="aborts are disabled at the moment")
+def test_mmg_inbound_sms_auth(notify_db_session, notify_api, client, mocker, auth, keys, status_code):
+    mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
+
+    create_service_with_inbound_number(
+        service_name='b', inbound_number='07111111111', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE]
+    )
+
+    data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
+
+    with set_config(notify_api, 'MMG_INBOUND_SMS_AUTH', keys):
+        response = mmg_post(client, data, auth=bool(auth), password=auth)
         assert response.status_code == status_code
 
 
