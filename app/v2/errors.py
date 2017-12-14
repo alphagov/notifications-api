@@ -1,8 +1,10 @@
 import json
-from flask import jsonify, current_app
+
+from flask import jsonify, current_app, request
 from jsonschema import ValidationError
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
+
 from app.authentication.auth import AuthError
 from app.errors import InvalidRequest
 
@@ -79,7 +81,7 @@ def register_errors(blueprint):
 
     @blueprint.errorhandler(AuthError)
     def auth_error(error):
-        current_app.logger.info('API AuthError: {}'.format(error))
+        current_app.logger.info('API AuthError, client: {} error: {}'.format(request.headers.get('User-Agent'), error))
         return jsonify(error.to_dict_v2()), error.code
 
     @blueprint.errorhandler(Exception)

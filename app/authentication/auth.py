@@ -93,7 +93,11 @@ def requires_auth():
         g.service_id = api_key.service_id
         _request_ctx_stack.top.authenticated_service = service
         _request_ctx_stack.top.api_user = api_key
-        current_app.logger.info('Succesful login for service {} with api key {}'.format(service.id, api_key.id))
+        current_app.logger.info('Succesful login for service {} with api key {}, using client'.format(
+            service.id,
+            api_key.id,
+            request.headers.get('User-Agent')
+        ))
         return
     else:
         # service has API keys, but none matching the one the user provided
