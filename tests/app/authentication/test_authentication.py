@@ -313,7 +313,7 @@ def test_should_return_403_when_token_is_expired(client,
         with pytest.raises(AuthError) as exc:
             request.headers = {'Authorization': 'Bearer {}'.format(token)}
             requires_auth()
-    assert 'check that your system clock is accurate' in exc.value.short_message
+    assert exc.value.short_message == 'Error: Your system clock must be accurate to within 30 seconds'
     assert exc.value.service_id == sample_api_key.service_id
     assert exc.value.api_key_id == sample_api_key.id
 

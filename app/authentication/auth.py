@@ -82,8 +82,7 @@ def requires_auth():
             continue
         except TokenExpiredError:
             err_msg = (
-                "Invalid token: Tokens must be used within 30 seconds, check that your system clock "
-                "is accurate. Try checking https://time.is/"
+                "Error: Your system clock must be accurate to within 30 seconds"
             )
             raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
 
