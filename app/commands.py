@@ -205,10 +205,15 @@ def populate_monthly_billing(year):
         email_res = get_monthly_billing_by_notification_type(
             service_id, datetime(year, month, 1), EMAIL_TYPE
         )
+        letter_res = get_monthly_billing_by_notification_type(
+            service_id, datetime(year, month, 1), 'letter'
+        )
 
         print("Finished populating data for {} for service id {}".format(month, str(service_id)))
         print('SMS: {}'.format(sms_res.monthly_totals))
         print('Email: {}'.format(email_res.monthly_totals))
+        print('Letter: {}'.format(letter_res.monthly_totals))
+
 
     service_ids = get_service_ids_that_need_billing_populated(
         start_date=datetime(2016, 5, 1), end_date=datetime(2017, 8, 16)
@@ -218,12 +223,13 @@ def populate_monthly_billing(year):
     if year == 2016:
         start = 4
 
-    for service_id in service_ids:
-        print('Starting to populate data for service {}'.format(str(service_id)))
-        print('Starting populating monthly billing for {}'.format(year))
-        for i in range(start, end):
-            print('Population for {}-{}'.format(i, year))
-            populate(service_id, year, i)
+    # for service_id in service_ids:
+    #     print('Starting to populate data for service {}'.format(str(service_id)))
+    #     print('Starting populating monthly billing for {}'.format(year))
+    #     for i in range(start, end):
+    #         print('Population for {}-{}'.format(i, year))
+    #         populate(service_id, year, i)
+    populate('56fa9fd8-61de-4688-8bc7-2908a77367df', year, 10)
 
 
 @notify_command()

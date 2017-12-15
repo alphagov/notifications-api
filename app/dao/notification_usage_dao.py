@@ -134,9 +134,8 @@ def billing_data_per_month_query(rate, service_id, start_date, end_date, notific
     ).order_by(
         month,
         rate_multiplier()
-    ).all()
-
-    return results
+    )
+    return results.all()
 
 
 def rate_multiplier():
@@ -152,7 +151,7 @@ def billing_letter_data_per_month_query(service_id, start_date, end_date):
     crown = Service.query.get(service_id).crown
     results = db.session.query(
         month.label('month'),
-        func.sum(NotificationHistory.billable_units).label('billing_units'),
+        func.count(NotificationHistory.billable_units).label('billing_units'),
         rate_multiplier().label('rate_multiplier'),
         NotificationHistory.international,
         NotificationHistory.notification_type,
@@ -172,6 +171,5 @@ def billing_letter_data_per_month_query(service_id, start_date, end_date):
     ).order_by(
         month,
         rate_multiplier()
-    ).all()
-
-    return results
+    )
+    return results.all()

@@ -9,7 +9,7 @@ from app.dao.monthly_billing_dao import (
 )
 from app.dao.date_util import get_financial_year, get_months_for_financial_year
 from app.errors import register_errors
-from app.models import SMS_TYPE, EMAIL_TYPE
+from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
 from app.utils import convert_utc_to_bst
 from app.dao.annual_billing_dao import (dao_get_free_sms_fragment_limit_for_year,
                                         dao_get_all_free_sms_fragment_limit,
@@ -40,6 +40,9 @@ def get_yearly_usage_by_month(service_id):
             billing_for_month = get_monthly_billing_by_notification_type(service_id, month, SMS_TYPE)
             if billing_for_month:
                 results.append(_transform_billing_for_month(billing_for_month))
+            letter_billing_for_month = get_monthly_billing_by_notification_type(service_id, month, LETTER_TYPE)
+            if letter_billing_for_month:
+                results.append(_transform_billing_for_month(letter_billing_for_month))
         return json.dumps(results)
 
     except TypeError:
@@ -51,7 +54,7 @@ def get_yearly_billing_usage_summary(service_id):
     try:
         year = int(request.args.get('year'))
         billing_data = get_billing_data_for_financial_year(service_id, year)
-        notification_types = [SMS_TYPE, EMAIL_TYPE]
+        notification_types = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
         response = [
             _get_total_billable_units_and_rate_for_notification_type(billing_data, notification_type)
             for notification_type in notification_types
