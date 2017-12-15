@@ -35,7 +35,8 @@ def receive_mmg_sms():
     if not auth:
         current_app.logger.warning("Inbound sms (MMG) no auth header")
         # abort(401)
-    elif auth.username != 'mmg_co_2017' or auth.password not in current_app.config['MMG_INBOUND_SMS_AUTH']:
+    elif auth.username not in current_app.config['MMG_INBOUND_SMS_USERNAME'] \
+            or auth.password not in current_app.config['MMG_INBOUND_SMS_AUTH']:
         current_app.logger.warning("Inbound sms (MMG) incorrect username ({}) or password".format(auth.username))
         # abort(403)
 

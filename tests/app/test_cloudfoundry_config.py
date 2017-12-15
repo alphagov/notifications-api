@@ -19,6 +19,7 @@ def notify_config():
             'allow_ip_inbound_sms': ['111.111.111.111', '100.100.100.100'],
             'firetext_inbound_sms_auth': ['testkey'],
             'mmg_inbound_sms_auth': ['testkey'],
+            'mmg_inbound_sms_username': ['username'],
             'route_secret_key_1': "key_1",
             'route_secret_key_2': ""
         }
@@ -238,6 +239,13 @@ def test_mmg_inbound_sms_auth_config():
     extract_cloudfoundry_config()
 
     assert os.environ['MMG_INBOUND_SMS_AUTH'] == json.dumps(['testkey'])
+
+
+@pytest.mark.usefixtures('os_environ', 'cloudfoundry_environ')
+def test_mmg_inbound_sms_username_config():
+    extract_cloudfoundry_config()
+
+    assert os.environ['MMG_INBOUND_SMS_USERNAME'] == json.dumps(['username'])
 
 
 @pytest.mark.usefixtures('os_environ', 'cloudfoundry_environ')

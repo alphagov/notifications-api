@@ -44,7 +44,7 @@ def mmg_post(client, data, auth=True, password='testkey'):
     ]
 
     if auth:
-        auth_value = base64.b64encode("notify:{}".format(password).encode('utf-8')).decode('utf-8')
+        auth_value = base64.b64encode("username:{}".format(password).encode('utf-8')).decode('utf-8')
         headers.append(('Authorization', 'Basic ' + auth_value))
 
     return client.post(
@@ -438,7 +438,15 @@ def test_mmg_inbound_sms_auth(notify_db_session, notify_api, client, mocker, aut
         service_name='b', inbound_number='07111111111', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE]
     )
 
-    data = "source=07999999999&destination=07111111111&message=this is a message&time=2017-01-01 12:00:00"
+    data = {
+        "ID": "1234",
+        "MSISDN": "07111111111",
+        "Message": "Some message to notify",
+        "Trigger": "Trigger?",
+        "Number": "testing",
+        "Channel": "SMS",
+        "DateRecieved": "2012-06-27 12:33:00"
+    }
 
     with set_config(notify_api, 'MMG_INBOUND_SMS_AUTH', keys):
         response = mmg_post(client, data, auth=bool(auth), password=auth)

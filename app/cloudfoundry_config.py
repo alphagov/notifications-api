@@ -49,6 +49,7 @@ def extract_notify_config(notify_config):
     os.environ['SMS_INBOUND_WHITELIST'] = json.dumps(notify_config['credentials']['allow_ip_inbound_sms'])
     os.environ['FIRETEXT_INBOUND_SMS_AUTH'] = json.dumps(notify_config['credentials']['firetext_inbound_sms_auth'])
     os.environ['MMG_INBOUND_SMS_AUTH'] = json.dumps(notify_config['credentials']['mmg_inbound_sms_auth'])
+    os.environ['MMG_INBOUND_SMS_USERNAME'] = json.dumps(notify_config['credentials']['mmg_inbound_sms_username'])
     os.environ['ROUTE_SECRET_KEY_1'] = notify_config['credentials']['route_secret_key_1']
     os.environ['ROUTE_SECRET_KEY_2'] = notify_config['credentials']['route_secret_key_2']
 
