@@ -232,5 +232,5 @@ def test_billing_letter_data_per_month_query(
                                                   end_date=datetime(2017, 2, 28))
 
     assert len(results) == 1
-    print(results[0].rate)
     assert results[0].rate == 0.31
+    assert results[0].billing_units == 3

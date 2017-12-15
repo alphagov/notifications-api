@@ -52,6 +52,11 @@ def get_billing_data_for_month(service_id, start_date, end_date, notification_ty
     elif notification_type == LETTER_TYPE:
         results.extend(billing_letter_data_per_month_query(service_id, start_date, end_date))
 
+    if notification_type == LETTER_TYPE:
+        results.extend(billing_letter_data_per_month_query(
+            service_id=service_id, start_date=start_date, end_date=end_date)
+        )
+
     return results
 
 

@@ -706,6 +706,7 @@ def test_populate_monthly_billing_updates_correct_month_in_bst(sample_template):
     assert monthly_billing[2].notification_type == 'letter'
     assert monthly_billing[2].monthly_totals == []
 
+
 def test_run_letter_jobs(client, mocker, sample_letter_template):
     jobs = [create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND),
             create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND)]
