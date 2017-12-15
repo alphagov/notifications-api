@@ -147,7 +147,7 @@ def test_get_s3_bucket_objects_does_not_return_outside_of_date_range(notify_api,
     (True, 'C'),
     (False, 'N'),
 ])
-@freeze_time("2017-12-04 15:00:00")
+@freeze_time("2017-12-04 17:29:00")
 def test_upload_letters_pdf_calls_utils_s3upload_with_correct_args(
         notify_api, mocker, crown_flag, expected_crown_text):
     s3_upload_mock = mocker.patch('app.aws.s3.utils_s3upload')
@@ -157,5 +157,19 @@ def test_upload_letters_pdf_calls_utils_s3upload_with_correct_args(
         filedata='some_data',
         region='eu-west-1',
         bucket_name='test-letters-pdf',
-        file_location='2017-12-04/NOTIFY.FOO.D.2.C.{}.20171204150000.PDF'.format(expected_crown_text)
+        file_location='2017-12-04/NOTIFY.FOO.D.2.C.{}.20171204172900.PDF'.format(expected_crown_text)
+    )
+
+
+@freeze_time("2017-12-04 17:31:00")
+def test_upload_letters_pdf_puts_in_tomorrows_bucket_after_half_five(notify_api, mocker):
+    s3_upload_mock = mocker.patch('app.aws.s3.utils_s3upload')
+    upload_letters_pdf(reference='foo', crown=True, filedata='some_data')
+
+    s3_upload_mock.assert_called_with(
+        filedata='some_data',
+        region='eu-west-1',
+        bucket_name='test-letters-pdf',
+        # in tomorrow's folder, but still has this evening's timestamp
+        file_location='2017-12-05/NOTIFY.FOO.D.2.C.C.20171204173100.PDF'
     )
