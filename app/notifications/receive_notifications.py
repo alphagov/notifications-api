@@ -30,6 +30,16 @@ def receive_mmg_sms():
     """
     post_data = request.get_json()
 
+    auth = request.authorization
+
+    if not auth:
+        current_app.logger.warning("Inbound sms (MMG) no auth header")
+        # abort(401)
+    elif auth.username not in current_app.config['MMG_INBOUND_SMS_USERNAME'] \
+            or auth.password not in current_app.config['MMG_INBOUND_SMS_AUTH']:
+        current_app.logger.warning("Inbound sms (MMG) incorrect username ({}) or password".format(auth.username))
+        # abort(403)
+
     inbound_number = strip_leading_forty_four(post_data['Number'])
 
     service = fetch_potential_service(inbound_number, 'mmg')
@@ -49,20 +59,23 @@ def receive_mmg_sms():
 
     tasks.send_inbound_sms_to_service.apply_async([str(inbound.id), str(service.id)], queue=QueueNames.NOTIFY)
 
-    return 'RECEIVED', 200
+    current_app.logger.info(
+        '{} received inbound SMS with reference {} from MMG'.format(service.id, inbound.provider_reference))
+    return jsonify({
+        "status": "ok"
+    }), 200
 
 
 @receive_notifications_blueprint.route('/notifications/sms/receive/firetext', methods=['POST'])
 def receive_firetext_sms():
     post_data = request.form
 
-    # This is pre-implementation test code to validate the provider is basic auth headers.
     auth = request.authorization
     if not auth:
-        current_app.logger.warning("Inbound sms no auth header")
+        current_app.logger.warning("Inbound sms (Firetext) no auth header")
         abort(401)
     elif auth.username != 'notify' or auth.password not in current_app.config['FIRETEXT_INBOUND_SMS_AUTH']:
-        current_app.logger.warning("Inbound sms incorrect username ({}) or password".format(auth.username))
+        current_app.logger.warning("Inbound sms (Firetext) incorrect username ({}) or password".format(auth.username))
         abort(403)
 
     inbound_number = strip_leading_forty_four(post_data['destination'])
