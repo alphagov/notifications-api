@@ -61,7 +61,7 @@ def test_outcome_statistics_called_for_successful_callback(sample_notification, 
     success, error = process_sms_client_response(status='3', reference=reference, client_name='MMG')
     assert success == "MMG callback succeeded. reference {} updated".format(str(reference))
     assert error is None
-    send_mock.assert_called_once_with([str(sample_notification.id)], queue="notify-internal-tasks")
+    send_mock.assert_called_once_with([str(sample_notification.id)], queue="service-callbacks")
     stats_mock.assert_called_once_with(sample_notification)
 
 

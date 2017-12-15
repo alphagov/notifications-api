@@ -102,6 +102,17 @@ def performance_platform_config():
 
 
 @pytest.fixture
+def template_preview_config():
+    return {
+        'name': 'notify-template-preview',
+        'credentials': {
+            'api_host': 'template-preview api host',
+            'api_key': 'template-preview api key'
+        }
+    }
+
+
+@pytest.fixture
 def cloudfoundry_config(
         postgres_config,
         notify_config,
@@ -110,7 +121,8 @@ def cloudfoundry_config(
         mmg_config,
         firetext_config,
         redis_config,
-        performance_platform_config
+        performance_platform_config,
+        template_preview_config
 ):
     return {
         'postgres': postgres_config,
@@ -121,7 +133,8 @@ def cloudfoundry_config(
             mmg_config,
             firetext_config,
             redis_config,
-            performance_platform_config
+            performance_platform_config,
+            template_preview_config
         ]
     }
 
@@ -227,3 +240,11 @@ def test_performance_platform_config():
         'foo': 'my_token',
         'bar': 'other_token'
     }
+
+
+@pytest.mark.usefixtures('os_environ', 'cloudfoundry_environ')
+def test_template_preview_config():
+    extract_cloudfoundry_config()
+
+    assert os.environ['TEMPLATE_PREVIEW_API_HOST'] == 'template-preview api host'
+    assert os.environ['TEMPLATE_PREVIEW_API_KEY'] == 'template-preview api key'

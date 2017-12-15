@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 
 from flask import current_app
 
@@ -83,8 +83,13 @@ def remove_transformed_dvla_file(job_id):
 
 def upload_letters_pdf(reference, crown, filedata):
     now = datetime.utcnow()
+
+    print_datetime = now
+    if now.time() > time(17, 30):
+        print_datetime = now + timedelta(days=1)
+
     upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
-        folder=now.date().isoformat(),
+        folder=print_datetime.date(),
         reference=reference,
         duplex="D",
         letter_class="2",
@@ -99,3 +104,6 @@ def upload_letters_pdf(reference, crown, filedata):
         bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
         file_location=upload_file_name
     )
+
+    current_app.logger.info("Uploading letters PDF {} to {}".format(
+        upload_file_name, current_app.config['LETTERS_PDF_BUCKET_NAME']))

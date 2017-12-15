@@ -116,8 +116,8 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
     assert failed_letter.billable_units == 2
     assert failed_letter.updated_at
 
-    calls = [call([str(failed_letter.id)], queue="notify-internal-tasks"),
-             call([str(sent_letter.id)], queue="notify-internal-tasks")]
+    calls = [call([str(failed_letter.id)], queue="service-callbacks"),
+             call([str(sent_letter.id)], queue="service-callbacks")]
     send_mock.assert_has_calls(calls, any_order=True)
 
 

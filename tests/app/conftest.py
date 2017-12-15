@@ -161,7 +161,7 @@ def sample_service(
         'message_limit': limit,
         'restricted': restricted,
         'email_from': email_from,
-        'created_by': user
+        'created_by': user,
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
@@ -188,7 +188,7 @@ def sample_service_full_permissions(notify_db, notify_db_session):
         notify_db_session,
         # ensure name doesn't clash with regular sample service
         service_name="sample service full permissions",
-        permissions=SERVICE_PERMISSION_TYPES
+        permissions=set(SERVICE_PERMISSION_TYPES) - {'letters_as_pdf'}
     )
 
 
@@ -599,7 +599,7 @@ def sample_letter_notification(sample_letter_template):
         'address_line_6': 'A6',
         'postcode': 'A_POST'
     }
-    return create_notification(sample_letter_template, personalisation=address)
+    return create_notification(sample_letter_template, reference='foo', personalisation=address)
 
 
 @pytest.fixture(scope='function')
