@@ -98,6 +98,34 @@ def test_post_sms_notification_uses_inbound_number_as_sender(client, notify_db_s
     mocked.assert_called_once_with([str(notification_id)], queue='send-sms-tasks')
 
 
+def test_post_sms_notification_uses_inbound_number_reply_to_as_sender(client, notify_db_session, mocker):
+    service = create_service_with_inbound_number(inbound_number='07123123123')
+
+    template = create_template(service=service, content="Hello (( Name))\nYour thing is due soon")
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    data = {
+        'phone_number': '+447700900855',
+        'template_id': str(template.id),
+        'personalisation': {' Name': 'Jo'}
+    }
+    auth_header = create_authorization_header(service_id=service.id)
+
+    response = client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 201
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert validate(resp_json, post_sms_response) == resp_json
+    notifications = Notification.query.all()
+    assert len(notifications) == 1
+    notification_id = notifications[0].id
+    assert resp_json['id'] == str(notification_id)
+    assert resp_json['content']['from_number'] == '447123123123'
+    assert notifications[0].reply_to_text == '447123123123'
+    mocked.assert_called_once_with([str(notification_id)], queue='send-sms-tasks')
+
+
 def test_post_sms_notification_returns_201_with_sms_sender_id(
         client, sample_template_with_placeholders, mocker
 ):
@@ -122,6 +150,33 @@ def test_post_sms_notification_returns_201_with_sms_sender_id(
     notifications = Notification.query.all()
     assert len(notifications) == 1
     assert notifications[0].reply_to_text == sms_sender.sms_sender
+    mocked.assert_called_once_with([resp_json['id']], queue='send-sms-tasks')
+
+
+def test_post_sms_notification_uses_sms_sender_id_reply_to(
+        client, sample_template_with_placeholders, mocker
+):
+    sms_sender = create_service_sms_sender(service=sample_template_with_placeholders.service, sms_sender='07123123123')
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    data = {
+        'phone_number': '+447700900855',
+        'template_id': str(sample_template_with_placeholders.id),
+        'personalisation': {' Name': 'Jo'},
+        'sms_sender_id': str(sms_sender.id)
+    }
+    auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
+
+    response = client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 201
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert validate(resp_json, post_sms_response) == resp_json
+    assert resp_json['content']['from_number'] == '447123123123'
+    notifications = Notification.query.all()
+    assert len(notifications) == 1
+    assert notifications[0].reply_to_text == '447123123123'
     mocked.assert_called_once_with([resp_json['id']], queue='send-sms-tasks')
 
 

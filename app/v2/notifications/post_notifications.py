@@ -2,6 +2,8 @@ import functools
 
 from flask import request, jsonify, current_app, abort
 
+from notifications_utils.recipients import try_validate_and_format_phone_number
+
 from app import api_user, authenticated_service
 from app.config import QueueNames
 from app.models import (
@@ -208,9 +210,13 @@ def get_reply_to_text(notification_type, form, template):
 
     elif notification_type == SMS_TYPE:
         service_sms_sender_id = form.get("sms_sender_id", None)
-        reply_to = check_service_sms_sender_id(
+        sms_sender_id = check_service_sms_sender_id(
             str(authenticated_service.id), service_sms_sender_id, notification_type
-        ) or template.get_reply_to_text()
+        )
+        if sms_sender_id:
+            reply_to = try_validate_and_format_phone_number(sms_sender_id)
+        else:
+            reply_to = template.get_reply_to_text()
 
     elif notification_type == LETTER_TYPE:
         reply_to = template.get_reply_to_text()
