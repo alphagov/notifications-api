@@ -14,6 +14,7 @@ from sqlalchemy import UniqueConstraint, CheckConstraint
 from notifications_utils.recipients import (
     validate_email_address,
     validate_phone_number,
+    try_validate_and_format_phone_number,
     InvalidPhoneError,
     InvalidEmailError
 )
@@ -636,7 +637,7 @@ class TemplateBase(db.Model):
         elif self.template_type == EMAIL_TYPE:
             return self.service.get_default_reply_to_email_address()
         elif self.template_type == SMS_TYPE:
-            return self.service.get_default_sms_sender()
+            return try_validate_and_format_phone_number(self.service.get_default_sms_sender())
         else:
             return None
 
