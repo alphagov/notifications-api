@@ -23,7 +23,6 @@ from app.celery.tasks import (
 
 from tests.app.db import create_notification, create_service_callback_api
 from tests.conftest import set_config
-from unittest.mock import call
 
 
 def test_update_job_to_sent_to_dvla(sample_letter_template, sample_letter_job):
@@ -103,10 +102,6 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
         sent_letter.reference, failed_letter.reference)
     mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
 
-    send_mock = mocker.patch(
-        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
-    )
-
     update_letter_notifications_statuses(filename='foo.txt')
 
     assert sent_letter.status == NOTIFICATION_DELIVERED
@@ -115,10 +110,6 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
     assert failed_letter.status == NOTIFICATION_TECHNICAL_FAILURE
     assert failed_letter.billable_units == 2
     assert failed_letter.updated_at
-
-    calls = [call([str(failed_letter.id)], queue="service-callbacks"),
-             call([str(sent_letter.id)], queue="service-callbacks")]
-    send_mock.assert_has_calls(calls, any_order=True)
 
 
 def test_update_letter_notifications_does_not_call_send_callback_if_no_db_entry(notify_api, mocker,
@@ -159,9 +150,6 @@ def test_update_letter_notifications_to_error_updates_based_on_notification_refe
     sample_letter_template,
     mocker
 ):
-    send_mock = mocker.patch(
-        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
-    )
     first = create_notification(sample_letter_template, reference='first ref')
     second = create_notification(sample_letter_template, reference='second ref')
     create_service_callback_api(service=sample_letter_template.service, url="https://original_url.com")
@@ -174,4 +162,3 @@ def test_update_letter_notifications_to_error_updates_based_on_notification_refe
     assert first.sent_at is None
     assert first.updated_at == dt
     assert second.status == NOTIFICATION_CREATED
-    assert send_mock.called
