@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta
 
 from flask import current_app
 
@@ -85,7 +85,7 @@ def upload_letters_pdf(reference, crown, filedata):
     now = datetime.utcnow()
 
     print_datetime = now
-    if now.time() > time(17, 30):
+    if now.time() > current_app.config.get('LETTER_PROCESSING_DEADLINE'):
         print_datetime = now + timedelta(days=1)
 
     upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
