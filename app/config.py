@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, time
 import os
 import json
 
@@ -32,6 +32,7 @@ class QueueNames(object):
     PROCESS_FTP = 'process-ftp-tasks'
     CREATE_LETTERS_PDF = 'create-letters-pdf-tasks'
     CALLBACKS = 'service-callbacks'
+    LETTERS = 'letter-tasks'
 
     @staticmethod
     def all_queues():
@@ -48,6 +49,7 @@ class QueueNames(object):
             QueueNames.NOTIFY,
             QueueNames.CREATE_LETTERS_PDF,
             QueueNames.CALLBACKS,
+            QueueNames.LETTERS,
         ]
 
 
@@ -238,6 +240,11 @@ class Config(object):
             'schedule': crontab(hour=17, minute=30),
             'options': {'queue': QueueNames.PERIODIC}
         },
+        'run-letter-pdfs': {
+            'task': 'run-letter-pdfs',
+            'schedule': crontab(hour=17, minute=50),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
         'run-letter-api-notifications': {
             'task': 'run-letter-api-notifications',
             'schedule': crontab(hour=17, minute=40),
@@ -312,6 +319,8 @@ class Config(object):
 
     TEMPLATE_PREVIEW_API_HOST = os.environ.get('TEMPLATE_PREVIEW_API_HOST', 'http://localhost:6013')
     TEMPLATE_PREVIEW_API_KEY = os.environ.get('TEMPLATE_PREVIEW_API_KEY', 'my-secret-key')
+
+    LETTER_PROCESSING_DEADLINE = time(17, 30)
 
 
 ######################
