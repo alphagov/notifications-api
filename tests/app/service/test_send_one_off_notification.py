@@ -19,6 +19,7 @@ from tests.app.db import (
     create_user,
     create_reply_to_email,
     create_letter_contact,
+    create_service_sms_sender,
     create_service,
     create_template
 )
@@ -238,7 +239,60 @@ def test_send_one_off_letter_notification_should_use_template_reply_to_text(samp
         research_mode=False,
         queue=None
     )
+
     assert notification.reply_to_text == "Edinburgh, ED1 1AA"
+
+
+def test_send_one_off_sms_notification_should_use_sms_sender_reply_to_text(sample_service, celery_mock):
+    template = create_template(service=sample_service, template_type=SMS_TYPE)
+    sms_sender = create_service_sms_sender(
+        service=sample_service,
+        sms_sender='07123123123',
+        is_default=False
+    )
+
+    data = {
+        'to': '07111111111',
+        'template_id': str(template.id),
+        'created_by': str(sample_service.created_by_id),
+        'sender_id': str(sms_sender.id),
+    }
+
+    notification_id = send_one_off_notification(service_id=sample_service.id, post_data=data)
+    notification = Notification.query.get(notification_id['id'])
+    celery_mock.assert_called_once_with(
+        notification=notification,
+        research_mode=False,
+        queue=None
+    )
+
+    assert notification.reply_to_text == "447123123123"
+
+
+def test_send_one_off_sms_notification_should_use_default_service_reply_to_text(sample_service, celery_mock):
+    template = create_template(service=sample_service, template_type=SMS_TYPE)
+    sample_service.service_sms_senders[0].is_default = False
+    create_service_sms_sender(
+        service=sample_service,
+        sms_sender='07123123456',
+        is_default=True
+    )
+
+    data = {
+        'to': '07111111111',
+        'template_id': str(template.id),
+        'created_by': str(sample_service.created_by_id),
+    }
+
+    notification_id = send_one_off_notification(service_id=sample_service.id, post_data=data)
+    notification = Notification.query.get(notification_id['id'])
+    celery_mock.assert_called_once_with(
+        notification=notification,
+        research_mode=False,
+        queue=None
+    )
+
+    assert notification.reply_to_text == "447123123456"
 
 
 def test_send_one_off_notification_should_throw_exception_if_reply_to_id_doesnot_exist(

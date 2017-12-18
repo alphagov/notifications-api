@@ -367,6 +367,9 @@ class ServiceSmsSender(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
+    def get_reply_to_text(self):
+        return try_validate_and_format_phone_number(self.sms_sender)
+
     def serialize(self):
         return {
             "id": str(self.id),
