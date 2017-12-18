@@ -8,9 +8,9 @@ from app.dao.notification_usage_dao import get_billing_data_for_month
 from app.models import (
     SMS_TYPE,
     EMAIL_TYPE,
+    LETTER_TYPE,
     MonthlyBilling,
-    NotificationHistory,
-    LETTER_TYPE
+    NotificationHistory
 )
 from app.statsd_decorators import statsd
 from app.utils import convert_utc_to_bst
@@ -22,7 +22,7 @@ def get_service_ids_that_need_billing_populated(start_date, end_date):
     ).filter(
         NotificationHistory.created_at >= start_date,
         NotificationHistory.created_at <= end_date,
-        NotificationHistory.notification_type.in_([SMS_TYPE, EMAIL_TYPE]),
+        NotificationHistory.notification_type.in_([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]),
         NotificationHistory.billable_units != 0
     ).distinct().all()
 
@@ -30,8 +30,8 @@ def get_service_ids_that_need_billing_populated(start_date, end_date):
 @statsd(namespace="dao")
 def create_or_update_monthly_billing(service_id, billing_month):
     start_date, end_date = get_month_start_and_end_date_in_utc(billing_month)
-    # _update_monthly_billing(service_id, start_date, end_date, SMS_TYPE)
-    # _update_monthly_billing(service_id, start_date, end_date, EMAIL_TYPE)
+    _update_monthly_billing(service_id, start_date, end_date, SMS_TYPE)
+    _update_monthly_billing(service_id, start_date, end_date, EMAIL_TYPE)
     _update_monthly_billing(service_id, start_date, end_date, LETTER_TYPE)
 
 

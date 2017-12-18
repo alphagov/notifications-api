@@ -8,7 +8,7 @@ from app.dao.monthly_billing_dao import (
     create_or_update_monthly_billing,
     get_monthly_billing_by_notification_type,
 )
-from app.models import SMS_TYPE, EMAIL_TYPE
+from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
 from app.dao.date_util import get_current_financial_year_start_year
 from app.dao.annual_billing_dao import dao_get_free_sms_fragment_limit_for_year
 from tests.app.db import (
@@ -54,7 +54,7 @@ def test_get_yearly_billing_summary_returns_correct_breakdown(client, sample_tem
     assert response.status_code == 200
 
     resp_json = json.loads(response.get_data(as_text=True))
-    assert len(resp_json) == 2
+    assert len(resp_json) == 3
 
     _assert_dict_equals(resp_json[0], {
         'notification_type': SMS_TYPE,
@@ -64,6 +64,11 @@ def test_get_yearly_billing_summary_returns_correct_breakdown(client, sample_tem
 
     _assert_dict_equals(resp_json[1], {
         'notification_type': EMAIL_TYPE,
+        'billing_units': 0,
+        'rate': 0
+    })
+    _assert_dict_equals(resp_json[2], {
+        'notification_type': LETTER_TYPE,
         'billing_units': 0,
         'rate': 0
     })
@@ -125,19 +130,31 @@ def test_get_yearly_usage_by_month_returns_correctly(client, sample_template):
     assert response.status_code == 200
 
     resp_json = json.loads(response.get_data(as_text=True))
-
+    print(resp_json)
     _assert_dict_equals(resp_json[0], {
         'billing_units': 2,
         'month': 'May',
         'notification_type': SMS_TYPE,
         'rate': 0.12
     })
-
     _assert_dict_equals(resp_json[1], {
+        'billing_units': 0,
+        'month': 'May',
+        'notification_type': LETTER_TYPE,
+        'rate': 0
+    })
+
+    _assert_dict_equals(resp_json[2], {
         'billing_units': 6,
         'month': 'June',
         'notification_type': SMS_TYPE,
         'rate': 0.12
+    })
+    _assert_dict_equals(resp_json[3], {
+        'billing_units': 0,
+        'month': 'June',
+        'notification_type': LETTER_TYPE,
+        'rate': 0
     })
 
 
