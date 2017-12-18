@@ -33,7 +33,7 @@ def test_create_invited_user(admin_request, sample_service, mocker, invitation_e
     assert json_resp['data']['id']
 
     notification = Notification.query.first()
-    assert notification.reply_to_text == "notify@gov.uk"
+    assert notification.reply_to_text == invite_from.email_address
     mocked.assert_called_once_with([(str(notification.id))], queue="notify-internal-tasks")
 
 
