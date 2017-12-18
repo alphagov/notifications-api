@@ -1,5 +1,3 @@
-from ipaddress import IPv4Address, IPv4Network
-
 from flask import request, _request_ctx_stack, current_app, g
 from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
 from notifications_python_client.errors import TokenDecodeError, TokenExpiredError, TokenIssuerError
@@ -42,43 +40,6 @@ def get_auth_token(req):
 
 def requires_no_auth():
     pass
-
-
-def restrict_ip_sms():
-    # Check IP of SMS providers
-    if request.headers.get("X-Forwarded-For"):
-        # X-Forwarded-For looks like "203.0.113.195, 70.41.3.18, 150.172.238.178"
-        # Counting backwards and look at the IP at the 3rd last hop - hence, hop(end-3)
-        ip_route = request.headers.get("X-Forwarded-For")
-        ip_list = ip_route.split(',')
-
-        current_app.logger.info("Inbound sms ip route list {}"
-                                .format(ip_route))
-        if len(ip_list) >= 3:
-            inbound_ip = IPv4Address(ip_list[len(ip_list) - 3].strip())
-
-            # IP whitelist
-            allowed_ips = current_app.config.get('SMS_INBOUND_WHITELIST')
-
-            allowed = any(
-                inbound_ip in IPv4Network(allowed_ip)
-                for allowed_ip in allowed_ips
-            )
-
-            current_app.logger.info({
-                'message': 'Inbound sms ip address',
-                'log_contents': {
-                    'passed': allowed,
-                    'ip_address': inbound_ip
-                }
-            })
-
-            if allowed:
-                return
-            else:
-                raise AuthError('Unknown source IP address from the SMS provider', 403)
-
-    raise AuthError('Traffic from unknown source or route', 403)
 
 
 def requires_admin_auth():
