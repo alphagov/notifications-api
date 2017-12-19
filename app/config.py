@@ -240,8 +240,8 @@ class Config(object):
             'schedule': crontab(hour=17, minute=30),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'run-letter-pdfs': {
-            'task': 'run-letter-pdfs',
+        'trigger-letter-pdfs-for-day': {
+            'task': 'trigger-letter-pdfs-for-day',
             'schedule': crontab(hour=17, minute=50),
             'options': {'queue': QueueNames.PERIODIC}
         },

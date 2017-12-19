@@ -357,9 +357,9 @@ def run_letter_jobs():
         current_app.logger.info("Queued {} ready letter job ids onto {}".format(len(job_ids), QueueNames.PROCESS_FTP))
 
 
-@notify_celery.task(name="run-letter-pdfs")
+@notify_celery.task(name="trigger-letter-pdfs-for-day")
 @statsd(namespace="tasks")
-def run_letter_pdfs():
+def trigger_letter_pdfs_for_day():
     letter_pdfs_count = dao_get_count_of_letters_to_process_for_date()
     if letter_pdfs_count:
         notify_celery.send_task(

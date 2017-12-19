@@ -24,7 +24,7 @@ from app.celery.scheduled_tasks import (
     remove_transformed_dvla_files,
     run_scheduled_jobs,
     run_letter_jobs,
-    run_letter_pdfs,
+    trigger_letter_pdfs_for_day,
     run_letter_api_notifications,
     populate_monthly_billing,
     s3,
@@ -716,7 +716,7 @@ def test_run_letter_jobs(client, mocker, sample_letter_template):
 
 
 @freeze_time("2017-12-18 17:50")
-def test_run_letter_pdfs(client, mocker, sample_letter_template):
+def test_trigger_letter_pdfs_for_day(client, mocker, sample_letter_template):
     dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
 
     create_notification(template=sample_letter_template, created_at='2017-12-17 17:30:00')
@@ -724,7 +724,7 @@ def test_run_letter_pdfs(client, mocker, sample_letter_template):
 
     mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
 
-    run_letter_pdfs()
+    trigger_letter_pdfs_for_day()
 
     mock_celery.assert_called_once_with(name='collate-letter-pdfs-for-day',
                                         args=('2017-12-18',),
@@ -732,14 +732,15 @@ def test_run_letter_pdfs(client, mocker, sample_letter_template):
 
 
 @freeze_time("2017-12-18 17:50")
-def test_run_letter_pdfs_send_task_not_called_if_no_notis_for_day(client, mocker, sample_letter_template):
+def test_trigger_letter_pdfs_for_day_send_task_not_called_if_no_notis_for_day(
+        client, mocker, sample_letter_template):
     dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
 
     create_notification(template=sample_letter_template, created_at='2017-12-15 17:30:00')
 
     mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
 
-    run_letter_pdfs()
+    trigger_letter_pdfs_for_day()
 
     assert not mock_celery.called
 
