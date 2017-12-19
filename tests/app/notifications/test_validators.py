@@ -3,7 +3,7 @@ from freezegun import freeze_time
 from flask import current_app
 
 import app
-from app.models import INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE
+from app.models import INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
 from app.notifications.validators import (
     check_service_over_daily_message_limit,
     check_template_is_for_notification_type,
@@ -13,7 +13,10 @@ from app.notifications.validators import (
     check_service_over_api_rate_limit,
     validate_and_format_recipient,
     check_service_email_reply_to_id,
-    check_service_sms_sender_id)
+    check_service_sms_sender_id,
+    check_service_letter_contact_id,
+    check_reply_to,
+)
 
 from app.v2.errors import (
     BadRequestError,
@@ -26,7 +29,7 @@ from tests.app.conftest import (
     sample_service as create_service,
     sample_service_whitelist,
     sample_api_key)
-from tests.app.db import create_reply_to_email, create_service_sms_sender
+from tests.app.db import create_reply_to_email, create_service_sms_sender, create_letter_contact
 
 
 # all of these tests should have redis enabled (except where we specifically disable it)
@@ -402,3 +405,49 @@ def test_check_service_sms_sender_id_where_sms_sender_is_not_found(sample_servic
     assert e.value.status_code == 400
     assert e.value.message == 'sms_sender_id {} does not exist in database for service id {}' \
         .format(fake_uuid, sample_service.id)
+
+
+def test_check_service_letter_contact_id_where_letter_contact_id_is_none():
+    assert check_service_letter_contact_id(None, None, 'letter') is None
+
+
+def test_check_service_letter_contact_id_where_letter_contact_id_is_found(sample_service):
+    letter_contact = create_letter_contact(service=sample_service, contact_block='123456')
+    assert check_service_letter_contact_id(sample_service.id, letter_contact.id, LETTER_TYPE) == '123456'
+
+
+def test_check_service_letter_contact_id_where_service_id_is_not_found(sample_service, fake_uuid):
+    letter_contact = create_letter_contact(service=sample_service, contact_block='123456')
+    with pytest.raises(BadRequestError) as e:
+        check_service_letter_contact_id(fake_uuid, letter_contact.id, LETTER_TYPE)
+    assert e.value.status_code == 400
+    assert e.value.message == 'letter_contact_id {} does not exist in database for service id {}' \
+        .format(letter_contact.id, fake_uuid)
+
+
+def test_check_service_letter_contact_id_where_letter_contact_is_not_found(sample_service, fake_uuid):
+    with pytest.raises(BadRequestError) as e:
+        check_service_letter_contact_id(sample_service.id, fake_uuid, LETTER_TYPE)
+    assert e.value.status_code == 400
+    assert e.value.message == 'letter_contact_id {} does not exist in database for service id {}' \
+        .format(fake_uuid, sample_service.id)
+
+
+@pytest.mark.parametrize('notification_type', ['sms', 'email', 'letter'])
+def test_check_reply_to_with_empty_reply_to(sample_service, notification_type):
+    assert check_reply_to(sample_service.id, None, notification_type) is None
+
+
+def test_check_reply_to_email_type(sample_service):
+    reply_to_address = create_reply_to_email(sample_service, "test@test.com")
+    assert check_reply_to(sample_service.id, reply_to_address.id, EMAIL_TYPE) == 'test@test.com'
+
+
+def test_check_reply_to_sms_type(sample_service):
+    sms_sender = create_service_sms_sender(service=sample_service, sms_sender='123456')
+    assert check_reply_to(sample_service.id, sms_sender.id, SMS_TYPE) == '123456'
+
+
+def test_check_reply_to_letter_type(sample_service):
+    letter_contact = create_letter_contact(service=sample_service, contact_block='123456')
+    assert check_reply_to(sample_service.id, letter_contact.id, LETTER_TYPE) == '123456'

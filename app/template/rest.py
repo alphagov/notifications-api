@@ -16,7 +16,7 @@ from app.dao.templates_dao import (
 from notifications_utils.template import SMSMessageTemplate
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.models import SMS_TYPE
-from app.notifications.validators import service_has_permission
+from app.notifications.validators import service_has_permission, check_reply_to
 from app.schemas import (template_schema, template_history_schema)
 from app.errors import (
     register_errors,
@@ -58,6 +58,8 @@ def create_template(service_id):
         errors = {'content': [message]}
         raise InvalidRequest(errors, status_code=400)
 
+    check_reply_to(service_id, new_template.reply_to, new_template.template_type)
+
     dao_create_template(new_template)
     return jsonify(data=template_schema.dump(new_template).data), 201
 
@@ -93,6 +95,9 @@ def update_template(service_id, template_id):
         message = 'Content has a character count greater than the limit of {}'.format(char_count_limit)
         errors = {'content': [message]}
         raise InvalidRequest(errors, status_code=400)
+
+    check_reply_to(service_id, update_dict.reply_to, fetched_template.template_type)
+
     dao_update_template(update_dict)
     return jsonify(data=template_schema.dump(update_dict).data), 200
 
