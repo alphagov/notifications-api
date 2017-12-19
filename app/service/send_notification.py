@@ -15,7 +15,6 @@ from app.models import (
     PRIORITY,
     SMS_TYPE,
     EMAIL_TYPE,
-    LETTER_TYPE
 )
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id
@@ -56,7 +55,12 @@ def send_one_off_notification(service_id, post_data):
     validate_created_by(service, post_data['created_by'])
 
     sender_id = post_data.get('sender_id', None)
-    reply_to = get_reply_to_text(notification_type=template.template_type, sender_id=sender_id, service=service)
+    reply_to = get_reply_to_text(
+        notification_type=template.template_type,
+        sender_id=sender_id,
+        service=service,
+        template=template
+    )
     notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
@@ -80,21 +84,14 @@ def send_one_off_notification(service_id, post_data):
     return {'id': str(notification.id)}
 
 
-def get_reply_to_text(notification_type, sender_id, service):
+def get_reply_to_text(notification_type, sender_id, service, template):
     reply_to = None
-    if notification_type == EMAIL_TYPE:
-        if sender_id:
+    if sender_id:
+        if notification_type == EMAIL_TYPE:
             reply_to = dao_get_reply_to_by_id(service.id, sender_id).email_address
-        else:
-            service.get_default_reply_to_email_address()
-
-    elif notification_type == SMS_TYPE:
-        if sender_id:
+        elif notification_type == SMS_TYPE:
             reply_to = dao_get_service_sms_senders_by_id(service.id, sender_id).sms_sender
-        else:
-            reply_to = service.get_default_sms_sender()
-
-    elif notification_type == LETTER_TYPE:
-        reply_to = service.get_default_letter_contact()
+    else:
+        reply_to = template.get_reply_to_text()
 
     return reply_to

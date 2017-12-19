@@ -10,6 +10,7 @@ from app.dao.notifications_dao import (
     dao_create_notification,
     dao_created_scheduled_notification,
     dao_delete_notifications_and_history_by_id,
+    dao_get_count_of_letters_to_process_for_date,
     dao_get_last_notification_added_for_job_id,
     dao_get_last_template_usage,
     dao_get_notifications_by_to_field,
@@ -33,6 +34,7 @@ from app.dao.notifications_dao import (
     dao_get_notifications_by_references
 )
 from app.dao.services_dao import dao_update_service
+from app.dao.service_permissions_dao import dao_add_service_permission
 from app.models import (
     Job,
     Notification,
@@ -2001,3 +2003,90 @@ def test_dao_get_notifications_by_reference(sample_template):
     assert len(notifications) == 2
     assert notifications[0].id in [notification_1.id, notification_2.id]
     assert notifications[1].id in [notification_1.id, notification_2.id]
+
+
+@freeze_time("2017-12-18 17:50")
+def test_dao_get_count_of_letters_to_process_for_today(sample_letter_template):
+    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
+
+    # expected
+    create_notification(template=sample_letter_template, created_at='2017-12-17 17:30:00')
+    create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:59')
+
+    # not expected
+    create_notification(template=sample_letter_template, created_at='2017-12-17 17:29:59')
+    create_notification(template=sample_letter_template, created_at='2017-12-18 17:30:00')
+
+    count_for_date = dao_get_count_of_letters_to_process_for_date()
+
+    assert count_for_date == 2
+
+
+@freeze_time("2017-12-18 17:50")
+def test_dao_get_count_of_letters_to_process_for_date_in_past(sample_letter_template):
+    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
+
+    # expected
+    create_notification(template=sample_letter_template, created_at='2017-12-15 17:29:59')
+
+    # not expected
+    create_notification(template=sample_letter_template, created_at='2017-12-15 17:30:00')
+    create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:00')
+
+    count_for_date = dao_get_count_of_letters_to_process_for_date(date(2017, 12, 15))
+
+    assert count_for_date == 1
+
+
+@freeze_time("2017-12-18 17:50")
+def test_dao_get_count_of_letters_to_process_for_date_in_future_does_not_raise_error(sample_letter_template):
+    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
+
+    # not expected
+    create_notification(template=sample_letter_template, created_at='2017-12-18 17:30:00')
+    create_notification(template=sample_letter_template, created_at='2017-12-19 17:29:59')
+
+    count_for_date = dao_get_count_of_letters_to_process_for_date(date(2017, 12, 20))
+
+    assert count_for_date == 0
+
+
+def test_dao_get_count_of_letters_to_process_for_today_without_notis_does_not_raise_error(sample_letter_template):
+    count_for_date = dao_get_count_of_letters_to_process_for_date()
+
+    assert count_for_date == 0
+
+
+@freeze_time("2017-12-18 17:50")
+def test_dao_get_count_of_letters_to_process_for_date_ignores_service_not_letters_as_pdf(
+        sample_letter_template, sample_template):
+    # not expected
+    create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:00')
+
+    dao_add_service_permission(sample_template.service.id, 'letters_as_pdf')
+    sample_template.template_type = 'letter'
+
+    # expected
+    create_notification(template=sample_template, created_at='2017-12-18 17:29:00')
+    create_notification(template=sample_template, created_at='2017-12-18 17:29:10')
+
+    count_for_date = dao_get_count_of_letters_to_process_for_date()
+
+    assert 'letters_as_pdf' not in [p.permission for p in sample_letter_template.service.permissions]
+    assert count_for_date == 2
+
+
+@freeze_time("2017-12-18 17:50")
+def test_dao_get_count_of_letters_to_process_for_date_ignores_test_keys(sample_letter_template):
+    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
+
+    # not expected
+    create_notification(template=sample_letter_template, key_type=KEY_TYPE_TEST, created_at='2017-12-18 17:29:00')
+
+    # expected
+    create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:10')
+    create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:20')
+
+    count_for_date = dao_get_count_of_letters_to_process_for_date()
+
+    assert count_for_date == 2

@@ -607,6 +607,10 @@ class TemplateBase(db.Model):
     def service_letter_contact_id(cls):
         return db.Column(UUID(as_uuid=True), db.ForeignKey('service_letter_contacts.id'), nullable=True)
 
+    @declared_attr
+    def service_letter_contact(cls):
+        return db.relationship('ServiceLetterContact', viewonly=True)
+
     @property
     def reply_to(self):
         if self.template_type == LETTER_TYPE:
@@ -622,6 +626,19 @@ class TemplateBase(db.Model):
             pass
         else:
             raise ValueError('Unable to set sender for {} template'.format(self.template_type))
+
+    def get_reply_to_text(self):
+        if self.template_type == LETTER_TYPE:
+            if self.service_letter_contact_id is not None:
+                return self.service_letter_contact.contact_block
+            else:
+                return self.service.get_default_letter_contact()
+        elif self.template_type == EMAIL_TYPE:
+            return self.service.get_default_reply_to_email_address()
+        elif self.template_type == SMS_TYPE:
+            return self.service.get_default_sms_sender()
+        else:
+            return None
 
     def _as_utils_template(self):
         if self.template_type == EMAIL_TYPE:

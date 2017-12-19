@@ -588,6 +588,28 @@ def test_create_a_template_with_reply_to(admin_request, sample_user):
     assert sorted(json_resp['data']) == sorted(template_schema.dump(template).data)
 
 
+def test_create_a_template_with_foreign_service_reply_to(admin_request, sample_user):
+    service = create_service(service_permissions=['letter'])
+    service2 = create_service(service_name='test service', email_from='test@example.com',
+                              service_permissions=['letter'])
+    letter_contact = create_letter_contact(service2, "Edinburgh, ED1 1AA")
+    data = {
+        'name': 'my template',
+        'subject': 'subject',
+        'template_type': 'letter',
+        'content': 'template <b>content</b>',
+        'service': str(service.id),
+        'created_by': str(sample_user.id),
+        'reply_to': str(letter_contact.id),
+    }
+
+    json_resp = admin_request.post('template.create_template', service_id=service.id, _data=data, _expected_status=400)
+
+    assert json_resp['message'] == "letter_contact_id {} does not exist in database for service id {}".format(
+        str(letter_contact.id), str(service.id)
+    )
+
+
 def test_get_template_reply_to(client, sample_letter_template):
     auth_header = create_authorization_header()
     letter_contact = create_letter_contact(sample_letter_template.service, "Edinburgh, ED1 1AA")
@@ -619,6 +641,29 @@ def test_update_template_reply_to(client, sample_letter_template):
 
     template = dao_get_template_by_id(sample_letter_template.id)
     assert template.reply_to == letter_contact.id
+
+
+def test_update_template_with_foreign_service_reply_to(client, sample_letter_template):
+    auth_header = create_authorization_header()
+
+    service2 = create_service(service_name='test service', email_from='test@example.com',
+                              service_permissions=['letter'])
+    letter_contact = create_letter_contact(service2, "Edinburgh, ED1 1AA")
+
+    data = {
+        'reply_to': str(letter_contact.id),
+    }
+
+    resp = client.post('/service/{}/template/{}'.format(sample_letter_template.service_id, sample_letter_template.id),
+                       data=json.dumps(data),
+                       headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert resp.status_code == 400, resp.get_data(as_text=True)
+    json_resp = json.loads(resp.get_data(as_text=True))
+
+    assert json_resp['message'] == "letter_contact_id {} does not exist in database for service id {}".format(
+        str(letter_contact.id), str(sample_letter_template.service_id)
+    )
 
 
 def test_update_redact_template(admin_request, sample_template):
