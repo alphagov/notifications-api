@@ -1040,6 +1040,47 @@ def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
     assert notification_db.reply_to_text == "Address contact"
 
 
+def test_save_letter_uses_template_reply_to_text(mocker, notify_db_session):
+    service = create_service()
+    create_letter_contact(service=service, contact_block="Address contact", is_default=True)
+    template_contact = create_letter_contact(
+        service=service,
+        contact_block="Template address contact",
+        is_default=False
+    )
+    template = create_template(
+        service=service,
+        template_type=LETTER_TYPE,
+        reply_to=template_contact.id
+    )
+
+    job = create_job(template=template)
+
+    mocker.patch('app.celery.tasks.create_random_identifier', return_value="this-is-random-in-real-life")
+
+    personalisation = {
+        'addressline1': 'Foo',
+        'addressline2': 'Bar',
+        'postcode': 'Flob',
+    }
+    notification_json = _notification_json(
+        template=job.template,
+        to='Foo',
+        personalisation=personalisation,
+        job_id=job.id,
+        row_number=1
+    )
+
+    save_letter(
+        job.service_id,
+        uuid.uuid4(),
+        encryption.encrypt(notification_json),
+    )
+
+    notification_db = Notification.query.one()
+    assert notification_db.reply_to_text == "Template address contact"
+
+
 def test_save_letter_calls_update_noti_to_sent_task_with_letters_as_pdf_permission_in_research_mode(
         mocker, notify_db_session, sample_letter_job):
     sample_letter_job.service.research_mode = True

@@ -70,8 +70,6 @@ def post_notification(notification_type):
 
     check_rate_limiting(authenticated_service, api_user)
 
-    reply_to = get_reply_to_text(notification_type, form)
-
     template, template_with_content = validate_template(
         form['template_id'],
         form.get('personalisation', {}),
@@ -79,11 +77,14 @@ def post_notification(notification_type):
         notification_type,
     )
 
+    reply_to = get_reply_to_text(notification_type, form, template)
+
     if notification_type == LETTER_TYPE:
         notification = process_letter_notification(
             letter_data=form,
             api_key=api_user,
             template=template,
+            reply_to_text=reply_to
         )
     else:
         notification = process_sms_or_email_notification(
@@ -164,7 +165,7 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
     return notification
 
 
-def process_letter_notification(*, letter_data, api_key, template):
+def process_letter_notification(*, letter_data, api_key, template, reply_to_text):
     if api_key.key_type == KEY_TYPE_TEAM:
         raise BadRequestError(message='Cannot send letters with a team api key', status_code=403)
 
@@ -175,12 +176,11 @@ def process_letter_notification(*, letter_data, api_key, template):
 
     # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
     status = NOTIFICATION_CREATED if should_send else NOTIFICATION_SENDING
-    letter_contact_block = api_key.service.get_default_letter_contact()
     notification = create_letter_notification(letter_data=letter_data,
                                               template=template,
                                               api_key=api_key,
                                               status=status,
-                                              reply_to_text=letter_contact_block)
+                                              reply_to_text=reply_to_text)
 
     if not should_send:
         update_letter_notifications_to_sent_to_dvla.apply_async(
@@ -198,21 +198,21 @@ def process_letter_notification(*, letter_data, api_key, template):
 
 
 @statsd(namespace="performance-testing")
-def get_reply_to_text(notification_type, form):
+def get_reply_to_text(notification_type, form, template):
     reply_to = None
     if notification_type == EMAIL_TYPE:
         service_email_reply_to_id = form.get("email_reply_to_id", None)
         reply_to = check_service_email_reply_to_id(
             str(authenticated_service.id), service_email_reply_to_id, notification_type
-        ) or authenticated_service.get_default_reply_to_email_address()
+        ) or template.get_reply_to_text()
 
     elif notification_type == SMS_TYPE:
         service_sms_sender_id = form.get("sms_sender_id", None)
         reply_to = check_service_sms_sender_id(
             str(authenticated_service.id), service_sms_sender_id, notification_type
-        ) or authenticated_service.get_default_sms_sender()
+        ) or template.get_reply_to_text()
 
     elif notification_type == LETTER_TYPE:
-        reply_to = authenticated_service.get_default_letter_contact()
+        reply_to = template.get_reply_to_text()
 
     return reply_to

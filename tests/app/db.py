@@ -126,7 +126,8 @@ def create_template(
     template_name=None,
     subject='Template subject',
     content='Dear Sir/Madam, Hello. Yours Truly, The Government.',
-    template_id=None
+    template_id=None,
+    reply_to=None
 ):
     data = {
         'name': template_name or '{} Template Name'.format(template_type),
@@ -134,6 +135,7 @@ def create_template(
         'content': content,
         'service': service,
         'created_by': service.created_by,
+        'reply_to': reply_to,
     }
     if template_type != SMS_TYPE:
         data['subject'] = subject

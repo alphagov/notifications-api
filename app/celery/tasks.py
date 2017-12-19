@@ -203,6 +203,7 @@ def save_sms(self,
              key_type=KEY_TYPE_NORMAL):
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
+    template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
 
     if not service_allowed_to_send_to(notification['to'], service, key_type):
         current_app.logger.info(
@@ -224,7 +225,7 @@ def save_sms(self,
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
             notification_id=notification_id,
-            reply_to_text=service.get_default_sms_sender()
+            reply_to_text=template.get_reply_to_text()
         )
 
         provider_tasks.deliver_sms.apply_async(
@@ -252,7 +253,9 @@ def save_email(self,
                api_key_id=None,
                key_type=KEY_TYPE_NORMAL):
     notification = encryption.decrypt(encrypted_notification)
+
     service = dao_fetch_service_by_id(service_id)
+    template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
 
     if not service_allowed_to_send_to(notification['to'], service, key_type):
         current_app.logger.info("Email {} failed as restricted service".format(notification_id))
@@ -272,7 +275,7 @@ def save_email(self,
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
             notification_id=notification_id,
-            reply_to_text=service.get_default_reply_to_email_address()
+            reply_to_text=template.get_reply_to_text()
         )
 
         provider_tasks.deliver_email.apply_async(
@@ -299,6 +302,8 @@ def save_letter(
     recipient = notification['personalisation']['addressline1']
 
     service = dao_fetch_service_by_id(service_id)
+    template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
+
     try:
         saved_notification = persist_notification(
             template_id=notification['template'],
@@ -314,7 +319,7 @@ def save_letter(
             job_row_number=notification['row_number'],
             notification_id=notification_id,
             reference=create_random_identifier(),
-            reply_to_text=service.get_default_letter_contact()
+            reply_to_text=template.get_reply_to_text()
         )
 
         if service.has_permission('letters_as_pdf'):
