@@ -166,8 +166,7 @@ def billing_letter_data_per_month_query(service_id, start_date, end_date):
         LetterRate.sheet_count == NotificationHistory.billable_units,
         LetterRate.crown == crown,
         LetterRate.post_class == 'second',
-        NotificationHistory.created_at < end_date,
-
+        NotificationHistory.created_at < end_date
     ).group_by(
         NotificationHistory.notification_type,
         month,
