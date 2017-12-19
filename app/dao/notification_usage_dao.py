@@ -162,11 +162,11 @@ def billing_letter_data_per_month_query(service_id, start_date, end_date):
         (LetterRate.end_date == None) |  # noqa
         (LetterRate.end_date > NotificationHistory.created_at))
     ).filter(
-        *billing_data_filter(LETTER_TYPE, start_date, end_date, service_id),
         LetterRate.sheet_count == NotificationHistory.billable_units,
         LetterRate.crown == crown,
         LetterRate.post_class == 'second',
-        NotificationHistory.created_at < end_date
+        NotificationHistory.created_at < end_date,
+        *billing_data_filter(LETTER_TYPE, start_date, end_date, service_id)
     ).group_by(
         NotificationHistory.notification_type,
         month,
