@@ -430,7 +430,6 @@ def test_firetext_inbound_sms_auth(notify_db_session, notify_api, client, mocker
     ["", [], 401],
     ["testkey", [], 403],
 ])
-@pytest.mark.skip(reason="aborts are disabled at the moment")
 def test_mmg_inbound_sms_auth(notify_db_session, notify_api, client, mocker, auth, keys, status_code):
     mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
 
