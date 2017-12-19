@@ -584,3 +584,37 @@ def dao_get_last_notification_added_for_job_id(job_id):
     ).first()
 
     return last_notification_added
+
+
+def dao_get_count_of_letters_to_process_for_date(date_to_process=None):
+    """
+    Returns a count of letter notifications for services with letters_as_pdf permission set
+    to be processed today if no argument passed in otherwise will return the count for
+    the date passed in.
+    Records processed today = yesterday 17:30 to today 17:29:59
+
+    Note - services without letters_as_pdf permission will be ignored
+    """
+    if date_to_process is None:
+        date_to_process = date.today()
+
+    day_before = date_to_process - timedelta(days=1)
+    letter_deadline_time = current_app.config.get('LETTER_PROCESSING_DEADLINE')
+
+    start_datetime = datetime.combine(day_before, letter_deadline_time)
+    end_datetime = start_datetime + timedelta(days=1)
+
+    count_of_letters_to_process_for_date = Notification.query.join(
+        Service
+    ).filter(
+        Notification.created_at >= start_datetime,
+        Notification.created_at < end_datetime,
+        Notification.notification_type == LETTER_TYPE,
+        Notification.status == NOTIFICATION_CREATED,
+        Notification.key_type != KEY_TYPE_TEST,
+        Service.permissions.any(
+            ServicePermission.permission == 'letters_as_pdf'
+        )
+    ).count()
+
+    return count_of_letters_to_process_for_date
