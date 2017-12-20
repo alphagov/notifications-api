@@ -5,42 +5,44 @@ from datetime import datetime
 from tests.conftest import set_config_values
 
 import pytest
-from flask import json, current_app
+from flask import json, current_app, request
 from freezegun import freeze_time
 from notifications_python_client.authentication import create_jwt_token
 
 from app import api_user
 from app.dao.api_key_dao import get_unsigned_secrets, save_model_api_key, get_unsigned_secret, expire_api_key
 from app.models import ApiKey, KEY_TYPE_NORMAL
+from app.authentication.auth import AuthError, requires_admin_auth, requires_auth
+
+from tests.conftest import set_config
 
 
-# Test the require_admin_auth and require_auth methods
-@pytest.mark.parametrize('url', ['/service', '/notifications'])
-def test_should_not_allow_request_with_no_token(client, url):
-    response = client.get(url)
-    assert response.status_code == 401
-    data = json.loads(response.get_data())
-    assert data['message'] == {"token": ['Unauthorized, authentication token must be provided']}
+@pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
+def test_should_not_allow_request_with_no_token(client, auth_fn):
+    request.headers = {}
+    with pytest.raises(AuthError) as exc:
+        auth_fn()
+    assert exc.value.short_message == 'Unauthorized, authentication token must be provided'
 
 
-@pytest.mark.parametrize('url', ['/service', '/notifications'])
-def test_should_not_allow_request_with_incorrect_header(client, url):
-    response = client.get(url, headers={'Authorization': 'Basic 1234'})
-    assert response.status_code == 401
-    data = json.loads(response.get_data())
-    assert data['message'] == {"token": ['Unauthorized, authentication bearer scheme must be used']}
+@pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
+def test_should_not_allow_request_with_incorrect_header(client, auth_fn):
+    request.headers = {'Authorization': 'Basic 1234'}
+    with pytest.raises(AuthError) as exc:
+        auth_fn()
+    assert exc.value.short_message == 'Unauthorized, authentication bearer scheme must be used'
 
 
-@pytest.mark.parametrize('url', ['/service', '/notifications'])
-def test_should_not_allow_request_with_incorrect_token(client, url):
-    response = client.get(url, headers={'Authorization': 'Bearer 1234'})
-    assert response.status_code == 403
-    data = json.loads(response.get_data())
-    assert data['message'] == {"token": ['Invalid token: signature, api token is not valid']}
+@pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
+def test_should_not_allow_request_with_incorrect_token(client, auth_fn):
+    request.headers = {'Authorization': 'Bearer 1234'}
+    with pytest.raises(AuthError) as exc:
+        auth_fn()
+    assert exc.value.short_message == 'Invalid token: signature, api token is not valid'
 
 
-@pytest.mark.parametrize('url', ['/service', '/notifications'])
-def test_should_not_allow_request_with_no_iss(client, url):
+@pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
+def test_should_not_allow_request_with_no_iss(client, auth_fn):
     # code copied from notifications_python_client.authentication.py::create_jwt_token
     headers = {
         "typ": 'JWT',
@@ -54,20 +56,14 @@ def test_should_not_allow_request_with_no_iss(client, url):
 
     token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers).decode()
 
-    response = client.get(url, headers={'Authorization': 'Bearer {}'.format(token)})
-    assert response.status_code == 403
-    data = json.loads(response.get_data())
-    assert data['message'] == {"token": ['Invalid token: iss field not provided']}
+    request.headers = {'Authorization': 'Bearer {}'.format(token)}
+    with pytest.raises(AuthError) as exc:
+        auth_fn()
+    assert exc.value.short_message == 'Invalid token: iss field not provided'
 
 
-@pytest.mark.parametrize('url, auth_method',
-                         [('/service', 'requires_admin_auth'),
-                          ('/notifications', 'requires_auth')])
-def test_should_not_allow_request_with_no_iat(client, sample_api_key, url, auth_method):
-    if auth_method == 'requires_admin_auth':
-        iss = current_app.config['ADMIN_CLIENT_USER_NAME']
-    if auth_method == 'requires_auth':
-        iss = str(sample_api_key.service_id)
+def test_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
+    iss = str(sample_api_key.service_id)
     # code copied from notifications_python_client.authentication.py::create_jwt_token
     headers = {
         "typ": 'JWT',
@@ -81,10 +77,32 @@ def test_should_not_allow_request_with_no_iat(client, sample_api_key, url, auth_
 
     token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers).decode()
 
-    response = client.get(url, headers={'Authorization': 'Bearer {}'.format(token)})
-    assert response.status_code == 403
-    data = json.loads(response.get_data())
-    assert data['message'] == {"token": ['Invalid token: signature, api token is not valid']}
+    request.headers = {'Authorization': 'Bearer {}'.format(token)}
+    with pytest.raises(AuthError) as exc:
+        requires_auth()
+    assert exc.value.short_message == 'Invalid token: signature, api token not found'
+
+
+def test_admin_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
+    iss = current_app.config['ADMIN_CLIENT_USER_NAME']
+
+    # code copied from notifications_python_client.authentication.py::create_jwt_token
+    headers = {
+        "typ": 'JWT',
+        "alg": 'HS256'
+    }
+
+    claims = {
+        'iss': iss
+        # 'iat': not provided
+    }
+
+    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers).decode()
+
+    request.headers = {'Authorization': 'Bearer {}'.format(token)}
+    with pytest.raises(AuthError) as exc:
+        requires_admin_auth()
+    assert exc.value.short_message == 'Invalid token: signature, api token is not valid'
 
 
 def test_should_not_allow_invalid_secret(client, sample_api_key):
@@ -97,7 +115,7 @@ def test_should_not_allow_invalid_secret(client, sample_api_key):
     )
     assert response.status_code == 403
     data = json.loads(response.get_data())
-    assert data['message'] == {"token": ['Invalid token: signature, api token is not valid']}
+    assert data['message'] == {"token": ['Invalid token: signature, api token not found']}
 
 
 @pytest.mark.parametrize('scheme', ['bearer', 'Bearer'])
@@ -193,28 +211,28 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
         secret=get_unsigned_secret(expired_api_key.id),
         client_id=str(sample_api_key.service_id))
     expire_api_key(service_id=sample_api_key.service_id, api_key_id=expired_api_key.id)
-    response = client.get(
-        '/notifications',
-        headers={'Authorization': 'Bearer {}'.format(token)})
-    assert response.status_code == 403
-    data = json.loads(response.get_data())
-    assert data['message'] == {"token": ['Invalid token: API key revoked']}
+    request.headers = {'Authorization': 'Bearer {}'.format(token)}
+    with pytest.raises(AuthError) as exc:
+        requires_auth()
+    assert exc.value.short_message == 'Invalid token: API key revoked'
+    assert exc.value.service_id == expired_api_key.service_id
+    assert exc.value.api_key_id == expired_api_key.id
 
 
 def test_authentication_returns_error_when_admin_client_has_no_secrets(client):
     api_secret = current_app.config.get('ADMIN_CLIENT_SECRET')
+    api_service_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
     token = create_jwt_token(
         secret=api_secret,
-        client_id=current_app.config.get('ADMIN_CLIENT_USER_NAME')
+        client_id=api_service_id
     )
-    current_app.config['ADMIN_CLIENT_SECRET'] = ''
-    response = client.get(
-        '/service',
-        headers={'Authorization': 'Bearer {}'.format(token)})
+    with set_config(client.application, 'ADMIN_CLIENT_SECRET', ''):
+        response = client.get(
+            '/service',
+            headers={'Authorization': 'Bearer {}'.format(token)})
     assert response.status_code == 403
     error_message = json.loads(response.get_data())
     assert error_message['message'] == {"token": ["Invalid token: signature, api token is not valid"]}
-    current_app.config['ADMIN_CLIENT_SECRET'] = api_secret
 
 
 def test_authentication_returns_error_when_admin_client_secret_is_invalid(client):
@@ -269,12 +287,11 @@ def test_authentication_returns_error_when_service_has_no_secrets(client,
         secret=fake_uuid,
         client_id=str(sample_service.id))
 
-    response = client.get(
-        '/notifications',
-        headers={'Authorization': 'Bearer {}'.format(token)})
-    assert response.status_code == 403
-    error_message = json.loads(response.get_data())
-    assert error_message['message'] == {'token': ['Invalid token: service has no API keys']}
+    request.headers = {'Authorization': 'Bearer {}'.format(token)}
+    with pytest.raises(AuthError) as exc:
+        requires_auth()
+    assert exc.value.short_message == 'Invalid token: service has no API keys'
+    assert exc.value.service_id == sample_service.id
 
 
 def test_should_attach_the_current_api_key_to_current_app(notify_api, sample_service, sample_api_key):
@@ -293,14 +310,12 @@ def test_should_return_403_when_token_is_expired(client,
     with freeze_time('2001-01-01T12:00:00'):
         token = __create_token(sample_api_key.service_id)
     with freeze_time('2001-01-01T12:00:40'):
-        response = client.get(
-            '/notifications',
-            headers={'Authorization': 'Bearer {}'.format(token)})
-    assert response.status_code == 403
-    error_message = json.loads(response.get_data())
-    assert error_message['message'] == {'token': [
-        'Invalid token: expired, check that your system clock is accurate'
-    ]}
+        with pytest.raises(AuthError) as exc:
+            request.headers = {'Authorization': 'Bearer {}'.format(token)}
+            requires_auth()
+    assert exc.value.short_message == 'Error: Your system clock must be accurate to within 30 seconds'
+    assert exc.value.service_id == sample_api_key.service_id
+    assert exc.value.api_key_id == sample_api_key.id
 
 
 def __create_token(service_id):

@@ -8,10 +8,15 @@ from app.dao.services_dao import dao_fetch_service_by_id_with_api_keys
 
 
 class AuthError(Exception):
-    def __init__(self, message, code):
+    def __init__(self, message, code, service_id=None, api_key_id=None):
         self.message = {"token": [message]}
         self.short_message = message
         self.code = code
+        self.service_id = service_id
+        self.api_key_id = api_key_id
+
+    def __str__(self):
+        return 'AuthError({message}, {code}, service_id={service_id}, api_key_id={api_key_id})'.format(**self.__dict__)
 
     def to_dict_v2(self):
         return {
@@ -65,28 +70,37 @@ def requires_auth():
         raise AuthError("Invalid token: service not found", 403)
 
     if not service.api_keys:
-        raise AuthError("Invalid token: service has no API keys", 403)
+        raise AuthError("Invalid token: service has no API keys", 403, service_id=service.id)
 
     if not service.active:
-        raise AuthError("Invalid token: service is archived", 403)
+        raise AuthError("Invalid token: service is archived", 403, service_id=service.id)
 
     for api_key in service.api_keys:
         try:
-            get_decode_errors(auth_token, api_key.secret)
+            decode_jwt_token(auth_token, api_key.secret)
         except TokenDecodeError:
             continue
+        except TokenExpiredError:
+            err_msg = (
+                "Error: Your system clock must be accurate to within 30 seconds"
+            )
+            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
 
         if api_key.expiry_date:
-            raise AuthError("Invalid token: API key revoked", 403)
+            raise AuthError("Invalid token: API key revoked", 403, service_id=service.id, api_key_id=api_key.id)
 
         g.service_id = api_key.service_id
         _request_ctx_stack.top.authenticated_service = service
         _request_ctx_stack.top.api_user = api_key
-
+        current_app.logger.info('API authorised for service {} with api key {}, using client {}'.format(
+            service.id,
+            api_key.id,
+            request.headers.get('User-Agent')
+        ))
         return
     else:
         # service has API keys, but none matching the one the user provided
-        raise AuthError("Invalid token: signature, api token is not valid", 403)
+        raise AuthError("Invalid token: signature, api token not found", 403, service_id=service.id)
 
 
 def __get_token_issuer(auth_token):
@@ -101,14 +115,8 @@ def __get_token_issuer(auth_token):
 
 def handle_admin_key(auth_token, secret):
     try:
-        get_decode_errors(auth_token, secret)
-        return
-    except TokenDecodeError as e:
-        raise AuthError("Invalid token: signature, api token is not valid", 403)
-
-
-def get_decode_errors(auth_token, unsigned_secret):
-    try:
-        decode_jwt_token(auth_token, unsigned_secret)
+        decode_jwt_token(auth_token, secret)
     except TokenExpiredError:
         raise AuthError("Invalid token: expired, check that your system clock is accurate", 403)
+    except TokenDecodeError as e:
+        raise AuthError("Invalid token: signature, api token is not valid", 403)
