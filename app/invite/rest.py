@@ -23,7 +23,8 @@ register_errors(invite)
 
 @invite.route('', methods=['POST'])
 def create_invited_user(service_id):
-    invited_user, errors = invited_user_schema.load(request.get_json())
+    request_json = request.get_json()
+    invited_user, errors = invited_user_schema.load(request_json)
     save_invited_user(invited_user)
 
     template = dao_get_template_by_id(current_app.config['INVITATION_EMAIL_TEMPLATE_ID'])
@@ -37,7 +38,10 @@ def create_invited_user(service_id):
         personalisation={
             'user_name': invited_user.from_user.name,
             'service_name': invited_user.service.name,
-            'url': invited_user_url(invited_user.id)
+            'url': invited_user_url(
+                invited_user.id,
+                request_json.get('invite_link_host'),
+            ),
         },
         notification_type=EMAIL_TYPE,
         api_key_id=None,
@@ -74,8 +78,11 @@ def update_invited_user(service_id, invited_user_id):
     return jsonify(data=invited_user_schema.dump(fetched).data), 200
 
 
-def invited_user_url(invited_user_id):
+def invited_user_url(invited_user_id, invite_link_host=None):
     from notifications_utils.url_safe_token import generate_token
     token = generate_token(str(invited_user_id), current_app.config['SECRET_KEY'], current_app.config['DANGEROUS_SALT'])
 
-    return '{0}/invitation/{1}'.format(current_app.config['ADMIN_BASE_URL'], token)
+    if invite_link_host is None:
+        invite_link_host = current_app.config['ADMIN_BASE_URL']
+
+    return '{0}/invitation/{1}'.format(invite_link_host, token)
