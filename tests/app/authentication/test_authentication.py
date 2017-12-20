@@ -5,7 +5,6 @@ from datetime import datetime
 from tests.conftest import set_config_values
 
 import pytest
-import flask
 from flask import json, current_app
 from freezegun import freeze_time
 from notifications_python_client.authentication import create_jwt_token
@@ -13,7 +12,6 @@ from notifications_python_client.authentication import create_jwt_token
 from app import api_user
 from app.dao.api_key_dao import get_unsigned_secrets, save_model_api_key, get_unsigned_secret, expire_api_key
 from app.models import ApiKey, KEY_TYPE_NORMAL
-from app.authentication.auth import restrict_ip_sms, AuthError
 
 
 # Test the require_admin_auth and require_auth methods
@@ -308,71 +306,6 @@ def test_should_return_403_when_token_is_expired(client,
 def __create_token(service_id):
     return create_jwt_token(secret=get_unsigned_secrets(service_id)[0],
                             client_id=str(service_id))
-
-
-@pytest.fixture
-def restrict_ip_sms_app():
-    app = flask.Flask(__name__)
-    app.config['TESTING'] = True
-    app.config['SMS_INBOUND_WHITELIST'] = ['111.111.111.111/32', '200.200.200.0/24']
-    blueprint = flask.Blueprint('restrict_ip_sms_app', __name__)
-
-    @blueprint.route('/')
-    def test_endpoint():
-        return 'OK', 200
-
-    blueprint.before_request(restrict_ip_sms)
-    app.register_blueprint(blueprint)
-
-    with app.test_request_context(), app.test_client() as client:
-        yield client
-
-
-def test_allow_valid_ips(restrict_ip_sms_app):
-    response = restrict_ip_sms_app.get(
-        path='/',
-        headers=[
-            ('X-Forwarded-For', '111.111.111.111, 222.222.222.222, 127.0.0.1'),
-        ]
-    )
-
-    assert response.status_code == 200
-
-
-def test_reject_invalid_ips(restrict_ip_sms_app):
-    with pytest.raises(AuthError) as exc_info:
-        restrict_ip_sms_app.get(
-            path='/',
-            headers=[
-                ('X-Forwarded-For', '222.222.222.222, 333.333.333.333, 127.0.0.1')
-            ]
-        )
-
-    assert exc_info.value.short_message == 'Unknown source IP address from the SMS provider'
-
-
-def test_illegitimate_ips(restrict_ip_sms_app):
-    with pytest.raises(AuthError) as exc_info:
-        restrict_ip_sms_app.get(
-            path='/',
-            headers=[
-                ('X-Forwarded-For', '111.111.111.111, 123.123.123.123, 333.333.333.333, 127.0.0.1')
-            ]
-        )
-
-    assert exc_info.value.short_message == 'Unknown source IP address from the SMS provider'
-
-
-def test_allow_valid_ips_bits(restrict_ip_sms_app):
-    # Test an address that match the first 24 bits only
-    response = restrict_ip_sms_app.get(
-        path='/',
-        headers=[
-            ('X-Forwarded-For', '200.200.200.222, 222.222.222.222, 127.0.0.1'),
-        ]
-    )
-
-    assert response.status_code == 200
 
 
 @pytest.mark.parametrize('check_proxy_header,header_value,expected_status', [

@@ -23,7 +23,6 @@ from tests.app.conftest import sample_service
 def firetext_post(client, data, auth=True, password='testkey'):
     headers = [
         ('Content-Type', 'application/x-www-form-urlencoded'),
-        ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')
     ]
 
     if auth:
@@ -40,7 +39,6 @@ def firetext_post(client, data, auth=True, password='testkey'):
 def mmg_post(client, data, auth=True, password='testkey'):
     headers = [
         ('Content-Type', 'application/json'),
-        ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')
     ]
 
     if auth:

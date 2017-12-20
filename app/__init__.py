@@ -119,7 +119,6 @@ def register_blueprint(application):
 
     # delivery receipts
     # TODO: make sure research mode can still trigger sms callbacks, then re-enable this
-    # sms_callback_blueprint.before_request(restrict_ip_sms)
     sms_callback_blueprint.before_request(requires_no_auth)
     application.register_blueprint(sms_callback_blueprint)
 
