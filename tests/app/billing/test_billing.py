@@ -3,12 +3,12 @@ import json
 
 import pytest
 
-from app.billing.rest import _transform_billing_for_month
+from app.billing.rest import _transform_billing_for_month_sms
 from app.dao.monthly_billing_dao import (
     create_or_update_monthly_billing,
     get_monthly_billing_by_notification_type,
 )
-from app.models import SMS_TYPE, EMAIL_TYPE
+from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
 from app.dao.date_util import get_current_financial_year_start_year
 from app.dao.annual_billing_dao import dao_get_free_sms_fragment_limit_for_year
 from tests.app.db import (
@@ -16,6 +16,8 @@ from tests.app.db import (
     create_rate,
     create_monthly_billing_entry,
     create_annual_billing,
+    create_letter_rate,
+    create_template
 )
 from app.billing.rest import update_free_sms_fragment_limit_data
 
@@ -29,8 +31,7 @@ IN_JUN_2016 = datetime(2016, 6, 3, 23, 00, 00)
 
 
 def _assert_dict_equals(actual, expected_dict):
-    assert set(actual.keys()) == set(expected_dict.keys())
-    assert set(actual.values()) == set(expected_dict.values())
+    assert actual == expected_dict
 
 
 def test_get_yearly_billing_summary_returns_correct_breakdown(client, sample_template):
@@ -43,6 +44,12 @@ def test_get_yearly_billing_summary_returns_correct_breakdown(client, sample_tem
         template=sample_template, created_at=IN_JUN_2016,
         billable_units=2, rate_multiplier=3, status='delivered'
     )
+    create_letter_rate(crown=False, start_date=IN_MAY_2016, end_date=IN_JUN_2016)
+    create_letter_rate(crown=False, start_date=IN_JUN_2016, rate=0.41)
+
+    letter_template = create_template(service=sample_template.service, template_type=LETTER_TYPE)
+    create_notification(template=letter_template, created_at=IN_MAY_2016, status='delivered', billable_units=1)
+    create_notification(template=letter_template, created_at=IN_JUN_2016, status='delivered', billable_units=1)
 
     create_or_update_monthly_billing(service_id=sample_template.service_id, billing_month=IN_MAY_2016)
     create_or_update_monthly_billing(service_id=sample_template.service_id, billing_month=IN_JUN_2016)
@@ -54,18 +61,26 @@ def test_get_yearly_billing_summary_returns_correct_breakdown(client, sample_tem
     assert response.status_code == 200
 
     resp_json = json.loads(response.get_data(as_text=True))
-    assert len(resp_json) == 2
+    assert len(resp_json) == 3
 
     _assert_dict_equals(resp_json[0], {
         'notification_type': SMS_TYPE,
         'billing_units': 8,
-        'rate': 0.12
+        'rate': 0.12,
+        'letter_total': 0
     })
 
     _assert_dict_equals(resp_json[1], {
         'notification_type': EMAIL_TYPE,
         'billing_units': 0,
-        'rate': 0
+        'rate': 0,
+        'letter_total': 0
+    })
+    _assert_dict_equals(resp_json[2], {
+        'notification_type': LETTER_TYPE,
+        'billing_units': 2,
+        'rate': 0,
+        'letter_total': 0.72
     })
 
 
@@ -125,19 +140,30 @@ def test_get_yearly_usage_by_month_returns_correctly(client, sample_template):
     assert response.status_code == 200
 
     resp_json = json.loads(response.get_data(as_text=True))
-
     _assert_dict_equals(resp_json[0], {
         'billing_units': 2,
         'month': 'May',
         'notification_type': SMS_TYPE,
         'rate': 0.12
     })
-
     _assert_dict_equals(resp_json[1], {
+        'billing_units': 0,
+        'month': 'May',
+        'notification_type': LETTER_TYPE,
+        'rate': 0
+    })
+
+    _assert_dict_equals(resp_json[2], {
         'billing_units': 6,
         'month': 'June',
         'notification_type': SMS_TYPE,
         'rate': 0.12
+    })
+    _assert_dict_equals(resp_json[3], {
+        'billing_units': 0,
+        'month': 'June',
+        'notification_type': LETTER_TYPE,
+        'rate': 0
     })
 
 
@@ -150,7 +176,7 @@ def test_transform_billing_for_month_returns_empty_if_no_monthly_totals(sample_s
         notification_type=SMS_TYPE
     )
 
-    transformed_billing_data = _transform_billing_for_month(get_monthly_billing_by_notification_type(
+    transformed_billing_data = _transform_billing_for_month_sms(get_monthly_billing_by_notification_type(
         sample_service.id, APR_2016_MONTH_START, SMS_TYPE
     ))
 
@@ -177,7 +203,7 @@ def test_transform_billing_for_month_formats_monthly_totals_correctly(sample_ser
         notification_type=SMS_TYPE
     )
 
-    transformed_billing_data = _transform_billing_for_month(get_monthly_billing_by_notification_type(
+    transformed_billing_data = _transform_billing_for_month_sms(get_monthly_billing_by_notification_type(
         sample_service.id, APR_2016_MONTH_START, SMS_TYPE
     ))
 
@@ -212,7 +238,7 @@ def test_transform_billing_sums_billable_units(sample_service):
         notification_type=SMS_TYPE
     )
 
-    transformed_billing_data = _transform_billing_for_month(get_monthly_billing_by_notification_type(
+    transformed_billing_data = _transform_billing_for_month_sms(get_monthly_billing_by_notification_type(
         sample_service.id, APR_2016_MONTH_START, SMS_TYPE
     ))
 
@@ -247,7 +273,7 @@ def test_transform_billing_calculates_with_different_rate_multipliers(sample_ser
         notification_type=SMS_TYPE
     )
 
-    transformed_billing_data = _transform_billing_for_month(get_monthly_billing_by_notification_type(
+    transformed_billing_data = _transform_billing_for_month_sms(get_monthly_billing_by_notification_type(
         sample_service.id, APR_2016_MONTH_START, SMS_TYPE
     ))
 

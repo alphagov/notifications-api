@@ -7,13 +7,14 @@ from app.dao.date_util import get_financial_year
 from app.dao.notification_usage_dao import (
     get_rates_for_daterange,
     get_billing_data_for_month,
-    get_monthly_billing_data
+    get_monthly_billing_data,
+    billing_letter_data_per_month_query
 )
 from app.models import (
     Rate,
     SMS_TYPE,
 )
-from tests.app.db import create_notification, create_rate
+from tests.app.db import create_notification, create_rate, create_letter_rate, create_template, create_service
 
 
 def test_get_rates_for_daterange(notify_db, notify_db_session):
@@ -211,3 +212,25 @@ def test_get_monthly_billing_data_where_start_date_before_rate_returns_empty(
     )
 
     assert not results
+
+
+def test_billing_letter_data_per_month_query(
+        notify_db_session
+):
+    create_letter_rate()
+    service = create_service()
+    template = create_template(service=service, template_type='letter')
+    create_notification(template=template, billable_units=1, created_at=datetime(2017, 2, 1, 13, 21),
+                        status='delivered')
+    create_notification(template=template, billable_units=1, created_at=datetime(2017, 2, 1, 13, 21),
+                        status='delivered')
+    create_notification(template=template, billable_units=1, created_at=datetime(2017, 2, 1, 13, 21),
+                        status='delivered')
+
+    results = billing_letter_data_per_month_query(service_id=service.id,
+                                                  start_date=datetime(2017, 2, 1),
+                                                  end_date=datetime(2017, 2, 28))
+
+    assert len(results) == 1
+    assert results[0].rate == 0.31
+    assert results[0].billing_units == 3

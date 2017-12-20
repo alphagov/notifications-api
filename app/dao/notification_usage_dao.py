@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from sqlalchemy import Float, Integer
+from sqlalchemy import Float, Integer, and_
 from sqlalchemy import func, case, cast
 from sqlalchemy import literal_column
 
@@ -12,7 +12,10 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES_BILLABLE,
     KEY_TYPE_TEST,
     SMS_TYPE,
-    EMAIL_TYPE
+    EMAIL_TYPE,
+    LETTER_TYPE,
+    LetterRate,
+    Service
 )
 from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column
@@ -46,6 +49,8 @@ def get_billing_data_for_month(service_id, start_date, end_date, notification_ty
                 end_date, SMS_TYPE
             )
         )
+    elif notification_type == LETTER_TYPE:
+        results.extend(billing_letter_data_per_month_query(service_id, start_date, end_date))
 
     return results
 
@@ -129,9 +134,8 @@ def billing_data_per_month_query(rate, service_id, start_date, end_date, notific
     ).order_by(
         month,
         rate_multiplier()
-    ).all()
-
-    return results
+    )
+    return results.all()
 
 
 def rate_multiplier():
@@ -139,3 +143,38 @@ def rate_multiplier():
         (NotificationHistory.rate_multiplier == None, literal_column("'1'")),  # noqa
         (NotificationHistory.rate_multiplier != None, NotificationHistory.rate_multiplier),  # noqa
     ]), Integer())
+
+
+@statsd(namespace="dao")
+def billing_letter_data_per_month_query(service_id, start_date, end_date):
+    month = get_london_month_from_utc_column(NotificationHistory.created_at)
+    crown = Service.query.get(service_id).crown
+    results = db.session.query(
+        month.label('month'),
+        func.count(NotificationHistory.billable_units).label('billing_units'),
+        rate_multiplier().label('rate_multiplier'),
+        NotificationHistory.international,
+        NotificationHistory.notification_type,
+        cast(LetterRate.rate, Float()).label('rate')
+    ).join(
+        LetterRate,
+        and_(NotificationHistory.created_at >= LetterRate.start_date,
+        (LetterRate.end_date == None) |  # noqa
+        (LetterRate.end_date > NotificationHistory.created_at))
+    ).filter(
+        LetterRate.sheet_count == NotificationHistory.billable_units,
+        LetterRate.crown == crown,
+        LetterRate.post_class == 'second',
+        NotificationHistory.created_at < end_date,
+        *billing_data_filter(LETTER_TYPE, start_date, end_date, service_id)
+    ).group_by(
+        NotificationHistory.notification_type,
+        month,
+        NotificationHistory.rate_multiplier,
+        NotificationHistory.international,
+        LetterRate.rate
+    ).order_by(
+        month,
+        rate_multiplier()
+    )
+    return results.all()

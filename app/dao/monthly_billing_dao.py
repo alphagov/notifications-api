@@ -8,6 +8,7 @@ from app.dao.notification_usage_dao import get_billing_data_for_month
 from app.models import (
     SMS_TYPE,
     EMAIL_TYPE,
+    LETTER_TYPE,
     MonthlyBilling,
     NotificationHistory
 )
@@ -21,7 +22,7 @@ def get_service_ids_that_need_billing_populated(start_date, end_date):
     ).filter(
         NotificationHistory.created_at >= start_date,
         NotificationHistory.created_at <= end_date,
-        NotificationHistory.notification_type.in_([SMS_TYPE, EMAIL_TYPE]),
+        NotificationHistory.notification_type.in_([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]),
         NotificationHistory.billable_units != 0
     ).distinct().all()
 
@@ -31,6 +32,7 @@ def create_or_update_monthly_billing(service_id, billing_month):
     start_date, end_date = get_month_start_and_end_date_in_utc(billing_month)
     _update_monthly_billing(service_id, start_date, end_date, SMS_TYPE)
     _update_monthly_billing(service_id, start_date, end_date, EMAIL_TYPE)
+    _update_monthly_billing(service_id, start_date, end_date, LETTER_TYPE)
 
 
 def _monthly_billing_data_to_json(billing_data):
@@ -112,7 +114,7 @@ def get_monthly_billing_by_notification_type(service_id, billing_month, notifica
 
 
 @statsd(namespace="dao")
-def get_billing_data_for_financial_year(service_id, year, notification_types=[SMS_TYPE, EMAIL_TYPE]):
+def get_billing_data_for_financial_year(service_id, year, notification_types=[SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]):
     # Update totals to the latest so we include data for today
     now = convert_utc_to_bst(datetime.utcnow())
     create_or_update_monthly_billing(service_id=service_id, billing_month=now)

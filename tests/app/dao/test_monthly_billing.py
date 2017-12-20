@@ -11,13 +11,14 @@ from app.dao.monthly_billing_dao import (
     get_billing_data_for_financial_year
 )
 from app.models import MonthlyBilling, SMS_TYPE, EMAIL_TYPE
+from tests.app.conftest import sample_letter_template
 from tests.app.db import (
     create_notification,
     create_rate,
     create_service,
     create_template,
-    create_monthly_billing_entry
-)
+    create_monthly_billing_entry,
+    create_letter_rate)
 
 FEB_2016_MONTH_START = datetime(2016, 2, 1)
 FEB_2016_MONTH_END = datetime(2016, 2, 29, 23, 59, 59, 99999)
@@ -152,10 +153,15 @@ def test_add_monthly_billing_for_single_month_populates_correctly(
     sample_template, sample_email_template
 ):
     create_rate(start_date=JAN_2017_MONTH_START, value=0.0158, notification_type=SMS_TYPE)
+    letter_template = sample_letter_template(sample_template.service)
+    create_letter_rate(crown=False)
     create_notification(
         template=sample_template, created_at=JAN_2017_MONTH_START,
         billable_units=1, rate_multiplier=2, status='delivered'
     )
+    create_notification(template=sample_email_template, created_at=JAN_2017_MONTH_START,
+                        status='delivered')
+    create_notification(template=letter_template, created_at=JAN_2017_MONTH_START, status='delivered')
 
     create_or_update_monthly_billing(
         service_id=sample_template.service_id,
@@ -164,11 +170,18 @@ def test_add_monthly_billing_for_single_month_populates_correctly(
 
     monthly_billing = MonthlyBilling.query.order_by(MonthlyBilling.notification_type).all()
 
-    assert len(monthly_billing) == 2
+    assert len(monthly_billing) == 3
     _assert_monthly_billing(
         monthly_billing[0], sample_template.service.id, 'email', JAN_2017_MONTH_START, JAN_2017_MONTH_END
     )
-    assert monthly_billing[0].monthly_totals == []
+    _assert_monthly_billing_totals(
+        monthly_billing[0].monthly_totals[0], {
+            "billing_units": 1,
+            "rate_multiplier": 1,
+            "international": False,
+            "rate": 0.0,
+            "total_cost": 0
+        })
 
     _assert_monthly_billing(
         monthly_billing[1], sample_template.service.id, 'sms', JAN_2017_MONTH_START, JAN_2017_MONTH_END
@@ -181,9 +194,20 @@ def test_add_monthly_billing_for_single_month_populates_correctly(
         "total_cost": 1 * 2 * 0.0158
     })
 
+    _assert_monthly_billing(
+        monthly_billing[2], sample_template.service.id, 'letter', JAN_2017_MONTH_START, JAN_2017_MONTH_END
+    )
+    _assert_monthly_billing_totals(monthly_billing[2].monthly_totals[0], {
+        "billing_units": 1,
+        "rate_multiplier": 1,
+        "international": False,
+        "rate": 0.31,
+        "total_cost": 1 * 0.31
+    })
+
 
 def test_add_monthly_billing_for_multiple_months_populate_correctly(
-    sample_template, sample_email_template
+    sample_template
 ):
     create_rate(start_date=FEB_2016_MONTH_START - timedelta(days=1), value=0.12, notification_type=SMS_TYPE)
     create_notification(
@@ -203,7 +227,7 @@ def test_add_monthly_billing_for_multiple_months_populate_correctly(
         MonthlyBilling.start_date
     ).all()
 
-    assert len(monthly_billing) == 4
+    assert len(monthly_billing) == 6
     _assert_monthly_billing(
         monthly_billing[0], sample_template.service.id, 'email', FEB_2016_MONTH_START, FEB_2016_MONTH_END
     )
@@ -236,10 +260,21 @@ def test_add_monthly_billing_for_multiple_months_populate_correctly(
         "total_cost": 0.72
     })
 
+    _assert_monthly_billing(
+        monthly_billing[4], sample_template.service.id, 'letter', FEB_2016_MONTH_START, FEB_2016_MONTH_END
+    )
+    assert monthly_billing[4].monthly_totals == []
+
+    _assert_monthly_billing(
+        monthly_billing[5], sample_template.service.id, 'letter', MAR_2016_MONTH_START, MAR_2016_MONTH_END
+    )
+    assert monthly_billing[5].monthly_totals == []
+
 
 def test_add_monthly_billing_with_multiple_rates_populate_correctly(
-    sample_template
+    sample_template, sample_email_template
 ):
+    letter_template = sample_letter_template(sample_template.service)
     create_rate(start_date=JAN_2017_MONTH_START, value=0.0158, notification_type=SMS_TYPE)
     create_rate(start_date=JAN_2017_MONTH_START + timedelta(days=5), value=0.123, notification_type=SMS_TYPE)
     create_notification(template=sample_template, created_at=JAN_2017_MONTH_START, billable_units=1, status='delivered')
@@ -248,15 +283,26 @@ def test_add_monthly_billing_with_multiple_rates_populate_correctly(
         billable_units=2, status='delivered'
     )
 
+    create_notification(template=sample_email_template, created_at=JAN_2017_MONTH_START, status='delivered')
+    create_notification(template=letter_template, created_at=JAN_2017_MONTH_START, status='delivered',
+                        billable_units=1)
+    create_letter_rate(start_date=JAN_2017_MONTH_START, crown=False)
+
     create_or_update_monthly_billing(service_id=sample_template.service_id, billing_month=JAN_2017_MONTH_START)
 
     monthly_billing = MonthlyBilling.query.order_by(MonthlyBilling.notification_type).all()
 
-    assert len(monthly_billing) == 2
+    assert len(monthly_billing) == 3
     _assert_monthly_billing(
         monthly_billing[0], sample_template.service.id, 'email', JAN_2017_MONTH_START, JAN_2017_MONTH_END
     )
-    assert monthly_billing[0].monthly_totals == []
+    _assert_monthly_billing_totals(monthly_billing[0].monthly_totals[0], {
+        "billing_units": 1,
+        "rate_multiplier": 1,
+        "international": False,
+        "rate": 0.0,
+        "total_cost": 0.0
+    })
 
     _assert_monthly_billing(
         monthly_billing[1], sample_template.service.id, 'sms', JAN_2017_MONTH_START, JAN_2017_MONTH_END
@@ -274,6 +320,17 @@ def test_add_monthly_billing_with_multiple_rates_populate_correctly(
         "international": False,
         "rate": 0.123,
         "total_cost": 0.246
+    })
+
+    _assert_monthly_billing(
+        monthly_billing[2], sample_template.service.id, 'letter', JAN_2017_MONTH_START, JAN_2017_MONTH_END
+    )
+    _assert_monthly_billing_totals(monthly_billing[2].monthly_totals[0], {
+        "billing_units": 1,
+        "rate_multiplier": 1,
+        "international": False,
+        "rate": 0.31,
+        "total_cost": 0.31
     })
 
 
