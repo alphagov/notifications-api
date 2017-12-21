@@ -97,15 +97,16 @@ def test_get_next_inbound_sms_will_get_correct_inbound_sms_list(client, sample_s
         _external=True) == json_response['links']['next']
 
 
-def test_get_next_inbound_sms_at_end_will_return_empty_inbound_sms_list(client, sample_inbound_sms, mocker):
+def test_get_next_inbound_sms_at_end_will_return_empty_inbound_sms_list(client, sample_service, mocker):
+    inbound_sms = create_inbound_sms(service=sample_service)
     mocker.patch.dict(
         "app.v2.inbound_sms.get_inbound_sms.current_app.config",
         {"API_PAGE_SIZE": 1}
     )
 
-    auth_header = create_authorization_header(service_id=sample_inbound_sms.service.id)
+    auth_header = create_authorization_header(service_id=inbound_sms.service.id)
     response = client.get(
-        path=url_for('v2_inbound_sms.get_inbound_sms', older_than=sample_inbound_sms.id),
+        path=url_for('v2_inbound_sms.get_inbound_sms', older_than=inbound_sms.id),
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 200
