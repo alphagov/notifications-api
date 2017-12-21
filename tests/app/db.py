@@ -126,7 +126,6 @@ def create_template(
     template_name=None,
     subject='Template subject',
     content='Dear Sir/Madam, Hello. Yours Truly, The Government.',
-    template_id=None,
     reply_to=None
 ):
     data = {
