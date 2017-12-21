@@ -435,7 +435,7 @@ class Live(Config):
     NOTIFY_EMAIL_DOMAIN = 'notifications.service.gov.uk'
     NOTIFY_ENVIRONMENT = 'live'
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
-    LETTERS_PDF_BUCKET_NAME = 'live-letters-pdf'
+    LETTERS_PDF_BUCKET_NAME = 'production-letters-pdf'
     DVLA_RESPONSE_BUCKET_NAME = 'notifications.service.gov.uk-ftp'
     STATSD_ENABLED = True
     FROM_NUMBER = 'GOVUK'
