@@ -143,8 +143,8 @@ def test_create_letters_pdf_sets_technical_failure_max_retries(mocker, sample_le
 def test_collate_letter_pdfs_for_day(notify_api, mocker):
     mock_s3 = mocker.patch('app.celery.tasks.s3.get_s3_bucket_objects')
     mock_group_letters = mocker.patch('app.celery.letters_pdf_tasks.group_letters', return_value=[
-        [{'Key': 'A', 'Size': 1}, {'Key': 'B', 'Size': 2}],
-        [{'Key': 'C', 'Size': 3}]
+        [{'Key': 'A.PDF', 'Size': 1}, {'Key': 'B.pDf', 'Size': 2}],
+        [{'Key': 'C.pdf', 'Size': 3}]
     ])
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
 
@@ -154,12 +154,12 @@ def test_collate_letter_pdfs_for_day(notify_api, mocker):
     mock_group_letters.assert_called_once_with(mock_s3.return_value)
     assert mock_celery.call_args_list[0] == call(
         name='zip-and-send-letter-pdfs',
-        kwargs={'filenames': ['A', 'B']},
+        kwargs={'filenames_to_zip': ['A.PDF', 'B.pDf']},
         queue='process-ftp-tasks'
     )
     assert mock_celery.call_args_list[1] == call(
         name='zip-and-send-letter-pdfs',
-        kwargs={'filenames': ['C']},
+        kwargs={'filenames_to_zip': ['C.pdf']},
         queue='process-ftp-tasks'
     )
 
@@ -167,27 +167,32 @@ def test_collate_letter_pdfs_for_day(notify_api, mocker):
 def test_group_letters(notify_api):
     letters = [
         # ends under max but next one is too big
-        {'Key': 'A', 'Size': 1}, {'Key': 'B', 'Size': 2},
+        {'Key': 'A.pdf', 'Size': 1}, {'Key': 'B.pdf', 'Size': 2},
         # ends on exactly max
-        {'Key': 'C', 'Size': 3}, {'Key': 'D', 'Size': 1}, {'Key': 'E', 'Size': 1},
+        {'Key': 'C.pdf', 'Size': 3}, {'Key': 'D.pdf', 'Size': 1}, {'Key': 'E.pdf', 'Size': 1},
         # exactly max goes in next file
-        {'Key': 'F', 'Size': 5},
+        {'Key': 'F.pdf', 'Size': 5},
         # if it's bigger than the max, still gets included
-        {'Key': 'G', 'Size': 6},
+        {'Key': 'G.pdf', 'Size': 6},
         # whatever's left goes in last list
-        {'Key': 'H', 'Size': 1}, {'Key': 'I', 'Size': 1},
+        {'Key': 'H.pdf', 'Size': 1}, {'Key': 'I.pdf', 'Size': 1},
     ]
 
     with set_config_values(notify_api, {'MAX_LETTER_PDF_ZIP_FILESIZE': 5}):
         x = group_letters(letters)
 
-        assert next(x) == [{'Key': 'A', 'Size': 1}, {'Key': 'B', 'Size': 2}]
-        assert next(x) == [{'Key': 'C', 'Size': 3}, {'Key': 'D', 'Size': 1}, {'Key': 'E', 'Size': 1}]
-        assert next(x) == [{'Key': 'F', 'Size': 5}]
-        assert next(x) == [{'Key': 'G', 'Size': 6}]
-        assert next(x) == [{'Key': 'H', 'Size': 1}, {'Key': 'I', 'Size': 1}]
+        assert next(x) == [{'Key': 'A.pdf', 'Size': 1}, {'Key': 'B.pdf', 'Size': 2}]
+        assert next(x) == [{'Key': 'C.pdf', 'Size': 3}, {'Key': 'D.pdf', 'Size': 1}, {'Key': 'E.pdf', 'Size': 1}]
+        assert next(x) == [{'Key': 'F.pdf', 'Size': 5}]
+        assert next(x) == [{'Key': 'G.pdf', 'Size': 6}]
+        assert next(x) == [{'Key': 'H.pdf', 'Size': 1}, {'Key': 'I.pdf', 'Size': 1}]
         # make sure iterator is exhausted
         assert next(x, None) is None
+
+
+def test_group_letters_ignores_non_pdfs(notify_api):
+    letters = [{'Key': 'A.zip'}]
+    assert list(group_letters(letters)) == []
 
 
 def test_group_letters_with_no_letters(notify_api):
