@@ -17,7 +17,7 @@ monotonic==1.4
 psycopg2==2.7.3.2
 PyJWT==1.5.3
 SQLAlchemy-Utils==0.32.21
-SQLAlchemy==1.1.15
+SQLAlchemy==1.2.0
 statsd==3.2.1
 
 notifications-python-client==4.6.0
