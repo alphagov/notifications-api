@@ -336,7 +336,9 @@ class Config(object):
             'options': {'queue': QueueNames.PERIODIC}
         },
     }
-    CELERY_QUEUES = []
+
+    # this is overriden by the -Q command, but locally, we should read from all queues
+    CELERY_QUEUES = [Queue(queue, Exchange('default'), routing_key=queue) for queue in QueueNames.all_queues()]
 
     FROM_NUMBER = 'development'
 
@@ -427,11 +429,6 @@ class Development(Config):
 
     ANTIVIRUS_ENABLED = os.getenv('ANTIVIRUS_ENABLED') == '1'
 
-    for queue in QueueNames.all_queues():
-        Config.CELERY_QUEUES.append(
-            Queue(queue, Exchange('default'), routing_key=queue)
-        )
-
     API_HOST_NAME = "http://localhost:6011"
     API_RATE_LIMIT_ENABLED = True
     DVLA_EMAIL_ADDRESSES = ['success@simulator.amazonses.com']
@@ -468,11 +465,6 @@ class Test(Development):
     BROKER_URL = 'you-forgot-to-mock-celery-in-your-tests://'
 
     ANTIVIRUS_ENABLED = True
-
-    for queue in QueueNames.all_queues():
-        Config.CELERY_QUEUES.append(
-            Queue(queue, Exchange('default'), routing_key=queue)
-        )
 
     API_RATE_LIMIT_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"
