@@ -85,19 +85,6 @@ build: dependencies generate-version-file ## Build project
 .PHONY: cf-build
 cf-build: dependencies generate-version-file ## Build project for PAAS
 
-.PHONY: build-codedeploy-artifact
-build-codedeploy-artifact: ## Build the deploy artifact for CodeDeploy
-	rm -rf target
-	mkdir -p target
-	zip -y -q -r -x@deploy-exclude.lst target/notifications-api.zip ./
-
-	rm -rf build/db-migration-codedeploy
-	mkdir -p build/db-migration-codedeploy
-	unzip target/notifications-api.zip -d build/db-migration-codedeploy
-	cd build/db-migration-codedeploy && \
-		mv -f appspec-db-migration.yml appspec.yml && \
-		zip -y -q -r -x@deploy-exclude.lst ../../target/notifications-api-db-migration.zip ./
-
 .PHONY: upload-codedeploy-artifact ## Upload the deploy artifact for CodeDeploy
 upload-codedeploy-artifact: check-env-vars
 	$(if ${DEPLOY_BUILD_NUMBER},,$(error Must specify DEPLOY_BUILD_NUMBER))
@@ -105,7 +92,10 @@ upload-codedeploy-artifact: check-env-vars
 	aws s3 cp --region eu-west-1 --sse AES256 target/notifications-api-db-migration.zip s3://${DNS_NAME}-codedeploy/notifications-api-db-migration-${DEPLOY_BUILD_NUMBER}.zip
 
 .PHONY: build-paas-artifact
-build-paas-artifact: build-codedeploy-artifact ## Build the deploy artifact for PaaS
+build-paas-artifact:  ## Build the deploy artifact for PaaS
+	rm -rf target
+	mkdir -p target
+	zip -y -q -r -x@deploy-exclude.lst target/notifications-api.zip ./
 
 .PHONY: upload-paas-artifact ## Upload the deploy artifact for PaaS
 upload-paas-artifact:
