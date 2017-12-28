@@ -41,30 +41,25 @@ venv/bin/activate:
 .PHONY: check-env-vars
 check-env-vars: ## Check mandatory environment variables
 	$(if ${DEPLOY_ENV},,$(error Must specify DEPLOY_ENV))
-	$(if ${DNS_NAME},,$(error Must specify DNS_NAME))
 
 .PHONY: sandbox
 sandbox: ## Set environment to sandbox
 	$(eval export DEPLOY_ENV=sandbox)
-	$(eval export DNS_NAME="cloudapps.digital")
 	@true
 
 .PHONY: preview
 preview: ## Set environment to preview
 	$(eval export DEPLOY_ENV=preview)
-	$(eval export DNS_NAME="notify.works")
 	@true
 
 .PHONY: staging
 staging: ## Set environment to staging
 	$(eval export DEPLOY_ENV=staging)
-	$(eval export DNS_NAME="staging-notify.works")
 	@true
 
 .PHONY: production
 production: ## Set environment to production
 	$(eval export DEPLOY_ENV=production)
-	$(eval export DNS_NAME="notifications.service.gov.uk")
 	@true
 
 .PHONY: dependencies
