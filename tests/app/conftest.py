@@ -57,8 +57,7 @@ from tests.app.db import (
     create_service,
     create_api_key,
     create_inbound_number,
-    create_letter_contact,
-    create_inbound_sms,
+    create_letter_contact
 )
 
 
@@ -650,16 +649,6 @@ def sample_email_notification(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def mock_statsd_inc(mocker):
-    return mocker.patch('app.statsd_client.incr')
-
-
-@pytest.fixture(scope='function')
-def mock_statsd_timing(mocker):
-    return mocker.patch('app.statsd_client.timing')
-
-
-@pytest.fixture(scope='function')
 def sample_notification_history(
     notify_db,
     notify_db_session,
@@ -1048,16 +1037,11 @@ def sample_provider_rate(notify_db, notify_db_session, valid_from=None, rate=Non
 @pytest.fixture
 def sample_inbound_numbers(notify_db, notify_db_session, sample_service):
     service = create_service(service_name='sample service 2')
-    inbound_numbers = []
+    inbound_numbers = list()
     inbound_numbers.append(create_inbound_number(number='1', provider='mmg'))
     inbound_numbers.append(create_inbound_number(number='2', provider='mmg', active=False, service_id=service.id))
     inbound_numbers.append(create_inbound_number(number='3', provider='firetext', service_id=sample_service.id))
     return inbound_numbers
-
-
-@pytest.fixture
-def sample_inbound_sms(notify_db, notify_db_session, sample_service):
-    return create_inbound_sms(sample_service)
 
 
 @pytest.fixture

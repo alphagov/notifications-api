@@ -90,25 +90,28 @@ def test_should_not_delete_inbound_sms_before_seven_days(sample_service):
     assert len(InboundSms.query.all()) == 2
 
 
-def test_get_inbound_sms_by_id_returns(sample_inbound_sms):
-    inbound_from_db = dao_get_inbound_sms_by_id(sample_inbound_sms.service.id, sample_inbound_sms.id)
+def test_get_inbound_sms_by_id_returns(sample_service):
+    inbound_sms = create_inbound_sms(service=sample_service)
+    inbound_from_db = dao_get_inbound_sms_by_id(inbound_sms.service.id, inbound_sms.id)
 
-    assert sample_inbound_sms == inbound_from_db
-
-
-def test_dao_get_paginated_inbound_sms_for_service(sample_inbound_sms):
-    inbound_from_db = dao_get_paginated_inbound_sms_for_service(sample_inbound_sms.service.id)
-
-    assert sample_inbound_sms == inbound_from_db[0]
+    assert inbound_sms == inbound_from_db
 
 
-def test_dao_get_paginated_inbound_sms_for_service_return_only_for_service(sample_inbound_sms):
+def test_dao_get_paginated_inbound_sms_for_service(sample_service):
+    inbound_sms = create_inbound_sms(service=sample_service)
+    inbound_from_db = dao_get_paginated_inbound_sms_for_service(inbound_sms.service.id)
+
+    assert inbound_sms == inbound_from_db[0]
+
+
+def test_dao_get_paginated_inbound_sms_for_service_return_only_for_service(sample_service):
+    inbound_sms = create_inbound_sms(service=sample_service)
     another_service = create_service(service_name='another service')
     another_inbound_sms = create_inbound_sms(another_service)
 
-    inbound_from_db = dao_get_paginated_inbound_sms_for_service(sample_inbound_sms.service.id)
+    inbound_from_db = dao_get_paginated_inbound_sms_for_service(inbound_sms.service.id)
 
-    assert sample_inbound_sms in inbound_from_db
+    assert inbound_sms in inbound_from_db
     assert another_inbound_sms not in inbound_from_db
 
 
