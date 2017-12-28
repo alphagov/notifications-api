@@ -75,9 +75,6 @@ generate-version-file: ## Generates the app version file
 build: dependencies generate-version-file ## Build project
 	. venv/bin/activate && PIP_ACCEL_CACHE=${PIP_ACCEL_CACHE} pip-accel install -r requirements.txt
 
-.PHONY: cf-build
-cf-build: dependencies generate-version-file ## Build project for PAAS
-
 .PHONY: build-paas-artifact
 build-paas-artifact:  ## Build the deploy artifact for PaaS
 	rm -rf target
@@ -121,25 +118,6 @@ build-with-docker: prepare-docker-build-image ## Build inside a Docker container
 		-e NO_PROXY="${NO_PROXY}" \
 		${DOCKER_BUILDER_IMAGE_NAME} \
 		gosu hostuser make build
-
-.PHONY: cf-build-with-docker
-cf-build-with-docker: prepare-docker-build-image ## Build inside a Docker container
-	@docker run -i${DOCKER_TTY} --rm \
-		--name "${DOCKER_CONTAINER_PREFIX}-build" \
-		-v "`pwd`:/var/project" \
-		-v "${PIP_ACCEL_CACHE}:/var/project/cache/pip-accel" \
-		-e UID=$(shell id -u) \
-		-e GID=$(shell id -g) \
-		-e GIT_COMMIT=${GIT_COMMIT} \
-		-e BUILD_NUMBER=${BUILD_NUMBER} \
-		-e BUILD_URL=${BUILD_URL} \
-		-e http_proxy="${HTTP_PROXY}" \
-		-e HTTP_PROXY="${HTTP_PROXY}" \
-		-e https_proxy="${HTTPS_PROXY}" \
-		-e HTTPS_PROXY="${HTTPS_PROXY}" \
-		-e NO_PROXY="${NO_PROXY}" \
-		${DOCKER_BUILDER_IMAGE_NAME} \
-		gosu hostuser make cf-build
 
 .PHONY: test-with-docker
 test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests inside a Docker container
