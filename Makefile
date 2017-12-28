@@ -139,7 +139,7 @@ test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests 
 		${DOCKER_BUILDER_IMAGE_NAME} \
 		gosu hostuser make test
 
-.PHONY: test-with-docker
+.PHONY: create-docker-test-db
 create-docker-test-db: ## Start the test database in a Docker container
 	docker rm -f ${DOCKER_CONTAINER_PREFIX}-db 2> /dev/null || true
 	@docker run -d \
