@@ -85,12 +85,6 @@ build: dependencies generate-version-file ## Build project
 .PHONY: cf-build
 cf-build: dependencies generate-version-file ## Build project for PAAS
 
-.PHONY: upload-codedeploy-artifact ## Upload the deploy artifact for CodeDeploy
-upload-codedeploy-artifact: check-env-vars
-	$(if ${DEPLOY_BUILD_NUMBER},,$(error Must specify DEPLOY_BUILD_NUMBER))
-	aws s3 cp --region eu-west-1 --sse AES256 target/notifications-api.zip s3://${DNS_NAME}-codedeploy/notifications-api-${DEPLOY_BUILD_NUMBER}.zip
-	aws s3 cp --region eu-west-1 --sse AES256 target/notifications-api-db-migration.zip s3://${DNS_NAME}-codedeploy/notifications-api-db-migration-${DEPLOY_BUILD_NUMBER}.zip
-
 .PHONY: build-paas-artifact
 build-paas-artifact:  ## Build the deploy artifact for PaaS
 	rm -rf target
