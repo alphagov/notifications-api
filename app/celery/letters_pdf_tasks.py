@@ -1,15 +1,15 @@
-from flask import current_app
 import math
+
+from flask import current_app
 from requests import (
     post as requests_post,
     RequestException
 )
-
 from botocore.exceptions import ClientError as BotoClientError
 
 from app import notify_celery
 from app.aws import s3
-from app.config import QueueNames
+from app.config import QueueNames, TaskNames
 from app.dao.notifications_dao import (
     get_notification_by_id,
     update_notification_status_by_id,
@@ -79,3 +79,46 @@ def get_letters_pdf(template, contact_block, org_id, values):
     billable_units = math.ceil(int(resp.headers.get("X-pdf-page-count", 0)) / pages_per_sheet)
 
     return resp.content, billable_units
+
+
+@notify_celery.task(name='collate-letter-pdfs-for-day')
+def collate_letter_pdfs_for_day(date):
+    letter_pdfs = s3.get_s3_bucket_objects(
+        current_app.config['LETTERS_PDF_BUCKET_NAME'],
+        subfolder=date
+    )
+    for letters in group_letters(letter_pdfs):
+        filenames = [letter['Key'] for letter in letters]
+        current_app.logger.info(
+            'Calling task zip-and-send-letter-pdfs for {} pdfs of total size {:,} bytes'.format(
+                len(filenames),
+                sum(letter['Size'] for letter in letters)
+            )
+        )
+        notify_celery.send_task(
+            name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,
+            kwargs={'filenames_to_zip': filenames},
+            queue=QueueNames.PROCESS_FTP
+        )
+
+
+def group_letters(letter_pdfs):
+    """
+    Group letters in chunks of MAX_LETTER_PDF_ZIP_FILESIZE. Will add files to lists, never going over that size.
+    If a single file is (somehow) larger than MAX_LETTER_PDF_ZIP_FILESIZE that'll be in a list on it's own.
+    If there are no files, will just exit (rather than yielding an empty list).
+    """
+    running_filesize = 0
+    list_of_files = []
+    for letter in letter_pdfs:
+        if letter['Key'].lower().endswith('.pdf'):
+            if running_filesize + letter['Size'] > current_app.config['MAX_LETTER_PDF_ZIP_FILESIZE']:
+                yield list_of_files
+                running_filesize = 0
+                list_of_files = []
+
+            running_filesize += letter['Size']
+            list_of_files.append(letter)
+
+    if list_of_files:
+        yield list_of_files
