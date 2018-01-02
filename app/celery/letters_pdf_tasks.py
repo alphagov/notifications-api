@@ -98,7 +98,8 @@ def collate_letter_pdfs_for_day(date):
         notify_celery.send_task(
             name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,
             kwargs={'filenames_to_zip': filenames},
-            queue=QueueNames.PROCESS_FTP
+            queue=QueueNames.PROCESS_FTP,
+            compression='zlib'
         )
 
 
@@ -112,7 +113,10 @@ def group_letters(letter_pdfs):
     list_of_files = []
     for letter in letter_pdfs:
         if letter['Key'].lower().endswith('.pdf'):
-            if running_filesize + letter['Size'] > current_app.config['MAX_LETTER_PDF_ZIP_FILESIZE']:
+            if (
+                running_filesize + letter['Size'] > current_app.config['MAX_LETTER_PDF_ZIP_FILESIZE'] or
+                len(list_of_files) >= current_app.config['MAX_LETTER_PDF_COUNT_PER_ZIP']
+            ):
                 yield list_of_files
                 running_filesize = 0
                 list_of_files = []
