@@ -150,9 +150,9 @@ class Config(object):
     BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {
         'region': AWS_REGION,
-        'polling_interval': 1,  # 1 second
         'visibility_timeout': 310,
-        'queue_name_prefix': NOTIFICATION_QUEUE_PREFIX
+        'queue_name_prefix': NOTIFICATION_QUEUE_PREFIX,
+        'wait_time_seconds': 20  # enable long polling, with a wait time of 20 seconds
     }
     CELERY_ENABLE_UTC = True
     CELERY_TIMEZONE = 'Europe/London'
