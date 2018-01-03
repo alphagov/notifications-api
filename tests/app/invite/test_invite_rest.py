@@ -1,22 +1,41 @@
 import json
+import pytest
 import uuid
 
 from app.models import Notification, SMS_AUTH_TYPE, EMAIL_AUTH_TYPE
 from tests import create_authorization_header
 
 
-def test_create_invited_user(admin_request, sample_service, mocker, invitation_email_template):
+@pytest.mark.parametrize('extra_args, expected_start_of_invite_url', [
+    (
+        {},
+        'http://localhost:6012/invitation/'
+    ),
+    (
+        {'invite_link_host': 'https://www.example.com'},
+        'https://www.example.com/invitation/'
+    ),
+])
+def test_create_invited_user(
+    admin_request,
+    sample_service,
+    mocker,
+    invitation_email_template,
+    extra_args,
+    expected_start_of_invite_url,
+):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     email_address = 'invited_user@service.gov.uk'
     invite_from = sample_service.users[0]
 
-    data = {
-        'service': str(sample_service.id),
-        'email_address': email_address,
-        'from_user': str(invite_from.id),
-        'permissions': 'send_messages,manage_service,manage_api_keys',
-        'auth_type': EMAIL_AUTH_TYPE
-    }
+    data = dict(
+        service=str(sample_service.id),
+        email_address=email_address,
+        from_user=str(invite_from.id),
+        permissions='send_messages,manage_service,manage_api_keys',
+        auth_type=EMAIL_AUTH_TYPE,
+        **extra_args
+    )
 
     json_resp = admin_request.post(
         'invite.create_invited_user',
@@ -33,7 +52,15 @@ def test_create_invited_user(admin_request, sample_service, mocker, invitation_e
     assert json_resp['data']['id']
 
     notification = Notification.query.first()
+
     assert notification.reply_to_text == invite_from.email_address
+
+    assert len(notification.personalisation.keys()) == 3
+    assert notification.personalisation['service_name'] == 'Sample service'
+    assert notification.personalisation['user_name'] == 'Test User'
+    assert notification.personalisation['url'].startswith(expected_start_of_invite_url)
+    assert len(notification.personalisation['url']) > len(expected_start_of_invite_url)
+
     mocked.assert_called_once_with([(str(notification.id))], queue="notify-internal-tasks")
 
 
