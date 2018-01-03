@@ -322,7 +322,7 @@ class BaseTemplateSchema(BaseSchema):
 
     class Meta:
         model = models.Template
-        exclude = ("service_id", "jobs")
+        exclude = ("service_id", "jobs", "service_letter_contact_id")
         strict = True
 
 
