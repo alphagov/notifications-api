@@ -215,6 +215,40 @@ def test_group_letters_splits_on_file_count(notify_api):
         assert next(x, None) is None
 
 
+def test_group_letters_splits_on_file_size_and_file_count(notify_api):
+    letters = [
+        # ends under max file size but next file is too big
+        {'Key': 'A.pdf', 'Size': 1},
+        {'Key': 'B.pdf', 'Size': 2},
+        # ends on exactly max number of files and file size
+        {'Key': 'C.pdf', 'Size': 3},
+        {'Key': 'D.pdf', 'Size': 1},
+        {'Key': 'E.pdf', 'Size': 1},
+        # exactly max file size goes in next file
+        {'Key': 'F.pdf', 'Size': 5},
+        # file size is within max but number of files reaches limit
+        {'Key': 'G.pdf', 'Size': 1},
+        {'Key': 'H.pdf', 'Size': 1},
+        {'Key': 'I.pdf', 'Size': 1},
+        # whatever's left goes in last list
+        {'Key': 'J.pdf', 'Size': 1},
+    ]
+
+    with set_config_values(notify_api, {
+        'MAX_LETTER_PDF_ZIP_FILESIZE': 5,
+        'MAX_LETTER_PDF_COUNT_PER_ZIP': 3
+    }):
+        x = group_letters(letters)
+
+        assert next(x) == [{'Key': 'A.pdf', 'Size': 1}, {'Key': 'B.pdf', 'Size': 2}]
+        assert next(x) == [{'Key': 'C.pdf', 'Size': 3}, {'Key': 'D.pdf', 'Size': 1}, {'Key': 'E.pdf', 'Size': 1}]
+        assert next(x) == [{'Key': 'F.pdf', 'Size': 5}]
+        assert next(x) == [{'Key': 'G.pdf', 'Size': 1}, {'Key': 'H.pdf', 'Size': 1}, {'Key': 'I.pdf', 'Size': 1}]
+        assert next(x) == [{'Key': 'J.pdf', 'Size': 1}]
+        # make sure iterator is exhausted
+        assert next(x, None) is None
+
+
 def test_group_letters_ignores_non_pdfs(notify_api):
     letters = [{'Key': 'A.zip'}]
     assert list(group_letters(letters)) == []
