@@ -1081,6 +1081,25 @@ def test_save_letter_uses_template_reply_to_text(mocker, notify_db_session):
     assert notification_db.reply_to_text == "Template address contact"
 
 
+def test_save_sms_uses_sms_sender_reply_to_text(mocker, notify_db_session):
+    service = create_service_with_defined_sms_sender(sms_sender_value='07123123123')
+    template = create_template(service=service)
+
+    notification = _notification_json(template, to="07700 900205")
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    notification_id = uuid.uuid4()
+    save_sms(
+        service.id,
+        notification_id,
+        encryption.encrypt(notification),
+        key_type=KEY_TYPE_TEST
+    )
+
+    persisted_notification = Notification.query.one()
+    assert persisted_notification.reply_to_text == '447123123123'
+
+
 def test_save_letter_calls_update_noti_to_sent_task_with_letters_as_pdf_permission_in_research_mode(
         mocker, notify_db_session, sample_letter_job):
     sample_letter_job.service.research_mode = True
