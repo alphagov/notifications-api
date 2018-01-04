@@ -623,6 +623,7 @@ def test_get_template_reply_to(client, sample_letter_template):
 
     assert 'service_letter_contact_id' not in json_resp['data']
     assert json_resp['data']['reply_to'] == letter_contact.contact_block
+    assert not json_resp['data']['is_letter_contact_blank']
 
 
 def test_update_template_reply_to(client, sample_letter_template):
