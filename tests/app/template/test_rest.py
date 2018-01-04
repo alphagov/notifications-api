@@ -581,7 +581,8 @@ def test_create_a_template_with_reply_to(admin_request, sample_user):
     json_resp = admin_request.post('template.create_template', service_id=service.id, _data=data, _expected_status=201)
 
     assert json_resp['data']['template_type'] == 'letter'
-    assert json_resp['data']['reply_to'] == str(letter_contact.contact_block)
+    assert json_resp['data']['reply_to'] == str(letter_contact.id)
+    assert json_resp['data']['reply_to_text'] == letter_contact.contact_block
 
     template = Template.query.get(json_resp['data']['id'])
     from app.schemas import template_schema
@@ -622,7 +623,8 @@ def test_get_template_reply_to(client, sample_letter_template):
     json_resp = json.loads(resp.get_data(as_text=True))
 
     assert 'service_letter_contact_id' not in json_resp['data']
-    assert json_resp['data']['reply_to'] == letter_contact.contact_block
+    assert json_resp['data']['reply_to'] == str(letter_contact.id)
+    assert json_resp['data']['reply_to_text'] == letter_contact.contact_block
     assert not json_resp['data']['is_letter_contact_blank']
 
 
