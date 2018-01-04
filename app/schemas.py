@@ -315,6 +315,9 @@ class BaseTemplateSchema(BaseSchema):
     reply_to = fields.Method("get_reply_to", allow_none=True)
 
     def get_reply_to(self, template):
+        if template.template_type == 'letter':
+            text = template.get_reply_to_text()
+            return text
         return template.reply_to
 
     class Meta:

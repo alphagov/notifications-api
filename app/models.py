@@ -582,6 +582,10 @@ class TemplateBase(db.Model):
     content = db.Column(db.Text, nullable=False)
     archived = db.Column(db.Boolean, nullable=False, default=False)
     subject = db.Column(db.Text)
+    is_letter_contact_blank = db.Column(db.Boolean, nullable=False, default=False)
+
+    # if is_letter_contact = True then service_letter_contact must be null.
+    CheckConstraint("Not(is_letter_contact_blank = True and service_letter_contact_id is not Null)")
 
     @declared_attr
     def service_id(cls):
