@@ -3,19 +3,45 @@
 buildpack: python_buildpack
 command: scripts/run_app_paas.sh gunicorn -c /home/vcap/app/gunicorn_config.py --error-logfile /home/vcap/logs/gunicorn_error.log -w 5 -b 0.0.0.0:$PORT application
 services:
-  - notify-aws
-  - notify-config
   - notify-db
-  - mmg
-  - firetext
-  - hosted-graphite
-  - redis
-  - performance-platform
 env:
   NOTIFY_APP_NAME: public-api
   CW_APP_NAME: api
   # required by cf run-task
   FLASK_APP: application.py
+
+  # Credentials variables
+  ADMIN_BASE_URL: null
+  ADMIN_CLIENT_SECRET: null
+  API_HOST_NAME: null
+  DANGEROUS_SALT: null
+  SECRET_KEY: null
+  ROUTE_SECRET_KEY_1: null
+  ROUTE_SECRET_KEY_2: null
+
+  PERFORMANCE_PLATFORM_ENDPOINTS: null
+
+  NOTIFICATION_QUEUE_PREFIX: null
+  AWS_ACCESS_KEY_ID: null
+  AWS_SECRET_ACCESS_KEY: null
+
+  STATSD_PREFIX: null
+
+  MMG_URL: null
+  MMG_API_KEY: null
+  MMG_INBOUND_SMS_AUTH: null
+  MMG_INBOUND_SMS_USERNAME: null
+
+  FIRETEXT_API_KEY: null
+  LOADTESTING_API_KEY: null
+  FIRETEXT_INBOUND_SMS_AUTH: null
+
+  REDIS_ENABLED: null
+  REDIS_URL: null
+
+  TEMPLATE_PREVIEW_API_HOST: null
+  TEMPLATE_PREVIEW_API_KEY: null
+
 instances: 1
 memory: 1G
 

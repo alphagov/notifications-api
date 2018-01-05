@@ -4,17 +4,42 @@ buildpack: python_buildpack
 health-check-type: none
 no-route: true
 services:
-  - notify-aws
-  - notify-config
   - notify-db
-  - notify-template-preview
-  - mmg
-  - firetext
-  - hosted-graphite
-  - redis
-  - performance-platform
 instances: 1
 memory: 1G
+
+env:
+  # Credentials variables
+  ADMIN_BASE_URL: null
+  ADMIN_CLIENT_SECRET: null
+  API_HOST_NAME: null
+  DANGEROUS_SALT: null
+  SECRET_KEY: null
+  ROUTE_SECRET_KEY_1: null
+  ROUTE_SECRET_KEY_2: null
+
+  PERFORMANCE_PLATFORM_ENDPOINTS: null
+
+  NOTIFICATION_QUEUE_PREFIX: null
+  AWS_ACCESS_KEY_ID: null
+  AWS_SECRET_ACCESS_KEY: null
+
+  STATSD_PREFIX: null
+
+  MMG_URL: null
+  MMG_API_KEY: null
+  MMG_INBOUND_SMS_AUTH: null
+  MMG_INBOUND_SMS_USERNAME: null
+
+  FIRETEXT_API_KEY: null
+  LOADTESTING_API_KEY: null
+  FIRETEXT_INBOUND_SMS_AUTH: null
+
+  REDIS_ENABLED: null
+  REDIS_URL: null
+
+  TEMPLATE_PREVIEW_API_HOST: null
+  TEMPLATE_PREVIEW_API_KEY: null
 
 applications:
   - name: notify-delivery-celery-beat

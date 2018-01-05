@@ -3,15 +3,7 @@
 inherit: manifest-delivery-base.yml
 
 services:
-  - notify-aws
-  - notify-config
   - notify-db
-  - notify-template-preview
-  - mmg
-  - firetext
-  - hosted-graphite
-  - redis
-  - performance-platform
   - logit-ssl-syslog-drain
 
 instances: 2
