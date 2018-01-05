@@ -39,7 +39,7 @@ def load_variables(vars_files):
     variables = {}
     for vars_file in vars_files:
         with open(vars_file) as f:
-            variables = merge_dicts(variables, json.load(f))
+            variables = merge_dicts(variables, yaml.load(f))
 
     return {
         k.upper(): json.dumps(v) if isinstance(v, (dict, list)) else v
@@ -53,10 +53,13 @@ def paas_manifest(manifest_file, *vars_files):
     manifest = load_manifest(manifest_file)
     variables = load_variables(vars_files)
 
-    manifest['env'].update(variables)
+    for key in manifest.get('env', {}):
+        if key in variables:
+            manifest['env'][key] = variables[key]
 
     return yaml.dump(manifest, default_flow_style=False, allow_unicode=True)
 
 
 if __name__ == "__main__":
+    print('---')
     print(paas_manifest(*sys.argv[1:]))
