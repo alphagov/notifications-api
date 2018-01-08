@@ -615,6 +615,7 @@ def test_create_a_template_with_foreign_service_reply_to(admin_request, sample_u
                          [('template address', 'service address'),
                           (None, 'service address'),
                           ('template address', None),
+                          (None, None)
                           ])
 def test_get_template_reply_to(client, sample_service, template_default, service_default):
     auth_header = create_authorization_header()
