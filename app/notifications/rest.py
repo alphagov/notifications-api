@@ -119,7 +119,6 @@ def send_notification(notification_type):
 
     if notification_type == SMS_TYPE:
         _service_can_send_internationally(authenticated_service, notification_form['to'])
-    reply_to = get_reply_to_text(notification_type)
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(notification_form['to'], notification_type)
     notification_model = persist_notification(template_id=template.id,
@@ -131,7 +130,7 @@ def send_notification(notification_type):
                                               api_key_id=api_user.id,
                                               key_type=api_user.key_type,
                                               simulated=simulated,
-                                              reply_to_text=reply_to
+                                              reply_to_text=template.get_reply_to_text()
                                               )
     if not simulated:
         queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
@@ -148,15 +147,6 @@ def send_notification(notification_type):
             notification_form,
             template_object)
     ), 201
-
-
-def get_reply_to_text(notification_type):
-    if notification_type == EMAIL_TYPE:
-        return authenticated_service.get_default_reply_to_email_address()
-    if notification_type == SMS_TYPE:
-        return authenticated_service.get_default_sms_sender()
-    if notification_type == LETTER_TYPE:
-        return authenticated_service.get_default_letter_contact()
 
 
 def get_notification_return_data(notification_id, notification, template):

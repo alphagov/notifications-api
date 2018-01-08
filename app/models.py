@@ -633,10 +633,7 @@ class TemplateBase(db.Model):
 
     def get_reply_to_text(self):
         if self.template_type == LETTER_TYPE:
-            if self.service_letter_contact_id is not None:
-                return self.service_letter_contact.contact_block
-            else:
-                return self.service.get_default_letter_contact()
+            return self.service_letter_contact.contact_block if self.service_letter_contact else None
         elif self.template_type == EMAIL_TYPE:
             return self.service.get_default_reply_to_email_address()
         elif self.template_type == SMS_TYPE:

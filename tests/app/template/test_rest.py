@@ -611,20 +611,34 @@ def test_create_a_template_with_foreign_service_reply_to(admin_request, sample_u
     )
 
 
-def test_get_template_reply_to(client, sample_letter_template):
+@pytest.mark.parametrize('template_default, service_default',
+                         [('template address', 'service address'),
+                          (None, 'service address'),
+                          ('template address', None),
+                          (None, None)
+                          ])
+def test_get_template_reply_to(client, sample_service, template_default, service_default):
     auth_header = create_authorization_header()
-    letter_contact = create_letter_contact(sample_letter_template.service, "Edinburgh, ED1 1AA")
-    sample_letter_template.reply_to = str(letter_contact.id)
+    if service_default:
+        create_letter_contact(
+            service=sample_service, contact_block=service_default, is_default=True
+        )
+    if template_default:
+        template_default_contact = create_letter_contact(
+            service=sample_service, contact_block=template_default, is_default=False
+        )
+    reply_to_id = str(template_default_contact.id) if template_default else None
+    template = create_template(service=sample_service, template_type='letter', reply_to=reply_to_id)
 
-    resp = client.get('/service/{}/template/{}'.format(sample_letter_template.service_id, sample_letter_template.id),
+    resp = client.get('/service/{}/template/{}'.format(template.service_id, template.id),
                       headers=[auth_header])
 
     assert resp.status_code == 200, resp.get_data(as_text=True)
     json_resp = json.loads(resp.get_data(as_text=True))
 
     assert 'service_letter_contact_id' not in json_resp['data']
-    assert json_resp['data']['reply_to'] == str(letter_contact.id)
-    assert json_resp['data']['reply_to_text'] == letter_contact.contact_block
+    assert json_resp['data']['reply_to'] == reply_to_id
+    assert json_resp['data']['reply_to_text'] == template_default
 
 
 def test_update_template_reply_to(client, sample_letter_template):

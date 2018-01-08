@@ -993,8 +993,8 @@ def test_save_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample
 
 def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
     service = create_service()
-    create_letter_contact(service=service, contact_block="Address contact", is_default=True)
-    template = create_template(service=service, template_type=LETTER_TYPE)
+    contact_block = create_letter_contact(service=service, contact_block="Address contact", is_default=True)
+    template = create_template(service=service, template_type=LETTER_TYPE, reply_to=contact_block.id)
     job = create_job(template=template)
 
     mocker.patch('app.celery.tasks.create_random_identifier', return_value="this-is-random-in-real-life")
@@ -1037,7 +1037,7 @@ def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
     assert notification_db.sent_by is None
     assert notification_db.personalisation == personalisation
     assert notification_db.reference == "this-is-random-in-real-life"
-    assert notification_db.reply_to_text == "Address contact"
+    assert notification_db.reply_to_text == contact_block.contact_block
 
 
 def test_save_letter_uses_template_reply_to_text(mocker, notify_db_session):
@@ -1256,10 +1256,9 @@ def test_build_dvla_file_retries_if_s3_err(sample_letter_template, mocker):
 
 def test_create_dvla_file_contents(notify_db_session, mocker):
     service = create_service(service_permissions=SERVICE_PERMISSION_TYPES)
-    create_letter_contact(service=service, contact_block='London,\nNW1A 1AA')
     letter_template = create_template(service=service, template_type=LETTER_TYPE)
     job = create_job(template=letter_template, notification_count=2)
-    create_notification(template=job.template, job=job, reference=1, reply_to_text=service.get_default_letter_contact())
+    create_notification(template=job.template, job=job, reference=1, reply_to_text='London,\nNW1A 1AA')
     create_notification(template=job.template, job=job, reference=2, reply_to_text='Not the default address')
     mocked_letter_template = mocker.patch("app.celery.tasks.LetterDVLATemplate")
     mocked_letter_template_instance = mocked_letter_template.return_value
