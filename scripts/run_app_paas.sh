@@ -22,9 +22,6 @@ function configure_aws_logs {
 
   aws configure set plugins.cwlogs cwlogs
 
-  export AWS_ACCESS_KEY_ID=$(echo ${VCAP_SERVICES} | jq -r '.["user-provided"][]|select(.name=="notify-aws")|.credentials.aws_access_key_id')
-  export AWS_SECRET_ACCESS_KEY=$(echo ${VCAP_SERVICES} | jq -r '.["user-provided"][]|select(.name=="notify-aws")|.credentials.aws_secret_access_key')
-
   cat > /home/vcap/app/awslogs.conf << EOF
 [general]
 state_file = /home/vcap/logs/awslogs-state
