@@ -330,8 +330,8 @@ def test_post_letter_notification_persists_notification_reply_to_text(
 ):
     service = create_service(service_permissions=[LETTER_TYPE])
     service_address = "12 Main Street, London"
-    create_letter_contact(service=service, contact_block=service_address, is_default=True)
-    template = create_template(service=service, template_type='letter')
+    letter_contact = create_letter_contact(service=service, contact_block=service_address, is_default=True)
+    template = create_template(service=service, template_type='letter', reply_to=letter_contact.id)
     data = {
         "template_id": template.id,
         "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}

@@ -635,8 +635,6 @@ class TemplateBase(db.Model):
         if self.template_type == LETTER_TYPE:
             if self.service_letter_contact_id is not None:
                 return self.service_letter_contact.contact_block
-            else:
-                return self.service.get_default_letter_contact()
         elif self.template_type == EMAIL_TYPE:
             return self.service.get_default_reply_to_email_address()
         elif self.template_type == SMS_TYPE:
