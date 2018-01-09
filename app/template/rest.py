@@ -84,11 +84,13 @@ def update_template(service_id, template_id):
     current_data = dict(template_schema.dump(fetched_template).data.items())
     updated_template = dict(template_schema.dump(fetched_template).data.items())
     updated_template.update(data)
+
     # Check if there is a change to make.
     if _template_has_not_changed(current_data, updated_template):
         return jsonify(data=updated_template), 200
 
-    update_dict = template_schema.load(updated_template).data
+    check_reply_to(service_id, updated_template.get('reply_to', None), fetched_template.template_type)
+
     over_limit = _content_count_greater_than_limit(updated_template['content'], fetched_template.template_type)
     if over_limit:
         char_count_limit = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
@@ -96,7 +98,7 @@ def update_template(service_id, template_id):
         errors = {'content': [message]}
         raise InvalidRequest(errors, status_code=400)
 
-    check_reply_to(service_id, update_dict.reply_to, fetched_template.template_type)
+    update_dict = template_schema.load(updated_template).data
 
     dao_update_template(update_dict)
     return jsonify(data=template_schema.dump(update_dict).data), 200

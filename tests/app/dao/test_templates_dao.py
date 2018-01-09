@@ -111,6 +111,29 @@ def test_update_template_reply_to(sample_service, sample_user):
     assert template_history.service_letter_contact_id
 
 
+def test_update_template_reply_to_updates_history(sample_service, sample_user):
+    letter_contact = create_letter_contact(sample_service, 'Edinburgh, ED1 1AA')
+
+    data = {
+        'name': 'Sample Template',
+        'template_type': "letter",
+        'content': "Template content",
+        'service': sample_service,
+        'created_by': sample_user,
+    }
+    template = Template(**data)
+    dao_create_template(template)
+    created = dao_get_all_templates_for_service(sample_service.id)[0]
+    assert created.reply_to is None
+
+    created.reply_to = letter_contact.id
+    dao_update_template(created)
+    assert dao_get_all_templates_for_service(sample_service.id)[0].reply_to == letter_contact.id
+
+    template_history = TemplateHistory.query.filter_by(id=created.id, version=2).one()
+    assert template_history.service_letter_contact_id == letter_contact.id
+
+
 def test_redact_template(sample_template):
     redacted = TemplateRedacted.query.one()
     assert redacted.template_id == sample_template.id
