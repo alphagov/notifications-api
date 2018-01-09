@@ -27,6 +27,8 @@ $(eval export CF_HOME)
 
 CF_MANIFEST_FILE = manifest-$(firstword $(subst -, ,$(subst notify-,,${CF_APP})))-${CF_SPACE}.yml
 
+NOTIFY_CREDENTIALS ?= ~/.notify-credentials
+
 .PHONY: help
 help:
 	@cat $(MAKEFILE_LIST) | grep -E '^[a-zA-Z_-]+:.*?## .*$$' | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
@@ -188,13 +190,23 @@ cf-login: ## Log in to Cloud Foundry
 	@echo "Logging in to Cloud Foundry on ${CF_API}"
 	@cf login -a "${CF_API}" -u ${CF_USERNAME} -p "${CF_PASSWORD}" -o "${CF_ORG}" -s "${CF_SPACE}"
 
+.PHONY: generate-manifest
+generate-manifest:
+	$(if ${CF_APP},,$(error Must specify CF_APP))
+	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
+	$(if $(shell which gpg2), $(eval export GPG=gpg2), $(eval export GPG=gpg))
+	$(if ${GPG_PASSPHRASE_TXT}, $(eval export DECRYPT_CMD=echo -n $$$${GPG_PASSPHRASE_TXT} | ${GPG} --quiet --batch --passphrase-fd 0 --pinentry-mode loopback -d), $(eval export DECRYPT_CMD=${GPG} --quiet --batch -d))
+
+	@./scripts/generate_manifest.py ${CF_MANIFEST_FILE} \
+	    <(${DECRYPT_CMD} ${NOTIFY_CREDENTIALS}/credentials/${CF_SPACE}/paas/environment-variables.gpg)
+
 .PHONY: cf-deploy
 cf-deploy: ## Deploys the app to Cloud Foundry
 	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
 	$(if ${CF_APP},,$(error Must specify CF_APP))
 	@cf app --guid ${CF_APP} || exit 1
 	cf rename ${CF_APP} ${CF_APP}-rollback
-	cf push ${CF_APP} -f ${CF_MANIFEST_FILE}
+	cf push ${CF_APP} -f <(make -s generate-manifest)
 	cf scale -i $$(cf curl /v2/apps/$$(cf app --guid ${CF_APP}-rollback) | jq -r ".entity.instances" 2>/dev/null || echo "1") ${CF_APP}
 	cf stop ${CF_APP}-rollback
 	# sleep for 10 seconds to try and make sure that all worker threads (either web api or celery) have finished before we delete
@@ -211,7 +223,7 @@ cf-deploy-api-db-migration:
 	cf unbind-service notify-api-db-migration notify-db
 	cf unbind-service notify-api-db-migration notify-config
 	cf unbind-service notify-api-db-migration notify-aws
-	cf push notify-api-db-migration -f manifest-api-${CF_SPACE}.yml
+	cf push notify-api-db-migration -f -f <(make -s CF_APP=api generate-manifest)
 	cf run-task notify-api-db-migration "flask db upgrade" --name api_db_migration
 
 .PHONY: cf-check-api-db-migration-task
@@ -230,7 +242,7 @@ cf-rollback: ## Rollbacks the app to the previous release
 cf-push:
 	$(if ${CF_APP},,$(error Must specify CF_APP))
 	cf target -o ${CF_ORG} -s ${CF_SPACE}
-	cf push ${CF_APP} -f ${CF_MANIFEST_FILE}
+	cf push ${CF_APP} -f <(make -s generate-manifest)
 
 .PHONY: check-if-migrations-to-run
 check-if-migrations-to-run:
