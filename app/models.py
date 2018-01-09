@@ -250,6 +250,7 @@ class Service(db.Model, Versioned):
         nullable=True,
     )
     crown = db.Column(db.Boolean, index=False, nullable=False, default=True)
+    rate_limit = db.Column(db.Integer, index=False, nullable=False, default=3000)
 
     association_proxy('permissions', 'service_permission_types')
 

@@ -233,6 +233,7 @@ def test_create_service(client, sample_user):
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
+    assert json_resp['data']['rate_limit'] == 3000
 
     service_db = Service.query.get(json_resp['data']['id'])
     assert service_db.name == 'created service'

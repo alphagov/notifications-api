@@ -256,13 +256,11 @@ def test_check_sms_content_char_count_fails(char_count, notify_api):
     assert e.value.fields == []
 
 
-@pytest.mark.parametrize('key_type, limit, interval', [('team', 1, 2), ('live', 10, 20), ('test', 100, 200)])
+@pytest.mark.parametrize('key_type', ['team', 'live', 'test'])
 def test_that_when_exceed_rate_limit_request_fails(
         notify_db,
         notify_db_session,
         key_type,
-        limit,
-        interval,
         mocker):
     with freeze_time("2016-01-01 12:00:00.000000"):
 
@@ -281,36 +279,32 @@ def test_that_when_exceed_rate_limit_request_fails(
 
         assert app.redis_store.exceeded_rate_limit.called_with(
             "{}-{}".format(str(service.id), api_key.key_type),
-            limit,
-            interval
+            service.rate_limit,
+            60
         )
         assert e.value.status_code == 429
         assert e.value.message == 'Exceeded rate limit for key type {} of {} requests per {} seconds'.format(
-            key_type.upper(), limit, interval
+            key_type.upper(), service.rate_limit, 60
         )
         assert e.value.fields == []
 
 
-@pytest.mark.parametrize('key_type, limit, interval', [('team', 1, 2), ('normal', 10, 20), ('test', 100, 200)])
 def test_that_when_not_exceeded_rate_limit_request_succeeds(
         notify_db,
         notify_db_session,
-        key_type,
-        limit,
-        interval,
         mocker):
     with freeze_time("2016-01-01 12:00:00.000000"):
         mocker.patch('app.redis_store.exceeded_rate_limit', return_value=False)
         mocker.patch('app.notifications.validators.services_dao')
 
         service = create_service(notify_db, notify_db_session, restricted=True)
-        api_key = sample_api_key(notify_db, notify_db_session, service=service, key_type=key_type)
+        api_key = sample_api_key(notify_db, notify_db_session, service=service, key_type='normal')
 
         check_service_over_api_rate_limit(service, api_key)
         assert app.redis_store.exceeded_rate_limit.called_with(
             "{}-{}".format(str(service.id), api_key.key_type),
-            limit,
-            interval
+            3000,
+            60
         )
 
 
