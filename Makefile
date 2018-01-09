@@ -223,7 +223,7 @@ cf-deploy-api-db-migration:
 	cf unbind-service notify-api-db-migration notify-db
 	cf unbind-service notify-api-db-migration notify-config
 	cf unbind-service notify-api-db-migration notify-aws
-	cf push notify-api-db-migration -f -f <(make -s CF_APP=api generate-manifest)
+	cf push notify-api-db-migration -f <(make -s CF_APP=api generate-manifest)
 	cf run-task notify-api-db-migration "flask db upgrade" --name api_db_migration
 
 .PHONY: cf-check-api-db-migration-task
