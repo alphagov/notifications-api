@@ -144,7 +144,7 @@ def test_dao_update_tempalte_reply_to_some_to_some(sample_service, sample_user):
     assert updated_history.updated_at == updated_history.updated_at
 
 
-def test_dao_update_tempalte_reply_to_some_to_none(sample_service, sample_user):
+def test_dao_update_template_reply_to_some_to_none(sample_service, sample_user):
     letter_contact = create_letter_contact(sample_service, 'Edinburgh, ED1 1AA')
     data = {
         'name': 'Sample Template',

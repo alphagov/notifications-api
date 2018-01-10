@@ -60,7 +60,7 @@ def dao_update_template_reply_to(template_id, reply_to):
                                   "service_letter_contact_id": template.service_letter_contact_id
                               })
     db.session.add(history)
-    return history
+    return template
 
 
 @transactional
