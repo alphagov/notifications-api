@@ -11,7 +11,8 @@ from app.dao.templates_dao import (
     dao_redact_template,
     dao_get_template_by_id_and_service_id,
     dao_get_all_templates_for_service,
-    dao_get_template_versions
+    dao_get_template_versions,
+    dao_update_template_reply_to
 )
 from notifications_utils.template import SMSMessageTemplate
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -81,14 +82,19 @@ def update_template(service_id, template_id):
     if data.get('redact_personalisation') is True:
         return redact_template(fetched_template, data)
 
+    if "reply_to" in data:
+        check_reply_to(service_id, data.get("reply_to"), fetched_template.template_type)
+        updated = dao_update_template_reply_to(template_id=template_id, reply_to=data.get("reply_to"))
+        return jsonify(data=template_schema.dump(updated).data), 200
+
     current_data = dict(template_schema.dump(fetched_template).data.items())
     updated_template = dict(template_schema.dump(fetched_template).data.items())
     updated_template.update(data)
+
     # Check if there is a change to make.
     if _template_has_not_changed(current_data, updated_template):
         return jsonify(data=updated_template), 200
 
-    update_dict = template_schema.load(updated_template).data
     over_limit = _content_count_greater_than_limit(updated_template['content'], fetched_template.template_type)
     if over_limit:
         char_count_limit = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
@@ -96,7 +102,7 @@ def update_template(service_id, template_id):
         errors = {'content': [message]}
         raise InvalidRequest(errors, status_code=400)
 
-    check_reply_to(service_id, update_dict.reply_to, fetched_template.template_type)
+    update_dict = template_schema.load(updated_template).data
 
     dao_update_template(update_dict)
     return jsonify(data=template_schema.dump(update_dict).data), 200
@@ -158,7 +164,7 @@ def get_template_versions(service_id, template_id):
 def _template_has_not_changed(current_data, updated_template):
     return all(
         current_data[key] == updated_template[key]
-        for key in ('name', 'content', 'subject', 'archived', 'process_type', 'reply_to')
+        for key in ('name', 'content', 'subject', 'archived', 'process_type')
     )
 
 

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import pytest
 from freezegun import freeze_time
 
-from app.models import Template, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
+from app.models import Template, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, TemplateHistory
 from app.dao.templates_dao import dao_get_template_by_id, dao_redact_template
 
 from tests import create_authorization_header
@@ -587,6 +587,8 @@ def test_create_a_template_with_reply_to(admin_request, sample_user):
     template = Template.query.get(json_resp['data']['id'])
     from app.schemas import template_schema
     assert sorted(json_resp['data']) == sorted(template_schema.dump(template).data)
+    th = TemplateHistory.query.filter_by(id=template.id, version=1).one()
+    assert th.service_letter_contact_id == letter_contact.id
 
 
 def test_create_a_template_with_foreign_service_reply_to(admin_request, sample_user):
@@ -644,7 +646,6 @@ def test_get_template_reply_to(client, sample_service, template_default, service
 def test_update_template_reply_to(client, sample_letter_template):
     auth_header = create_authorization_header()
     letter_contact = create_letter_contact(sample_letter_template.service, "Edinburgh, ED1 1AA")
-
     data = {
         'reply_to': str(letter_contact.id),
     }
@@ -656,7 +657,31 @@ def test_update_template_reply_to(client, sample_letter_template):
     assert resp.status_code == 200, resp.get_data(as_text=True)
 
     template = dao_get_template_by_id(sample_letter_template.id)
-    assert template.reply_to == letter_contact.id
+    assert template.service_letter_contact_id == letter_contact.id
+    th = TemplateHistory.query.filter_by(id=sample_letter_template.id, version=2).one()
+    assert th.service_letter_contact_id == letter_contact.id
+
+
+def test_update_template_reply_to_set_to_blank(client, notify_db_session):
+    auth_header = create_authorization_header()
+    service = create_service(service_permissions=['letter'])
+    letter_contact = create_letter_contact(service, "Edinburgh, ED1 1AA")
+    template = create_template(service=service, template_type='letter', reply_to=letter_contact.id)
+
+    data = {
+        'reply_to': None,
+    }
+
+    resp = client.post('/service/{}/template/{}'.format(template.service_id, template.id),
+                       data=json.dumps(data),
+                       headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+
+    template = dao_get_template_by_id(template.id)
+    assert template.service_letter_contact_id is None
+    th = TemplateHistory.query.filter_by(id=template.id, version=2).one()
+    assert th.service_letter_contact_id is None
 
 
 def test_update_template_with_foreign_service_reply_to(client, sample_letter_template):

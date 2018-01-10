@@ -1040,6 +1040,55 @@ def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
     assert notification_db.reply_to_text == contact_block.contact_block
 
 
+def test_save_letter_saves_letter_to_database_right_reply_to(mocker, notify_db_session):
+    service = create_service()
+    create_letter_contact(service=service, contact_block="Address contact", is_default=True)
+    template = create_template(service=service, template_type=LETTER_TYPE, reply_to=None)
+    job = create_job(template=template)
+
+    mocker.patch('app.celery.tasks.create_random_identifier', return_value="this-is-random-in-real-life")
+
+    personalisation = {
+        'addressline1': 'Foo',
+        'addressline2': 'Bar',
+        'addressline3': 'Baz',
+        'addressline4': 'Wibble',
+        'addressline5': 'Wobble',
+        'addressline6': 'Wubble',
+        'postcode': 'Flob',
+    }
+    notification_json = _notification_json(
+        template=job.template,
+        to='Foo',
+        personalisation=personalisation,
+        job_id=job.id,
+        row_number=1
+    )
+    notification_id = uuid.uuid4()
+    created_at = datetime.utcnow()
+
+    save_letter(
+        job.service_id,
+        notification_id,
+        encryption.encrypt(notification_json),
+    )
+
+    notification_db = Notification.query.one()
+    assert notification_db.id == notification_id
+    assert notification_db.to == 'Foo'
+    assert notification_db.job_id == job.id
+    assert notification_db.template_id == job.template.id
+    assert notification_db.template_version == job.template.version
+    assert notification_db.status == 'created'
+    assert notification_db.created_at >= created_at
+    assert notification_db.notification_type == 'letter'
+    assert notification_db.sent_at is None
+    assert notification_db.sent_by is None
+    assert notification_db.personalisation == personalisation
+    assert notification_db.reference == "this-is-random-in-real-life"
+    assert not notification_db.reply_to_text
+
+
 def test_save_letter_uses_template_reply_to_text(mocker, notify_db_session):
     service = create_service()
     create_letter_contact(service=service, contact_block="Address contact", is_default=True)
