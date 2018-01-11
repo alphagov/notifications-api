@@ -447,3 +447,22 @@ def daily_stats_template_usage_by_month():
                 result.year,
                 result.count
             )
+
+
+@notify_celery.task(name='raise-alert-if-no-letter-ack-file')
+@statsd(namespace="tasks")
+def raise_alert_if_no_letter_ack_file():
+    """
+    Get all files sent "today"
+    list_of_zip_files => get file names s3.get_s3_bucket_objects() look in the folder with todays date
+
+    list_of_ack_files => Get all files sent today with name containing ack.txt from a diff bucket
+
+    For filename in list_of_zip_files:
+        for ack_file in list_of_ack_files if name= file.strip("NOTIFY.", ".ZIP")
+        IF no ack_file
+            raise NoAckFileReceived(status=500, message="No ack file received for {filename}")
+
+    """
+
+    pass
