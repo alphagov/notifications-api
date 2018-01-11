@@ -7,7 +7,6 @@ from kombu import Exchange, Queue
 
 from app.models import (
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 )
 
 if os.environ.get('VCAP_SERVICES'):
@@ -293,21 +292,6 @@ class Config(object):
         'notification': '{}-dvla-letter-api-files'.format(os.getenv('NOTIFY_ENVIRONMENT'))
     }
 
-    API_KEY_LIMITS = {
-        KEY_TYPE_TEAM: {
-            "limit": 3000,
-            "interval": 60
-        },
-        KEY_TYPE_NORMAL: {
-            "limit": 3000,
-            "interval": 60
-        },
-        KEY_TYPE_TEST: {
-            "limit": 3000,
-            "interval": 60
-        }
-    }
-
     FREE_SMS_TIER_FRAGMENT_COUNT = 250000
 
     SMS_INBOUND_WHITELIST = json.loads(os.environ.get('SMS_INBOUND_WHITELIST', '[]'))
@@ -375,21 +359,6 @@ class Test(Config):
     API_RATE_LIMIT_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"
 
-    API_KEY_LIMITS = {
-        KEY_TYPE_TEAM: {
-            "limit": 1,
-            "interval": 2
-        },
-        KEY_TYPE_NORMAL: {
-            "limit": 10,
-            "interval": 20
-        },
-        KEY_TYPE_TEST: {
-            "limit": 100,
-            "interval": 200
-        }
-    }
-
     SMS_INBOUND_WHITELIST = ['203.0.113.195']
     FIRETEXT_INBOUND_SMS_AUTH = ['testkey']
     MMG_INBOUND_SMS_AUTH = ['testkey']
@@ -419,21 +388,6 @@ class Staging(Config):
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
     REDIS_ENABLED = True
-
-    API_KEY_LIMITS = {
-        KEY_TYPE_TEAM: {
-            "limit": 24000,
-            "interval": 60
-        },
-        KEY_TYPE_NORMAL: {
-            "limit": 24000,
-            "interval": 60
-        },
-        KEY_TYPE_TEST: {
-            "limit": 24000,
-            "interval": 60
-        }
-    }
 
 
 class Live(Config):
