@@ -1039,9 +1039,9 @@ def mock_s3_get_list_match(bucket_name, subfolder='', suffix=''):
 
 
 def mock_s3_get_list_diff(bucket_name, subfolder='', suffix=''):
-
     if subfolder == '2018-01-11':
-        return ['NOTIFY.20180111175007.ZIP', 'NOTIFY.20180111175008.ZIP', 'NOTIFY.20180111175009.ZIP']
+        return ['NOTIFY.20180111175007.ZIP', 'NOTIFY.20180111175008.ZIP', 'NOTIFY.20180111175009.ZIP',
+                'NOTIFY.20180111175010.ZIP']
     print(suffix)
     if subfolder == 'root/dispatch':
         return ['root/dispatch/NOTIFY.20180111175733.ACK.txt']
@@ -1069,6 +1069,6 @@ def test_letter_not_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_d
     with pytest.raises(expected_exception=NoAckFileReceived) as e:
         letter_raise_alert_if_no_ack_file_for_zip()
 
-    assert e.value.message == ['NOTIFY.20180111175009.ZIP']
+    assert e.value.message == ['NOTIFY.20180111175009.ZIP', 'NOTIFY.20180111175010.ZIP']
     assert mock_file_list.call_count == 2
     assert mock_get_file.call_count == 1

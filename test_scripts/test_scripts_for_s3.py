@@ -42,7 +42,7 @@ def test_get_file_content():
             print(content)
 
 
-def test_letter_ack_file_strip_correctly():
+def test_letter_ack_file_parse_content_correctly():
     # Test ack files are stripped correctly. In the acknowledgement file, there should be 2 zip files,
     # 'NOTIFY.20180111175007.ZIP','NOTIFY.20180111175008.ZIP'.
     zip_file_list = ['NOTIFY.20180111175007.ZIP', 'NOTIFY.20180111175008.ZIP', 'NOTIFY.20180111175009.ZIP']
