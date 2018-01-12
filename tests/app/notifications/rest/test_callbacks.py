@@ -72,12 +72,12 @@ def test_dvla_callback_autoconfirm_does_not_call_update_letter_notifications_tas
 def test_dvla_callback_calls_update_letter_notifications_task(client, mocker):
     update_task = \
         mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
-    data = _sample_sns_s3_callback()
+    data = _sample_sns_s3_dvla_response_callback()
     response = dvla_post(client, data)
 
     assert response.status_code == 200
     assert update_task.called
-    update_task.assert_called_with(['bar.txt'], queue='notify-internal-tasks')
+    update_task.assert_called_with(['bar.rs.txt'], queue='notify-internal-tasks')
 
 
 def test_dvla_callback_does_not_raise_error_parsing_json_for_plaintext_header(client, mocker):
@@ -472,6 +472,21 @@ def _sample_sns_s3_callback():
         "Subject": "Amazon S3 Notification",
         "TopicArn": "sample-topic-arn",
         "Message": '{"Records":[{"eventVersion":"2.0","eventSource":"aws:s3","awsRegion":"eu-west-1","eventTime":"2017-05-16T11:38:41.073Z","eventName":"ObjectCreated:Put","userIdentity":{"principalId":"some-p-id"},"requestParameters":{"sourceIPAddress":"8.8.8.8"},"responseElements":{"x-amz-request-id":"some-r-id","x-amz-id-2":"some-x-am-id"},"s3":{"s3SchemaVersion":"1.0","configurationId":"some-c-id","bucket":{"name":"some-bucket","ownerIdentity":{"principalId":"some-p-id"},"arn":"some-bucket-arn"},"object":{"key":"bar.txt","size":200,"eTag":"some-e-tag","versionId":"some-v-id","sequencer":"some-seq"}}}]}'  # noqa
+    })
+
+
+def _sample_sns_s3_dvla_response_callback():
+    return json.dumps({
+        "SigningCertURL": "foo.pem",
+        "UnsubscribeURL": "bar",
+        "Signature": "some-signature",
+        "Type": "Notification",
+        "Timestamp": "2016-05-03T08:35:12.884Z",
+        "SignatureVersion": "1",
+        "MessageId": "6adbfe0a-d610-509a-9c47-af894e90d32d",
+        "Subject": "Amazon S3 Notification",
+        "TopicArn": "sample-topic-arn",
+        "Message": '{"Records":[{"eventVersion":"2.0","eventSource":"aws:s3","awsRegion":"eu-west-1","eventTime":"2017-05-16T11:38:41.073Z","eventName":"ObjectCreated:Put","userIdentity":{"principalId":"some-p-id"},"requestParameters":{"sourceIPAddress":"8.8.8.8"},"responseElements":{"x-amz-request-id":"some-r-id","x-amz-id-2":"some-x-am-id"},"s3":{"s3SchemaVersion":"1.0","configurationId":"some-c-id","bucket":{"name":"some-bucket","ownerIdentity":{"principalId":"some-p-id"},"arn":"some-bucket-arn"},"object":{"key":"bar.rs.txt","size":200,"eTag":"some-e-tag","versionId":"some-v-id","sequencer":"some-seq"}}}]}'  # noqa
     })
 
 
