@@ -34,7 +34,8 @@ from app.celery.scheduled_tasks import (
     switch_current_sms_provider_on_slow_delivery,
     timeout_job_statistics,
     timeout_notifications,
-    daily_stats_template_usage_by_month
+    daily_stats_template_usage_by_month,
+    letter_raise_alert_if_no_ack_file_for_zip
 )
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.config import QueueNames, TaskNames
@@ -60,7 +61,7 @@ from app.models import (
     SMS_TYPE
 )
 from app.utils import get_london_midnight_in_utc
-from app.v2.errors import JobIncompleteError
+from app.v2.errors import JobIncompleteError, NoAckFileReceived
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
 
 from tests.app.conftest import (
@@ -1026,3 +1027,48 @@ def test_dao_fetch_monthly_historical_stats_by_template_null_template_id_not_cou
     ).all()
 
     assert len(result) == 1
+
+
+def mock_s3_get_list_match(bucket_name, subfolder='', suffix=''):
+
+    if subfolder == '2018-01-11':
+        return ['NOTIFY.20180111175007.ZIP', 'NOTIFY.20180111175008.ZIP']
+    print(suffix)
+    if subfolder == 'root/dispatch':
+        return ['root/dispatch/NOTIFY.20180111175733.ACK.txt']
+
+
+def mock_s3_get_list_diff(bucket_name, subfolder='', suffix=''):
+
+    if subfolder == '2018-01-11':
+        return ['NOTIFY.20180111175007.ZIP', 'NOTIFY.20180111175008.ZIP', 'NOTIFY.20180111175009.ZIP']
+    print(suffix)
+    if subfolder == 'root/dispatch':
+        return ['root/dispatch/NOTIFY.20180111175733.ACK.txt']
+
+
+@freeze_time('2018-01-11T23:00:00')
+def test_letter_not_raise_alert_if_ack_files_match_zip_list(mocker, notify_db):
+    mock_file_list = mocker.patch("app.aws.s3.get_list_of_files_by_suffix", side_effect=mock_s3_get_list_match)
+    mock_get_file = mocker.patch("app.aws.s3.get_s3_file",
+                                 return_value='NOTIFY.20180111175007.ZIP|20180111175733\n'
+                                              'NOTIFY.20180111175008.ZIP|20180111175734')
+
+    letter_raise_alert_if_no_ack_file_for_zip()
+
+    assert mock_file_list.call_count == 2
+    assert mock_get_file.call_count == 1
+
+
+@freeze_time('2018-01-11T23:00:00')
+def test_letter_not_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db):
+    mock_file_list = mocker.patch("app.aws.s3.get_list_of_files_by_suffix", side_effect=mock_s3_get_list_diff)
+    mock_get_file = mocker.patch("app.aws.s3.get_s3_file",
+                                 return_value='NOTIFY.20180111175007.ZIP|20180111175733\n'
+                                              'NOTIFY.20180111175008.ZIP|20180111175734')
+    with pytest.raises(expected_exception=NoAckFileReceived) as e:
+        letter_raise_alert_if_no_ack_file_for_zip()
+
+    assert e.value.message == ['NOTIFY.20180111175009.ZIP']
+    assert mock_file_list.call_count == 2
+    assert mock_get_file.call_count == 1
