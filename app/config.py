@@ -251,7 +251,7 @@ class Config(object):
         },
         'raise-alert-if-no-letter-ack-file': {
             'task': 'raise-alert-if-no-letter-ack-file',
-            'schedule': crontab(hour=19, minute=00),
+            'schedule': crontab(hour=23, minute=00),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'run-letter-api-notifications': {

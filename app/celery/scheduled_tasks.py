@@ -59,7 +59,7 @@ from app.celery.tasks import (
 )
 from app.config import QueueNames, TaskNames
 from app.utils import convert_utc_to_bst
-from app.v2.errors import JobIncompleteError
+from app.v2.errors import JobIncompleteError, NoAckFileReceived
 from app.dao.service_callback_api_dao import get_service_callback_api_for_service
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 
@@ -451,18 +451,30 @@ def daily_stats_template_usage_by_month():
 
 @notify_celery.task(name='raise-alert-if-no-letter-ack-file')
 @statsd(namespace="tasks")
-def raise_alert_if_no_letter_ack_file():
-    """
-    Get all files sent "today"
-    list_of_zip_files => get file names s3.get_s3_bucket_objects() look in the folder with todays date
+def letter_raise_alert_if_no_ack_file_for_zip():
+    # get a list of today's zip files
+    zip_file_list = []
+    for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
+                                              subfolder=datetime.utcnow().strftime('%Y-%m-%d'), suffix='.ZIP'):
+        zip_file_list.append(key)
 
-    list_of_ack_files => Get all files sent today with name containing ack.txt from a diff bucket
+    # get acknowledgement file
+    ack_file_list = []
+    for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
+                                              subfolder='root/dispatch', suffix='.ACK.txt'):
+        ack_file_list.append(key)
 
-    For filename in list_of_zip_files:
-        for ack_file in list_of_ack_files if name= file.strip("NOTIFY.", ".ZIP")
-        IF no ack_file
-            raise NoAckFileReceived(status=500, message="No ack file received for {filename}")
+    todaystr = datetime.utcnow().strftime('%Y%m%d')
 
-    """
+    for key in ack_file_list:
+        if todaystr in key:
+            content = s3.get_s3_file(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], key)
 
-    pass
+            for zip_file in content.split('\n'):    # each line
+                s = zip_file.split('|')
+                for zf in zip_file_list:
+                    if s[0] in zf:
+                        zip_file_list.remove(zf)
+
+    if zip_file_list:
+        raise NoAckFileReceived(message=zip_file_list)
