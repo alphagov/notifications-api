@@ -63,6 +63,7 @@ from app.models import (
     LETTER_TYPE,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
+    NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_TECHNICAL_FAILURE,
     SMS_TYPE,
 )
@@ -476,7 +477,7 @@ def update_letter_notifications_statuses(self, filename):
     else:
         for update in notification_updates:
             status = NOTIFICATION_DELIVERED if update.status == DVLA_RESPONSE_STATUS_SENT \
-                else NOTIFICATION_TECHNICAL_FAILURE
+                else NOTIFICATION_TEMPORARY_FAILURE
             updated_count = dao_update_notifications_by_reference(
                 references=[update.reference],
                 update_dict={"status": status,

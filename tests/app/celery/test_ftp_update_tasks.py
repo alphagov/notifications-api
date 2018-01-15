@@ -10,6 +10,7 @@ from app.models import (
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
+    NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_TECHNICAL_FAILURE
 )
 from app.celery.tasks import (
@@ -107,7 +108,7 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
     assert sent_letter.status == NOTIFICATION_DELIVERED
     assert sent_letter.billable_units == 1
     assert sent_letter.updated_at
-    assert failed_letter.status == NOTIFICATION_TECHNICAL_FAILURE
+    assert failed_letter.status == NOTIFICATION_TEMPORARY_FAILURE
     assert failed_letter.billable_units == 2
     assert failed_letter.updated_at
 
