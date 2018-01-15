@@ -54,7 +54,8 @@ def process_letter_response():
         filename = message['Records'][0]['s3']['object']['key']
         current_app.logger.info('Received file from DVLA: {}'.format(filename))
 
-        if 'rs.txt' in filename.lower():
+        if filename.lower().endswith('rs.txt') or filename.lower().endswith('rsp.txt'):
+            current_app.logger.info('DVLA callback: Calling task to update letter notifications')
             update_letter_notifications_statuses.apply_async([filename], queue=QueueNames.NOTIFY)
 
     return jsonify(
