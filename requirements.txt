@@ -22,7 +22,7 @@ SQLAlchemy==1.2.0
 notifications-python-client==4.7.1
 
 # PaaS
-awscli==1.14.16
+awscli==1.14.25
 awscli-cwlogs>=1.4,<1.5
 
 git+https://github.com/alphagov/notifications-utils.git@23.4.1#egg=notifications-utils==23.4.1
