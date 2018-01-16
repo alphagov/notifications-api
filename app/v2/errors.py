@@ -26,6 +26,23 @@ class JobIncompleteError(Exception):
         }
 
 
+class NoAckFileReceived(Exception):
+    def __init__(self, message):
+        self.message = message
+        self.status_code = 500
+
+    def to_dict_v2(self):
+        return {
+            'status_code': self.status_code,
+            "errors": [
+                {
+                    "error": 'NoAckFileReceived',
+                    "message": str(self.message)
+                }
+            ]
+        }
+
+
 class TooManyRequestsError(InvalidRequest):
     status_code = 429
     message_template = 'Exceeded send limits ({}) for today'
