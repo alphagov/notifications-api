@@ -1,4 +1,3 @@
-import pytz
 from datetime import (
     date,
     datetime,
@@ -463,7 +462,8 @@ def letter_raise_alert_if_no_ack_file_for_zip():
 
     # get acknowledgement file
     ack_file_list = []
-    yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)
+    # yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)
+    yesterday = datetime.utcnow() - timedelta(days=1)
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
                                               subfolder='root/dispatch', suffix='.ACK.txt', lastModified=yesterday):
         ack_file_list.append(key)
@@ -483,6 +483,7 @@ def letter_raise_alert_if_no_ack_file_for_zip():
                         zip_not_today.append(s[0])
 
     if zip_file_list:
+
         raise NoAckFileReceived(message=zip_file_list)
 
     if zip_not_today:
