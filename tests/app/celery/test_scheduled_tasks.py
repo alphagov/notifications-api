@@ -1029,20 +1029,18 @@ def test_dao_fetch_monthly_historical_stats_by_template_null_template_id_not_cou
     assert len(result) == 1
 
 
-def mock_s3_get_list_match(bucket_name, subfolder='', suffix=''):
+def mock_s3_get_list_match(bucket_name, subfolder='', suffix='', lastModified=None):
 
     if subfolder == '2018-01-11':
         return ['NOTIFY.20180111175007.ZIP', 'NOTIFY.20180111175008.ZIP']
-    print(suffix)
     if subfolder == 'root/dispatch':
         return ['root/dispatch/NOTIFY.20180111175733.ACK.txt']
 
 
-def mock_s3_get_list_diff(bucket_name, subfolder='', suffix=''):
+def mock_s3_get_list_diff(bucket_name, subfolder='', suffix='', lastModified=None):
     if subfolder == '2018-01-11':
         return ['NOTIFY.20180111175007.ZIP', 'NOTIFY.20180111175008.ZIP', 'NOTIFY.20180111175009.ZIP',
                 'NOTIFY.20180111175010.ZIP']
-    print(suffix)
     if subfolder == 'root/dispatch':
         return ['root/dispatch/NOTIFY.20180111175733.ACK.txt']
 

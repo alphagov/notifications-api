@@ -1,7 +1,7 @@
 from unittest.mock import call
 from datetime import datetime, timedelta
 import pytest
-
+import pytz
 from flask import current_app
 
 from freezegun import freeze_time
@@ -11,7 +11,8 @@ from app.aws.s3 import (
     get_s3_file,
     filter_s3_bucket_objects_within_date_range,
     remove_transformed_dvla_file,
-    upload_letters_pdf
+    upload_letters_pdf,
+    get_list_of_files_by_suffix,
 )
 from tests.app.conftest import datetime_in_past
 
@@ -173,3 +174,37 @@ def test_upload_letters_pdf_puts_in_tomorrows_bucket_after_half_five(notify_api,
         # in tomorrow's folder, but still has this evening's timestamp
         file_location='2017-12-05/NOTIFY.FOO.D.2.C.C.20171204173100.PDF'
     )
+
+
+@freeze_time("2018-01-11 00:00:00")
+@pytest.mark.parametrize('suffix_str, days_before, returned_no', [
+    ('.ACK.txt', None, 1),
+    ('.ack.txt', None, 1),
+    ('.ACK.TXT', None, 1),
+    ('', None, 2),
+    ('', 1, 1),
+])
+def test_get_list_of_files_by_suffix(notify_api, mocker, suffix_str, days_before, returned_no):
+    paginator_mock = mocker.patch('app.aws.s3.client')
+    multiple_pages_s3_object = [
+        {
+            "Contents": [
+                single_s3_object_stub('bar/foo.ACK.txt', datetime_in_past(1, 0)),
+            ]
+        },
+        {
+            "Contents": [
+                single_s3_object_stub('bar/foo1.rs.txt', datetime_in_past(2, 0)),
+            ]
+        }
+    ]
+    paginator_mock.return_value.get_paginator.return_value.paginate.return_value = multiple_pages_s3_object
+    if (days_before):
+        key = get_list_of_files_by_suffix('foo-bucket', subfolder='bar', suffix=suffix_str,
+                                          last_modified=datetime.now(tz=pytz.utc) - timedelta(days=days_before))
+    else:
+        key = get_list_of_files_by_suffix('foo-bucket', subfolder='bar', suffix=suffix_str)
+
+    assert sum(1 for x in key) == returned_no
+    for k in key:
+        assert k == 'bar/foo.ACK.txt'

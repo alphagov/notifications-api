@@ -1,3 +1,4 @@
+import pytz
 from datetime import (
     date,
     datetime,
@@ -452,29 +453,39 @@ def daily_stats_template_usage_by_month():
 @notify_celery.task(name='raise-alert-if-no-letter-ack-file')
 @statsd(namespace="tasks")
 def letter_raise_alert_if_no_ack_file_for_zip():
-    # get a list of today's zip files
+    # get a list of zip files since yesterday
     zip_file_list = []
+
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
-                                              subfolder=datetime.utcnow().strftime('%Y-%m-%d'), suffix='.ZIP'):
+                                              subfolder=datetime.utcnow().strftime('%Y-%m-%d'),
+                                              suffix='.zip'):
         zip_file_list.append(key)
 
     # get acknowledgement file
     ack_file_list = []
+    yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
-                                              subfolder='root/dispatch', suffix='.ACK.txt'):
+                                              subfolder='root/dispatch', suffix='.ACK.txt', lastModified=yesterday):
         ack_file_list.append(key)
 
-    todaystr = datetime.utcnow().strftime('%Y%m%d')
+    today_str = datetime.utcnow().strftime('%Y%m%d')
+    zip_not_today = []
 
     for key in ack_file_list:
-        if todaystr in key:
+        if today_str in key:
             content = s3.get_s3_file(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], key)
-
             for zip_file in content.split('\n'):    # each line
                 s = zip_file.split('|')
                 for zf in zip_file_list:
-                    if s[0] in zf:
+                    if s[0].lower() in zf.lower():
                         zip_file_list.remove(zf)
+                    else:
+                        zip_not_today.append(s[0])
 
     if zip_file_list:
         raise NoAckFileReceived(message=zip_file_list)
+
+    if zip_not_today:
+        current_app.logger.info(
+            "letter ack contains zip that is not for today {} ".format(zip_not_today)
+        )

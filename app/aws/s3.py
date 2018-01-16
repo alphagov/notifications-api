@@ -109,7 +109,7 @@ def upload_letters_pdf(reference, crown, filedata):
         upload_file_name, current_app.config['LETTERS_PDF_BUCKET_NAME']))
 
 
-def get_list_of_files_by_suffix(bucket_name, subfolder='', suffix=''):
+def get_list_of_files_by_suffix(bucket_name, subfolder='', suffix='', last_modified=None):
     s3_client = client('s3', current_app.config['AWS_REGION'])
     paginator = s3_client.get_paginator('list_objects_v2')
 
@@ -120,6 +120,7 @@ def get_list_of_files_by_suffix(bucket_name, subfolder='', suffix=''):
 
     for page in page_iterator:
         for obj in page['Contents']:
-            key = obj['Key']
-            if key.endswith(suffix):
-                yield key
+            key = obj['Key'].lower()
+            if key.endswith(suffix.lower()):
+                if not last_modified or obj['LastModified'] >= last_modified:
+                    yield key
