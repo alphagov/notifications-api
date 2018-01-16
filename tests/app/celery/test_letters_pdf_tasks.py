@@ -11,9 +11,10 @@ from app.celery.letters_pdf_tasks import (
     create_letters_pdf,
     get_letters_pdf,
     collate_letter_pdfs_for_day,
-    group_letters
+    group_letters,
+    letter_in_created_state,
 )
-from app.models import Notification
+from app.models import Notification, NOTIFICATION_SENDING
 
 from tests.conftest import set_config_values
 
@@ -166,7 +167,8 @@ def test_collate_letter_pdfs_for_day(notify_api, mocker):
     )
 
 
-def test_group_letters_splits_on_file_size(notify_api):
+def test_group_letters_splits_on_file_size(notify_api, mocker):
+    mocker.patch('app.celery.letters_pdf_tasks.letter_in_created_state', return_value=True)
     letters = [
         # ends under max but next one is too big
         {'Key': 'A.pdf', 'Size': 1}, {'Key': 'B.pdf', 'Size': 2},
@@ -192,7 +194,8 @@ def test_group_letters_splits_on_file_size(notify_api):
         assert next(x, None) is None
 
 
-def test_group_letters_splits_on_file_count(notify_api):
+def test_group_letters_splits_on_file_count(notify_api, mocker):
+    mocker.patch('app.celery.letters_pdf_tasks.letter_in_created_state', return_value=True)
     letters = [
         {'Key': 'A.pdf', 'Size': 1},
         {'Key': 'B.pdf', 'Size': 2},
@@ -215,7 +218,8 @@ def test_group_letters_splits_on_file_count(notify_api):
         assert next(x, None) is None
 
 
-def test_group_letters_splits_on_file_size_and_file_count(notify_api):
+def test_group_letters_splits_on_file_size_and_file_count(notify_api, mocker):
+    mocker.patch('app.celery.letters_pdf_tasks.letter_in_created_state', return_value=True)
     letters = [
         # ends under max file size but next file is too big
         {'Key': 'A.pdf', 'Size': 1},
@@ -249,10 +253,39 @@ def test_group_letters_splits_on_file_size_and_file_count(notify_api):
         assert next(x, None) is None
 
 
-def test_group_letters_ignores_non_pdfs(notify_api):
+def test_group_letters_ignores_non_pdfs(notify_api, mocker):
+    mocker.patch('app.celery.letters_pdf_tasks.letter_in_created_state', return_value=True)
     letters = [{'Key': 'A.zip'}]
     assert list(group_letters(letters)) == []
 
 
-def test_group_letters_with_no_letters(notify_api):
+def test_group_letters_ignores_notifications_already_sent(notify_api, mocker):
+    mock = mocker.patch('app.celery.letters_pdf_tasks.letter_in_created_state', return_value=False)
+    letters = [{'Key': 'A.pdf'}]
+    assert list(group_letters(letters)) == []
+    mock.assert_called_once_with('A.pdf')
+
+
+def test_group_letters_with_no_letters(notify_api, mocker):
+    mocker.patch('app.celery.letters_pdf_tasks.letter_in_created_state', return_value=True)
     assert list(group_letters([])) == []
+
+
+def test_letter_in_created_state(sample_notification):
+    sample_notification.reference = 'ABCDEF1234567890'
+    filename = '2018-01-13/NOTIFY.ABCDEF1234567890.D.2.C.C.20180113120000.PDF'
+
+    assert letter_in_created_state(filename) is True
+
+
+def test_letter_in_created_state_fails_if_notification_not_in_created(sample_notification):
+    sample_notification.reference = 'ABCDEF1234567890'
+    sample_notification.status = NOTIFICATION_SENDING
+    filename = '2018-01-13/NOTIFY.ABCDEF1234567890.D.2.C.C.20180113120000.PDF'
+    assert letter_in_created_state(filename) is False
+
+
+def test_letter_in_created_state_fails_if_notification_doesnt_exist(sample_notification):
+    sample_notification.reference = 'QWERTY1234567890'
+    filename = '2018-01-13/NOTIFY.ABCDEF1234567890.D.2.C.C.20180113120000.PDF'
+    assert letter_in_created_state(filename) is False

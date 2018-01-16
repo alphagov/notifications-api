@@ -347,6 +347,13 @@ def test_allows_api_calls_with_international_numbers_if_service_does_allow_int_s
     assert result == '201212341234'
 
 
+def test_rejects_api_calls_with_no_recipient():
+    with pytest.raises(BadRequestError) as e:
+        validate_and_format_recipient(None, 'key_type', 'service', 'SMS_TYPE')
+    assert e.value.status_code == 400
+    assert e.value.message == "Recipient can't be empty"
+
+
 @pytest.mark.parametrize('notification_type', ['sms', 'email', 'letter'])
 def test_check_service_email_reply_to_id_where_reply_to_id_is_none(notification_type):
     assert check_service_email_reply_to_id(None, None, notification_type) is None

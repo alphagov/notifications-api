@@ -1,4 +1,4 @@
-boto3==1.5.6
+boto3==1.5.15
 cffi==1.11.0 # pyup: != 1.11.1, != 1.11.2 # These versions are missing .whl
 celery==3.1.25 # pyup: <4
 docopt==0.6.2
@@ -17,12 +17,12 @@ monotonic==1.4
 psycopg2==2.7.3.2
 PyJWT==1.5.3
 SQLAlchemy-Utils==0.32.21
-SQLAlchemy==1.2.0
+SQLAlchemy==1.2.1
 
 notifications-python-client==4.7.1
 
 # PaaS
-awscli==1.14.16
+awscli==1.14.25
 awscli-cwlogs>=1.4,<1.5
 
 git+https://github.com/alphagov/notifications-utils.git@23.4.1#egg=notifications-utils==23.4.1
