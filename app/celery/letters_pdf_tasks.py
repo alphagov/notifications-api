@@ -13,8 +13,10 @@ from app.config import QueueNames, TaskNames
 from app.dao.notifications_dao import (
     get_notification_by_id,
     update_notification_status_by_id,
-    dao_update_notification
+    dao_update_notification,
+    dao_get_notifications_by_references,
 )
+from app.models import NOTIFICATION_CREATED
 from app.statsd_decorators import statsd
 
 
@@ -112,7 +114,7 @@ def group_letters(letter_pdfs):
     running_filesize = 0
     list_of_files = []
     for letter in letter_pdfs:
-        if letter['Key'].lower().endswith('.pdf'):
+        if letter['Key'].lower().endswith('.pdf') and letter_in_created_state(letter['Key']):
             if (
                 running_filesize + letter['Size'] > current_app.config['MAX_LETTER_PDF_ZIP_FILESIZE'] or
                 len(list_of_files) >= current_app.config['MAX_LETTER_PDF_COUNT_PER_ZIP']
@@ -126,3 +128,19 @@ def group_letters(letter_pdfs):
 
     if list_of_files:
         yield list_of_files
+
+
+def letter_in_created_state(filename):
+    # filename looks like '2018-01-13/NOTIFY.ABCDEF1234567890.D.2.C.C.20180113120000.PDF'
+    subfolder = filename.split('/')[0]
+    ref = filename.split('.')[1]
+    notifications = dao_get_notifications_by_references([ref])
+    if notifications:
+        if notifications[0].status == NOTIFICATION_CREATED:
+            return True
+        current_app.logger.info('Collating letters for {} but notification with reference {} already in {}'.format(
+            subfolder,
+            ref,
+            notifications[0].status
+        ))
+    return False
