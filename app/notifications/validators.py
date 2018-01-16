@@ -98,6 +98,9 @@ def check_service_can_schedule_notification(permissions, scheduled_for):
 
 
 def validate_and_format_recipient(send_to, key_type, service, notification_type):
+    if send_to is None:
+        raise BadRequestError(message="Recipient can't be empty")
+
     service_can_send_to_recipient(send_to, key_type, service)
 
     if notification_type == SMS_TYPE:
