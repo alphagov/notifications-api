@@ -17,7 +17,7 @@ from app.dao.services_dao import (
 )
 from app.dao.stats_template_usage_by_month_dao import insert_or_update_stats_for_template
 from app.performance_platform import total_sent_notifications, processing_time
-from app import performance_platform_client
+from app import performance_platform_client, deskpro_client
 from app.dao.date_util import get_month_start_and_end_date_in_utc
 from app.dao.inbound_sms_dao import delete_inbound_sms_created_more_than_a_week_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
@@ -47,6 +47,8 @@ from app.dao.provider_details_dao import (
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.models import (
     Job,
+    Notification,
+    NOTIFICATION_SENDING,
     LETTER_TYPE,
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_READY_TO_SEND
@@ -330,6 +332,38 @@ def delete_dvla_response_files_older_than_seven_days():
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete dvla response files")
         raise
+
+
+@notify_celery.task(name="raise-alert-if-letter-notifications-still-sending")
+@statsd(namespace="tasks")
+def raise_alert_if_letter_notifications_still_sending():
+    today = datetime.utcnow().date()
+
+    # Do nothing on the weekend
+    if today.isoweekday() in [6, 7]:
+        return
+
+    if today.isoweekday() == 1:
+        offset_days = 3
+    else:
+        offset_days = 1
+
+    still_sending = Notification.query.filter(
+        Notification.notification_type == LETTER_TYPE,
+        Notification.status == NOTIFICATION_SENDING,
+        Notification.sent_at >= today - timedelta(days=offset_days),
+        Notification.sent_at < today
+    ).count()
+
+    if still_sending:
+        deskpro_client.create_ticket(
+            subject="Letters still sending",
+            message="There are {} letters in the 'sending' state from {}".format(
+                still_sending,
+                (today - timedelta(days=offset_days)).strftime('%A %d %B')
+            ),
+            ticket_type="alert"
+        )
 
 
 @notify_celery.task(name="populate_monthly_billing")

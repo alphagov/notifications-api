@@ -103,6 +103,14 @@ class Config(object):
     PERFORMANCE_PLATFORM_ENABLED = False
     PERFORMANCE_PLATFORM_URL = 'https://www.performance.service.gov.uk/data/govuk-notify/'
 
+    # Deskpro
+    DESKPRO_API_HOST = os.environ.get('DESKPRO_API_HOST')
+    DESKPRO_API_KEY = os.environ.get('DESKPRO_API_KEY')
+
+    DESKPRO_DEPT_ID = 5
+    DESKPRO_ASSIGNED_AGENT_TEAM_ID = 5
+    DESKPRO_PERSON_EMAIL = 'donotreply@notifications.service.gov.uk'
+
     # Logging
     DEBUG = False
     NOTIFY_LOG_PATH = os.getenv('NOTIFY_LOG_PATH')
@@ -237,6 +245,11 @@ class Config(object):
         'populate_monthly_billing': {
             'task': 'populate_monthly_billing',
             'schedule': crontab(hour=5, minute=10),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
+        'raise-alert-if-letter-notifications-still-sending': {
+            'task': 'raise-alert-if-letter-notifications-still-sending',
+            'schedule': crontab(hour=16, minute=30),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'run-letter-jobs': {
