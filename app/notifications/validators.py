@@ -67,8 +67,8 @@ def check_template_is_active(template):
                               message="Template has been deleted")
 
 
-def service_can_send_to_recipient(send_to, key_type, service):
-    if not service_allowed_to_send_to(send_to, service, key_type):
+def service_can_send_to_recipient(send_to, key_type, service, allow_whitelisted_recipients=True):
+    if not service_allowed_to_send_to(send_to, service, key_type, allow_whitelisted_recipients):
         if key_type == KEY_TYPE_TEAM:
             message = 'Can’t send to this recipient using a team-only API key'
         else:
@@ -97,11 +97,11 @@ def check_service_can_schedule_notification(permissions, scheduled_for):
             raise BadRequestError(message="Cannot schedule notifications (this feature is invite-only)")
 
 
-def validate_and_format_recipient(send_to, key_type, service, notification_type):
+def validate_and_format_recipient(send_to, key_type, service, notification_type, allow_whitelisted_recipients=True):
     if send_to is None:
         raise BadRequestError(message="Recipient can't be empty")
 
-    service_can_send_to_recipient(send_to, key_type, service)
+    service_can_send_to_recipient(send_to, key_type, service, allow_whitelisted_recipients)
 
     if notification_type == SMS_TYPE:
         international_phone_info = get_international_phone_info(send_to)
