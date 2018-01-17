@@ -20,6 +20,7 @@ from app.celery.scheduled_tasks import (
     delete_letter_notifications_older_than_seven_days,
     delete_sms_notifications_older_than_seven_days,
     delete_verify_codes,
+    raise_alert_if_letter_notifications_still_sending,
     remove_csv_files,
     remove_transformed_dvla_files,
     run_scheduled_jobs,
@@ -629,6 +630,83 @@ def test_delete_dvla_response_files_older_than_seven_days_does_not_remove_files(
     delete_dvla_response_files_older_than_seven_days()
 
     remove_s3_mock.assert_not_called()
+
+
+@freeze_time("2018-01-17 17:00:00")
+def test_alert_if_letter_notifications_still_sending(sample_letter_template, mocker):
+    yesterday = datetime(2018, 1, 16, 13, 30)
+    create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
+
+    mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
+
+    raise_alert_if_letter_notifications_still_sending()
+
+    mock_celery.assert_called_once_with(
+        subject="Letters still sending",
+        message="There are 1 letters in the 'sending' state from Tuesday 16 January",
+        ticket_type='alert'
+    )
+
+
+@freeze_time("2018-01-17 17:00:00")
+def test_alert_if_letter_notifications_still_sending_only_alerts_sending(sample_letter_template, mocker):
+    yesterday = datetime(2018, 1, 16, 13, 30)
+    create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
+    create_notification(template=sample_letter_template, status='delivered', sent_at=yesterday)
+    create_notification(template=sample_letter_template, status='failed', sent_at=yesterday)
+
+    mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
+
+    raise_alert_if_letter_notifications_still_sending()
+
+    mock_celery.assert_called_once_with(
+        subject="Letters still sending",
+        message="There are 1 letters in the 'sending' state from Tuesday 16 January",
+        ticket_type='alert'
+    )
+
+
+@freeze_time("2018-01-17 17:00:00")
+def test_alert_if_letter_notifications_still_sending_only_alerts_previous_day(sample_letter_template, mocker):
+    day_before_yesterday = datetime(2018, 1, 15, 13, 30)
+    create_notification(template=sample_letter_template, status='sending', sent_at=day_before_yesterday)
+
+    mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
+
+    raise_alert_if_letter_notifications_still_sending()
+
+    assert not mock_celery.called
+
+
+@freeze_time("2018-01-14 17:00:00")
+def test_alert_if_letter_notifications_still_sending_does_nothing_on_the_weekend(sample_letter_template, mocker):
+    yesterday = datetime(2018, 1, 13, 13, 30)
+    create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
+
+    mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
+
+    raise_alert_if_letter_notifications_still_sending()
+
+    assert not mock_celery.called
+
+
+@freeze_time("2018-01-15 17:00:00")
+def test_monday_alert_if_letter_notifications_still_sending_reports_friday_letters(sample_letter_template, mocker):
+    friday = datetime(2018, 1, 12, 13, 30)
+    yesterday = datetime(2018, 1, 14, 13, 30)
+
+    create_notification(template=sample_letter_template, status='sending', sent_at=friday)
+    create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
+
+    mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
+
+    raise_alert_if_letter_notifications_still_sending()
+
+    mock_celery.assert_called_once_with(
+        subject="Letters still sending",
+        message="There are 2 letters in the 'sending' state from Friday 12 January",
+        ticket_type='alert'
+    )
 
 
 @freeze_time("2017-07-12 02:00:00")
