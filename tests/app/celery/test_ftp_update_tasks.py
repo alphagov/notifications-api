@@ -1,3 +1,4 @@
+from collections import namedtuple
 from datetime import datetime
 
 import pytest
@@ -14,6 +15,7 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE
 )
 from app.celery.tasks import (
+    check_billable_units,
     process_updates_from_file,
     update_dvla_job_to_error,
     update_job_to_sent_to_dvla,
@@ -24,6 +26,15 @@ from app.celery.tasks import (
 
 from tests.app.db import create_notification, create_service_callback_api
 from tests.conftest import set_config
+
+
+@pytest.fixture
+def notification_update():
+    """
+    Returns a namedtuple to use as the argument for the check_billable_units function
+    """
+    NotificationUpdate = namedtuple('NotificationUpdate', ['reference', 'status', 'page_count', 'cost_threshold'])
+    return NotificationUpdate('REFERENCE_ABC', 'sent', '1', 'cost')
 
 
 def test_update_job_to_sent_to_dvla(sample_letter_template, sample_letter_job):
@@ -163,3 +174,37 @@ def test_update_letter_notifications_to_error_updates_based_on_notification_refe
     assert first.sent_at is None
     assert first.updated_at == dt
     assert second.status == NOTIFICATION_CREATED
+
+
+def test_check_billable_units_when_billable_units_matches_page_count(
+    client,
+    sample_letter_template,
+    mocker,
+    notification_update
+):
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
+
+    notification = create_notification(sample_letter_template, reference='REFERENCE_ABC')
+    notification.billable_units = 1
+
+    check_billable_units(notification_update)
+
+    mock_logger.assert_not_called()
+
+
+def test_check_billable_units_when_billable_units_does_not_match_page_count(
+    client,
+    sample_letter_template,
+    mocker,
+    notification_update
+):
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
+
+    notification = create_notification(sample_letter_template, reference='REFERENCE_ABC')
+    notification.billable_units = 3
+
+    check_billable_units(notification_update)
+
+    mock_logger.assert_called_once_with(
+        'Notification with id {} had 3 billable_units but a page count of 1'.format(notification.id)
+    )

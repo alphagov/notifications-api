@@ -472,6 +472,13 @@ def dao_get_notifications_by_to_field(service_id, search_term, statuses=None):
 
 
 @statsd(namespace="dao")
+def dao_get_notification_by_reference(reference):
+    return Notification.query.filter(
+        Notification.reference == reference
+    ).one()
+
+
+@statsd(namespace="dao")
 def dao_get_notifications_by_references(references):
     return Notification.query.filter(
         Notification.reference.in_(references)
