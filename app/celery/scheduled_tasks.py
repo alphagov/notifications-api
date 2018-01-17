@@ -465,7 +465,7 @@ def letter_raise_alert_if_no_ack_file_for_zip():
     # yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)
     yesterday = datetime.utcnow() - timedelta(days=1)
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
-                                              subfolder='root/dispatch', suffix='.ACK.txt', lastModified=yesterday):
+                                              subfolder='root/dispatch', suffix='.ACK.txt', last_modified=yesterday):
         ack_file_list.append(key)
 
     today_str = datetime.utcnow().strftime('%Y%m%d')
