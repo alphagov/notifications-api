@@ -119,7 +119,7 @@ def get_list_of_files_by_suffix(bucket_name, subfolder='', suffix='', last_modif
     )
 
     for page in page_iterator:
-        for obj in page['Contents']:
+        for obj in page.get('Contents', []):
             key = obj['Key'].lower()
             if key.endswith(suffix.lower()):
                 if not last_modified or obj['LastModified'] >= last_modified:

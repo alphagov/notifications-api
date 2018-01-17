@@ -1029,7 +1029,7 @@ def test_dao_fetch_monthly_historical_stats_by_template_null_template_id_not_cou
     assert len(result) == 1
 
 
-def mock_s3_get_list_match(bucket_name, subfolder='', suffix='', lastModified=None):
+def mock_s3_get_list_match(bucket_name, subfolder='', suffix='', last_modified=None):
 
     if subfolder == '2018-01-11':
         return ['NOTIFY.20180111175007.ZIP', 'NOTIFY.20180111175008.ZIP']
@@ -1037,7 +1037,7 @@ def mock_s3_get_list_match(bucket_name, subfolder='', suffix='', lastModified=No
         return ['root/dispatch/NOTIFY.20180111175733.ACK.txt']
 
 
-def mock_s3_get_list_diff(bucket_name, subfolder='', suffix='', lastModified=None):
+def mock_s3_get_list_diff(bucket_name, subfolder='', suffix='', last_modified=None):
     if subfolder == '2018-01-11':
         return ['NOTIFY.20180111175007.ZIP', 'NOTIFY.20180111175008.ZIP', 'NOTIFY.20180111175009.ZIP',
                 'NOTIFY.20180111175010.ZIP']
@@ -1054,7 +1054,14 @@ def test_letter_not_raise_alert_if_ack_files_match_zip_list(mocker, notify_db):
 
     letter_raise_alert_if_no_ack_file_for_zip()
 
+    yesterday = datetime.utcnow() - timedelta(days=1)
+    subfoldername = datetime.utcnow().strftime('%Y-%m-%d')
     assert mock_file_list.call_count == 2
+    assert mock_file_list.call_args_list == [
+        call(bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'], subfolder=subfoldername, suffix='.zip'),
+        call(bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'], subfolder='root/dispatch',
+             suffix='.ACK.txt', last_modified=yesterday),
+    ]
     assert mock_get_file.call_count == 1
 
 
