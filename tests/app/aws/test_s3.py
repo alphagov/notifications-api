@@ -208,3 +208,18 @@ def test_get_list_of_files_by_suffix(notify_api, mocker, suffix_str, days_before
     assert sum(1 for x in key) == returned_no
     for k in key:
         assert k == 'bar/foo.ACK.txt'
+
+
+def test_get_list_of_files_by_suffix_empty_contents_return_with_no_error(notify_api, mocker):
+    paginator_mock = mocker.patch('app.aws.s3.client')
+    multiple_pages_s3_object = [
+        {
+            "other_content": [
+                'some_values',
+            ]
+        }
+    ]
+    paginator_mock.return_value.get_paginator.return_value.paginate.return_value = multiple_pages_s3_object
+    key = get_list_of_files_by_suffix('foo-bucket', subfolder='bar', suffix='.pdf')
+
+    assert sum(1 for x in key) == 0

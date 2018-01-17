@@ -1058,8 +1058,9 @@ def test_letter_not_raise_alert_if_ack_files_match_zip_list(mocker, notify_db):
     subfoldername = datetime.utcnow().strftime('%Y-%m-%d')
     assert mock_file_list.call_count == 2
     assert mock_file_list.call_args_list == [
-        call(bucket_name='test-letters-pdf', subfolder=subfoldername, suffix='.zip'),
-        call(bucket_name='test.notify.com-ftp', subfolder='root/dispatch', suffix='.ACK.txt', last_modified=yesterday),
+        call(bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'], subfolder=subfoldername, suffix='.zip'),
+        call(bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'], subfolder='root/dispatch',
+             suffix='.ACK.txt', last_modified=yesterday),
     ]
     assert mock_get_file.call_count == 1
 
