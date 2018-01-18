@@ -642,7 +642,7 @@ def test_alert_if_letter_notifications_still_sending(sample_letter_template, moc
     raise_alert_if_letter_notifications_still_sending()
 
     mock_celery.assert_called_once_with(
-        subject="Letters still sending",
+        subject="[test] Letters still sending",
         message="There are 1 letters in the 'sending' state from Tuesday 16 January",
         ticket_type='alert'
     )
@@ -660,7 +660,7 @@ def test_alert_if_letter_notifications_still_sending_only_alerts_sending(sample_
     raise_alert_if_letter_notifications_still_sending()
 
     mock_celery.assert_called_once_with(
-        subject="Letters still sending",
+        subject="[test] Letters still sending",
         message="There are 1 letters in the 'sending' state from Tuesday 16 January",
         ticket_type='alert'
     )
@@ -703,7 +703,7 @@ def test_monday_alert_if_letter_notifications_still_sending_reports_friday_lette
     raise_alert_if_letter_notifications_still_sending()
 
     mock_celery.assert_called_once_with(
-        subject="Letters still sending",
+        subject="[test] Letters still sending",
         message="There are 2 letters in the 'sending' state from Friday 12 January",
         ticket_type='alert'
     )
