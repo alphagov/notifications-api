@@ -337,6 +337,7 @@ def delete_dvla_response_files_older_than_seven_days():
 @notify_celery.task(name="raise-alert-if-letter-notifications-still-sending")
 @statsd(namespace="tasks")
 def raise_alert_if_letter_notifications_still_sending():
+
     today = datetime.utcnow().date()
 
     # Do nothing on the weekend
@@ -356,14 +357,20 @@ def raise_alert_if_letter_notifications_still_sending():
     ).count()
 
     if still_sending:
-        deskpro_client.create_ticket(
-            subject="Letters still sending",
-            message="There are {} letters in the 'sending' state from {}".format(
-                still_sending,
-                (today - timedelta(days=offset_days)).strftime('%A %d %B')
-            ),
-            ticket_type="alert"
+        message = "There are {} letters in the 'sending' state from {}".format(
+            still_sending,
+            (today - timedelta(days=offset_days)).strftime('%A %d %B')
         )
+
+        # Only send alerts in production
+        if current_app.config['NOTIFY_ENVIRONMENT'] in ['production', 'test']:
+            deskpro_client.create_ticket(
+                subject="[{}] Letters still sending".format(current_app.config['NOTIFY_ENVIRONMENT']),
+                message=message,
+                ticket_type="alert"
+            )
+        else:
+            current_app.logger.info(message)
 
 
 @notify_celery.task(name="populate_monthly_billing")
