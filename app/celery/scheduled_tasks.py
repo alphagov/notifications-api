@@ -487,36 +487,32 @@ def daily_stats_template_usage_by_month():
 @statsd(namespace="tasks")
 def letter_raise_alert_if_no_ack_file_for_zip():
     # get a list of zip files since yesterday
-    zip_file_list = []
+    zip_file_set = set()
 
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
                                               subfolder=datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
                                               suffix='.TXT'):
-        zip_file_list.append(key.upper().rstrip('.TXT'))
+        zip_file_set.add(key.upper().rstrip('.TXT'))
 
     # get acknowledgement file
-    ack_file_list = []
+    ack_file_set = set()
     # yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)
     yesterday = datetime.utcnow() - timedelta(days=1)
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
                                               subfolder='root/dispatch', suffix='.ACK.txt', last_modified=yesterday):
-        ack_file_list.append(key)
+        ack_file_set.add(key)
 
     today_str = datetime.utcnow().strftime('%Y%m%d')
-    zip_not_today = []
 
-    for key in ack_file_list:
+    ack_content_set = set()
+    for key in ack_file_set:
         if today_str in key:
             content = s3.get_s3_file(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], key)
             for zip_file in content.split('\n'):    # each line
                 s = zip_file.split('|')
-                for zf in zip_file_list:
-                    if s[0].upper() in zf:
-                        zip_file_list.remove(zf)
-                    else:
-                        zip_not_today.append(s[0])
+                ack_content_set.add(s[0].upper())
 
-    if zip_file_list:
+    if len(zip_file_set - ack_content_set) > 0:
         deskpro_client.create_ticket(
             subject="Letter acknowledge error",
             message="Letter acknowledgement file do not contains all zip files sent: {}".format(datetime.utcnow()
@@ -524,9 +520,9 @@ def letter_raise_alert_if_no_ack_file_for_zip():
             ticket_type='alert'
         )
 
-        raise NoAckFileReceived(message=zip_file_list)
+        raise NoAckFileReceived(message=str(zip_file_set - ack_content_set))
 
-    if zip_not_today:
+    if len(ack_content_set - zip_file_set) > 0:
         current_app.logger.info(
-            "letter ack contains zip that is not for today {} ".format(zip_not_today)
+            "letter ack contains zip that is not for today: {}".format(ack_content_set - zip_file_set)
         )

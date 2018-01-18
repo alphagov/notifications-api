@@ -1154,7 +1154,7 @@ def test_letter_not_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_d
     with pytest.raises(expected_exception=NoAckFileReceived) as e:
         letter_raise_alert_if_no_ack_file_for_zip()
 
-    assert e.value.message == ['NOTIFY.20180111175009.ZIP', 'NOTIFY.20180111175010.ZIP']
+    assert e.value.message == str(set(['NOTIFY.20180111175009.ZIP', 'NOTIFY.20180111175010.ZIP']))
     assert mock_file_list.call_count == 2
     assert mock_get_file.call_count == 1
     mock_deskpro.assert_called_once_with(
