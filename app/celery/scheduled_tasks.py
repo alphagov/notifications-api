@@ -517,6 +517,13 @@ def letter_raise_alert_if_no_ack_file_for_zip():
                         zip_not_today.append(s[0])
 
     if zip_file_list:
+        deskpro_client.create_ticket(
+            subject="Letter acknowledge error",
+            message="Letter acknowledgement file do not contains all zip files sent: {}".format(datetime.utcnow()
+                                                                                                .strftime('%Y-%m-%d')),
+            ticket_type='alert'
+        )
+
         raise NoAckFileReceived(message=zip_file_list)
 
     if zip_not_today:

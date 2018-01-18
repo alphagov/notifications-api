@@ -1149,12 +1149,19 @@ def test_letter_not_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_d
     mock_get_file = mocker.patch("app.aws.s3.get_s3_file",
                                  return_value='NOTIFY.20180111175007.ZIP|20180111175733\n'
                                               'NOTIFY.20180111175008.ZIP|20180111175734')
+    mock_deskpro = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
+
     with pytest.raises(expected_exception=NoAckFileReceived) as e:
         letter_raise_alert_if_no_ack_file_for_zip()
 
     assert e.value.message == ['NOTIFY.20180111175009.ZIP', 'NOTIFY.20180111175010.ZIP']
     assert mock_file_list.call_count == 2
     assert mock_get_file.call_count == 1
+    mock_deskpro.assert_called_once_with(
+        subject="Letter acknowledge error",
+        message="Letter acknowledgement file do not contains all zip files sent: 2018-01-11",
+        ticket_type='alert'
+    )
 
 
 @freeze_time('2018-01-11T23:00:00')
