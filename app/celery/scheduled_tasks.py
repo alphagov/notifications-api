@@ -490,9 +490,9 @@ def letter_raise_alert_if_no_ack_file_for_zip():
     zip_file_list = []
 
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
-                                              subfolder=datetime.utcnow().strftime('%Y-%m-%d'),
-                                              suffix='.zip'):
-        zip_file_list.append(key)
+                                              subfolder=datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
+                                              suffix='.TXT'):
+        zip_file_list.append(key.upper().rstrip('.TXT'))
 
     # get acknowledgement file
     ack_file_list = []
@@ -511,13 +511,12 @@ def letter_raise_alert_if_no_ack_file_for_zip():
             for zip_file in content.split('\n'):    # each line
                 s = zip_file.split('|')
                 for zf in zip_file_list:
-                    if s[0].lower() in zf.lower():
+                    if s[0].upper() in zf:
                         zip_file_list.remove(zf)
                     else:
                         zip_not_today.append(s[0])
 
     if zip_file_list:
-
         raise NoAckFileReceived(message=zip_file_list)
 
     if zip_not_today:
