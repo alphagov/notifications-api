@@ -64,6 +64,7 @@ from app.utils import convert_utc_to_bst
 from app.v2.errors import JobIncompleteError, NoAckFileReceived
 from app.dao.service_callback_api_dao import get_service_callback_api_for_service
 from app.celery.service_callback_tasks import send_delivery_status_to_service
+import pytz
 
 
 @worker_process_shutdown.connect
@@ -503,8 +504,9 @@ def letter_raise_alert_if_no_ack_file_for_zip():
 
     # get acknowledgement file
     ack_file_set = set()
-    # yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)
-    yesterday = datetime.utcnow() - timedelta(days=1)
+
+    yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)   # AWS datetime format
+
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
                                               subfolder='root/dispatch', suffix='.ACK.txt', last_modified=yesterday):
         ack_file_set.add(key)

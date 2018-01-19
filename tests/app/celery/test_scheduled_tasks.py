@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from functools import partial
 from unittest.mock import call, patch, PropertyMock
-
+import pytz
 import functools
 from flask import current_app
 
@@ -1132,7 +1132,7 @@ def test_letter_not_raise_alert_if_ack_files_match_zip_list(mocker, notify_db):
 
     letter_raise_alert_if_no_ack_file_for_zip()
 
-    yesterday = datetime.utcnow() - timedelta(days=1)
+    yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)   # Datatime format on AWS
     subfoldername = datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent'
     assert mock_file_list.call_count == 2
     assert mock_file_list.call_args_list == [
