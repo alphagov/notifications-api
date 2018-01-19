@@ -81,7 +81,7 @@ def remove_transformed_dvla_file(job_id):
     return obj.delete()
 
 
-def upload_letters_pdf(reference, crown, filedata):
+def upload_letters_pdf(reference, crown, filedata, research_mode=False):
     now = datetime.utcnow()
 
     print_datetime = now
@@ -98,11 +98,13 @@ def upload_letters_pdf(reference, crown, filedata):
         date=now.strftime('%Y%m%d%H%M%S')
     ).upper()
 
+    file_location = ('research/' + upload_file_name) if research_mode else upload_file_name
+
     utils_s3upload(
         filedata=filedata,
         region=current_app.config['AWS_REGION'],
         bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
-        file_location=upload_file_name
+        file_location=file_location
     )
 
     current_app.logger.info("Uploading letters PDF {} to {}".format(

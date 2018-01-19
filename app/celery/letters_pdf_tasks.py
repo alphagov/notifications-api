@@ -22,7 +22,7 @@ from app.statsd_decorators import statsd
 
 @notify_celery.task(bind=True, name="create-letters-pdf", max_retries=15, default_retry_delay=300)
 @statsd(namespace="tasks")
-def create_letters_pdf(self, notification_id):
+def create_letters_pdf(self, notification_id, research_mode=False):
     try:
         notification = get_notification_by_id(notification_id, _raise=True)
 
@@ -34,7 +34,12 @@ def create_letters_pdf(self, notification_id):
         )
         current_app.logger.info("PDF Letter {} reference {} created at {}, {} bytes".format(
             notification.id, notification.reference, notification.created_at, len(pdf_data)))
-        s3.upload_letters_pdf(reference=notification.reference, crown=notification.service.crown, filedata=pdf_data)
+        s3.upload_letters_pdf(
+            reference=notification.reference,
+            crown=notification.service.crown,
+            filedata=pdf_data,
+            research_mode=research_mode
+        )
 
         notification.billable_units = billable_units
         dao_update_notification(notification)
