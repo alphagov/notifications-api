@@ -2,6 +2,7 @@ from flask import (
     jsonify,
     current_app,
     json)
+from notifications_utils.recipients import InvalidEmailError
 from sqlalchemy.exc import SQLAlchemyError, DataError
 from sqlalchemy.orm.exc import NoResultFound
 from marshmallow import ValidationError
@@ -40,6 +41,11 @@ class InvalidRequest(Exception):
 
 
 def register_errors(blueprint):
+    @blueprint.errorhandler(InvalidEmailError)
+    def invalid_format(error):
+        # Please not that InvalidEmailError is re-raised for InvalidEmail or InvalidPhone,
+        # work should be done in the utils app to tidy up these errors.
+        return jsonify(result='error', message=str(error)), 400
 
     @blueprint.errorhandler(AuthError)
     def authentication_error(error):
