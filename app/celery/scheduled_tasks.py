@@ -500,7 +500,9 @@ def letter_raise_alert_if_no_ack_file_for_zip():
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
                                               subfolder=datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
                                               suffix='.TXT'):
-        zip_file_set.add(key.upper().rstrip('.TXT'))
+
+        subname = key.split('/')[-1]    # strip subfolder in name
+        zip_file_set.add(subname.upper().rstrip('.TXT'))
 
     # get acknowledgement file
     ack_file_set = set()
@@ -521,16 +523,17 @@ def letter_raise_alert_if_no_ack_file_for_zip():
                 s = zip_file.split('|')
                 ack_content_set.add(s[0].upper())
 
-    deskpro_message = "Letter ack does not contains all zip files sent. " \
+    deskpro_message = "Letter ack file does not contains all zip files sent. " \
                       "Missing ack for zip files: {}, " \
                       "pdf bucket: {}, subfolder: {}, " \
                       "ack bucket: {}".format(str(zip_file_set - ack_content_set),
                                               current_app.config['LETTERS_PDF_BUCKET_NAME'],
                                               datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
                                               current_app.config['DVLA_RESPONSE_BUCKET_NAME'])
-
+    # strip empty element before comparison
+    ack_content_set.discard('')
+    zip_file_set.discard('')
     if current_app.config['NOTIFY_ENVIRONMENT'] in ['production', 'test']:
-
         if len(zip_file_set - ack_content_set) > 0:
             deskpro_client.create_ticket(
                 subject="Letter acknowledge error",

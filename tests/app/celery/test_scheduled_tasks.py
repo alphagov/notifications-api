@@ -1158,7 +1158,7 @@ def test_letter_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db):
     assert mock_file_list.call_count == 2
     assert mock_get_file.call_count == 1
 
-    deskpro_message = "Letter ack does not contains all zip files sent. " \
+    deskpro_message = "Letter ack file does not contains all zip files sent. " \
                       "Missing ack for zip files: {}, " \
                       "pdf bucket: {}, subfolder: {}, " \
                       "ack bucket: {}".format(str(set(['NOTIFY.20180111175009.ZIP', 'NOTIFY.20180111175010.ZIP'])),
