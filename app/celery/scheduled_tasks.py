@@ -521,7 +521,7 @@ def letter_raise_alert_if_no_ack_file_for_zip():
                 s = zip_file.split('|')
                 ack_content_set.add(s[0].upper())
 
-    deskpro_message = "Letter ack does not contains all zip files sent. " \
+    deskpro_message = "Letter ack file does not contains all zip files sent. " \
                       "Missing ack for zip files: {}, " \
                       "pdf bucket: {}, subfolder: {}, " \
                       "ack bucket: {}".format(str(zip_file_set - ack_content_set),
