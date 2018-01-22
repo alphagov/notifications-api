@@ -524,8 +524,9 @@ def letter_raise_alert_if_no_ack_file_for_zip():
     if len(zip_file_set - ack_content_set) > 0:
         deskpro_client.create_ticket(
             subject="Letter acknowledge error",
-            message="Letter acknowledgement file do not contains all zip files sent: {}".format(datetime.utcnow()
-                                                                                                .strftime('%Y-%m-%d')),
+            message="Letter acknowledgement file does not contain all zip files sent: {}".format(
+                datetime.utcnow().strftime('%Y-%m-%d')
+            ),
             ticket_type='alert'
         )
 
