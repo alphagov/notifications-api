@@ -521,15 +521,26 @@ def letter_raise_alert_if_no_ack_file_for_zip():
                 s = zip_file.split('|')
                 ack_content_set.add(s[0].upper())
 
-    if len(zip_file_set - ack_content_set) > 0:
-        deskpro_client.create_ticket(
-            subject="Letter acknowledge error",
-            message="Letter acknowledgement file do not contains all zip files sent: {}".format(datetime.utcnow()
-                                                                                                .strftime('%Y-%m-%d')),
-            ticket_type='alert'
-        )
+    deskpro_message = "Letter ack does not contains all zip files sent. " \
+                      "Missing ack for zip files: {}, " \
+                      "pdf bucket: {}, subfolder: {}, " \
+                      "ack bucket: {}".format(str(zip_file_set - ack_content_set),
+                                              current_app.config['LETTERS_PDF_BUCKET_NAME'],
+                                              datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
+                                              current_app.config['DVLA_RESPONSE_BUCKET_NAME'])
 
-        raise NoAckFileReceived(message=str(zip_file_set - ack_content_set))
+    if current_app.config['NOTIFY_ENVIRONMENT'] in ['production', 'test']:
+
+        if len(zip_file_set - ack_content_set) > 0:
+            deskpro_client.create_ticket(
+                subject="Letter acknowledge error",
+                message=deskpro_message,
+                ticket_type='alert'
+            )
+
+            raise NoAckFileReceived(message=str(zip_file_set - ack_content_set))
+    else:
+        current_app.logger.info(deskpro_message)
 
     if len(ack_content_set - zip_file_set) > 0:
         current_app.logger.info(
