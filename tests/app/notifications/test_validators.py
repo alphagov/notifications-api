@@ -213,6 +213,29 @@ def test_service_can_send_to_recipient_passes_for_whitelisted_recipient_passes(n
                                          sample_service) is None
 
 
+@pytest.mark.parametrize('recipient', [
+    {"email_address": "some_other_email@test.com"},
+    {"mobile_number": "07513332413"},
+])
+def test_service_can_send_to_recipient_fails_when_ignoring_whitelist(
+    notify_db,
+    notify_db_session,
+    sample_service,
+    recipient,
+):
+    sample_service_whitelist(notify_db, notify_db_session, **recipient)
+    with pytest.raises(BadRequestError) as exec_info:
+        service_can_send_to_recipient(
+            next(iter(recipient.values())),
+            'team',
+            sample_service,
+            allow_whitelisted_recipients=False,
+        )
+    assert exec_info.value.status_code == 400
+    assert exec_info.value.message == 'Can’t send to this recipient using a team-only API key'
+    assert exec_info.value.fields == []
+
+
 @pytest.mark.parametrize('recipient', ['07513332413', 'some_other_email@test.com'])
 @pytest.mark.parametrize('key_type, error_message',
                          [('team', 'Can’t send to this recipient using a team-only API key'),
