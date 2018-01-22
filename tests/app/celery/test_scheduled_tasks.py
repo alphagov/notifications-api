@@ -1144,7 +1144,7 @@ def test_letter_not_raise_alert_if_ack_files_match_zip_list(mocker, notify_db):
 
 
 @freeze_time('2018-01-11T23:00:00')
-def test_letter_not_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db):
+def test_letter_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db):
     mock_file_list = mocker.patch("app.aws.s3.get_list_of_files_by_suffix", side_effect=mock_s3_get_list_diff)
     mock_get_file = mocker.patch("app.aws.s3.get_s3_file",
                                  return_value='NOTIFY.20180111175007.ZIP|20180111175733\n'
@@ -1157,9 +1157,18 @@ def test_letter_not_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_d
     assert e.value.message == str(set(['NOTIFY.20180111175009.ZIP', 'NOTIFY.20180111175010.ZIP']))
     assert mock_file_list.call_count == 2
     assert mock_get_file.call_count == 1
+
+    deskpro_message = "Letter ack file does not contains all zip files sent. " \
+                      "Missing ack for zip files: {}, " \
+                      "pdf bucket: {}, subfolder: {}, " \
+                      "ack bucket: {}".format(str(set(['NOTIFY.20180111175009.ZIP', 'NOTIFY.20180111175010.ZIP'])),
+                                              current_app.config['LETTERS_PDF_BUCKET_NAME'],
+                                              datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
+                                              current_app.config['DVLA_RESPONSE_BUCKET_NAME'])
+
     mock_deskpro.assert_called_once_with(
         subject="Letter acknowledge error",
-        message="Letter acknowledgement file do not contains all zip files sent: 2018-01-11",
+        message=deskpro_message,
         ticket_type='alert'
     )
 
