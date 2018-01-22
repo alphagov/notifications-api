@@ -294,3 +294,16 @@ def test_service_get_default_contact_letter(sample_service):
 def test_service_get_default_sms_sender(notify_db_session):
     service = create_service()
     assert service.get_default_sms_sender() == 'testing'
+
+
+def test_letter_notification_serializes_correctly(client, sample_letter_notification):
+    sample_letter_notification.personalisation = {
+        'addressline1': 'test',
+        'addressline2': 'London',
+        'postcode': 'N1',
+    }
+
+    json = sample_letter_notification.serialize()
+    assert json['line_1'] == 'test'
+    assert json['line_2'] == 'London'
+    assert json['postcode'] == 'N1'

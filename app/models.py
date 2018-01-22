@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import (
     JSON
 )
 from sqlalchemy import UniqueConstraint, CheckConstraint
+from notifications_utils.columns import Columns
 from notifications_utils.recipients import (
     validate_email_address,
     validate_phone_number,
@@ -1223,12 +1224,13 @@ class Notification(db.Model):
         }
 
         if self.notification_type == LETTER_TYPE:
-            serialized['line_1'] = self.personalisation['address_line_1']
-            serialized['line_2'] = self.personalisation.get('address_line_2')
-            serialized['line_3'] = self.personalisation.get('address_line_3')
-            serialized['line_4'] = self.personalisation.get('address_line_4')
-            serialized['line_5'] = self.personalisation.get('address_line_5')
-            serialized['line_6'] = self.personalisation.get('address_line_6')
+            col = Columns(self.personalisation)
+            serialized['line_1'] = col.get('address_line_1')
+            serialized['line_2'] = col.get('address_line_2')
+            serialized['line_3'] = col.get('address_line_3')
+            serialized['line_4'] = col.get('address_line_4')
+            serialized['line_5'] = col.get('address_line_5')
+            serialized['line_6'] = col.get('address_line_6')
             serialized['postcode'] = self.personalisation['postcode']
             serialized['estimated_delivery'] = \
                 get_letter_timings(serialized['created_at'])\
