@@ -1159,7 +1159,7 @@ def test_letter_not_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_d
     assert mock_get_file.call_count == 1
     mock_deskpro.assert_called_once_with(
         subject="Letter acknowledge error",
-        message="Letter acknowledgement file do not contains all zip files sent: 2018-01-11",
+        message="Letter acknowledgement file does not contain all zip files sent: 2018-01-11",
         ticket_type='alert'
     )
 
