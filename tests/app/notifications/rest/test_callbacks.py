@@ -69,21 +69,43 @@ def test_dvla_callback_autoconfirm_does_not_call_update_letter_notifications_tas
     assert not update_task.called
 
 
-def test_dvla_callback_calls_update_letter_notifications_task(client, mocker):
+def test_dvla_callback_calls_does_not_update_letter_notifications_task_with_invalid_file_type(client, mocker):
     update_task = \
         mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
-    data = _sample_sns_s3_dvla_response_callback()
+
+    data = _sample_sns_s3_callback("bar.txt")
+    response = dvla_post(client, data)
+
+    assert response.status_code == 200
+    assert not update_task.called
+
+
+def test_dvla_rs_txt_file_callback_calls_update_letter_notifications_task(client, mocker):
+    update_task = \
+        mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
+    data = _sample_sns_s3_callback('Notify-20170411153023-rs.txt')
     response = dvla_post(client, data)
 
     assert response.status_code == 200
     assert update_task.called
-    update_task.assert_called_with(['bar.rs.txt'], queue='notify-internal-tasks')
+    update_task.assert_called_with(['Notify-20170411153023-rs.txt'], queue='notify-internal-tasks')
+
+
+def test_dvla_rsp_txt_file_callback_calls_update_letter_notifications_task(client, mocker):
+    update_task = \
+        mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
+    data = _sample_sns_s3_callback('NOTIFY.20170823160812.RSP.TXT')
+    response = dvla_post(client, data)
+
+    assert response.status_code == 200
+    assert update_task.called
+    update_task.assert_called_with(['NOTIFY.20170823160812.RSP.TXT'], queue='notify-internal-tasks')
 
 
 def test_dvla_ack_calls_does_not_call_letter_notifications_task(client, mocker):
     update_task = \
         mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
-    data = _sample_sns_s3_dvla_ack()
+    data = _sample_sns_s3_callback('bar.ack.txt')
     response = dvla_post(client, data)
 
     assert response.status_code == 200
@@ -462,7 +484,9 @@ def test_firetext_callback_should_record_statsd(client, notify_db, notify_db_ses
         app.statsd_client.incr.assert_any_call("callback.firetext.delivered")
 
 
-def _sample_sns_s3_dvla_ack():
+def _sample_sns_s3_callback(filename):
+    message_contents = '''{"Records":[{"eventVersion":"2.0","eventSource":"aws:s3","awsRegion":"eu-west-1","eventTime":"2017-05-16T11:38:41.073Z","eventName":"ObjectCreated:Put","userIdentity":{"principalId":"some-p-id"},"requestParameters":{"sourceIPAddress":"8.8.8.8"},"responseElements":{"x-amz-request-id":"some-r-id","x-amz-id-2":"some-x-am-id"},"s3":{"s3SchemaVersion":"1.0","configurationId":"some-c-id","bucket":{"name":"some-bucket","ownerIdentity":{"principalId":"some-p-id"},"arn":"some-bucket-arn"},
+            "object":{"key":"%s"}}}]}''' % (filename)  # noqa
     return json.dumps({
         "SigningCertURL": "foo.pem",
         "UnsubscribeURL": "bar",
@@ -473,22 +497,7 @@ def _sample_sns_s3_dvla_ack():
         "MessageId": "6adbfe0a-d610-509a-9c47-af894e90d32d",
         "Subject": "Amazon S3 Notification",
         "TopicArn": "sample-topic-arn",
-        "Message": '{"Records":[{"eventVersion":"2.0","eventSource":"aws:s3","awsRegion":"eu-west-1","eventTime":"2017-05-16T11:38:41.073Z","eventName":"ObjectCreated:Put","userIdentity":{"principalId":"some-p-id"},"requestParameters":{"sourceIPAddress":"8.8.8.8"},"responseElements":{"x-amz-request-id":"some-r-id","x-amz-id-2":"some-x-am-id"},"s3":{"s3SchemaVersion":"1.0","configurationId":"some-c-id","bucket":{"name":"some-bucket","ownerIdentity":{"principalId":"some-p-id"},"arn":"some-bucket-arn"},"object":{"key":"bar.ack.txt","size":200,"eTag":"some-e-tag","versionId":"some-v-id","sequencer":"some-seq"}}}]}'  # noqa
-    })
-
-
-def _sample_sns_s3_dvla_response_callback():
-    return json.dumps({
-        "SigningCertURL": "foo.pem",
-        "UnsubscribeURL": "bar",
-        "Signature": "some-signature",
-        "Type": "Notification",
-        "Timestamp": "2016-05-03T08:35:12.884Z",
-        "SignatureVersion": "1",
-        "MessageId": "6adbfe0a-d610-509a-9c47-af894e90d32d",
-        "Subject": "Amazon S3 Notification",
-        "TopicArn": "sample-topic-arn",
-        "Message": '{"Records":[{"eventVersion":"2.0","eventSource":"aws:s3","awsRegion":"eu-west-1","eventTime":"2017-05-16T11:38:41.073Z","eventName":"ObjectCreated:Put","userIdentity":{"principalId":"some-p-id"},"requestParameters":{"sourceIPAddress":"8.8.8.8"},"responseElements":{"x-amz-request-id":"some-r-id","x-amz-id-2":"some-x-am-id"},"s3":{"s3SchemaVersion":"1.0","configurationId":"some-c-id","bucket":{"name":"some-bucket","ownerIdentity":{"principalId":"some-p-id"},"arn":"some-bucket-arn"},"object":{"key":"bar.rs.txt","size":200,"eTag":"some-e-tag","versionId":"some-v-id","sequencer":"some-seq"}}}]}'  # noqa
+        "Message": message_contents
     })
 
 
