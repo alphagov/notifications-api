@@ -62,7 +62,7 @@ from app.models import (
     SMS_TYPE
 )
 from app.utils import get_london_midnight_in_utc
-from app.v2.errors import JobIncompleteError, NoAckFileReceived
+from app.v2.errors import JobIncompleteError
 from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
 
 from tests.app.conftest import (
@@ -1151,10 +1151,8 @@ def test_letter_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db):
                                               'NOTIFY.20180111175008.ZIP|20180111175734')
     mock_deskpro = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
 
-    with pytest.raises(expected_exception=NoAckFileReceived) as e:
-        letter_raise_alert_if_no_ack_file_for_zip()
+    letter_raise_alert_if_no_ack_file_for_zip()
 
-    assert e.value.message == str(set(['NOTIFY.20180111175009.ZIP', 'NOTIFY.20180111175010.ZIP']))
     assert mock_file_list.call_count == 2
     assert mock_get_file.call_count == 1
 
