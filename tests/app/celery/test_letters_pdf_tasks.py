@@ -1,5 +1,8 @@
+from flask import current_app
+
 from unittest.mock import call
 
+from freezegun import freeze_time
 import pytest
 import requests_mock
 from botocore.exceptions import ClientError
@@ -13,6 +16,7 @@ from app.celery.letters_pdf_tasks import (
     collate_letter_pdfs_for_day,
     group_letters,
     letter_in_created_state,
+    get_letter_pdf_filename,
 )
 from app.models import Notification, NOTIFICATION_SENDING
 
@@ -21,6 +25,25 @@ from tests.conftest import set_config_values
 
 def test_should_have_decorated_tasks_functions():
     assert create_letters_pdf.__wrapped__.__name__ == 'create_letters_pdf'
+
+
+@pytest.mark.parametrize('crown_flag,expected_crown_text', [
+    (True, 'C'),
+    (False, 'N'),
+])
+@freeze_time("2017-12-04 17:29:00")
+def test_get_letter_pdf_filename_returns_correct_filename(
+        notify_api, mocker, crown_flag, expected_crown_text):
+    filename = get_letter_pdf_filename(reference='foo', crown=crown_flag)
+
+    assert filename == '2017-12-04/NOTIFY.FOO.D.2.C.{}.20171204172900.PDF'.format(expected_crown_text)
+
+
+@freeze_time("2017-12-04 17:31:00")
+def test_get_letter_pdf_filename_returns_tomorrows_filename(notify_api, mocker):
+    filename = get_letter_pdf_filename(reference='foo', crown=True)
+
+    assert filename == '2017-12-05/NOTIFY.FOO.D.2.C.C.20171204173100.PDF'
 
 
 @pytest.mark.parametrize('personalisation', [{'name': 'test'}, None])
@@ -79,22 +102,28 @@ def test_get_letters_pdf_calculates_billing_units(
     assert billable_units == expected_billable_units
 
 
-def test_create_letters_pdf_calls_upload_letters_pdf(mocker, sample_letter_notification):
+def test_create_letters_pdf_calls_s3upload(mocker, sample_letter_notification):
     mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', '1'))
-    mock_s3 = mocker.patch('app.celery.tasks.s3.upload_letters_pdf')
+    mock_s3 = mocker.patch('app.celery.letters_pdf_tasks.s3upload')
 
     create_letters_pdf(sample_letter_notification.id)
 
-    mock_s3.assert_called_with(
+    filename = get_letter_pdf_filename(
         reference=sample_letter_notification.reference,
-        crown=sample_letter_notification.service.crown,
-        filedata=b'\x00\x01'
+        crown=sample_letter_notification.service.crown
+    )
+
+    mock_s3.assert_called_with(
+        bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
+        file_location=filename,
+        filedata=b'\x00\x01',
+        region=current_app.config['AWS_REGION']
     )
 
 
 def test_create_letters_pdf_sets_billable_units(mocker, sample_letter_notification):
     mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', 1))
-    mocker.patch('app.celery.tasks.s3.upload_letters_pdf')
+    mocker.patch('app.celery.letters_pdf_tasks.s3upload')
 
     create_letters_pdf(sample_letter_notification.id)
     noti = Notification.query.filter(Notification.reference == sample_letter_notification.reference).one()
@@ -118,7 +147,7 @@ def test_create_letters_pdf_handles_request_errors(mocker, sample_letter_notific
 
 def test_create_letters_pdf_handles_s3_errors(mocker, sample_letter_notification):
     mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', 1))
-    mock_s3 = mocker.patch('app.celery.tasks.s3.upload_letters_pdf', side_effect=ClientError({}, 'operation_name'))
+    mock_s3 = mocker.patch('app.celery.letters_pdf_tasks.s3upload', side_effect=ClientError({}, 'operation_name'))
     mock_retry = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.retry')
 
     create_letters_pdf(sample_letter_notification.id)
@@ -137,7 +166,6 @@ def test_create_letters_pdf_sets_technical_failure_max_retries(mocker, sample_le
 
     assert mock_get_letters_pdf.called
     assert mock_retry.called
-    assert mock_update_noti.called
     mock_update_noti.assert_called_once_with(sample_letter_notification.id, 'technical-failure')
 
 
