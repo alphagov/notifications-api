@@ -137,7 +137,7 @@ def test_post_letter_notification_for_letters_as_pdf_calls_celery_task(
     notification = Notification.query.one()
 
     fake_task.assert_called_once_with(
-        [str(notification.id)], queue=QueueNames.CREATE_LETTERS_PDF, kwargs={'research_mode': research_mode})
+        [str(notification.id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
 
 def test_post_letter_notification_returns_400_and_missing_template(

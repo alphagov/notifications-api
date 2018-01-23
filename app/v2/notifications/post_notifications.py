@@ -186,8 +186,7 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
         if should_create_pdf:
             create_letters_pdf.apply_async(
                 [str(notification.id)],
-                queue=QueueNames.CREATE_LETTERS_PDF,
-                kwargs={'research_mode': api_key.service.research_mode}
+                queue=QueueNames.CREATE_LETTERS_PDF
             )
     else:
         should_send = not (api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST)

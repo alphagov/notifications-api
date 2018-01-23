@@ -1178,8 +1178,7 @@ def test_save_letter_calls_create_letters_pdf_task_with_letters_as_pdf_permissio
     assert mock_create_letters_pdf.called
     mock_create_letters_pdf.assert_called_once_with(
         [str(notification_id)],
-        queue=QueueNames.CREATE_LETTERS_PDF,
-        kwargs={'research_mode': True}
+        queue=QueueNames.CREATE_LETTERS_PDF
     )
 
 
