@@ -17,7 +17,6 @@ from app.models import (
     NOTIFICATION_SENDING
 )
 from app.celery.letters_pdf_tasks import create_letters_pdf
-from app.celery.tasks import update_letter_notifications_to_sent_to_dvla
 from app.notifications.process_notifications import (
     persist_notification,
     persist_scheduled_notification,
@@ -174,27 +173,32 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
     if api_key.service.restricted and api_key.key_type != KEY_TYPE_TEST:
         raise BadRequestError(message='Cannot send letters when service is in trial mode', status_code=403)
 
-    should_send = not (api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST)
-
-    # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
-    status = NOTIFICATION_CREATED if should_send else NOTIFICATION_SENDING
-    notification = create_letter_notification(letter_data=letter_data,
-                                              template=template,
-                                              api_key=api_key,
-                                              status=status,
-                                              reply_to_text=reply_to_text)
-
-    if not should_send:
-        update_letter_notifications_to_sent_to_dvla.apply_async(
-            kwargs={'notification_references': [notification.reference]},
-            queue=QueueNames.RESEARCH_MODE
-        )
-
     if api_key.service.has_permission('letters_as_pdf'):
-        create_letters_pdf.apply_async(
-            [str(notification.id)],
-            queue=QueueNames.CREATE_LETTERS_PDF
-        )
+        should_create_pdf = api_key.key_type != KEY_TYPE_TEST
+
+        # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
+        status = NOTIFICATION_CREATED if should_create_pdf else NOTIFICATION_SENDING
+        notification = create_letter_notification(letter_data=letter_data,
+                                                  template=template,
+                                                  api_key=api_key,
+                                                  status=status,
+                                                  reply_to_text=reply_to_text)
+        if should_create_pdf:
+            create_letters_pdf.apply_async(
+                [str(notification.id)],
+                queue=QueueNames.CREATE_LETTERS_PDF,
+                kwargs={'research_mode': api_key.service.research_mode}
+            )
+    else:
+        should_send = not (api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST)
+
+        # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
+        status = NOTIFICATION_CREATED if should_send else NOTIFICATION_SENDING
+        notification = create_letter_notification(letter_data=letter_data,
+                                                  template=template,
+                                                  api_key=api_key,
+                                                  status=status,
+                                                  reply_to_text=reply_to_text)
 
     return notification
 
