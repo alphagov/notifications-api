@@ -31,6 +31,7 @@ from app.dao.notifications_dao import (
     set_scheduled_notification_to_processed,
     update_notification_status_by_id,
     update_notification_status_by_reference,
+    dao_get_notification_by_reference,
     dao_get_notifications_by_references
 )
 from app.dao.services_dao import dao_update_service
@@ -1992,6 +1993,26 @@ def test_dao_update_notifications_by_reference_returns_zero_when_no_notification
                                                                        "billable_units": 2}
                                                           )
     assert updated_count == 0
+
+
+def test_dao_get_notification_by_reference_with_one_match_returns_notification(sample_letter_template, notify_db):
+    create_notification(template=sample_letter_template, reference='REF1')
+    notification = dao_get_notification_by_reference('REF1')
+
+    assert notification.reference == 'REF1'
+
+
+def test_dao_get_notification_by_reference_with_multiple_matches_raises_error(sample_letter_template, notify_db):
+    create_notification(template=sample_letter_template, reference='REF1')
+    create_notification(template=sample_letter_template, reference='REF1')
+
+    with pytest.raises(SQLAlchemyError):
+        dao_get_notification_by_reference('REF1')
+
+
+def test_dao_get_notification_by_reference_with_no_matches_raises_error(notify_db):
+    with pytest.raises(SQLAlchemyError):
+        dao_get_notification_by_reference('REF1')
 
 
 def test_dao_get_notifications_by_reference(sample_template):

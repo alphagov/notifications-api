@@ -45,6 +45,7 @@ from app.dao.notifications_dao import (
     dao_update_notifications_for_job_to_sent_to_dvla,
     dao_update_notifications_by_reference,
     dao_get_last_notification_added_for_job_id,
+    dao_get_notification_by_reference,
 )
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
@@ -63,6 +64,7 @@ from app.models import (
     LETTER_TYPE,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
+    NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_TECHNICAL_FAILURE,
     SMS_TYPE,
 )
@@ -475,8 +477,10 @@ def update_letter_notifications_statuses(self, filename):
         raise
     else:
         for update in notification_updates:
+            check_billable_units(update)
+
             status = NOTIFICATION_DELIVERED if update.status == DVLA_RESPONSE_STATUS_SENT \
-                else NOTIFICATION_TECHNICAL_FAILURE
+                else NOTIFICATION_TEMPORARY_FAILURE
             updated_count = dao_update_notifications_by_reference(
                 references=[update.reference],
                 update_dict={"status": status,
@@ -500,6 +504,16 @@ def process_updates_from_file(response_file):
     NotificationUpdate = namedtuple('NotificationUpdate', ['reference', 'status', 'page_count', 'cost_threshold'])
     notification_updates = [NotificationUpdate(*line.split('|')) for line in response_file.splitlines()]
     return notification_updates
+
+
+def check_billable_units(notification_update):
+    notification = dao_get_notification_by_reference(notification_update.reference)
+
+    if int(notification_update.page_count) != notification.billable_units:
+        msg = 'Notification with id {} had {} billable_units but a page count of {}'.format(
+            notification.id, notification.billable_units, notification_update.page_count)
+
+        current_app.logger.error(msg)
 
 
 @notify_celery.task(bind=True, name="send-inbound-sms", max_retries=5, default_retry_delay=300)
