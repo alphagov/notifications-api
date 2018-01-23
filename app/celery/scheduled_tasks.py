@@ -61,7 +61,7 @@ from app.celery.tasks import (
 )
 from app.config import QueueNames, TaskNames
 from app.utils import convert_utc_to_bst
-from app.v2.errors import JobIncompleteError, NoAckFileReceived
+from app.v2.errors import JobIncompleteError
 from app.dao.service_callback_api_dao import get_service_callback_api_for_service
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 import pytz
@@ -533,17 +533,15 @@ def letter_raise_alert_if_no_ack_file_for_zip():
     # strip empty element before comparison
     ack_content_set.discard('')
     zip_file_set.discard('')
-    if current_app.config['NOTIFY_ENVIRONMENT'] in ['production', 'test']:
-        if len(zip_file_set - ack_content_set) > 0:
+
+    if len(zip_file_set - ack_content_set) > 0:
+        if current_app.config['NOTIFY_ENVIRONMENT'] in ['production', 'test']:
             deskpro_client.create_ticket(
                 subject="Letter acknowledge error",
                 message=deskpro_message,
                 ticket_type='alert'
             )
-
-            raise NoAckFileReceived(message=str(zip_file_set - ack_content_set))
-    else:
-        current_app.logger.info(deskpro_message)
+        current_app.logger.error(deskpro_message)
 
     if len(ack_content_set - zip_file_set) > 0:
         current_app.logger.info(
