@@ -48,7 +48,6 @@ def check_service_over_daily_message_limit(key_type, service):
             raise TooManyRequestsError(service.message_limit)
 
 
-@statsd(namespace="performance-testing")
 def check_rate_limiting(service, api_key):
     check_service_over_api_rate_limit(service, api_key)
     check_service_over_daily_message_limit(api_key.key_type, service)
@@ -83,14 +82,12 @@ def service_has_permission(notify_type, permissions):
     return notify_type in [p.permission for p in permissions]
 
 
-@statsd(namespace="performance-testing")
 def check_service_has_permission(notify_type, permissions):
     if not service_has_permission(notify_type, permissions):
         raise BadRequestError(message="Cannot send {}".format(
             get_public_notify_type_text(notify_type, plural=True)))
 
 
-@statsd(namespace="performance-testing")
 def check_service_can_schedule_notification(permissions, scheduled_for):
     if scheduled_for:
         if not service_has_permission(SCHEDULE_NOTIFICATIONS, permissions):
@@ -125,7 +122,6 @@ def check_sms_content_char_count(content_count):
         raise BadRequestError(message=message)
 
 
-@statsd(namespace="performance-testing")
 def validate_template(template_id, personalisation, service, notification_type):
     try:
         template = templates_dao.dao_get_template_by_id_and_service_id(

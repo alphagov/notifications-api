@@ -53,7 +53,6 @@ from app.v2.notifications.create_response import (
 
 
 @v2_notification_blueprint.route('/<notification_type>', methods=['POST'])
-@statsd(namespace="performance-testing")
 def post_notification(notification_type):
     if notification_type == EMAIL_TYPE:
         form = validate(request.get_json(), post_email_request)
@@ -124,7 +123,6 @@ def post_notification(notification_type):
     return jsonify(resp), 201
 
 
-@statsd(namespace="performance-testing")
 def process_sms_or_email_notification(*, form, notification_type, api_key, template, service, reply_to_text=None):
     form_send_to = form['email_address'] if notification_type == EMAIL_TYPE else form['phone_number']
 
@@ -199,7 +197,6 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
     return notification
 
 
-@statsd(namespace="performance-testing")
 def get_reply_to_text(notification_type, form, template):
     reply_to = None
     if notification_type == EMAIL_TYPE:
