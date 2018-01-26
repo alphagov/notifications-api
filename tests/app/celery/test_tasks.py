@@ -68,6 +68,7 @@ from tests.app.db import (
     create_reply_to_email,
     create_service_with_defined_sms_sender,
 )
+from tests.conftest import set_config_values
 
 
 class AnyStringWith(str):
@@ -1149,13 +1150,15 @@ def test_save_sms_uses_sms_sender_reply_to_text(mocker, notify_db_session):
     assert persisted_notification.reply_to_text == '447123123123'
 
 
-def test_save_letter_calls_update_noti_to_sent_task_with_letters_as_pdf_permission_in_research_mode(
-        mocker, notify_db_session, sample_letter_job):
+@pytest.mark.parametrize('env', ['staging', 'live'])
+def test_save_letter_sets_delivered_letters_as_pdf_permission_in_research_mode_in_staging_live(
+        notify_api, mocker, notify_db_session, sample_letter_job, env):
     sample_letter_job.service.research_mode = True
+    sample_reference = "this-is-random-in-real-life"
     service_permissions_dao.dao_add_service_permission(sample_letter_job.service.id, 'letters_as_pdf')
-    mock_update_letter_noti_sent = mocker.patch(
-        'app.celery.tasks.update_letter_notifications_to_sent_to_dvla.apply_async')
-    mocker.patch('app.celery.tasks.create_random_identifier', return_value="this-is-random-in-real-life")
+    mock_create_fake_letter_response_file = mocker.patch(
+        'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
+    mocker.patch('app.celery.tasks.create_random_identifier', return_value=sample_reference)
 
     personalisation = {
         'addressline1': 'Foo',
@@ -1171,15 +1174,55 @@ def test_save_letter_calls_update_noti_to_sent_task_with_letters_as_pdf_permissi
     )
     notification_id = uuid.uuid4()
 
-    save_letter(
-        sample_letter_job.service_id,
-        notification_id,
-        encryption.encrypt(notification_json),
-    )
+    with set_config_values(notify_api, {
+        'NOTIFY_ENVIRONMENT': env
+    }):
+        save_letter(
+            sample_letter_job.service_id,
+            notification_id,
+            encryption.encrypt(notification_json),
+        )
 
-    assert mock_update_letter_noti_sent.called
-    mock_update_letter_noti_sent.assert_called_once_with(
-        kwargs={'notification_references': ['this-is-random-in-real-life']},
+    notification = Notification.query.filter(Notification.id == notification_id).one()
+    assert notification.status == 'delivered'
+    assert not mock_create_fake_letter_response_file.called
+
+
+@pytest.mark.parametrize('env', ['development', 'preview'])
+def test_save_letter_calls_create_fake_response_for_letters_as_pdf_permission_in_research_mode_on_development_preview(
+        notify_api, mocker, notify_db_session, sample_letter_job, env):
+    sample_letter_job.service.research_mode = True
+    sample_reference = "this-is-random-in-real-life"
+    service_permissions_dao.dao_add_service_permission(sample_letter_job.service.id, 'letters_as_pdf')
+    mock_create_fake_letter_response_file = mocker.patch(
+        'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
+    mocker.patch('app.celery.tasks.create_random_identifier', return_value=sample_reference)
+
+    personalisation = {
+        'addressline1': 'Foo',
+        'addressline2': 'Bar',
+        'postcode': 'Flob',
+    }
+    notification_json = _notification_json(
+        template=sample_letter_job.template,
+        to='Foo',
+        personalisation=personalisation,
+        job_id=sample_letter_job.id,
+        row_number=1
+    )
+    notification_id = uuid.uuid4()
+
+    with set_config_values(notify_api, {
+        'NOTIFY_ENVIRONMENT': env
+    }):
+        save_letter(
+            sample_letter_job.service_id,
+            notification_id,
+            encryption.encrypt(notification_json),
+        )
+
+    mock_create_fake_letter_response_file.assert_called_once_with(
+        (sample_reference,),
         queue=QueueNames.RESEARCH_MODE
     )
 
