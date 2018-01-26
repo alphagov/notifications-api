@@ -1,8 +1,10 @@
 import uuid
 from unittest.mock import ANY
 
+from flask import current_app, json
+from freezegun import freeze_time
 import pytest
-from flask import json
+import requests_mock
 
 from app.config import QueueNames
 from app.celery.research_mode_tasks import (
@@ -11,7 +13,9 @@ from app.celery.research_mode_tasks import (
     mmg_callback,
     firetext_callback,
     ses_notification_callback,
+    create_fake_letter_response_file,
 )
+from tests.conftest import set_config_values
 
 
 def test_make_mmg_callback(notify_api, rmock):
@@ -102,3 +106,65 @@ def test_failure_firetext_callback(phone_number):
         'time': '2016-03-10 14:17:00',
         'reference': '1234'
     }
+
+
+@freeze_time("2018-01-25 14:00:00")
+def test_create_fake_letter_response_file_uploads_response_file_s3(
+        notify_api, mocker):
+    mock_s3upload = mocker.patch('app.celery.research_mode_tasks.s3upload')
+    filename = 'NOTIFY.20180125140000.RSP.TXT'
+
+    with requests_mock.Mocker() as request_mock:
+        request_mock.post(
+            'http://localhost:6011/notifications/letter/dvla',
+            content=b'{}',
+            status_code=200
+        )
+
+        create_fake_letter_response_file('random-ref')
+
+        mock_s3upload.assert_called_once_with(
+            filedata='random-ref|Sent|1|Sorted',
+            region=current_app.config['AWS_REGION'],
+            bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
+            file_location=filename
+        )
+
+
+@freeze_time("2018-01-25 14:00:00")
+def test_create_fake_letter_response_file_calls_dvla_callback_on_development(
+        notify_api, mocker):
+    mocker.patch('app.celery.research_mode_tasks.s3upload')
+    filename = 'NOTIFY.20180125140000.RSP.TXT'
+
+    with set_config_values(notify_api, {
+        'NOTIFY_ENVIRONMENT': 'development'
+    }):
+        with requests_mock.Mocker() as request_mock:
+            request_mock.post(
+                'http://localhost:6011/notifications/letter/dvla',
+                content=b'{}',
+                status_code=200
+            )
+
+            create_fake_letter_response_file('random-ref')
+
+            assert request_mock.last_request.json() == {
+                "Type": "Notification",
+                "MessageId": "some-message-id",
+                "Message": '{"Records":[{"s3":{"object":{"key":"' + filename + '"}}}]}'
+            }
+
+
+@freeze_time("2018-01-25 14:00:00")
+def test_create_fake_letter_response_file_does_not_call_dvla_callback_on_preview(
+        notify_api, mocker):
+    mocker.patch('app.celery.research_mode_tasks.s3upload')
+
+    with set_config_values(notify_api, {
+        'NOTIFY_ENVIRONMENT': 'preview'
+    }):
+        with requests_mock.Mocker() as request_mock:
+            create_fake_letter_response_file('random-ref')
+
+            assert request_mock.last_request is None
