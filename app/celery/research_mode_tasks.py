@@ -1,8 +1,12 @@
+from datetime import datetime
 import json
 
 from flask import current_app
 from requests import request, RequestException, HTTPError
 
+from notifications_utils.s3 import s3upload
+
+from app import notify_celery
 from app.models import SMS_TYPE
 from app.config import QueueNames
 from app.celery.process_ses_receipts_tasks import process_ses_results
@@ -113,6 +117,35 @@ def firetext_callback(notification_id, to):
         'time': '2016-03-10 14:17:00',
         'reference': notification_id
     }
+
+
+@notify_celery.task(bind=True, name="create-fake-letter-response-file", max_retries=5, default_retry_delay=300)
+def create_fake_letter_response_file(self, reference):
+    now = datetime.utcnow()
+    dvla_response_data = '{}|Sent|1|Sorted'.format(reference)
+    upload_file_name = 'NOTIFY.{}.RSP.TXT'.format(now.strftime('%Y%m%d%H%M%S'))
+
+    s3upload(
+        filedata=dvla_response_data,
+        region=current_app.config['AWS_REGION'],
+        bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
+        file_location=upload_file_name
+    )
+    current_app.logger.info("Fake DVLA response file {}, content [{}], uploaded to {}, created at {}".format(
+        upload_file_name, dvla_response_data, current_app.config['DVLA_RESPONSE_BUCKET_NAME'], now))
+
+    # on development we can't trigger SNS callbacks so we need to manually hit the DVLA callback endpoint
+    if current_app.config['NOTIFY_ENVIRONMENT'] == 'development':
+        make_request('letter', 'dvla', _fake_sns_s3_callback(upload_file_name), None)
+
+
+def _fake_sns_s3_callback(filename):
+    message_contents = '{"Records":[{"s3":{"object":{"key":"%s"}}}]}' % (filename)  # noqa
+    return json.dumps({
+        "Type": "Notification",
+        "MessageId": "some-message-id",
+        "Message": message_contents
+    })
 
 
 def ses_notification_callback(reference):

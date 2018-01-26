@@ -6,6 +6,7 @@ from notifications_utils.recipients import try_validate_and_format_phone_number
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
+from app.dao.notifications_dao import update_notification_status_by_reference
 from app.models import (
     SMS_TYPE,
     EMAIL_TYPE,
@@ -14,9 +15,11 @@ from app.models import (
     KEY_TYPE_TEST,
     KEY_TYPE_TEAM,
     NOTIFICATION_CREATED,
-    NOTIFICATION_SENDING
+    NOTIFICATION_SENDING,
+    NOTIFICATION_DELIVERED
 )
 from app.celery.letters_pdf_tasks import create_letters_pdf
+from app.celery.research_mode_tasks import create_fake_letter_response_file
 from app.celery.tasks import update_letter_notifications_to_sent_to_dvla
 from app.notifications.process_notifications import (
     persist_notification,
@@ -168,7 +171,7 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
     if api_key.key_type == KEY_TYPE_TEAM:
         raise BadRequestError(message='Cannot send letters with a team api key', status_code=403)
 
-    if api_key.service.restricted and api_key.key_type != KEY_TYPE_TEST:
+    if not api_key.service.research_mode and api_key.service.restricted and api_key.key_type != KEY_TYPE_TEST:
         raise BadRequestError(message='Cannot send letters when service is in trial mode', status_code=403)
 
     should_send = not (api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST)
@@ -188,10 +191,19 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
         )
 
     if api_key.service.has_permission('letters_as_pdf'):
-        create_letters_pdf.apply_async(
-            [str(notification.id)],
-            queue=QueueNames.CREATE_LETTERS_PDF
-        )
+        if should_send:
+            create_letters_pdf.apply_async(
+                [str(notification.id)],
+                queue=QueueNames.CREATE_LETTERS_PDF
+            )
+        elif (api_key.service.research_mode and
+              current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']):
+            create_fake_letter_response_file.apply_async(
+                (notification.reference,),
+                queue=QueueNames.RESEARCH_MODE
+            )
+        else:
+            update_notification_status_by_reference(notification.reference, NOTIFICATION_DELIVERED)
 
     return notification
 

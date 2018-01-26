@@ -1159,7 +1159,7 @@ def test_letter_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db):
     deskpro_message = "Letter ack file does not contains all zip files sent. " \
                       "Missing ack for zip files: {}, " \
                       "pdf bucket: {}, subfolder: {}, " \
-                      "ack bucket: {}".format(str(set(['NOTIFY.20180111175009.ZIP', 'NOTIFY.20180111175010.ZIP'])),
+                      "ack bucket: {}".format(str(['NOTIFY.20180111175009.ZIP', 'NOTIFY.20180111175010.ZIP']),
                                               current_app.config['LETTERS_PDF_BUCKET_NAME'],
                                               datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
                                               current_app.config['DVLA_RESPONSE_BUCKET_NAME'])

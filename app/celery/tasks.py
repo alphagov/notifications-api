@@ -29,8 +29,7 @@ from app import (
     encryption
 )
 from app.aws import s3
-from app.celery import provider_tasks
-from app.celery import letters_pdf_tasks
+from app.celery import provider_tasks, letters_pdf_tasks, research_mode_tasks
 from app.config import QueueNames
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
 from app.dao.jobs_dao import (
@@ -46,6 +45,7 @@ from app.dao.notifications_dao import (
     dao_update_notifications_by_reference,
     dao_get_last_notification_added_for_job_id,
     dao_get_notification_by_reference,
+    update_notification_status_by_reference,
 )
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
@@ -62,6 +62,7 @@ from app.models import (
     JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_ERROR,
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
+    NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
     NOTIFICATION_TEMPORARY_FAILURE,
@@ -304,6 +305,9 @@ def save_letter(
     template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
 
     try:
+        # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
+        status = NOTIFICATION_CREATED if not service.research_mode else NOTIFICATION_SENDING
+
         saved_notification = persist_notification(
             template_id=notification['template'],
             template_version=notification['template_version'],
@@ -318,7 +322,8 @@ def save_letter(
             job_row_number=notification['row_number'],
             notification_id=notification_id,
             reference=create_random_identifier(),
-            reply_to_text=template.get_reply_to_text()
+            reply_to_text=template.get_reply_to_text(),
+            status=status
         )
 
         if service.has_permission('letters_as_pdf'):
@@ -327,11 +332,13 @@ def save_letter(
                     [str(saved_notification.id)],
                     queue=QueueNames.CREATE_LETTERS_PDF
                 )
-            else:
-                update_letter_notifications_to_sent_to_dvla.apply_async(
-                    kwargs={'notification_references': [saved_notification.reference]},
+            elif current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']:
+                research_mode_tasks.create_fake_letter_response_file.apply_async(
+                    (saved_notification.reference,),
                     queue=QueueNames.RESEARCH_MODE
                 )
+            else:
+                update_notification_status_by_reference(saved_notification.reference, 'delivered')
 
         current_app.logger.info("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
     except SQLAlchemyError as e:
