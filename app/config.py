@@ -279,7 +279,7 @@ class Config(object):
         },
         'daily-stats-template-usage-by-month': {
             'task': 'daily-stats-template-usage-by-month',
-            'schedule': crontab(hour=0, minute=50),
+            'schedule': crontab(hour=0, minute=5),
             'options': {'queue': QueueNames.PERIODIC}
         }
     }
