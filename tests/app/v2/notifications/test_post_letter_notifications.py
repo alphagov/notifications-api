@@ -13,7 +13,7 @@ from app.models import KEY_TYPE_TEAM
 from app.models import KEY_TYPE_TEST
 from app.models import LETTER_TYPE
 from app.models import Notification
-from app.models import NOTIFICATION_SENDING
+from app.models import NOTIFICATION_SENDING, NOTIFICATION_DELIVERED
 from app.models import SMS_TYPE
 from app.schema_validation import validate
 from app.v2.errors import RateLimitError
@@ -21,6 +21,7 @@ from app.v2.notifications.notification_schemas import post_letter_response
 
 from tests import create_authorization_header
 from tests.app.db import create_service, create_template, create_letter_contact
+from tests.conftest import set_config_values
 
 test_address = {
     'address_line_1': 'test 1',
@@ -103,6 +104,127 @@ def test_post_letter_notification_for_letters_as_pdf_calls_celery_task(client, s
     notification = Notification.query.one()
 
     fake_task.assert_called_once_with([str(notification.id)], queue=QueueNames.CREATE_LETTERS_PDF)
+
+
+@pytest.mark.parametrize('env', [
+    'development',
+    'preview',
+])
+def test_post_letter_notification_for_letters_as_pdf_calls_create_fake_response_in_research_and_test_key_correct_env(
+        notify_api, client, sample_letter_template, mocker, env):
+    service_permissions_dao.dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
+    sample_letter_template.service.research_mode = True
+
+    data = {
+        'template_id': str(sample_letter_template.id),
+        'personalisation': {
+            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
+            'address_line_2': 'Buckingham Palace',
+            'address_line_3': 'London',
+            'postcode': 'SW1 1AA',
+            'name': 'Lizzie'
+        },
+        'reference': 'foo'
+    }
+
+    fake_update_letter_noti_to_sent = mocker.patch(
+        'app.celery.tasks.update_letter_notifications_to_sent_to_dvla.apply_async')
+    fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+    fake_create_dvla_response_task = mocker.patch(
+        'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
+
+    with set_config_values(notify_api, {
+        'NOTIFY_ENVIRONMENT': env
+    }):
+        letter_request(client, data, service_id=sample_letter_template.service_id, key_type=KEY_TYPE_TEST)
+
+    notification = Notification.query.one()
+
+    assert fake_update_letter_noti_to_sent.called
+    assert not fake_create_letter_task.called
+    fake_create_dvla_response_task.assert_called_once_with((notification.reference,), queue=QueueNames.RESEARCH_MODE)
+
+
+@pytest.mark.parametrize('env', [
+    'staging',
+    'live',
+])
+def test_post_letter_noti_for_letters_as_pdf_sets_status_delivered_in_research_and_test_key_incorrect_env(
+        notify_api, client, sample_letter_template, mocker, env):
+    service_permissions_dao.dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
+    sample_letter_template.service.research_mode = True
+
+    data = {
+        'template_id': str(sample_letter_template.id),
+        'personalisation': {
+            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
+            'address_line_2': 'Buckingham Palace',
+            'address_line_3': 'London',
+            'postcode': 'SW1 1AA',
+            'name': 'Lizzie'
+        },
+        'reference': 'foo'
+    }
+
+    fake_update_letter_noti_to_sent = mocker.patch(
+        'app.celery.tasks.update_letter_notifications_to_sent_to_dvla.apply_async')
+    fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+    fake_create_dvla_response_task = mocker.patch(
+        'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
+
+    with set_config_values(notify_api, {
+        'NOTIFY_ENVIRONMENT': env
+    }):
+        letter_request(client, data, service_id=sample_letter_template.service_id, key_type=KEY_TYPE_TEST)
+
+    notification = Notification.query.one()
+
+    assert fake_update_letter_noti_to_sent.called
+    assert not fake_create_letter_task.called
+    assert not fake_create_dvla_response_task.called
+    assert notification.status == NOTIFICATION_DELIVERED
+
+
+@pytest.mark.parametrize('env', [
+    'development',
+    'preview',
+    'staging',
+    'live',
+])
+def test_post_letter_noti_for_letters_as_pdf_sets_status_to_delivered_using_test_key_and_not_research_all_env(
+        notify_api, client, sample_letter_template, mocker, env):
+    service_permissions_dao.dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
+    sample_letter_template.service.research_mode = False
+
+    data = {
+        'template_id': str(sample_letter_template.id),
+        'personalisation': {
+            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
+            'address_line_2': 'Buckingham Palace',
+            'address_line_3': 'London',
+            'postcode': 'SW1 1AA',
+            'name': 'Lizzie'
+        },
+        'reference': 'foo'
+    }
+
+    fake_update_letter_noti_to_sent = mocker.patch(
+        'app.celery.tasks.update_letter_notifications_to_sent_to_dvla.apply_async')
+    fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+    fake_create_dvla_response_task = mocker.patch(
+        'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
+
+    with set_config_values(notify_api, {
+        'NOTIFY_ENVIRONMENT': env
+    }):
+        letter_request(client, data, service_id=sample_letter_template.service_id, key_type=KEY_TYPE_TEST)
+
+    notification = Notification.query.one()
+
+    assert fake_update_letter_noti_to_sent.called
+    assert not fake_create_letter_task.called
+    assert not fake_create_dvla_response_task.called
+    assert notification.status == NOTIFICATION_DELIVERED
 
 
 def test_post_letter_notification_returns_400_and_missing_template(
