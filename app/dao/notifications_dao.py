@@ -283,6 +283,10 @@ def get_notifications_for_service(
         query = query.options(
             joinedload('template')
         )
+    if include_jobs:
+        query = query.options(
+            joinedload('job')
+        )
 
     return query.order_by(desc(Notification.created_at)).paginate(
         page=page,
