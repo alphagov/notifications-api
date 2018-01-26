@@ -322,16 +322,10 @@ def save_letter(
         )
 
         if service.has_permission('letters_as_pdf'):
-            if not service.research_mode:
-                letters_pdf_tasks.create_letters_pdf.apply_async(
-                    [str(saved_notification.id)],
-                    queue=QueueNames.CREATE_LETTERS_PDF
-                )
-            else:
-                update_letter_notifications_to_sent_to_dvla.apply_async(
-                    kwargs={'notification_references': [saved_notification.reference]},
-                    queue=QueueNames.RESEARCH_MODE
-                )
+            letters_pdf_tasks.create_letters_pdf.apply_async(
+                [str(saved_notification.id)],
+                queue=QueueNames.CREATE_LETTERS_PDF
+            )
 
         current_app.logger.info("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
     except SQLAlchemyError as e:

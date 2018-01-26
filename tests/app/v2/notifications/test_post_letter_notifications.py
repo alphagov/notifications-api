@@ -82,8 +82,12 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
     assert not notification.reply_to_text
 
 
-def test_post_letter_notification_for_letters_as_pdf_calls_celery_task(client, sample_letter_template, mocker):
+@pytest.mark.parametrize('research_mode', [False, True])
+def test_post_letter_notification_for_letters_as_pdf_test_key(
+    client, sample_letter_template, mocker, research_mode
+):
     service_permissions_dao.dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
+    sample_letter_template.service.research_mode = research_mode
 
     data = {
         'template_id': str(sample_letter_template.id),
@@ -96,13 +100,44 @@ def test_post_letter_notification_for_letters_as_pdf_calls_celery_task(client, s
         },
         'reference': 'foo'
     }
-    fake_task = mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
+
+    fake_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+
+    letter_request(client, data, key_type=KEY_TYPE_TEST, service_id=sample_letter_template.service_id)
+
+    notification = Notification.query.one()
+
+    assert notification.status == NOTIFICATION_SENDING
+    assert not fake_task.called
+
+
+@pytest.mark.parametrize('research_mode', [False, True])
+def test_post_letter_notification_for_letters_as_pdf_calls_celery_task(
+    client, sample_letter_template, mocker, research_mode
+):
+    service_permissions_dao.dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
+    sample_letter_template.service.research_mode = research_mode
+
+    data = {
+        'template_id': str(sample_letter_template.id),
+        'personalisation': {
+            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
+            'address_line_2': 'Buckingham Palace',
+            'address_line_3': 'London',
+            'postcode': 'SW1 1AA',
+            'name': 'Lizzie'
+        },
+        'reference': 'foo'
+    }
+
+    fake_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
 
     letter_request(client, data, service_id=sample_letter_template.service_id)
 
     notification = Notification.query.one()
 
-    fake_task.assert_called_once_with([str(notification.id)], queue=QueueNames.CREATE_LETTERS_PDF)
+    fake_task.assert_called_once_with(
+        [str(notification.id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
 
 def test_post_letter_notification_returns_400_and_missing_template(
@@ -247,8 +282,6 @@ def test_post_letter_notification_queues_success(
     research_mode,
     key_type
 ):
-    fake_task = mocker.patch('app.celery.tasks.update_letter_notifications_to_sent_to_dvla.apply_async')
-
     service = create_service(research_mode=research_mode, service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type=LETTER_TYPE)
 
@@ -261,10 +294,6 @@ def test_post_letter_notification_queues_success(
 
     notification = Notification.query.one()
     assert notification.status == NOTIFICATION_SENDING
-    fake_task.assert_called_once_with(
-        kwargs={'notification_references': [notification.reference]},
-        queue='research-mode-tasks'
-    )
 
 
 def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_template):
@@ -308,8 +337,6 @@ def test_post_letter_notification_fakes_dvla_when_service_is_in_trial_mode_but_u
     sample_trial_letter_template,
     mocker
 ):
-    update_task = mocker.patch('app.celery.tasks.update_letter_notifications_to_sent_to_dvla.apply_async')
-
     data = {
         "template_id": sample_trial_letter_template.id,
         "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
@@ -319,10 +346,6 @@ def test_post_letter_notification_fakes_dvla_when_service_is_in_trial_mode_but_u
 
     notification = Notification.query.one()
     assert notification.status == NOTIFICATION_SENDING
-    update_task.assert_called_once_with(
-        kwargs={'notification_references': [notification.reference]},
-        queue='research-mode-tasks'
-    )
 
 
 def test_post_letter_notification_persists_notification_reply_to_text(
