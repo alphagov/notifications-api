@@ -14,7 +14,6 @@ from app.models import (
     KEY_TYPE_TEST, KEY_TYPE_TEAM, SCHEDULE_NOTIFICATIONS
 )
 from app.service.utils import service_allowed_to_send_to
-from app.statsd_decorators import statsd
 from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
 from app import redis_store
 from app.notifications.process_notifications import create_content_for_notification

@@ -28,7 +28,6 @@ from app.dao.notifications_dao import (
     dao_created_scheduled_notification
 )
 
-from app.statsd_decorators import statsd
 from app.v2.errors import BadRequestError
 from app.utils import get_template_instance, cache_key_for_service_template_counter, convert_bst_to_utc
 

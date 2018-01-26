@@ -37,7 +37,6 @@ from app.notifications.validators import (
     check_service_sms_sender_id
 )
 from app.schema_validation import validate
-from app.statsd_decorators import statsd
 from app.v2.errors import BadRequestError
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import (

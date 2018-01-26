@@ -1,4 +1,3 @@
-from app.statsd_decorators import statsd
 
 
 def create_post_sms_response_from_notification(notification, content, from_number, url_root, scheduled_for):
