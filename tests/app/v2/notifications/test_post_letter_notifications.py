@@ -127,8 +127,6 @@ def test_post_letter_notification_for_letters_as_pdf_calls_create_fake_response_
         'reference': 'foo'
     }
 
-    fake_update_letter_noti_to_sent = mocker.patch(
-        'app.celery.tasks.update_letter_notifications_to_sent_to_dvla.apply_async')
     fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
     fake_create_dvla_response_task = mocker.patch(
         'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
@@ -140,7 +138,7 @@ def test_post_letter_notification_for_letters_as_pdf_calls_create_fake_response_
 
     notification = Notification.query.one()
 
-    assert fake_update_letter_noti_to_sent.called
+    assert notification.status == NOTIFICATION_SENDING
     assert not fake_create_letter_task.called
     fake_create_dvla_response_task.assert_called_once_with((notification.reference,), queue=QueueNames.RESEARCH_MODE)
 
@@ -166,8 +164,6 @@ def test_post_letter_noti_for_letters_as_pdf_sets_status_delivered_in_research_a
         'reference': 'foo'
     }
 
-    fake_update_letter_noti_to_sent = mocker.patch(
-        'app.celery.tasks.update_letter_notifications_to_sent_to_dvla.apply_async')
     fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
     fake_create_dvla_response_task = mocker.patch(
         'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
@@ -179,7 +175,6 @@ def test_post_letter_noti_for_letters_as_pdf_sets_status_delivered_in_research_a
 
     notification = Notification.query.one()
 
-    assert fake_update_letter_noti_to_sent.called
     assert not fake_create_letter_task.called
     assert not fake_create_dvla_response_task.called
     assert notification.status == NOTIFICATION_DELIVERED
@@ -208,8 +203,6 @@ def test_post_letter_noti_for_letters_as_pdf_sets_status_to_delivered_using_test
         'reference': 'foo'
     }
 
-    fake_update_letter_noti_to_sent = mocker.patch(
-        'app.celery.tasks.update_letter_notifications_to_sent_to_dvla.apply_async')
     fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
     fake_create_dvla_response_task = mocker.patch(
         'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
@@ -221,7 +214,6 @@ def test_post_letter_noti_for_letters_as_pdf_sets_status_to_delivered_using_test
 
     notification = Notification.query.one()
 
-    assert fake_update_letter_noti_to_sent.called
     assert not fake_create_letter_task.called
     assert not fake_create_dvla_response_task.called
     assert notification.status == NOTIFICATION_DELIVERED
@@ -362,15 +354,13 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
     (True, KEY_TYPE_NORMAL),
     (False, KEY_TYPE_TEST)
 ])
-def test_post_letter_notification_queues_success(
+def test_post_letter_notification_updates_noti_sending(
     client,
     notify_db_session,
     mocker,
     research_mode,
     key_type
 ):
-    fake_task = mocker.patch('app.celery.tasks.update_letter_notifications_to_sent_to_dvla.apply_async')
-
     service = create_service(research_mode=research_mode, service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type=LETTER_TYPE)
 
@@ -383,10 +373,6 @@ def test_post_letter_notification_queues_success(
 
     notification = Notification.query.one()
     assert notification.status == NOTIFICATION_SENDING
-    fake_task.assert_called_once_with(
-        kwargs={'notification_references': [notification.reference]},
-        queue='research-mode-tasks'
-    )
 
 
 def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_template):
@@ -430,8 +416,6 @@ def test_post_letter_notification_fakes_dvla_when_service_is_in_trial_mode_but_u
     sample_trial_letter_template,
     mocker
 ):
-    update_task = mocker.patch('app.celery.tasks.update_letter_notifications_to_sent_to_dvla.apply_async')
-
     data = {
         "template_id": sample_trial_letter_template.id,
         "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
@@ -441,10 +425,6 @@ def test_post_letter_notification_fakes_dvla_when_service_is_in_trial_mode_but_u
 
     notification = Notification.query.one()
     assert notification.status == NOTIFICATION_SENDING
-    update_task.assert_called_once_with(
-        kwargs={'notification_references': [notification.reference]},
-        queue='research-mode-tasks'
-    )
 
 
 def test_post_letter_notification_persists_notification_reply_to_text(
