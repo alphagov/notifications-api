@@ -134,7 +134,8 @@ def _decide_permanent_temporary_failure(current_status, status):
 
 
 def country_records_delivery(phone_prefix):
-    return INTERNATIONAL_BILLING_RATES[phone_prefix]['attributes']['dlr'].lower() == 'yes'
+    dlr = INTERNATIONAL_BILLING_RATES[phone_prefix]['attributes']['dlr']
+    return dlr and dlr.lower() == 'yes'
 
 
 def _update_notification_status(notification, status):

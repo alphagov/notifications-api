@@ -470,6 +470,20 @@ def test_should_not_update_status_by_reference_if_from_country_with_no_delivery_
     assert notification.status == NOTIFICATION_SENT
 
 
+def test_should_not_update_status_by_id_if_sent_to_country_with_unknown_delivery_receipts(sample_template):
+    notification = create_notification(
+        sample_template,
+        status=NOTIFICATION_SENT,
+        international=True,
+        phone_prefix='249'  # sudan has no delivery receipts (or at least, that we know about)
+    )
+
+    res = update_notification_status_by_id(notification.id, 'delivered')
+
+    assert res is None
+    assert notification.status == NOTIFICATION_SENT
+
+
 def test_should_not_update_status_by_id_if_sent_to_country_with_carrier_delivery_receipts(sample_template):
     notification = create_notification(
         sample_template,
